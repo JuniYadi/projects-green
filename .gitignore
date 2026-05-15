@@ -31,6 +31,9 @@ pnpm-debug.log*
 # env files
 .env*.local
 
+# local postgres data
+docker/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

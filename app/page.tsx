@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button"
+import { eden } from "@/lib/eden"
 
-export default function Page() {
+export default async function Page() {
+  const { data, error } = await eden.api.health.get()
+
+  if (error) {
+    return <>{error}</>
+  }
   return (
     <div className="flex min-h-svh p-6">
       <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
@@ -13,6 +19,11 @@ export default function Page() {
         <div className="font-mono text-xs text-muted-foreground">
           (Press <kbd>d</kbd> to toggle dark mode)
         </div>
+
+        <p>
+          {data.ok ? "API is healthy and ready to use!" : "API is not healthy. Please check your server."}
+          {data.data.clone_url && <p>Clone URL: {data.data.clone_url}</p>}
+        </p>
       </div>
     </div>
   )
