@@ -313,9 +313,15 @@ export const demoteTenantMembershipSafely = async (params: {
   // Owner demotion — serialize via per-org lock to prevent the race
   // where two concurrent requests both see count > 1 then both demote.
   return withOwnershipLock(params.organizationId, async () => {
+    // Re-fetch the membership to ensure we have the latest state
+    const freshMembership = await getTenantMembershipById(params.membershipId)
+    if (!freshMembership) {
+      return { success: false, reason: "LAST_OWNER_PROTECTED" as const }
+    }
+
     const memberships = await listTenantMemberships(params.organizationId)
     const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
-    const isSelfDemotion = params.targetMembership.userId === params.actorUserId
+    const isSelfDemotion = freshMembership.userId === params.actorUserId
 
     if (isSelfDemotion && activeOwnerCount <= 1) {
       return { success: false, reason: "SELF_DEMOTION_BLOCKED" as const }
@@ -350,6 +356,12 @@ export const deleteTenantMembershipSafely = async (params: {
   // concurrent requests cannot both pass the "count > 1" check before
   // either delete executes.
   return withOwnershipLock(params.organizationId, async () => {
+    // Re-fetch the membership to ensure we have the latest state
+    const freshMembership = await getTenantMembershipById(params.membershipId)
+    if (!freshMembership) {
+      return { success: false, reason: "LAST_OWNER_PROTECTED" as const }
+    }
+
     const memberships = await listTenantMemberships(params.organizationId)
     const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
 

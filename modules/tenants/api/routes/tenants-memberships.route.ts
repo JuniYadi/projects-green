@@ -262,6 +262,15 @@ export const tenantsMembershipRoutes = new Elysia()
 
     const currentRole = targetMembership.role
 
+    // Reject removals when roleSlug exists but doesn't map to a known role
+    if (!currentRole && targetMembership.roleSlug) {
+      return toPolicyError(
+        set,
+        "REMOVE_FORBIDDEN",
+        "Cannot remove a user with an unmapped role."
+      )
+    }
+
     if (
       currentRole &&
       !canDemoteFromRole(
