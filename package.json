@@ -7,13 +7,16 @@
     "dev": "next dev --turbopack --port 3300",
     "build": "next build",
     "start": "next start",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage --coverage-reporter=text --coverage-reporter=lcov",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "grant:super-admin": "node scripts/grant-super-admin.mjs"
+    "grant:super-admin": "node scripts/grant-super-admin.mjs",
+    "seed:workos-roles": "node scripts/seed-workos-roles.mjs"
   },
   "dependencies": {
     "@elysia/eden": "^1.4.10",
@@ -39,7 +42,10 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@happy-dom/global-registrator": "^20.9.0",
     "@tailwindcss/postcss": "^4.2.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
