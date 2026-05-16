@@ -4,72 +4,18 @@ import { FormEvent, useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
-type TenantAction =
-  | "manage_tenant"
-  | "invite_member"
-  | "invite_admin"
-  | "invite_owner"
-  | "promote_member"
-  | "promote_owner"
-  | "demote_admin"
-  | "demote_owner"
-  | "transfer_ownership"
-
-type TenantRole = "owner" | "admin" | "member" | null
-
-type TenantAuthorizationResponse = {
-  ok: true
-  effectiveGlobalRole: "none" | "super_admin"
-  effectiveTenantRole: TenantRole
-  allowedActions: TenantAction[]
-}
-
-type TenantMember = {
-  id: string
-  userId: string
-  status: string
-  role: TenantRole
-  roleSlug: string | null
-}
-
-type TenantInvitation = {
-  id: string
-  email: string
-  state: string
-  roleSlug: string | null
-  createdAt: string
-  expiresAt: string
-}
-
-type TenantMembersResponse = {
-  ok: true
-  members: TenantMember[]
-}
-
-type TenantInvitationsResponse = {
-  ok: true
-  invitations: TenantInvitation[]
-}
-
-type ApiError = {
-  ok: false
-  error: string
-  message: string
-  policyCode?: string
-}
+import {
+  isTenantApiError,
+  type TenantApiError,
+  type TenantAuthorizationResponse,
+  type TenantInvitationsResponse,
+  type TenantInvitationSummary,
+  type TenantMembersResponse,
+  type TenantMembershipSummary,
+} from "@/modules/tenants/contracts/tenant-api.contract"
 
 type TenantMemberManagementProps = {
   organizationId: string
-}
-
-const isApiError = (value: unknown): value is ApiError => {
-  return Boolean(
-    value &&
-      typeof value === "object" &&
-      "ok" in value &&
-      (value as { ok?: boolean }).ok === false
-  )
 }
 
 export function TenantMemberManagement({
@@ -77,8 +23,8 @@ export function TenantMemberManagement({
 }: TenantMemberManagementProps) {
   const [authorization, setAuthorization] =
     useState<TenantAuthorizationResponse | null>(null)
-  const [members, setMembers] = useState<TenantMember[]>([])
-  const [invitations, setInvitations] = useState<TenantInvitation[]>([])
+  const [members, setMembers] = useState<TenantMembershipSummary[]>([])
+  const [invitations, setInvitations] = useState<TenantInvitationSummary[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -112,13 +58,19 @@ export function TenantMemberManagement({
 
         const authorizationPayload = (await authorizationResponse
           .json()
-          .catch(() => null)) as TenantAuthorizationResponse | ApiError | null
+          .catch(() => null)) as
+          | TenantAuthorizationResponse
+          | TenantApiError
+          | null
         const membersPayload = (await membersResponse
           .json()
-          .catch(() => null)) as TenantMembersResponse | ApiError | null
+          .catch(() => null)) as TenantMembersResponse | TenantApiError | null
         const invitationsPayload = (await invitationsResponse
           .json()
-          .catch(() => null)) as TenantInvitationsResponse | ApiError | null
+          .catch(() => null)) as
+          | TenantInvitationsResponse
+          | TenantApiError
+          | null
 
         if (!isActive) {
           return
@@ -127,19 +79,23 @@ export function TenantMemberManagement({
         if (
           !authorizationResponse.ok ||
           !authorizationPayload ||
-          isApiError(authorizationPayload)
+          isTenantApiError(authorizationPayload)
         ) {
           setError(
-            authorizationPayload && isApiError(authorizationPayload)
+            authorizationPayload && isTenantApiError(authorizationPayload)
               ? authorizationPayload.message
               : "Unable to load tenant authorization."
           )
           return
         }
 
-        if (!membersResponse.ok || !membersPayload || isApiError(membersPayload)) {
+        if (
+          !membersResponse.ok ||
+          !membersPayload ||
+          isTenantApiError(membersPayload)
+        ) {
           setError(
-            membersPayload && isApiError(membersPayload)
+            membersPayload && isTenantApiError(membersPayload)
               ? membersPayload.message
               : "Unable to load tenant members."
           )
@@ -149,10 +105,10 @@ export function TenantMemberManagement({
         if (
           !invitationsResponse.ok ||
           !invitationsPayload ||
-          isApiError(invitationsPayload)
+          isTenantApiError(invitationsPayload)
         ) {
           setError(
-            invitationsPayload && isApiError(invitationsPayload)
+            invitationsPayload && isTenantApiError(invitationsPayload)
               ? invitationsPayload.message
               : "Unable to load tenant invitations."
           )
@@ -194,13 +150,14 @@ export function TenantMemberManagement({
       body: body ? JSON.stringify(body) : undefined,
     })
 
-    const payload = (await response.json().catch(() => null)) as ApiError | {
-      ok: true
-    } | null
+    const payload = (await response.json().catch(() => null)) as
+      | TenantApiError
+      | { ok: true }
+      | null
 
-    if (!response.ok || !payload || isApiError(payload)) {
+    if (!response.ok || !payload || isTenantApiError(payload)) {
       const message =
-        payload && isApiError(payload)
+        payload && isTenantApiError(payload)
           ? payload.message
           : "Action failed. Please try again."
       throw new Error(message)
@@ -271,7 +228,9 @@ export function TenantMemberManagement({
 
   const onDemote = async (membershipId: string) => {
     try {
-      await postAction(`/api/tenants/${organizationId}/members/${membershipId}/demote`)
+      await postAction(
+        `/api/tenants/${organizationId}/members/${membershipId}/demote`
+      )
       setNotice("Member demoted to member role.")
       setReloadKey((current) => current + 1)
     } catch (actionError) {
@@ -305,8 +264,7 @@ export function TenantMemberManagement({
           Organization: {organizationId}
         </p>
         <p className="text-sm text-muted-foreground">
-          Effective role: {authorization?.effectiveGlobalRole ?? "none"} /
-          {" "}
+          Effective role: {authorization?.effectiveGlobalRole ?? "none"} /{" "}
           {authorization?.effectiveTenantRole ?? "none"}
         </p>
       </header>
@@ -325,7 +283,8 @@ export function TenantMemberManagement({
             onChange={(event) => setInviteEmail(event.target.value)}
             placeholder="user@company.com"
             disabled={
-              !allowedActions.has("invite_member") && !allowedActions.has("invite_admin")
+              !allowedActions.has("invite_member") &&
+              !allowedActions.has("invite_admin")
             }
           />
           <select
@@ -335,7 +294,8 @@ export function TenantMemberManagement({
               setInviteRole(event.target.value as "member" | "admin" | "owner")
             }
             disabled={
-              !allowedActions.has("invite_member") && !allowedActions.has("invite_admin")
+              !allowedActions.has("invite_member") &&
+              !allowedActions.has("invite_admin")
             }
           >
             <option value="member">member</option>
@@ -356,7 +316,7 @@ export function TenantMemberManagement({
       </form>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
           Members
         </h3>
         <div className="space-y-2">
@@ -372,7 +332,8 @@ export function TenantMemberManagement({
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {member.role === "member" && allowedActions.has("promote_member") ? (
+                {member.role === "member" &&
+                allowedActions.has("promote_member") ? (
                   <Button
                     type="button"
                     size="sm"
@@ -383,7 +344,8 @@ export function TenantMemberManagement({
                   </Button>
                 ) : null}
 
-                {member.role !== "owner" && allowedActions.has("promote_owner") ? (
+                {member.role !== "owner" &&
+                allowedActions.has("promote_owner") ? (
                   <Button
                     type="button"
                     size="sm"
@@ -407,7 +369,8 @@ export function TenantMemberManagement({
                   </Button>
                 ) : null}
 
-                {member.role !== "owner" && allowedActions.has("transfer_ownership") ? (
+                {member.role !== "owner" &&
+                allowedActions.has("transfer_ownership") ? (
                   <Button
                     type="button"
                     size="sm"
@@ -426,12 +389,15 @@ export function TenantMemberManagement({
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
           Pending Invitations
         </h3>
         <div className="space-y-2">
           {pendingInvitations.map((invitation) => (
-            <div key={invitation.id} className="border border-border p-3 text-sm">
+            <div
+              key={invitation.id}
+              className="border border-border p-3 text-sm"
+            >
               <p className="font-medium">{invitation.email}</p>
               <p className="text-xs text-muted-foreground">
                 role: {invitation.roleSlug ?? "member"} | expires:{" "}
