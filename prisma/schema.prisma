@@ -27,3 +27,71 @@ model PlatformUserRole {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
+
+model GithubInstallation {
+  id                   String   @id @default(cuid())
+  githubInstallationId BigInt   @unique
+  accountLogin         String
+  accountType          String
+  targetType           String
+  targetId             BigInt?
+  workosUserId         String
+  organizationId       String?
+  status               String   @default("active")
+  permissionsJson      Json?
+  eventsSubscribed     Json?
+  installedAt          DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  repositories GithubRepositoryConnection[]
+
+  @@index([workosUserId])
+  @@index([organizationId])
+  @@index([accountLogin])
+}
+
+model GithubRepositoryConnection {
+  id                 String   @id @default(cuid())
+  githubRepositoryId BigInt
+  installationId     String
+  fullName           String
+  ownerLogin         String
+  repoName           String
+  defaultBranch      String?
+  isPrivate          Boolean
+  enabled            Boolean  @default(true)
+  branchFilters      String[] @default(["main"])
+  rootDirectory      String   @default("/")
+  buildConfigJson    Json?
+  lastSyncedAt       DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  installation GithubInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@unique([githubRepositoryId, installationId])
+  @@index([installationId])
+  @@index([fullName])
+}
+
+model GithubWebhookEvent {
+  id                   String   @id @default(cuid())
+  deliveryId           String   @unique
+  eventName            String
+  action               String?
+  githubInstallationId BigInt?
+  githubRepositoryId   BigInt?
+  payloadJson          Json
+  payloadSha256        String
+  signatureValid       Boolean
+  enqueueStatus        String   @default("queued")
+  processStatus        String   @default("pending")
+  processError         String?
+  receivedAt           DateTime @default(now())
+  processedAt          DateTime?
+
+  @@index([eventName])
+  @@index([githubInstallationId])
+  @@index([githubRepositoryId])
+  @@index([processStatus])
+}
