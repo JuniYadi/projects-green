@@ -15,14 +15,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TerminalIcon, RobotIcon, BookOpenIcon, GearIcon, LifebuoyIcon, PaperPlaneTiltIcon, CropIcon, ChartPieIcon, MapTrifoldIcon, CommandIcon } from "@phosphor-icons/react"
+import { TerminalIcon, RobotIcon, BookOpenIcon, GearIcon, LifebuoyIcon, PaperPlaneTiltIcon, CropIcon, ChartPieIcon, MapTrifoldIcon } from "@phosphor-icons/react"
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Playground",
@@ -168,7 +163,37 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export type AppSidebarUser = {
+  name: string
+  email: string
+  avatarUrl: string | null
+}
+
+export type AppSidebarOrganization = {
+  id: string | null
+  name: string | null
+}
+
+type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  user: AppSidebarUser
+  organization: AppSidebarOrganization
+}
+
+export function AppSidebar({
+  user,
+  organization,
+  ...props
+}: AppSidebarProps) {
+  const organizationName =
+    organization.name?.trim() || organization.id?.trim() || "No organization"
+  const organizationMeta = organization.id ? "Organization" : "No active organization"
+  const orgInitials = organizationName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "NO"
+
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
@@ -177,11 +202,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton size="lg" asChild>
               <a href="#">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <CommandIcon className="size-4" />
+                  <span className="text-xs font-semibold">{orgInitials}</span>
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Acme Inc</span>
-                  <span className="truncate text-xs">Enterprise</span>
+                  <span className="truncate font-medium">{organizationName}</span>
+                  <span className="truncate text-xs">{organizationMeta}</span>
                 </div>
               </a>
             </SidebarMenuButton>
@@ -194,7 +219,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   )
