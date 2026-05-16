@@ -4,6 +4,7 @@ import {
   isTenantApiError,
   toNotFoundError,
   toPolicyError,
+  toWorkosApiError,
 } from "@/modules/tenants/api/tenants.errors"
 import {
   ensureTenantContextAccess,
@@ -11,12 +12,14 @@ import {
 } from "@/modules/tenants/api/tenants.guards"
 import { invitationPayloadSchema } from "@/modules/tenants/api/tenants.schema"
 import type {
+  TenantInvitationCancelResponse,
   TenantInvitationCreateResponse,
   TenantInvitationResendResponse,
   TenantInvitationRevokeResponse,
   TenantInvitationsResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
 import {
+  cancelTenantInvitation,
   getTenantInvitationById,
   listTenantInvitations,
   resendTenantInvitation,
@@ -58,13 +61,20 @@ export const tenantsInvitationRoutes = new Elysia()
       )
     }
 
-    const invitations = await listTenantInvitations(params.orgId)
+    try {
+      const invitations = await listTenantInvitations(params.orgId)
 
-    return {
-      ok: true,
-      orgId: params.orgId,
-      invitations,
-    } satisfies TenantInvitationsResponse
+      return {
+        ok: true,
+        orgId: params.orgId,
+        invitations,
+      } satisfies TenantInvitationsResponse
+    } catch (error) {
+      return toWorkosApiError(set, error, {
+        fallbackError: "TENANT_INVITATIONS_LIST_FAILED",
+        fallbackMessage: "Unable to load invitations right now.",
+      })
+    }
   })
   .post(
     "/tenants/:orgId/invitations",
@@ -99,19 +109,26 @@ export const tenantsInvitationRoutes = new Elysia()
         )
       }
 
-      const invitation = await sendTenantInvitation({
-        email: body.email.trim().toLowerCase(),
-        organizationId: params.orgId,
-        inviterUserId: actorResult.userId,
-        targetRole: body.targetRole,
-      })
+      try {
+        const invitation = await sendTenantInvitation({
+          email: body.email.trim().toLowerCase(),
+          organizationId: params.orgId,
+          inviterUserId: actorResult.userId,
+          targetRole: body.targetRole,
+        })
 
-      set.status = 201
+        set.status = 201
 
-      return {
-        ok: true,
-        invitation,
-      } satisfies TenantInvitationCreateResponse
+        return {
+          ok: true,
+          invitation,
+        } satisfies TenantInvitationCreateResponse
+      } catch (error) {
+        return toWorkosApiError(set, error, {
+          fallbackError: "TENANT_INVITATION_CREATE_FAILED",
+          fallbackMessage: "Unable to send invitation right now.",
+        })
+      }
     },
     {
       body: invitationPayloadSchema,
@@ -147,50 +164,140 @@ export const tenantsInvitationRoutes = new Elysia()
         )
       }
 
-      const invitation = await getTenantInvitationById(params.invitationId)
-      if (!invitation) {
-        return toNotFoundError(set, "Invitation not found.")
-      }
-      const invitationRole = normalizeTenantRole(invitation.roleSlug)
+      try {
+        const invitation = await getTenantInvitationById(params.invitationId)
+        if (!invitation) {
+          return toNotFoundError(set, "Invitation not found.")
+        }
+        const invitationRole = normalizeTenantRole(invitation.roleSlug)
 
-      if (invitation.organizationId !== params.orgId) {
-        return toPolicyError(
-          set,
-          "INVITATION_ORG_MISMATCH",
-          "Invitation does not belong to the requested tenant."
-        )
+        if (invitation.organizationId !== params.orgId) {
+          return toPolicyError(
+            set,
+            "INVITATION_ORG_MISMATCH",
+            "Invitation does not belong to the requested tenant."
+          )
+        }
+
+        if (!invitationRole) {
+          return toPolicyError(
+            set,
+            "INVITATION_INVALID_ROLE",
+            "This invitation has an unsupported or invalid role and cannot be processed."
+          )
+        }
+
+        if (
+          !canInviteAsRole(
+            {
+              platformRole: actorResult.platformRole,
+              tenantRole: actorResult.tenantRole,
+            },
+            invitationRole
+          )
+        ) {
+          return toPolicyError(
+            set,
+            "INVITATION_REVOKE_FORBIDDEN",
+            `You are not allowed to revoke ${invitationRole} invitations.`
+          )
+        }
+
+        await revokeTenantInvitation(invitation.id)
+
+        return {
+          ok: true,
+          revokedInvitationId: invitation.id,
+        } satisfies TenantInvitationRevokeResponse
+      } catch (error) {
+        return toWorkosApiError(set, error, {
+          fallbackError: "TENANT_INVITATION_REVOKE_FAILED",
+          fallbackMessage: "Unable to revoke this invitation right now.",
+        })
+      }
+    }
+  )
+  .post(
+    "/tenants/:orgId/invitations/:invitationId/cancel",
+    async ({ params, set }) => {
+      const actorResult = await requireTenantActor(set)
+      if (isTenantApiError(actorResult)) {
+        return actorResult
       }
 
-      if (!invitationRole) {
-        return toPolicyError(
-          set,
-          "INVITATION_INVALID_ROLE",
-          "This invitation has an unsupported or invalid role and cannot be processed."
-        )
+      const hasContextAccess = ensureTenantContextAccess(
+        params.orgId,
+        actorResult,
+        set
+      )
+      if (hasContextAccess !== true) {
+        return hasContextAccess
       }
 
       if (
-        !canInviteAsRole(
-          {
-            platformRole: actorResult.platformRole,
-            tenantRole: actorResult.tenantRole,
-          },
-          invitationRole
-        )
+        !canManageTenant({
+          platformRole: actorResult.platformRole,
+          tenantRole: actorResult.tenantRole,
+        })
       ) {
         return toPolicyError(
           set,
-          "INVITATION_REVOKE_FORBIDDEN",
-          `You are not allowed to revoke ${invitationRole} invitations.`
+          "TENANT_MANAGE_REQUIRED",
+          "You do not have permission to cancel invitations in this tenant."
         )
       }
 
-      await revokeTenantInvitation(invitation.id)
+      try {
+        const invitation = await getTenantInvitationById(params.invitationId)
+        if (!invitation) {
+          return toNotFoundError(set, "Invitation not found.")
+        }
+        const invitationRole = normalizeTenantRole(invitation.roleSlug)
 
-      return {
-        ok: true,
-        revokedInvitationId: invitation.id,
-      } satisfies TenantInvitationRevokeResponse
+        if (invitation.organizationId !== params.orgId) {
+          return toPolicyError(
+            set,
+            "INVITATION_ORG_MISMATCH",
+            "Invitation does not belong to the requested tenant."
+          )
+        }
+
+        if (!invitationRole) {
+          return toPolicyError(
+            set,
+            "INVITATION_INVALID_ROLE",
+            "This invitation has an unsupported or invalid role and cannot be processed."
+          )
+        }
+
+        if (
+          !canInviteAsRole(
+            {
+              platformRole: actorResult.platformRole,
+              tenantRole: actorResult.tenantRole,
+            },
+            invitationRole
+          )
+        ) {
+          return toPolicyError(
+            set,
+            "INVITATION_CANCEL_FORBIDDEN",
+            `You are not allowed to cancel ${invitationRole} invitations.`
+          )
+        }
+
+        await cancelTenantInvitation(invitation.id)
+
+        return {
+          ok: true,
+          canceledInvitationId: invitation.id,
+        } satisfies TenantInvitationCancelResponse
+      } catch (error) {
+        return toWorkosApiError(set, error, {
+          fallbackError: "TENANT_INVITATION_CANCEL_FAILED",
+          fallbackMessage: "Unable to cancel this invitation right now.",
+        })
+      }
     }
   )
   .post(
@@ -223,49 +330,56 @@ export const tenantsInvitationRoutes = new Elysia()
         )
       }
 
-      const invitation = await getTenantInvitationById(params.invitationId)
-      if (!invitation) {
-        return toNotFoundError(set, "Invitation not found.")
+      try {
+        const invitation = await getTenantInvitationById(params.invitationId)
+        if (!invitation) {
+          return toNotFoundError(set, "Invitation not found.")
+        }
+        const invitationRole = normalizeTenantRole(invitation.roleSlug)
+
+        if (invitation.organizationId !== params.orgId) {
+          return toPolicyError(
+            set,
+            "INVITATION_ORG_MISMATCH",
+            "Invitation does not belong to the requested tenant."
+          )
+        }
+
+        if (!invitationRole) {
+          return toPolicyError(
+            set,
+            "INVITATION_INVALID_ROLE",
+            "This invitation has an unsupported or invalid role and cannot be processed."
+          )
+        }
+
+        if (
+          !canInviteAsRole(
+            {
+              platformRole: actorResult.platformRole,
+              tenantRole: actorResult.tenantRole,
+            },
+            invitationRole
+          )
+        ) {
+          return toPolicyError(
+            set,
+            "INVITATION_RESEND_FORBIDDEN",
+            `You are not allowed to resend ${invitationRole} invitations.`
+          )
+        }
+
+        const resent = await resendTenantInvitation(invitation.id)
+
+        return {
+          ok: true,
+          invitation: resent,
+        } satisfies TenantInvitationResendResponse
+      } catch (error) {
+        return toWorkosApiError(set, error, {
+          fallbackError: "TENANT_INVITATION_RESEND_FAILED",
+          fallbackMessage: "Unable to resend this invitation right now.",
+        })
       }
-      const invitationRole = normalizeTenantRole(invitation.roleSlug)
-
-      if (invitation.organizationId !== params.orgId) {
-        return toPolicyError(
-          set,
-          "INVITATION_ORG_MISMATCH",
-          "Invitation does not belong to the requested tenant."
-        )
-      }
-
-      if (!invitationRole) {
-        return toPolicyError(
-          set,
-          "INVITATION_INVALID_ROLE",
-          "This invitation has an unsupported or invalid role and cannot be processed."
-        )
-      }
-
-      if (
-        !canInviteAsRole(
-          {
-            platformRole: actorResult.platformRole,
-            tenantRole: actorResult.tenantRole,
-          },
-          invitationRole
-        )
-      ) {
-        return toPolicyError(
-          set,
-          "INVITATION_RESEND_FORBIDDEN",
-          `You are not allowed to resend ${invitationRole} invitations.`
-        )
-      }
-
-      const resent = await resendTenantInvitation(invitation.id)
-
-      return {
-        ok: true,
-        invitation: resent,
-      } satisfies TenantInvitationResendResponse
     }
   )
