@@ -9,6 +9,45 @@ const updateQueryFromUrl = (url: string) => {
   currentQuery = parts[1] ?? ""
 }
 
+const githubRepositories = [
+  {
+    repositoryId: "repo-console-next",
+    fullName: "pfn-labs/console-next-app",
+    name: "console-next-app",
+    owner: "owner-pfn",
+    installationId: 1,
+    defaultBranch: "main",
+    private: true,
+  },
+  {
+    repositoryId: "repo-api-monolith",
+    fullName: "pfn-labs/platform-api",
+    name: "platform-api",
+    owner: "owner-pfn",
+    installationId: 1,
+    defaultBranch: "master",
+    private: true,
+  },
+  {
+    repositoryId: "repo-storefront",
+    fullName: "acme-inc/storefront",
+    name: "storefront",
+    owner: "owner-acme",
+    installationId: 2,
+    defaultBranch: "main",
+    private: false,
+  },
+  {
+    repositoryId: "repo-failing-build",
+    fullName: "acme-inc/legacy-worker",
+    name: "legacy-worker",
+    owner: "owner-acme",
+    installationId: 2,
+    defaultBranch: "main",
+    private: true,
+  },
+]
+
 mock.module("next/navigation", () => {
   return {
     usePathname: () => "/console/app/deploy",
@@ -32,9 +71,19 @@ const renderWizard = async (query = "") => {
   return render(<wizardModule.DeployWizard />)
 }
 
-const selectSourceRepository = (view: RenderResult) => {
+const selectSourceRepository = async (view: RenderResult) => {
+  await waitFor(() => {
+    expect(view.getByRole("option", { name: "owner-pfn" })).toBeTruthy()
+  })
+
   fireEvent.change(view.getByLabelText("Owner selector"), {
     target: { value: "owner-pfn" },
+  })
+
+  await waitFor(() => {
+    expect(
+      view.getByRole("option", { name: "console-next-app" })
+    ).toBeTruthy()
   })
 
   fireEvent.change(view.getByLabelText("Repository selector"), {
@@ -47,6 +96,45 @@ describe("DeployWizard", () => {
     window.sessionStorage.clear()
     currentQuery = ""
     replaceCalls.splice(0)
+    globalThis.fetch = mock((input: RequestInfo | URL) => {
+      const requestUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url
+      const url = new URL(requestUrl, "http://localhost")
+
+      if (url.pathname !== "/api/integrations/github/repositories") {
+        return Promise.resolve(new Response("Not found", { status: 404 }))
+      }
+
+      const ownerId = url.searchParams.get("ownerId")
+      const query = url.searchParams.get("query")?.toLowerCase().trim() ?? ""
+
+      const items = githubRepositories.filter((repository) => {
+        const ownerMatch = ownerId ? repository.owner === ownerId : true
+        if (!ownerMatch) {
+          return false
+        }
+
+        if (!query) {
+          return true
+        }
+
+        return (
+          repository.name.toLowerCase().includes(query) ||
+          repository.owner.toLowerCase().includes(query)
+        )
+      })
+
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, items }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
+      )
+    }) as typeof fetch
   })
 
   it("falls back to source step for invalid query", async () => {
@@ -60,7 +148,7 @@ describe("DeployWizard", () => {
   it("runs happy path from source to running status", async () => {
     const view = await renderWizard()
 
-    selectSourceRepository(view)
+    await selectSourceRepository(view)
 
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
@@ -92,8 +180,16 @@ describe("DeployWizard", () => {
   it("shows failure path with retry and edit settings actions", async () => {
     const view = await renderWizard()
 
+    await waitFor(() => {
+      expect(view.getByRole("option", { name: "owner-acme" })).toBeTruthy()
+    })
+
     fireEvent.change(view.getByLabelText("Owner selector"), {
       target: { value: "owner-acme" },
+    })
+
+    await waitFor(() => {
+      expect(view.getByRole("option", { name: "legacy-worker" })).toBeTruthy()
     })
 
     fireEvent.change(view.getByLabelText("Repository selector"), {
@@ -134,7 +230,7 @@ describe("DeployWizard", () => {
   it("preserves environment values when navigating back and forward", async () => {
     const view = await renderWizard()
 
-    selectSourceRepository(view)
+    await selectSourceRepository(view)
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
@@ -177,7 +273,7 @@ describe("DeployWizard", () => {
   it("shows duplicate env var key warning", async () => {
     const view = await renderWizard()
 
-    selectSourceRepository(view)
+    await selectSourceRepository(view)
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {

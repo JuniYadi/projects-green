@@ -17,6 +17,7 @@ export type Repository = {
   ownerId: string
   name: string
   isPrivate: boolean
+  defaultBranch?: string
 }
 
 export type Branch = {
