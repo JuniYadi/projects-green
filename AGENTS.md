@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+## Important
+
+Use bun for all commands (for example `bun run dev`, `bun run test`) to ensure consistent environment and dependency resolution. Avoid using `npm` or `yarn` to prevent conflicts with the `bun.lockb` / `bun.lock` lockfile.
+
 ## Project Structure & Module Organization
 This is a Next.js 16 + TypeScript app with feature-oriented modules.
 
@@ -13,14 +17,14 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - `public/`: Static assets.
 
 ## Build, Test, and Development Commands
-- `npm run dev`: Start local dev server on `http://localhost:3300`.
-- `npm run build`: Production build.
-- `npm run start`: Run built app.
-- `npm run lint`: Run ESLint (Next core-web-vitals + TypeScript rules).
-- `npm run typecheck`: TypeScript checks without emit.
-- `npm run test`: Run Bun tests.
-- `npm run test:coverage`: Run tests with text + lcov output in `coverage/`.
-- `npm run prisma:migrate:dev` / `npm run prisma:generate`: Apply DB migrations and refresh Prisma client.
+- `bun run dev`: Start local dev server on `http://localhost:3300`.
+- `bun run build`: Production build.
+- `bun run start`: Run built app.
+- `bun run lint`: Run ESLint (Next core-web-vitals + TypeScript rules).
+- `bun run typecheck`: TypeScript checks without emit.
+- `bun run test`: Run Bun tests.
+- `bun run test:coverage`: Run tests with text + lcov output in `coverage/`.
+- `bun run prisma:migrate:dev` / `bun run prisma:generate`: Apply DB migrations and refresh Prisma client.
 
 ## Coding Style & Naming Conventions
 - TypeScript-first; strict mode is enabled in `tsconfig.json`.
@@ -37,9 +41,9 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commit style seen in history: `feat: ...`, `fix: ...`, `test: ...`, `chore: ...`, `docs: ...`.
 - Use imperative, scoped summaries (example: `feat: add onboarding flow page`).
-- PRs should include: problem/solution summary, linked issue (if available), test evidence (`npm run test`, `npm run lint`), and screenshots for UI changes.
+- PRs should include: problem/solution summary, linked issue (if available), test evidence (`bun run test`, `bun run lint`), and screenshots for UI changes.
 
 ## Security & Configuration Tips
 - Copy required values from `.env.example`; never commit real secrets.
 - Required integrations include PostgreSQL (`DATABASE_URL`) and WorkOS keys.
-- Run role/bootstrap scripts via `npm run seed:workos-roles` and `npm run grant:super-admin` only in the correct environment.
+- Run role/bootstrap scripts via `bun run seed:workos-roles` and `bun run grant:super-admin` only in the correct environment.
