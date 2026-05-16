@@ -45,6 +45,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.2",
     "@eslint/eslintrc": "^3",
     "@happy-dom/global-registrator": "^20.9.0",
     "@tailwindcss/postcss": "^4.2.1",

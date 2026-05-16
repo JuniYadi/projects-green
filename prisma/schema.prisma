@@ -28,6 +28,65 @@ model PlatformUserRole {
   updatedAt    DateTime     @updatedAt
 }
 
+model GithubInstallStateNonce {
+  id             String   @id @default(cuid())
+  nonceHash      String   @unique
+  workosUserId   String
+  organizationId String?
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([expiresAt])
+  @@index([workosUserId])
+  @@index([organizationId])
+}
+
+model GithubInstallation {
+  id                   String   @id @default(cuid())
+  githubInstallationId BigInt   @unique
+  accountLogin         String
+  accountType          String
+  targetType           String
+  targetId             BigInt?
+  workosUserId         String
+  organizationId       String?
+  status               String   @default("active")
+  permissionsJson      Json?
+  eventsSubscribed     Json?
+  installedAt          DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  repositories GithubRepositoryConnection[]
+
+  @@index([workosUserId])
+  @@index([organizationId])
+  @@index([accountLogin])
+}
+
+model GithubRepositoryConnection {
+  id                 String   @id @default(cuid())
+  githubRepositoryId BigInt
+  installationId     String
+  fullName           String
+  ownerLogin         String
+  repoName           String
+  defaultBranch      String?
+  isPrivate          Boolean
+  enabled            Boolean  @default(true)
+  branchFilters      String[] @default(["main"])
+  rootDirectory      String   @default("/")
+  buildConfigJson    Json?
+  lastSyncedAt       DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  installation GithubInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@unique([githubRepositoryId, installationId])
+  @@index([installationId])
+  @@index([fullName])
+}
 model GithubWebhookEvent {
   id                   String   @id @default(cuid())
   deliveryId           String   @unique
