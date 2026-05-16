@@ -1,0 +1,105 @@
+import type { PlatformAccessRole } from "@/lib/platform-role"
+import type { TenantAction, TenantRole } from "@/modules/tenants/tenant-policy"
+
+export type TenantApiError = {
+  ok: false
+  error: string
+  message: string
+  policyCode?: string
+}
+
+export const isTenantApiError = (value: unknown): value is TenantApiError => {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    "ok" in value &&
+    (value as { ok?: boolean }).ok === false
+  )
+}
+
+export type TenantBootstrapMembership = {
+  organizationId: string
+  organizationName: string
+  status: string
+  roleSlug: string | null
+}
+
+export type TenantBootstrapResponse = {
+  ok: true
+  currentOrganizationId: string | null
+  memberships: TenantBootstrapMembership[]
+}
+
+export type TenantBootstrapCreateResponse = {
+  ok: true
+  organizationId: string
+}
+
+export type TenantMembershipSummary = {
+  id: string
+  organizationId: string
+  userId: string
+  status: string
+  role: TenantRole | null
+  roleSlug: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type TenantInvitationSummary = {
+  id: string
+  email: string
+  state: string
+  organizationId: string
+  inviterUserId: string | null
+  acceptedUserId: string | null
+  roleSlug: string | null
+  createdAt: string
+  expiresAt: string
+}
+
+export type TenantInvitationCreatedSummary = {
+  id: string
+  email: string
+  state: string
+  organizationId: string
+  roleSlug: string | null
+  createdAt: string
+  expiresAt: string
+}
+
+export type TenantAuthorizationResponse = {
+  ok: true
+  orgId: string
+  effectiveGlobalRole: PlatformAccessRole
+  effectiveTenantRole: TenantRole | null
+  allowedActions: TenantAction[]
+}
+
+export type TenantMembersResponse = {
+  ok: true
+  orgId: string
+  members: TenantMembershipSummary[]
+}
+
+export type TenantInvitationsResponse = {
+  ok: true
+  orgId: string
+  invitations: TenantInvitationSummary[]
+}
+
+export type TenantInvitationCreateResponse = {
+  ok: true
+  invitation: TenantInvitationCreatedSummary
+}
+
+export type TenantMembershipMutationResponse = {
+  ok: true
+  membership: TenantMembershipSummary
+}
+
+export type TenantOwnershipTransferResponse = {
+  ok: true
+  ownershipTransferred: true
+  membership: TenantMembershipSummary
+}
