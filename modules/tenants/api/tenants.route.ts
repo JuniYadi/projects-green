@@ -46,6 +46,21 @@ const bootstrapCreatePayloadSchema = z.object({
     .max(80, "Organization name must be at most 80 characters."),
 })
 
+const organizationUpdatePayloadSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Organization name must be at least 2 characters.")
+    .max(80, "Organization name must be at most 80 characters."),
+})
+
+const organizationDeletePayloadSchema = z.object({
+  confirmOrganizationName: z
+    .string()
+    .trim()
+    .min(1, "Please enter the organization name to confirm deletion."),
+})
+
 const BOOTSTRAP_CREATOR_ROLE_SLUG = "user_owner"
 const SCOPED_TENANT_ROLE_SLUG: Record<TenantRole, string> = {
   owner: "user_owner",
@@ -60,6 +75,26 @@ type MembershipSummary = {
   status: string
   role: TenantRole | null
   roleSlug: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+type InvitationSummary = {
+  id: string
+  email: string
+  state: string
+  organizationId: string | null
+  inviterUserId: string | null
+  acceptedUserId: string | null
+  roleSlug: string | null
+  createdAt: string
+  expiresAt: string
+}
+
+type OrganizationSummary = {
+  id: string
+  name: string
+  allowProfilesOutsideOrganization: boolean
   createdAt: string
   updatedAt: string
 }
@@ -86,6 +121,47 @@ const toMembershipSummary = (membership: {
     createdAt: membership.createdAt,
     updatedAt: membership.updatedAt,
   } satisfies MembershipSummary
+}
+
+const toInvitationSummary = (invitation: {
+  id: string
+  email: string
+  state: string
+  organizationId: string | null
+  inviterUserId: string | null
+  acceptedUserId: string | null
+  roleSlug: string | null
+  createdAt: string
+  expiresAt: string
+}) => {
+  return {
+    id: invitation.id,
+    email: invitation.email,
+    state: invitation.state,
+    organizationId: invitation.organizationId,
+    inviterUserId: invitation.inviterUserId,
+    acceptedUserId: invitation.acceptedUserId,
+    roleSlug: invitation.roleSlug,
+    createdAt: invitation.createdAt,
+    expiresAt: invitation.expiresAt,
+  } satisfies InvitationSummary
+}
+
+const toOrganizationSummary = (organization: {
+  id: string
+  name: string
+  allowProfilesOutsideOrganization?: boolean
+  createdAt: string
+  updatedAt: string
+}) => {
+  return {
+    id: organization.id,
+    name: organization.name,
+    allowProfilesOutsideOrganization:
+      organization.allowProfilesOutsideOrganization ?? false,
+    createdAt: organization.createdAt,
+    updatedAt: organization.updatedAt,
+  } satisfies OrganizationSummary
 }
 
 const isActiveOwner = (membership: MembershipSummary) => {
@@ -176,8 +252,8 @@ const ensureTenantContextAccess = (
 }
 
 const listTenantMemberships = async (organizationId: string) => {
-  const memberships = await getWorkOS().userManagement
-    .listOrganizationMemberships({
+  const memberships = await getWorkOS()
+    .userManagement.listOrganizationMemberships({
       organizationId,
       statuses: ["active", "inactive", "pending"],
     })
@@ -187,16 +263,27 @@ const listTenantMemberships = async (organizationId: string) => {
 }
 
 const getMembershipById = async (membershipId: string) => {
-  const membership = await getWorkOS().userManagement.getOrganizationMembership(
-    membershipId
-  )
+  const membership =
+    await getWorkOS().userManagement.getOrganizationMembership(membershipId)
 
   return toMembershipSummary(membership)
 }
 
+const getInvitationById = async (invitationId: string) => {
+  const invitation =
+    await getWorkOS().userManagement.getInvitation(invitationId)
+  return toInvitationSummary(invitation)
+}
+
+const getOrganizationById = async (organizationId: string) => {
+  const organization =
+    await getWorkOS().organizations.getOrganization(organizationId)
+  return toOrganizationSummary(organization)
+}
+
 const listMembershipsForUser = async (userId: string) => {
-  return getWorkOS().userManagement
-    .listOrganizationMemberships({
+  return getWorkOS()
+    .userManagement.listOrganizationMemberships({
       userId,
       statuses: ["active", "pending"],
     })
@@ -204,13 +291,12 @@ const listMembershipsForUser = async (userId: string) => {
 }
 
 const hasBootstrapCreatorRole = async (organizationId: string) => {
-  const roleList = await getWorkOS().authorization.listOrganizationRoles(
-    organizationId
-  )
+  const roleList =
+    await getWorkOS().authorization.listOrganizationRoles(organizationId)
   const roleSlugs = new Set(
     roleList.data
-    .map((role) => role.slug?.trim().toLowerCase())
-    .filter((role): role is string => Boolean(role))
+      .map((role) => role.slug?.trim().toLowerCase())
+      .filter((role): role is string => Boolean(role))
   )
 
   return roleSlugs.has(BOOTSTRAP_CREATOR_ROLE_SLUG)
@@ -276,17 +362,19 @@ export const tenantsRoutes = new Elysia()
       }
 
       try {
-        const organization = await getWorkOS().organizations.createOrganization({
-          name: body.name.trim(),
-        })
+        const organization = await getWorkOS().organizations.createOrganization(
+          {
+            name: body.name.trim(),
+          }
+        )
 
         const creatorRoleIsAvailable = await hasBootstrapCreatorRole(
           organization.id
         )
 
         if (!creatorRoleIsAvailable) {
-          await getWorkOS().organizations
-            .deleteOrganization(organization.id)
+          await getWorkOS()
+            .organizations.deleteOrganization(organization.id)
             .catch(() => null)
           set.status = 422
           return {
@@ -407,6 +495,80 @@ export const tenantsRoutes = new Elysia()
       members: memberships,
     }
   })
+  .post("/tenants/:orgId/members/:memberId/remove", async ({ params, set }) => {
+    const actor = await getActorContext()
+
+    if (!actor) {
+      return toUnauthorizedError(set)
+    }
+
+    const hasContextAccess = ensureTenantContextAccess(params.orgId, actor, set)
+    if (hasContextAccess !== true) {
+      return hasContextAccess
+    }
+
+    if (
+      !canManageTenant({
+        platformRole: actor.platformRole,
+        tenantRole: actor.tenantRole,
+      })
+    ) {
+      return toPolicyError(
+        set,
+        "TENANT_MANAGE_REQUIRED",
+        "You do not have permission to remove members in this tenant."
+      )
+    }
+
+    const targetMembership = await getMembershipById(params.memberId)
+
+    if (targetMembership.organizationId !== params.orgId) {
+      return toPolicyError(
+        set,
+        "MEMBERSHIP_ORG_MISMATCH",
+        "Membership does not belong to the requested tenant."
+      )
+    }
+
+    const currentRole = targetMembership.role
+
+    if (
+      currentRole &&
+      !canDemoteFromRole(
+        {
+          platformRole: actor.platformRole,
+          tenantRole: actor.tenantRole,
+        },
+        currentRole
+      )
+    ) {
+      return toPolicyError(
+        set,
+        "REMOVE_FORBIDDEN",
+        `You are not allowed to remove a user with role ${currentRole}.`
+      )
+    }
+
+    const memberships = await listTenantMemberships(params.orgId)
+    const activeOwnerCount = memberships.filter(isActiveOwner).length
+
+    if (isActiveOwner(targetMembership) && activeOwnerCount <= 1) {
+      return toPolicyError(
+        set,
+        "LAST_OWNER_PROTECTED",
+        "Cannot remove the last active owner in this tenant."
+      )
+    }
+
+    await getWorkOS().userManagement.deleteOrganizationMembership(
+      targetMembership.id
+    )
+
+    return {
+      ok: true as const,
+      removedMemberId: targetMembership.id,
+    }
+  })
   .get("/tenants/:orgId/invitations", async ({ params, set }) => {
     const actor = await getActorContext()
 
@@ -432,8 +594,8 @@ export const tenantsRoutes = new Elysia()
       )
     }
 
-    const invitations = await getWorkOS().userManagement
-      .listInvitations({
+    const invitations = await getWorkOS()
+      .userManagement.listInvitations({
         organizationId: params.orgId,
       })
       .then((result) => result.autoPagination())
@@ -441,17 +603,7 @@ export const tenantsRoutes = new Elysia()
     return {
       ok: true as const,
       orgId: params.orgId,
-      invitations: invitations.map((invitation) => ({
-        id: invitation.id,
-        email: invitation.email,
-        state: invitation.state,
-        organizationId: invitation.organizationId,
-        inviterUserId: invitation.inviterUserId,
-        acceptedUserId: invitation.acceptedUserId,
-        roleSlug: invitation.roleSlug,
-        createdAt: invitation.createdAt,
-        expiresAt: invitation.expiresAt,
-      })),
+      invitations: invitations.map(toInvitationSummary),
     }
   })
   .post(
@@ -463,7 +615,11 @@ export const tenantsRoutes = new Elysia()
         return toUnauthorizedError(set)
       }
 
-      const hasContextAccess = ensureTenantContextAccess(params.orgId, actor, set)
+      const hasContextAccess = ensureTenantContextAccess(
+        params.orgId,
+        actor,
+        set
+      )
       if (hasContextAccess !== true) {
         return hasContextAccess
       }
@@ -495,19 +651,308 @@ export const tenantsRoutes = new Elysia()
 
       return {
         ok: true as const,
-        invitation: {
-          id: invitation.id,
-          email: invitation.email,
-          state: invitation.state,
-          organizationId: invitation.organizationId,
-          roleSlug: invitation.roleSlug,
-          createdAt: invitation.createdAt,
-          expiresAt: invitation.expiresAt,
-        },
+        invitation: toInvitationSummary(invitation),
       }
     },
     {
       body: invitationPayloadSchema,
+    }
+  )
+  .post(
+    "/tenants/:orgId/invitations/:invitationId/revoke",
+    async ({ params, set }) => {
+      const actor = await getActorContext()
+
+      if (!actor) {
+        return toUnauthorizedError(set)
+      }
+
+      const hasContextAccess = ensureTenantContextAccess(
+        params.orgId,
+        actor,
+        set
+      )
+      if (hasContextAccess !== true) {
+        return hasContextAccess
+      }
+
+      if (
+        !canManageTenant({
+          platformRole: actor.platformRole,
+          tenantRole: actor.tenantRole,
+        })
+      ) {
+        return toPolicyError(
+          set,
+          "TENANT_MANAGE_REQUIRED",
+          "You do not have permission to revoke invitations in this tenant."
+        )
+      }
+
+      const invitation = await getInvitationById(params.invitationId)
+      const invitationRole = normalizeTenantRole(invitation.roleSlug)
+
+      if (invitation.organizationId !== params.orgId) {
+        return toPolicyError(
+          set,
+          "INVITATION_ORG_MISMATCH",
+          "Invitation does not belong to the requested tenant."
+        )
+      }
+
+      if (
+        invitationRole &&
+        !canInviteAsRole(
+          {
+            platformRole: actor.platformRole,
+            tenantRole: actor.tenantRole,
+          },
+          invitationRole
+        )
+      ) {
+        return toPolicyError(
+          set,
+          "INVITATION_REVOKE_FORBIDDEN",
+          `You are not allowed to revoke ${invitationRole} invitations.`
+        )
+      }
+
+      await getWorkOS().userManagement.revokeInvitation(invitation.id)
+
+      return {
+        ok: true as const,
+        revokedInvitationId: invitation.id,
+      }
+    }
+  )
+  .post(
+    "/tenants/:orgId/invitations/:invitationId/resend",
+    async ({ params, set }) => {
+      const actor = await getActorContext()
+
+      if (!actor) {
+        return toUnauthorizedError(set)
+      }
+
+      const hasContextAccess = ensureTenantContextAccess(
+        params.orgId,
+        actor,
+        set
+      )
+      if (hasContextAccess !== true) {
+        return hasContextAccess
+      }
+
+      if (
+        !canManageTenant({
+          platformRole: actor.platformRole,
+          tenantRole: actor.tenantRole,
+        })
+      ) {
+        return toPolicyError(
+          set,
+          "TENANT_MANAGE_REQUIRED",
+          "You do not have permission to resend invitations in this tenant."
+        )
+      }
+
+      const invitation = await getInvitationById(params.invitationId)
+      const invitationRole = normalizeTenantRole(invitation.roleSlug)
+
+      if (invitation.organizationId !== params.orgId) {
+        return toPolicyError(
+          set,
+          "INVITATION_ORG_MISMATCH",
+          "Invitation does not belong to the requested tenant."
+        )
+      }
+
+      if (
+        invitationRole &&
+        !canInviteAsRole(
+          {
+            platformRole: actor.platformRole,
+            tenantRole: actor.tenantRole,
+          },
+          invitationRole
+        )
+      ) {
+        return toPolicyError(
+          set,
+          "INVITATION_RESEND_FORBIDDEN",
+          `You are not allowed to resend ${invitationRole} invitations.`
+        )
+      }
+
+      const resentInvitation =
+        await getWorkOS().userManagement.resendInvitation(invitation.id)
+
+      return {
+        ok: true as const,
+        invitation: toInvitationSummary(resentInvitation),
+      }
+    }
+  )
+  .get("/tenants/:orgId/organization", async ({ params, set }) => {
+    const actor = await getActorContext()
+
+    if (!actor) {
+      return toUnauthorizedError(set)
+    }
+
+    const hasContextAccess = ensureTenantContextAccess(params.orgId, actor, set)
+    if (hasContextAccess !== true) {
+      return hasContextAccess
+    }
+
+    if (
+      !canManageTenant({
+        platformRole: actor.platformRole,
+        tenantRole: actor.tenantRole,
+      })
+    ) {
+      return toPolicyError(
+        set,
+        "TENANT_MANAGE_REQUIRED",
+        "You do not have permission to view organization settings."
+      )
+    }
+
+    const organization = await getOrganizationById(params.orgId)
+
+    return {
+      ok: true as const,
+      orgId: params.orgId,
+      organization,
+    }
+  })
+  .post(
+    "/tenants/:orgId/organization/update",
+    async ({ params, body, set }) => {
+      const actor = await getActorContext()
+
+      if (!actor) {
+        return toUnauthorizedError(set)
+      }
+
+      const hasContextAccess = ensureTenantContextAccess(
+        params.orgId,
+        actor,
+        set
+      )
+      if (hasContextAccess !== true) {
+        return hasContextAccess
+      }
+
+      if (
+        !canManageTenant({
+          platformRole: actor.platformRole,
+          tenantRole: actor.tenantRole,
+        })
+      ) {
+        return toPolicyError(
+          set,
+          "TENANT_MANAGE_REQUIRED",
+          "You do not have permission to update organization settings."
+        )
+      }
+
+      try {
+        const updatedOrganization =
+          await getWorkOS().organizations.updateOrganization({
+            organization: params.orgId,
+            name: body.name.trim(),
+          })
+
+        return {
+          ok: true as const,
+          organization: toOrganizationSummary(updatedOrganization),
+        }
+      } catch (error) {
+        if (error instanceof UnprocessableEntityException) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "ORGANIZATION_UPDATE_INVALID" as const,
+            message: error.message,
+          }
+        }
+
+        if (error instanceof NotFoundException) {
+          set.status = 404
+          return {
+            ok: false as const,
+            error: "ORGANIZATION_NOT_FOUND" as const,
+            message: "The organization could not be found.",
+          }
+        }
+
+        set.status = 500
+        return {
+          ok: false as const,
+          error: "ORGANIZATION_UPDATE_FAILED" as const,
+          message: "Unable to update organization settings right now.",
+        }
+      }
+    },
+    {
+      body: organizationUpdatePayloadSchema,
+    }
+  )
+  .post(
+    "/tenants/:orgId/organization/delete",
+    async ({ params, body, set }) => {
+      const actor = await getActorContext()
+
+      if (!actor) {
+        return toUnauthorizedError(set)
+      }
+
+      const hasContextAccess = ensureTenantContextAccess(
+        params.orgId,
+        actor,
+        set
+      )
+      if (hasContextAccess !== true) {
+        return hasContextAccess
+      }
+
+      if (
+        !canTransferOwnership({
+          platformRole: actor.platformRole,
+          tenantRole: actor.tenantRole,
+        })
+      ) {
+        return toPolicyError(
+          set,
+          "ORGANIZATION_DELETE_FORBIDDEN",
+          "Only owners can delete the organization."
+        )
+      }
+
+      const organization = await getOrganizationById(params.orgId)
+      const expectedName = organization.name.trim()
+
+      if (body.confirmOrganizationName.trim() !== expectedName) {
+        set.status = 422
+        return {
+          ok: false as const,
+          error: "ORGANIZATION_DELETE_CONFIRMATION_MISMATCH" as const,
+          message:
+            "Confirmation does not match the organization name. Deletion cancelled.",
+        }
+      }
+
+      await getWorkOS().organizations.deleteOrganization(params.orgId)
+
+      return {
+        ok: true as const,
+        organizationDeleted: true,
+        organizationId: params.orgId,
+      }
+    },
+    {
+      body: organizationDeletePayloadSchema,
     }
   )
   .post(
@@ -519,7 +964,11 @@ export const tenantsRoutes = new Elysia()
         return toUnauthorizedError(set)
       }
 
-      const hasContextAccess = ensureTenantContextAccess(params.orgId, actor, set)
+      const hasContextAccess = ensureTenantContextAccess(
+        params.orgId,
+        actor,
+        set
+      )
       if (hasContextAccess !== true) {
         return hasContextAccess
       }
@@ -550,7 +999,11 @@ export const tenantsRoutes = new Elysia()
         )
       }
 
-      if (body.targetRole === "owner" && actor.platformRole !== "super_admin" && actor.tenantRole !== "owner") {
+      if (
+        body.targetRole === "owner" &&
+        actor.platformRole !== "super_admin" &&
+        actor.tenantRole !== "owner"
+      ) {
         return toPolicyError(
           set,
           "OWNER_PROMOTION_FORBIDDEN",
@@ -558,12 +1011,13 @@ export const tenantsRoutes = new Elysia()
         )
       }
 
-      const updated = await getWorkOS().userManagement.updateOrganizationMembership(
-        targetMembership.id,
-        {
-          roleSlug: toScopedTenantRoleSlug(body.targetRole),
-        }
-      )
+      const updated =
+        await getWorkOS().userManagement.updateOrganizationMembership(
+          targetMembership.id,
+          {
+            roleSlug: toScopedTenantRoleSlug(body.targetRole),
+          }
+        )
 
       return {
         ok: true as const,
@@ -642,12 +1096,13 @@ export const tenantsRoutes = new Elysia()
       )
     }
 
-    const updated = await getWorkOS().userManagement.updateOrganizationMembership(
-      targetMembership.id,
-      {
-        roleSlug: toScopedTenantRoleSlug("member"),
-      }
-    )
+    const updated =
+      await getWorkOS().userManagement.updateOrganizationMembership(
+        targetMembership.id,
+        {
+          roleSlug: toScopedTenantRoleSlug("member"),
+        }
+      )
 
     return {
       ok: true as const,
@@ -663,7 +1118,11 @@ export const tenantsRoutes = new Elysia()
         return toUnauthorizedError(set)
       }
 
-      const hasContextAccess = ensureTenantContextAccess(params.orgId, actor, set)
+      const hasContextAccess = ensureTenantContextAccess(
+        params.orgId,
+        actor,
+        set
+      )
       if (hasContextAccess !== true) {
         return hasContextAccess
       }
@@ -681,7 +1140,9 @@ export const tenantsRoutes = new Elysia()
         )
       }
 
-      const targetMembership = await getMembershipById(body.newOwnerMembershipId)
+      const targetMembership = await getMembershipById(
+        body.newOwnerMembershipId
+      )
 
       if (targetMembership.organizationId !== params.orgId) {
         return toPolicyError(
@@ -691,14 +1152,18 @@ export const tenantsRoutes = new Elysia()
         )
       }
 
-      const promoted = await getWorkOS().userManagement.updateOrganizationMembership(
-        targetMembership.id,
-        {
-          roleSlug: toScopedTenantRoleSlug("owner"),
-        }
-      )
+      const promoted =
+        await getWorkOS().userManagement.updateOrganizationMembership(
+          targetMembership.id,
+          {
+            roleSlug: toScopedTenantRoleSlug("owner"),
+          }
+        )
 
-      if (actor.platformRole !== "super_admin" && actor.userId !== targetMembership.userId) {
+      if (
+        actor.platformRole !== "super_admin" &&
+        actor.userId !== targetMembership.userId
+      ) {
         const memberships = await listTenantMemberships(params.orgId)
         const actorMembership = memberships.find(
           (membership) => membership.userId === actor.userId
