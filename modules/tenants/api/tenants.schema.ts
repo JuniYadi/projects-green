@@ -29,10 +29,19 @@ export const bootstrapCreatePayloadSchema = z.object({
 })
 
 export const organizationUpdatePayloadSchema = z.object({
-  name: nameSchema,
+  name: nameSchema.optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
+}).refine((payload) => payload.name !== undefined || payload.metadata !== undefined, {
+  message: "Provide at least one organization field to update.",
+  path: ["name"],
 })
 
 export const organizationDeletePayloadSchema = z.object({
+  confirmDeletion: z.literal(true),
+  confirmOrganizationId: z
+    .string()
+    .trim()
+    .min(1, "Please provide the organization id to confirm deletion."),
   confirmOrganizationName: z
     .string()
     .trim()
