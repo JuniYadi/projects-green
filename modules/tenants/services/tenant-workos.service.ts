@@ -144,10 +144,11 @@ export const listTenantBootstrapMembershipsForUser = async (
 }
 
 export const hasBootstrapCreatorRole = async (organizationId: string) => {
-  const roleList =
-    await getWorkOS().authorization.listOrganizationRoles(organizationId)
+  const roles = await getWorkOS()
+    .authorization.listOrganizationRoles(organizationId)
+    .then((result) => result.autoPagination())
   const roleSlugs = new Set(
-    roleList.data
+    roles
       .map((role) => role.slug?.trim().toLowerCase())
       .filter((role): role is string => Boolean(role))
   )

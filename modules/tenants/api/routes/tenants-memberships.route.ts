@@ -186,19 +186,19 @@ export const tenantsMembershipRoutes = new Elysia()
     const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
     const isSelfDemotion = targetMembership.userId === actorResult.userId
 
-    if (currentRole === "owner" && activeOwnerCount <= 1) {
-      return toPolicyError(
-        set,
-        "LAST_OWNER_PROTECTED",
-        "Cannot demote the last active owner in this tenant."
-      )
-    }
-
     if (isSelfDemotion && currentRole === "owner" && activeOwnerCount <= 1) {
       return toPolicyError(
         set,
         "SELF_DEMOTION_BLOCKED",
         "Self-demotion is blocked because this would remove the last owner."
+      )
+    }
+
+    if (currentRole === "owner" && activeOwnerCount <= 1) {
+      return toPolicyError(
+        set,
+        "LAST_OWNER_PROTECTED",
+        "Cannot demote the last active owner in this tenant."
       )
     }
 

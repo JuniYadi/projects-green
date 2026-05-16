@@ -94,11 +94,22 @@ export const tenantsBootstrapRoutes = new Elysia()
           }
         }
 
-        await createTenantMembership({
-          organizationId: organization.id,
-          userId: actorResult.userId,
-          roleSlug: getBootstrapCreatorRoleSlug(),
-        })
+        try {
+          await createTenantMembership({
+            organizationId: organization.id,
+            userId: actorResult.userId,
+            roleSlug: getBootstrapCreatorRoleSlug(),
+          })
+        } catch {
+          await deleteTenantOrganization(organization.id).catch(() => null)
+          set.status = 500
+
+          return {
+            ok: false,
+            error: "ORGANIZATION_BOOTSTRAP_FAILED",
+            message: "Unable to create organization right now.",
+          }
+        }
 
         set.status = 201
 

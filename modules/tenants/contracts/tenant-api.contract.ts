@@ -9,11 +9,21 @@ export type TenantApiError = {
 }
 
 export const isTenantApiError = (value: unknown): value is TenantApiError => {
+  const candidate = value as {
+    ok?: boolean
+    error?: unknown
+    message?: unknown
+  }
+
   return Boolean(
     value &&
     typeof value === "object" &&
     "ok" in value &&
-    (value as { ok?: boolean }).ok === false
+    candidate.ok === false &&
+    "error" in value &&
+    typeof candidate.error === "string" &&
+    "message" in value &&
+    typeof candidate.message === "string"
   )
 }
 
