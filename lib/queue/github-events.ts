@@ -1,0 +1,97 @@
+import { Queue, type JobsOptions, type RedisOptions } from "bullmq"
+
+export const GITHUB_EVENTS_QUEUE_NAME = "github-events"
+export const GITHUB_EVENTS_JOB_NAME = "process-github-webhook-event"
+
+export type GithubEventJobData = {
+  eventId: string
+}
+
+export type GithubEventsQueue = {
+  enqueue: (data: GithubEventJobData) => Promise<void>
+  close: () => Promise<void>
+}
+
+type AddJob = {
+  add: (
+    name: string,
+    data: GithubEventJobData,
+    opts?: JobsOptions
+  ) => Promise<unknown>
+}
+
+const DEFAULT_JOB_OPTIONS: JobsOptions = {
+  attempts: 5,
+  backoff: {
+    type: "exponential",
+    delay: 5_000,
+  },
+  removeOnComplete: 1_000,
+  removeOnFail: 1_000,
+}
+
+const parseRedisDb = (pathname: string) => {
+  const trimmed = pathname.replace(/^\//, "")
+
+  if (!trimmed) {
+    return 0
+  }
+
+  const value = Number.parseInt(trimmed, 10)
+  return Number.isNaN(value) ? 0 : value
+}
+
+export const getGithubEventsRedisConnection = (): RedisOptions => {
+  const redisUrl = process.env.REDIS_URL?.trim()
+
+  if (!redisUrl) {
+    throw new Error("Missing REDIS_URL environment variable")
+  }
+
+  const parsed = new URL(redisUrl)
+
+  return {
+    host: parsed.hostname,
+    port: parsed.port ? Number.parseInt(parsed.port, 10) : 6379,
+    username: parsed.username || undefined,
+    password: parsed.password || undefined,
+    db: parseRedisDb(parsed.pathname),
+    tls: parsed.protocol === "rediss:" ? {} : undefined,
+    maxRetriesPerRequest: null,
+  }
+}
+
+export const createGithubEventsQueue = ({
+  queue,
+  queueName = GITHUB_EVENTS_QUEUE_NAME,
+  jobName = GITHUB_EVENTS_JOB_NAME,
+  defaultJobOptions = DEFAULT_JOB_OPTIONS,
+}: {
+  queue?: AddJob
+  queueName?: string
+  jobName?: string
+  defaultJobOptions?: JobsOptions
+} = {}): GithubEventsQueue => {
+  const managedQueue = queue
+  const ownedQueue =
+    managedQueue
+      ? null
+      : new Queue<GithubEventJobData>(queueName, {
+      connection: getGithubEventsRedisConnection(),
+      defaultJobOptions,
+    })
+  const queueClient: AddJob = managedQueue ?? (ownedQueue as Queue<GithubEventJobData>)
+
+  return {
+    async enqueue(data) {
+      await queueClient.add(jobName, data, {
+        jobId: `github-event:${data.eventId}`,
+      })
+    },
+    async close() {
+      if (ownedQueue) {
+        await ownedQueue.close()
+      }
+    },
+  }
+}

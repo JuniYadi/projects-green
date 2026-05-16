@@ -15,6 +15,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:studio": "prisma studio",
+    "github:worker": "bun run scripts/github-worker.ts",
     "grant:super-admin": "node scripts/grant-super-admin.mjs",
     "seed:workos-roles": "node scripts/seed-workos-roles.mjs"
   },
@@ -28,6 +29,7 @@
     "@tanstack/react-form": "^1.32.0",
     "@workos-inc/authkit-nextjs": "^4.1.0",
     "ai": "^6.0.184",
+    "bullmq": "^5.76.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "elysia": "^1.4.28",

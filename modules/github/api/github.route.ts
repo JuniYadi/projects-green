@@ -5,6 +5,7 @@ import {
   GithubIntegrationDisabledError,
   type GithubService,
 } from "@/modules/github/github.service"
+import { enqueueGithubWebhookEvent } from "@/modules/github/github.webhook"
 
 const disabledResponse = {
   ok: false as const,
@@ -12,11 +13,11 @@ const disabledResponse = {
   message: "GitHub App integration is disabled.",
 }
 
-const withGithubFeatureFlag = (
+const withGithubFeatureFlag = <TContext>(
   service: GithubService,
-  handler: (context: any) => unknown
+  handler: (context: TContext) => unknown
 ) => {
-  return (context: any) => {
+  return (context: TContext) => {
     try {
       service.assertEnabled()
       return handler(context)
@@ -65,13 +66,61 @@ export const createGithubRoutes = (
     )
     .post(
       "/webhook",
-      withGithubFeatureFlag(service, ({ set }) => {
-        set.status = 501
+      withGithubFeatureFlag(service, async ({ request, set }) => {
+        const eventName = request.headers.get("x-github-event")?.trim()
+        const deliveryId = request.headers.get("x-github-delivery")?.trim()
+        const signature = request.headers
+          .get("x-hub-signature-256")
+          ?.trim()
+
+        if (!eventName || !deliveryId || !signature) {
+          set.status = 400
+          return {
+            ok: false as const,
+            error: "INVALID_HEADERS" as const,
+            message:
+              "Missing required GitHub webhook headers for event processing.",
+          }
+        }
+
+        const rawBody = await request.text()
+        let result:
+          | Awaited<ReturnType<typeof enqueueGithubWebhookEvent>>
+          | undefined
+
+        try {
+          result = await enqueueGithubWebhookEvent({
+            eventName,
+            deliveryId,
+            signature,
+            rawBody,
+          })
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === "Invalid webhook payload JSON"
+          ) {
+            set.status = 400
+            return {
+              ok: false as const,
+              error: "INVALID_PAYLOAD" as const,
+              message: "Webhook payload must be valid JSON.",
+            }
+          }
+
+          throw error
+        }
+
+        set.status = result.status
+
+        if (!result.ok) {
+          return result
+        }
 
         return {
-          ok: false as const,
-          error: "NOT_IMPLEMENTED" as const,
-          message: "Webhook processing is not implemented yet.",
+          ok: true as const,
+          eventId: result.eventId,
+          deduplicated: result.deduplicated,
         }
       })
     )
