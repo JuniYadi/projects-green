@@ -37,8 +37,8 @@ export const getLatestWorkOSUser = async (user: User): Promise<User> => {
     console.warn(
       "[dashboard-shell] Failed to load latest WorkOS user profile for sidebar.",
       {
-        userId: user.id,
-        error,
+        hasUserId: !!user.id,
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
       }
     )
     return user
@@ -66,8 +66,8 @@ export const resolveSidebarOrganization = async (
     console.warn(
       "[dashboard-shell] Failed to load WorkOS organization for sidebar.",
       {
-        organizationId: id,
-        error,
+        hasOrganizationId: !!id,
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
       }
     )
     return {

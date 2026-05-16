@@ -44,7 +44,7 @@ export function NavMain({
           const isActive = item.isActive || hasActiveChild
 
           return (
-            <Collapsible key={item.title} asChild defaultOpen={isActive}>
+            <Collapsible key={`${item.title}-${isActive}`} asChild defaultOpen={isActive}>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
                   <Link href={item.url}>
