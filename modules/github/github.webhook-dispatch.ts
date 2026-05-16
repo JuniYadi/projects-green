@@ -187,74 +187,84 @@ export const processGithubWebhookDispatch = async ({
     }
   }
 
-  const connection = await store.getRepositoryConnection({
-    githubInstallationId: event.githubInstallationId,
-    githubRepositoryId: event.githubRepositoryId,
-  })
+  try {
+    const connection = await store.getRepositoryConnection({
+      githubInstallationId: event.githubInstallationId,
+      githubRepositoryId: event.githubRepositoryId,
+    })
 
-  if (!connection) {
+    if (!connection) {
+      await store.markProcessed({
+        eventId: event.id,
+        processStatus: "skipped",
+        processError: "NO_REPOSITORY_CONNECTION",
+      })
+
+      return {
+        outcome: "skipped",
+        reason: "NO_REPOSITORY_CONNECTION",
+      }
+    }
+
+    const payload = getObject(event.payloadJson)
+
+    if (!payload) {
+      await store.markProcessed({
+        eventId: event.id,
+        processStatus: "skipped",
+        processError: "INVALID_PUSH_PAYLOAD",
+      })
+
+      return {
+        outcome: "skipped",
+        reason: "INVALID_PUSH_PAYLOAD",
+      }
+    }
+
+    const dispatchDecision = evaluatePushDispatch({
+      eventName: event.eventName,
+      payload,
+      connectionEnabled: connection.enabled,
+      branchFilters: connection.branchFilters,
+    })
+
+    if (dispatchDecision.outcome !== "dispatched") {
+      await store.markProcessed({
+        eventId: event.id,
+        processStatus: "skipped",
+        processError: dispatchDecision.reason,
+      })
+
+      return {
+        outcome: "skipped",
+        reason: dispatchDecision.reason,
+      }
+    }
+
+    await dispatchBuild({
+      eventId: event.id,
+      repositoryConnectionId: connection.id,
+      branch: dispatchDecision.branch ?? "",
+      commitSha: dispatchDecision.commitSha,
+    })
+
     await store.markProcessed({
       eventId: event.id,
-      processStatus: "skipped",
-      processError: "NO_REPOSITORY_CONNECTION",
+      processStatus: "processed",
+      processError: null,
     })
 
     return {
-      outcome: "skipped",
-      reason: "NO_REPOSITORY_CONNECTION",
+      outcome: "dispatched",
+      reason: "DISPATCHED",
     }
-  }
-
-  const payload = getObject(event.payloadJson)
-
-  if (!payload) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
     await store.markProcessed({
       eventId: event.id,
-      processStatus: "skipped",
-      processError: "INVALID_PUSH_PAYLOAD",
+      processStatus: "failed",
+      processError: errorMessage,
     })
-
-    return {
-      outcome: "skipped",
-      reason: "INVALID_PUSH_PAYLOAD",
-    }
-  }
-
-  const dispatchDecision = evaluatePushDispatch({
-    eventName: event.eventName,
-    payload,
-    connectionEnabled: connection.enabled,
-    branchFilters: connection.branchFilters,
-  })
-
-  if (dispatchDecision.outcome !== "dispatched") {
-    await store.markProcessed({
-      eventId: event.id,
-      processStatus: "skipped",
-      processError: dispatchDecision.reason,
-    })
-
-    return {
-      outcome: "skipped",
-      reason: dispatchDecision.reason,
-    }
-  }
-
-  await dispatchBuild({
-    eventId: event.id,
-    repositoryConnectionId: connection.id,
-    branch: dispatchDecision.branch ?? "",
-    commitSha: dispatchDecision.commitSha,
-  })
-
-  await store.markProcessed({
-    eventId: event.id,
-    processStatus: "processed",
-    processError: null,
-  })
-
-  return {
-    outcome: "dispatched",
-    reason: "DISPATCHED",
+    throw error
   }
 }

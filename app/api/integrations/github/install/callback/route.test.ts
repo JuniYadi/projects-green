@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { NextRequest } from "next/server"
 
-const mockWithAuth = mock(async () => ({
+type AuthResult = {
+  user: { id: string } | null
+  organizationId: string | null
+}
+
+const mockWithAuth = mock(async (): Promise<AuthResult> => ({
   user: {
     id: "user_123",
   },
@@ -236,10 +241,10 @@ describe("GET /api/integrations/github/install/callback", () => {
   })
 
   it("returns 401 when there is no authenticated user", async () => {
-    mockWithAuth.mockImplementation(async () => ({
+    mockWithAuth.mockImplementation(async (): Promise<AuthResult> => ({
       user: null,
       organizationId: null,
-    }) as any)
+    }))
 
     const route =
       await import("@/app/api/integrations/github/install/callback/route")

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { NextRequest } from "next/server"
 
+type AuthResult = {
+  user: { id: string } | null
+  organizationId: string | null
+}
+
 class MockGithubIntegrationDisabledError extends Error {
   constructor() {
     super("GitHub App integration is disabled.")
@@ -18,7 +23,7 @@ const mockCreateGithubService = mock(() => ({
   assertEnabled: mockGithubServiceAssertEnabled,
 }))
 
-const mockWithAuth = mock(async () => ({
+const mockWithAuth = mock(async (): Promise<AuthResult> => ({
   user: {
     id: "user_123",
   },
@@ -119,10 +124,10 @@ describe("GET /api/integrations/github/install/start", () => {
   })
 
   it("returns 401 when request is unauthenticated", async () => {
-    mockWithAuth.mockImplementation(async () => ({
+    mockWithAuth.mockImplementation(async (): Promise<AuthResult> => ({
       user: null,
       organizationId: null,
-    }) as any)
+    }))
 
     const route = await import("@/app/api/integrations/github/install/start/route")
     const response = await route.GET(

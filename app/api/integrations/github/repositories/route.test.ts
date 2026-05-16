@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { NextRequest } from "next/server"
 
+type AuthResult = {
+  user: { id: string } | null
+  organizationId: string | null
+}
+
 class MockGithubIntegrationDisabledError extends Error {
   constructor() {
     super("GitHub App integration is disabled.")
@@ -18,7 +23,7 @@ const mockCreateGithubService = mock(() => ({
   assertEnabled: mockGithubServiceAssertEnabled,
 }))
 
-const mockWithAuth = mock(async () => ({
+const mockWithAuth = mock(async (): Promise<AuthResult> => ({
   user: {
     id: "user_123",
   },
@@ -130,10 +135,10 @@ describe("GET /api/integrations/github/repositories", () => {
   })
 
   it("returns 401 when user is unauthenticated", async () => {
-    mockWithAuth.mockImplementation(async () => ({
+    mockWithAuth.mockImplementation(async (): Promise<AuthResult> => ({
       user: null,
       organizationId: null,
-    }) as any)
+    }))
 
     const route = await import("@/app/api/integrations/github/repositories/route")
     const response = await route.GET(
@@ -172,14 +177,14 @@ describe("GET /api/integrations/github/repositories", () => {
       ok: boolean
       items: Array<{
         id: string
-        repositoryId: number
+        repositoryId: string
         fullName: string
         name: string
         owner: string
-        installationId: number
+        installationId: string
         defaultBranch: string | null
         private: boolean
-        pushedAt: string | null
+        syncedAt: string | null
       }>
       nextCursor: string | null
     }
@@ -189,25 +194,25 @@ describe("GET /api/integrations/github/repositories", () => {
     expect(body.items).toEqual([
       {
         id: "repo_conn_1",
-        repositoryId: 101,
+        repositoryId: "101",
         fullName: "acme/api",
         name: "api",
         owner: "acme",
-        installationId: 9001,
+        installationId: "9001",
         defaultBranch: "main",
         private: true,
-        pushedAt: "2026-05-16T10:00:00.000Z",
+        syncedAt: "2026-05-16T10:00:00.000Z",
       },
       {
         id: "repo_conn_2",
-        repositoryId: 102,
+        repositoryId: "102",
         fullName: "acme/web",
         name: "web",
         owner: "acme",
-        installationId: 9001,
+        installationId: "9001",
         defaultBranch: "main",
         private: false,
-        pushedAt: "2026-05-16T11:00:00.000Z",
+        syncedAt: "2026-05-16T11:00:00.000Z",
       },
     ])
     expect(body.nextCursor).toBe("102")

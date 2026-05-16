@@ -153,14 +153,14 @@ export const GET = async (request: NextRequest) => {
     ok: true as const,
     items: pageItems.map((record) => ({
       id: record.id,
-      repositoryId: Number(record.githubRepositoryId),
+      repositoryId: record.githubRepositoryId.toString(),
       fullName: record.fullName,
       name: record.repoName,
       owner: record.ownerLogin,
-      installationId: Number(record.installation.githubInstallationId),
+      installationId: record.installation.githubInstallationId.toString(),
       defaultBranch: record.defaultBranch,
       private: record.isPrivate,
-      pushedAt: record.lastSyncedAt?.toISOString() ?? null,
+      syncedAt: record.lastSyncedAt?.toISOString() ?? null,
     })),
     nextCursor: hasNextPage
       ? pageItems[pageItems.length - 1]?.githubRepositoryId.toString() ?? null
