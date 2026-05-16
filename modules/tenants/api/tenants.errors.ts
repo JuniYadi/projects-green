@@ -31,3 +31,16 @@ export const toUnauthorizedError = (set: RouteSet): TenantApiError => {
     message: "You must be signed in to manage tenants.",
   }
 }
+
+export const toNotFoundError = (
+  set: RouteSet,
+  message: string
+): TenantApiError => {
+  set.status = 404
+
+  return {
+    ok: false,
+    error: "NOT_FOUND",
+    message,
+  }
+}

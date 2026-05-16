@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 
 import {
   isTenantApiError,
+  toNotFoundError,
   toPolicyError,
 } from "@/modules/tenants/api/tenants.errors"
 import {
@@ -50,6 +51,9 @@ export const tenantsOwnershipRoutes = new Elysia().post(
     const targetMembership = await getTenantMembershipById(
       body.newOwnerMembershipId
     )
+    if (!targetMembership) {
+      return toNotFoundError(set, "Membership not found.")
+    }
 
     if (targetMembership.organizationId !== params.orgId) {
       return toPolicyError(

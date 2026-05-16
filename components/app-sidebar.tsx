@@ -46,11 +46,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   organization: AppSidebarOrganization
 }
 
-export function AppSidebar({
-  user,
-  organization,
-  ...props
-}: AppSidebarProps) {
+export function AppSidebar({ user, organization, ...props }: AppSidebarProps) {
   const pathname = usePathname()
 
   const navMain = [
@@ -69,6 +65,11 @@ export function AppSidebar({
           title: "Deploy",
           url: "/console/app/deploy",
           isActive: startsWithRoute(pathname, "/console/app/deploy"),
+        },
+        {
+          title: "Organization",
+          url: "/console/organization",
+          isActive: startsWithRoute(pathname, "/console/organization"),
         },
       ],
     },
@@ -130,13 +131,16 @@ export function AppSidebar({
 
   const organizationName =
     organization.name?.trim() || organization.id?.trim() || "No organization"
-  const organizationMeta = organization.id ? "Organization" : "No active organization"
-  const orgInitials = organizationName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("") || "NO"
+  const organizationMeta = organization.id
+    ? "Organization"
+    : "No active organization"
+  const orgInitials =
+    organizationName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || "NO"
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -149,7 +153,9 @@ export function AppSidebar({
                   <span className="text-xs font-semibold">{orgInitials}</span>
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{organizationName}</span>
+                  <span className="truncate font-medium">
+                    {organizationName}
+                  </span>
                   <span className="truncate text-xs">{organizationMeta}</span>
                 </div>
               </a>
