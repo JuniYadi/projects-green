@@ -120,18 +120,6 @@ export const tenantsMembershipRoutes = new Elysia()
           )
         }
 
-        if (
-          body.targetRole === "owner" &&
-          actorResult.platformRole !== "super_admin" &&
-          actorResult.tenantRole !== "owner"
-        ) {
-          return toPolicyError(
-            set,
-            "OWNER_PROMOTION_FORBIDDEN",
-            "Only owner can promote members to owner."
-          )
-        }
-
         const updated = await updateTenantMembershipRole(
           targetMembership.id,
           body.targetRole

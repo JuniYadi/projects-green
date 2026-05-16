@@ -245,6 +245,10 @@ export const hasBootstrapCreatorRole = async (organizationId: string) => {
     autoPagination?: () => Promise<Array<{ slug?: string | null }>>
     data?: Array<{ slug?: string | null }>
   }
+  // Compatibility with multiple WorkOS SDK shapes from getWorkOS():
+  // newer responses expose rolesResult.autoPagination(), while older
+  // responses expose rolesResult.data. Normalize both before mapping
+  // roleSlugs and checking BOOTSTRAP_CREATOR_ROLE_SLUG.
   const roles =
     typeof rolesResult.autoPagination === "function"
       ? await rolesResult.autoPagination()
@@ -334,21 +338,15 @@ export const cancelTenantInvitation = async (
   invitationId: string
 ): Promise<TenantInvitationSummary> => {
   const userManagement = getWorkOS().userManagement as {
-    cancelInvitation?: (id: string) => Promise<unknown>
     revokeInvitation?: (id: string) => Promise<unknown>
   }
 
-  if (typeof userManagement.cancelInvitation === "function") {
-    const invitation = await userManagement.cancelInvitation(invitationId)
-    return toTenantInvitationSummary(invitation as WorkOSInvitation)
+  if (typeof userManagement.revokeInvitation !== "function") {
+    throw new TenantWorkOSOperationUnsupportedError("revokeInvitation")
   }
 
-  if (typeof userManagement.revokeInvitation === "function") {
-    const invitation = await userManagement.revokeInvitation(invitationId)
-    return toTenantInvitationSummary(invitation as WorkOSInvitation)
-  }
-
-  throw new TenantWorkOSOperationUnsupportedError("cancelInvitation")
+  const invitation = await userManagement.revokeInvitation(invitationId)
+  return toTenantInvitationSummary(invitation as WorkOSInvitation)
 }
 
 export const resendTenantInvitation = async (
