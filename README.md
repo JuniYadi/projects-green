@@ -122,3 +122,7 @@ All routes are under `/api`:
 - Admin can promote/demote `member <-> admin`
 - Only owner can assign/remove `owner` and transfer ownership
 - Last-owner guardrail is enforced on demotion/ownership changes
+
+## Integration Guides
+
+- [GitHub App Integration Specification](docs/github-app-integration.md)
