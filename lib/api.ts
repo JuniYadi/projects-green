@@ -14,6 +14,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { loginSchema, signupSchema } from "@/lib/validation"
 import { docsRoutes } from "@/modules/docs/api/docs.route"
+import { frameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
 import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
 
 const getWorkosClientId = () => process.env.WORKOS_CLIENT_ID?.trim()
@@ -156,6 +157,7 @@ const toFieldErrors = (
 export const app = new Elysia({ prefix: "/api" })
   .use(openapi())
   .use(docsRoutes)
+  .use(frameworkDetectionRoutes)
   .use(tenantsRoutes)
   .onError(({ code, error, set }) => {
     if (code !== "VALIDATION") {
