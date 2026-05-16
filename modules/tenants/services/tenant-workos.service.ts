@@ -288,6 +288,31 @@ export const deleteTenantMembership = async (membershipId: string) => {
   await getWorkOS().userManagement.deleteOrganizationMembership(membershipId)
 }
 
+export const deleteTenantMembershipSafely = async (params: {
+  membershipId: string
+  organizationId: string
+  targetMembership: TenantMembershipSummary
+}): Promise<{ success: true } | { success: false; reason: "LAST_OWNER_PROTECTED" }> => {
+  // Check if target is an active owner
+  if (!isActiveOwnerMembership(params.targetMembership)) {
+    // Not an owner, safe to delete
+    await deleteTenantMembership(params.membershipId)
+    return { success: true }
+  }
+
+  // Target is an active owner - check if there are other active owners
+  const memberships = await listTenantMemberships(params.organizationId)
+  const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
+
+  if (activeOwnerCount <= 1) {
+    return { success: false, reason: "LAST_OWNER_PROTECTED" }
+  }
+
+  // There are other active owners, safe to delete
+  await deleteTenantMembership(params.membershipId)
+  return { success: true }
+}
+
 export const getTenantOrganizationById = async (
   organizationId: string
 ): Promise<TenantOrganizationSummary | null> => {

@@ -18,20 +18,18 @@ export const transferOwnershipPayloadSchema = z.object({
     .min(1, "newOwnerMembershipId is required."),
 })
 
+export const nameSchema = z
+  .string()
+  .trim()
+  .min(2, "Organization name must be at least 2 characters.")
+  .max(80, "Organization name must be at most 80 characters.")
+
 export const bootstrapCreatePayloadSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, "Organization name must be at least 2 characters.")
-    .max(80, "Organization name must be at most 80 characters."),
+  name: nameSchema,
 })
 
 export const organizationUpdatePayloadSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, "Organization name must be at least 2 characters.")
-    .max(80, "Organization name must be at most 80 characters."),
+  name: nameSchema,
 })
 
 export const organizationDeletePayloadSchema = z.object({

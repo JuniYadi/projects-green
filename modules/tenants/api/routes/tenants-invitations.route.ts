@@ -161,8 +161,15 @@ export const tenantsInvitationRoutes = new Elysia()
         )
       }
 
+      if (!invitationRole) {
+        return toPolicyError(
+          set,
+          "INVITATION_INVALID_ROLE",
+          "This invitation has an unsupported or invalid role and cannot be processed."
+        )
+      }
+
       if (
-        invitationRole &&
         !canInviteAsRole(
           {
             platformRole: actorResult.platformRole,
@@ -230,8 +237,15 @@ export const tenantsInvitationRoutes = new Elysia()
         )
       }
 
+      if (!invitationRole) {
+        return toPolicyError(
+          set,
+          "INVITATION_INVALID_ROLE",
+          "This invitation has an unsupported or invalid role and cannot be processed."
+        )
+      }
+
       if (
-        invitationRole &&
         !canInviteAsRole(
           {
             platformRole: actorResult.platformRole,

@@ -16,10 +16,8 @@ import type {
   TenantMembershipMutationResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
 import {
-  deleteTenantMembership,
+  deleteTenantMembershipSafely,
   getTenantMembershipById,
-  isActiveOwnerMembership,
-  listTenantMemberships,
   updateTenantMembershipRole,
 } from "@/modules/tenants/services/tenant-workos.service"
 import {
@@ -281,18 +279,19 @@ export const tenantsMembershipRoutes = new Elysia()
       )
     }
 
-    const memberships = await listTenantMemberships(params.orgId)
-    const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
+    const deleteResult = await deleteTenantMembershipSafely({
+      membershipId: targetMembership.id,
+      organizationId: params.orgId,
+      targetMembership,
+    })
 
-    if (isActiveOwnerMembership(targetMembership) && activeOwnerCount <= 1) {
+    if (!deleteResult.success) {
       return toPolicyError(
         set,
         "LAST_OWNER_PROTECTED",
         "Cannot remove the last active owner in this tenant."
       )
     }
-
-    await deleteTenantMembership(targetMembership.id)
 
     return {
       ok: true,
