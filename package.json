@@ -28,6 +28,7 @@
     "@tanstack/react-form": "^1.32.0",
     "@workos-inc/authkit-nextjs": "^4.1.0",
     "ai": "^6.0.184",
+    "bullmq": "^5.76.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "elysia": "^1.4.28",
