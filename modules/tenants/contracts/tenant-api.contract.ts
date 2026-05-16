@@ -52,6 +52,13 @@ export type TenantMembershipSummary = {
   status: string
   role: TenantRole | null
   roleSlug: string | null
+  profile: {
+    email: string | null
+    firstName: string | null
+    lastName: string | null
+    profilePictureUrl: string | null
+    displayName: string | null
+  } | null
   createdAt: string
   updatedAt: string
 }
@@ -122,6 +129,11 @@ export type TenantMemberRemoveResponse = {
 export type TenantInvitationRevokeResponse = {
   ok: true
   revokedInvitationId: string
+}
+
+export type TenantInvitationCancelResponse = {
+  ok: true
+  canceledInvitationId: string
 }
 
 export type TenantInvitationResendResponse = {
