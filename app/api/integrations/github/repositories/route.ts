@@ -51,7 +51,17 @@ const parseCursor = (value: string | null) => {
     return null
   }
 
-  return BigInt(value)
+  const bigIntValue = BigInt(value)
+
+  // Validate that the value is within signed 64-bit integer range
+  const MIN_INT64 = BigInt("-9223372036854775808")
+  const MAX_INT64 = BigInt("9223372036854775807")
+
+  if (bigIntValue < MIN_INT64 || bigIntValue > MAX_INT64) {
+    return null
+  }
+
+  return bigIntValue
 }
 
 export const GET = async (request: NextRequest) => {

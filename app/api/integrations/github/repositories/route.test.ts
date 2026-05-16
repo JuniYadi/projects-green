@@ -166,6 +166,36 @@ describe("GET /api/integrations/github/repositories", () => {
     expect(mockFindMany).not.toHaveBeenCalled()
   })
 
+  it("returns 400 for out-of-range cursor (above max signed 64-bit)", async () => {
+    const route = await import("@/app/api/integrations/github/repositories/route")
+    const response = await route.GET(
+      new NextRequest(
+        "http://localhost/api/integrations/github/repositories?cursor=9223372036854775808"
+      )
+    )
+    const body = (await response.json()) as { ok: boolean; error: string }
+
+    expect(response.status).toBe(400)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INVALID_QUERY")
+    expect(mockFindMany).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 for out-of-range cursor (below min signed 64-bit)", async () => {
+    const route = await import("@/app/api/integrations/github/repositories/route")
+    const response = await route.GET(
+      new NextRequest(
+        "http://localhost/api/integrations/github/repositories?cursor=-9223372036854775809"
+      )
+    )
+    const body = (await response.json()) as { ok: boolean; error: string }
+
+    expect(response.status).toBe(400)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INVALID_QUERY")
+    expect(mockFindMany).not.toHaveBeenCalled()
+  })
+
   it("applies owner/query filters, paginates with limit, and returns nextCursor", async () => {
     const route = await import("@/app/api/integrations/github/repositories/route")
     const response = await route.GET(
