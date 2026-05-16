@@ -1,11 +1,9 @@
 import { Queue } from "bullmq"
-import IORedis from "ioredis"
 
 const QUEUE_NAME = "github-webhook-events"
 
-type QueueShape = Pick<Queue, "add">
+type QueueShape = Pick<Queue, "add" | "close">
 
-let redisConnection: IORedis | null = null
 let queue: QueueShape | null = null
 
 const getRedisUrl = () => {
@@ -18,17 +16,30 @@ const getRedisUrl = () => {
   return redisUrl
 }
 
+const getConnectionOptions = () => {
+  const redisUrl = new URL(getRedisUrl())
+  const port = redisUrl.port ? Number.parseInt(redisUrl.port, 10) : 6379
+
+  if (!Number.isFinite(port) || port <= 0) {
+    throw new Error("Invalid REDIS_URL port")
+  }
+
+  return {
+    host: redisUrl.hostname,
+    port,
+    username: redisUrl.username || undefined,
+    password: redisUrl.password || undefined,
+    tls: redisUrl.protocol === "rediss:" ? {} : undefined,
+  }
+}
+
 const getQueue = () => {
   if (queue) {
     return queue
   }
 
-  redisConnection = new IORedis(getRedisUrl(), {
-    maxRetriesPerRequest: null,
-  })
-
   queue = new Queue(QUEUE_NAME, {
-    connection: redisConnection,
+    connection: getConnectionOptions(),
   })
 
   return queue
@@ -50,11 +61,9 @@ export const enqueueGithubWebhookEvent = async (eventId: string) => {
 
 export const __testing = {
   resetQueueCache() {
-    queue = null
-
-    if (redisConnection) {
-      void redisConnection.disconnect(false)
-      redisConnection = null
+    if (queue) {
+      void queue.close()
+      queue = null
     }
   },
 }
