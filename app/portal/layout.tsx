@@ -24,7 +24,7 @@ import { redirect } from "next/navigation"
 
 const ONBOARDING_PATH = "/onboarding/organization"
 
-export default async function ConsoleLayout({
+export default async function PortalLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
@@ -32,7 +32,7 @@ export default async function ConsoleLayout({
   const auth = await withAuth({ ensureSignedIn: true })
 
   if (!auth.organizationId) {
-    redirect(`${ONBOARDING_PATH}?next=${encodeURIComponent("/console")}`)
+    redirect(`${ONBOARDING_PATH}?next=${encodeURIComponent("/portal")}`)
   }
 
   const workosUser = await getLatestWorkOSUser(auth.user)
@@ -56,13 +56,11 @@ export default async function ConsoleLayout({
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">
-                    Build Your Application
-                  </BreadcrumbLink>
+                  <BreadcrumbLink href="/portal/documentations">Portal</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+                  <BreadcrumbPage>Documentations</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

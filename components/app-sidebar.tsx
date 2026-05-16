@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { usePathname } from "next/navigation"
 
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
@@ -15,153 +16,19 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TerminalIcon, RobotIcon, BookOpenIcon, GearIcon, LifebuoyIcon, PaperPlaneTiltIcon, CropIcon, ChartPieIcon, MapTrifoldIcon } from "@phosphor-icons/react"
+import {
+  BookOpenIcon,
+  ChartPieIcon,
+  CropIcon,
+  GaugeIcon,
+  LifebuoyIcon,
+  MapTrifoldIcon,
+  PaperPlaneTiltIcon,
+  RocketLaunchIcon,
+} from "@phosphor-icons/react"
 
-const data = {
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: (
-        <TerminalIcon
-        />
-      ),
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: (
-        <RobotIcon
-        />
-      ),
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: (
-        <BookOpenIcon
-        />
-      ),
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: (
-        <GearIcon
-        />
-      ),
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Support",
-      url: "#",
-      icon: (
-        <LifebuoyIcon
-        />
-      ),
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: (
-        <PaperPlaneTiltIcon
-        />
-      ),
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: (
-        <CropIcon
-        />
-      ),
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: (
-        <ChartPieIcon
-        />
-      ),
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: (
-        <MapTrifoldIcon
-        />
-      ),
-    },
-  ],
-}
+const startsWithRoute = (pathname: string, route: string) =>
+  pathname === route || pathname.startsWith(`${route}/`)
 
 export type AppSidebarUser = {
   name: string
@@ -184,6 +51,83 @@ export function AppSidebar({
   organization,
   ...props
 }: AppSidebarProps) {
+  const pathname = usePathname()
+
+  const navMain = [
+    {
+      title: "Dashboard",
+      url: "/console",
+      icon: <GaugeIcon />,
+      isActive: startsWithRoute(pathname, "/console"),
+      items: [
+        {
+          title: "Overview",
+          url: "/console",
+          isActive: pathname === "/console",
+        },
+        {
+          title: "Deploy",
+          url: "/console/app/deploy",
+          isActive: startsWithRoute(pathname, "/console/app/deploy"),
+        },
+      ],
+    },
+    {
+      title: "Portal",
+      url: "/portal/documentations",
+      icon: <BookOpenIcon />,
+      isActive: startsWithRoute(pathname, "/portal"),
+      items: [
+        {
+          title: "Documentations",
+          url: "/portal/documentations",
+          isActive: startsWithRoute(pathname, "/portal/documentations"),
+        },
+      ],
+    },
+  ]
+
+  const navSecondary = [
+    {
+      title: "Support",
+      url: "#",
+      icon: <LifebuoyIcon />,
+    },
+    {
+      title: "Feedback",
+      url: "#",
+      icon: <PaperPlaneTiltIcon />,
+    },
+  ]
+
+  const projects = [
+    {
+      name: "Deployments",
+      url: "/console/app/deploy",
+      icon: <RocketLaunchIcon />,
+    },
+    {
+      name: "Documentation",
+      url: "/portal/documentations",
+      icon: <BookOpenIcon />,
+    },
+    {
+      name: "Analytics",
+      url: "#",
+      icon: <ChartPieIcon />,
+    },
+    {
+      name: "Design Engineering",
+      url: "#",
+      icon: <CropIcon />,
+    },
+    {
+      name: "Travel",
+      url: "#",
+      icon: <MapTrifoldIcon />,
+    },
+  ]
+
   const organizationName =
     organization.name?.trim() || organization.id?.trim() || "No organization"
   const organizationMeta = organization.id ? "Organization" : "No active organization"
@@ -214,9 +158,9 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavMain items={navMain} />
+        <NavProjects projects={projects} />
+        <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />
