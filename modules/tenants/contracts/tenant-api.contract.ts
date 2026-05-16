@@ -113,3 +113,43 @@ export type TenantOwnershipTransferResponse = {
   ownershipTransferred: true
   membership: TenantMembershipSummary
 }
+
+export type TenantMemberRemoveResponse = {
+  ok: true
+  removedMemberId: string
+}
+
+export type TenantInvitationRevokeResponse = {
+  ok: true
+  revokedInvitationId: string
+}
+
+export type TenantInvitationResendResponse = {
+  ok: true
+  invitation: TenantInvitationSummary
+}
+
+export type TenantOrganizationSummary = {
+  id: string
+  name: string
+  allowProfilesOutsideOrganization: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type TenantOrganizationResponse = {
+  ok: true
+  orgId: string
+  organization: TenantOrganizationSummary
+}
+
+export type TenantOrganizationUpdateResponse = {
+  ok: true
+  organization: TenantOrganizationSummary
+}
+
+export type TenantOrganizationDeleteResponse = {
+  ok: true
+  organizationDeleted: true
+  organizationId: string
+}
