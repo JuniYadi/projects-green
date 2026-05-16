@@ -87,7 +87,6 @@ model GithubRepositoryConnection {
   @@index([installationId])
   @@index([fullName])
 }
-
 model GithubWebhookEvent {
   id                   String   @id @default(cuid())
   deliveryId           String   @unique

@@ -5,7 +5,12 @@ import {
   type GithubEventsQueue,
 } from "@/lib/queue/github-events"
 
-type GithubWebhookPayload = {
+const SIGNATURE_PREFIX = "sha256="
+const SIGNATURE_HEX_LENGTH = 64
+
+type JsonObject = Record<string, unknown>
+
+type GithubWebhookPayload = JsonObject & {
   action?: string
   deleted?: boolean
   ref?: string
@@ -73,6 +78,45 @@ type GithubWebhookPrismaClient = {
   githubRepositoryConnection: GithubRepositoryConnectionStore
 }
 
+export type GithubWebhookRecord = {
+  id: string
+}
+
+export type CreateGithubWebhookEventInput = {
+  deliveryId: string
+  eventName: string
+  action: string | null
+  githubInstallationId: bigint | null
+  githubRepositoryId: bigint | null
+  payloadJson: JsonObject
+  payloadSha256: string
+}
+
+export type GithubWebhookHandlerEventStore = {
+  findByDeliveryId: (
+    deliveryId: string
+  ) => Promise<GithubWebhookRecord | null>
+  create: (
+    input: CreateGithubWebhookEventInput
+  ) => Promise<GithubWebhookRecord>
+  markEnqueueFailed: (
+    eventId: string,
+    processError: string
+  ) => Promise<void>
+}
+
+export type GithubWebhookQueueProducer = {
+  enqueueEventId: (
+    eventId: string
+  ) => Promise<void>
+}
+
+export type GithubWebhookHandlerDeps = {
+  webhookSecret: string | null | undefined
+  store: GithubWebhookHandlerEventStore
+  queue: GithubWebhookQueueProducer
+}
+
 export type BuildDispatchPayload = {
   webhookEventId: string
   connectionId: string
@@ -100,6 +144,144 @@ export type ProcessWebhookEventResult =
       outcome: "missing"
     }
 
+const getHeaderValue = (request: Request, name: string) => {
+  const raw = request.headers.get(name)
+
+  if (!raw) {
+    return null
+  }
+
+  const value = raw.trim()
+  return value.length > 0 ? value : null
+}
+
+const parseSignature = (signature: string) => {
+  if (!signature.startsWith(SIGNATURE_PREFIX)) {
+    return null
+  }
+
+  const hash = signature.slice(SIGNATURE_PREFIX.length).trim()
+
+  if (hash.length !== SIGNATURE_HEX_LENGTH) {
+    return null
+  }
+
+  if (!/^[a-f0-9]+$/i.test(hash)) {
+    return null
+  }
+
+  return hash.toLowerCase()
+}
+
+const toNullableBigInt = (value: unknown) => {
+  if (typeof value === "bigint") {
+    return value
+  }
+
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return BigInt(value)
+  }
+
+  if (typeof value === "string" && /^-?[0-9]+$/.test(value)) {
+    return BigInt(value)
+  }
+
+  return null
+}
+
+const toErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (typeof error === "string") {
+    return error
+  }
+
+  return "Unknown processing error"
+}
+
+const hashPayload = (rawBody: string) => {
+  return createHash("sha256").update(rawBody).digest("hex")
+}
+
+const parsePayload = (rawBody: string): JsonObject | null => {
+  try {
+    const parsed = JSON.parse(rawBody) as unknown
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null
+    }
+
+    return parsed as JsonObject
+  } catch {
+    return null
+  }
+}
+
+const parseWebhookPayload = (rawBody: string): GithubWebhookPayload => {
+  const payload = parsePayload(rawBody)
+
+  if (!payload) {
+    throw new Error("Invalid webhook payload JSON")
+  }
+
+  return payload as GithubWebhookPayload
+}
+
+let sharedQueue: GithubEventsQueue | null = null
+
+const getSharedQueue = () => {
+  if (sharedQueue) {
+    return sharedQueue
+  }
+
+  sharedQueue = createGithubEventsQueue()
+  return sharedQueue
+}
+
+export const signGithubWebhookBody = (rawBody: string, secret: string) => {
+  const digest = createHmac("sha256", secret).update(rawBody).digest("hex")
+  return `${SIGNATURE_PREFIX}${digest}`
+}
+
+export const verifyGithubWebhookSignature = ({
+  rawBody,
+  signatureHeader,
+  signature,
+  secret,
+}: {
+  rawBody: string
+  signatureHeader?: string
+  signature?: string
+  secret: string
+}) => {
+  const providedSignature = signatureHeader ?? signature
+
+  if (!providedSignature) {
+    return false
+  }
+
+  const receivedHash = parseSignature(providedSignature)
+
+  if (!receivedHash) {
+    return false
+  }
+
+  const expectedHash = createHmac("sha256", secret)
+    .update(rawBody)
+    .digest("hex")
+
+  const receivedBuffer = Buffer.from(receivedHash, "hex")
+  const expectedBuffer = Buffer.from(expectedHash, "hex")
+
+  if (receivedBuffer.length !== expectedBuffer.length) {
+    return false
+  }
+
+  return timingSafeEqual(receivedBuffer, expectedBuffer)
+}
+
 export const extractBranchFromRef = (ref: string | undefined | null) => {
   if (!ref || !ref.startsWith("refs/heads/")) {
     return null
@@ -117,11 +299,7 @@ export const matchesBranchFilters = ({
 }) => {
   const normalizedBranch = branch.trim()
 
-  if (!normalizedBranch) {
-    return false
-  }
-
-  if (!branchFilters.length) {
+  if (!normalizedBranch || !branchFilters.length) {
     return false
   }
 
@@ -184,69 +362,148 @@ export const evaluatePushRules = ({
   }
 }
 
-const normalizeSignature = (signature: string) => {
-  const trimmed = signature.trim()
+export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
+  return async (request: Request) => {
+    const eventName = getHeaderValue(request, "X-GitHub-Event")
+    const deliveryId = getHeaderValue(request, "X-GitHub-Delivery")
+    const signatureHeader = getHeaderValue(request, "X-Hub-Signature-256")
 
-  if (trimmed.startsWith("sha256=")) {
-    return trimmed
+    if (!eventName || !deliveryId || !signatureHeader) {
+      return Response.json(
+        {
+          ok: false as const,
+          error: "MISSING_GITHUB_HEADERS" as const,
+          message: "Missing required GitHub webhook headers.",
+        },
+        { status: 400 }
+      )
+    }
+
+    const webhookSecret = deps.webhookSecret?.trim()
+
+    if (!webhookSecret) {
+      return Response.json(
+        {
+          ok: false as const,
+          error: "MISSING_WEBHOOK_SECRET" as const,
+          message: "Missing GITHUB_WEBHOOK_SECRET configuration.",
+        },
+        { status: 500 }
+      )
+    }
+
+    const rawBody = await request.text()
+    const isSignatureValid = verifyGithubWebhookSignature({
+      rawBody,
+      signatureHeader,
+      secret: webhookSecret,
+    })
+
+    if (!isSignatureValid) {
+      return Response.json(
+        {
+          ok: false as const,
+          error: "INVALID_SIGNATURE" as const,
+          message: "Webhook signature verification failed.",
+        },
+        { status: 401 }
+      )
+    }
+
+    const payload = parsePayload(rawBody)
+
+    if (!payload) {
+      return Response.json(
+        {
+          ok: false as const,
+          error: "INVALID_PAYLOAD" as const,
+          message: "Webhook payload must be a valid JSON object.",
+        },
+        { status: 400 }
+      )
+    }
+
+    const existingEvent = await deps.store.findByDeliveryId(deliveryId)
+
+    if (existingEvent) {
+      return Response.json(
+        {
+          ok: true as const,
+          duplicate: true as const,
+          eventId: existingEvent.id,
+        },
+        { status: 202 }
+      )
+    }
+
+    const installation =
+      payload.installation &&
+      typeof payload.installation === "object" &&
+      !Array.isArray(payload.installation)
+        ? (payload.installation as Record<string, unknown>)
+        : null
+    const repository =
+      payload.repository &&
+      typeof payload.repository === "object" &&
+      !Array.isArray(payload.repository)
+        ? (payload.repository as Record<string, unknown>)
+        : null
+    const action =
+      typeof payload.action === "string" && payload.action.trim().length > 0
+        ? payload.action
+        : null
+
+    let event!: GithubWebhookRecord
+    try {
+      event = await deps.store.create({
+        deliveryId,
+        eventName,
+        action,
+        githubInstallationId: toNullableBigInt(installation?.id),
+        githubRepositoryId: toNullableBigInt(repository?.id),
+        payloadJson: payload,
+        payloadSha256: hashPayload(rawBody),
+      })
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+        const existingEventAfterRace = await deps.store.findByDeliveryId(deliveryId)
+
+        return Response.json(
+          {
+            ok: true as const,
+            duplicate: true as const,
+            eventId: existingEventAfterRace?.id,
+          },
+          { status: 202 }
+        )
+      }
+
+      throw error
+    }
+
+    try {
+      await deps.queue.enqueueEventId(event.id)
+    } catch (error) {
+      await deps.store.markEnqueueFailed(event.id, toErrorMessage(error))
+
+      return Response.json(
+        {
+          ok: false as const,
+          error: "ENQUEUE_FAILED" as const,
+          message: "Unable to enqueue webhook event.",
+        },
+        { status: 503 }
+      )
+    }
+
+    return Response.json(
+      {
+        ok: true as const,
+        eventId: event.id,
+      },
+      { status: 202 }
+    )
   }
-
-  return `sha256=${trimmed}`
-}
-
-export const verifyGithubWebhookSignature = ({
-  rawBody,
-  signature,
-  secret,
-}: {
-  rawBody: string
-  signature: string
-  secret: string
-}) => {
-  const expectedSignature = normalizeSignature(
-    createHmac("sha256", secret).update(rawBody).digest("hex")
-  )
-  const providedSignature = normalizeSignature(signature)
-
-  const expectedBuffer = Buffer.from(expectedSignature)
-  const providedBuffer = Buffer.from(providedSignature)
-
-  if (expectedBuffer.length !== providedBuffer.length) {
-    return false
-  }
-
-  return timingSafeEqual(expectedBuffer, providedBuffer)
-}
-
-const toErrorMessage = (error: unknown) => {
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return "Unknown processing error"
-}
-
-const hashPayload = (rawBody: string) => {
-  return createHash("sha256").update(rawBody).digest("hex")
-}
-
-const parseWebhookPayload = (rawBody: string): GithubWebhookPayload => {
-  try {
-    return JSON.parse(rawBody) as GithubWebhookPayload
-  } catch {
-    throw new Error("Invalid webhook payload JSON")
-  }
-}
-
-let sharedQueue: GithubEventsQueue | null = null
-
-const getSharedQueue = () => {
-  if (sharedQueue) {
-    return sharedQueue
-  }
-
-  sharedQueue = createGithubEventsQueue()
-  return sharedQueue
 }
 
 export const enqueueGithubWebhookEvent = async ({

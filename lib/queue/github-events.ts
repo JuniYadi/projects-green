@@ -12,7 +12,7 @@ export type GithubEventsQueue = {
   close: () => Promise<void>
 }
 
-type AddJob = {
+type QueueAddOnly = {
   add: (
     name: string,
     data: GithubEventJobData,
@@ -49,10 +49,15 @@ export const getGithubEventsRedisConnection = (): RedisOptions => {
   }
 
   const parsed = new URL(redisUrl)
+  const port = parsed.port ? Number.parseInt(parsed.port, 10) : 6379
+
+  if (!Number.isFinite(port) || port <= 0) {
+    throw new Error("Invalid REDIS_URL port")
+  }
 
   return {
     host: parsed.hostname,
-    port: parsed.port ? Number.parseInt(parsed.port, 10) : 6379,
+    port,
     username: parsed.username || undefined,
     password: parsed.password || undefined,
     db: parseRedisDb(parsed.pathname),
@@ -67,7 +72,7 @@ export const createGithubEventsQueue = ({
   jobName = GITHUB_EVENTS_JOB_NAME,
   defaultJobOptions = DEFAULT_JOB_OPTIONS,
 }: {
-  queue?: AddJob
+  queue?: QueueAddOnly
   queueName?: string
   jobName?: string
   defaultJobOptions?: JobsOptions
@@ -77,10 +82,11 @@ export const createGithubEventsQueue = ({
     managedQueue
       ? null
       : new Queue<GithubEventJobData>(queueName, {
-      connection: getGithubEventsRedisConnection(),
-      defaultJobOptions,
-    })
-  const queueClient: AddJob = managedQueue ?? (ownedQueue as Queue<GithubEventJobData>)
+          connection: getGithubEventsRedisConnection(),
+          defaultJobOptions,
+        })
+  const queueClient: QueueAddOnly =
+    managedQueue ?? (ownedQueue as Queue<GithubEventJobData>)
 
   return {
     async enqueue(data) {
@@ -94,4 +100,43 @@ export const createGithubEventsQueue = ({
       }
     },
   }
+}
+
+let sharedQueue: Queue<GithubEventJobData> | null = null
+
+const getSharedQueue = () => {
+  if (sharedQueue) {
+    return sharedQueue
+  }
+
+  sharedQueue = new Queue<GithubEventJobData>(GITHUB_EVENTS_QUEUE_NAME, {
+    connection: getGithubEventsRedisConnection(),
+    defaultJobOptions: DEFAULT_JOB_OPTIONS,
+  })
+
+  return sharedQueue
+}
+
+// Compatibility helper used by app route ingestion path.
+export const enqueueGithubWebhookEvent = async (eventId: string) => {
+  const queue = getSharedQueue()
+
+  await queue.add(
+    GITHUB_EVENTS_JOB_NAME,
+    { eventId },
+    {
+      jobId: `github-event:${eventId}`,
+    }
+  )
+}
+
+export const __testing = {
+  async resetQueueCache() {
+    if (!sharedQueue) {
+      return
+    }
+
+    await sharedQueue.close()
+    sharedQueue = null
+  },
 }
