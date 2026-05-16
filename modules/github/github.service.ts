@@ -172,7 +172,7 @@ const getRequiredEnv = (name: string) => {
   const value = process.env[name]?.trim()
 
   if (!value) {
-    throw new Error(`Missing ${name} environment variable`)
+    throw new GithubConfigurationError(`Missing ${name} environment variable`)
   }
 
   return value
@@ -285,17 +285,35 @@ const fetchJson = async <T>(
   init: RequestInit,
   errorPrefix: string
 ): Promise<{ body: T; response: Response }> => {
-  const response = await fetch(url, init)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-  if (!response.ok) {
-    throw new GithubApiError(
-      `${errorPrefix} GitHub API returned ${response.status}.`
-    )
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new GithubApiError(
+        `${errorPrefix} GitHub API returned ${response.status}.`
+      )
+    }
+
+    const body = (await response.json()) as T
+
+    return { body, response }
+  } catch (error) {
+    clearTimeout(timeoutId)
+
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new GithubApiError(`${errorPrefix} Request timed out.`)
+    }
+
+    throw error
   }
-
-  const body = (await response.json()) as T
-
-  return { body, response }
 }
 
 const parseLinkHeader = (headerValue: string | null) => {
@@ -506,7 +524,10 @@ const createDefaultDependencies = (): GithubDependencies => ({
   async createInstallationAccessToken(installationId) {
     try {
       return await createInstallationToken(installationId)
-    } catch {
+    } catch (error) {
+      if (error instanceof GithubConfigurationError) {
+        throw error
+      }
       throw new GithubApiError("Unable to create installation access token.")
     }
   },
