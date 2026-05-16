@@ -1,5 +1,10 @@
 import { Elysia } from "elysia"
 import { getWorkOS, withAuth } from "@workos-inc/authkit-nextjs"
+import {
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from "@workos-inc/node"
 import { z } from "zod"
 
 import { getPlatformRoleForUser } from "@/lib/platform-role"
@@ -32,6 +37,21 @@ const transferOwnershipPayloadSchema = z.object({
     .trim()
     .min(1, "newOwnerMembershipId is required."),
 })
+
+const bootstrapCreatePayloadSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Organization name must be at least 2 characters.")
+    .max(80, "Organization name must be at most 80 characters."),
+})
+
+const BOOTSTRAP_CREATOR_ROLE_SLUG = "user_owner"
+const SCOPED_TENANT_ROLE_SLUG: Record<TenantRole, string> = {
+  owner: "user_owner",
+  admin: "user_admin",
+  member: "user_member",
+}
 
 type MembershipSummary = {
   id: string
@@ -174,7 +194,163 @@ const getMembershipById = async (membershipId: string) => {
   return toMembershipSummary(membership)
 }
 
+const listMembershipsForUser = async (userId: string) => {
+  return getWorkOS().userManagement
+    .listOrganizationMemberships({
+      userId,
+      statuses: ["active", "pending"],
+    })
+    .then((result) => result.autoPagination())
+}
+
+const hasBootstrapCreatorRole = async (organizationId: string) => {
+  const roleList = await getWorkOS().authorization.listOrganizationRoles(
+    organizationId
+  )
+  const roleSlugs = new Set(
+    roleList.data
+    .map((role) => role.slug?.trim().toLowerCase())
+    .filter((role): role is string => Boolean(role))
+  )
+
+  return roleSlugs.has(BOOTSTRAP_CREATOR_ROLE_SLUG)
+}
+
+const toScopedTenantRoleSlug = (role: TenantRole) => {
+  return SCOPED_TENANT_ROLE_SLUG[role]
+}
+
 export const tenantsRoutes = new Elysia()
+  .get("/tenants/bootstrap", async ({ set }) => {
+    const actor = await getActorContext()
+
+    if (!actor) {
+      return toUnauthorizedError(set)
+    }
+
+    const memberships = await listMembershipsForUser(actor.userId)
+
+    return {
+      ok: true as const,
+      currentOrganizationId: actor.organizationId,
+      memberships: memberships.map((membership) => ({
+        organizationId: membership.organizationId,
+        organizationName: membership.organizationName,
+        status: membership.status,
+        roleSlug: membership.role?.slug ?? null,
+      })),
+    }
+  })
+  .post(
+    "/tenants/bootstrap/create",
+    async ({ body, set }) => {
+      const actor = await getActorContext()
+
+      if (!actor) {
+        return toUnauthorizedError(set)
+      }
+
+      if (actor.organizationId) {
+        set.status = 409
+        return {
+          ok: false as const,
+          error: "ORGANIZATION_CONTEXT_EXISTS" as const,
+          message:
+            "You already have an active organization context in this session.",
+        }
+      }
+
+      const existingMemberships = await listMembershipsForUser(actor.userId)
+      const activeMembership = existingMemberships.find(
+        (membership) => membership.status === "active"
+      )
+
+      if (activeMembership) {
+        set.status = 409
+        return {
+          ok: false as const,
+          error: "ACTIVE_MEMBERSHIP_EXISTS" as const,
+          message:
+            "You already belong to an organization. Select and join it instead.",
+        }
+      }
+
+      try {
+        const organization = await getWorkOS().organizations.createOrganization({
+          name: body.name.trim(),
+        })
+
+        const creatorRoleIsAvailable = await hasBootstrapCreatorRole(
+          organization.id
+        )
+
+        if (!creatorRoleIsAvailable) {
+          await getWorkOS().organizations
+            .deleteOrganization(organization.id)
+            .catch(() => null)
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "CREATOR_ROLE_MISSING" as const,
+            message:
+              "Required WorkOS role 'user_owner' is missing. Run `bun run seed:workos-roles` and retry.",
+          }
+        }
+
+        await getWorkOS().userManagement.createOrganizationMembership({
+          organizationId: organization.id,
+          userId: actor.userId,
+          roleSlug: BOOTSTRAP_CREATOR_ROLE_SLUG,
+        })
+
+        set.status = 201
+
+        return {
+          ok: true as const,
+          organizationId: organization.id,
+        }
+      } catch (error) {
+        if (error instanceof ConflictException) {
+          set.status = 409
+          return {
+            ok: false as const,
+            error: "ORGANIZATION_CONFLICT" as const,
+            message:
+              "Organization bootstrap could not be completed due to a conflict.",
+          }
+        }
+
+        if (error instanceof UnprocessableEntityException) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "ORGANIZATION_BOOTSTRAP_INVALID" as const,
+            message: error.message,
+          }
+        }
+
+        if (error instanceof NotFoundException) {
+          set.status = 404
+          return {
+            ok: false as const,
+            error: "ORGANIZATION_BOOTSTRAP_NOT_FOUND" as const,
+            message:
+              "Organization bootstrap failed because a required WorkOS resource was not found.",
+          }
+        }
+
+        set.status = 500
+        return {
+          ok: false as const,
+          error: "ORGANIZATION_BOOTSTRAP_FAILED" as const,
+          message: "Unable to create organization right now.",
+        }
+      }
+    },
+    {
+      body: bootstrapCreatePayloadSchema,
+    }
+  )
   .get("/tenants/:orgId/authorization", async ({ params, set }) => {
     const actor = await getActorContext()
 
@@ -312,7 +488,7 @@ export const tenantsRoutes = new Elysia()
         email: body.email.trim().toLowerCase(),
         organizationId: params.orgId,
         inviterUserId: actor.userId,
-        roleSlug: body.targetRole,
+        roleSlug: toScopedTenantRoleSlug(body.targetRole),
       })
 
       set.status = 201
@@ -385,7 +561,7 @@ export const tenantsRoutes = new Elysia()
       const updated = await getWorkOS().userManagement.updateOrganizationMembership(
         targetMembership.id,
         {
-          roleSlug: body.targetRole,
+          roleSlug: toScopedTenantRoleSlug(body.targetRole),
         }
       )
 
@@ -469,7 +645,7 @@ export const tenantsRoutes = new Elysia()
     const updated = await getWorkOS().userManagement.updateOrganizationMembership(
       targetMembership.id,
       {
-        roleSlug: "member",
+        roleSlug: toScopedTenantRoleSlug("member"),
       }
     )
 
@@ -518,7 +694,7 @@ export const tenantsRoutes = new Elysia()
       const promoted = await getWorkOS().userManagement.updateOrganizationMembership(
         targetMembership.id,
         {
-          roleSlug: "owner",
+          roleSlug: toScopedTenantRoleSlug("owner"),
         }
       )
 
@@ -532,7 +708,7 @@ export const tenantsRoutes = new Elysia()
           await getWorkOS().userManagement.updateOrganizationMembership(
             actorMembership.id,
             {
-              roleSlug: "admin",
+              roleSlug: toScopedTenantRoleSlug("admin"),
             }
           )
         }

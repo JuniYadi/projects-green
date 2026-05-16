@@ -2,6 +2,11 @@ import { PlatformAccessRole } from "@/lib/platform-role"
 
 export const TENANT_ROLES = ["owner", "admin", "member"] as const
 export type TenantRole = (typeof TENANT_ROLES)[number]
+type ScopedRoleTarget = "admin" | "user"
+type ScopedRoleClaim = {
+  target: ScopedRoleTarget
+  role: TenantRole
+}
 
 export const TENANT_ACTIONS = [
   "manage_tenant",
@@ -22,37 +27,120 @@ export type ActorRoleContext = {
   tenantRole: TenantRole | null
 }
 
-export const normalizeTenantRole = (
-  role: string | null | undefined
-): TenantRole | null => {
-  const normalized = role?.trim().toLowerCase()
+const LEGACY_TENANT_ROLE_ALIASES: Record<string, TenantRole> = {
+  owner: "owner",
+  admin: "admin",
+  member: "member",
+  user: "member",
+}
 
+const parseScopedRoleClaim = (value: string): ScopedRoleClaim | null => {
+  const normalized = value.trim().toLowerCase()
   if (!normalized) {
     return null
   }
 
-  if (normalized === "user") {
-    return "member"
+  const legacyRole = LEGACY_TENANT_ROLE_ALIASES[normalized]
+  if (legacyRole) {
+    return {
+      target: "user",
+      role: legacyRole,
+    }
   }
 
-  if (
-    normalized === "owner" ||
-    normalized === "admin" ||
-    normalized === "member"
-  ) {
-    return normalized
+  const parsed = normalized.match(/^([a-z]+)[/:_-]([a-z]+)$/)
+  if (!parsed) {
+    return null
+  }
+
+  const target = parsed[1]
+  const role = parsed[2]
+  if ((target !== "admin" && target !== "user") || !LEGACY_TENANT_ROLE_ALIASES[role]) {
+    return null
+  }
+
+  return {
+    target,
+    role: LEGACY_TENANT_ROLE_ALIASES[role],
+  }
+}
+
+const toScopedRoleClaims = (
+  primaryRole: string | null | undefined,
+  roles: string[] | null | undefined
+) => {
+  const parsedClaims: ScopedRoleClaim[] = []
+
+  for (const raw of [primaryRole, ...(roles ?? [])]) {
+    if (!raw) {
+      continue
+    }
+
+    const scopedClaim = parseScopedRoleClaim(raw)
+    if (scopedClaim) {
+      parsedClaims.push(scopedClaim)
+    }
+  }
+
+  return parsedClaims
+}
+
+export const resolveScopedRoleTargetFromClaims = (
+  primaryRole: string | null | undefined,
+  roles: string[] | null | undefined
+): ScopedRoleTarget | null => {
+  const scopedClaims = toScopedRoleClaims(primaryRole, roles)
+
+  if (scopedClaims.some((claim) => claim.target === "admin")) {
+    return "admin"
+  }
+
+  if (scopedClaims.some((claim) => claim.target === "user")) {
+    return "user"
   }
 
   return null
+}
+
+export const hasScopedSuperAdminClaim = (
+  primaryRole: string | null | undefined,
+  roles: string[] | null | undefined
+) => {
+  const normalizedClaims = [primaryRole, ...(roles ?? [])]
+    .map((role) => role?.trim().toLowerCase())
+    .filter((role): role is string => Boolean(role))
+
+  if (normalizedClaims.includes("super_admin")) {
+    return true
+  }
+
+  return toScopedRoleClaims(primaryRole, roles).some((claim) => {
+    return claim.target === "admin" && claim.role === "owner"
+  })
+}
+
+export const normalizeTenantRole = (
+  role: string | null | undefined
+): TenantRole | null => {
+  if (!role) {
+    return null
+  }
+
+  const scopedClaim = parseScopedRoleClaim(role)
+  if (!scopedClaim) {
+    return null
+  }
+
+  return scopedClaim.role
 }
 
 export const resolveTenantRoleFromClaims = (
   primaryRole: string | null | undefined,
   roles: string[] | null | undefined
 ): TenantRole | null => {
-  const normalizedRoles = [primaryRole, ...(roles ?? [])]
-    .map((value) => normalizeTenantRole(value))
-    .filter((value): value is TenantRole => Boolean(value))
+  const normalizedRoles = toScopedRoleClaims(primaryRole, roles)
+    .filter((claim) => claim.target === "user")
+    .map((claim) => claim.role)
 
   if (normalizedRoles.includes("owner")) {
     return "owner"
