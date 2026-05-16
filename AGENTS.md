@@ -32,6 +32,10 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - Use path alias `@/*` for internal imports.
 - Name feature files by concern (`*.service.ts`, `*.route.ts`, `*.policy.ts`) and tests as `*.test.ts` / `*.test.tsx`.
 
+## Engineering Principles
+- DRY (Don't Repeat Yourself): extract shared helpers for repeated setup, fixtures, and assertions (especially in tests) instead of copy-pasting logic across files.
+- KISS (Keep It Simple, Stupid): prefer straightforward implementations and tests with clear intent; avoid over-engineering, unnecessary abstractions, and brittle test scaffolding.
+
 ## Testing Guidelines
 - Test runner: `bun test` (`bunfig.toml` preloads `test/setup.ts`).
 - UI tests use Testing Library with Happy DOM and `@testing-library/jest-dom` matchers.
