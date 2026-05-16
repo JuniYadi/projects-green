@@ -65,6 +65,44 @@ Example:
 npm run grant:super-admin -- --workos-user-id=user_01J... --email=admin@company.com
 ```
 
+### Seed WorkOS roles for tenant routing
+
+This app can work with both legacy and scoped role slugs.
+
+Legacy slugs:
+
+- `owner`
+- `admin`
+- `member`
+
+Scoped slugs (recommended for explicit target/role mapping):
+
+- `admin_owner` (maps to `admin/owner` superadmin claim)
+- `user_owner`
+- `user_admin`
+- `user_member`
+
+If these roles are missing, role-based routing and membership updates may fail
+or behave unexpectedly (for example, org bootstrap creation can fail on role
+assignment).
+
+Run a dry run first:
+
+```bash
+npm run seed:workos-roles -- --dry-run
+```
+
+Apply changes:
+
+```bash
+npm run seed:workos-roles
+```
+
+Notes:
+
+- The script is idempotent. It only creates missing roles.
+- It requires `WORKOS_API_KEY` in your environment.
+
 ### Tenant governance APIs
 
 All routes are under `/api`:
