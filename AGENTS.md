@@ -41,6 +41,7 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commit style seen in history: `feat: ...`, `fix: ...`, `test: ...`, `chore: ...`, `docs: ...`.
 - Use imperative, scoped summaries (example: `feat: add onboarding flow page`).
+- When opening PRs with GitHub CLI, write the body to a Markdown file and use `gh pr create --body-file <file>` to preserve newlines reliably; avoid inline `--body` for multiline text.
 - PRs should include: problem/solution summary, linked issue (if available), test evidence (`bun run test`, `bun run lint`), and screenshots for UI changes.
 
 ## Security & Configuration Tips
