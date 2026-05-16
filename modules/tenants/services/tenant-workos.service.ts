@@ -54,6 +54,7 @@ type WorkOSInvitation = {
 type WorkOSOrganization = {
   id: string
   name: string
+  metadata?: unknown
   allowProfilesOutsideOrganization?: boolean
   createdAt: string
   updatedAt: string
@@ -97,6 +98,20 @@ const toMembershipProfile = (
     profilePictureUrl,
     displayName: displayName || null,
   }
+const toTenantOrganizationMetadata = (value: unknown) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {}
+  }
+
+  const metadata: Record<string, string> = {}
+
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item === "string") {
+      metadata[key] = item
+    }
+  }
+
+  return metadata
 }
 
 const toTenantMembershipSummary = (
@@ -153,6 +168,7 @@ const toTenantOrganizationSummary = (
   return {
     id: organization.id,
     name: organization.name,
+    metadata: toTenantOrganizationMetadata(organization.metadata),
     allowProfilesOutsideOrganization:
       organization.allowProfilesOutsideOrganization ?? false,
     createdAt: organization.createdAt,
@@ -483,12 +499,27 @@ export const getTenantOrganizationById = async (
 
 export const updateTenantOrganization = async (params: {
   organizationId: string
-  name: string
+  name?: string
+  metadata?: Record<string, string>
 }): Promise<TenantOrganizationSummary> => {
-  const organization = await getWorkOS().organizations.updateOrganization({
+  const organizationUpdateInput: {
+    organization: string
+    name?: string
+    metadata?: Record<string, string>
+  } = {
     organization: params.organizationId,
-    name: params.name,
-  })
+  }
+
+  if (params.name !== undefined) {
+    organizationUpdateInput.name = params.name
+  }
+
+  if (params.metadata !== undefined) {
+    organizationUpdateInput.metadata = params.metadata
+  }
+
+  const organization =
+    await getWorkOS().organizations.updateOrganization(organizationUpdateInput)
 
   return toTenantOrganizationSummary(organization as WorkOSOrganization)
 }

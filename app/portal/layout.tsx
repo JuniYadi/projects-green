@@ -56,11 +56,13 @@ export default async function PortalLayout({
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/portal/documentations">Portal</BreadcrumbLink>
+                  <BreadcrumbLink href="/portal/documentations">
+                    Documentation
+                  </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Documentations</BreadcrumbPage>
+                  <BreadcrumbPage>Registry</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

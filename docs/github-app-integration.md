@@ -403,6 +403,34 @@ Operational safeguards:
 4. Monitor webhook success rate, queue latency, build trigger success.
 5. Gradually enable for all tenants.
 
+### 12.1 Staging Validation Checklist
+
+Run this checklist in order before widening rollout:
+
+1. Feature-flag gate checks
+   - Set `FEATURE_GITHUB_APP_INTEGRATION=false`.
+   - Verify install start, install callback, repositories, and webhook routes return feature-disabled responses.
+   - Set `FEATURE_GITHUB_APP_INTEGRATION=true` and re-run route smoke checks.
+2. Install flow checks
+   - Start install flow and confirm callback redirects with `github=connected`.
+   - Re-run callback with invalid/expired/replayed state and confirm `github=error`.
+   - Confirm persisted installation + repository snapshot rows are upserted.
+3. Repository listing checks
+   - Query `/api/integrations/github/repositories` with `limit`, `cursor`, and `query`.
+   - Confirm pagination (`nextCursor`) and filtering are stable.
+   - Confirm only active installation repos for the signed-in user/org are returned.
+4. Webhook acceptance checks
+   - Send push webhook with valid signature and confirm HTTP `202`.
+   - Re-send same delivery id and confirm dedupe path returns duplicate without re-enqueue.
+   - Send invalid signature and malformed payload and confirm rejection status codes.
+5. Worker dispatch checks
+   - Verify push to matching branch filter triggers exactly one build dispatch.
+   - Verify push to non-matching branch, deleted branch, or tag ref is skipped.
+   - Verify processed/deduped events do not dispatch build twice.
+6. Operational checks
+   - Inspect queue latency, enqueue failure rate, worker failure rate, and build dispatch success.
+   - Confirm alerting and dead-letter handling are active before selected-tenant rollout.
+
 ## 13. Non-Goals (Initial Version)
 
 - GitHub OAuth token-based listing outside app installations

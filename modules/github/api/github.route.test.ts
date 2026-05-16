@@ -68,6 +68,37 @@ describe("githubRoutes", () => {
     expect(body.error).toBe("FEATURE_DISABLED")
   })
 
+  it("guards all integration endpoints when feature is disabled", async () => {
+    const service: GithubService = {
+      getFeatureStatus: () => ({
+        feature: "github_app_integration",
+        envKey: "FEATURE_GITHUB_APP_INTEGRATION",
+        enabled: false,
+      }),
+      assertEnabled: () => {
+        throw new GithubIntegrationDisabledError()
+      },
+    }
+
+    const app = new Elysia().use(createGithubRoutes(service))
+    const installResponse = await app.handle(
+      new Request("http://localhost/integrations/github/install/start")
+    )
+    const repositoriesResponse = await app.handle(
+      new Request("http://localhost/integrations/github/repositories")
+    )
+    const webhookResponse = await app.handle(
+      new Request("http://localhost/integrations/github/webhook", {
+        method: "POST",
+      })
+    )
+
+    expect(installResponse.status).toBe(404)
+    expect(repositoriesResponse.status).toBe(404)
+    expect(webhookResponse.status).toBe(404)
+  })
+
+  it("returns not implemented when feature is enabled", async () => {
   it("returns 401 when repositories request is unauthenticated", async () => {
     const app = new Elysia().use(
       createGithubRoutes({

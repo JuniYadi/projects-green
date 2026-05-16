@@ -314,6 +314,28 @@ describe("createGithubWebhookHandler", () => {
     expect(body.error).toBe("INVALID_PAYLOAD")
   })
 
+  it("returns 500 when webhook secret is missing", async () => {
+    const { store } = createMockStore()
+    const handler = createGithubWebhookHandler({
+      webhookSecret: "   ",
+      store,
+      queue: {
+        async enqueueEventId() {},
+      },
+    })
+
+    const response = await handler(
+      createSignedRequest({
+        payload: JSON.stringify({ ref: "refs/heads/main" }),
+      })
+    )
+    const body = (await response.json()) as { ok: boolean; error: string }
+
+    expect(response.status).toBe(500)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("MISSING_WEBHOOK_SECRET")
+  })
+
   it("accepts valid payload, persists event, and enqueues event id", async () => {
     const { store, createCalls } = createMockStore()
     const enqueuedEventIds: string[] = []
@@ -391,6 +413,46 @@ describe("createGithubWebhookHandler", () => {
     expect(body.eventId).toBe("event_existing")
     expect(createCalls.length).toBe(0)
     expect(enqueuedEventIds.length).toBe(0)
+  })
+
+  it("returns duplicate response when create races on unique delivery id", async () => {
+    const { store, seenDeliveries } = createMockStore()
+    const enqueuedEventIds: string[] = []
+    const handler = createGithubWebhookHandler({
+      webhookSecret: WEBHOOK_SECRET,
+      store: {
+        ...store,
+        async create(input) {
+          seenDeliveries.set(input.deliveryId as string, { id: "event_race" })
+          throw {
+            code: "P2002",
+          }
+        },
+      },
+      queue: {
+        async enqueueEventId(eventId) {
+          enqueuedEventIds.push(eventId)
+        },
+      },
+    })
+
+    const response = await handler(
+      createSignedRequest({
+        payload: JSON.stringify({ ref: "refs/heads/main" }),
+        deliveryId: "delivery_race",
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      duplicate: boolean
+      eventId?: string
+    }
+
+    expect(response.status).toBe(202)
+    expect(body.ok).toBe(true)
+    expect(body.duplicate).toBe(true)
+    expect(body.eventId).toBe("event_race")
+    expect(enqueuedEventIds).toEqual([])
   })
 })
 

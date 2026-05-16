@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {
-    root: '/home/jailuser/git'
-  }
+    root: '.',
+  },
 }
 
 export default nextConfig

@@ -79,6 +79,7 @@ type TenantInvitationsResponse = {
 type OrganizationProfile = {
   id: string
   name: string
+  metadata: Record<string, string>
   allowProfilesOutsideOrganization: boolean
   createdAt: string
   updatedAt: string
@@ -840,6 +841,8 @@ export function OrganizationAdminSurface({
                     const deleted = await runAction("delete-organization", {
                       path: `/api/tenants/${organizationId}/organization/delete`,
                       body: {
+                        confirmDeletion: true,
+                        confirmOrganizationId: organizationId,
                         confirmOrganizationName: deleteConfirmation,
                       },
                       successMessage:

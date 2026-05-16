@@ -1,0 +1,496 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { Elysia } from "elysia"
+
+type MockActor = {
+  userId: string
+  organizationId: string
+  platformRole: "none" | "super_admin"
+  tenantRole: "owner" | "admin" | "member" | null
+}
+
+let actorContext: MockActor
+
+const mockRequireTenantActor = mock(
+  async (...args: unknown[]) => {
+    void args
+    return actorContext
+  }
+)
+
+const mockEnsureTenantContextAccess = mock(() => true)
+
+const mockGetTenantOrganizationById = mock(async () => ({
+  id: "org_123",
+  name: "Acme Org",
+  allowProfilesOutsideOrganization: false,
+  createdAt: "2026-05-17T00:00:00.000Z",
+  updatedAt: "2026-05-17T00:00:00.000Z",
+}))
+
+const mockDeleteTenantOrganization = mock(async () => {})
+const mockUpdateTenantOrganization = mock(async () => ({
+  id: "org_123",
+  name: "Acme Org",
+  allowProfilesOutsideOrganization: false,
+  createdAt: "2026-05-17T00:00:00.000Z",
+  updatedAt: "2026-05-17T00:00:00.000Z",
+}))
+type MockOrganization = {
+  id: string
+  name: string
+  metadata: Record<string, string>
+  allowProfilesOutsideOrganization: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+const createOrganization = (): MockOrganization => ({
+  id: "org_1",
+  name: "Acme Co",
+  metadata: {
+    region: "APAC",
+  },
+  allowProfilesOutsideOrganization: false,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-02T00:00:00.000Z",
+})
+
+const mockRequireTenantActor = mock(async () => ({
+  userId: "user_1",
+  organizationId: "org_1",
+  platformRole: "none" as const,
+  tenantRole: "owner" as const,
+}))
+
+const mockEnsureTenantContextAccess = mock(() => true)
+const mockCanManageTenant = mock(() => true)
+const mockCanTransferOwnership = mock(() => true)
+
+const mockGetTenantOrganizationById = mock(
+  async (): Promise<MockOrganization | null> => createOrganization()
+)
+
+const mockUpdateTenantOrganization = mock(async (params: unknown) => {
+  const payload = params as {
+    organizationId: string
+    name?: string
+    metadata?: Record<string, string>
+  }
+
+  return {
+    id: payload.organizationId,
+    name: payload.name ?? "Acme Co",
+    metadata: payload.metadata ?? {},
+    allowProfilesOutsideOrganization: false,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-03T00:00:00.000Z",
+  }
+})
+
+const mockDeleteTenantOrganization = mock(async () => {})
+
+class MockNotFoundException extends Error {}
+class MockUnprocessableEntityException extends Error {}
+
+mock.module("@/modules/tenants/api/tenants.guards", () => {
+  return {
+    requireTenantActor: mockRequireTenantActor,
+    ensureTenantContextAccess: mockEnsureTenantContextAccess,
+  }
+})
+
+mock.module("@/modules/tenants/services/tenant-workos.service", () => {
+  return {
+    getTenantOrganizationById: mockGetTenantOrganizationById,
+    deleteTenantOrganization: mockDeleteTenantOrganization,
+    updateTenantOrganization: mockUpdateTenantOrganization,
+  }
+})
+
+const loadApp = async () => {
+    updateTenantOrganization: mockUpdateTenantOrganization,
+    deleteTenantOrganization: mockDeleteTenantOrganization,
+  }
+})
+
+mock.module("@/modules/tenants/tenant-policy", () => {
+  return {
+    canManageTenant: mockCanManageTenant,
+    canTransferOwnership: mockCanTransferOwnership,
+  }
+})
+
+mock.module("@workos-inc/node", () => {
+  return {
+    NotFoundException: MockNotFoundException,
+    UnprocessableEntityException: MockUnprocessableEntityException,
+  }
+})
+
+const createApp = async () => {
+  const { tenantsOrganizationRoutes } = await import(
+    "@/modules/tenants/api/routes/tenants-organization.route"
+  )
+
+  return new Elysia().use(tenantsOrganizationRoutes)
+}
+
+describe("tenantsOrganizationRoutes", () => {
+  beforeEach(() => {
+    actorContext = {
+      userId: "user_owner",
+      organizationId: "org_123",
+      platformRole: "none",
+      tenantRole: "owner",
+    }
+
+    mockRequireTenantActor.mockClear()
+    mockEnsureTenantContextAccess.mockClear()
+    mockGetTenantOrganizationById.mockClear()
+    mockDeleteTenantOrganization.mockClear()
+    mockUpdateTenantOrganization.mockClear()
+
+    mockRequireTenantActor.mockImplementation(
+      async (...args: unknown[]) => {
+        void args
+        return actorContext
+      }
+    )
+    mockEnsureTenantContextAccess.mockImplementation(() => true)
+    mockGetTenantOrganizationById.mockImplementation(async () => ({
+      id: "org_123",
+      name: "Acme Org",
+      allowProfilesOutsideOrganization: false,
+      createdAt: "2026-05-17T00:00:00.000Z",
+      updatedAt: "2026-05-17T00:00:00.000Z",
+    }))
+  })
+
+  it("blocks deletion when confirmation text does not match organization name", async () => {
+    const app = await loadApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_123/organization/delete", {
+    mockRequireTenantActor.mockClear()
+    mockEnsureTenantContextAccess.mockClear()
+    mockCanManageTenant.mockClear()
+    mockCanTransferOwnership.mockClear()
+    mockGetTenantOrganizationById.mockClear()
+    mockUpdateTenantOrganization.mockClear()
+    mockDeleteTenantOrganization.mockClear()
+
+    mockRequireTenantActor.mockImplementation(async () => ({
+      userId: "user_1",
+      organizationId: "org_1",
+      platformRole: "none",
+      tenantRole: "owner",
+    }))
+    mockEnsureTenantContextAccess.mockImplementation(() => true)
+    mockCanManageTenant.mockImplementation(() => true)
+    mockCanTransferOwnership.mockImplementation(() => true)
+    mockGetTenantOrganizationById.mockImplementation(async () =>
+      createOrganization()
+    )
+    mockUpdateTenantOrganization.mockImplementation(async (params: unknown) => {
+      const payload = params as {
+        organizationId: string
+        name?: string
+        metadata?: Record<string, string>
+      }
+
+      return {
+        id: payload.organizationId,
+        name: payload.name ?? "Acme Co",
+        metadata: payload.metadata ?? {},
+        allowProfilesOutsideOrganization: false,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-03T00:00:00.000Z",
+      }
+    })
+    mockDeleteTenantOrganization.mockImplementation(async () => {})
+  })
+
+  it("returns organization details for authorized tenant managers", async () => {
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization")
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      orgId: string
+      organization: { id: string; metadata: Record<string, unknown> }
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(body.orgId).toBe("org_1")
+    expect(body.organization.id).toBe("org_1")
+    expect(body.organization.metadata.region).toBe("APAC")
+  })
+
+  it("returns 403 when actor cannot manage organization settings", async () => {
+    mockCanManageTenant.mockImplementation(() => false)
+
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization")
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      policyCode: string
+    }
+
+    expect(response.status).toBe(403)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("FORBIDDEN")
+    expect(body.policyCode).toBe("TENANT_MANAGE_REQUIRED")
+  })
+
+  it("updates organization name and metadata", async () => {
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmOrganizationName: "Acme",
+          name: "  Acme Labs  ",
+          metadata: {
+            region: "EMEA",
+            tier: "enterprise",
+          },
+        }),
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+    }
+
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_DELETE_CONFIRMATION_MISMATCH")
+    expect(mockDeleteTenantOrganization).not.toHaveBeenCalled()
+  })
+
+  it("deletes organization after owner confirmation", async () => {
+    const app = await loadApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_123/organization/delete", {
+      organization: { name: string; metadata: Record<string, unknown> }
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(mockUpdateTenantOrganization).toHaveBeenCalledWith({
+      organizationId: "org_1",
+      name: "Acme Labs",
+      metadata: {
+        region: "EMEA",
+        tier: "enterprise",
+      },
+    })
+    expect(body.organization.name).toBe("Acme Labs")
+  })
+
+  it("returns 422 when update payload has no editable fields", async () => {
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      })
+    )
+
+    expect(response.status).toBe(422)
+  })
+
+  it("returns 422 when organization update is rejected", async () => {
+    mockUpdateTenantOrganization.mockImplementation(async () => {
+      throw new MockUnprocessableEntityException("invalid metadata field")
+    })
+
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmOrganizationName: "Acme Org",
+          name: "Acme Labs",
+        }),
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      organizationDeleted: boolean
+      organizationId: string
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(body.organizationDeleted).toBe(true)
+    expect(body.organizationId).toBe("org_123")
+    expect(mockDeleteTenantOrganization).toHaveBeenCalledTimes(1)
+    expect(mockDeleteTenantOrganization).toHaveBeenCalledWith("org_123")
+  })
+
+  it("rejects deletion for admin role", async () => {
+    const app = await loadApp()
+
+    actorContext = {
+      userId: "user_admin",
+      organizationId: "org_123",
+      platformRole: "none",
+      tenantRole: "admin",
+    }
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_123/organization/delete", {
+      error: string
+      message: string
+    }
+
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_UPDATE_INVALID")
+    expect(body.message).toBe("invalid metadata field")
+  })
+
+  it("blocks delete endpoint for non-owner and non-super-admin actors", async () => {
+    mockCanTransferOwnership.mockImplementation(() => false)
+
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmOrganizationName: "Acme Org",
+          confirmDeletion: true,
+          confirmOrganizationId: "org_1",
+          confirmOrganizationName: "Acme Co",
+        }),
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      policyCode?: string
+      policyCode: string
+    }
+
+    expect(response.status).toBe(403)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("FORBIDDEN")
+    expect(body.policyCode).toBe("ORGANIZATION_DELETE_FORBIDDEN")
+    expect(mockDeleteTenantOrganization).not.toHaveBeenCalled()
+  })
+  })
+
+  it("returns 422 when delete confirmation does not match organization id", async () => {
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmDeletion: true,
+          confirmOrganizationId: "org_2",
+          confirmOrganizationName: "Acme Co",
+        }),
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+    }
+
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_DELETE_CONFIRMATION_MISMATCH")
+    expect(mockDeleteTenantOrganization).not.toHaveBeenCalled()
+  })
+
+  it("returns 404 when organization does not exist before deletion", async () => {
+    mockGetTenantOrganizationById.mockImplementation(async () => null)
+
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmDeletion: true,
+          confirmOrganizationId: "org_1",
+          confirmOrganizationName: "Acme Co",
+        }),
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+
+    expect(response.status).toBe(404)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("NOT_FOUND")
+    expect(body.message).toBe("Organization not found.")
+  })
+
+  it("returns 500 when organization deletion fails unexpectedly", async () => {
+    mockDeleteTenantOrganization.mockImplementation(async () => {
+      throw new Error("upstream unavailable")
+    })
+
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirmDeletion: true,
+          confirmOrganizationId: "org_1",
+          confirmOrganizationName: "Acme Co",
+        }),
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+
+    expect(response.status).toBe(500)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_DELETE_FAILED")
+    expect(body.message).toBe("Unable to delete organization right now.")
+  })
+})

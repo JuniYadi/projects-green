@@ -25,6 +25,7 @@ import {
   MapTrifoldIcon,
   PaperPlaneTiltIcon,
   RocketLaunchIcon,
+  UsersThreeIcon,
 } from "@phosphor-icons/react"
 
 const startsWithRoute = (pathname: string, route: string) =>
@@ -51,7 +52,7 @@ export function AppSidebar({ user, organization, ...props }: AppSidebarProps) {
 
   const navMain = [
     {
-      title: "Dashboard",
+      title: "Console",
       url: "/console",
       icon: <GaugeIcon />,
       isActive: startsWithRoute(pathname, "/console"),
@@ -67,20 +68,20 @@ export function AppSidebar({ user, organization, ...props }: AppSidebarProps) {
           isActive: startsWithRoute(pathname, "/console/app/deploy"),
         },
         {
-          title: "Organization",
+          title: "Tenant Management",
           url: "/console/organization",
           isActive: startsWithRoute(pathname, "/console/organization"),
         },
       ],
     },
     {
-      title: "Portal",
+      title: "Documentation",
       url: "/portal/documentations",
       icon: <BookOpenIcon />,
-      isActive: startsWithRoute(pathname, "/portal"),
+      isActive: startsWithRoute(pathname, "/portal/documentations"),
       items: [
         {
-          title: "Documentations",
+          title: "Registry",
           url: "/portal/documentations",
           isActive: startsWithRoute(pathname, "/portal/documentations"),
         },
@@ -106,6 +107,11 @@ export function AppSidebar({ user, organization, ...props }: AppSidebarProps) {
       name: "Deployments",
       url: "/console/app/deploy",
       icon: <RocketLaunchIcon />,
+    },
+    {
+      name: "Tenant Management",
+      url: "/console/organization",
+      icon: <UsersThreeIcon />,
     },
     {
       name: "Documentation",
