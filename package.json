@@ -15,6 +15,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:studio": "prisma studio",
+    "github:worker": "bun run scripts/github-worker.ts",
     "grant:super-admin": "node scripts/grant-super-admin.mjs",
     "seed:workos-roles": "node scripts/seed-workos-roles.mjs"
   },

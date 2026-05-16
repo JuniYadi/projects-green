@@ -203,7 +203,7 @@ describe("githubRoutes", () => {
     expect(body.error).toBe("INVALID_CURSOR")
   })
 
-  it("returns not implemented when webhook feature is enabled", async () => {
+  it("returns 400 when webhook headers are missing", async () => {
     const service: GithubService = {
       getFeatureStatus: () => ({
         feature: "github_app_integration",
@@ -230,8 +230,8 @@ describe("githubRoutes", () => {
       error: string
     }
 
-    expect(response.status).toBe(501)
+    expect(response.status).toBe(400)
     expect(body.ok).toBe(false)
-    expect(body.error).toBe("NOT_IMPLEMENTED")
+    expect(body.error).toBe("INVALID_HEADERS")
   })
 })
