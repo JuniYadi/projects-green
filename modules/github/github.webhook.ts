@@ -241,15 +241,34 @@ export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
         ? payload.action
         : null
 
-    const event = await deps.store.create({
-      deliveryId,
-      eventName,
-      action,
-      githubInstallationId: toNullableBigInt(installation?.id),
-      githubRepositoryId: toNullableBigInt(repository?.id),
-      payloadJson: payload,
-      payloadSha256: createHash("sha256").update(rawBody).digest("hex"),
-    })
+    let event!: GithubWebhookRecord
+    try {
+      event = await deps.store.create({
+        deliveryId,
+        eventName,
+        action,
+        githubInstallationId: toNullableBigInt(installation?.id),
+        githubRepositoryId: toNullableBigInt(repository?.id),
+        payloadJson: payload,
+        payloadSha256: createHash("sha256").update(rawBody).digest("hex"),
+      })
+    } catch (error) {
+      // Handle race condition: another request created the event between our check and create
+      if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+        const existingEventAfterRace = await deps.store.findByDeliveryId(deliveryId)
+
+        return Response.json(
+          {
+            ok: true as const,
+            duplicate: true as const,
+            eventId: existingEventAfterRace?.id,
+          },
+          { status: 202 }
+        )
+      }
+
+      throw error
+    }
 
     try {
       await deps.queue.enqueueEventId(event.id)
