@@ -8,6 +8,6 @@ describe("ConsolePage", () => {
     const view = render(<ConsolePage />)
 
     expect(view.container.querySelectorAll(".aspect-video").length).toBe(3)
-    expect(view.container.querySelectorAll(".bg-muted\/50").length).toBe(4)
+    expect(view.container.querySelectorAll('[class~="bg-muted/50"]').length).toBe(4)
   })
 })
