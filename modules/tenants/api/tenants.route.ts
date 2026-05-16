@@ -189,6 +189,15 @@ const toUnauthorizedError = (set: RouteSet) => {
   }
 }
 
+const toNotFoundError = (set: RouteSet, message: string) => {
+  set.status = 404
+  return {
+    ok: false as const,
+    error: "NOT_FOUND" as const,
+    message,
+  }
+}
+
 const getActorContext = async () => {
   const auth = await withAuth()
 
@@ -263,22 +272,46 @@ const listTenantMemberships = async (organizationId: string) => {
 }
 
 const getMembershipById = async (membershipId: string) => {
-  const membership =
-    await getWorkOS().userManagement.getOrganizationMembership(membershipId)
+  try {
+    const membership =
+      await getWorkOS().userManagement.getOrganizationMembership(membershipId)
 
-  return toMembershipSummary(membership)
+    return toMembershipSummary(membership)
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      return null
+    }
+
+    throw error
+  }
 }
 
 const getInvitationById = async (invitationId: string) => {
-  const invitation =
-    await getWorkOS().userManagement.getInvitation(invitationId)
-  return toInvitationSummary(invitation)
+  try {
+    const invitation =
+      await getWorkOS().userManagement.getInvitation(invitationId)
+    return toInvitationSummary(invitation)
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      return null
+    }
+
+    throw error
+  }
 }
 
 const getOrganizationById = async (organizationId: string) => {
-  const organization =
-    await getWorkOS().organizations.getOrganization(organizationId)
-  return toOrganizationSummary(organization)
+  try {
+    const organization =
+      await getWorkOS().organizations.getOrganization(organizationId)
+    return toOrganizationSummary(organization)
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      return null
+    }
+
+    throw error
+  }
 }
 
 const listMembershipsForUser = async (userId: string) => {
@@ -521,6 +554,9 @@ export const tenantsRoutes = new Elysia()
     }
 
     const targetMembership = await getMembershipById(params.memberId)
+    if (!targetMembership) {
+      return toNotFoundError(set, "Membership not found.")
+    }
 
     if (targetMembership.organizationId !== params.orgId) {
       return toPolicyError(
@@ -690,6 +726,9 @@ export const tenantsRoutes = new Elysia()
       }
 
       const invitation = await getInvitationById(params.invitationId)
+      if (!invitation) {
+        return toNotFoundError(set, "Invitation not found.")
+      }
       const invitationRole = normalizeTenantRole(invitation.roleSlug)
 
       if (invitation.organizationId !== params.orgId) {
@@ -757,6 +796,9 @@ export const tenantsRoutes = new Elysia()
       }
 
       const invitation = await getInvitationById(params.invitationId)
+      if (!invitation) {
+        return toNotFoundError(set, "Invitation not found.")
+      }
       const invitationRole = normalizeTenantRole(invitation.roleSlug)
 
       if (invitation.organizationId !== params.orgId) {
@@ -819,6 +861,9 @@ export const tenantsRoutes = new Elysia()
     }
 
     const organization = await getOrganizationById(params.orgId)
+    if (!organization) {
+      return toNotFoundError(set, "Organization not found.")
+    }
 
     return {
       ok: true as const,
@@ -931,6 +976,9 @@ export const tenantsRoutes = new Elysia()
       }
 
       const organization = await getOrganizationById(params.orgId)
+      if (!organization) {
+        return toNotFoundError(set, "Organization not found.")
+      }
       const expectedName = organization.name.trim()
 
       if (body.confirmOrganizationName.trim() !== expectedName) {
@@ -974,6 +1022,9 @@ export const tenantsRoutes = new Elysia()
       }
 
       const targetMembership = await getMembershipById(params.memberId)
+      if (!targetMembership) {
+        return toNotFoundError(set, "Membership not found.")
+      }
 
       if (targetMembership.organizationId !== params.orgId) {
         return toPolicyError(
@@ -1041,6 +1092,9 @@ export const tenantsRoutes = new Elysia()
     }
 
     const targetMembership = await getMembershipById(params.memberId)
+    if (!targetMembership) {
+      return toNotFoundError(set, "Membership not found.")
+    }
 
     if (targetMembership.organizationId !== params.orgId) {
       return toPolicyError(
@@ -1143,6 +1197,9 @@ export const tenantsRoutes = new Elysia()
       const targetMembership = await getMembershipById(
         body.newOwnerMembershipId
       )
+      if (!targetMembership) {
+        return toNotFoundError(set, "Membership not found.")
+      }
 
       if (targetMembership.organizationId !== params.orgId) {
         return toPolicyError(

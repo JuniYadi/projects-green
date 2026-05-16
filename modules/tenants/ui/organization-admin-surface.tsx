@@ -232,27 +232,32 @@ export function OrganizationAdminSurface({
       setError(null)
 
       try {
-        const [authPayload, membersPayload, invitationsPayload, orgPayload] =
-          await Promise.all([
-            fetchJson<TenantAuthorizationResponse>(
-              `/api/tenants/${organizationId}/authorization`
-            ),
-            fetchJson<TenantMembersResponse>(
-              `/api/tenants/${organizationId}/members`
-            ),
-            fetchJson<TenantInvitationsResponse>(
-              `/api/tenants/${organizationId}/invitations`
-            ),
-            fetchJson<TenantOrganizationResponse>(
-              `/api/tenants/${organizationId}/organization`
-            ),
-          ])
+        const authPayload = await fetchJson<TenantAuthorizationResponse>(
+          `/api/tenants/${organizationId}/authorization`
+        )
+
+        const hasManageTenant =
+          authPayload.allowedActions.includes("manage_tenant")
+
+        const [membersPayload, invitationsPayload, orgPayload] = hasManageTenant
+          ? await Promise.all([
+              fetchJson<TenantMembersResponse>(
+                `/api/tenants/${organizationId}/members`
+              ),
+              fetchJson<TenantInvitationsResponse>(
+                `/api/tenants/${organizationId}/invitations`
+              ),
+              fetchJson<TenantOrganizationResponse>(
+                `/api/tenants/${organizationId}/organization`
+              ),
+            ])
+          : [null, null, null]
 
         setAuthorization(authPayload)
-        setMembers(membersPayload.members)
-        setInvitations(invitationsPayload.invitations)
-        setOrganization(orgPayload.organization)
-        setOrganizationNameDraft(orgPayload.organization.name)
+        setMembers(membersPayload?.members ?? [])
+        setInvitations(invitationsPayload?.invitations ?? [])
+        setOrganization(orgPayload?.organization ?? null)
+        setOrganizationNameDraft(orgPayload?.organization.name ?? "")
       } catch (loadError) {
         setError(
           loadError instanceof Error
