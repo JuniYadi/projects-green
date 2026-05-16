@@ -37,8 +37,21 @@ const parseRedisDb = (pathname: string) => {
     return 0
   }
 
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error(
+      `Invalid REDIS_URL database path: "${pathname}". Expected empty path or numeric DB index.`
+    )
+  }
+
   const value = Number.parseInt(trimmed, 10)
-  return Number.isNaN(value) ? 0 : value
+
+  if (Number.isNaN(value) || value < 0) {
+    throw new Error(
+      `Invalid REDIS_URL database path: "${pathname}". Expected empty path or non-negative DB index.`
+    )
+  }
+
+  return value
 }
 
 export const getGithubEventsRedisConnection = (): RedisOptions => {

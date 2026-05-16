@@ -52,10 +52,23 @@ worker.on("failed", (job, error) => {
   )
 })
 
+let shuttingDown = false
+
 const shutdown = async (signal: string) => {
+  if (shuttingDown) {
+    return
+  }
+
+  shuttingDown = true
   console.info(`[github-worker] received ${signal}, shutting down`)
-  await worker.close()
-  process.exit(0)
+
+  try {
+    await worker.close()
+    process.exit(0)
+  } catch (error) {
+    console.error("[github-worker] shutdown failed while closing worker", error)
+    process.exit(1)
+  }
 }
 
 process.on("SIGTERM", () => {

@@ -1,7 +1,8 @@
-import { describe, expect, it, mock } from "bun:test"
+import { afterEach, describe, expect, it, mock } from "bun:test"
 
 import {
   createGithubWebhookHandler,
+  enqueueGithubWebhookEvent,
   evaluatePushRules,
   extractBranchFromRef,
   processGithubWebhookEvent,
@@ -573,5 +574,74 @@ describe("github worker retry behavior", () => {
     expect(harness.getEvent().processStatus).toBe("dead_lettered")
     expect(harness.getEvent().enqueueStatus).toBe("dead_lettered")
     expect(harness.getEvent().processError).toContain("delivery_2:push")
+  })
+})
+
+describe("enqueueGithubWebhookEvent", () => {
+  const originalWebhookSecret = process.env.GITHUB_WEBHOOK_SECRET
+
+  afterEach(() => {
+    if (originalWebhookSecret === undefined) {
+      delete process.env.GITHUB_WEBHOOK_SECRET
+      return
+    }
+
+    process.env.GITHUB_WEBHOOK_SECRET = originalWebhookSecret
+  })
+
+  it("handles unique-constraint race as deduplicated acceptance", async () => {
+    process.env.GITHUB_WEBHOOK_SECRET = WEBHOOK_SECRET
+    const rawBody = JSON.stringify({
+      ref: "refs/heads/main",
+      installation: { id: 1 },
+      repository: { id: 2 },
+    })
+    const signature = signGithubWebhookBody(rawBody, WEBHOOK_SECRET)
+
+    const prismaClient = {
+      githubWebhookEvent: {
+        findUnique: mock(async ({ where }: { where: { deliveryId?: string } }) => {
+          if (where.deliveryId === "delivery_race") {
+            return { id: "event_existing" }
+          }
+
+          return null
+        }),
+        create: mock(async () => {
+          const error = new Error("Unique conflict") as Error & { code: string }
+          error.code = "P2002"
+          throw error
+        }),
+        update: mock(async () => null),
+        updateMany: mock(async () => ({ count: 0 })),
+      },
+      githubRepositoryConnection: {
+        findFirst: mock(async () => null),
+      },
+    }
+
+    const queue = {
+      enqueue: mock(async () => {}),
+      close: mock(async () => {}),
+    }
+
+    const result = await enqueueGithubWebhookEvent({
+      eventName: "push",
+      deliveryId: "delivery_race",
+      signature,
+      rawBody,
+      prismaClient: prismaClient as Parameters<
+        typeof enqueueGithubWebhookEvent
+      >[0]["prismaClient"],
+      queue,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      status: 202,
+      deduplicated: true,
+      eventId: "event_existing",
+    })
+    expect(queue.enqueue).toHaveBeenCalledTimes(0)
   })
 })

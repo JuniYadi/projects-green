@@ -201,6 +201,15 @@ const toErrorMessage = (error: unknown) => {
   return "Unknown processing error"
 }
 
+const isUniqueConstraintError = (error: unknown) => {
+  return (
+    Boolean(error) &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "P2002"
+  )
+}
+
 const hashPayload = (rawBody: string) => {
   return createHash("sha256").update(rawBody).digest("hex")
 }
@@ -465,7 +474,7 @@ export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
         payloadSha256: hashPayload(rawBody),
       })
     } catch (error) {
-      if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
+      if (isUniqueConstraintError(error)) {
         const existingEventAfterRace = await deps.store.findByDeliveryId(deliveryId)
 
         return Response.json(
@@ -564,22 +573,47 @@ export const enqueueGithubWebhookEvent = async ({
   const installationId = payload.installation?.id
   const repositoryId = payload.repository?.id
 
-  const created = await dbClient.githubWebhookEvent.create({
-    data: {
-      deliveryId,
-      eventName,
-      action: payload.action ?? null,
-      githubInstallationId:
-        typeof installationId === "number" ? BigInt(installationId) : null,
-      githubRepositoryId:
-        typeof repositoryId === "number" ? BigInt(repositoryId) : null,
-      payloadJson: payload,
-      payloadSha256: hashPayload(rawBody),
-      signatureValid: true,
-      enqueueStatus: "queued",
-      processStatus: "pending",
-    },
-  })
+  let created: GithubWebhookEventRecord
+
+  try {
+    created = await dbClient.githubWebhookEvent.create({
+      data: {
+        deliveryId,
+        eventName,
+        action: payload.action ?? null,
+        githubInstallationId:
+          typeof installationId === "number" ? BigInt(installationId) : null,
+        githubRepositoryId:
+          typeof repositoryId === "number" ? BigInt(repositoryId) : null,
+        payloadJson: payload,
+        payloadSha256: hashPayload(rawBody),
+        signatureValid: true,
+        enqueueStatus: "queued",
+        processStatus: "pending",
+      },
+    })
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error
+    }
+
+    const existing = await dbClient.githubWebhookEvent.findUnique({
+      where: {
+        deliveryId,
+      },
+    })
+
+    if (!existing) {
+      throw error
+    }
+
+    return {
+      ok: true as const,
+      status: 202,
+      deduplicated: true,
+      eventId: existing.id,
+    }
+  }
 
   const enqueueClient = queue ?? getSharedQueue()
 
