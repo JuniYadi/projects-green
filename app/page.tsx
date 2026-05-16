@@ -22,7 +22,6 @@ export default async function Page() {
 
         <p>
           {data.ok ? "API is healthy and ready to use!" : "API is not healthy. Please check your server."}
-          {data.data.clone_url && <p>Clone URL: {data.data.clone_url}</p>}
         </p>
       </div>
     </div>
