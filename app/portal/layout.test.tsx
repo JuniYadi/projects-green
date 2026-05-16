@@ -1,7 +1,18 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
 
-const mockWithAuth = mock(async () => ({
+type MockAuthPayload = {
+  user: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    profilePictureUrl: string | null
+  }
+  organizationId: string | undefined
+}
+
+const mockWithAuth = mock(async (): Promise<MockAuthPayload> => ({
   user: {
     id: "user_123",
     firstName: "Jane",
@@ -46,6 +57,13 @@ mock.module("@workos-inc/authkit-nextjs", () => {
 mock.module("next/navigation", () => {
   return {
     redirect: mockRedirect,
+    usePathname: () => "/portal",
+    useSearchParams: () => new URLSearchParams(),
+    useRouter: () => ({
+      replace: () => {},
+      push: () => {},
+      refresh: () => {},
+    }),
   }
 })
 
@@ -90,12 +108,6 @@ mock.module("@/components/ui/breadcrumb", () => {
     BreadcrumbPage: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
     ),
-  }
-})
-
-mock.module("@/components/ui/separator", () => {
-  return {
-    Separator: () => <hr />,
   }
 })
 
