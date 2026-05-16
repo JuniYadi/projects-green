@@ -1,4 +1,4 @@
-import { createPrivateKey, sign } from "node:crypto"
+import { createPrivateKey, createSign, sign } from "node:crypto"
 
 import {
   FEATURE_FLAG_KEYS,
@@ -6,17 +6,46 @@ import {
   type FeatureFlagName,
 } from "@/lib/feature-flags"
 import type {
+  GithubActorContext,
   GithubAppInstallation,
+  GithubInstallationRecord,
   GithubInstallationRepositoriesResponse,
   GithubInstallationRepository,
+  GithubRepositoryListItem,
+  GithubRepositoryListQuery,
+  GithubRepositoryListResult,
+  GithubRepositoryService,
 } from "@/modules/github/github.types"
 
 const GITHUB_API_BASE_URL = "https://api.github.com"
+const DEFAULT_LIMIT = 20
+const MAX_LIMIT = 100
 
 export class GithubIntegrationDisabledError extends Error {
   constructor() {
     super("GitHub App integration is disabled.")
     this.name = "GithubIntegrationDisabledError"
+  }
+}
+
+export class GithubCursorError extends Error {
+  constructor() {
+    super("Invalid cursor value.")
+    this.name = "GithubCursorError"
+  }
+}
+
+export class GithubConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "GithubConfigurationError"
+  }
+}
+
+export class GithubApiError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "GithubApiError"
   }
 }
 
@@ -26,31 +55,41 @@ export type GithubFeatureStatus = {
   enabled: boolean
 }
 
-export type GithubService = {
+export type GithubService = GithubRepositoryService & {
   getFeatureStatus: () => GithubFeatureStatus
   assertEnabled: () => void
 }
 
-export const createGithubService = (): GithubService => {
-  const feature: FeatureFlagName = "github_app_integration"
+type GithubDependencies = {
+  listActiveInstallations: (
+    actor: GithubActorContext
+  ) => Promise<GithubInstallationRecord[]>
+  createInstallationAccessToken: (installationId: number) => Promise<string>
+  listRepositoriesForInstallation: (
+    installation: GithubInstallationRecord,
+    token: string
+  ) => Promise<GithubRepositoryListItem[]>
+}
 
-  return {
-    getFeatureStatus() {
-      return {
-        feature,
-        envKey: FEATURE_FLAG_KEYS[feature],
-        enabled: isFeatureEnabled(feature),
-      }
-    },
-    assertEnabled() {
-      if (!isFeatureEnabled(feature)) {
-        throw new GithubIntegrationDisabledError()
-      }
-    },
+type CursorPayload = {
+  offset: number
+}
+
+type GithubApiRepository = {
+  id: number
+  full_name: string
+  name: string
+  private: boolean
+  default_branch: string | null
+  pushed_at: string | null
+  owner?: {
+    login?: string
   }
 }
 
-export const githubService = createGithubService()
+type GithubAppAccessTokenResponse = {
+  token?: string
+}
 
 type GithubInstallationStore = {
   upsert: (args: {
@@ -133,7 +172,7 @@ const getRequiredEnv = (name: string) => {
   const value = process.env[name]?.trim()
 
   if (!value) {
-    throw new Error(`Missing ${name} environment variable`)
+    throw new GithubConfigurationError(`Missing ${name} environment variable`)
   }
 
   return value
@@ -145,6 +184,26 @@ const toBase64Url = (input: string | Buffer) => {
     .replace(/=/g, "")
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
+}
+
+const toBase64UrlJson = (payload: CursorPayload) => {
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url")
+}
+
+const fromBase64UrlJson = (cursor: string): CursorPayload => {
+  try {
+    const decoded = Buffer.from(cursor, "base64url").toString("utf8")
+    const parsed = JSON.parse(decoded) as { offset?: unknown }
+    const offset = parsed.offset
+
+    if (typeof offset !== "number" || !Number.isInteger(offset) || offset < 0) {
+      throw new Error("Invalid offset")
+    }
+
+    return { offset }
+  } catch {
+    throw new GithubCursorError()
+  }
 }
 
 const createGithubAppJwt = ({
@@ -221,6 +280,383 @@ const githubRequest = async <T>({
   return (await response.json()) as T
 }
 
+const fetchJson = async <T>(
+  url: string,
+  init: RequestInit,
+  errorPrefix: string
+): Promise<{ body: T; response: Response }> => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new GithubApiError(
+        `${errorPrefix} GitHub API returned ${response.status}.`
+      )
+    }
+
+    const body = (await response.json()) as T
+
+    return { body, response }
+  } catch (error) {
+    clearTimeout(timeoutId)
+
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new GithubApiError(`${errorPrefix} Request timed out.`)
+    }
+
+    throw error
+  }
+}
+
+const parseLinkHeader = (headerValue: string | null) => {
+  if (!headerValue) {
+    return null
+  }
+
+  const links = headerValue.split(",").map((part) => part.trim())
+  const nextLink = links.find((part) => part.includes('rel="next"'))
+
+  if (!nextLink) {
+    return null
+  }
+
+  const match = nextLink.match(/<([^>]+)>/)
+  return match?.[1] ?? null
+}
+
+const toInstallationId = (value: number | bigint | string) => {
+  const numericValue =
+    typeof value === "bigint" ? Number(value) : Number(String(value))
+
+  if (!Number.isInteger(numericValue) || numericValue <= 0) {
+    throw new GithubApiError("Invalid GitHub installation id.")
+  }
+
+  return numericValue
+}
+
+const normalizeLimit = (value: number | undefined) => {
+  if (!Number.isFinite(value) || !value || value <= 0) {
+    return DEFAULT_LIMIT
+  }
+
+  return Math.min(Math.floor(value), MAX_LIMIT)
+}
+
+const resolveOffset = (cursor: string | undefined) => {
+  if (!cursor) {
+    return 0
+  }
+
+  const trimmed = cursor.trim()
+
+  if (!trimmed) {
+    return 0
+  }
+
+  if (/^\d+$/.test(trimmed)) {
+    return Number(trimmed)
+  }
+
+  return fromBase64UrlJson(trimmed).offset
+}
+
+const normalizeOwnerFilter = (value: string | undefined) => {
+  return value?.trim().toLowerCase() ?? ""
+}
+
+const normalizeQueryFilter = (value: string | undefined) => {
+  return value?.trim().toLowerCase() ?? ""
+}
+
+const comparePushedAtDesc = (
+  left: GithubRepositoryListItem,
+  right: GithubRepositoryListItem
+) => {
+  if (!left.pushedAt && !right.pushedAt) {
+    return left.fullName.localeCompare(right.fullName)
+  }
+
+  if (!left.pushedAt) {
+    return 1
+  }
+
+  if (!right.pushedAt) {
+    return -1
+  }
+
+  const leftTime = Date.parse(left.pushedAt)
+  const rightTime = Date.parse(right.pushedAt)
+
+  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+    return left.fullName.localeCompare(right.fullName)
+  }
+
+  if (leftTime === rightTime) {
+    return left.fullName.localeCompare(right.fullName)
+  }
+
+  return rightTime - leftTime
+}
+
+const filterRepositories = (
+  repositories: GithubRepositoryListItem[],
+  query: GithubRepositoryListQuery
+) => {
+  const ownerFilter = normalizeOwnerFilter(query.ownerId)
+  const searchFilter = normalizeQueryFilter(query.query)
+
+  return repositories.filter((repository) => {
+    if (ownerFilter) {
+      const ownerMatch =
+        repository.owner.toLowerCase() === ownerFilter ||
+        String(repository.installationId) === ownerFilter
+
+      if (!ownerMatch) {
+        return false
+      }
+    }
+
+    if (!searchFilter) {
+      return true
+    }
+
+    const haystacks = [
+      repository.fullName,
+      repository.name,
+      repository.owner,
+    ].map((value) => value.toLowerCase())
+
+    return haystacks.some((value) => value.includes(searchFilter))
+  })
+}
+
+const paginateRepositories = (
+  repositories: GithubRepositoryListItem[],
+  query: GithubRepositoryListQuery
+): GithubRepositoryListResult => {
+  const limit = normalizeLimit(query.limit)
+  const offset = resolveOffset(query.cursor)
+  const start = Math.max(0, offset)
+  const end = start + limit
+  const items = repositories.slice(start, end)
+
+  return {
+    items,
+    nextCursor:
+      end < repositories.length ? toBase64UrlJson({ offset: end }) : null,
+  }
+}
+
+const dedupeRepositories = (repositories: GithubRepositoryListItem[]) => {
+  const deduped = new Map<number, GithubRepositoryListItem>()
+
+  for (const repository of repositories) {
+    if (!deduped.has(repository.repositoryId)) {
+      deduped.set(repository.repositoryId, repository)
+    }
+  }
+
+  return Array.from(deduped.values())
+}
+
+const createInstallationToken = async (installationId: bigint | number) => {
+  const { appId, privateKeyPem } = getGithubAppAuth()
+  const appJwt = createGithubAppJwt({
+    appId,
+    privateKeyPem,
+  })
+
+  const result = await githubRequest<{ token: string }>({
+    path: `/app/installations/${installationId}/access_tokens`,
+    method: "POST",
+    token: appJwt,
+  })
+
+  return result.token
+}
+
+const createDefaultDependencies = (): GithubDependencies => ({
+  async listActiveInstallations(actor) {
+    const { prisma } = await import("@/lib/prisma")
+
+    const installations = await prisma.githubInstallation.findMany({
+      where: {
+        status: "active",
+        OR: [
+          {
+            workosUserId: actor.userId,
+          },
+          ...(actor.organizationId
+            ? [
+                {
+                  organizationId: actor.organizationId,
+                },
+              ]
+            : []),
+        ],
+      },
+      select: {
+        githubInstallationId: true,
+        accountLogin: true,
+        targetId: true,
+      },
+      orderBy: {
+        installedAt: "desc",
+      },
+    })
+
+    return installations.map((installation) => ({
+      githubInstallationId: toInstallationId(installation.githubInstallationId),
+      accountLogin: installation.accountLogin,
+      targetId:
+        installation.targetId === null ? null : Number(installation.targetId),
+    }))
+  },
+  async createInstallationAccessToken(installationId) {
+    try {
+      return await createInstallationToken(installationId)
+    } catch (error) {
+      if (error instanceof GithubConfigurationError) {
+        throw error
+      }
+      throw new GithubApiError("Unable to create installation access token.")
+    }
+  },
+  async listRepositoriesForInstallation(installation, token) {
+    const repositories: GithubRepositoryListItem[] = []
+    let nextUrl: string | null =
+      `${GITHUB_API_BASE_URL}/installation/repositories?per_page=100`
+
+    while (nextUrl) {
+      const { body, response } = await fetchJson<{
+        repositories?: GithubApiRepository[]
+      }>(
+        nextUrl,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        },
+        "Unable to list installation repositories."
+      )
+
+      const currentPage = body.repositories ?? []
+
+      repositories.push(
+        ...currentPage.map((repository) => ({
+          repositoryId: repository.id,
+          fullName: repository.full_name,
+          name: repository.name,
+          owner: repository.owner?.login ?? installation.accountLogin,
+          installationId: installation.githubInstallationId,
+          defaultBranch: repository.default_branch,
+          private: repository.private,
+          pushedAt: repository.pushed_at,
+        }))
+      )
+
+      nextUrl = parseLinkHeader(response.headers.get("link"))
+    }
+
+    return repositories
+  },
+})
+
+export const createGithubRepositoryService = (
+  dependencies: GithubDependencies = createDefaultDependencies()
+): GithubRepositoryService => ({
+  async listRepositoriesForActor(actor, query) {
+    const installations = await dependencies.listActiveInstallations(actor)
+
+    if (!installations.length) {
+      return {
+        items: [],
+        nextCursor: null,
+      }
+    }
+
+    const repositoriesByInstallation = await Promise.all(
+      installations.map(async (installation) => {
+        const token = await dependencies.createInstallationAccessToken(
+          installation.githubInstallationId
+        )
+
+        return dependencies.listRepositoriesForInstallation(installation, token)
+      })
+    )
+
+    const repositories = dedupeRepositories(repositoriesByInstallation.flat())
+      .sort(comparePushedAtDesc)
+      .filter((repository) => {
+        const ownerFilter = normalizeOwnerFilter(query.ownerId)
+
+        if (!ownerFilter) {
+          return true
+        }
+
+        const matchesOwner = repository.owner.toLowerCase() === ownerFilter
+        if (matchesOwner) {
+          return true
+        }
+
+        return installations.some((installation) => {
+          return (
+            installation.githubInstallationId === repository.installationId &&
+            (installation.accountLogin.toLowerCase() === ownerFilter ||
+              String(installation.targetId ?? "") === ownerFilter)
+          )
+        })
+      })
+
+    const filtered = filterRepositories(repositories, {
+      ...query,
+      ownerId: undefined,
+    })
+
+    return paginateRepositories(filtered, query)
+  },
+})
+
+export const githubRepositoryService = createGithubRepositoryService()
+
+export const createGithubService = (
+  repositoryService: GithubRepositoryService = githubRepositoryService
+): GithubService => {
+  const feature: FeatureFlagName = "github_app_integration"
+
+  return {
+    getFeatureStatus() {
+      return {
+        feature,
+        envKey: FEATURE_FLAG_KEYS[feature],
+        enabled: isFeatureEnabled(feature),
+      }
+    },
+    assertEnabled() {
+      if (!isFeatureEnabled(feature)) {
+        throw new GithubIntegrationDisabledError()
+      }
+    },
+    async listRepositoriesForActor(actor, query) {
+      return repositoryService.listRepositoriesForActor(actor, query)
+    },
+  }
+}
+
+export const githubService = createGithubService()
+
 export const getGithubInstallUrl = ({ state }: { state: string }) => {
   const appSlug = getRequiredEnv("GITHUB_APP_SLUG")
   const callbackUrl =
@@ -236,24 +672,6 @@ export const getGithubInstallUrl = ({ state }: { state: string }) => {
   }
 
   return installUrl.toString()
-}
-
-const createInstallationToken = async (installationId: bigint) => {
-  const { appId, privateKeyPem } = getGithubAppAuth()
-  const appJwt = createGithubAppJwt({
-    appId,
-    privateKeyPem,
-  })
-
-  const result = await githubRequest<{
-    token: string
-  }>({
-    path: `/app/installations/${installationId}/access_tokens`,
-    method: "POST",
-    token: appJwt,
-  })
-
-  return result.token
 }
 
 export const fetchGithubInstallationDetails = async (
