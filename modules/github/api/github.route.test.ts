@@ -8,24 +8,28 @@ import {
   type GithubService,
 } from "@/modules/github/github.service"
 
+const createBaseService = (enabled: boolean): GithubService => ({
+  getFeatureStatus: () => ({
+    feature: "github_app_integration",
+    envKey: "FEATURE_GITHUB_APP_INTEGRATION",
+    enabled,
+  }),
+  assertEnabled: () => {
+    if (!enabled) {
+      throw new GithubIntegrationDisabledError()
+    }
+  },
+  async listRepositoriesForActor() {
+    return {
+      items: [],
+      nextCursor: null,
+    }
+  },
+})
+
 describe("githubRoutes", () => {
   it("returns status payload", async () => {
-    const service: GithubService = {
-      getFeatureStatus: () => ({
-        feature: "github_app_integration",
-        envKey: "FEATURE_GITHUB_APP_INTEGRATION",
-        enabled: false,
-      }),
-      assertEnabled: () => {},
-      async listRepositoriesForActor() {
-        return {
-          items: [],
-          nextCursor: null,
-        }
-      },
-    }
-
-    const app = new Elysia().use(createGithubRoutes(service))
+    const app = new Elysia().use(createGithubRoutes(createBaseService(false)))
     const response = await app.handle(
       new Request("http://localhost/integrations/github/status")
     )
@@ -39,48 +43,9 @@ describe("githubRoutes", () => {
     expect(body.feature.enabled).toBe(false)
   })
 
-  it("returns 404 when feature is disabled", async () => {
-    const service: GithubService = {
-      getFeatureStatus: () => ({
-        feature: "github_app_integration",
-        envKey: "FEATURE_GITHUB_APP_INTEGRATION",
-        enabled: false,
-      }),
-      assertEnabled: () => {
-        throw new GithubIntegrationDisabledError()
-      },
-      async listRepositoriesForActor() {
-        throw new Error("not used")
-      },
-    }
+  it("guards integration endpoints when feature is disabled", async () => {
+    const app = new Elysia().use(createGithubRoutes(createBaseService(false)))
 
-    const app = new Elysia().use(createGithubRoutes(service))
-    const response = await app.handle(
-      new Request("http://localhost/integrations/github/install/start")
-    )
-    const body = (await response.json()) as {
-      ok: boolean
-      error: string
-    }
-
-    expect(response.status).toBe(404)
-    expect(body.ok).toBe(false)
-    expect(body.error).toBe("FEATURE_DISABLED")
-  })
-
-  it("guards all integration endpoints when feature is disabled", async () => {
-    const service: GithubService = {
-      getFeatureStatus: () => ({
-        feature: "github_app_integration",
-        envKey: "FEATURE_GITHUB_APP_INTEGRATION",
-        enabled: false,
-      }),
-      assertEnabled: () => {
-        throw new GithubIntegrationDisabledError()
-      },
-    }
-
-    const app = new Elysia().use(createGithubRoutes(service))
     const installResponse = await app.handle(
       new Request("http://localhost/integrations/github/install/start")
     )
@@ -98,7 +63,21 @@ describe("githubRoutes", () => {
     expect(webhookResponse.status).toBe(404)
   })
 
-  it("returns not implemented when feature is enabled", async () => {
+  it("returns not implemented for install start when feature is enabled", async () => {
+    const app = new Elysia().use(createGithubRoutes(createBaseService(true)))
+    const response = await app.handle(
+      new Request("http://localhost/integrations/github/install/start")
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+    }
+
+    expect(response.status).toBe(501)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("NOT_IMPLEMENTED")
+  })
+
   it("returns 401 when repositories request is unauthenticated", async () => {
     const app = new Elysia().use(
       createGithubRoutes({
@@ -106,17 +85,7 @@ describe("githubRoutes", () => {
           user: null,
           organizationId: null,
         }),
-        service: {
-          getFeatureStatus: () => ({
-            feature: "github_app_integration",
-            envKey: "FEATURE_GITHUB_APP_INTEGRATION",
-            enabled: true,
-          }),
-          assertEnabled: () => {},
-          async listRepositoriesForActor() {
-            throw new Error("not used")
-          },
-        },
+        service: createBaseService(true),
       })
     )
 
@@ -135,12 +104,7 @@ describe("githubRoutes", () => {
 
   it("passes scoped auth context and query params to service", async () => {
     const service = {
-      getFeatureStatus: () => ({
-        feature: "github_app_integration" as const,
-        envKey: "FEATURE_GITHUB_APP_INTEGRATION",
-        enabled: true,
-      }),
-      assertEnabled: () => {},
+      ...createBaseService(true),
       listRepositoriesForActor: mock(async () => ({
         items: [
           {
@@ -206,12 +170,7 @@ describe("githubRoutes", () => {
           organizationId: null,
         }),
         service: {
-          getFeatureStatus: () => ({
-            feature: "github_app_integration",
-            envKey: "FEATURE_GITHUB_APP_INTEGRATION",
-            enabled: true,
-          }),
-          assertEnabled: () => {},
+          ...createBaseService(true),
           async listRepositoriesForActor() {
             throw new GithubCursorError()
           },
@@ -235,22 +194,8 @@ describe("githubRoutes", () => {
   })
 
   it("returns 400 when webhook headers are missing", async () => {
-    const service: GithubService = {
-      getFeatureStatus: () => ({
-        feature: "github_app_integration",
-        envKey: "FEATURE_GITHUB_APP_INTEGRATION",
-        enabled: true,
-      }),
-      assertEnabled: () => {},
-      async listRepositoriesForActor() {
-        return {
-          items: [],
-          nextCursor: null,
-        }
-      },
-    }
+    const app = new Elysia().use(createGithubRoutes(createBaseService(true)))
 
-    const app = new Elysia().use(createGithubRoutes(service))
     const response = await app.handle(
       new Request("http://localhost/integrations/github/webhook", {
         method: "POST",
