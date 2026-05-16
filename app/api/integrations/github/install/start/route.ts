@@ -5,9 +5,14 @@ import {
   getSafeReturnTo,
   issueGithubInstallState,
 } from "@/modules/github/github-install-state"
-import { getGithubInstallUrl } from "@/modules/github/github.service"
+import {
+  createGithubService,
+  getGithubInstallUrl,
+  GithubIntegrationDisabledError,
+} from "@/modules/github/github.service"
 
 export const runtime = "nodejs"
+const githubService = createGithubService()
 
 const getStateSecret = () => {
   return (
@@ -18,6 +23,23 @@ const getStateSecret = () => {
 }
 
 export const GET = async (request: NextRequest) => {
+  try {
+    githubService.assertEnabled()
+  } catch (error) {
+    if (error instanceof GithubIntegrationDisabledError) {
+      return NextResponse.json(
+        {
+          ok: false as const,
+          error: "FEATURE_DISABLED" as const,
+          message: "GitHub App integration is disabled.",
+        },
+        { status: 404 }
+      )
+    }
+
+    throw error
+  }
+
   const auth = await withAuth({ ensureSignedIn: true })
 
   if (!auth.user) {
