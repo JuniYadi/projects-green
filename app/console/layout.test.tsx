@@ -57,6 +57,13 @@ mock.module("@workos-inc/authkit-nextjs", () => {
 mock.module("next/navigation", () => {
   return {
     redirect: mockRedirect,
+    usePathname: () => "/console",
+    useSearchParams: () => new URLSearchParams(),
+    useRouter: () => ({
+      replace: () => {},
+      push: () => {},
+      refresh: () => {},
+    }),
   }
 })
 
@@ -101,12 +108,6 @@ mock.module("@/components/ui/breadcrumb", () => {
     BreadcrumbPage: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
     ),
-  }
-})
-
-mock.module("@/components/ui/separator", () => {
-  return {
-    Separator: () => <hr />,
   }
 })
 
