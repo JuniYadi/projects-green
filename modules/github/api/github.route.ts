@@ -3,12 +3,13 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
 
 import {
+  createGithubService,
   GithubApiError,
   GithubConfigurationError,
   GithubCursorError,
-  githubRepositoryService,
+  GithubIntegrationDisabledError,
+  type GithubService,
 } from "@/modules/github/github.service"
-import type { GithubRepositoryService } from "@/modules/github/github.types"
 
 const repositoriesQuerySchema = z.object({
   ownerId: z.string().trim().min(1).optional(),
@@ -26,17 +27,59 @@ type GithubAuthContext = {
 
 type GithubRouteDependencies = {
   authenticate: () => Promise<GithubAuthContext>
-  service: GithubRepositoryService
+  service: GithubService
 }
 
 type RouteSet = {
   status?: number | string
 }
 
+const disabledResponse = {
+  ok: false as const,
+  error: "FEATURE_DISABLED" as const,
+  message: "GitHub App integration is disabled.",
+}
+
 const createDefaultDependencies = (): GithubRouteDependencies => ({
   authenticate: () => withAuth(),
-  service: githubRepositoryService,
+  service: createGithubService(),
 })
+
+const normalizeDependencies = (
+  input?: GithubService | GithubRouteDependencies
+): GithubRouteDependencies => {
+  if (!input) {
+    return createDefaultDependencies()
+  }
+
+  if ("authenticate" in input) {
+    return input
+  }
+
+  return {
+    authenticate: () => withAuth(),
+    service: input,
+  }
+}
+
+const withGithubFeatureFlag = (
+  service: GithubService,
+  handler: (context: any) => unknown
+) => {
+  return (context: any) => {
+    try {
+      service.assertEnabled()
+      return handler(context)
+    } catch (error) {
+      if (error instanceof GithubIntegrationDisabledError) {
+        context.set.status = 404
+        return disabledResponse
+      }
+
+      throw error
+    }
+  }
+}
 
 const toUnauthorized = (set: RouteSet) => {
   set.status = 401
@@ -60,11 +103,7 @@ const toValidationError = (
   }
 }
 
-const toServerError = (
-  set: RouteSet,
-  message: string,
-  status = 500
-) => {
+const toServerError = (set: RouteSet, message: string, status = 500) => {
   set.status = status
   return {
     ok: false as const,
@@ -74,78 +113,113 @@ const toServerError = (
 }
 
 export const createGithubRoutes = (
-  dependencies: GithubRouteDependencies = createDefaultDependencies()
-) =>
-  new Elysia().get("/integrations/github/repositories", async ({ query, set }) => {
-    const auth = await dependencies.authenticate()
+  input?: GithubService | GithubRouteDependencies
+) => {
+  const dependencies = normalizeDependencies(input)
 
-    if (!auth.user) {
-      return toUnauthorized(set)
-    }
+  return new Elysia({ prefix: "/integrations/github" })
+    .get("/status", () => ({
+      ok: true as const,
+      feature: dependencies.service.getFeatureStatus(),
+    }))
+    .get(
+      "/install/start",
+      withGithubFeatureFlag(dependencies.service, ({ set }) => {
+        set.status = 501
 
-    const parsedQuery = repositoriesQuerySchema.safeParse(query)
-
-    if (!parsedQuery.success) {
-      return toValidationError(
-        set,
-        "Invalid query parameters for listing GitHub repositories.",
-        "INVALID_QUERY"
-      )
-    }
-
-    const safeLimit =
-      parsedQuery.data.limit === undefined
-        ? undefined
-        : Math.min(parsedQuery.data.limit, 100)
-
-    try {
-      const result = await dependencies.service.listRepositoriesForActor(
-        {
-          userId: auth.user.id,
-          organizationId: auth.organizationId ?? null,
-        },
-        {
-          ownerId: parsedQuery.data.ownerId,
-          query: parsedQuery.data.query,
-          cursor: parsedQuery.data.cursor,
-          limit: safeLimit,
+        return {
+          ok: false as const,
+          error: "NOT_IMPLEMENTED" as const,
+          message: "GitHub installation flow is not implemented yet.",
         }
-      )
+      })
+    )
+    .get(
+      "/repositories",
+      withGithubFeatureFlag(dependencies.service, async ({ query, set }) => {
+        const auth = await dependencies.authenticate()
 
-      return {
-        ok: true as const,
-        items: result.items,
-        nextCursor: result.nextCursor,
-      }
-    } catch (error) {
-      if (error instanceof GithubCursorError) {
-        return toValidationError(
-          set,
-          "Invalid cursor value for repository pagination.",
-          "INVALID_CURSOR"
-        )
-      }
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
 
-      if (error instanceof GithubConfigurationError) {
-        return toServerError(
-          set,
-          "GitHub integration is not configured for this environment."
-        )
-      }
+        const parsedQuery = repositoriesQuerySchema.safeParse(query)
 
-      if (error instanceof GithubApiError) {
-        return toServerError(
-          set,
-          "Unable to load repositories from GitHub installations.",
-          502
-        )
-      }
+        if (!parsedQuery.success) {
+          return toValidationError(
+            set,
+            "Invalid query parameters for listing GitHub repositories.",
+            "INVALID_QUERY"
+          )
+        }
 
-      return toServerError(
-        set,
-        "Unexpected error while listing GitHub repositories."
-      )
-    }
-  })
+        const safeLimit =
+          parsedQuery.data.limit === undefined
+            ? undefined
+            : Math.min(parsedQuery.data.limit, 100)
+
+        try {
+          const result = await dependencies.service.listRepositoriesForActor(
+            {
+              userId: auth.user.id,
+              organizationId: auth.organizationId ?? null,
+            },
+            {
+              ownerId: parsedQuery.data.ownerId,
+              query: parsedQuery.data.query,
+              cursor: parsedQuery.data.cursor,
+              limit: safeLimit,
+            }
+          )
+
+          return {
+            ok: true as const,
+            items: result.items,
+            nextCursor: result.nextCursor,
+          }
+        } catch (error) {
+          if (error instanceof GithubCursorError) {
+            return toValidationError(
+              set,
+              "Invalid cursor value for repository pagination.",
+              "INVALID_CURSOR"
+            )
+          }
+
+          if (error instanceof GithubConfigurationError) {
+            return toServerError(
+              set,
+              "GitHub integration is not configured for this environment."
+            )
+          }
+
+          if (error instanceof GithubApiError) {
+            return toServerError(
+              set,
+              "Unable to load repositories from GitHub installations.",
+              502
+            )
+          }
+
+          return toServerError(
+            set,
+            "Unexpected error while listing GitHub repositories."
+          )
+        }
+      })
+    )
+    .post(
+      "/webhook",
+      withGithubFeatureFlag(dependencies.service, ({ set }) => {
+        set.status = 501
+
+        return {
+          ok: false as const,
+          error: "NOT_IMPLEMENTED" as const,
+          message: "Webhook processing is not implemented yet.",
+        }
+      })
+    )
+}
 
 export const githubRoutes = createGithubRoutes()
