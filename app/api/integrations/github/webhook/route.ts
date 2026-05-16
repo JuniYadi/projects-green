@@ -1,9 +1,14 @@
 import { prisma } from "@/lib/prisma"
 import { enqueueGithubWebhookEvent } from "@/lib/queue/github-events"
+import {
+  createGithubService,
+  GithubIntegrationDisabledError,
+} from "@/modules/github/github.service"
 import { createGithubWebhookHandler } from "@/modules/github/github.webhook"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+const githubService = createGithubService()
 
 const handler = createGithubWebhookHandler({
   webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
@@ -48,5 +53,22 @@ const handler = createGithubWebhookHandler({
 })
 
 export const POST = async (request: Request) => {
+  try {
+    githubService.assertEnabled()
+  } catch (error) {
+    if (error instanceof GithubIntegrationDisabledError) {
+      return Response.json(
+        {
+          ok: false as const,
+          error: "FEATURE_DISABLED" as const,
+          message: "GitHub App integration is disabled.",
+        },
+        { status: 404 }
+      )
+    }
+
+    throw error
+  }
+
   return handler(request)
 }

@@ -132,6 +132,7 @@ export type TenantInvitationResendResponse = {
 export type TenantOrganizationSummary = {
   id: string
   name: string
+  metadata: Record<string, string>
   allowProfilesOutsideOrganization: boolean
   createdAt: string
   updatedAt: string

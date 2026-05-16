@@ -105,7 +105,8 @@ export const tenantsOrganizationRoutes = new Elysia()
       try {
         const organization = await updateTenantOrganization({
           organizationId: params.orgId,
-          name: body.name.trim(),
+          name: body.name,
+          metadata: body.metadata,
         })
 
         return {
@@ -172,13 +173,24 @@ export const tenantsOrganizationRoutes = new Elysia()
         return toPolicyError(
           set,
           "ORGANIZATION_DELETE_FORBIDDEN",
-          "Only owners can delete the organization."
+          "Only tenant owners or super admins can delete the organization."
         )
       }
 
       const organization = await getTenantOrganizationById(params.orgId)
       if (!organization) {
         return toNotFoundError(set, "Organization not found.")
+      }
+
+      if (body.confirmOrganizationId.trim() !== params.orgId) {
+        set.status = 422
+
+        return {
+          ok: false,
+          error: "ORGANIZATION_DELETE_CONFIRMATION_MISMATCH",
+          message:
+            "Confirmation does not match the requested organization. Deletion cancelled.",
+        }
       }
 
       if (body.confirmOrganizationName.trim() !== organization.name.trim()) {
@@ -192,7 +204,37 @@ export const tenantsOrganizationRoutes = new Elysia()
         }
       }
 
-      await deleteTenantOrganization(params.orgId)
+      try {
+        await deleteTenantOrganization(params.orgId)
+      } catch (error) {
+        if (error instanceof NotFoundException) {
+          set.status = 404
+
+          return {
+            ok: false,
+            error: "ORGANIZATION_NOT_FOUND",
+            message: "The organization could not be found.",
+          }
+        }
+
+        if (error instanceof UnprocessableEntityException) {
+          set.status = 422
+
+          return {
+            ok: false,
+            error: "ORGANIZATION_DELETE_INVALID",
+            message: error.message,
+          }
+        }
+
+        set.status = 500
+
+        return {
+          ok: false,
+          error: "ORGANIZATION_DELETE_FAILED",
+          message: "Unable to delete organization right now.",
+        }
+      }
 
       return {
         ok: true,

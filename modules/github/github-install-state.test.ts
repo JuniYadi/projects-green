@@ -136,4 +136,111 @@ describe("github install state", () => {
       name: "GithubInstallStateError",
     } satisfies Partial<GithubInstallStateError>)
   })
+
+  it("rejects tampered signature", async () => {
+    const nonceStore = createNonceStore()
+    const issued = await issueGithubInstallState({
+      workosUserId: "user_123",
+      organizationId: null,
+      returnTo: "/console",
+      secret: "state-secret",
+      nonceStore,
+      now: new Date("2026-05-16T00:00:00.000Z"),
+    })
+
+    const [payloadSegment, signatureSegment] = issued.state.split(".")
+    const tamperedState = `${payloadSegment}.${signatureSegment}x`
+
+    await expect(
+      validateGithubInstallState({
+        state: tamperedState,
+        secret: "state-secret",
+        nonceStore,
+        now: new Date("2026-05-16T00:01:00.000Z"),
+      })
+    ).rejects.toMatchObject({
+      code: "INVALID_SIGNATURE",
+      name: "GithubInstallStateError",
+    } satisfies Partial<GithubInstallStateError>)
+  })
+
+  it("rejects nonce context mismatch", async () => {
+    let storedNonceHash = ""
+    const nonceStore = {
+      async create({
+        data,
+      }: {
+        data: {
+          nonceHash: string
+          workosUserId: string
+          organizationId: string | null
+          expiresAt: Date
+        }
+      }) {
+        storedNonceHash = data.nonceHash
+      },
+      async findUnique({
+        where,
+      }: {
+        where: { nonceHash: string }
+        select: {
+          nonceHash: true
+          workosUserId: true
+          organizationId: true
+          expiresAt: true
+          consumedAt: true
+        }
+      }) {
+        if (where.nonceHash !== storedNonceHash) {
+          return null
+        }
+
+        return {
+          nonceHash: where.nonceHash,
+          workosUserId: "user_other",
+          organizationId: "org_other",
+          expiresAt: new Date("2026-05-16T00:10:00.000Z"),
+          consumedAt: null,
+        }
+      },
+      async updateMany({
+        where,
+      }: {
+        where: {
+          nonceHash: string
+          consumedAt: null
+        }
+        data: {
+          consumedAt: Date
+        }
+      }) {
+        if (where.nonceHash !== storedNonceHash) {
+          return { count: 0 }
+        }
+
+        return { count: 1 }
+      },
+    }
+
+    const issued = await issueGithubInstallState({
+      workosUserId: "user_123",
+      organizationId: "org_123",
+      returnTo: "/console",
+      secret: "state-secret",
+      nonceStore,
+      now: new Date("2026-05-16T00:00:00.000Z"),
+    })
+
+    await expect(
+      validateGithubInstallState({
+        state: issued.state,
+        secret: "state-secret",
+        nonceStore,
+        now: new Date("2026-05-16T00:01:00.000Z"),
+      })
+    ).rejects.toMatchObject({
+      code: "INVALID_NONCE",
+      name: "GithubInstallStateError",
+    } satisfies Partial<GithubInstallStateError>)
+  })
 })
