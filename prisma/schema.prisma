@@ -28,6 +28,20 @@ model PlatformUserRole {
   updatedAt    DateTime     @updatedAt
 }
 
+model GithubInstallStateNonce {
+  id             String   @id @default(cuid())
+  nonceHash      String   @unique
+  workosUserId   String
+  organizationId String?
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([expiresAt])
+  @@index([workosUserId])
+  @@index([organizationId])
+}
+
 model GithubInstallation {
   id                   String   @id @default(cuid())
   githubInstallationId BigInt   @unique
