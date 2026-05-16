@@ -1,7 +1,18 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
 
-const mockWithAuth = mock(async () => ({
+type MockAuthPayload = {
+  user: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    profilePictureUrl: string | null
+  }
+  organizationId: string | undefined
+}
+
+const mockWithAuth = mock(async (): Promise<MockAuthPayload> => ({
   user: {
     id: "user_123",
     firstName: "Jane",
