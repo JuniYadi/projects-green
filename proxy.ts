@@ -2,12 +2,13 @@ import { authkit, handleAuthkitHeaders } from "@workos-inc/authkit-nextjs"
 import { NextRequest } from "next/server"
 
 import { getPlatformRoleForUser } from "@/lib/platform-role"
+import {
+  hasScopedSuperAdminClaim,
+  resolveScopedRoleTargetFromClaims,
+} from "@/modules/tenants/tenant-policy"
 
 const CONSOLE_HOME = "/console"
 const PORTAL_HOME = "/portal"
-
-const USER_ROLES = new Set(["member", "user"])
-const ADMIN_ROLES = new Set(["owner", "admin"])
 
 const PROTECTED_PATHS = ["/", CONSOLE_HOME, PORTAL_HOME]
 
@@ -30,15 +31,16 @@ const getHomePath = (area: UserArea) => {
 }
 
 const resolveUserArea = (session: { role?: string; roles?: string[] }) => {
-  const claimedRoles = [session.role, ...(session.roles ?? [])]
-    .map((role) => role?.trim().toLowerCase())
-    .filter((role): role is string => Boolean(role))
+  const scopedRoleTarget = resolveScopedRoleTargetFromClaims(
+    session.role,
+    session.roles
+  )
 
-  if (claimedRoles.some((role) => ADMIN_ROLES.has(role))) {
+  if (scopedRoleTarget === "admin") {
     return "portal" as const
   }
 
-  if (claimedRoles.some((role) => USER_ROLES.has(role))) {
+  if (scopedRoleTarget === "user") {
     return "console" as const
   }
 
@@ -67,21 +69,29 @@ export default async function proxy(request: NextRequest) {
       id: session.user.id,
       email: session.user.email,
     }).catch(() => "none")) ?? "none"
+  const hasClaimedSuperAdmin = hasScopedSuperAdminClaim(
+    session.role,
+    session.roles
+  )
+  const isSuperAdmin =
+    platformRole === "super_admin" || hasClaimedSuperAdmin
 
   const userArea = resolveUserArea(session)
 
   if (pathname === "/") {
-    if (platformRole === "super_admin") {
+    if (isSuperAdmin) {
       return handleAuthkitHeaders(request, headers, {
         redirect: PORTAL_HOME,
       })
     }
 
     if (!userArea) {
-      console.warn("[auth] Signed-in user missing expected WorkOS role claims for root route.")
+      console.warn(
+        "[auth] Signed-in user missing expected WorkOS role claims for root route; falling back to console."
+      )
 
       return handleAuthkitHeaders(request, headers, {
-        redirect: "/login",
+        redirect: CONSOLE_HOME,
       })
     }
 
@@ -94,16 +104,22 @@ export default async function proxy(request: NextRequest) {
     return handleAuthkitHeaders(request, headers)
   }
 
-  if (platformRole === "super_admin") {
+  if (isSuperAdmin) {
     return handleAuthkitHeaders(request, headers)
   }
 
   if (!userArea) {
-    console.warn("[auth] Signed-in user missing expected WorkOS role claims for protected route.")
+    console.warn(
+      "[auth] Signed-in user missing expected WorkOS role claims for protected route; limiting access to console."
+    )
 
-    return handleAuthkitHeaders(request, headers, {
-      redirect: "/login",
-    })
+    if (isPortalPath(pathname)) {
+      return handleAuthkitHeaders(request, headers, {
+        redirect: CONSOLE_HOME,
+      })
+    }
+
+    return handleAuthkitHeaders(request, headers)
   }
 
   const areaHomePath = getHomePath(userArea)
