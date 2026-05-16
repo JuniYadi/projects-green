@@ -8,6 +8,7 @@ import type {
   TenantMembershipSummary,
   TenantOrganizationSummary,
 } from "@/modules/tenants/contracts/tenant-api.contract"
+import { withOwnershipLock } from "@/modules/tenants/services/tenant-ownership-lock"
 import {
   normalizeTenantRole,
   type TenantRole,
@@ -288,29 +289,77 @@ export const deleteTenantMembership = async (membershipId: string) => {
   await getWorkOS().userManagement.deleteOrganizationMembership(membershipId)
 }
 
+export const demoteTenantMembershipSafely = async (params: {
+  membershipId: string
+  organizationId: string
+  targetMembership: TenantMembershipSummary
+  actorUserId: string
+}): Promise<
+  | { success: true; membership: TenantMembershipSummary }
+  | {
+      success: false
+      reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED"
+    }
+> => {
+  // Non-owner demotions don't affect the last-owner invariant
+  if (!isActiveOwnerMembership(params.targetMembership)) {
+    const updated = await updateTenantMembershipRole(
+      params.membershipId,
+      "member"
+    )
+    return { success: true, membership: updated }
+  }
+
+  // Owner demotion — serialize via per-org lock to prevent the race
+  // where two concurrent requests both see count > 1 then both demote.
+  return withOwnershipLock(params.organizationId, async () => {
+    const memberships = await listTenantMemberships(params.organizationId)
+    const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
+    const isSelfDemotion = params.targetMembership.userId === params.actorUserId
+
+    if (isSelfDemotion && activeOwnerCount <= 1) {
+      return { success: false, reason: "SELF_DEMOTION_BLOCKED" as const }
+    }
+
+    if (activeOwnerCount <= 1) {
+      return { success: false, reason: "LAST_OWNER_PROTECTED" as const }
+    }
+
+    const updated = await updateTenantMembershipRole(
+      params.membershipId,
+      "member"
+    )
+    return { success: true, membership: updated }
+  })
+}
+
 export const deleteTenantMembershipSafely = async (params: {
   membershipId: string
   organizationId: string
   targetMembership: TenantMembershipSummary
-}): Promise<{ success: true } | { success: false; reason: "LAST_OWNER_PROTECTED" }> => {
-  // Check if target is an active owner
+}): Promise<
+  { success: true } | { success: false; reason: "LAST_OWNER_PROTECTED" }
+> => {
+  // Non-owners can be deleted without the ownership lock
   if (!isActiveOwnerMembership(params.targetMembership)) {
-    // Not an owner, safe to delete
     await deleteTenantMembership(params.membershipId)
     return { success: true }
   }
 
-  // Target is an active owner - check if there are other active owners
-  const memberships = await listTenantMemberships(params.organizationId)
-  const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
+  // Target is an active owner — serialize via a per-org lock so two
+  // concurrent requests cannot both pass the "count > 1" check before
+  // either delete executes.
+  return withOwnershipLock(params.organizationId, async () => {
+    const memberships = await listTenantMemberships(params.organizationId)
+    const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
 
-  if (activeOwnerCount <= 1) {
-    return { success: false, reason: "LAST_OWNER_PROTECTED" }
-  }
+    if (activeOwnerCount <= 1) {
+      return { success: false, reason: "LAST_OWNER_PROTECTED" as const }
+    }
 
-  // There are other active owners, safe to delete
-  await deleteTenantMembership(params.membershipId)
-  return { success: true }
+    await deleteTenantMembership(params.membershipId)
+    return { success: true }
+  })
 }
 
 export const getTenantOrganizationById = async (

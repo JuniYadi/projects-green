@@ -17,7 +17,9 @@ import type {
 } from "@/modules/tenants/contracts/tenant-api.contract"
 import {
   deleteTenantMembershipSafely,
+  demoteTenantMembershipSafely,
   getTenantMembershipById,
+  listTenantMemberships,
   updateTenantMembershipRole,
 } from "@/modules/tenants/services/tenant-workos.service"
 import {
@@ -189,34 +191,32 @@ export const tenantsMembershipRoutes = new Elysia()
       )
     }
 
-    const memberships = await listTenantMemberships(params.orgId)
-    const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
-    const isSelfDemotion = targetMembership.userId === actorResult.userId
+    const demoteResult = await demoteTenantMembershipSafely({
+      membershipId: targetMembership.id,
+      organizationId: params.orgId,
+      targetMembership,
+      actorUserId: actorResult.userId,
+    })
 
-    if (isSelfDemotion && currentRole === "owner" && activeOwnerCount <= 1) {
-      return toPolicyError(
-        set,
-        "SELF_DEMOTION_BLOCKED",
-        "Self-demotion is blocked because this would remove the last owner."
-      )
+    if (!demoteResult.success) {
+      const errorMap = {
+        SELF_DEMOTION_BLOCKED: {
+          code: "SELF_DEMOTION_BLOCKED" as const,
+          message:
+            "Self-demotion is blocked because this would remove the last owner.",
+        },
+        LAST_OWNER_PROTECTED: {
+          code: "LAST_OWNER_PROTECTED" as const,
+          message: "Cannot demote the last active owner in this tenant.",
+        },
+      }
+      const err = errorMap[demoteResult.reason]
+      return toPolicyError(set, err.code, err.message)
     }
-
-    if (currentRole === "owner" && activeOwnerCount <= 1) {
-      return toPolicyError(
-        set,
-        "LAST_OWNER_PROTECTED",
-        "Cannot demote the last active owner in this tenant."
-      )
-    }
-
-    const updated = await updateTenantMembershipRole(
-      targetMembership.id,
-      "member"
-    )
 
     return {
       ok: true,
-      membership: updated,
+      membership: demoteResult.membership,
     } satisfies TenantMembershipMutationResponse
   })
   .post("/tenants/:orgId/members/:memberId/remove", async ({ params, set }) => {
