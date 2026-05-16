@@ -12,9 +12,11 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "worker:github": "bun run scripts/github-worker.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:studio": "prisma studio",
+    "github:worker": "bun run scripts/github-worker.ts",
     "grant:super-admin": "node scripts/grant-super-admin.mjs",
     "seed:workos-roles": "node scripts/seed-workos-roles.mjs"
   },

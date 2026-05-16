@@ -72,7 +72,9 @@ Minimum requirements:
 
 Recommended initial approach:
 
-- Keep queue provider abstract (`lib/queue/github-events.ts`) so implementation can start with a DB-backed queue and later move to managed queue.
+- Use BullMQ + Redis with queue helpers under `lib/queue/github-events.ts`.
+- Keep queue access encapsulated so job payload/flow can evolve without touching
+  route handlers.
 
 ### 3.3 Worker Layer
 
@@ -299,11 +301,17 @@ GITHUB_APP_PRIVATE_KEY_BASE64=
 GITHUB_WEBHOOK_SECRET=
 GITHUB_APP_INSTALL_REDIRECT_URI=
 GITHUB_APP_NAME=
+REDIS_URL=
+QUEUE_PREFIX=
+GITHUB_EVENTS_QUEUE_NAME=
 ```
 
 Rules:
 
 - Store private key as base64-encoded PEM for safer multiline handling.
+- Configure Redis via `REDIS_URL` for each environment (local, staging, prod).
+- Use queue namespace controls (`QUEUE_PREFIX`, `GITHUB_EVENTS_QUEUE_NAME`) to
+  isolate environments.
 - Never log token material, signatures, or raw secrets.
 
 ## 8. Branch Trigger Rules

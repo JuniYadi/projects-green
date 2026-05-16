@@ -4,6 +4,12 @@ import { Input } from "@/components/ui/input"
 import type { Branch, Owner, Repository } from "@/modules/deploy/deploy.types"
 
 type StepSourceProps = {
+  githubConnectionStatus: "idle" | "connected" | "error"
+  isConnectingGithub: boolean
+  ownerOptionsLoading: boolean
+  ownerOptionsError: string | null
+  repositoryOptionsLoading: boolean
+  repositoryOptionsError: string | null
   ownerSearch: string
   repositorySearch: string
   owners: Owner[]
@@ -19,12 +25,19 @@ type StepSourceProps = {
   onRepositorySelect: (value: string) => void
   onBranchSelect: (value: string) => void
   onRootDirectoryChange: (value: string) => void
+  onConnectGithub: () => void
   onCancel: () => void
   onNext: () => void
   canProceed: boolean
 }
 
 export function StepSource({
+  githubConnectionStatus,
+  isConnectingGithub,
+  ownerOptionsLoading,
+  ownerOptionsError,
+  repositoryOptionsLoading,
+  repositoryOptionsError,
   ownerSearch,
   repositorySearch,
   owners,
@@ -40,6 +53,7 @@ export function StepSource({
   onRepositorySelect,
   onBranchSelect,
   onRootDirectoryChange,
+  onConnectGithub,
   onCancel,
   onNext,
   canProceed,
@@ -64,6 +78,7 @@ export function StepSource({
             aria-label="Owner selector"
             className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
             value={selectedOwnerId}
+            disabled={ownerOptionsLoading || owners.length === 0}
             onChange={(event) => onOwnerSelect(event.target.value)}
           >
             <option value="">Select owner</option>
@@ -78,9 +93,36 @@ export function StepSource({
           <p className="text-xs text-muted-foreground">
             Don&apos;t see your repo? Connect GitHub to load more organizations.
           </p>
-          <Button type="button" size="sm" variant="outline" disabled>
-            Connect GitHub
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isConnectingGithub}
+            onClick={onConnectGithub}
+          >
+            {isConnectingGithub ? "Redirecting..." : "Connect GitHub"}
           </Button>
+          {githubConnectionStatus === "connected" ? (
+            <p className="border border-border bg-muted/40 p-2 text-xs text-foreground">
+              GitHub connected. Select an owner and repository to continue.
+            </p>
+          ) : null}
+          {githubConnectionStatus === "error" ? (
+            <p
+              className="border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive"
+              role="alert"
+            >
+              GitHub connection failed. Please try connecting again.
+            </p>
+          ) : null}
+          {ownerOptionsLoading ? (
+            <p className="text-xs text-muted-foreground">Loading owners...</p>
+          ) : null}
+          {ownerOptionsError ? (
+            <p className="text-xs text-destructive" role="alert">
+              {ownerOptionsError}
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-1">
@@ -88,14 +130,14 @@ export function StepSource({
           <Input
             value={repositorySearch}
             onChange={(event) => onRepositorySearchChange(event.target.value)}
-            disabled={!selectedOwnerId}
+            disabled={!selectedOwnerId || repositoryOptionsLoading}
             placeholder="Search repositories..."
           />
           <select
             aria-label="Repository selector"
             className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
             value={selectedRepositoryId}
-            disabled={!selectedOwnerId}
+            disabled={!selectedOwnerId || repositoryOptionsLoading}
             onChange={(event) => onRepositorySelect(event.target.value)}
           >
             <option value="">Select repository</option>
@@ -107,6 +149,14 @@ export function StepSource({
               )
             })}
           </select>
+          {repositoryOptionsLoading ? (
+            <p className="text-xs text-muted-foreground">Loading repositories...</p>
+          ) : null}
+          {repositoryOptionsError ? (
+            <p className="text-xs text-destructive" role="alert">
+              {repositoryOptionsError}
+            </p>
+          ) : null}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

@@ -2,6 +2,34 @@
 
 This is a Next.js template with shadcn/ui.
 
+## Local Development Startup
+
+1. Copy `.env.example` to `.env.local` and update non-local credentials.
+2. Start local infrastructure (Postgres + Redis):
+
+```bash
+docker compose up -d postgres redis
+```
+
+3. Start the app:
+
+```bash
+bun run dev
+```
+
+4. Start the GitHub queue worker in a separate terminal when testing webhook
+   flows:
+
+```bash
+bun run worker:github
+```
+
+Queue notes:
+
+- `REDIS_URL`, `QUEUE_PREFIX`, and `GITHUB_EVENTS_QUEUE_NAME` are configurable
+  for non-local deployments.
+- Worker logs intentionally avoid secret values (for example Redis password).
+
 ## Adding components
 
 To add components to your app, run the following command:
@@ -40,14 +68,14 @@ This app uses a two-layer role model:
 
 ```bash
 export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | sed 's/^"//; s/"$//')
-npm run prisma:migrate:dev -- --name add-platform-user-role
+bun run prisma:migrate:dev -- --name add-platform-user-role
 ```
 
 3. Generate Prisma client:
 
 ```bash
 export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | sed 's/^"//; s/"$//')
-npm run prisma:generate
+bun run prisma:generate
 ```
 
 ### Grant first super admin
@@ -56,13 +84,13 @@ Use the included helper script:
 
 ```bash
 export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | sed 's/^"//; s/"$//')
-npm run grant:super-admin -- --workos-user-id=<workos_user_id> --email=<email_optional>
+bun run grant:super-admin -- --workos-user-id=<workos_user_id> --email=<email_optional>
 ```
 
 Example:
 
 ```bash
-npm run grant:super-admin -- --workos-user-id=user_01J... --email=admin@company.com
+bun run grant:super-admin -- --workos-user-id=user_01J... --email=admin@company.com
 ```
 
 ### Seed WorkOS roles for tenant routing
@@ -89,13 +117,13 @@ assignment).
 Run a dry run first:
 
 ```bash
-npm run seed:workos-roles -- --dry-run
+bun run seed:workos-roles -- --dry-run
 ```
 
 Apply changes:
 
 ```bash
-npm run seed:workos-roles
+bun run seed:workos-roles
 ```
 
 Notes:

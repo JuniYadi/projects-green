@@ -6,42 +6,16 @@ import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
-type ApiError = {
-  ok: false
-  error: string
-  message: string
-}
-
-type BootstrapMembership = {
-  organizationId: string
-  organizationName: string
-  status: "active" | "pending" | string
-  roleSlug: string | null
-}
-
-type BootstrapResponse = {
-  ok: true
-  currentOrganizationId: string | null
-  memberships: BootstrapMembership[]
-}
-
-type CreateOrganizationResponse = {
-  ok: true
-  organizationId: string
-}
+import {
+  isTenantApiError,
+  type TenantApiError,
+  type TenantBootstrapCreateResponse,
+  type TenantBootstrapMembership,
+  type TenantBootstrapResponse,
+} from "@/modules/tenants/contracts/tenant-api.contract"
 
 type OrganizationOnboardingProps = {
   nextPath: string
-}
-
-const isApiError = (value: unknown): value is ApiError => {
-  return Boolean(
-    value &&
-      typeof value === "object" &&
-      "ok" in value &&
-      (value as { ok?: boolean }).ok === false
-  )
 }
 
 export function OrganizationOnboarding({
@@ -51,7 +25,9 @@ export function OrganizationOnboarding({
   const { switchToOrganization } = useAuth({ ensureSignedIn: true })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [memberships, setMemberships] = useState<BootstrapMembership[]>([])
+  const [memberships, setMemberships] = useState<TenantBootstrapMembership[]>(
+    []
+  )
   const [organizationName, setOrganizationName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
@@ -70,17 +46,18 @@ export function OrganizationOnboarding({
     const run = async () => {
       try {
         const response = await fetch("/api/tenants/bootstrap")
-        const payload = (await response
-          .json()
-          .catch(() => null)) as BootstrapResponse | ApiError | null
+        const payload = (await response.json().catch(() => null)) as
+          | TenantBootstrapResponse
+          | TenantApiError
+          | null
 
         if (!isActive) {
           return
         }
 
-        if (!response.ok || !payload || isApiError(payload)) {
+        if (!response.ok || !payload || isTenantApiError(payload)) {
           setError(
-            payload && isApiError(payload)
+            payload && isTenantApiError(payload)
               ? payload.message
               : "Unable to load organization onboarding data."
           )
@@ -145,13 +122,14 @@ export function OrganizationOnboarding({
         },
         body: JSON.stringify({ name: candidateName }),
       })
-      const payload = (await response
-        .json()
-        .catch(() => null)) as CreateOrganizationResponse | ApiError | null
+      const payload = (await response.json().catch(() => null)) as
+        | TenantBootstrapCreateResponse
+        | TenantApiError
+        | null
 
-      if (!response.ok || !payload || isApiError(payload)) {
+      if (!response.ok || !payload || isTenantApiError(payload)) {
         setError(
-          payload && isApiError(payload)
+          payload && isTenantApiError(payload)
             ? payload.message
             : "Unable to create organization right now."
         )
