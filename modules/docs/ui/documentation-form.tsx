@@ -147,7 +147,7 @@ export function DocumentationForm() {
             setForm((current) => ({ ...current, purpose: event.target.value }))
           }
           placeholder="Describe the purpose of this page."
-          className="min-h-24 w-full rounded-none border border-input bg-transparent px-3 py-2 text-sm outline-hidden focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
+          className="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-hidden focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
         />
       </div>
 
@@ -162,7 +162,7 @@ export function DocumentationForm() {
             setForm((current) => ({ ...current, howToText: event.target.value }))
           }
           placeholder={"Open console\nCheck summary cards\nOpen documentation panel"}
-          className="min-h-32 w-full rounded-none border border-input bg-transparent px-3 py-2 text-sm outline-hidden focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
+          className="min-h-32 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-hidden focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
         />
       </div>
 
@@ -177,7 +177,7 @@ export function DocumentationForm() {
             setForm((current) => ({ ...current, notesText: event.target.value }))
           }
           placeholder={"Only console is covered in v1\nMore pages can be added later"}
-          className="min-h-24 w-full rounded-none border border-input bg-transparent px-3 py-2 text-sm outline-hidden focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
+          className="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-hidden focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
         />
       </div>
 
