@@ -49,7 +49,7 @@ export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
   return (
     <p
       className={cn(
-        "rounded-none border px-2 py-1 text-xs",
+        "rounded-md border px-2 py-1 text-xs",
         "border-amber-500/40 bg-amber-500/10 text-amber-700"
       )}
     >
