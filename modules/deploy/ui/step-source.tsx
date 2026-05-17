@@ -68,7 +68,7 @@ export function StepSource({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1">
-          <p className="text-xs font-medium">GitHub account or organization</p>
+          <p className="text-sm font-medium">GitHub account or organization</p>
           <Input
             value={ownerSearch}
             onChange={(event) => onOwnerSearchChange(event.target.value)}
@@ -76,7 +76,7 @@ export function StepSource({
           />
           <select
             aria-label="Owner selector"
-            className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+            className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm"
             value={selectedOwnerId}
             disabled={ownerOptionsLoading || owners.length === 0}
             onChange={(event) => onOwnerSelect(event.target.value)}
@@ -126,7 +126,7 @@ export function StepSource({
         </div>
 
         <div className="space-y-1">
-          <p className="text-xs font-medium">Repository</p>
+          <p className="text-sm font-medium">Repository</p>
           <Input
             value={repositorySearch}
             onChange={(event) => onRepositorySearchChange(event.target.value)}
@@ -135,7 +135,7 @@ export function StepSource({
           />
           <select
             aria-label="Repository selector"
-            className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+            className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm"
             value={selectedRepositoryId}
             disabled={!selectedOwnerId || repositoryOptionsLoading}
             onChange={(event) => onRepositorySelect(event.target.value)}
@@ -161,10 +161,10 @@ export function StepSource({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-xs font-medium">Branch</p>
+            <p className="text-sm font-medium">Branch</p>
             <select
               aria-label="Branch selector"
-              className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+              className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               value={selectedBranchName}
               disabled={!selectedRepositoryId}
               onChange={(event) => onBranchSelect(event.target.value)}
@@ -181,7 +181,7 @@ export function StepSource({
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">Root Directory</p>
+            <p className="text-sm font-medium">Root Directory</p>
             <Input
               aria-label="Root directory"
               value={rootDirectory}
