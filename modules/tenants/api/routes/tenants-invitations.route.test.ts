@@ -25,17 +25,6 @@ const defaultActor: MockActor = {
   tenantRole: "owner",
 }
 
-const mockRequireTenantActor = mock(
-  async (): Promise<MockActor> => ({ ...defaultActor })
-)
-const mockEnsureTenantContextAccess = mock(
-  (
-    _orgId: string,
-    _actor: MockActor,
-    _set: MockRouteSet
-  ): true | TenantApiError => true
-)
-
 class MockTenantWorkOSOperationUnsupportedError extends Error {
   readonly operation: string
   constructor(operation: string) {
@@ -75,61 +64,82 @@ const makeInvitation = (
   ...overrides,
 })
 
-const mockListTenantMemberships = mock(async () => [makeMembership()])
-const mockGetTenantMembershipById = mock(async () => makeMembership())
-const mockUpdateTenantMembershipRole = mock(async () => makeMembership())
-const mockDemoteTenantMembershipSafely = mock(async () => ({
-  success: true as const,
-  membership: makeMembership(),
-}))
-const mockDeleteTenantMembershipSafely = mock(async () => ({
-  success: true as const,
-}))
-const mockListTenantInvitations = mock(async () => [makeInvitation()])
-const mockGetTenantInvitationById = mock(
-  async (): Promise<TenantInvitationSummary | null> => makeInvitation()
-)
-const mockSendTenantInvitation = mock(async () => ({
-  id: "inv_2",
-  email: "invitee@example.com",
-  state: "pending",
-  organizationId: "org_1",
-  roleSlug: "user_member",
-  createdAt: "2026-05-17T00:00:00.000Z",
-  expiresAt: "2026-06-17T00:00:00.000Z",
-}))
-const mockRevokeTenantInvitation = mock(async () => makeInvitation())
-const mockCancelTenantInvitation = mock(async () => makeInvitation())
-const mockResendTenantInvitation = mock(async () => makeInvitation())
-const mockGetTenantOrganizationById = mock(async () => null)
-const mockUpdateTenantOrganization = mock(async () => {
-  throw new Error("not implemented")
-})
-const mockDeleteTenantOrganization = mock(async () => {})
-
+// Register mock.module — these may be no-ops if another test file
+// already registered mocks for the same paths (bun keeps the first).
 mock.module("@/modules/tenants/api/tenants.guards", () => ({
-  requireTenantActor: mockRequireTenantActor,
-  ensureTenantContextAccess: mockEnsureTenantContextAccess,
+  requireTenantActor: mock(
+    async (): Promise<MockActor> => ({ ...defaultActor })
+  ),
+  ensureTenantContextAccess: mock(
+    (
+      _orgId: string,
+      _actor: MockActor,
+      _set: MockRouteSet
+    ): true | TenantApiError => true
+  ),
 }))
 
 mock.module("@/modules/tenants/services/tenant-workos.service", () => ({
   TenantWorkOSOperationUnsupportedError:
     MockTenantWorkOSOperationUnsupportedError,
-  listTenantMemberships: mockListTenantMemberships,
-  getTenantMembershipById: mockGetTenantMembershipById,
-  updateTenantMembershipRole: mockUpdateTenantMembershipRole,
-  demoteTenantMembershipSafely: mockDemoteTenantMembershipSafely,
-  deleteTenantMembershipSafely: mockDeleteTenantMembershipSafely,
-  listTenantInvitations: mockListTenantInvitations,
-  getTenantInvitationById: mockGetTenantInvitationById,
-  sendTenantInvitation: mockSendTenantInvitation,
-  revokeTenantInvitation: mockRevokeTenantInvitation,
-  cancelTenantInvitation: mockCancelTenantInvitation,
-  resendTenantInvitation: mockResendTenantInvitation,
-  getTenantOrganizationById: mockGetTenantOrganizationById,
-  updateTenantOrganization: mockUpdateTenantOrganization,
-  deleteTenantOrganization: mockDeleteTenantOrganization,
+  listTenantMemberships: mock(async () => [makeMembership()]),
+  getTenantMembershipById: mock(async () => makeMembership()),
+  updateTenantMembershipRole: mock(async () => makeMembership()),
+  demoteTenantMembershipSafely: mock(async () => ({
+    success: true,
+    membership: makeMembership(),
+  })),
+  deleteTenantMembershipSafely: mock(async () => ({ success: true })),
+  listTenantInvitations: mock(async () => [makeInvitation()]),
+  getTenantInvitationById: mock(
+    async (): Promise<TenantInvitationSummary | null> => makeInvitation()
+  ),
+  sendTenantInvitation: mock(async () => ({
+    id: "inv_2",
+    email: "invitee@example.com",
+    state: "pending",
+    organizationId: "org_1",
+    roleSlug: "user_member",
+    createdAt: "2026-05-17T00:00:00.000Z",
+    expiresAt: "2026-06-17T00:00:00.000Z",
+  })),
+  revokeTenantInvitation: mock(async () => makeInvitation()),
+  cancelTenantInvitation: mock(async () => makeInvitation()),
+  resendTenantInvitation: mock(async () => makeInvitation()),
+  getTenantOrganizationById: mock(async () => null),
+  updateTenantOrganization: mock(async () => {
+    throw new Error("not implemented")
+  }),
+  deleteTenantOrganization: mock(async () => {}),
 }))
+
+// Retrieve the LIVE mock functions from the already-mocked modules.
+// If another test file registered mock.module first, we get their
+// mock refs — ensuring mockImplementation calls affect the right object.
+const guards = await import("@/modules/tenants/api/tenants.guards")
+const liveRequireTenantActor = guards.requireTenantActor as ReturnType<
+  typeof mock
+>
+const liveEnsureTenantContextAccess =
+  guards.ensureTenantContextAccess as ReturnType<typeof mock>
+
+const service = await import(
+  "@/modules/tenants/services/tenant-workos.service"
+)
+const liveListTenantInvitations = service.listTenantInvitations as ReturnType<
+  typeof mock
+>
+const liveGetTenantInvitationById =
+  service.getTenantInvitationById as ReturnType<typeof mock>
+const liveSendTenantInvitation = service.sendTenantInvitation as ReturnType<
+  typeof mock
+>
+const liveRevokeTenantInvitation =
+  service.revokeTenantInvitation as ReturnType<typeof mock>
+const liveCancelTenantInvitation =
+  service.cancelTenantInvitation as ReturnType<typeof mock>
+const liveResendTenantInvitation =
+  service.resendTenantInvitation as ReturnType<typeof mock>
 
 const toUnauthorizedError = (): TenantApiError => ({
   ok: false,
@@ -156,30 +166,30 @@ const getApp = async () => {
 }
 
 const resetAllMocks = () => {
-  mockRequireTenantActor.mockReset()
-  mockEnsureTenantContextAccess.mockReset()
-  mockListTenantInvitations.mockReset()
-  mockGetTenantInvitationById.mockReset()
-  mockSendTenantInvitation.mockReset()
-  mockRevokeTenantInvitation.mockReset()
-  mockCancelTenantInvitation.mockReset()
-  mockResendTenantInvitation.mockReset()
+  liveRequireTenantActor.mockReset()
+  liveEnsureTenantContextAccess.mockReset()
+  liveListTenantInvitations.mockReset()
+  liveGetTenantInvitationById.mockReset()
+  liveSendTenantInvitation.mockReset()
+  liveRevokeTenantInvitation.mockReset()
+  liveCancelTenantInvitation.mockReset()
+  liveResendTenantInvitation.mockReset()
 
-  mockRequireTenantActor.mockImplementation(
+  liveRequireTenantActor.mockImplementation(
     async (): Promise<MockActor> => ({ ...defaultActor })
   )
-  mockEnsureTenantContextAccess.mockImplementation(
+  liveEnsureTenantContextAccess.mockImplementation(
     (
       _orgId: string,
       _actor: MockActor,
       _set: MockRouteSet
     ): true | TenantApiError => true
   )
-  mockListTenantInvitations.mockImplementation(async () => [makeInvitation()])
-  mockGetTenantInvitationById.mockImplementation(
+  liveListTenantInvitations.mockImplementation(async () => [makeInvitation()])
+  liveGetTenantInvitationById.mockImplementation(
     async (): Promise<TenantInvitationSummary | null> => makeInvitation()
   )
-  mockSendTenantInvitation.mockImplementation(async () => ({
+  liveSendTenantInvitation.mockImplementation(async () => ({
     id: "inv_2",
     email: "invitee@example.com",
     state: "pending",
@@ -188,9 +198,9 @@ const resetAllMocks = () => {
     createdAt: "2026-05-17T00:00:00.000Z",
     expiresAt: "2026-06-17T00:00:00.000Z",
   }))
-  mockRevokeTenantInvitation.mockImplementation(async () => makeInvitation())
-  mockCancelTenantInvitation.mockImplementation(async () => makeInvitation())
-  mockResendTenantInvitation.mockImplementation(async () => makeInvitation())
+  liveRevokeTenantInvitation.mockImplementation(async () => makeInvitation())
+  liveCancelTenantInvitation.mockImplementation(async () => makeInvitation())
+  liveResendTenantInvitation.mockImplementation(async () => makeInvitation())
 }
 
 describe("tenants-invitations routes", () => {
@@ -216,7 +226,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns unauthorized when actor is not signed in", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(async () =>
+      liveRequireTenantActor.mockImplementation(async () =>
         toUnauthorizedError()
       )
 
@@ -231,7 +241,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns context mismatch", async () => {
       const app = await getApp()
-      mockEnsureTenantContextAccess.mockImplementation(
+      liveEnsureTenantContextAccess.mockImplementation(
         (orgId: string, actor: MockActor, set: MockRouteSet) => {
           void orgId
           void actor
@@ -250,7 +260,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns forbidden for member role", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
+      liveRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "member",
@@ -268,7 +278,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns workos error on service failure", async () => {
       const app = await getApp()
-      mockListTenantInvitations.mockImplementation(async () => {
+      liveListTenantInvitations.mockImplementation(async () => {
         throw new Error("network error")
       })
 
@@ -308,7 +318,7 @@ describe("tenants-invitations routes", () => {
 
     it("rejects admin inviting as owner", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
+      liveRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "admin",
@@ -333,7 +343,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns workos error on service failure", async () => {
       const app = await getApp()
-      mockSendTenantInvitation.mockImplementation(async () => {
+      liveSendTenantInvitation.mockImplementation(async () => {
         throw new Error("network error")
       })
 
@@ -376,7 +386,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns not found when invitation does not exist", async () => {
       const app = await getApp()
-      mockGetTenantInvitationById.mockImplementation(async () => null)
+      liveGetTenantInvitationById.mockImplementation(async () => null)
 
       const response = await app.handle(
         new Request(
@@ -392,7 +402,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns mismatch when invitation belongs to different org", async () => {
       const app = await getApp()
-      mockGetTenantInvitationById.mockImplementation(async () =>
+      liveGetTenantInvitationById.mockImplementation(async () =>
         makeInvitation({ organizationId: "org_other" })
       )
 
@@ -410,7 +420,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns error for invitation with invalid role", async () => {
       const app = await getApp()
-      mockGetTenantInvitationById.mockImplementation(async () =>
+      liveGetTenantInvitationById.mockImplementation(async () =>
         makeInvitation({ roleSlug: null })
       )
 
@@ -428,13 +438,13 @@ describe("tenants-invitations routes", () => {
 
     it("returns forbidden when admin revokes owner invitation", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
+      liveRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "admin",
         })
       )
-      mockGetTenantInvitationById.mockImplementation(async () =>
+      liveGetTenantInvitationById.mockImplementation(async () =>
         makeInvitation({ roleSlug: "user_owner" })
       )
 
@@ -452,7 +462,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns forbidden for member role", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
+      liveRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "member",
@@ -473,7 +483,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns workos error on service failure", async () => {
       const app = await getApp()
-      mockRevokeTenantInvitation.mockImplementation(async () => {
+      liveRevokeTenantInvitation.mockImplementation(async () => {
         throw new Error("network error")
       })
 
@@ -512,7 +522,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns not found when invitation does not exist", async () => {
       const app = await getApp()
-      mockGetTenantInvitationById.mockImplementation(async () => null)
+      liveGetTenantInvitationById.mockImplementation(async () => null)
 
       const response = await app.handle(
         new Request(
@@ -528,7 +538,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns mismatch when invitation belongs to different org", async () => {
       const app = await getApp()
-      mockGetTenantInvitationById.mockImplementation(async () =>
+      liveGetTenantInvitationById.mockImplementation(async () =>
         makeInvitation({ organizationId: "org_other" })
       )
 
@@ -546,7 +556,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns error for invitation with invalid role", async () => {
       const app = await getApp()
-      mockGetTenantInvitationById.mockImplementation(async () =>
+      liveGetTenantInvitationById.mockImplementation(async () =>
         makeInvitation({ roleSlug: null })
       )
 
@@ -564,13 +574,13 @@ describe("tenants-invitations routes", () => {
 
     it("returns forbidden when admin cancels owner invitation", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
+      liveRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "admin",
         })
       )
-      mockGetTenantInvitationById.mockImplementation(async () =>
+      liveGetTenantInvitationById.mockImplementation(async () =>
         makeInvitation({ roleSlug: "user_owner" })
       )
 
@@ -588,7 +598,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns forbidden for member role", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
+      liveRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "member",
@@ -609,7 +619,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns workos error on service failure", async () => {
       const app = await getApp()
-      mockCancelTenantInvitation.mockImplementation(async () => {
+      liveCancelTenantInvitation.mockImplementation(async () => {
         throw new Error("network error")
       })
 
@@ -647,7 +657,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns not found when invitation does not exist", async () => {
       const app = await getApp()
-      mockGetTenantInvitationById.mockImplementation(async () => null)
+      liveGetTenantInvitationById.mockImplementation(async () => null)
 
       const response = await app.handle(
         new Request(
@@ -663,7 +673,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns mismatch when invitation belongs to different org", async () => {
       const app = await getApp()
-      mockGetTenantInvitationById.mockImplementation(async () =>
+      liveGetTenantInvitationById.mockImplementation(async () =>
         makeInvitation({ organizationId: "org_other" })
       )
 
@@ -681,7 +691,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns error for invitation with invalid role", async () => {
       const app = await getApp()
-      mockGetTenantInvitationById.mockImplementation(async () =>
+      liveGetTenantInvitationById.mockImplementation(async () =>
         makeInvitation({ roleSlug: null })
       )
 
@@ -699,13 +709,13 @@ describe("tenants-invitations routes", () => {
 
     it("returns forbidden when admin resends owner invitation", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
+      liveRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "admin",
         })
       )
-      mockGetTenantInvitationById.mockImplementation(async () =>
+      liveGetTenantInvitationById.mockImplementation(async () =>
         makeInvitation({ roleSlug: "user_owner" })
       )
 
@@ -723,7 +733,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns forbidden for member role", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
+      liveRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "member",
@@ -744,7 +754,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns workos error on service failure", async () => {
       const app = await getApp()
-      mockResendTenantInvitation.mockImplementation(async () => {
+      liveResendTenantInvitation.mockImplementation(async () => {
         throw new Error("network error")
       })
 
@@ -762,7 +772,7 @@ describe("tenants-invitations routes", () => {
 
     it("returns unsupported operation error", async () => {
       const app = await getApp()
-      mockResendTenantInvitation.mockImplementation(async () => {
+      liveResendTenantInvitation.mockImplementation(async () => {
         throw new MockTenantWorkOSOperationUnsupportedError("resendInvitation")
       })
 
