@@ -12,11 +12,11 @@ export default function PortalDocumentationsPage() {
         </p>
       </header>
 
-      <section className="rounded-none border border-border p-4 md:p-6">
+      <section className="rounded-lg border border-border p-4 md:p-6">
         <DocumentationForm />
       </section>
 
-      <section className="rounded-none border border-border p-4 md:p-6">
+      <section className="rounded-lg border border-border p-4 md:p-6">
         <h2 className="text-lg font-semibold">Tenant Management</h2>
         <p className="text-sm text-muted-foreground">
           Manage members, invitations, and organization settings from Console.
