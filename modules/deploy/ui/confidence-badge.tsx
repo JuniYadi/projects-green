@@ -12,7 +12,7 @@ type ConfidenceBadgeProps = {
 export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
   if (!detectionResult) {
     return (
-      <p className="rounded-none border border-border px-2 py-1 text-xs text-muted-foreground">
+      <p className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
         Detection not started
       </p>
     )
@@ -24,7 +24,7 @@ export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
     return (
       <p
         className={cn(
-          "rounded-none border px-2 py-1 text-xs",
+          "rounded-md border px-2 py-1 text-xs",
           "border-destructive/50 bg-destructive/10 text-destructive"
         )}
       >
@@ -37,7 +37,7 @@ export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
     return (
       <p
         className={cn(
-          "rounded-none border px-2 py-1 text-xs",
+          "rounded-md border px-2 py-1 text-xs",
           "border-emerald-500/40 bg-emerald-500/10 text-emerald-700"
         )}
       >
