@@ -58,6 +58,16 @@ const mockDeleteTenantOrganization = mock(async () => {})
 class MockNotFoundException extends Error {}
 class MockUnprocessableEntityException extends Error {}
 
+class MockTenantWorkOSOperationUnsupportedError extends Error {
+  readonly operation: string
+
+  constructor(operation: string) {
+    super(`Operation '${operation}' is not supported.`)
+    this.name = "TenantWorkOSOperationUnsupportedError"
+    this.operation = operation
+  }
+}
+
 mock.module("@/modules/tenants/api/tenants.guards", () => {
   return {
     requireTenantActor: mockRequireTenantActor,
@@ -67,6 +77,8 @@ mock.module("@/modules/tenants/api/tenants.guards", () => {
 
 mock.module("@/modules/tenants/services/tenant-workos.service", () => {
   return {
+    TenantWorkOSOperationUnsupportedError:
+      MockTenantWorkOSOperationUnsupportedError,
     getTenantOrganizationById: mockGetTenantOrganizationById,
     updateTenantOrganization: mockUpdateTenantOrganization,
     deleteTenantOrganization: mockDeleteTenantOrganization,
