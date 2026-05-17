@@ -10,8 +10,8 @@ describe("Separator", () => {
       '[data-slot="separator"]'
     ) as HTMLElement
 
-    expect(separator).toBeTruthy()
-    expect(separator.className).toContain("data-horizontal:h-px")
+    expect(separator).toBeInTheDocument()
+    expect(separator).toHaveClass("data-horizontal:h-px")
   })
 
   it("supports vertical orientation and custom classes", () => {
@@ -25,7 +25,7 @@ describe("Separator", () => {
       '[data-slot="separator"]'
     ) as HTMLElement
 
-    expect(separator.className).toContain("custom-separator")
-    expect(separator.getAttribute("data-orientation")).toBe("vertical")
+    expect(separator).toHaveClass("custom-separator")
+    expect(separator).toHaveAttribute("data-orientation", "vertical")
   })
 })

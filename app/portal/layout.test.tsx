@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
 
+import { createAuthMock, createNavigationMock } from "@/test/layout-test-mocks"
+
 type MockAuthPayload = {
   user: {
     id: string
@@ -41,30 +43,18 @@ const mockRedirect = mock((url: string) => {
 })
 
 mock.module("@workos-inc/authkit-nextjs", () => {
-  return {
+  return createAuthMock({
     withAuth: mockWithAuth,
-    getWorkOS: () => ({
-      userManagement: {
-        getUser: mockGetUser,
-      },
-      organizations: {
-        getOrganization: mockGetOrganization,
-      },
-    }),
-  }
+    getUser: mockGetUser,
+    getOrganization: mockGetOrganization,
+  })
 })
 
 mock.module("next/navigation", () => {
-  return {
+  return createNavigationMock({
+    pathname: "/portal",
     redirect: mockRedirect,
-    usePathname: () => "/portal",
-    useSearchParams: () => new URLSearchParams(),
-    useRouter: () => ({
-      replace: () => {},
-      push: () => {},
-      refresh: () => {},
-    }),
-  }
+  })
 })
 
 mock.module("@/components/app-sidebar", () => {

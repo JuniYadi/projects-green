@@ -8,9 +8,9 @@ describe("Skeleton", () => {
     const view = render(<Skeleton data-testid="base-skeleton" />)
     const skeleton = view.getByTestId("base-skeleton")
 
-    expect(skeleton.getAttribute("data-slot")).toBe("skeleton")
-    expect(skeleton.className).toContain("animate-pulse")
-    expect(skeleton.className).toContain("bg-muted")
+    expect(skeleton).toHaveAttribute("data-slot", "skeleton")
+    expect(skeleton).toHaveClass("animate-pulse")
+    expect(skeleton).toHaveClass("bg-muted")
   })
 
   it("merges custom class names", () => {
@@ -21,6 +21,7 @@ describe("Skeleton", () => {
       />
     )
 
-    expect(view.getByTestId("custom-skeleton").className).toContain("h-8")
+    expect(view.getByTestId("custom-skeleton")).toHaveClass("h-8")
+    expect(view.getByTestId("custom-skeleton")).toHaveClass("w-24")
   })
 })

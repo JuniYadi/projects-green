@@ -121,13 +121,15 @@ describe("sidebar session helpers", () => {
     })
     console.warn = warn as unknown as typeof console.warn
 
-    const fallbackUser = makeUser({ id: "user_fallback" })
-    const result = await getLatestWorkOSUser(fallbackUser)
+    try {
+      const fallbackUser = makeUser({ id: "user_fallback" })
+      const result = await getLatestWorkOSUser(fallbackUser)
 
-    console.warn = originalWarn
-
-    expect(result).toBe(fallbackUser)
-    expect(warn).toHaveBeenCalledTimes(1)
+      expect(result).toBe(fallbackUser)
+      expect(warn).toHaveBeenCalledTimes(1)
+    } finally {
+      console.warn = originalWarn
+    }
   })
 
   it("returns null organization details when id is missing", async () => {
@@ -154,18 +156,20 @@ describe("sidebar session helpers", () => {
     })
     console.warn = warn as unknown as typeof console.warn
 
-    const fallback = await resolveSidebarOrganization("org_2")
+    try {
+      const fallback = await resolveSidebarOrganization("org_2")
 
-    console.warn = originalWarn
-
-    expect(success).toEqual({
-      id: "org_1",
-      name: "Acme Org",
-    })
-    expect(fallback).toEqual({
-      id: "org_2",
-      name: null,
-    })
-    expect(warn).toHaveBeenCalledTimes(1)
+      expect(success).toEqual({
+        id: "org_1",
+        name: "Acme Org",
+      })
+      expect(fallback).toEqual({
+        id: "org_2",
+        name: null,
+      })
+      expect(warn).toHaveBeenCalledTimes(1)
+    } finally {
+      console.warn = originalWarn
+    }
   })
 })
