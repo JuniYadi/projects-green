@@ -27,10 +27,27 @@ const mockEnsureTenantContextAccess = mock(
   }
 )
 
+class MockTenantWorkOSOperationUnsupportedError extends Error {
+  readonly operation: string
+
+  constructor(operation: string) {
+    super(`Operation '${operation}' is not supported.`)
+    this.name = "TenantWorkOSOperationUnsupportedError"
+    this.operation = operation
+  }
+}
+
 mock.module("@/modules/tenants/api/tenants.guards", () => {
   return {
     requireTenantActor: mockRequireTenantActor,
     ensureTenantContextAccess: mockEnsureTenantContextAccess,
+  }
+})
+
+mock.module("@/modules/tenants/services/tenant-workos.service", () => {
+  return {
+    TenantWorkOSOperationUnsupportedError:
+      MockTenantWorkOSOperationUnsupportedError,
   }
 })
 

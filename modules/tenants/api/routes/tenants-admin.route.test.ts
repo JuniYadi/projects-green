@@ -178,6 +178,9 @@ describe("tenant admin routes", () => {
     mockRevokeTenantInvitation.mockReset()
     mockCancelTenantInvitation.mockReset()
     mockResendTenantInvitation.mockReset()
+    mockGetTenantOrganizationById.mockReset()
+    mockUpdateTenantOrganization.mockReset()
+    mockDeleteTenantOrganization.mockReset()
 
     mockRequireTenantActor.mockImplementation(
       async (): Promise<MockActor> => ({ ...defaultActor })
@@ -217,6 +220,11 @@ describe("tenant admin routes", () => {
     mockRevokeTenantInvitation.mockImplementation(async () => makeInvitation())
     mockCancelTenantInvitation.mockImplementation(async () => makeInvitation())
     mockResendTenantInvitation.mockImplementation(async () => makeInvitation())
+    mockGetTenantOrganizationById.mockImplementation(async () => null)
+    mockUpdateTenantOrganization.mockImplementation(async () => {
+      throw new Error("not implemented in memberships/invitations tests")
+    })
+    mockDeleteTenantOrganization.mockImplementation(async () => {})
   })
 
   it("lists members with profile data when available", async () => {
