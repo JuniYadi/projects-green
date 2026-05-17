@@ -107,6 +107,11 @@ const mockSendTenantInvitation = mock(async () => ({
 const mockRevokeTenantInvitation = mock(async () => makeInvitation())
 const mockCancelTenantInvitation = mock(async () => makeInvitation())
 const mockResendTenantInvitation = mock(async () => makeInvitation())
+const mockGetTenantOrganizationById = mock(async () => null)
+const mockUpdateTenantOrganization = mock(async () => {
+  throw new Error("not implemented in memberships/invitations tests")
+})
+const mockDeleteTenantOrganization = mock(async () => {})
 
 mock.module("@/modules/tenants/api/tenants.guards", () => ({
   requireTenantActor: mockRequireTenantActor,
@@ -127,6 +132,9 @@ mock.module("@/modules/tenants/services/tenant-workos.service", () => ({
   revokeTenantInvitation: mockRevokeTenantInvitation,
   cancelTenantInvitation: mockCancelTenantInvitation,
   resendTenantInvitation: mockResendTenantInvitation,
+  getTenantOrganizationById: mockGetTenantOrganizationById,
+  updateTenantOrganization: mockUpdateTenantOrganization,
+  deleteTenantOrganization: mockDeleteTenantOrganization,
 }))
 
 const toContextMismatchError = (set: MockRouteSet): TenantApiError => {
