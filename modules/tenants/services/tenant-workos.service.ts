@@ -31,6 +31,12 @@ type WorkOSMembership = {
   createdAt: string
   updatedAt: string
   role?: { slug?: string | null } | null
+  user?: {
+    email?: string | null
+    firstName?: string | null
+    lastName?: string | null
+    profilePictureUrl?: string | null
+  } | null
 }
 
 type WorkOSInvitation = {
@@ -54,6 +60,44 @@ type WorkOSOrganization = {
   updatedAt: string
 }
 
+export class TenantWorkOSOperationUnsupportedError extends Error {
+  readonly operation: string
+
+  constructor(operation: string) {
+    super(`WorkOS operation '${operation}' is not supported by this SDK.`)
+    this.name = "TenantWorkOSOperationUnsupportedError"
+    this.operation = operation
+  }
+}
+
+const normalizeNullableString = (value: string | null | undefined) => {
+  const normalized = value?.trim()
+
+  return normalized ? normalized : null
+}
+
+const toMembershipProfile = (
+  membership: WorkOSMembership
+): TenantMembershipSummary["profile"] => {
+  if (!membership.user) {
+    return null
+  }
+
+  const firstName = normalizeNullableString(membership.user.firstName)
+  const lastName = normalizeNullableString(membership.user.lastName)
+  const email = normalizeNullableString(membership.user.email)
+  const profilePictureUrl = normalizeNullableString(
+    membership.user.profilePictureUrl
+  )
+  const displayName = [firstName, lastName].filter(Boolean).join(" ") || email
+
+  return {
+    email,
+    firstName,
+    lastName,
+    profilePictureUrl,
+    displayName: displayName || null,
+  }
 const toTenantOrganizationMetadata = (value: unknown) => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {}
@@ -82,6 +126,7 @@ const toTenantMembershipSummary = (
     status: membership.status,
     role: normalizeTenantRole(roleSlug),
     roleSlug,
+    profile: toMembershipProfile(membership),
     createdAt: membership.createdAt,
     updatedAt: membership.updatedAt,
   }
@@ -194,9 +239,21 @@ export const listTenantBootstrapMembershipsForUser = async (
 }
 
 export const hasBootstrapCreatorRole = async (organizationId: string) => {
-  const roles = await getWorkOS()
-    .authorization.listOrganizationRoles(organizationId)
-    .then((result) => result.autoPagination())
+  const rolesResult = (await getWorkOS().authorization.listOrganizationRoles(
+    organizationId
+  )) as {
+    autoPagination?: () => Promise<Array<{ slug?: string | null }>>
+    data?: Array<{ slug?: string | null }>
+  }
+  // Compatibility with multiple WorkOS SDK shapes from getWorkOS():
+  // newer responses expose rolesResult.autoPagination(), while older
+  // responses expose rolesResult.data. Normalize both before mapping
+  // roleSlugs and checking BOOTSTRAP_CREATOR_ROLE_SLUG.
+  const roles =
+    typeof rolesResult.autoPagination === "function"
+      ? await rolesResult.autoPagination()
+      : (rolesResult.data ?? [])
+
   const roleSlugs = new Set(
     roles
       .map((role) => role.slug?.trim().toLowerCase())
@@ -274,17 +331,36 @@ export const getTenantInvitationById = async (
 export const revokeTenantInvitation = async (
   invitationId: string
 ): Promise<TenantInvitationSummary> => {
-  const invitation =
-    await getWorkOS().userManagement.revokeInvitation(invitationId)
+  return cancelTenantInvitation(invitationId)
+}
 
+export const cancelTenantInvitation = async (
+  invitationId: string
+): Promise<TenantInvitationSummary> => {
+  const userManagement = getWorkOS().userManagement as {
+    revokeInvitation?: (id: string) => Promise<unknown>
+  }
+
+  if (typeof userManagement.revokeInvitation !== "function") {
+    throw new TenantWorkOSOperationUnsupportedError("revokeInvitation")
+  }
+
+  const invitation = await userManagement.revokeInvitation(invitationId)
   return toTenantInvitationSummary(invitation as WorkOSInvitation)
 }
 
 export const resendTenantInvitation = async (
   invitationId: string
 ): Promise<TenantInvitationSummary> => {
-  const invitation =
-    await getWorkOS().userManagement.resendInvitation(invitationId)
+  const userManagement = getWorkOS().userManagement as {
+    resendInvitation?: (id: string) => Promise<unknown>
+  }
+
+  if (typeof userManagement.resendInvitation !== "function") {
+    throw new TenantWorkOSOperationUnsupportedError("resendInvitation")
+  }
+
+  const invitation = await userManagement.resendInvitation(invitationId)
 
   return toTenantInvitationSummary(invitation as WorkOSInvitation)
 }
@@ -361,8 +437,13 @@ export const deleteTenantMembershipSafely = async (params: {
   membershipId: string
   organizationId: string
   targetMembership: TenantMembershipSummary
+  actorUserId?: string
 }): Promise<
-  { success: true } | { success: false; reason: "LAST_OWNER_PROTECTED" }
+  | { success: true }
+  | {
+      success: false
+      reason: "LAST_OWNER_PROTECTED" | "SELF_LEAVE_BLOCKED"
+    }
 > => {
   // Non-owners can be deleted without the ownership lock
   if (!isActiveOwnerMembership(params.targetMembership)) {
@@ -382,6 +463,11 @@ export const deleteTenantMembershipSafely = async (params: {
 
     const memberships = await listTenantMemberships(params.organizationId)
     const activeOwnerCount = memberships.filter(isActiveOwnerMembership).length
+    const isSelfLeave = freshMembership.userId === params.actorUserId
+
+    if (isSelfLeave && activeOwnerCount <= 1) {
+      return { success: false, reason: "SELF_LEAVE_BLOCKED" as const }
+    }
 
     if (activeOwnerCount <= 1) {
       return { success: false, reason: "LAST_OWNER_PROTECTED" as const }

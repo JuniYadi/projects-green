@@ -52,7 +52,7 @@ mock.module("@workos-inc/authkit-nextjs", () => {
 
 mock.module("next/navigation", () => {
   return createNavigationMock({
-    pathname: "/portal",
+    pathname: "/portal/documentations",
     redirect: mockRedirect,
   })
 })
@@ -140,8 +140,8 @@ describe("PortalLayout", () => {
     expect(view.getByTestId("sidebar-provider")).toBeTruthy()
     expect(view.getByText("Sidebar:Jane Doe:Acme Inc")).toBeTruthy()
     expect(view.getByText("Docs Drawer")).toBeTruthy()
-    expect(view.getByText("Portal")).toBeTruthy()
-    expect(view.getByText("Documentations")).toBeTruthy()
+    expect(view.getByText("Documentation")).toBeTruthy()
+    expect(view.getByText("Registry")).toBeTruthy()
     expect(view.getByText("Child Content")).toBeTruthy()
   })
 

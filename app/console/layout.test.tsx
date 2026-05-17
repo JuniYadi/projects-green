@@ -140,8 +140,8 @@ describe("ConsoleLayout", () => {
     expect(view.getByTestId("sidebar-provider")).toBeTruthy()
     expect(view.getByText("Sidebar:Jane Doe:Acme Inc")).toBeTruthy()
     expect(view.getByText("Docs Drawer")).toBeTruthy()
-    expect(view.getByText("Build Your Application")).toBeTruthy()
-    expect(view.getByText("Data Fetching")).toBeTruthy()
+    expect(view.getByText("Console")).toBeTruthy()
+    expect(view.getByText("Workspace")).toBeTruthy()
     expect(view.getByText("Child Content")).toBeTruthy()
   })
 
