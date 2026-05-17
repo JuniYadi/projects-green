@@ -107,6 +107,11 @@ const mockSendTenantInvitation = mock(async () => ({
 const mockRevokeTenantInvitation = mock(async () => makeInvitation())
 const mockCancelTenantInvitation = mock(async () => makeInvitation())
 const mockResendTenantInvitation = mock(async () => makeInvitation())
+const mockGetTenantOrganizationById = mock(async () => null)
+const mockUpdateTenantOrganization = mock(async () => {
+  throw new Error("not implemented in memberships/invitations tests")
+})
+const mockDeleteTenantOrganization = mock(async () => {})
 
 mock.module("@/modules/tenants/api/tenants.guards", () => ({
   requireTenantActor: mockRequireTenantActor,
@@ -127,6 +132,9 @@ mock.module("@/modules/tenants/services/tenant-workos.service", () => ({
   revokeTenantInvitation: mockRevokeTenantInvitation,
   cancelTenantInvitation: mockCancelTenantInvitation,
   resendTenantInvitation: mockResendTenantInvitation,
+  getTenantOrganizationById: mockGetTenantOrganizationById,
+  updateTenantOrganization: mockUpdateTenantOrganization,
+  deleteTenantOrganization: mockDeleteTenantOrganization,
 }))
 
 const toContextMismatchError = (set: MockRouteSet): TenantApiError => {
@@ -170,6 +178,9 @@ describe("tenant admin routes", () => {
     mockRevokeTenantInvitation.mockReset()
     mockCancelTenantInvitation.mockReset()
     mockResendTenantInvitation.mockReset()
+    mockGetTenantOrganizationById.mockReset()
+    mockUpdateTenantOrganization.mockReset()
+    mockDeleteTenantOrganization.mockReset()
 
     mockRequireTenantActor.mockImplementation(
       async (): Promise<MockActor> => ({ ...defaultActor })
@@ -209,6 +220,11 @@ describe("tenant admin routes", () => {
     mockRevokeTenantInvitation.mockImplementation(async () => makeInvitation())
     mockCancelTenantInvitation.mockImplementation(async () => makeInvitation())
     mockResendTenantInvitation.mockImplementation(async () => makeInvitation())
+    mockGetTenantOrganizationById.mockImplementation(async () => null)
+    mockUpdateTenantOrganization.mockImplementation(async () => {
+      throw new Error("not implemented in memberships/invitations tests")
+    })
+    mockDeleteTenantOrganization.mockImplementation(async () => {})
   })
 
   it("lists members with profile data when available", async () => {

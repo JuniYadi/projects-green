@@ -1,7 +1,20 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
 
-const mockWithAuth = mock(async () => ({
+import { createAuthMock, createNavigationMock } from "@/test/layout-test-mocks"
+
+type MockAuthPayload = {
+  user: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    profilePictureUrl: string | null
+  }
+  organizationId: string | undefined
+}
+
+const mockWithAuth = mock(async (): Promise<MockAuthPayload> => ({
   user: {
     id: "user_123",
     firstName: "Jane",
@@ -30,29 +43,18 @@ const mockRedirect = mock((url: string) => {
 })
 
 mock.module("@workos-inc/authkit-nextjs", () => {
-  return {
+  return createAuthMock({
     withAuth: mockWithAuth,
-    getWorkOS: () => ({
-      userManagement: {
-        getUser: mockGetUser,
-      },
-      organizations: {
-        getOrganization: mockGetOrganization,
-      },
-    }),
-  }
+    getUser: mockGetUser,
+    getOrganization: mockGetOrganization,
+  })
 })
 
 mock.module("next/navigation", () => {
-  return {
+  return createNavigationMock({
+    pathname: "/portal/documentations",
     redirect: mockRedirect,
-    useRouter: () => ({
-      replace: () => {},
-      refresh: () => {},
-    }),
-    usePathname: () => "/portal/documentations",
-    useSearchParams: () => new URLSearchParams(),
-  }
+  })
 })
 
 mock.module("@/components/app-sidebar", () => {
@@ -96,12 +98,6 @@ mock.module("@/components/ui/breadcrumb", () => {
     BreadcrumbPage: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
     ),
-  }
-})
-
-mock.module("@/components/ui/separator", () => {
-  return {
-    Separator: () => <hr />,
   }
 })
 
