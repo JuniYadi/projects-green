@@ -59,9 +59,17 @@ mock.module("next/navigation", () => {
 
 mock.module("@/components/app-sidebar", () => {
   return {
-    AppSidebar: ({ user, organization }: { user: { name: string }; organization: { name: string | null } }) => (
+    AppSidebar: ({
+      surface,
+      user,
+      organization,
+    }: {
+      surface: string
+      user: { name: string }
+      organization: { name: string | null }
+    }) => (
       <aside>
-        Sidebar:{user.name}:{organization.name ?? "none"}
+        Sidebar:{surface}:{user.name}:{organization.name ?? "none"}
       </aside>
     ),
   }
@@ -138,7 +146,7 @@ describe("PortalLayout", () => {
     expect(mockGetOrganization).toHaveBeenCalledWith("org_123")
 
     expect(view.getByTestId("sidebar-provider")).toBeTruthy()
-    expect(view.getByText("Sidebar:Jane Doe:Acme Inc")).toBeTruthy()
+    expect(view.getByText("Sidebar:portal:Jane Doe:Acme Inc")).toBeTruthy()
     expect(view.getByText("Docs Drawer")).toBeTruthy()
     expect(view.getByText("Documentation")).toBeTruthy()
     expect(view.getByText("Registry")).toBeTruthy()

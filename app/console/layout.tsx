@@ -42,6 +42,7 @@ export default async function ConsoleLayout({
   return (
     <SidebarProvider>
       <AppSidebar
+        surface="console"
         user={sidebarUser}
         organization={sidebarOrganization}
       />
