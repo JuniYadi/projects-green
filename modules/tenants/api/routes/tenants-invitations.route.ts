@@ -451,3 +451,4 @@ export const createTenantsInvitationRoutes = (
 }
 
 export const tenantsInvitationRoutes = createTenantsInvitationRoutes()
+export type App = ReturnType<typeof createTenantsInvitationRoutes>
