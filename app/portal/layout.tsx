@@ -42,6 +42,7 @@ export default async function PortalLayout({
   return (
     <SidebarProvider>
       <AppSidebar
+        surface="portal"
         user={sidebarUser}
         organization={sidebarOrganization}
       />
