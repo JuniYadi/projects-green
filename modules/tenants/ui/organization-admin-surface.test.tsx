@@ -32,6 +32,9 @@ type FetchMockConfig = {
     id: string
     organizationId: string
     userId: string
+    displayName: string
+    email: string | null
+    avatarUrl: string | null
     status: string
     role: "owner" | "admin" | "member" | null
     roleSlug: string | null
@@ -194,6 +197,9 @@ describe("OrganizationAdminSurface", () => {
           id: "m_1",
           organizationId: "org_123",
           userId: "member@example.com",
+          displayName: "Member One",
+          email: "member@example.com",
+          avatarUrl: "https://example.com/member.png",
           status: "active",
           role: "member",
           roleSlug: "user_member",
@@ -210,7 +216,7 @@ describe("OrganizationAdminSurface", () => {
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
     await waitFor(() => {
-      expect(view.getByText("member@example.com")).toBeTruthy()
+      expect(view.getByText("Member One")).toBeTruthy()
     })
 
     fireEvent.click(view.getByRole("button", { name: "Transfer Ownership" }))
@@ -239,6 +245,9 @@ describe("OrganizationAdminSurface", () => {
           id: "m_1",
           organizationId: "org_123",
           userId: "member@example.com",
+          displayName: "Member One",
+          email: "member@example.com",
+          avatarUrl: null,
           status: "active",
           role: "member",
           roleSlug: "user_member",
