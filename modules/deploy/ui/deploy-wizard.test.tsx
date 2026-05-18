@@ -338,6 +338,52 @@ describe("DeployWizard", () => {
     })
   })
 
+  it("validates custom domain mode before deploy", async () => {
+    const view = await renderWizard()
+
+    await selectSourceRepository(view)
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+
+    await waitFor(() => {
+      expect(view.getByText("Manual override")).toBeTruthy()
+    })
+
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+
+    await waitFor(() => {
+      expect(view.getByText("Domain mode")).toBeTruthy()
+    })
+
+    fireEvent.click(view.getByRole("radio", { name: /Custom domain/i }))
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: "Deploy" })).toBeDisabled()
+      expect(
+        view.getByText(
+          "Custom domain is required when generated subdomain is off."
+        )
+      ).toBeTruthy()
+    })
+
+    fireEvent.change(view.getByLabelText("Custom domain"), {
+      target: { value: "https://invalid-domain" },
+    })
+
+    await waitFor(() => {
+      expect(
+        view.getByText("Enter a valid domain such as app.example.com.")
+      ).toBeTruthy()
+    })
+
+    fireEvent.change(view.getByLabelText("Custom domain"), {
+      target: { value: "app.example.com" },
+    })
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: "Deploy" })).toBeEnabled()
+    })
+  })
+
   it("shows duplicate env var key warning", async () => {
     const view = await renderWizard()
 
