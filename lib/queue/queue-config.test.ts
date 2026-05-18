@@ -1,11 +1,34 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import { getQueueRuntimeConfig } from "@/lib/queue/queue-config"
 
-const ORIGINAL_ENV = { ...process.env }
+const MANAGED_ENV_KEYS = [
+  "NODE_ENV",
+  "REDIS_URL",
+  "QUEUE_PREFIX",
+  "GITHUB_EVENTS_QUEUE_NAME",
+] as const
+
+type ManagedEnvKey = (typeof MANAGED_ENV_KEYS)[number]
+
+let savedEnv: Partial<Record<ManagedEnvKey, string | undefined>> = {}
+
+beforeEach(() => {
+  savedEnv = Object.fromEntries(
+    MANAGED_ENV_KEYS.map((key) => [key, process.env[key]])
+  ) as Partial<Record<ManagedEnvKey, string | undefined>>
+})
 
 afterEach(() => {
-  process.env = { ...ORIGINAL_ENV }
+  for (const key of MANAGED_ENV_KEYS) {
+    const value = savedEnv[key]
+    if (value === undefined) {
+      delete process.env[key]
+      continue
+    }
+
+    process.env[key] = value
+  }
 })
 
 describe("getQueueRuntimeConfig", () => {
