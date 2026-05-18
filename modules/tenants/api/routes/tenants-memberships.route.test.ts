@@ -47,6 +47,9 @@ const makeMembership = (
   id: "mem_1",
   organizationId: "org_1",
   userId: "user_target",
+  displayName: "User Target",
+  email: "user_target@example.com",
+  avatarUrl: null,
   status: "active",
   role: "member",
   roleSlug: "user_member",
@@ -224,6 +227,9 @@ describe("tenants-memberships routes", () => {
       expect(body.ok).toBe(true)
       expect(body.orgId).toBe("org_1")
       expect(body.members).toHaveLength(1)
+      expect(body.members[0]?.displayName).toBe("User Target")
+      expect(body.members[0]?.email).toBe("user_target@example.com")
+      expect(body.members[0]?.avatarUrl).toBeNull()
     })
 
     it("returns unauthorized when actor is not signed in", async () => {

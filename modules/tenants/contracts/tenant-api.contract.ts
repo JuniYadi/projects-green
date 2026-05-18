@@ -49,6 +49,9 @@ export type TenantMembershipSummary = {
   id: string
   organizationId: string
   userId: string
+  displayName: string
+  email: string | null
+  avatarUrl: string | null
   status: string
   role: TenantRole | null
   roleSlug: string | null

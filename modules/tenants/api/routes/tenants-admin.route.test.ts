@@ -56,6 +56,9 @@ const makeMembership = (
   id: "mem_1",
   organizationId: "org_1",
   userId: "user_target",
+  displayName: "User Target",
+  email: "user_target@example.com",
+  avatarUrl: null,
   status: "active",
   role: "member",
   roleSlug: "user_member",
@@ -232,6 +235,9 @@ describe("tenant admin routes", () => {
 
     mockListTenantMemberships.mockImplementation(async () => [
       makeMembership({
+        displayName: "Jane Doe",
+        email: "jane@example.com",
+        avatarUrl: "https://example.com/jane.png",
         profile: {
           email: "jane@example.com",
           firstName: "Jane",
@@ -252,6 +258,9 @@ describe("tenant admin routes", () => {
 
     expect(response.status).toBe(200)
     expect(body.ok).toBe(true)
+    expect(body.members[0]?.displayName).toBe("Jane Doe")
+    expect(body.members[0]?.email).toBe("jane@example.com")
+    expect(body.members[0]?.avatarUrl).toBe("https://example.com/jane.png")
     expect(body.members[0]?.profile?.displayName).toBe("Jane Doe")
   })
 
