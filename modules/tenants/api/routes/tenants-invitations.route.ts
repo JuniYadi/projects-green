@@ -2,22 +2,21 @@ import { Elysia } from "elysia"
 
 import {
   isTenantApiError,
+  type RouteSet,
   toNotFoundError,
   toPolicyError,
   toWorkosApiError,
 } from "@/modules/tenants/api/tenants.errors"
-import {
-  ensureTenantContextAccess,
-  requireTenantActor,
-} from "@/modules/tenants/api/tenants.guards"
 import { invitationPayloadSchema } from "@/modules/tenants/api/tenants.schema"
 import type {
+  TenantApiError,
   TenantInvitationCancelResponse,
   TenantInvitationCreateResponse,
   TenantInvitationResendResponse,
   TenantInvitationRevokeResponse,
   TenantInvitationsResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
+import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
 import {
   cancelTenantInvitation,
   getTenantInvitationById,
@@ -32,14 +31,80 @@ import {
   normalizeTenantRole,
 } from "@/modules/tenants/tenant-policy"
 
-export const tenantsInvitationRoutes = new Elysia()
+type TenantsInvitationRouteDeps = {
+  requireTenantActor: (
+    set: RouteSet
+  ) => Promise<TenantActorContext | TenantApiError>
+  ensureTenantContextAccess: (
+    orgId: string,
+    actor: TenantActorContext,
+    set: RouteSet
+  ) => true | TenantApiError | Promise<true | TenantApiError>
+  listTenantInvitations: typeof listTenantInvitations
+  sendTenantInvitation: typeof sendTenantInvitation
+  getTenantInvitationById: typeof getTenantInvitationById
+  revokeTenantInvitation: typeof revokeTenantInvitation
+  cancelTenantInvitation: typeof cancelTenantInvitation
+  resendTenantInvitation: typeof resendTenantInvitation
+  canManageTenant: typeof canManageTenant
+  canInviteAsRole: typeof canInviteAsRole
+  normalizeTenantRole: typeof normalizeTenantRole
+}
+
+const defaultRequireTenantActor: TenantsInvitationRouteDeps["requireTenantActor"] =
+  async (set) => {
+    const guards = await import("@/modules/tenants/api/tenants.guards")
+    return guards.requireTenantActor(set)
+  }
+
+const defaultEnsureTenantContextAccess: TenantsInvitationRouteDeps["ensureTenantContextAccess"] =
+  async (orgId, actor, set) => {
+    const guards = await import("@/modules/tenants/api/tenants.guards")
+    return guards.ensureTenantContextAccess(orgId, actor, set)
+  }
+
+const defaultTenantsInvitationRouteDeps: TenantsInvitationRouteDeps = {
+  requireTenantActor: defaultRequireTenantActor,
+  ensureTenantContextAccess: defaultEnsureTenantContextAccess,
+  listTenantInvitations,
+  sendTenantInvitation,
+  getTenantInvitationById,
+  revokeTenantInvitation,
+  cancelTenantInvitation,
+  resendTenantInvitation,
+  canManageTenant,
+  canInviteAsRole,
+  normalizeTenantRole,
+}
+
+export const createTenantsInvitationRoutes = (
+  deps: Partial<TenantsInvitationRouteDeps> = {}
+) => {
+  const {
+    requireTenantActor,
+    ensureTenantContextAccess,
+    listTenantInvitations,
+    sendTenantInvitation,
+    getTenantInvitationById,
+    revokeTenantInvitation,
+    cancelTenantInvitation,
+    resendTenantInvitation,
+    canManageTenant,
+    canInviteAsRole,
+    normalizeTenantRole,
+  } = {
+    ...defaultTenantsInvitationRouteDeps,
+    ...deps,
+  }
+
+  return new Elysia()
   .get("/tenants/:orgId/invitations", async ({ params, set }) => {
     const actorResult = await requireTenantActor(set)
     if (isTenantApiError(actorResult)) {
       return actorResult
     }
 
-    const hasContextAccess = ensureTenantContextAccess(
+    const hasContextAccess = await ensureTenantContextAccess(
       params.orgId,
       actorResult,
       set
@@ -84,7 +149,7 @@ export const tenantsInvitationRoutes = new Elysia()
         return actorResult
       }
 
-      const hasContextAccess = ensureTenantContextAccess(
+      const hasContextAccess = await ensureTenantContextAccess(
         params.orgId,
         actorResult,
         set
@@ -142,7 +207,7 @@ export const tenantsInvitationRoutes = new Elysia()
         return actorResult
       }
 
-      const hasContextAccess = ensureTenantContextAccess(
+      const hasContextAccess = await ensureTenantContextAccess(
         params.orgId,
         actorResult,
         set
@@ -225,7 +290,7 @@ export const tenantsInvitationRoutes = new Elysia()
         return actorResult
       }
 
-      const hasContextAccess = ensureTenantContextAccess(
+      const hasContextAccess = await ensureTenantContextAccess(
         params.orgId,
         actorResult,
         set
@@ -308,7 +373,7 @@ export const tenantsInvitationRoutes = new Elysia()
         return actorResult
       }
 
-      const hasContextAccess = ensureTenantContextAccess(
+      const hasContextAccess = await ensureTenantContextAccess(
         params.orgId,
         actorResult,
         set
@@ -383,3 +448,6 @@ export const tenantsInvitationRoutes = new Elysia()
       }
     }
   )
+}
+
+export const tenantsInvitationRoutes = createTenantsInvitationRoutes()
