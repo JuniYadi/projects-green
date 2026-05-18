@@ -359,23 +359,24 @@ describe("DeployWizard", () => {
     await waitFor(() => {
       expect(view.getByRole("button", { name: "Deploy" })).toBeDisabled()
       expect(
-        view.getByText(
+        view.getAllByText(
           "Custom domain is required when generated subdomain is off."
-        )
-      ).toBeTruthy()
+        ).length
+      ).toBeGreaterThan(0)
     })
 
-    fireEvent.change(view.getByLabelText("Custom domain"), {
+    fireEvent.change(view.getByRole("textbox", { name: "Custom domain" }), {
       target: { value: "https://invalid-domain" },
     })
 
     await waitFor(() => {
       expect(
-        view.getByText("Enter a valid domain such as app.example.com.")
-      ).toBeTruthy()
+        view.getAllByText("Enter a valid domain such as app.example.com.")
+          .length
+      ).toBeGreaterThan(0)
     })
 
-    fireEvent.change(view.getByLabelText("Custom domain"), {
+    fireEvent.change(view.getByRole("textbox", { name: "Custom domain" }), {
       target: { value: "app.example.com" },
     })
 
@@ -409,16 +410,16 @@ describe("DeployWizard", () => {
     fireEvent.change(keyInputs[1], { target: { value: "api_key" } })
 
     expect(
-      view.getByText("Environment variable keys must be unique.")
-    ).toBeTruthy()
+      view.getAllByText("Environment variable keys must be unique.").length
+    ).toBeGreaterThan(0)
 
     const removeButtons = view.getAllByRole("button", { name: "Remove" })
     fireEvent.click(removeButtons[1])
 
     await waitFor(() => {
       expect(
-        view.queryByText("Environment variable keys must be unique.")
-      ).toBeNull()
+        view.queryAllByText("Environment variable keys must be unique.")
+      ).toHaveLength(0)
     })
   })
 })
