@@ -79,7 +79,7 @@ describe("StepSource", () => {
     const view = render(<StepSource {...props} />)
 
     expect(view.getByText("Owner selected: owner-pfn")).toBeTruthy()
-    expect(view.getByText("Repository selected: repo-console-next")).toBeTruthy()
+    expect(view.getByText("Repository selected: console-next-app")).toBeTruthy()
     expect(view.getByText("Branch selected: main")).toBeTruthy()
     expect(
       view.getByText(
@@ -128,8 +128,10 @@ describe("StepSource", () => {
     expect(
       view.getByText("GitHub connection failed. Please try connecting again.")
     ).toBeTruthy()
-    expect(view.getByText("Unable to load owners.")).toBeTruthy()
-    expect(view.getByText("Unable to load repositories.")).toBeTruthy()
+    expect(
+      view.getByText("We could not load owners. Try searching again or reconnect GitHub.")
+    ).toBeTruthy()
+    expect(view.getByText("We could not load repositories for this owner.")).toBeTruthy()
   })
 
   it("disables selectors while owners and repositories are loading", () => {
@@ -142,7 +144,7 @@ describe("StepSource", () => {
 
     expect(view.getByLabelText("Owner selector")).toBeDisabled()
     expect(view.getByLabelText("Repository selector")).toBeDisabled()
-    expect(view.getByText("Loading owners...")).toBeTruthy()
-    expect(view.getByText("Loading repositories...")).toBeTruthy()
+    expect(view.getByText("Loading owners from your GitHub installations.")).toBeTruthy()
+    expect(view.getByText("Loading repositories.")).toBeTruthy()
   })
 })
