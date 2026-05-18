@@ -32,7 +32,7 @@ export function DeployStepper({
               disabled={!isUnlocked}
               onClick={() => onStepChange(step.id)}
               className={cn(
-                "w-full border px-3 py-2 text-left text-xs",
+                "w-full border px-4 py-3 text-left text-sm rounded-md",
                 isActive
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border bg-background",

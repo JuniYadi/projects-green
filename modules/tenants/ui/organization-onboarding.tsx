@@ -148,12 +148,12 @@ export function OrganizationOnboarding({
   return (
     <div className="space-y-6">
       {error ? (
-        <p className="rounded-none border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+        <p className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </p>
       ) : null}
 
-      <section className="space-y-3 rounded-none border border-border p-4 md:p-6">
+      <section className="space-y-3 rounded-lg border border-border p-4 md:p-6">
         <h2 className="text-lg font-semibold">Create organization</h2>
         <p className="text-sm text-muted-foreground">
           This creates a new organization and assigns you the owner role.
@@ -179,7 +179,7 @@ export function OrganizationOnboarding({
         </form>
       </section>
 
-      <section className="space-y-3 rounded-none border border-border p-4 md:p-6">
+      <section className="space-y-3 rounded-lg border border-border p-4 md:p-6">
         <h2 className="text-lg font-semibold">Join existing organization</h2>
         <p className="text-sm text-muted-foreground">
           Select from your active organization memberships.

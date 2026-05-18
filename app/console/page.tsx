@@ -25,7 +25,7 @@ const entryPoints = [
 
 export default function ConsolePage() {
   return (
-    <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Console</h1>
         <p className="text-sm text-muted-foreground">
@@ -33,9 +33,9 @@ export default function ConsolePage() {
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-6 md:grid-cols-3">
         {entryPoints.map((entry) => (
-          <Card key={entry.title} className="rounded-none">
+          <Card key={entry.title}>
             <CardHeader>
               <CardTitle className="text-base">{entry.title}</CardTitle>
             </CardHeader>

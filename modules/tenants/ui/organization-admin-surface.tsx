@@ -379,7 +379,7 @@ export function OrganizationAdminSurface({
   }
 
   return (
-    <div className="space-y-4 p-4 pt-0">
+    <div className="space-y-6 p-6 pt-0">
       <Card>
         <CardHeader>
           <CardTitle>Organization Administration</CardTitle>
@@ -398,7 +398,7 @@ export function OrganizationAdminSurface({
       </Card>
 
       {error ? (
-        <div className="rounded-none border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>{error}</span>
             <Button
@@ -416,7 +416,7 @@ export function OrganizationAdminSurface({
       ) : null}
 
       {notice ? (
-        <div className="rounded-none border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-700">
+        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-700">
           {notice}
         </div>
       ) : null}
@@ -455,14 +455,14 @@ export function OrganizationAdminSurface({
           </CardHeader>
           <CardContent className="space-y-3">
             {!canManageTenant ? (
-              <p className="rounded-none border border-border p-3 text-sm text-muted-foreground">
+              <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
                 You do not have permission to manage members in this
                 organization.
               </p>
             ) : null}
 
             {members.length === 0 ? (
-              <p className="rounded-none border border-dashed border-border p-3 text-sm text-muted-foreground">
+              <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
                 No members found.
               </p>
             ) : (
@@ -651,7 +651,7 @@ export function OrganizationAdminSurface({
                   }
                 />
                 <select
-                  className="h-9 rounded-none border border-input bg-background px-3 text-sm"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                   value={selectedInviteRole}
                   onChange={(event) =>
                     setInviteRole(
@@ -685,7 +685,7 @@ export function OrganizationAdminSurface({
             </form>
 
             {pendingInvitations.length === 0 ? (
-              <p className="rounded-none border border-dashed border-border p-3 text-sm text-muted-foreground">
+              <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
                 No pending invitations.
               </p>
             ) : (
@@ -802,7 +802,7 @@ export function OrganizationAdminSurface({
                   <p>Last updated: {formatTimestamp(organization.updatedAt)}</p>
                 </div>
               ) : (
-                <p className="rounded-none border border-dashed border-border p-3 text-sm text-muted-foreground">
+                <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
                   Organization profile is not available.
                 </p>
               )}

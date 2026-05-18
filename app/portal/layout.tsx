@@ -47,7 +47,7 @@ export default async function PortalLayout({
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2">
-          <div className="flex items-center gap-2 px-4">
+          <div className="flex items-center gap-2 px-6">
             <SidebarTrigger className="-ml-1" />
             <Separator
               orientation="vertical"
@@ -67,7 +67,7 @@ export default async function PortalLayout({
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <div className="ml-auto px-4">
+          <div className="ml-auto px-6">
             <DashboardDocsDrawer />
           </div>
         </header>

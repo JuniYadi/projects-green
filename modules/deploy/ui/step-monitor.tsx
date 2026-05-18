@@ -36,7 +36,7 @@ export function StepMonitor({
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Current status:</span>
-          <span className="rounded-none border border-border px-2 py-1 text-xs font-medium">
+          <span className="rounded-md border border-border px-2 py-1 text-xs font-medium">
             {DEPLOY_STATUS_LABELS[status]}
           </span>
         </div>
