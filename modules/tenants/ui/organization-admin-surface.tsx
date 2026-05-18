@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 type TabKey = "members" | "invitations" | "settings"
 
@@ -47,6 +48,9 @@ type TenantMember = {
   id: string
   organizationId: string
   userId: string
+  displayName: string
+  email: string | null
+  avatarUrl: string | null
   status: string
   role: TenantRole
   roleSlug: string | null
@@ -144,6 +148,23 @@ const formatTimestamp = (value: string) => {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(parsed)
+}
+
+const toMemberInitials = (displayName: string) => {
+  const parts = displayName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (parts.length === 0) {
+    return "?"
+  }
+
+  if (parts.length === 1) {
+    return parts[0]?.slice(0, 2).toUpperCase() ?? "?"
+  }
+
+  return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase()
 }
 
 export function OrganizationAdminSurface({
@@ -483,8 +504,27 @@ export function OrganizationAdminSurface({
                     key={member.id}
                     className="space-y-2 border border-border p-3"
                   >
+                    <div className="flex items-start gap-3">
+                      <Avatar size="sm" className="mt-0.5">
+                        <AvatarImage
+                          src={member.avatarUrl ?? undefined}
+                          alt={member.displayName}
+                        />
+                        <AvatarFallback>
+                          {toMemberInitials(member.displayName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">{member.displayName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {member.email ?? member.userId}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Member ID: {member.id}
+                        </p>
+                      </div>
+                    </div>
                     <div>
-                      <p className="text-sm font-medium">{member.userId}</p>
                       <p className="text-xs text-muted-foreground">
                         Role: {member.role ?? "unknown"} | Status:{" "}
                         {member.status}
