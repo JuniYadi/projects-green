@@ -6,22 +6,21 @@ import {
 
 import {
   isTenantApiError,
+  type RouteSet,
   toNotFoundError,
   toPolicyError,
 } from "@/modules/tenants/api/tenants.errors"
-import {
-  ensureTenantContextAccess,
-  requireTenantActor,
-} from "@/modules/tenants/api/tenants.guards"
 import {
   organizationDeletePayloadSchema,
   organizationUpdatePayloadSchema,
 } from "@/modules/tenants/api/tenants.schema"
 import type {
+  TenantApiError,
   TenantOrganizationDeleteResponse,
   TenantOrganizationResponse,
   TenantOrganizationUpdateResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
+import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
 import {
   deleteTenantOrganization,
   getTenantOrganizationById,
@@ -32,14 +31,68 @@ import {
   canTransferOwnership,
 } from "@/modules/tenants/tenant-policy"
 
-export const tenantsOrganizationRoutes = new Elysia()
+type TenantsOrganizationRouteDeps = {
+  requireTenantActor: (
+    set: RouteSet
+  ) => Promise<TenantActorContext | TenantApiError>
+  ensureTenantContextAccess: (
+    orgId: string,
+    actor: TenantActorContext,
+    set: RouteSet
+  ) => true | TenantApiError | Promise<true | TenantApiError>
+  getTenantOrganizationById: typeof getTenantOrganizationById
+  updateTenantOrganization: typeof updateTenantOrganization
+  deleteTenantOrganization: typeof deleteTenantOrganization
+  canManageTenant: typeof canManageTenant
+  canTransferOwnership: typeof canTransferOwnership
+}
+
+const defaultRequireTenantActor: TenantsOrganizationRouteDeps["requireTenantActor"] =
+  async (set) => {
+    const guards = await import("@/modules/tenants/api/tenants.guards")
+    return guards.requireTenantActor(set)
+  }
+
+const defaultEnsureTenantContextAccess: TenantsOrganizationRouteDeps["ensureTenantContextAccess"] =
+  async (orgId, actor, set) => {
+    const guards = await import("@/modules/tenants/api/tenants.guards")
+    return guards.ensureTenantContextAccess(orgId, actor, set)
+  }
+
+const defaultTenantsOrganizationRouteDeps: TenantsOrganizationRouteDeps = {
+  requireTenantActor: defaultRequireTenantActor,
+  ensureTenantContextAccess: defaultEnsureTenantContextAccess,
+  getTenantOrganizationById,
+  updateTenantOrganization,
+  deleteTenantOrganization,
+  canManageTenant,
+  canTransferOwnership,
+}
+
+export const createTenantsOrganizationRoutes = (
+  deps: Partial<TenantsOrganizationRouteDeps> = {}
+) => {
+  const {
+    requireTenantActor,
+    ensureTenantContextAccess,
+    getTenantOrganizationById,
+    updateTenantOrganization,
+    deleteTenantOrganization,
+    canManageTenant,
+    canTransferOwnership,
+  } = {
+    ...defaultTenantsOrganizationRouteDeps,
+    ...deps,
+  }
+
+  return new Elysia()
   .get("/tenants/:orgId/organization", async ({ params, set }) => {
     const actorResult = await requireTenantActor(set)
     if (isTenantApiError(actorResult)) {
       return actorResult
     }
 
-    const hasContextAccess = ensureTenantContextAccess(
+    const hasContextAccess = await ensureTenantContextAccess(
       params.orgId,
       actorResult,
       set
@@ -80,7 +133,7 @@ export const tenantsOrganizationRoutes = new Elysia()
         return actorResult
       }
 
-      const hasContextAccess = ensureTenantContextAccess(
+      const hasContextAccess = await ensureTenantContextAccess(
         params.orgId,
         actorResult,
         set
@@ -155,7 +208,7 @@ export const tenantsOrganizationRoutes = new Elysia()
         return actorResult
       }
 
-      const hasContextAccess = ensureTenantContextAccess(
+      const hasContextAccess = await ensureTenantContextAccess(
         params.orgId,
         actorResult,
         set
@@ -246,3 +299,6 @@ export const tenantsOrganizationRoutes = new Elysia()
       body: organizationDeletePayloadSchema,
     }
   )
+}
+
+export const tenantsOrganizationRoutes = createTenantsOrganizationRoutes()

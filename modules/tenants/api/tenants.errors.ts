@@ -10,7 +10,7 @@ import {
   isTenantApiError,
   type TenantApiError,
 } from "@/modules/tenants/contracts/tenant-api.contract"
-import { TenantWorkOSOperationUnsupportedError } from "@/modules/tenants/services/tenant-workos.service"
+import { TenantWorkOSOperationUnsupportedError } from "@/modules/tenants/services/tenant-workos.errors"
 
 export { isTenantApiError }
 

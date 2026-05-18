@@ -5,6 +5,7 @@ import type {
   TenantApiError,
   TenantMembershipSummary,
 } from "@/modules/tenants/contracts/tenant-api.contract"
+import { createTenantsMembershipRoutes } from "@/modules/tenants/api/routes/tenants-memberships.route"
 
 type MockActor = {
   userId: string
@@ -32,15 +33,6 @@ const defaultActor: MockActor = {
   tenantRole: "owner",
 }
 
-class MockTenantWorkOSOperationUnsupportedError extends Error {
-  readonly operation: string
-  constructor(operation: string) {
-    super(`Operation '${operation}' is not supported.`)
-    this.name = "TenantWorkOSOperationUnsupportedError"
-    this.operation = operation
-  }
-}
-
 const makeMembership = (
   overrides: Partial<TenantMembershipSummary> = {}
 ): TenantMembershipSummary => ({
@@ -59,12 +51,6 @@ const makeMembership = (
   ...overrides,
 })
 
-// Register mock.module BEFORE any imports that depend on them.
-// bun ignores duplicate mock.module calls for the same path, so if
-// tenants-admin.route.test.ts already registered these mocks, our
-// mock.module calls are no-ops. We therefore retrieve the live mock
-// functions from the module after registration and manipulate those.
-
 const mockListTenantMemberships = mock(async () => [makeMembership()])
 const mockGetTenantMembershipById = mock(async () => makeMembership())
 const mockUpdateTenantMembershipRole = mock(async () => makeMembership())
@@ -77,17 +63,6 @@ const mockDeleteTenantMembershipSafely = mock(
     success: true as const,
   })
 )
-const mockListTenantInvitations = mock(async () => [])
-const mockGetTenantInvitationById = mock(async () => null)
-const mockSendTenantInvitation = mock(async () => ({}))
-const mockRevokeTenantInvitation = mock(async () => ({}))
-const mockCancelTenantInvitation = mock(async () => ({}))
-const mockResendTenantInvitation = mock(async () => ({}))
-const mockGetTenantOrganizationById = mock(async () => null)
-const mockUpdateTenantOrganization = mock(async () => {
-  throw new Error("not implemented")
-})
-const mockDeleteTenantOrganization = mock(async () => {})
 
 const mockRequireTenantActor = mock(
   async (): Promise<MockActor> => ({ ...defaultActor })
@@ -99,55 +74,6 @@ const mockEnsureTenantContextAccess = mock(
     _set: MockRouteSet
   ): true | TenantApiError => true
 )
-
-mock.module("@/modules/tenants/api/tenants.guards", () => ({
-  requireTenantActor: mockRequireTenantActor,
-  ensureTenantContextAccess: mockEnsureTenantContextAccess,
-}))
-
-mock.module("@/modules/tenants/services/tenant-workos.service", () => ({
-  TenantWorkOSOperationUnsupportedError:
-    MockTenantWorkOSOperationUnsupportedError,
-  listTenantMemberships: mockListTenantMemberships,
-  getTenantMembershipById: mockGetTenantMembershipById,
-  updateTenantMembershipRole: mockUpdateTenantMembershipRole,
-  demoteTenantMembershipSafely: mockDemoteTenantMembershipSafely,
-  deleteTenantMembershipSafely: mockDeleteTenantMembershipSafely,
-  listTenantInvitations: mockListTenantInvitations,
-  getTenantInvitationById: mockGetTenantInvitationById,
-  sendTenantInvitation: mockSendTenantInvitation,
-  revokeTenantInvitation: mockRevokeTenantInvitation,
-  cancelTenantInvitation: mockCancelTenantInvitation,
-  resendTenantInvitation: mockResendTenantInvitation,
-  getTenantOrganizationById: mockGetTenantOrganizationById,
-  updateTenantOrganization: mockUpdateTenantOrganization,
-  deleteTenantOrganization: mockDeleteTenantOrganization,
-}))
-
-// Retrieve the LIVE mock functions from the already-mocked module.
-// If another test file registered mock.module first, its factory's
-// return values are what the module actually exposes.  We grab those
-// references so our mockImplementation calls mutate the right object.
-const guards = await import("@/modules/tenants/api/tenants.guards")
-const liveRequireTenantActor = guards.requireTenantActor as ReturnType<
-  typeof mock
->
-const liveEnsureTenantContextAccess =
-  guards.ensureTenantContextAccess as ReturnType<typeof mock>
-
-const service = await import(
-  "@/modules/tenants/services/tenant-workos.service"
-)
-const liveListTenantMemberships =
-  service.listTenantMemberships as ReturnType<typeof mock>
-const liveGetTenantMembershipById =
-  service.getTenantMembershipById as ReturnType<typeof mock>
-const liveUpdateTenantMembershipRole =
-  service.updateTenantMembershipRole as ReturnType<typeof mock>
-const liveDemoteTenantMembershipSafely =
-  service.demoteTenantMembershipSafely as ReturnType<typeof mock>
-const liveDeleteTenantMembershipSafely =
-  service.deleteTenantMembershipSafely as ReturnType<typeof mock>
 
 const toContextMismatchError = (set: MockRouteSet): TenantApiError => {
   set.status = 403
@@ -167,41 +93,48 @@ const toUnauthorizedError = (): TenantApiError => ({
 })
 
 const getApp = async () => {
-  const route = await import(
-    "@/modules/tenants/api/routes/tenants-memberships.route"
+  return new Elysia().use(
+    createTenantsMembershipRoutes({
+      requireTenantActor: mockRequireTenantActor,
+      ensureTenantContextAccess: mockEnsureTenantContextAccess,
+      listTenantMemberships: mockListTenantMemberships,
+      getTenantMembershipById: mockGetTenantMembershipById,
+      updateTenantMembershipRole: mockUpdateTenantMembershipRole,
+      demoteTenantMembershipSafely: mockDemoteTenantMembershipSafely,
+      deleteTenantMembershipSafely: mockDeleteTenantMembershipSafely,
+    })
   )
-  return new Elysia().use(route.tenantsMembershipRoutes)
 }
 
 const resetAllMocks = () => {
-  liveRequireTenantActor.mockReset()
-  liveEnsureTenantContextAccess.mockReset()
-  liveListTenantMemberships.mockReset()
-  liveGetTenantMembershipById.mockReset()
-  liveUpdateTenantMembershipRole.mockReset()
-  liveDemoteTenantMembershipSafely.mockReset()
-  liveDeleteTenantMembershipSafely.mockReset()
+  mockRequireTenantActor.mockReset()
+  mockEnsureTenantContextAccess.mockReset()
+  mockListTenantMemberships.mockReset()
+  mockGetTenantMembershipById.mockReset()
+  mockUpdateTenantMembershipRole.mockReset()
+  mockDemoteTenantMembershipSafely.mockReset()
+  mockDeleteTenantMembershipSafely.mockReset()
 
-  liveRequireTenantActor.mockImplementation(
+  mockRequireTenantActor.mockImplementation(
     async (): Promise<MockActor> => ({ ...defaultActor })
   )
-  liveEnsureTenantContextAccess.mockImplementation(
+  mockEnsureTenantContextAccess.mockImplementation(
     (
       _orgId: string,
       _actor: MockActor,
       _set: MockRouteSet
     ): true | TenantApiError => true
   )
-  liveListTenantMemberships.mockImplementation(async () => [makeMembership()])
-  liveGetTenantMembershipById.mockImplementation(async () => makeMembership())
-  liveUpdateTenantMembershipRole.mockImplementation(async () =>
+  mockListTenantMemberships.mockImplementation(async () => [makeMembership()])
+  mockGetTenantMembershipById.mockImplementation(async () => makeMembership())
+  mockUpdateTenantMembershipRole.mockImplementation(async () =>
     makeMembership()
   )
-  liveDemoteTenantMembershipSafely.mockImplementation(async () => ({
+  mockDemoteTenantMembershipSafely.mockImplementation(async () => ({
     success: true as const,
     membership: makeMembership({ role: "member", roleSlug: "user_member" }),
   }))
-  liveDeleteTenantMembershipSafely.mockImplementation(
+  mockDeleteTenantMembershipSafely.mockImplementation(
     async (): Promise<MockDeleteResult> => ({
       success: true as const,
     })
@@ -234,7 +167,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns unauthorized when actor is not signed in", async () => {
       const app = await getApp()
-      liveRequireTenantActor.mockImplementation(async () =>
+      mockRequireTenantActor.mockImplementation(async () =>
         toUnauthorizedError()
       )
 
@@ -249,7 +182,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns context mismatch when org does not match", async () => {
       const app = await getApp()
-      liveEnsureTenantContextAccess.mockImplementation(
+      mockEnsureTenantContextAccess.mockImplementation(
         (orgId: string, actor: MockActor, set: MockRouteSet) => {
           void orgId
           void actor
@@ -268,7 +201,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns forbidden for member role", async () => {
       const app = await getApp()
-      liveRequireTenantActor.mockImplementation(
+      mockRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "member",
@@ -286,7 +219,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns workos error on service failure", async () => {
       const app = await getApp()
-      liveListTenantMemberships.mockImplementation(async () => {
+      mockListTenantMemberships.mockImplementation(async () => {
         throw new Error("network error")
       })
 
@@ -304,10 +237,10 @@ describe("tenants-memberships routes", () => {
   describe("POST /tenants/:orgId/members/:memberId/promote", () => {
     it("promotes a member to admin successfully", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ id: "mem_1", role: "member" })
       )
-      liveUpdateTenantMembershipRole.mockImplementation(async () =>
+      mockUpdateTenantMembershipRole.mockImplementation(async () =>
         makeMembership({ id: "mem_1", role: "admin", roleSlug: "user_admin" })
       )
 
@@ -330,7 +263,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns not found when membership does not exist", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () => null)
+      mockGetTenantMembershipById.mockImplementation(async () => null)
 
       const response = await app.handle(
         new Request("http://localhost/tenants/org_1/members/mem_x/promote", {
@@ -347,7 +280,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns mismatch when membership belongs to different org", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ organizationId: "org_other" })
       )
 
@@ -366,7 +299,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns forbidden when admin promotes to owner", async () => {
       const app = await getApp()
-      liveRequireTenantActor.mockImplementation(
+      mockRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "admin",
@@ -388,7 +321,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns workos error on service failure", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () => {
+      mockGetTenantMembershipById.mockImplementation(async () => {
         throw new Error("network error")
       })
 
@@ -409,7 +342,7 @@ describe("tenants-memberships routes", () => {
   describe("POST /tenants/:orgId/members/:memberId/demote", () => {
     it("demotes an admin to member successfully", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({
           id: "mem_admin",
           role: "admin",
@@ -433,7 +366,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns not found when membership does not exist", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () => null)
+      mockGetTenantMembershipById.mockImplementation(async () => null)
 
       const response = await app.handle(
         new Request("http://localhost/tenants/org_1/members/mem_x/demote", {
@@ -448,7 +381,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns mismatch when membership belongs to different org", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ organizationId: "org_other" })
       )
 
@@ -465,7 +398,7 @@ describe("tenants-memberships routes", () => {
 
     it("rejects demotion of already-member role", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ role: "member" })
       )
 
@@ -482,7 +415,7 @@ describe("tenants-memberships routes", () => {
 
     it("rejects demotion of null role treated as member", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ role: null })
       )
 
@@ -499,13 +432,13 @@ describe("tenants-memberships routes", () => {
 
     it("returns forbidden when admin demotes owner", async () => {
       const app = await getApp()
-      liveRequireTenantActor.mockImplementation(
+      mockRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "admin",
         })
       )
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ role: "owner", roleSlug: "user_owner" })
       )
 
@@ -522,14 +455,14 @@ describe("tenants-memberships routes", () => {
 
     it("blocks self-demotion when last owner", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({
           role: "owner",
           roleSlug: "user_owner",
           userId: "user_actor",
         })
       )
-      liveDemoteTenantMembershipSafely.mockImplementation(
+      mockDemoteTenantMembershipSafely.mockImplementation(
         async (): Promise<MockDemoteResult> => ({
           success: false,
           reason: "SELF_DEMOTION_BLOCKED",
@@ -549,13 +482,13 @@ describe("tenants-memberships routes", () => {
 
     it("blocks demotion of last owner by another owner", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({
           role: "owner",
           roleSlug: "user_owner",
         })
       )
-      liveDemoteTenantMembershipSafely.mockImplementation(
+      mockDemoteTenantMembershipSafely.mockImplementation(
         async (): Promise<MockDemoteResult> => ({
           success: false,
           reason: "LAST_OWNER_PROTECTED",
@@ -575,10 +508,10 @@ describe("tenants-memberships routes", () => {
 
     it("returns workos error on service failure", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ role: "admin", roleSlug: "user_admin" })
       )
-      liveDemoteTenantMembershipSafely.mockImplementation(async () => {
+      mockDemoteTenantMembershipSafely.mockImplementation(async () => {
         throw new Error("network error")
       })
 
@@ -598,7 +531,7 @@ describe("tenants-memberships routes", () => {
     it("removes a member successfully", async () => {
       const app = await getApp()
       // Use role=null, roleSlug=null to bypass canDemoteFromRole check
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ role: null, roleSlug: null })
       )
 
@@ -619,7 +552,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns not found when membership does not exist", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () => null)
+      mockGetTenantMembershipById.mockImplementation(async () => null)
 
       const response = await app.handle(
         new Request("http://localhost/tenants/org_1/members/mem_x/remove", {
@@ -634,7 +567,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns mismatch when membership belongs to different org", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ organizationId: "org_other" })
       )
 
@@ -651,14 +584,14 @@ describe("tenants-memberships routes", () => {
 
     it("allows self-leave even without manage permission", async () => {
       const app = await getApp()
-      liveRequireTenantActor.mockImplementation(
+      mockRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           userId: "user_member_1",
           tenantRole: "member",
         })
       )
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({
           id: "mem_self",
           userId: "user_member_1",
@@ -683,14 +616,14 @@ describe("tenants-memberships routes", () => {
 
     it("rejects removal by member of another member", async () => {
       const app = await getApp()
-      liveRequireTenantActor.mockImplementation(
+      mockRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           userId: "user_member_1",
           tenantRole: "member",
         })
       )
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({
           id: "mem_other",
           userId: "user_target",
@@ -711,7 +644,7 @@ describe("tenants-memberships routes", () => {
 
     it("rejects removal of user with unmapped role", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ role: null, roleSlug: "custom_role_slug" })
       )
 
@@ -728,13 +661,13 @@ describe("tenants-memberships routes", () => {
 
     it("rejects removal of owner by admin", async () => {
       const app = await getApp()
-      liveRequireTenantActor.mockImplementation(
+      mockRequireTenantActor.mockImplementation(
         async (): Promise<MockActor> => ({
           ...defaultActor,
           tenantRole: "admin",
         })
       )
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ role: "owner", roleSlug: "user_owner" })
       )
 
@@ -751,14 +684,14 @@ describe("tenants-memberships routes", () => {
 
     it("blocks self-leave when last owner", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({
           role: "owner",
           roleSlug: "user_owner",
           userId: "user_actor",
         })
       )
-      liveDeleteTenantMembershipSafely.mockImplementation(
+      mockDeleteTenantMembershipSafely.mockImplementation(
         async (): Promise<MockDeleteResult> => ({
           success: false,
           reason: "SELF_LEAVE_BLOCKED",
@@ -778,10 +711,10 @@ describe("tenants-memberships routes", () => {
 
     it("blocks removal of last owner", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () =>
+      mockGetTenantMembershipById.mockImplementation(async () =>
         makeMembership({ role: "owner", roleSlug: "user_owner" })
       )
-      liveDeleteTenantMembershipSafely.mockImplementation(
+      mockDeleteTenantMembershipSafely.mockImplementation(
         async (): Promise<MockDeleteResult> => ({
           success: false,
           reason: "LAST_OWNER_PROTECTED",
@@ -801,7 +734,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns workos error on service failure", async () => {
       const app = await getApp()
-      liveGetTenantMembershipById.mockImplementation(async () => {
+      mockGetTenantMembershipById.mockImplementation(async () => {
         throw new Error("network error")
       })
 
