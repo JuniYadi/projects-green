@@ -64,6 +64,20 @@ describe("validateBuildStep", () => {
       )
     ).toBe(true)
   })
+
+  it("allows dockerfile mode when manual values are missing", () => {
+    expect(
+      validateBuildStep(
+        {
+          language: "",
+          framework: "",
+          buildCommand: "",
+          useDockerfile: true,
+        },
+        failedDetection
+      )
+    ).toBe(true)
+  })
 })
 
 describe("validateEnvVarKeysUnique", () => {

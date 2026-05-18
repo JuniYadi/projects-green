@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, waitFor, type RenderResult } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  waitFor,
+  type RenderResult,
+} from "@testing-library/react"
 
 let currentQuery = ""
 const replaceCalls: string[] = []
@@ -81,9 +86,7 @@ const selectSourceRepository = async (view: RenderResult) => {
   })
 
   await waitFor(() => {
-    expect(
-      view.getByRole("option", { name: "console-next-app" })
-    ).toBeTruthy()
+    expect(view.getByRole("option", { name: "console-next-app" })).toBeTruthy()
   })
 
   fireEvent.change(view.getByLabelText("Repository selector"), {
@@ -161,12 +164,20 @@ describe("DeployWizard", () => {
     })
     expect(view.getByText("Select a repository to continue.")).toBeTruthy()
 
+    await waitFor(() => {
+      expect(
+        view.getByRole("option", { name: "console-next-app" })
+      ).toBeTruthy()
+    })
+
     fireEvent.change(view.getByLabelText("Repository selector"), {
       target: { value: "repo-console-next" },
     })
 
     await waitFor(() => {
-      expect(view.getByText("Repository selected: console-next-app")).toBeTruthy()
+      expect(
+        view.getByText("Repository selected: console-next-app")
+      ).toBeTruthy()
     })
     expect(view.getByText("Branch selected: main")).toBeTruthy()
     expect(view.getByRole("button", { name: "Next" })).toBeEnabled()
@@ -176,9 +187,7 @@ describe("DeployWizard", () => {
     })
 
     await waitFor(() => {
-      expect(
-        view.getByText("Deploy from /apps/web. Ensure build files exist in this path.")
-      ).toBeTruthy()
+      expect(view.getByDisplayValue("/apps/web")).toBeTruthy()
     })
   })
 
@@ -192,6 +201,10 @@ describe("DeployWizard", () => {
     await waitFor(() => {
       expect(view.getByText("Manual override")).toBeTruthy()
     })
+    expect(view.getByText("Detected language")).toBeTruthy()
+    expect(view.getByText("Detected framework")).toBeTruthy()
+    expect(view.getByText("Detected build command")).toBeTruthy()
+    expect(view.getByText("Ready: build settings are complete.")).toBeTruthy()
 
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
@@ -238,8 +251,26 @@ describe("DeployWizard", () => {
     await waitFor(() => {
       expect(view.getByText("Manual override")).toBeTruthy()
     })
+    expect(
+      view.getByText(
+        "Detection failed. Add manual build settings or enable Dockerfile."
+      )
+    ).toBeTruthy()
+    expect(view.getByRole("button", { name: "Next" })).toBeDisabled()
+    expect(view.getByText("Build settings need attention")).toBeTruthy()
+    expect(view.getByText("Select a language.")).toBeTruthy()
+    expect(view.getByText("Select a framework.")).toBeTruthy()
+    expect(view.getByText("Enter a build command.")).toBeTruthy()
+    expect(view.getByLabelText("Build command")).toBeEnabled()
 
     fireEvent.click(view.getByLabelText("Use Dockerfile instead"))
+    await waitFor(() => {
+      expect(view.getByLabelText("Build command")).toBeDisabled()
+      expect(
+        view.getByText("Ready: deployment will use your Dockerfile.")
+      ).toBeTruthy()
+      expect(view.getByRole("button", { name: "Next" })).toBeEnabled()
+    })
 
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
