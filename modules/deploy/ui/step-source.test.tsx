@@ -54,6 +54,54 @@ const createProps = () => {
 }
 
 describe("StepSource", () => {
+  it("renders source field guidance before selections", () => {
+    const props = createProps()
+
+    const view = render(<StepSource {...props} />)
+
+    expect(view.getByText("Select an owner to unlock repository options.")).toBeTruthy()
+    expect(view.getByText("Pick an owner first.")).toBeTruthy()
+    expect(view.getByText("Select a repository to load branches.")).toBeTruthy()
+    expect(
+      view.getByText(
+        "Using repository root. Example nested app paths: /apps/web or /packages/site."
+      )
+    ).toBeTruthy()
+  })
+
+  it("renders selected source state and custom root directory guidance", () => {
+    const props = createProps()
+    props.selectedOwnerId = "owner-pfn"
+    props.selectedRepositoryId = "repo-console-next"
+    props.selectedBranchName = "main"
+    props.rootDirectory = "/apps/web"
+
+    const view = render(<StepSource {...props} />)
+
+    expect(view.getByText("Owner selected: owner-pfn")).toBeTruthy()
+    expect(view.getByText("Repository selected: repo-console-next")).toBeTruthy()
+    expect(view.getByText("Branch selected: main")).toBeTruthy()
+    expect(
+      view.getByText(
+        "Deploy from /apps/web. Ensure build files exist in this path."
+      )
+    ).toBeTruthy()
+  })
+
+  it("shows empty search states for owners and repositories", () => {
+    const props = createProps()
+    props.ownerSearch = "unknown-owner"
+    props.owners = []
+    props.selectedOwnerId = "owner-pfn"
+    props.repositorySearch = "missing-repo"
+    props.repositories = []
+
+    const view = render(<StepSource {...props} />)
+
+    expect(view.getByText("No owners match your search yet.")).toBeTruthy()
+    expect(view.getByText("No repositories match your search.")).toBeTruthy()
+  })
+
   it("shows connected notice and starts GitHub connect action", () => {
     const props = createProps()
     props.githubConnectionStatus = "connected"
