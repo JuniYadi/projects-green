@@ -235,12 +235,29 @@ describe("DeployWizard", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Deploy" }))
 
+    await waitFor(() => {
+      expect(view.getByText("Status timeline")).toBeTruthy()
+      expect(view.getByText("Build and runtime logs")).toBeTruthy()
+      expect(view.getByText("Result state")).toBeTruthy()
+    })
+
     await waitFor(
       () => {
         expect(view.getByText("Deployment live")).toBeTruthy()
       },
       { timeout: 8000 }
     )
+
+    expect(view.getByText("Monitor step complete.")).toBeTruthy()
+    expect(view.getByText(/Attempt 1 finished successfully\./)).toBeTruthy()
+    expect(view.getByText("Stream: Deployment finished.")).toBeTruthy()
+
+    fireEvent.click(view.getByRole("button", { name: "Show logs" }))
+    await waitFor(() => {
+      expect(
+        view.getByText("[runtime] Attempt 1: deployment passed health checks.")
+      ).toBeTruthy()
+    })
 
     expect(view.getByRole("link", { name: "Visit App" })).toBeTruthy()
     expect(replaceCalls.some((value) => value.includes("step=monitor"))).toBe(
@@ -308,12 +325,81 @@ describe("DeployWizard", () => {
       { timeout: 8000 }
     )
 
+    expect(view.getByText("Monitor step complete.")).toBeTruthy()
+    expect(view.getByText("Stream: Deployment finished.")).toBeTruthy()
+    expect(
+      view.getByText("[runtime] Attempt 1: rollout failed during health checks.")
+    ).toBeTruthy()
+
     expect(view.getByRole("button", { name: "Retry" })).toBeTruthy()
     fireEvent.click(view.getByRole("button", { name: "Edit Settings" }))
 
     await waitFor(() => {
       expect(view.getByText("Attached resources")).toBeTruthy()
     })
+  }, 15_000)
+
+  it("retries failed monitor run and completes on second attempt", async () => {
+    const view = await renderWizard()
+
+    await waitFor(() => {
+      expect(view.getByRole("option", { name: "owner-acme" })).toBeTruthy()
+    })
+
+    fireEvent.change(view.getByLabelText("Owner selector"), {
+      target: { value: "owner-acme" },
+    })
+
+    await waitFor(() => {
+      expect(view.getByRole("option", { name: "legacy-worker" })).toBeTruthy()
+    })
+
+    fireEvent.change(view.getByLabelText("Repository selector"), {
+      target: { value: "repo-failing-build" },
+    })
+
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+
+    await waitFor(() => {
+      expect(view.getByText("Manual override")).toBeTruthy()
+    })
+
+    fireEvent.click(view.getByLabelText("Use Dockerfile instead"))
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: "Next" })).toBeEnabled()
+    })
+
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+
+    await waitFor(() => {
+      expect(view.getByText("Attached resources")).toBeTruthy()
+    })
+
+    fireEvent.click(view.getByRole("button", { name: "Deploy" }))
+
+    await waitFor(
+      () => {
+        expect(view.getByText("Deployment failed")).toBeTruthy()
+      },
+      { timeout: 8000 }
+    )
+
+    fireEvent.click(view.getByRole("button", { name: "Retry" }))
+
+    await waitFor(() => {
+      expect(view.getByText("Deployment in progress")).toBeTruthy()
+      expect(view.getByText("Monitor step in progress.")).toBeTruthy()
+    })
+
+    await waitFor(
+      () => {
+        expect(view.getByText("Deployment live")).toBeTruthy()
+      },
+      { timeout: 8000 }
+    )
+
+    expect(view.getByText(/Attempt 2 finished successfully\./)).toBeTruthy()
+    expect(view.getByText("Monitor step complete.")).toBeTruthy()
   }, 15_000)
 
   it("preserves environment values when navigating back and forward", async () => {

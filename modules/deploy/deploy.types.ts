@@ -65,7 +65,7 @@ export type DeployLogScope = "all" | "build" | "runtime"
 export type DeployLogLine = {
   id: string
   scope: Exclude<DeployLogScope, "all">
-  status: Exclude<DeployStatus, "idle" | "running" | "failed">
+  status: Exclude<DeployStatus, "idle">
   message: string
 }
 

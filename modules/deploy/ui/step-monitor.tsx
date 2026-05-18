@@ -11,6 +11,7 @@ import type {
 type StepMonitorProps = {
   status: DeployStatus
   logScope: DeployLogScope
+  attempt: number
   failureReason: string | null
   onLogScopeChange: (scope: DeployLogScope) => void
   onRetry: () => void
@@ -20,11 +21,20 @@ type StepMonitorProps = {
 export function StepMonitor({
   status,
   logScope,
+  attempt,
   failureReason,
   onLogScopeChange,
   onRetry,
   onEditSettings,
 }: StepMonitorProps) {
+  const isStepComplete = status === "running" || status === "failed"
+  const stepStateText =
+    status === "idle"
+      ? "Monitor step waiting to start."
+      : isStepComplete
+        ? "Monitor step complete."
+        : "Monitor step in progress."
+
   return (
     <Card>
       <CardHeader>
@@ -39,22 +49,38 @@ export function StepMonitor({
           <span className="rounded-md border border-border px-2 py-1 text-xs font-medium">
             {DEPLOY_STATUS_LABELS[status]}
           </span>
+          <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
+            Attempt {Math.max(attempt, 1)}
+          </span>
         </div>
 
-        <DeployTimeline status={status} />
+        <p className="text-xs text-muted-foreground">{stepStateText}</p>
 
-        <LogsPanel
-          status={status}
-          scope={logScope}
-          onScopeChange={onLogScopeChange}
-        />
+        <section className="space-y-2">
+          <h3 className="text-sm font-medium">Status timeline</h3>
+          <DeployTimeline status={status} />
+        </section>
 
-        <ResultPanel
-          status={status}
-          failureReason={failureReason}
-          onRetry={onRetry}
-          onEditSettings={onEditSettings}
-        />
+        <section className="space-y-2">
+          <h3 className="text-sm font-medium">Build and runtime logs</h3>
+          <LogsPanel
+            status={status}
+            scope={logScope}
+            attempt={Math.max(attempt, 1)}
+            onScopeChange={onLogScopeChange}
+          />
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="text-sm font-medium">Result state</h3>
+          <ResultPanel
+            status={status}
+            failureReason={failureReason}
+            attempt={Math.max(attempt, 1)}
+            onRetry={onRetry}
+            onEditSettings={onEditSettings}
+          />
+        </section>
       </CardContent>
     </Card>
   )

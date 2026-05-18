@@ -659,6 +659,7 @@ function DeployWizardInner() {
       <StepMonitor
         status={state.monitor.status}
         logScope={state.monitor.logScope}
+        attempt={state.monitor.attempt}
         failureReason={state.monitor.failureReason}
         onLogScopeChange={(logScope) => {
           dispatch({ type: "set-monitor-log-scope", payload: logScope })
