@@ -6,17 +6,7 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
 } from "@workos-inc/node"
-
-// Create a standalone mock for TenantWorkOSOperationUnsupportedError
-// to avoid importing tenant-workos.service which has heavy deps
-class MockTenantWorkOSOperationUnsupportedError extends Error {
-  readonly operation: string
-  constructor(operation: string) {
-    super(`Operation '${operation}' is not supported.`)
-    this.name = "TenantWorkOSOperationUnsupportedError"
-    this.operation = operation
-  }
-}
+import { TenantWorkOSOperationUnsupportedError } from "@/modules/tenants/services/tenant-workos.errors"
 
 // Mock the authkit + workos service deps so tenants.errors can load
 mock.module("@workos-inc/authkit-nextjs", () => ({
@@ -33,25 +23,6 @@ mock.module("@/lib/prisma", () => ({
 
 mock.module("@/lib/platform-role", () => ({
   getPlatformRoleForUser: async () => "none",
-}))
-
-mock.module("@/modules/tenants/services/tenant-workos.service", () => ({
-  TenantWorkOSOperationUnsupportedError:
-    MockTenantWorkOSOperationUnsupportedError,
-  listTenantMemberships: async () => [],
-  getTenantMembershipById: async () => null,
-  updateTenantMembershipRole: async () => null,
-  demoteTenantMembershipSafely: async () => ({ success: true }),
-  deleteTenantMembershipSafely: async () => ({ success: true }),
-  listTenantInvitations: async () => [],
-  getTenantInvitationById: async () => null,
-  sendTenantInvitation: async () => null,
-  revokeTenantInvitation: async () => null,
-  cancelTenantInvitation: async () => null,
-  resendTenantInvitation: async () => null,
-  getTenantOrganizationById: async () => null,
-  updateTenantOrganization: async () => null,
-  deleteTenantOrganization: async () => null,
 }))
 
 const {
@@ -192,7 +163,7 @@ describe("tenants.errors", () => {
 
     it("handles TenantWorkOSOperationUnsupportedError", () => {
       const set = { status: undefined as number | undefined }
-      const error = new MockTenantWorkOSOperationUnsupportedError("testOp")
+      const error = new TenantWorkOSOperationUnsupportedError("testOp")
       const result = toWorkosApiError(set, error)
 
       expect(set.status).toBe(501)
