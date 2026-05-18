@@ -48,6 +48,29 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - When opening PRs with GitHub CLI, write the body to a Markdown file and use `gh pr create --body-file <file>` to preserve newlines reliably; avoid inline `--body` for multiline text.
 - PRs should include: problem/solution summary, linked issue (if available), test evidence (`bun run test`, `bun run lint`), and screenshots for UI changes.
 
+## Kanban Task Authoring Standard
+- Every Kanban task prompt must use this exact section order:
+  - `Context`
+  - `Goal`
+  - `Scope of work`
+  - `Validation`
+  - `Acceptance criteria`
+  - `Constraints`
+  - `Deliverables`
+- Content requirements by section:
+  - `Context`: summarize relevant background, current state, and assumptions needed to execute the task without extra discovery.
+  - `Goal`: define the intended end state in one clear outcome-focused statement.
+  - `Scope of work`: provide an explicit numbered implementation plan with concrete actions, target files/surfaces, and boundaries.
+  - `Validation`: list required checks (tests, lint, typecheck, manual verification) and define what must be verified.
+  - `Acceptance criteria`: list objective, testable completion conditions that determine done/not done.
+  - `Constraints`: capture non-negotiable limits, including tooling, style, safety, and out-of-scope rules.
+  - `Deliverables`: list the exact artifacts expected at completion (files changed, outputs, and summary requirements).
+- Task creation behavior defaults:
+  - Create a single task by default; split into multiple tasks only when explicitly requested.
+  - Use `baseRef=main` by default unless another base branch is explicitly requested.
+  - Keep plan mode off by default; enable it only when explicitly requested.
+  - Keep auto-review off by default; enable it only when explicitly requested.
+
 ## Security & Configuration Tips
 - Copy required values from `.env.example`; never commit real secrets.
 - Required integrations include PostgreSQL (`DATABASE_URL`) and WorkOS keys.
