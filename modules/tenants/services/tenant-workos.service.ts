@@ -8,6 +8,7 @@ import type {
   TenantMembershipSummary,
   TenantOrganizationSummary,
 } from "@/modules/tenants/contracts/tenant-api.contract"
+import { TenantWorkOSOperationUnsupportedError } from "@/modules/tenants/services/tenant-workos.errors"
 import { withOwnershipLock } from "@/modules/tenants/services/tenant-ownership-lock"
 import {
   normalizeTenantRole,
@@ -58,16 +59,6 @@ type WorkOSOrganization = {
   allowProfilesOutsideOrganization?: boolean
   createdAt: string
   updatedAt: string
-}
-
-export class TenantWorkOSOperationUnsupportedError extends Error {
-  readonly operation: string
-
-  constructor(operation: string) {
-    super(`WorkOS operation '${operation}' is not supported by this SDK.`)
-    this.name = "TenantWorkOSOperationUnsupportedError"
-    this.operation = operation
-  }
 }
 
 const normalizeNullableString = (value: string | null | undefined) => {
