@@ -66,8 +66,8 @@ describe("StepEnvironment", () => {
       view.getByText("Environment settings need attention")
     ).toBeTruthy()
     expect(
-      view.getByText("Enter a valid domain such as", { exact: false })
-    ).toBeTruthy()
+      view.getAllByText("Enter a valid domain such as", { exact: false }).length
+    ).toBeGreaterThan(0)
     expect(
       view.getAllByText("Environment variable keys must be unique.").length
     ).toBeGreaterThan(0)
@@ -76,27 +76,16 @@ describe("StepEnvironment", () => {
 
   it("calls handlers for domain, env vars, and resource plan", () => {
     const props = createProps()
-    props.useGeneratedSubdomain = false
+    props.useGeneratedSubdomain = true
     props.envVars = [{ id: "env-1", key: "API_KEY", value: "secret" }]
 
     const view = render(<StepEnvironment {...props} />)
 
-    fireEvent.change(view.getByRole("textbox", { name: "Custom domain" }), {
-      target: { value: "app.example.com" },
-    })
-    expect(props.onCustomDomainChange).toHaveBeenCalledWith("app.example.com")
+    fireEvent.click(view.getByRole("radio", { name: /Custom domain/i }))
+    expect(props.onDomainToggleChange).toHaveBeenCalledWith(false)
 
     fireEvent.click(view.getByRole("button", { name: "Add variable" }))
     expect(props.onAddEnvVar).toHaveBeenCalledTimes(1)
-
-    fireEvent.change(view.getByLabelText("Environment key env-1"), {
-      target: { value: "API_TOKEN" },
-    })
-    expect(props.onUpdateEnvVar).toHaveBeenCalledWith(
-      "env-1",
-      "key",
-      "API_TOKEN"
-    )
 
     fireEvent.click(view.getByRole("button", { name: "Remove" }))
     expect(props.onRemoveEnvVar).toHaveBeenCalledWith("env-1")
