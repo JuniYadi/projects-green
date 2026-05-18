@@ -5,6 +5,8 @@ import type { EnvVar } from "@/modules/deploy/deploy.types"
 type EnvVarsEditorProps = {
   envVars: EnvVar[]
   hasDuplicateKeys: boolean
+  hasInvalidKeyFormat: boolean
+  hasIncompleteRows: boolean
   onAdd: () => void
   onUpdate: (id: string, field: "key" | "value", value: string) => void
   onRemove: (id: string) => void
@@ -13,6 +15,8 @@ type EnvVarsEditorProps = {
 export function EnvVarsEditor({
   envVars,
   hasDuplicateKeys,
+  hasInvalidKeyFormat,
+  hasIncompleteRows,
   onAdd,
   onUpdate,
   onRemove,
@@ -72,6 +76,20 @@ export function EnvVarsEditor({
           Environment variable keys must be unique.
         </p>
       ) : null}
+      {hasInvalidKeyFormat ? (
+        <p className="text-xs text-destructive">
+          Environment keys must use uppercase letters, numbers, or underscores.
+        </p>
+      ) : null}
+      {hasIncompleteRows ? (
+        <p className="text-xs text-destructive">
+          Complete each environment variable row or remove it before deploy.
+        </p>
+      ) : null}
+      <p className="text-xs text-muted-foreground">
+        Key format: <code>UPPER_SNAKE_CASE</code> (example{" "}
+        <code>DATABASE_URL</code>).
+      </p>
     </div>
   )
 }

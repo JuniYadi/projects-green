@@ -5,6 +5,11 @@ import {
   waitFor,
   type RenderResult,
 } from "@testing-library/react"
+import {
+  DEPLOY_WIZARD_STORAGE_KEY,
+  DEPLOY_WIZARD_STORAGE_VERSION,
+} from "@/modules/deploy/deploy.constants"
+import type { DeployWizardState } from "@/modules/deploy/deploy.types"
 
 let currentQuery = ""
 const replaceCalls: string[] = []
@@ -66,10 +71,26 @@ mock.module("next/navigation", () => {
   }
 })
 
-const renderWizard = async (query = "") => {
+const createPersistedState = (state: DeployWizardState) => {
+  return JSON.stringify({
+    version: DEPLOY_WIZARD_STORAGE_VERSION,
+    state,
+  })
+}
+
+const renderWizard = async (
+  query = "",
+  persistedState: DeployWizardState | null = null
+) => {
   currentQuery = query
   replaceCalls.splice(0)
   window.sessionStorage.clear()
+  if (persistedState) {
+    window.sessionStorage.setItem(
+      DEPLOY_WIZARD_STORAGE_KEY,
+      createPersistedState(persistedState)
+    )
+  }
 
   const wizardModule = await import("@/modules/deploy/ui/deploy-wizard")
 
@@ -338,7 +359,7 @@ describe("DeployWizard", () => {
     })
   })
 
-  it("shows duplicate env var key warning", async () => {
+  it("validates custom domain mode before deploy", async () => {
     const view = await renderWizard()
 
     await selectSourceRepository(view)
@@ -351,28 +372,85 @@ describe("DeployWizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
+      expect(view.getByText("Domain mode")).toBeTruthy()
+    })
+
+    fireEvent.click(view.getByRole("radio", { name: /Custom domain/i }))
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: "Deploy" })).toBeDisabled()
+      expect(
+        view.getAllByText(
+          "Custom domain is required when generated subdomain is off."
+        ).length
+      ).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(view.getByRole("radio", { name: /Managed subdomain/i }))
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: "Deploy" })).toBeEnabled()
+    })
+  })
+
+  it("shows duplicate env var key warning", async () => {
+    const view = await renderWizard("step=environment", {
+      step: "environment",
+      source: {
+        ownerId: "owner-pfn",
+        repositoryId: "repo-console-next",
+        branchName: "main",
+        rootDirectory: "/",
+      },
+      detectionResult: {
+        language: "Node.js",
+        framework: "Next.js",
+        dockerfileDetected: false,
+        buildCommand: "bun run build",
+        confidence: 91,
+        status: "success",
+      },
+      build: {
+        language: "Node.js",
+        framework: "Next.js",
+        buildCommand: "bun run build",
+        useDockerfile: false,
+      },
+      environment: {
+        useGeneratedSubdomain: true,
+        customDomain: "",
+        envVars: [
+          { id: "env-1", key: "API_KEY", value: "secret-1" },
+          { id: "env-2", key: "api_key", value: "secret-2" },
+        ],
+        resourcePlanId: "starter",
+      },
+      monitor: {
+        status: "idle",
+        logScope: "all",
+        attempt: 0,
+        tick: 0,
+        isActive: false,
+        shouldFail: false,
+        failureReason: null,
+      },
+    })
+
+    await waitFor(() => {
       expect(view.getByText("Attached resources")).toBeTruthy()
     })
 
-    fireEvent.click(view.getByRole("button", { name: "Add variable" }))
-    fireEvent.click(view.getByRole("button", { name: "Add variable" }))
-
-    const keyInputs = view.getAllByLabelText(/Environment key/)
-
-    fireEvent.change(keyInputs[0], { target: { value: "API_KEY" } })
-    fireEvent.change(keyInputs[1], { target: { value: "api_key" } })
-
     expect(
-      view.getByText("Environment variable keys must be unique.")
-    ).toBeTruthy()
+      view.getAllByText("Environment variable keys must be unique.").length
+    ).toBeGreaterThan(0)
 
     const removeButtons = view.getAllByRole("button", { name: "Remove" })
     fireEvent.click(removeButtons[1])
 
     await waitFor(() => {
       expect(
-        view.queryByText("Environment variable keys must be unique.")
-      ).toBeNull()
+        view.queryAllByText("Environment variable keys must be unique.")
+      ).toHaveLength(0)
     })
   })
 })

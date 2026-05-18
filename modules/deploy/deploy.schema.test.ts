@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test"
 
 import {
+  getEnvironmentValidationMessages,
+  isValidCustomDomain,
+  isValidEnvVarKey,
   validateBuildStep,
+  validateEnvironmentStep,
   validateEnvVarKeysUnique,
 } from "@/modules/deploy/deploy.schema"
 import type { DetectionResult } from "@/modules/deploy/deploy.types"
@@ -113,5 +117,112 @@ describe("validateEnvVarKeysUnique", () => {
         },
       ])
     ).toBe(true)
+  })
+
+  it("ignores empty keys while editing", () => {
+    expect(
+      validateEnvVarKeysUnique([
+        {
+          id: "1",
+          key: "",
+          value: "",
+        },
+        {
+          id: "2",
+          key: "",
+          value: "",
+        },
+      ])
+    ).toBe(true)
+  })
+})
+
+describe("environment step validation", () => {
+  const baseEnvironmentState = {
+    useGeneratedSubdomain: true,
+    customDomain: "",
+    envVars: [],
+    resourcePlanId: "starter" as const,
+  }
+
+  it("requires custom domain when domain mode is custom", () => {
+    expect(
+      validateEnvironmentStep({
+        ...baseEnvironmentState,
+        useGeneratedSubdomain: false,
+      })
+    ).toBe(false)
+  })
+
+  it("rejects invalid custom domain format", () => {
+    expect(
+      validateEnvironmentStep({
+        ...baseEnvironmentState,
+        useGeneratedSubdomain: false,
+        customDomain: "https://app.example.com",
+      })
+    ).toBe(false)
+
+    expect(
+      validateEnvironmentStep({
+        ...baseEnvironmentState,
+        useGeneratedSubdomain: false,
+        customDomain: "app.example.com",
+      })
+    ).toBe(true)
+  })
+
+  it("rejects non-standard env var keys", () => {
+    expect(
+      validateEnvironmentStep({
+        ...baseEnvironmentState,
+        envVars: [
+          {
+            id: "1",
+            key: "apiKey",
+            value: "secret",
+          },
+        ],
+      })
+    ).toBe(false)
+  })
+})
+
+describe("helper validators", () => {
+  it("validates custom domain format", () => {
+    expect(isValidCustomDomain("app.example.com")).toBe(true)
+    expect(isValidCustomDomain("https://app.example.com")).toBe(false)
+  })
+
+  it("validates environment variable key format", () => {
+    expect(isValidEnvVarKey("DATABASE_URL")).toBe(true)
+    expect(isValidEnvVarKey("databaseUrl")).toBe(false)
+  })
+
+  it("returns deduplicated environment validation messages", () => {
+    const messages = getEnvironmentValidationMessages({
+      useGeneratedSubdomain: false,
+      customDomain: "",
+      envVars: [
+        {
+          id: "1",
+          key: "",
+          value: "",
+        },
+        {
+          id: "2",
+          key: "",
+          value: "",
+        },
+      ],
+      resourcePlanId: "starter",
+    })
+
+    expect(messages).toHaveLength(3)
+    expect(messages).toContain("Environment key is required.")
+    expect(messages).toContain("Environment value is required.")
+    expect(messages).toContain(
+      "Custom domain is required when generated subdomain is off."
+    )
   })
 })

@@ -1,16 +1,23 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import { EnvVarsEditor } from "@/modules/deploy/ui/env-vars-editor"
 import { ResourcePlanSelector } from "@/modules/deploy/ui/resource-plan-selector"
 import type { EnvVar, ResourcePlanId } from "@/modules/deploy/deploy.types"
 
 type StepEnvironmentProps = {
+  generatedSubdomain: string
   useGeneratedSubdomain: boolean
   customDomain: string
   envVars: EnvVar[]
   resourcePlanId: ResourcePlanId
   hasDuplicateEnvKeys: boolean
+  hasMissingCustomDomain: boolean
+  hasInvalidCustomDomain: boolean
+  hasInvalidEnvVarKeys: boolean
+  hasIncompleteEnvVarRows: boolean
+  validationMessages: string[]
   canDeploy: boolean
   onBack: () => void
   onDeploy: () => void
@@ -23,11 +30,17 @@ type StepEnvironmentProps = {
 }
 
 export function StepEnvironment({
+  generatedSubdomain,
   useGeneratedSubdomain,
   customDomain,
   envVars,
   resourcePlanId,
   hasDuplicateEnvKeys,
+  hasMissingCustomDomain,
+  hasInvalidCustomDomain,
+  hasInvalidEnvVarKeys,
+  hasIncompleteEnvVarRows,
+  validationMessages,
   canDeploy,
   onBack,
   onDeploy,
@@ -38,32 +51,103 @@ export function StepEnvironment({
   onRemoveEnvVar,
   onResourcePlanChange,
 }: StepEnvironmentProps) {
+  const targetDomain = useGeneratedSubdomain
+    ? generatedSubdomain
+    : customDomain.trim()
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Environment</CardTitle>
         <CardDescription>
-          Configure domain, secrets, and compute package.
+          Configure domain mode, secrets, and compute package.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-3 border border-border p-3">
-          <p className="text-sm font-medium">Domain</p>
-          <label className="flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={useGeneratedSubdomain}
-              onChange={(event) => onDomainToggleChange(event.target.checked)}
+          <p className="text-sm font-medium">Domain mode</p>
+          <p className="text-xs text-muted-foreground">
+            Choose a managed subdomain for launch, or bring your own custom
+            domain.
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label
+              className={cn(
+                "block cursor-pointer border p-3",
+                useGeneratedSubdomain
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-background"
+              )}
+            >
+              <input
+                type="radio"
+                className="sr-only"
+                name="domain-mode"
+                checked={useGeneratedSubdomain}
+                onChange={() => onDomainToggleChange(true)}
+              />
+              <p className="text-sm font-medium">Managed subdomain</p>
+              <p className="text-xs text-muted-foreground">
+                Use a generated <code>*.pfn.app</code> domain for immediate
+                launch.
+              </p>
+            </label>
+
+            <label
+              className={cn(
+                "block cursor-pointer border p-3",
+                !useGeneratedSubdomain
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-background"
+              )}
+            >
+              <input
+                type="radio"
+                className="sr-only"
+                name="domain-mode"
+                checked={!useGeneratedSubdomain}
+                onChange={() => onDomainToggleChange(false)}
+              />
+              <p className="text-sm font-medium">Custom domain</p>
+              <p className="text-xs text-muted-foreground">
+                Point your own domain after launch, for example{" "}
+                <code>app.example.com</code>.
+              </p>
+            </label>
+          </div>
+
+          <p className="border border-border bg-muted/40 p-2 text-xs">
+            {useGeneratedSubdomain
+              ? `Preview domain: ${generatedSubdomain}`
+              : "Custom domain will be used as the primary app URL."}
+          </p>
+
+          <label className="space-y-1">
+            <span className="text-xs font-medium">Custom domain</span>
+            <Input
+              aria-label="Custom domain"
+              aria-invalid={hasMissingCustomDomain || hasInvalidCustomDomain}
+              value={customDomain}
+              disabled={useGeneratedSubdomain}
+              className={cn(
+                (hasMissingCustomDomain || hasInvalidCustomDomain) &&
+                  "border-destructive focus-visible:ring-destructive"
+              )}
+              placeholder="app.example.com"
+              onChange={(event) => onCustomDomainChange(event.target.value)}
             />
-            Use generated subdomain (for example `my-app.pfn.app`)
           </label>
-          <Input
-            aria-label="Custom domain"
-            value={customDomain}
-            disabled={useGeneratedSubdomain}
-            placeholder="app.example.com"
-            onChange={(event) => onCustomDomainChange(event.target.value)}
-          />
+          {hasMissingCustomDomain ? (
+            <p className="text-xs text-destructive">
+              Custom domain is required when generated subdomain is off.
+            </p>
+          ) : null}
+          {hasInvalidCustomDomain ? (
+            <p className="text-xs text-destructive">
+              Enter a valid domain such as <code>app.example.com</code>.
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-3 border border-border p-3">
@@ -71,6 +155,8 @@ export function StepEnvironment({
           <EnvVarsEditor
             envVars={envVars}
             hasDuplicateKeys={hasDuplicateEnvKeys}
+            hasInvalidKeyFormat={hasInvalidEnvVarKeys}
+            hasIncompleteRows={hasIncompleteEnvVarRows}
             onAdd={onAddEnvVar}
             onUpdate={onUpdateEnvVar}
             onRemove={onRemoveEnvVar}
@@ -78,11 +164,16 @@ export function StepEnvironment({
         </div>
 
         <div className="space-y-3 border border-border p-3">
-          <p className="text-sm font-medium">Resource package</p>
+          <p className="text-sm font-medium">Resource plan</p>
           <ResourcePlanSelector
             selectedPlanId={resourcePlanId}
             onChange={onResourcePlanChange}
           />
+          <p className="text-xs text-muted-foreground">
+            {resourcePlanId === "starter"
+              ? "Starter plan selected: suitable for demos and low traffic."
+              : "Pro plan selected: suitable for production workloads."}
+          </p>
         </div>
 
         <div className="space-y-2 border border-dashed border-border p-3">
@@ -92,6 +183,26 @@ export function StepEnvironment({
             deployment.
           </p>
         </div>
+
+        {validationMessages.length > 0 ? (
+          <div
+            className="space-y-1 border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
+            role="alert"
+          >
+            <p className="font-medium">Environment settings need attention</p>
+            <ul className="list-disc pl-4">
+              {validationMessages.map((message) => {
+                return <li key={message}>{message}</li>
+              })}
+            </ul>
+          </div>
+        ) : (
+          <p className="border border-border bg-muted/40 p-3 text-xs text-foreground">
+            Ready: deploy to <code>{targetDomain}</code> with {envVars.length}{" "}
+            environment variable{envVars.length === 1 ? "" : "s"} on the{" "}
+            {resourcePlanId === "starter" ? "Starter" : "Pro"} plan.
+          </p>
+        )}
       </CardContent>
       <div className="flex items-center justify-between border-t p-4">
         <Button type="button" variant="outline" onClick={onBack}>
