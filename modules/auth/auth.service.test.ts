@@ -7,6 +7,17 @@ import {
   MissingAuthConfigurationError,
 } from "@/modules/auth/auth.service"
 
+const MANAGED_ENV_KEYS = [
+  "WORKOS_CLIENT_ID",
+  "WORKOS_COOKIE_PASSWORD",
+  "WORKOS_COOKIE_NAME",
+  "WORKOS_COOKIE_DOMAIN",
+  "WORKOS_COOKIE_SAMESITE",
+  "WORKOS_COOKIE_MAX_AGE",
+] as const
+
+type ManagedEnvKey = (typeof MANAGED_ENV_KEYS)[number]
+
 const mockCreateMagicAuth = mock(async () => ({}))
 const mockAuthenticateWithMagicAuth = mock(async () => ({
   sealedSession: "sealed_session_abc",
@@ -36,9 +47,13 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 const { authService } = await import("@/modules/auth/auth.service")
 
 describe("authService", () => {
-  const savedEnv = { ...process.env }
+  let savedEnv: Partial<Record<ManagedEnvKey, string | undefined>> = {}
 
   beforeEach(() => {
+    savedEnv = Object.fromEntries(
+      MANAGED_ENV_KEYS.map((key) => [key, process.env[key]])
+    ) as Partial<Record<ManagedEnvKey, string | undefined>>
+
     process.env.WORKOS_CLIENT_ID = "client_test"
     process.env.WORKOS_COOKIE_PASSWORD =
       "cookie_password_at_least_32_characters_long!!"
@@ -67,7 +82,15 @@ describe("authService", () => {
   })
 
   afterEach(() => {
-    process.env = { ...savedEnv }
+    for (const key of MANAGED_ENV_KEYS) {
+      const value = savedEnv[key]
+      if (value === undefined) {
+        delete process.env[key]
+        continue
+      }
+
+      process.env[key] = value
+    }
   })
 
   describe("error classes", () => {
