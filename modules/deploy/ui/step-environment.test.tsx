@@ -36,7 +36,7 @@ describe("StepEnvironment", () => {
 
     expect(view.getByText("Domain mode")).toBeTruthy()
     expect(view.getByText("Managed subdomain")).toBeTruthy()
-    expect(view.getByText("Custom domain")).toBeTruthy()
+    expect(view.getAllByText("Custom domain").length).toBeGreaterThan(0)
     expect(view.getByText("Preview domain: console-next-app.pfn.app")).toBeTruthy()
     expect(
       view.getByText("Ready: deploy to", { exact: false })
@@ -69,8 +69,8 @@ describe("StepEnvironment", () => {
       view.getByText("Enter a valid domain such as", { exact: false })
     ).toBeTruthy()
     expect(
-      view.getByText("Environment variable keys must be unique.")
-    ).toBeTruthy()
+      view.getAllByText("Environment variable keys must be unique.").length
+    ).toBeGreaterThan(0)
     expect(view.getByRole("button", { name: "Deploy" })).toBeDisabled()
   })
 
@@ -81,7 +81,7 @@ describe("StepEnvironment", () => {
 
     const view = render(<StepEnvironment {...props} />)
 
-    fireEvent.change(view.getByLabelText("Custom domain"), {
+    fireEvent.change(view.getByRole("textbox", { name: "Custom domain" }), {
       target: { value: "app.example.com" },
     })
     expect(props.onCustomDomainChange).toHaveBeenCalledWith("app.example.com")
