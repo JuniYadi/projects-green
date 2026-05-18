@@ -58,6 +58,88 @@ export function StepSource({
   onNext,
   canProceed,
 }: StepSourceProps) {
+  const hasOwnerSearch = ownerSearch.trim().length > 0
+  const hasRepositorySearch = repositorySearch.trim().length > 0
+  const ownerSelected = selectedOwnerId.length > 0
+  const repositorySelected = selectedRepositoryId.length > 0
+  const branchSelected = selectedBranchName.length > 0
+
+  const ownerStateMessage = (() => {
+    if (ownerOptionsError) {
+      return "We could not load owners. Try searching again or reconnect GitHub."
+    }
+
+    if (ownerOptionsLoading) {
+      return "Loading owners from your GitHub installations."
+    }
+
+    if (owners.length === 0) {
+      if (hasOwnerSearch) {
+        return "No owners match your search yet."
+      }
+
+      return "No owners loaded yet. Connect GitHub to fetch organizations."
+    }
+
+    if (!ownerSelected) {
+      return "Select an owner to unlock repository options."
+    }
+
+    return `Owner selected: ${selectedOwnerId}`
+  })()
+
+  const repositoryStateMessage = (() => {
+    if (!ownerSelected) {
+      return "Pick an owner first."
+    }
+
+    if (repositoryOptionsError) {
+      return "We could not load repositories for this owner."
+    }
+
+    if (repositoryOptionsLoading) {
+      return "Loading repositories."
+    }
+
+    if (repositories.length === 0) {
+      if (hasRepositorySearch) {
+        return "No repositories match your search."
+      }
+
+      return "No repositories available for this owner."
+    }
+
+    if (!repositorySelected) {
+      return "Select a repository to continue."
+    }
+
+    return `Repository selected: ${selectedRepositoryId}`
+  })()
+
+  const branchStateMessage = (() => {
+    if (!repositorySelected) {
+      return "Select a repository to load branches."
+    }
+
+    if (branches.length === 0) {
+      return "No branches available. Provide a branch manually once supported."
+    }
+
+    if (!branchSelected) {
+      return "Select a branch for deployment."
+    }
+
+    return `Branch selected: ${selectedBranchName}`
+  })()
+
+  const rootDirectoryStateMessage = (() => {
+    if (rootDirectory === "/") {
+      return "Using repository root. Example nested app paths: /apps/web or /packages/site."
+    }
+
+    return `Deploy from ${rootDirectory}. Ensure build files exist in this path.`
+  })()
+
   return (
     <Card>
       <CardHeader>
@@ -93,6 +175,7 @@ export function StepSource({
           <p className="text-xs text-muted-foreground">
             Don&apos;t see your repo? Connect GitHub to load more organizations.
           </p>
+          <p className="text-xs text-muted-foreground">{ownerStateMessage}</p>
           <Button
             type="button"
             size="sm"
@@ -157,6 +240,7 @@ export function StepSource({
               {repositoryOptionsError}
             </p>
           ) : null}
+          <p className="text-xs text-muted-foreground">{repositoryStateMessage}</p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -178,6 +262,7 @@ export function StepSource({
                 )
               })}
             </select>
+            <p className="text-xs text-muted-foreground">{branchStateMessage}</p>
           </div>
 
           <div className="space-y-1">
@@ -190,6 +275,9 @@ export function StepSource({
             <p className="text-xs text-muted-foreground">
               Where is your app located in the repository? Leave as / for the
               root.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {rootDirectoryStateMessage}
             </p>
           </div>
         </div>
