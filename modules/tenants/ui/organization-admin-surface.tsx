@@ -14,6 +14,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  ALL_MEMBER_ROLES_FILTER,
+  ALL_MEMBER_STATUSES_FILTER,
+  filterMembers,
+  getMemberDiscoveryOptions,
+} from "@/modules/tenants/ui/member-discovery"
 
 type TabKey = "members" | "invitations" | "settings"
 
@@ -190,6 +196,13 @@ export function OrganizationAdminSurface({
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState<"member" | "admin" | "owner">(
     "member"
+  )
+  const [memberSearchQuery, setMemberSearchQuery] = useState("")
+  const [memberRoleFilter, setMemberRoleFilter] = useState(
+    ALL_MEMBER_ROLES_FILTER
+  )
+  const [memberStatusFilter, setMemberStatusFilter] = useState(
+    ALL_MEMBER_STATUSES_FILTER
   )
   const [organizationNameDraft, setOrganizationNameDraft] = useState("")
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
@@ -379,6 +392,52 @@ export function OrganizationAdminSurface({
     return invitations.filter((item) => item.state === "pending")
   }, [invitations])
 
+  const memberDiscoveryOptions = useMemo(() => {
+    return getMemberDiscoveryOptions(members)
+  }, [members])
+
+  const effectiveMemberRoleFilter = memberDiscoveryOptions.roleOptions.includes(
+    memberRoleFilter
+  )
+    ? memberRoleFilter
+    : ALL_MEMBER_ROLES_FILTER
+
+  const effectiveMemberStatusFilter =
+    memberDiscoveryOptions.statusOptions.includes(memberStatusFilter)
+      ? memberStatusFilter
+      : ALL_MEMBER_STATUSES_FILTER
+
+  const filteredMembers = useMemo(() => {
+    return filterMembers(members, {
+      query: memberSearchQuery,
+      role: effectiveMemberRoleFilter,
+      status: effectiveMemberStatusFilter,
+    })
+  }, [
+    effectiveMemberRoleFilter,
+    effectiveMemberStatusFilter,
+    memberSearchQuery,
+    members,
+  ])
+
+  const hasMemberDiscoveryFilters = useMemo(() => {
+    return (
+      memberSearchQuery.trim().length > 0 ||
+      effectiveMemberRoleFilter !== ALL_MEMBER_ROLES_FILTER ||
+      effectiveMemberStatusFilter !== ALL_MEMBER_STATUSES_FILTER
+    )
+  }, [
+    effectiveMemberRoleFilter,
+    effectiveMemberStatusFilter,
+    memberSearchQuery,
+  ])
+
+  const resetMemberDiscovery = () => {
+    setMemberSearchQuery("")
+    setMemberRoleFilter(ALL_MEMBER_ROLES_FILTER)
+    setMemberStatusFilter(ALL_MEMBER_STATUSES_FILTER)
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -482,12 +541,76 @@ export function OrganizationAdminSurface({
               </p>
             ) : null}
 
+            {members.length > 0 ? (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto]">
+                  <Input
+                    value={memberSearchQuery}
+                    onChange={(event) => setMemberSearchQuery(event.target.value)}
+                    placeholder="Search by name, email, or ID"
+                    aria-label="Search members"
+                  />
+                  <select
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    value={effectiveMemberRoleFilter}
+                    onChange={(event) => setMemberRoleFilter(event.target.value)}
+                    aria-label="Filter by role"
+                  >
+                    <option value={ALL_MEMBER_ROLES_FILTER}>All roles</option>
+                    {memberDiscoveryOptions.roleOptions.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    value={effectiveMemberStatusFilter}
+                    onChange={(event) => setMemberStatusFilter(event.target.value)}
+                    aria-label="Filter by status"
+                  >
+                    <option value={ALL_MEMBER_STATUSES_FILTER}>
+                      All statuses
+                    </option>
+                    {memberDiscoveryOptions.statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetMemberDiscovery}
+                    disabled={!hasMemberDiscoveryFilters}
+                  >
+                    Reset
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Showing {filteredMembers.length} of {members.length} members.
+                </p>
+              </div>
+            ) : null}
+
             {members.length === 0 ? (
               <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
                 No members found.
               </p>
+            ) : filteredMembers.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
+                <p>No members match the current search and filters.</p>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="mt-1 h-auto p-0 text-sm"
+                  onClick={resetMemberDiscovery}
+                >
+                  Clear search and filters
+                </Button>
+              </div>
             ) : (
-              members.map((member) => {
+              filteredMembers.map((member) => {
                 const demoteAllowed =
                   (member.role === "admin" &&
                     allowedActions.has("demote_admin")) ||
