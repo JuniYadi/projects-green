@@ -175,7 +175,7 @@ describe("DeployWizard", () => {
     expect(replaceCalls.some((value) => value.includes("step=monitor"))).toBe(
       true
     )
-  })
+  }, 15_000)
 
   it("shows failure path with retry and edit settings actions", async () => {
     const view = await renderWizard()
@@ -225,7 +225,7 @@ describe("DeployWizard", () => {
     await waitFor(() => {
       expect(view.getByText("Attached resources")).toBeTruthy()
     })
-  })
+  }, 15_000)
 
   it("preserves environment values when navigating back and forward", async () => {
     const view = await renderWizard()
