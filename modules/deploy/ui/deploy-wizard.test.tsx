@@ -166,7 +166,7 @@ describe("DeployWizard", () => {
     })
 
     await waitFor(() => {
-      expect(view.getByText("Repository selected: repo-console-next")).toBeTruthy()
+      expect(view.getByText("Repository selected: console-next-app")).toBeTruthy()
     })
     expect(view.getByText("Branch selected: main")).toBeTruthy()
     expect(view.getByRole("button", { name: "Next" })).toBeEnabled()
@@ -175,9 +175,11 @@ describe("DeployWizard", () => {
       target: { value: "/apps/web" },
     })
 
-    expect(
-      view.getByText("Deploy from /apps/web. Ensure build files exist in this path.")
-    ).toBeTruthy()
+    await waitFor(() => {
+      expect(
+        view.getByText("Deploy from /apps/web. Ensure build files exist in this path.")
+      ).toBeTruthy()
+    })
   })
 
   it("runs happy path from source to running status", async () => {
