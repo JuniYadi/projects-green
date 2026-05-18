@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -17,6 +17,7 @@ import type {
 type LogsPanelProps = {
   status: DeployStatus
   scope: DeployLogScope
+  attempt: number
   onScopeChange: (scope: DeployLogScope) => void
 }
 
@@ -44,17 +45,77 @@ const getVisibleLogLines = (
   })
 }
 
-export function LogsPanel({ status, scope, onScopeChange }: LogsPanelProps) {
+const getStreamStateLabel = (status: DeployStatus) => {
+  if (status === "idle") {
+    return "Waiting for deployment to start."
+  }
+
+  if (status === "running" || status === "failed") {
+    return "Deployment finished."
+  }
+
+  return "Live updates in progress."
+}
+
+const getTerminalLogLine = (
+  status: DeployStatus,
+  attempt: number
+): DeployLogLine | null => {
+  if (status === "running") {
+    return {
+      id: `log-success-${attempt}`,
+      scope: "runtime",
+      status: "running",
+      message: `Attempt ${attempt}: deployment passed health checks.`,
+    }
+  }
+
+  if (status === "failed") {
+    return {
+      id: `log-failure-${attempt}`,
+      scope: "runtime",
+      status: "failed",
+      message: `Attempt ${attempt}: rollout failed during health checks.`,
+    }
+  }
+
+  return null
+}
+
+export function LogsPanel({
+  status,
+  scope,
+  attempt,
+  onScopeChange,
+}: LogsPanelProps) {
   const [isOpen, setIsOpen] = useState(status === "failed")
 
+  useEffect(() => {
+    if (status === "failed") {
+      setIsOpen(true)
+    }
+  }, [status])
+
   const visibleLines = useMemo(() => {
-    return getVisibleLogLines(DEPLOY_LOG_LINES, status, scope)
-  }, [scope, status])
+    const inScopeLines = getVisibleLogLines(DEPLOY_LOG_LINES, status, scope)
+    const terminalLine = getTerminalLogLine(status, attempt)
+
+    if (!terminalLine || (scope !== "all" && scope !== terminalLine.scope)) {
+      return inScopeLines
+    }
+
+    return [...inScopeLines, terminalLine]
+  }, [attempt, scope, status])
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <div className="flex items-center justify-between gap-2 border border-border bg-muted/20 px-3 py-2">
-        <p className="text-xs font-medium">Logs</p>
+        <div>
+          <p className="text-xs font-medium">Logs</p>
+          <p className="text-[11px] text-muted-foreground">
+            Stream: {getStreamStateLabel(status)}
+          </p>
+        </div>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" type="button">
             {isOpen ? "Hide logs" : "Show logs"}
