@@ -25,9 +25,11 @@ import {
   shouldDeploymentFailForRepository,
 } from "@/modules/deploy/deploy.mock"
 import {
+  getEnvironmentValidationMessages,
+  isValidCustomDomain,
+  isValidEnvVarKey,
   isManualOverrideRequired,
   validateBuildStep,
-  validateEnvironmentStep,
   validateEnvVarKeysUnique,
   validateSourceStep,
 } from "@/modules/deploy/deploy.schema"
@@ -123,6 +125,16 @@ const buildRepositoriesUrl = (params: {
   searchParams.set("limit", String(params.limit ?? 100))
 
   return `/api/integrations/github/repositories?${searchParams.toString()}`
+}
+
+const toGeneratedSubdomain = (repositoryName: string | undefined) => {
+  const slug = (repositoryName ?? "my-app")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-")
+
+  return `${slug || "my-app"}.pfn.app`
 }
 
 function DeployWizardInner() {
@@ -329,8 +341,28 @@ function DeployWizardInner() {
 
   const sourceValid = validateSourceStep(state.source)
   const buildValid = validateBuildStep(state.build, state.detectionResult)
-  const environmentValid = validateEnvironmentStep(state.environment)
+  const environmentValidationMessages = getEnvironmentValidationMessages(
+    state.environment
+  )
+  const environmentValid = environmentValidationMessages.length === 0
   const hasDuplicateEnvKeys = !validateEnvVarKeysUnique(state.environment.envVars)
+  const hasIncompleteEnvVarRows = state.environment.envVars.some((item) => {
+    return item.key.trim().length === 0 || item.value.trim().length === 0
+  })
+  const hasInvalidEnvVarKeys = state.environment.envVars.some((item) => {
+    const key = item.key.trim()
+    if (!key) {
+      return false
+    }
+
+    return !isValidEnvVarKey(key)
+  })
+  const normalizedCustomDomain = state.environment.customDomain.trim()
+  const hasMissingCustomDomain = !state.environment.useGeneratedSubdomain &&
+    normalizedCustomDomain.length === 0
+  const hasInvalidCustomDomain = !state.environment.useGeneratedSubdomain &&
+    normalizedCustomDomain.length > 0 &&
+    !isValidCustomDomain(normalizedCustomDomain)
 
   const maxUnlockedStep = getMaxUnlockedStep(state)
   const manualOverrideRequired = isManualOverrideRequired(state.detectionResult)
@@ -546,11 +578,17 @@ function DeployWizardInner() {
     if (state.step === "environment") {
       return (
         <StepEnvironment
+          generatedSubdomain={toGeneratedSubdomain(selectedRepository?.name)}
           useGeneratedSubdomain={state.environment.useGeneratedSubdomain}
           customDomain={state.environment.customDomain}
           envVars={state.environment.envVars}
           resourcePlanId={state.environment.resourcePlanId}
           hasDuplicateEnvKeys={hasDuplicateEnvKeys}
+          hasMissingCustomDomain={hasMissingCustomDomain}
+          hasInvalidCustomDomain={hasInvalidCustomDomain}
+          hasInvalidEnvVarKeys={hasInvalidEnvVarKeys}
+          hasIncompleteEnvVarRows={hasIncompleteEnvVarRows}
+          validationMessages={environmentValidationMessages}
           canDeploy={environmentValid}
           onBack={() => {
             const previous = getPreviousStep("environment")
