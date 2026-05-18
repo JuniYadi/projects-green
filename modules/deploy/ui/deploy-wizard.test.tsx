@@ -145,6 +145,41 @@ describe("DeployWizard", () => {
     })
   })
 
+  it("updates source step state while selecting owner, repository, and root directory", async () => {
+    const view = await renderWizard()
+
+    await waitFor(() => {
+      expect(view.getByText("Pick an owner first.")).toBeTruthy()
+    })
+
+    fireEvent.change(view.getByLabelText("Owner selector"), {
+      target: { value: "owner-pfn" },
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Owner selected: owner-pfn")).toBeTruthy()
+    })
+    expect(view.getByText("Select a repository to continue.")).toBeTruthy()
+
+    fireEvent.change(view.getByLabelText("Repository selector"), {
+      target: { value: "repo-console-next" },
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Repository selected: repo-console-next")).toBeTruthy()
+    })
+    expect(view.getByText("Branch selected: main")).toBeTruthy()
+    expect(view.getByRole("button", { name: "Next" })).toBeEnabled()
+
+    fireEvent.change(view.getByLabelText("Root directory"), {
+      target: { value: "/apps/web" },
+    })
+
+    expect(
+      view.getByText("Deploy from /apps/web. Ensure build files exist in this path.")
+    ).toBeTruthy()
+  })
+
   it("runs happy path from source to running status", async () => {
     const view = await renderWizard()
 
