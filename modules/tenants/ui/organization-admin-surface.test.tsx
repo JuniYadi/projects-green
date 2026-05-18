@@ -216,7 +216,7 @@ describe("OrganizationAdminSurface", () => {
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
     await waitFor(() => {
-      expect(view.getByText("Member One")).toBeTruthy()
+      expect(view.getByText("Member One")).toBeInTheDocument()
     })
 
     fireEvent.click(view.getByRole("button", { name: "Transfer Ownership" }))
