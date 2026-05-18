@@ -3,6 +3,7 @@ import { Elysia } from "elysia"
 
 import type { TenantApiError } from "@/modules/tenants/contracts/tenant-api.contract"
 import type { TenantRole } from "@/modules/tenants/tenant-policy"
+import { createTenantsAuthorizationRoutes } from "@/modules/tenants/api/routes/tenants-authorization.route"
 
 type MockActor = {
   userId: string
@@ -27,36 +28,13 @@ const mockEnsureTenantContextAccess = mock(
   }
 )
 
-class MockTenantWorkOSOperationUnsupportedError extends Error {
-  readonly operation: string
-
-  constructor(operation: string) {
-    super(`Operation '${operation}' is not supported.`)
-    this.name = "TenantWorkOSOperationUnsupportedError"
-    this.operation = operation
-  }
-}
-
-mock.module("@/modules/tenants/api/tenants.guards", () => {
-  return {
-    requireTenantActor: mockRequireTenantActor,
-    ensureTenantContextAccess: mockEnsureTenantContextAccess,
-  }
-})
-
-mock.module("@/modules/tenants/services/tenant-workos.service", () => {
-  return {
-    TenantWorkOSOperationUnsupportedError:
-      MockTenantWorkOSOperationUnsupportedError,
-  }
-})
-
 const loadApp = async () => {
-  const { tenantsAuthorizationRoutes } = await import(
-    "@/modules/tenants/api/routes/tenants-authorization.route"
+  return new Elysia().use(
+    createTenantsAuthorizationRoutes({
+      requireTenantActor: mockRequireTenantActor,
+      ensureTenantContextAccess: mockEnsureTenantContextAccess,
+    })
   )
-
-  return new Elysia().use(tenantsAuthorizationRoutes)
 }
 
 describe("tenantsAuthorizationRoutes", () => {
