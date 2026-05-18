@@ -76,6 +76,16 @@ const normalizeNullableString = (value: string | null | undefined) => {
   return normalized ? normalized : null
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const isLikelyEmail = (value: string | null) => {
+  if (!value) {
+    return false
+  }
+
+  return EMAIL_PATTERN.test(value)
+}
+
 const toMembershipProfile = (
   membership: WorkOSMembership
 ): TenantMembershipSummary["profile"] => {
@@ -120,15 +130,26 @@ const toTenantMembershipSummary = (
   membership: WorkOSMembership
 ): TenantMembershipSummary => {
   const roleSlug = membership.role?.slug ?? null
+  const profile = toMembershipProfile(membership)
+  const normalizedUserId = normalizeNullableString(membership.userId)
+  const email = profile?.email ?? (isLikelyEmail(normalizedUserId)
+    ? normalizedUserId
+    : null)
+  const displayName =
+    profile?.displayName ?? email ?? normalizedUserId ?? membership.id
+  const avatarUrl = profile?.profilePictureUrl ?? null
 
   return {
     id: membership.id,
     organizationId: membership.organizationId,
     userId: membership.userId,
+    displayName,
+    email,
+    avatarUrl,
     status: membership.status,
     role: normalizeTenantRole(roleSlug),
     roleSlug,
-    profile: toMembershipProfile(membership),
+    profile,
     createdAt: membership.createdAt,
     updatedAt: membership.updatedAt,
   }
