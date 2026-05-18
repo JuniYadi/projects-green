@@ -402,3 +402,4 @@ export const createTenantsMembershipRoutes = (
 }
 
 export const tenantsMembershipRoutes = createTenantsMembershipRoutes()
+export type App = ReturnType<typeof createTenantsMembershipRoutes>
