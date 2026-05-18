@@ -76,3 +76,4 @@ export const createTenantsAuthorizationRoutes = (
 }
 
 export const tenantsAuthorizationRoutes = createTenantsAuthorizationRoutes()
+export type App = ReturnType<typeof createTenantsAuthorizationRoutes>
