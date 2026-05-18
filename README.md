@@ -1,5 +1,7 @@
 # Next.js template
 
+[![codecov](https://codecov.io/gh/JuniYadi/projects-green/graph/badge.svg?token=xupk7WZCb4)](https://codecov.io/gh/JuniYadi/projects-green)
+
 This is a Next.js template with shadcn/ui.
 
 ## Local Development Startup
