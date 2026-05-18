@@ -12,6 +12,32 @@ import type {
   EnvVar,
 } from "@/modules/deploy/deploy.types"
 
+export const CUSTOM_DOMAIN_PATTERN =
+  /^(?=.{1,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i
+
+export const ENV_VAR_KEY_PATTERN = /^[A-Z][A-Z0-9_]*$/
+
+export const isValidCustomDomain = (value: string) => {
+  const normalizedValue = value.trim().toLowerCase()
+  if (!normalizedValue) {
+    return false
+  }
+
+  if (
+    normalizedValue.includes("://") ||
+    normalizedValue.includes("/") ||
+    normalizedValue.includes(" ")
+  ) {
+    return false
+  }
+
+  return CUSTOM_DOMAIN_PATTERN.test(normalizedValue)
+}
+
+export const isValidEnvVarKey = (value: string) => {
+  return ENV_VAR_KEY_PATTERN.test(value.trim())
+}
+
 export const sourceStepSchema = z.object({
   ownerId: z.string().trim().min(1, "Owner is required."),
   repositoryId: z.string().trim().min(1, "Repository is required."),
@@ -34,7 +60,9 @@ export const environmentStepSchema = z
     resourcePlanId: z.enum(["starter", "pro"]),
   })
   .superRefine((value, ctx) => {
-    if (!value.useGeneratedSubdomain && !value.customDomain.trim()) {
+    const normalizedDomain = value.customDomain.trim()
+
+    if (!value.useGeneratedSubdomain && !normalizedDomain) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["customDomain"],
@@ -42,7 +70,40 @@ export const environmentStepSchema = z
       })
     }
 
-    const normalizedKeys = value.envVars.map((item) => item.key.toLowerCase())
+    if (
+      !value.useGeneratedSubdomain &&
+      normalizedDomain &&
+      !isValidCustomDomain(normalizedDomain)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["customDomain"],
+        message: "Enter a valid domain such as app.example.com.",
+      })
+    }
+
+    const invalidKey = value.envVars.find((item) => {
+      const normalizedKey = item.key.trim()
+
+      if (!normalizedKey) {
+        return false
+      }
+
+      return !isValidEnvVarKey(normalizedKey)
+    })
+
+    if (invalidKey) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["envVars"],
+        message:
+          "Environment keys must use uppercase letters, numbers, or underscores.",
+      })
+    }
+
+    const normalizedKeys = value.envVars
+      .map((item) => item.key.trim().toLowerCase())
+      .filter((key) => key.length > 0)
 
     const duplicate = normalizedKeys.find((key, index) => {
       return normalizedKeys.indexOf(key) !== index
@@ -130,6 +191,19 @@ export const validateEnvironmentStep = (environment: DeployEnvironmentState) => 
 }
 
 export const validateEnvVarKeysUnique = (envVars: EnvVar[]): boolean => {
-  const keys = envVars.map((item) => item.key.trim().toLowerCase())
+  const keys = envVars
+    .map((item) => item.key.trim().toLowerCase())
+    .filter((key) => key.length > 0)
   return keys.length === new Set(keys).size
+}
+
+export const getEnvironmentValidationMessages = (
+  environment: DeployEnvironmentState
+) => {
+  const parsed = environmentStepSchema.safeParse(environment)
+  if (parsed.success) {
+    return []
+  }
+
+  return Array.from(new Set(parsed.error.issues.map((issue) => issue.message)))
 }
