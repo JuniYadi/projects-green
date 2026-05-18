@@ -2,20 +2,19 @@ import { Elysia } from "elysia"
 
 import {
   isTenantApiError,
+  type RouteSet,
   toNotFoundError,
   toPolicyError,
   toWorkosApiError,
 } from "@/modules/tenants/api/tenants.errors"
-import {
-  ensureTenantContextAccess,
-  requireTenantActor,
-} from "@/modules/tenants/api/tenants.guards"
 import { promotePayloadSchema } from "@/modules/tenants/api/tenants.schema"
 import type {
+  TenantApiError,
   TenantMemberRemoveResponse,
   TenantMembersResponse,
   TenantMembershipMutationResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
+import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
 import {
   deleteTenantMembershipSafely,
   demoteTenantMembershipSafely,
@@ -29,14 +28,77 @@ import {
   canPromoteToRole,
 } from "@/modules/tenants/tenant-policy"
 
-export const tenantsMembershipRoutes = new Elysia()
+type TenantsMembershipRouteDeps = {
+  requireTenantActor: (
+    set: RouteSet
+  ) => Promise<TenantActorContext | TenantApiError>
+  ensureTenantContextAccess: (
+    orgId: string,
+    actor: TenantActorContext,
+    set: RouteSet
+  ) => true | TenantApiError | Promise<true | TenantApiError>
+  listTenantMemberships: typeof listTenantMemberships
+  getTenantMembershipById: typeof getTenantMembershipById
+  updateTenantMembershipRole: typeof updateTenantMembershipRole
+  demoteTenantMembershipSafely: typeof demoteTenantMembershipSafely
+  deleteTenantMembershipSafely: typeof deleteTenantMembershipSafely
+  canManageTenant: typeof canManageTenant
+  canPromoteToRole: typeof canPromoteToRole
+  canDemoteFromRole: typeof canDemoteFromRole
+}
+
+const defaultRequireTenantActor: TenantsMembershipRouteDeps["requireTenantActor"] =
+  async (set) => {
+    const guards = await import("@/modules/tenants/api/tenants.guards")
+    return guards.requireTenantActor(set)
+  }
+
+const defaultEnsureTenantContextAccess: TenantsMembershipRouteDeps["ensureTenantContextAccess"] =
+  async (orgId, actor, set) => {
+    const guards = await import("@/modules/tenants/api/tenants.guards")
+    return guards.ensureTenantContextAccess(orgId, actor, set)
+  }
+
+const defaultTenantsMembershipRouteDeps: TenantsMembershipRouteDeps = {
+  requireTenantActor: defaultRequireTenantActor,
+  ensureTenantContextAccess: defaultEnsureTenantContextAccess,
+  listTenantMemberships,
+  getTenantMembershipById,
+  updateTenantMembershipRole,
+  demoteTenantMembershipSafely,
+  deleteTenantMembershipSafely,
+  canManageTenant,
+  canPromoteToRole,
+  canDemoteFromRole,
+}
+
+export const createTenantsMembershipRoutes = (
+  deps: Partial<TenantsMembershipRouteDeps> = {}
+) => {
+  const {
+    requireTenantActor,
+    ensureTenantContextAccess,
+    listTenantMemberships,
+    getTenantMembershipById,
+    updateTenantMembershipRole,
+    demoteTenantMembershipSafely,
+    deleteTenantMembershipSafely,
+    canManageTenant,
+    canPromoteToRole,
+    canDemoteFromRole,
+  } = {
+    ...defaultTenantsMembershipRouteDeps,
+    ...deps,
+  }
+
+  return new Elysia()
   .get("/tenants/:orgId/members", async ({ params, set }) => {
     const actorResult = await requireTenantActor(set)
     if (isTenantApiError(actorResult)) {
       return actorResult
     }
 
-    const hasContextAccess = ensureTenantContextAccess(
+    const hasContextAccess = await ensureTenantContextAccess(
       params.orgId,
       actorResult,
       set
@@ -81,7 +143,7 @@ export const tenantsMembershipRoutes = new Elysia()
         return actorResult
       }
 
-      const hasContextAccess = ensureTenantContextAccess(
+      const hasContextAccess = await ensureTenantContextAccess(
         params.orgId,
         actorResult,
         set
@@ -146,7 +208,7 @@ export const tenantsMembershipRoutes = new Elysia()
       return actorResult
     }
 
-    const hasContextAccess = ensureTenantContextAccess(
+    const hasContextAccess = await ensureTenantContextAccess(
       params.orgId,
       actorResult,
       set
@@ -235,7 +297,7 @@ export const tenantsMembershipRoutes = new Elysia()
       return actorResult
     }
 
-    const hasContextAccess = ensureTenantContextAccess(
+    const hasContextAccess = await ensureTenantContextAccess(
       params.orgId,
       actorResult,
       set
@@ -337,3 +399,6 @@ export const tenantsMembershipRoutes = new Elysia()
       })
     }
   })
+}
+
+export const tenantsMembershipRoutes = createTenantsMembershipRoutes()
