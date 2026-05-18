@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
+import { createTenantsInvitationRoutes } from "@/modules/tenants/api/routes/tenants-invitations.route"
+import { createTenantsMembershipRoutes } from "@/modules/tenants/api/routes/tenants-memberships.route"
 import type {
   TenantApiError,
   TenantInvitationSummary,
   TenantMembershipSummary,
 } from "@/modules/tenants/contracts/tenant-api.contract"
+import { TenantWorkOSOperationUnsupportedError } from "@/modules/tenants/services/tenant-workos.errors"
 
 type MockActor = {
   userId: string
@@ -39,16 +42,6 @@ const mockEnsureTenantContextAccess = mock(
     _set: MockRouteSet
   ): true | TenantApiError => true
 )
-
-class MockTenantWorkOSOperationUnsupportedError extends Error {
-  readonly operation: string
-
-  constructor(operation: string) {
-    super(`Operation '${operation}' is not supported.`)
-    this.name = "TenantWorkOSOperationUnsupportedError"
-    this.operation = operation
-  }
-}
 
 const makeMembership = (
   overrides: Partial<TenantMembershipSummary> = {}
@@ -116,30 +109,6 @@ const mockUpdateTenantOrganization = mock(async () => {
 })
 const mockDeleteTenantOrganization = mock(async () => {})
 
-mock.module("@/modules/tenants/api/tenants.guards", () => ({
-  requireTenantActor: mockRequireTenantActor,
-  ensureTenantContextAccess: mockEnsureTenantContextAccess,
-}))
-
-mock.module("@/modules/tenants/services/tenant-workos.service", () => ({
-  TenantWorkOSOperationUnsupportedError:
-    MockTenantWorkOSOperationUnsupportedError,
-  listTenantMemberships: mockListTenantMemberships,
-  getTenantMembershipById: mockGetTenantMembershipById,
-  updateTenantMembershipRole: mockUpdateTenantMembershipRole,
-  demoteTenantMembershipSafely: mockDemoteTenantMembershipSafely,
-  deleteTenantMembershipSafely: mockDeleteTenantMembershipSafely,
-  listTenantInvitations: mockListTenantInvitations,
-  getTenantInvitationById: mockGetTenantInvitationById,
-  sendTenantInvitation: mockSendTenantInvitation,
-  revokeTenantInvitation: mockRevokeTenantInvitation,
-  cancelTenantInvitation: mockCancelTenantInvitation,
-  resendTenantInvitation: mockResendTenantInvitation,
-  getTenantOrganizationById: mockGetTenantOrganizationById,
-  updateTenantOrganization: mockUpdateTenantOrganization,
-  deleteTenantOrganization: mockDeleteTenantOrganization,
-}))
-
 const toContextMismatchError = (set: MockRouteSet): TenantApiError => {
   set.status = 403
 
@@ -153,17 +122,32 @@ const toContextMismatchError = (set: MockRouteSet): TenantApiError => {
 }
 
 const getMembershipApp = async () => {
-  const route =
-    await import("@/modules/tenants/api/routes/tenants-memberships.route")
-
-  return new Elysia().use(route.tenantsMembershipRoutes)
+  return new Elysia().use(
+    createTenantsMembershipRoutes({
+      requireTenantActor: mockRequireTenantActor,
+      ensureTenantContextAccess: mockEnsureTenantContextAccess,
+      listTenantMemberships: mockListTenantMemberships,
+      getTenantMembershipById: mockGetTenantMembershipById,
+      updateTenantMembershipRole: mockUpdateTenantMembershipRole,
+      demoteTenantMembershipSafely: mockDemoteTenantMembershipSafely,
+      deleteTenantMembershipSafely: mockDeleteTenantMembershipSafely,
+    })
+  )
 }
 
 const getInvitationApp = async () => {
-  const route =
-    await import("@/modules/tenants/api/routes/tenants-invitations.route")
-
-  return new Elysia().use(route.tenantsInvitationRoutes)
+  return new Elysia().use(
+    createTenantsInvitationRoutes({
+      requireTenantActor: mockRequireTenantActor,
+      ensureTenantContextAccess: mockEnsureTenantContextAccess,
+      listTenantInvitations: mockListTenantInvitations,
+      getTenantInvitationById: mockGetTenantInvitationById,
+      sendTenantInvitation: mockSendTenantInvitation,
+      revokeTenantInvitation: mockRevokeTenantInvitation,
+      cancelTenantInvitation: mockCancelTenantInvitation,
+      resendTenantInvitation: mockResendTenantInvitation,
+    })
+  )
 }
 
 describe("tenant admin routes", () => {
@@ -401,7 +385,7 @@ describe("tenant admin routes", () => {
     const app = await getInvitationApp()
 
     mockResendTenantInvitation.mockImplementation(async () => {
-      throw new MockTenantWorkOSOperationUnsupportedError("resendInvitation")
+      throw new TenantWorkOSOperationUnsupportedError("resendInvitation")
     })
 
     const response = await app.handle(
