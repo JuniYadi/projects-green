@@ -98,6 +98,8 @@ const toMembershipProfile = (
     profilePictureUrl,
     displayName: displayName || null,
   }
+}
+
 const toTenantOrganizationMetadata = (value: unknown) => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {}
