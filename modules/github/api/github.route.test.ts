@@ -1,12 +1,27 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import { createGithubRoutes } from "@/modules/github/api/github.route"
-import {
+const mockEnqueueGithubWebhookEvent = mock(async () => ({
+  ok: true as const,
+  status: 202,
+  eventId: "event_default",
+  deduplicated: false,
+}))
+
+mock.module("@/modules/github/github.webhook", () => ({
+  enqueueGithubWebhookEvent: mockEnqueueGithubWebhookEvent,
+}))
+
+const { createGithubRoutes } = await import("@/modules/github/api/github.route")
+const {
+  GithubApiError,
+  GithubConfigurationError,
   GithubCursorError,
   GithubIntegrationDisabledError,
-  type GithubService,
-} from "@/modules/github/github.service"
+} = await import("@/modules/github/github.service")
+import type { GithubService } from "@/modules/github/github.service"
 import type {
   GithubActorContext,
   GithubRepositoryListQuery,
@@ -169,13 +184,44 @@ describe("githubRoutes", () => {
     )
   })
 
-  it("returns 400 when cursor is invalid", async () => {
+  it("returns 400 when query parameters are invalid", async () => {
     const app = new Elysia().use(
       createGithubRoutes({
         authenticate: async () => ({
           user: { id: "user_1" },
           organizationId: null,
         }),
+        service: createBaseService(true),
+      })
+    )
+
+    const response = await app.handle(
+      new Request(
+        "http://localhost/integrations/github/repositories?ownerId=%20"
+      )
+    )
+
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+    }
+
+    expect(response.status).toBe(400)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INVALID_QUERY")
+  })
+
+  it("returns mapped repository listing errors", async () => {
+    const baseDependencies = {
+      authenticate: async () => ({
+        user: { id: "user_1" },
+        organizationId: null,
+      }),
+    }
+
+    const cursorApp = new Elysia().use(
+      createGithubRoutes({
+        ...baseDependencies,
         service: {
           ...createBaseService(true),
           async listRepositoriesForActor(
@@ -188,19 +234,68 @@ describe("githubRoutes", () => {
       })
     )
 
-    const response = await app.handle(
-      new Request(
-        "http://localhost/integrations/github/repositories?cursor=bad-cursor"
-      )
+    const configApp = new Elysia().use(
+      createGithubRoutes({
+        ...baseDependencies,
+        service: {
+          ...createBaseService(true),
+          async listRepositoriesForActor() {
+            throw new GithubConfigurationError("missing env")
+          },
+        },
+      })
     )
-    const body = (await response.json()) as {
-      ok: boolean
-      error: string
-    }
 
-    expect(response.status).toBe(400)
-    expect(body.ok).toBe(false)
-    expect(body.error).toBe("INVALID_CURSOR")
+    const apiApp = new Elysia().use(
+      createGithubRoutes({
+        ...baseDependencies,
+        service: {
+          ...createBaseService(true),
+          async listRepositoriesForActor() {
+            throw new GithubApiError("remote unavailable")
+          },
+        },
+      })
+    )
+
+    const unexpectedApp = new Elysia().use(
+      createGithubRoutes({
+        ...baseDependencies,
+        service: {
+          ...createBaseService(true),
+          async listRepositoriesForActor() {
+            throw new Error("unexpected")
+          },
+        },
+      })
+    )
+
+    const cursorResponse = await cursorApp.handle(
+      new Request("http://localhost/integrations/github/repositories?cursor=bad")
+    )
+    const configResponse = await configApp.handle(
+      new Request("http://localhost/integrations/github/repositories")
+    )
+    const apiResponse = await apiApp.handle(
+      new Request("http://localhost/integrations/github/repositories")
+    )
+    const unexpectedResponse = await unexpectedApp.handle(
+      new Request("http://localhost/integrations/github/repositories")
+    )
+
+    expect(cursorResponse.status).toBe(400)
+    expect((await cursorResponse.json()).error).toBe("INVALID_CURSOR")
+
+    expect(configResponse.status).toBe(500)
+    expect((await configResponse.json()).error).toBe("INTERNAL_SERVER_ERROR")
+
+    expect(apiResponse.status).toBe(502)
+    expect((await apiResponse.json()).error).toBe("INTERNAL_SERVER_ERROR")
+
+    expect(unexpectedResponse.status).toBe(500)
+    expect((await unexpectedResponse.json()).error).toBe(
+      "INTERNAL_SERVER_ERROR"
+    )
   })
 
   it("returns 400 when webhook headers are missing", async () => {
@@ -219,5 +314,80 @@ describe("githubRoutes", () => {
     expect(response.status).toBe(400)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INVALID_HEADERS")
+  })
+
+  it("maps webhook enqueue responses and invalid payload error", async () => {
+    const app = new Elysia().use(createGithubRoutes(createBaseService(true)))
+
+    mockEnqueueGithubWebhookEvent.mockImplementationOnce(async () => {
+      throw new Error("Invalid webhook payload JSON")
+    })
+
+    const invalidPayloadResponse = await app.handle(
+      new Request("http://localhost/integrations/github/webhook", {
+        method: "POST",
+        headers: {
+          "x-github-event": "push",
+          "x-github-delivery": "delivery_invalid",
+          "x-hub-signature-256": "sha256=abc",
+        },
+        body: "{invalid-json}",
+      })
+    )
+
+    expect(invalidPayloadResponse.status).toBe(400)
+    expect((await invalidPayloadResponse.json()).error).toBe("INVALID_PAYLOAD")
+
+    mockEnqueueGithubWebhookEvent.mockImplementationOnce(async () => ({
+      ok: false as const,
+      status: 503,
+      error: "ENQUEUE_FAILED",
+      message: "queue is down",
+    }))
+
+    const failedResponse = await app.handle(
+      new Request("http://localhost/integrations/github/webhook", {
+        method: "POST",
+        headers: {
+          "x-github-event": "push",
+          "x-github-delivery": "delivery_fail",
+          "x-hub-signature-256": "sha256=abc",
+        },
+        body: "{}",
+      })
+    )
+
+    expect(failedResponse.status).toBe(503)
+    expect((await failedResponse.json()).error).toBe("ENQUEUE_FAILED")
+
+    mockEnqueueGithubWebhookEvent.mockImplementationOnce(async () => ({
+      ok: true as const,
+      status: 202,
+      eventId: "event_123",
+      deduplicated: true,
+    }))
+
+    const successResponse = await app.handle(
+      new Request("http://localhost/integrations/github/webhook", {
+        method: "POST",
+        headers: {
+          "x-github-event": "push",
+          "x-github-delivery": "delivery_ok",
+          "x-hub-signature-256": "sha256=abc",
+        },
+        body: "{}",
+      })
+    )
+
+    const successBody = (await successResponse.json()) as {
+      ok: boolean
+      eventId: string
+      deduplicated: boolean
+    }
+
+    expect(successResponse.status).toBe(202)
+    expect(successBody.ok).toBe(true)
+    expect(successBody.eventId).toBe("event_123")
+    expect(successBody.deduplicated).toBe(true)
   })
 })
