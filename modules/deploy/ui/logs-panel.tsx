@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -88,13 +88,8 @@ export function LogsPanel({
   attempt,
   onScopeChange,
 }: LogsPanelProps) {
-  const [isOpen, setIsOpen] = useState(status === "failed")
-
-  useEffect(() => {
-    if (status === "failed") {
-      setIsOpen(true)
-    }
-  }, [status])
+  const [localIsOpen, setLocalIsOpen] = useState(status === "failed")
+  const isOpen = status === "failed" || localIsOpen
 
   const visibleLines = useMemo(() => {
     const inScopeLines = getVisibleLogLines(DEPLOY_LOG_LINES, status, scope)
@@ -108,7 +103,7 @@ export function LogsPanel({
   }, [attempt, scope, status])
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Collapsible open={isOpen} onOpenChange={setLocalIsOpen}>
       <div className="flex items-center justify-between gap-2 border border-border bg-muted/20 px-3 py-2">
         <div>
           <p className="text-xs font-medium">Logs</p>
