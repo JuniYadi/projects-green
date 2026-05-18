@@ -63,6 +63,11 @@ export function StepSource({
   const ownerSelected = selectedOwnerId.length > 0
   const repositorySelected = selectedRepositoryId.length > 0
   const branchSelected = selectedBranchName.length > 0
+  const selectedOwnerName =
+    owners.find((owner) => owner.id === selectedOwnerId)?.name ?? selectedOwnerId
+  const selectedRepositoryName =
+    repositories.find((repository) => repository.id === selectedRepositoryId)?.name ??
+    selectedRepositoryId
 
   const ownerStateMessage = (() => {
     if (ownerOptionsError) {
@@ -85,7 +90,7 @@ export function StepSource({
       return "Select an owner to unlock repository options."
     }
 
-    return `Owner selected: ${selectedOwnerId}`
+    return `Owner selected: ${selectedOwnerName}`
   })()
 
   const repositoryStateMessage = (() => {
@@ -113,7 +118,7 @@ export function StepSource({
       return "Select a repository to continue."
     }
 
-    return `Repository selected: ${selectedRepositoryId}`
+    return `Repository selected: ${selectedRepositoryName}`
   })()
 
   const branchStateMessage = (() => {
@@ -198,14 +203,6 @@ export function StepSource({
               GitHub connection failed. Please try connecting again.
             </p>
           ) : null}
-          {ownerOptionsLoading ? (
-            <p className="text-xs text-muted-foreground">Loading owners...</p>
-          ) : null}
-          {ownerOptionsError ? (
-            <p className="text-xs text-destructive" role="alert">
-              {ownerOptionsError}
-            </p>
-          ) : null}
         </div>
 
         <div className="space-y-1">
@@ -232,14 +229,6 @@ export function StepSource({
               )
             })}
           </select>
-          {repositoryOptionsLoading ? (
-            <p className="text-xs text-muted-foreground">Loading repositories...</p>
-          ) : null}
-          {repositoryOptionsError ? (
-            <p className="text-xs text-destructive" role="alert">
-              {repositoryOptionsError}
-            </p>
-          ) : null}
           <p className="text-xs text-muted-foreground">{repositoryStateMessage}</p>
         </div>
 
