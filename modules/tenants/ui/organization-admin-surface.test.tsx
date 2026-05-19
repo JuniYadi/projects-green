@@ -411,4 +411,40 @@ describe("OrganizationAdminSurface", () => {
       )
     ).toBe(true)
   })
+
+  it("uses the same outer layout classes for loading and loaded states", async () => {
+    const OrganizationAdminSurface = await loadOrganizationAdminSurface()
+
+    const expectedClasses = ["space-y-6", "p-6", "pt-0"]
+
+    // Render the component — initially in loading state
+    mockTenantFetch({
+      auth: {
+        effectiveGlobalRole: "none",
+        effectiveTenantRole: "owner",
+        allowedActions: ["manage_tenant"],
+      },
+      members: [],
+      invitations: [],
+    })
+
+    const view = render(<OrganizationAdminSurface organizationId="org_123" />)
+
+    // Loading state: the root wrapper should have the expected classes
+    const loadingWrapper = view.container.firstElementChild as HTMLElement
+    for (const cls of expectedClasses) {
+      expect(loadingWrapper.classList.contains(cls)).toBe(true)
+    }
+
+    // Wait for loaded state
+    await waitFor(() => {
+      expect(view.getByText("Organization Administration")).toBeTruthy()
+    })
+
+    // Loaded state: the root wrapper should have the same classes
+    const loadedWrapper = view.container.firstElementChild as HTMLElement
+    for (const cls of expectedClasses) {
+      expect(loadedWrapper.classList.contains(cls)).toBe(true)
+    }
+  })
 })
