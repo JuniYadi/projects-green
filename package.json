@@ -17,6 +17,7 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "github:worker": "bun run scripts/github-worker.ts",
+    "remediate:creator-tenant-roles": "bun run scripts/remediate-creator-tenant-roles.ts",
     "grant:super-admin": "node scripts/grant-super-admin.mjs",
     "seed:workos-roles": "node scripts/seed-workos-roles.mjs"
   },

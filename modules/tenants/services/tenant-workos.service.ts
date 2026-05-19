@@ -393,6 +393,120 @@ export const updateTenantMembershipRole = async (
   return toTenantMembershipSummary(updated as WorkOSMembership)
 }
 
+export const findMembershipsMissingTenantRole = (
+  memberships: TenantMembershipSummary[]
+) => {
+  return memberships.filter((membership) => membership.role === null)
+}
+
+const MEMBERSHIP_STATUS_PRIORITY: Record<string, number> = {
+  active: 0,
+  pending: 1,
+  inactive: 2,
+}
+
+const resolveMembershipPriority = (status: string) => {
+  return MEMBERSHIP_STATUS_PRIORITY[status] ?? Number.MAX_SAFE_INTEGER
+}
+
+const selectHighestPriorityMembership = (
+  memberships: TenantMembershipSummary[]
+) => {
+  if (memberships.length === 0) {
+    return null
+  }
+
+  return [...memberships].sort((left, right) => {
+    return resolveMembershipPriority(left.status) -
+      resolveMembershipPriority(right.status)
+  })[0]
+}
+
+export type CreatorMembershipRoleRemediationStatus =
+  | "MEMBERSHIP_NOT_FOUND"
+  | "ALREADY_VALID"
+  | "MISSING_ROLE_DETECTED"
+  | "REMEDIATED"
+
+export type CreatorMembershipRoleRemediationResult = {
+  organizationId: string
+  creatorUserId: string
+  status: CreatorMembershipRoleRemediationStatus
+  missingRoleMembershipCount: number
+  membershipId: string | null
+  membershipStatus: string | null
+  previousRoleSlug: string | null
+  updatedRoleSlug: string | null
+}
+
+export const remediateCreatorMembershipTenantRole = async (params: {
+  organizationId: string
+  creatorUserId: string
+  dryRun?: boolean
+}): Promise<CreatorMembershipRoleRemediationResult> => {
+  const memberships = await listTenantMemberships(params.organizationId)
+  const missingRoleMemberships = findMembershipsMissingTenantRole(memberships)
+
+  const creatorMembership = selectHighestPriorityMembership(
+    memberships.filter((membership) => membership.userId === params.creatorUserId)
+  )
+
+  if (!creatorMembership) {
+    return {
+      organizationId: params.organizationId,
+      creatorUserId: params.creatorUserId,
+      status: "MEMBERSHIP_NOT_FOUND",
+      missingRoleMembershipCount: missingRoleMemberships.length,
+      membershipId: null,
+      membershipStatus: null,
+      previousRoleSlug: null,
+      updatedRoleSlug: null,
+    }
+  }
+
+  if (creatorMembership.role !== null) {
+    return {
+      organizationId: params.organizationId,
+      creatorUserId: params.creatorUserId,
+      status: "ALREADY_VALID",
+      missingRoleMembershipCount: missingRoleMemberships.length,
+      membershipId: creatorMembership.id,
+      membershipStatus: creatorMembership.status,
+      previousRoleSlug: creatorMembership.roleSlug,
+      updatedRoleSlug: creatorMembership.roleSlug,
+    }
+  }
+
+  if (params.dryRun ?? true) {
+    return {
+      organizationId: params.organizationId,
+      creatorUserId: params.creatorUserId,
+      status: "MISSING_ROLE_DETECTED",
+      missingRoleMembershipCount: missingRoleMemberships.length,
+      membershipId: creatorMembership.id,
+      membershipStatus: creatorMembership.status,
+      previousRoleSlug: creatorMembership.roleSlug,
+      updatedRoleSlug: creatorMembership.roleSlug,
+    }
+  }
+
+  const updatedMembership = await updateTenantMembershipRole(
+    creatorMembership.id,
+    "owner"
+  )
+
+  return {
+    organizationId: params.organizationId,
+    creatorUserId: params.creatorUserId,
+    status: "REMEDIATED",
+    missingRoleMembershipCount: missingRoleMemberships.length,
+    membershipId: updatedMembership.id,
+    membershipStatus: updatedMembership.status,
+    previousRoleSlug: creatorMembership.roleSlug,
+    updatedRoleSlug: updatedMembership.roleSlug,
+  }
+}
+
 export const deleteTenantMembership = async (membershipId: string) => {
   await getWorkOS().userManagement.deleteOrganizationMembership(membershipId)
 }
