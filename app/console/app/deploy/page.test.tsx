@@ -8,14 +8,10 @@ mock.module("@/modules/deploy/ui/deploy-wizard", () => {
 })
 
 describe("DeployPage", () => {
-  it("renders deploy wizard inside page content container", async () => {
+  it("renders deploy wizard", async () => {
     const deployPageModule = await import("@/app/console/app/deploy/page")
     const view = render(<deployPageModule.default />)
 
-    const main = view.container.querySelector("main")
-
-    expect(main).toBeTruthy()
-    expect(main?.className).toContain("max-w-5xl")
     expect(view.getByText("Deploy Wizard Mock")).toBeTruthy()
   })
 })

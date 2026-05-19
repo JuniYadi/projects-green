@@ -93,8 +93,13 @@ const renderWizard = async (
   }
 
   const wizardModule = await import("@/modules/deploy/ui/deploy-wizard")
+  const storeModule = await import("@/modules/deploy/deploy.store")
 
-  return render(<wizardModule.DeployWizard />)
+  return render(
+    <storeModule.DeployWizardProvider>
+      <wizardModule.DeployWizard />
+    </storeModule.DeployWizardProvider>
+  )
 }
 
 const selectSourceRepository = async (view: RenderResult) => {
