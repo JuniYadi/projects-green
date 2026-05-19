@@ -13,6 +13,8 @@ describe("resolveSidebarMenu", () => {
     expect(navMain[0]?.items?.map((item) => item.title)).toEqual([
       "Overview",
       "Deploy",
+      "Operate",
+      "Observe",
       "Tenant Management",
     ])
     expect(navMain[0]?.isActive).toBe(true)
@@ -26,6 +28,36 @@ describe("resolveSidebarMenu", () => {
     )
   })
 
+  it("marks operate and observe submenus active for their routes", () => {
+    const operateMenu = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/app/deploy/operate/build-logs",
+    })
+
+    const observeMenu = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/app/deploy/observe/metrics",
+    })
+
+    expect(
+      operateMenu.navMain[0]?.items?.find((item) => item.title === "Operate")
+        ?.isActive
+    ).toBe(true)
+    expect(
+      operateMenu.navMain[0]?.items?.find((item) => item.title === "Observe")
+        ?.isActive
+    ).toBe(false)
+
+    expect(
+      observeMenu.navMain[0]?.items?.find((item) => item.title === "Observe")
+        ?.isActive
+    ).toBe(true)
+    expect(
+      observeMenu.navMain[0]?.items?.find((item) => item.title === "Operate")
+        ?.isActive
+    ).toBe(false)
+  })
+
   it("returns portal-only navigation and projects for portal surface", () => {
     const { navMain, projects } = resolveSidebarMenu({
       surface: "portal",
@@ -37,9 +69,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain[0]?.isActive).toBe(true)
 
     expect(projects.map((project) => project.name)).toContain("Documentation")
-    expect(projects.map((project) => project.name)).not.toContain(
-      "Deployments"
-    )
+    expect(projects.map((project) => project.name)).not.toContain("Deployments")
     expect(projects.map((project) => project.name)).not.toContain(
       "Tenant Management"
     )
