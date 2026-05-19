@@ -81,6 +81,8 @@ const {
   cancelTenantInvitation,
   resendTenantInvitation,
   updateTenantMembershipRole,
+  findMembershipsMissingTenantRole,
+  remediateCreatorMembershipTenantRole,
   deleteTenantMembership,
   demoteTenantMembershipSafely,
   deleteTenantMembershipSafely,
@@ -399,6 +401,154 @@ describe("tenant-workos service", () => {
 
     await deleteTenantMembership("mem_target")
     expect(mockDeleteOrganizationMembership).toHaveBeenCalledWith("mem_target")
+  })
+
+  it("detects memberships with missing tenant roles", async () => {
+    mockAutoPagination.mockImplementation(async () => [
+      makeMembership({
+        id: "mem_owner",
+        role: { slug: "user_owner" },
+      }),
+      makeMembership({
+        id: "mem_missing",
+        role: null,
+      }),
+      makeMembership({
+        id: "mem_custom",
+        role: { slug: "custom_role_slug" },
+      }),
+    ])
+
+    const memberships = await listTenantMemberships("org_1")
+    const missing = findMembershipsMissingTenantRole(memberships)
+
+    expect(missing.map((membership) => membership.id)).toEqual([
+      "mem_missing",
+      "mem_custom",
+    ])
+  })
+
+  it("supports creator-role remediation dry run and apply", async () => {
+    mockAutoPagination.mockImplementation(async () => [
+      makeMembership({
+        id: "mem_creator",
+        userId: "user_creator",
+        role: null,
+        status: "active",
+      }),
+      makeMembership({
+        id: "mem_other",
+        userId: "user_other",
+        role: { slug: "user_member" },
+      }),
+    ])
+
+    const dryRun = await remediateCreatorMembershipTenantRole({
+      organizationId: "org_1",
+      creatorUserId: "user_creator",
+      dryRun: true,
+    })
+
+    expect(dryRun).toEqual({
+      organizationId: "org_1",
+      creatorUserId: "user_creator",
+      status: "MISSING_ROLE_DETECTED",
+      missingRoleMembershipCount: 1,
+      membershipId: "mem_creator",
+      membershipStatus: "active",
+      previousRoleSlug: null,
+      updatedRoleSlug: null,
+    })
+    expect(mockUpdateOrganizationMembership).not.toHaveBeenCalled()
+
+    mockUpdateOrganizationMembership.mockImplementationOnce(async () =>
+      makeMembership({
+        id: "mem_creator",
+        userId: "user_creator",
+        role: { slug: "user_owner" },
+      })
+    )
+
+    const remediated = await remediateCreatorMembershipTenantRole({
+      organizationId: "org_1",
+      creatorUserId: "user_creator",
+      dryRun: false,
+    })
+
+    expect(remediated).toEqual({
+      organizationId: "org_1",
+      creatorUserId: "user_creator",
+      status: "REMEDIATED",
+      missingRoleMembershipCount: 1,
+      membershipId: "mem_creator",
+      membershipStatus: "active",
+      previousRoleSlug: null,
+      updatedRoleSlug: "user_owner",
+    })
+    expect(mockUpdateOrganizationMembership).toHaveBeenCalledWith("mem_creator", {
+      roleSlug: "user_owner",
+    })
+  })
+
+  it("skips creator-role remediation when membership is missing or already valid", async () => {
+    mockAutoPagination.mockImplementation(async () => [
+      makeMembership({
+        id: "mem_other",
+        userId: "user_other",
+        role: null,
+      }),
+    ])
+
+    const notFound = await remediateCreatorMembershipTenantRole({
+      organizationId: "org_1",
+      creatorUserId: "user_creator",
+      dryRun: false,
+    })
+
+    expect(notFound).toEqual({
+      organizationId: "org_1",
+      creatorUserId: "user_creator",
+      status: "MEMBERSHIP_NOT_FOUND",
+      missingRoleMembershipCount: 1,
+      membershipId: null,
+      membershipStatus: null,
+      previousRoleSlug: null,
+      updatedRoleSlug: null,
+    })
+    expect(mockUpdateOrganizationMembership).not.toHaveBeenCalled()
+
+    mockAutoPagination.mockImplementation(async () => [
+      makeMembership({
+        id: "mem_creator",
+        userId: "user_creator",
+        role: { slug: "user_admin" },
+        status: "active",
+      }),
+      makeMembership({
+        id: "mem_creator_pending",
+        userId: "user_creator",
+        role: null,
+        status: "pending",
+      }),
+    ])
+
+    const alreadyValid = await remediateCreatorMembershipTenantRole({
+      organizationId: "org_1",
+      creatorUserId: "user_creator",
+      dryRun: false,
+    })
+
+    expect(alreadyValid).toEqual({
+      organizationId: "org_1",
+      creatorUserId: "user_creator",
+      status: "ALREADY_VALID",
+      missingRoleMembershipCount: 1,
+      membershipId: "mem_creator",
+      membershipStatus: "active",
+      previousRoleSlug: "user_admin",
+      updatedRoleSlug: "user_admin",
+    })
+    expect(mockUpdateOrganizationMembership).not.toHaveBeenCalled()
   })
 
   it("demotes memberships safely across owner and non-owner branches", async () => {
