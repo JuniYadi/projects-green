@@ -440,7 +440,7 @@ export function OrganizationAdminSurface({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6 p-6 pt-0">
         <Card>
           <CardHeader>
             <Skeleton className="h-5 w-56" />
