@@ -5,11 +5,16 @@ import {
   UnprocessableEntityException,
 } from "@workos-inc/node"
 
-import { isTenantApiError } from "@/modules/tenants/api/tenants.errors"
-import { requireTenantActor } from "@/modules/tenants/api/tenants.guards"
+import {
+  isTenantApiError,
+  type RouteSet,
+} from "@/modules/tenants/api/tenants.errors"
+import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
 import { bootstrapCreatePayloadSchema } from "@/modules/tenants/api/tenants.schema"
 import type {
+  TenantApiError,
   TenantBootstrapCreateResponse,
+  TenantBootstrapMembership,
   TenantBootstrapResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
 import {
@@ -20,8 +25,107 @@ import {
   hasBootstrapCreatorRole,
   listTenantBootstrapMembershipsForUser,
 } from "@/modules/tenants/services/tenant-workos.service"
+import { normalizeTenantRole } from "@/modules/tenants/tenant-policy"
 
-export const tenantsBootstrapRoutes = new Elysia()
+type TenantsBootstrapRouteDeps = {
+  requireTenantActor: (
+    set: RouteSet
+  ) => Promise<TenantActorContext | TenantApiError>
+  listTenantBootstrapMembershipsForUser: typeof listTenantBootstrapMembershipsForUser
+  createTenantOrganization: typeof createTenantOrganization
+  hasBootstrapCreatorRole: typeof hasBootstrapCreatorRole
+  createTenantMembership: typeof createTenantMembership
+  deleteTenantOrganization: typeof deleteTenantOrganization
+  getBootstrapCreatorRoleSlug: typeof getBootstrapCreatorRoleSlug
+}
+
+const defaultRequireTenantActor: TenantsBootstrapRouteDeps["requireTenantActor"] =
+  async (set) => {
+    const guards = await import("@/modules/tenants/api/tenants.guards")
+    return guards.requireTenantActor(set)
+  }
+
+const defaultTenantsBootstrapRouteDeps: TenantsBootstrapRouteDeps = {
+  requireTenantActor: defaultRequireTenantActor,
+  listTenantBootstrapMembershipsForUser,
+  createTenantOrganization,
+  hasBootstrapCreatorRole,
+  createTenantMembership,
+  deleteTenantOrganization,
+  getBootstrapCreatorRoleSlug,
+}
+
+const CREATOR_MEMBERSHIP_VERIFICATION_ATTEMPTS = 4
+const CREATOR_MEMBERSHIP_RETRY_DELAY_MS = 120
+
+const delay = async (milliseconds: number) => {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+const verifyCreatorMembershipRole = async (params: {
+  listTenantBootstrapMembershipsForUser: (
+    userId: string
+  ) => Promise<TenantBootstrapMembership[]>
+  organizationId: string
+  userId: string
+}) => {
+  for (
+    let attempt = 0;
+    attempt < CREATOR_MEMBERSHIP_VERIFICATION_ATTEMPTS;
+    attempt += 1
+  ) {
+    const memberships = await params.listTenantBootstrapMembershipsForUser(
+      params.userId
+    )
+    const creatorMembership = memberships.find((membership) => {
+      return (
+        membership.organizationId === params.organizationId &&
+        membership.status === "active"
+      )
+    })
+
+    const creatorRole = normalizeTenantRole(creatorMembership?.roleSlug)
+    if (creatorRole) {
+      return true
+    }
+
+    if (attempt < CREATOR_MEMBERSHIP_VERIFICATION_ATTEMPTS - 1) {
+      await delay(CREATOR_MEMBERSHIP_RETRY_DELAY_MS)
+    }
+  }
+
+  return false
+}
+
+const rollbackOrganizationCreation = async (
+  deleteTenantOrganization: TenantsBootstrapRouteDeps["deleteTenantOrganization"],
+  organizationId: string
+) => {
+  try {
+    await deleteTenantOrganization(organizationId)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export const createTenantsBootstrapRoutes = (
+  deps: Partial<TenantsBootstrapRouteDeps> = {}
+) => {
+  const {
+    requireTenantActor,
+    listTenantBootstrapMembershipsForUser,
+    createTenantOrganization,
+    hasBootstrapCreatorRole,
+    createTenantMembership,
+    deleteTenantOrganization,
+    getBootstrapCreatorRoleSlug,
+  } = {
+    ...defaultTenantsBootstrapRouteDeps,
+    ...deps,
+  }
+
+  return new Elysia()
   .get("/tenants/bootstrap", async ({ set }) => {
     const actorResult = await requireTenantActor(set)
     if (isTenantApiError(actorResult)) {
@@ -83,7 +187,7 @@ export const tenantsBootstrapRoutes = new Elysia()
         )
 
         if (!creatorRoleIsAvailable) {
-          await deleteTenantOrganization(organization.id).catch(() => null)
+          await rollbackOrganizationCreation(deleteTenantOrganization, organization.id)
           set.status = 422
 
           return {
@@ -100,8 +204,28 @@ export const tenantsBootstrapRoutes = new Elysia()
             userId: actorResult.userId,
             roleSlug: getBootstrapCreatorRoleSlug(),
           })
+
+          const creatorHasValidRole = await verifyCreatorMembershipRole({
+            listTenantBootstrapMembershipsForUser,
+            organizationId: organization.id,
+            userId: actorResult.userId,
+          })
+
+          if (!creatorHasValidRole) {
+            await rollbackOrganizationCreation(
+              deleteTenantOrganization,
+              organization.id
+            )
+            set.status = 500
+
+            return {
+              ok: false,
+              error: "ORGANIZATION_BOOTSTRAP_FAILED",
+              message: "Unable to create organization right now.",
+            }
+          }
         } catch {
-          await deleteTenantOrganization(organization.id).catch(() => null)
+          await rollbackOrganizationCreation(deleteTenantOrganization, organization.id)
           set.status = 500
 
           return {
@@ -163,3 +287,6 @@ export const tenantsBootstrapRoutes = new Elysia()
       body: bootstrapCreatePayloadSchema,
     }
   )
+}
+
+export const tenantsBootstrapRoutes = createTenantsBootstrapRoutes()
