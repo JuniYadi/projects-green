@@ -83,7 +83,23 @@ const buildConsoleNavMain = (pathname: string): AppSidebarNavItem[] => [
       {
         title: "Deploy",
         url: "/console/app/deploy",
-        isActive: startsWithRoute(pathname, "/console/app/deploy"),
+        isActive: pathname === "/console/app/deploy",
+      },
+      {
+        title: "Operate",
+        url: "/console/app/deploy/operate",
+        isActive: startsWithRoute(
+          pathname,
+          "/console/app/deploy/operate"
+        ),
+      },
+      {
+        title: "Observe",
+        url: "/console/app/deploy/observe",
+        isActive: startsWithRoute(
+          pathname,
+          "/console/app/deploy/observe"
+        ),
       },
       {
         title: "Tenant Management",
