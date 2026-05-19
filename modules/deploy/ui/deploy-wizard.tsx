@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   DEPLOY_STEP_QUERY_KEY,
   MONITOR_POLL_INTERVAL_MS,
@@ -34,7 +34,6 @@ import {
   validateSourceStep,
 } from "@/modules/deploy/deploy.schema"
 import {
-  DeployWizardProvider,
   useDeployWizardDispatch,
   useDeployWizardState,
 } from "@/modules/deploy/deploy.store"
@@ -677,13 +676,7 @@ function DeployWizardInner() {
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="gap-2">
-          <CardTitle>Deploy Application</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Let&apos;s get your code running in the cloud.
-          </p>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <DeployStepper
             currentStep={state.step}
             maxUnlockedStep={maxUnlockedStep}
@@ -698,9 +691,5 @@ function DeployWizardInner() {
 }
 
 export function DeployWizard() {
-  return (
-    <DeployWizardProvider>
-      <DeployWizardInner />
-    </DeployWizardProvider>
-  )
+  return <DeployWizardInner />
 }
