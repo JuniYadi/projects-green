@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "test": "bun test",
-    "test:coverage": "bun test --coverage --coverage-reporter=text --coverage-reporter=lcov",
+    "test:coverage": "bun run scripts/check-coverage-threshold.ts",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
