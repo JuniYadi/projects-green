@@ -1,8 +1,11 @@
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components"
 import { Geist, JetBrains_Mono } from "next/font/google"
+import { cookies } from "next/headers"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { localeCookieName } from "@/lib/i18n/config"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
@@ -16,14 +19,17 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
 })
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const cookieStore = await cookies()
+  const locale = resolveLocaleOrDefault(cookieStore.get(localeCookieName)?.value)
+
   return (
     <html
-      lang="en"
+      lang={locale}
       suppressHydrationWarning
       className={cn("antialiased", fontSans.variable, jetbrainsMono.variable)}
     >
