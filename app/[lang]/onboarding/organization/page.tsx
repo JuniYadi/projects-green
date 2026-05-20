@@ -38,14 +38,11 @@ export default async function OrganizationOnboardingPage({
 
   return (
     <main className="mx-auto min-h-svh w-full max-w-3xl space-y-6 p-6 md:p-10">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Set up your organization</h1>
-        <p className="text-sm text-muted-foreground">
-          Create your first organization or join one where you already have an
-          active membership.
-        </p>
-      </header>
-      <OrganizationOnboarding nextPath={nextPath} />
+      <OrganizationOnboarding
+        nextPath={nextPath}
+        userEmail={auth.user.email}
+        showWarning={Boolean(params?.next)}
+      />
     </main>
   )
 }
