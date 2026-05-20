@@ -7,7 +7,9 @@ import {
   getMemberDiscoveryOptions,
 } from "@/modules/tenants/ui/member-discovery"
 
-const makeMember = (overrides: Partial<Parameters<typeof filterMembers>[0][0]>) => {
+const makeMember = (
+  overrides: Partial<Parameters<typeof filterMembers>[0][0]>
+) => {
   return {
     id: "mem_default",
     userId: "user_default",
