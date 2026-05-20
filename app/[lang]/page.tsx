@@ -21,7 +21,9 @@ export default async function Page() {
         </div>
 
         <p>
-          {data.ok ? "API is healthy and ready to use!" : "API is not healthy. Please check your server."}
+          {data.ok
+            ? "API is healthy and ready to use!"
+            : "API is not healthy. Please check your server."}
         </p>
       </div>
     </div>
