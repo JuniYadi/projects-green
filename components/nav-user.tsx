@@ -1,8 +1,9 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import { useAuth } from "@workos-inc/authkit-nextjs/components"
-import { useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -25,12 +26,26 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { CaretUpDownIcon, SparkleIcon, CheckCircleIcon, CreditCardIcon, BellIcon, SignOutIcon } from "@phosphor-icons/react"
+import { CaretUpDownIcon, CheckCircleIcon, SignOutIcon } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 import { getMessages } from "@/lib/i18n/messages"
 import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 
 import type { AppSidebarUser } from "@/components/app-sidebar"
+
+type AuthSessionInfo = {
+  ok: true
+  authenticationMethod: string | null
+  authenticationCategory:
+    | "sso"
+    | "oauth"
+    | "password"
+    | "magic_link"
+    | "passkey"
+    | "impersonation"
+    | "unknown"
+  lastSignInAt: string | null
+}
 
 const resolveInitials = (name: string, email: string) => {
   const normalizedName = name.trim()
@@ -49,7 +64,63 @@ const resolveInitials = (name: string, email: string) => {
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase()
 }
 
-export function NavUser({ user }: { user: AppSidebarUser }) {
+const resolveAuthMethodLabel = (
+  method: string | null,
+  fallback: string
+) => {
+  if (!method) {
+    return fallback
+  }
+
+  const methodLabels: Record<string, string> = {
+    SSO: "SSO",
+    Password: "Password",
+    Passkey: "Passkey",
+    AppleOAuth: "Apple OAuth",
+    BitbucketOAuth: "Bitbucket OAuth",
+    DiscordOAuth: "Discord OAuth",
+    GitHubOAuth: "GitHub OAuth",
+    GitLabOAuth: "GitLab OAuth",
+    GoogleOAuth: "Google OAuth",
+    IntuitOAuth: "Intuit OAuth",
+    LinkedInOAuth: "LinkedIn OAuth",
+    MicrosoftOAuth: "Microsoft OAuth",
+    SalesforceOAuth: "Salesforce OAuth",
+    SlackOAuth: "Slack OAuth",
+    VercelMarketplaceOAuth: "Vercel Marketplace OAuth",
+    VercelOAuth: "Vercel OAuth",
+    XeroOAuth: "Xero OAuth",
+    MagicAuth: "Magic Link",
+    CrossAppAuth: "Cross-app Auth",
+    ExternalAuth: "External Auth",
+    MigratedSession: "Migrated Session",
+    Impersonation: "Impersonation",
+  }
+
+  return methodLabels[method] ?? method
+}
+
+const formatSignInTime = (value: string | null, fallback: string) => {
+  if (!value) {
+    return fallback
+  }
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.valueOf())) {
+    return fallback
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed)
+}
+
+export function NavUser({
+  user,
+}: {
+  user: AppSidebarUser
+}) {
   const { isMobile } = useSidebar()
   const { signOut } = useAuth()
   const router = useRouter()
@@ -59,6 +130,7 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
   const [avatarStatus, setAvatarStatus] = useState<
     "idle" | "loading" | "loaded" | "error"
   >("idle")
+  const [identityInfo, setIdentityInfo] = useState<AuthSessionInfo | null>(null)
   const hasAvatarUrl = useMemo(
     () => Boolean(user.avatarUrl?.trim()),
     [user.avatarUrl]
@@ -70,6 +142,39 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
   } = getLocaleFromPathname(pathname)
   const activeLocale = (pathnameLocale ?? defaultLocale) as AppLocale
   const messages = getMessages(activeLocale)
+
+  useEffect(() => {
+    let isActive = true
+
+    const run = async () => {
+      try {
+        const sessionResponse = await fetch("/api/auth/session")
+        const sessionPayload = (await sessionResponse
+          .json()
+          .catch(() => null)) as AuthSessionInfo | null
+
+        if (!isActive) {
+          return
+        }
+
+        if (sessionResponse.ok && sessionPayload?.ok) {
+          setIdentityInfo(sessionPayload)
+        } else {
+          setIdentityInfo(null)
+        }
+      } catch {
+        if (isActive) {
+          setIdentityInfo(null)
+        }
+      }
+    }
+
+    void run()
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   const handleLocaleChange = (nextLocale: string) => {
     if (nextLocale === activeLocale) {
@@ -87,6 +192,15 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
 
     router.replace(targetPath)
   }
+
+  const authMethodLabel = resolveAuthMethodLabel(
+    identityInfo?.authenticationMethod ?? null,
+    messages.navUser.notAvailableLabel
+  )
+  const lastSignInLabel = formatSignInTime(
+    identityInfo?.lastSignInAt ?? null,
+    messages.navUser.notAvailableLabel
+  )
 
   return (
     <SidebarMenu>
@@ -149,28 +263,29 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <SparkleIcon
-                />
-                {messages.navUser.menu.upgrade}
+              <DropdownMenuItem disabled>
+                <div className="grid gap-0.5">
+                  <span className="text-xs text-muted-foreground">
+                    {messages.navUser.sessionSecurityLabel}
+                  </span>
+                  <span className="text-xs">
+                    {messages.navUser.signedInViaLabel}: {authMethodLabel}
+                  </span>
+                  <span className="text-xs">
+                    {messages.navUser.lastSignInLabel}: {lastSignInLabel}
+                  </span>
+                </div>
               </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <CheckCircleIcon
-                />
-                {messages.navUser.menu.account}
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon
-                />
-                {messages.navUser.menu.billing}
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon
-                />
-                {messages.navUser.menu.notifications}
+              <DropdownMenuItem asChild>
+                <Link
+                  href={localizePathname({
+                    pathname: "/console/organization",
+                    locale: activeLocale,
+                  })}
+                >
+                  <CheckCircleIcon />
+                  {messages.navUser.manageSignInLabel}
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -207,8 +322,7 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
                 })
               }}
             >
-              <SignOutIcon
-              />
+              <SignOutIcon />
               {messages.navUser.menu.logout}
             </DropdownMenuItem>
           </DropdownMenuContent>
