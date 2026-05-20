@@ -18,6 +18,7 @@ import {
   resolveSidebarOrganization,
   resolveSidebarUser,
 } from "@/lib/sidebar-session"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { DashboardDocsDrawer } from "@/modules/docs/ui/dashboard-docs-drawer"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
@@ -26,13 +27,25 @@ const ONBOARDING_PATH = "/onboarding/organization"
 
 export default async function ConsoleLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode
+  params: Promise<{
+    lang: string
+  }>
 }>) {
+  const { lang } = await params
+  const locale = resolveLocaleOrDefault(lang)
   const auth = await withAuth({ ensureSignedIn: true })
+  const consolePath = localizePathname({ pathname: "/console", locale })
 
   if (!auth.organizationId) {
-    redirect(`${ONBOARDING_PATH}?next=${encodeURIComponent("/console")}`)
+    const onboardingPath = localizePathname({
+      pathname: ONBOARDING_PATH,
+      locale,
+    })
+
+    redirect(`${onboardingPath}?next=${encodeURIComponent(consolePath)}`)
   }
 
   const workosUser = await getLatestWorkOSUser(auth.user)
@@ -57,7 +70,7 @@ export default async function ConsoleLayout({
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/console">Console</BreadcrumbLink>
+                  <BreadcrumbLink href={consolePath}>Console</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
