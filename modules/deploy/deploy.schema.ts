@@ -211,7 +211,9 @@ export const validateBuildStep = (
   return buildStepSchema.safeParse(build).success
 }
 
-export const validateEnvironmentStep = (environment: DeployEnvironmentState) => {
+export const validateEnvironmentStep = (
+  environment: DeployEnvironmentState
+) => {
   return environmentStepSchema.safeParse(environment).success
 }
 
