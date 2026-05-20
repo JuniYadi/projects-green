@@ -52,7 +52,14 @@ mock.module("@workos-inc/authkit-nextjs", () => {
 
 mock.module("next/navigation", () => {
   return createNavigationMock({
-    pathname: "/console",
+    pathname: "/en/console",
+    redirect: mockRedirect,
+  })
+})
+
+mock.module("next/navigation.js", () => {
+  return createNavigationMock({
+    pathname: "/en/console",
     redirect: mockRedirect,
   })
 })
@@ -134,9 +141,10 @@ describe("ConsoleLayout", () => {
   })
 
   it("renders shared console shell around children", async () => {
-    const layoutModule = await import("@/app/console/layout")
+    const layoutModule = await import("@/app/[lang]/console/layout")
     const ui = await layoutModule.default({
       children: <div>Child Content</div>,
+      params: Promise.resolve({ lang: "en" }),
     })
 
     const view = render(ui)
@@ -165,16 +173,19 @@ describe("ConsoleLayout", () => {
       organizationId: undefined,
     }))
 
-    const layoutModule = await import("@/app/console/layout")
+    const layoutModule = await import("@/app/[lang]/console/layout")
 
     await expect(
-      layoutModule.default({ children: <div>Child Content</div> })
+      layoutModule.default({
+        children: <div>Child Content</div>,
+        params: Promise.resolve({ lang: "en" }),
+      })
     ).rejects.toThrow(
-      "REDIRECT:/onboarding/organization?next=%2Fconsole"
+      "REDIRECT:/en/onboarding/organization?next=%2Fen%2Fconsole"
     )
 
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/onboarding/organization?next=%2Fconsole"
+      "/en/onboarding/organization?next=%2Fen%2Fconsole"
     )
   })
 })
