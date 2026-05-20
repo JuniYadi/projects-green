@@ -1,29 +1,38 @@
 import Link from "next/link"
 
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-const entryPoints = [
-  {
-    title: "Tenant Management",
-    href: "/console/organization",
-    description:
-      "Manage roles, invitations, ownership transfers, and organization settings.",
-  },
-  {
-    title: "Documentation Registry",
-    href: "/portal/documentations",
-    description:
-      "Create and maintain contextual UI docs for routes and team workflows.",
-  },
-  {
-    title: "Deployments",
-    href: "/console/app/deploy",
-    description:
-      "Build, configure, and monitor deployment readiness from the console.",
-  },
-]
+type ConsolePageProps = {
+  params: Promise<{
+    lang: string
+  }>
+}
 
-export default function ConsolePage() {
+export default async function ConsolePage({ params }: ConsolePageProps) {
+  const { lang } = await params
+  const locale = resolveLocaleOrDefault(lang)
+  const entryPoints = [
+    {
+      title: "Tenant Management",
+      href: localizePathname({ pathname: "/console/organization", locale }),
+      description:
+        "Manage roles, invitations, ownership transfers, and organization settings.",
+    },
+    {
+      title: "Documentation Registry",
+      href: localizePathname({ pathname: "/portal/documentations", locale }),
+      description:
+        "Create and maintain contextual UI docs for routes and team workflows.",
+    },
+    {
+      title: "Deployments",
+      href: localizePathname({ pathname: "/console/app/deploy", locale }),
+      description:
+        "Build, configure, and monitor deployment readiness from the console.",
+    },
+  ]
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
