@@ -27,10 +27,8 @@ import {
 import {
   getEnvironmentValidationMessages,
   isValidCustomDomain,
-  isValidEnvVarKey,
   isManualOverrideRequired,
   validateBuildStep,
-  validateEnvVarKeysUnique,
   validateSourceStep,
 } from "@/modules/deploy/deploy.schema"
 import {
@@ -48,10 +46,6 @@ import type {
   Owner,
   Repository,
 } from "@/modules/deploy/deploy.types"
-
-const generateEnvVarId = () => {
-  return `env-${Math.random().toString(36).slice(2, 10)}`
-}
 
 type GithubConnectionStatus = "idle" | "connected" | "error"
 
@@ -344,18 +338,6 @@ function DeployWizardInner() {
     state.environment
   )
   const environmentValid = environmentValidationMessages.length === 0
-  const hasDuplicateEnvKeys = !validateEnvVarKeysUnique(state.environment.envVars)
-  const hasIncompleteEnvVarRows = state.environment.envVars.some((item) => {
-    return item.key.trim().length === 0 || item.value.trim().length === 0
-  })
-  const hasInvalidEnvVarKeys = state.environment.envVars.some((item) => {
-    const key = item.key.trim()
-    if (!key) {
-      return false
-    }
-
-    return !isValidEnvVarKey(key)
-  })
   const normalizedCustomDomain = state.environment.customDomain.trim()
   const hasMissingCustomDomain = !state.environment.useGeneratedSubdomain &&
     normalizedCustomDomain.length === 0
@@ -580,13 +562,11 @@ function DeployWizardInner() {
           generatedSubdomain={toGeneratedSubdomain(selectedRepository?.name)}
           useGeneratedSubdomain={state.environment.useGeneratedSubdomain}
           customDomain={state.environment.customDomain}
+          environmentId="staging"
           envVars={state.environment.envVars}
           resourcePlanId={state.environment.resourcePlanId}
-          hasDuplicateEnvKeys={hasDuplicateEnvKeys}
           hasMissingCustomDomain={hasMissingCustomDomain}
           hasInvalidCustomDomain={hasInvalidCustomDomain}
-          hasInvalidEnvVarKeys={hasInvalidEnvVarKeys}
-          hasIncompleteEnvVarRows={hasIncompleteEnvVarRows}
           validationMessages={environmentValidationMessages}
           canDeploy={environmentValid}
           onBack={() => {
@@ -607,43 +587,11 @@ function DeployWizardInner() {
           onCustomDomainChange={(customDomain) => {
             dispatch({ type: "set-environment", payload: { customDomain } })
           }}
-          onAddEnvVar={() => {
+          onEnvVarsChange={(envVars) => {
             dispatch({
               type: "set-environment",
               payload: {
-                envVars: [
-                  ...state.environment.envVars,
-                  {
-                    id: generateEnvVarId(),
-                    key: "",
-                    value: "",
-                  },
-                ],
-              },
-            })
-          }}
-          onUpdateEnvVar={(id, field, value) => {
-            dispatch({
-              type: "set-environment",
-              payload: {
-                envVars: state.environment.envVars.map((item) => {
-                  if (item.id !== id) {
-                    return item
-                  }
-
-                  return {
-                    ...item,
-                    [field]: value,
-                  }
-                }),
-              },
-            })
-          }}
-          onRemoveEnvVar={(id) => {
-            dispatch({
-              type: "set-environment",
-              payload: {
-                envVars: state.environment.envVars.filter((item) => item.id !== id),
+                envVars,
               },
             })
           }}
