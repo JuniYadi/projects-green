@@ -55,7 +55,10 @@ const parseScopedRoleClaim = (value: string): ScopedRoleClaim | null => {
 
   const target = parsed[1]
   const role = parsed[2]
-  if ((target !== "admin" && target !== "user") || !LEGACY_TENANT_ROLE_ALIASES[role]) {
+  if (
+    (target !== "admin" && target !== "user") ||
+    !LEGACY_TENANT_ROLE_ALIASES[role]
+  ) {
     return null
   }
 
@@ -226,7 +229,9 @@ export const canTransferOwnership = (actor: ActorRoleContext) => {
   return actor.tenantRole === "owner"
 }
 
-export const buildAllowedActions = (actor: ActorRoleContext): TenantAction[] => {
+export const buildAllowedActions = (
+  actor: ActorRoleContext
+): TenantAction[] => {
   if (actor.platformRole === "super_admin") {
     return [...TENANT_ACTIONS]
   }
