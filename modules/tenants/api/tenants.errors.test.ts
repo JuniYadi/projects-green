@@ -221,15 +221,15 @@ describe("tenants.errors", () => {
     })
 
     it("returns false when error is not string", () => {
-      expect(
-        isTenantApiError({ ok: false, error: 123, message: "msg" })
-      ).toBe(false)
+      expect(isTenantApiError({ ok: false, error: 123, message: "msg" })).toBe(
+        false
+      )
     })
 
     it("returns false when message is not string", () => {
-      expect(
-        isTenantApiError({ ok: false, error: "ERR", message: 123 })
-      ).toBe(false)
+      expect(isTenantApiError({ ok: false, error: "ERR", message: 123 })).toBe(
+        false
+      )
     })
   })
 })
