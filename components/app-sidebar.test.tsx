@@ -6,21 +6,26 @@ describe("resolveSidebarMenu", () => {
   it("returns console-only navigation and projects for console surface", () => {
     const { navMain, projects } = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/app/deploy",
+      pathname: "/console/app/manage",
       locale: "en",
     })
 
-    expect(navMain.map((item) => item.title)).toEqual(["Console"])
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Console",
+      "Applications",
+    ])
     expect(navMain[0]?.items?.map((item) => item.title)).toEqual([
       "Overview",
-      "Deploy",
-      "Operate",
-      "Observe",
       "Tenant Management",
     ])
-    expect(navMain[0]?.isActive).toBe(true)
+    expect(navMain[1]?.items?.map((item) => item.title)).toEqual([
+      "Deploy",
+      "Manage",
+      "Monitoring",
+    ])
+    expect(navMain[1]?.isActive).toBe(true)
 
-    expect(projects.map((project) => project.name)).toContain("Deployments")
+    expect(projects.map((project) => project.name)).toContain("Applications")
     expect(projects.map((project) => project.name)).toContain(
       "Tenant Management"
     )
@@ -29,35 +34,38 @@ describe("resolveSidebarMenu", () => {
     )
   })
 
-  it("marks operate and observe submenus active for their routes", () => {
-    const operateMenu = resolveSidebarMenu({
+  it("marks manage and monitoring submenus active for their routes", () => {
+    const manageMenu = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/app/deploy/operate/build-logs",
+      pathname: "/console/app/manage/build-logs",
       locale: "en",
     })
 
-    const observeMenu = resolveSidebarMenu({
+    const monitoringMenu = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/app/deploy/observe/metrics",
+      pathname: "/console/app/monitoring/metrics",
       locale: "en",
     })
 
     expect(
-      operateMenu.navMain[0]?.items?.find((item) => item.title === "Operate")
+      manageMenu.navMain[1]?.items?.find((item) => item.title === "Manage")
         ?.isActive
     ).toBe(true)
     expect(
-      operateMenu.navMain[0]?.items?.find((item) => item.title === "Observe")
-        ?.isActive
+      manageMenu.navMain[1]?.items?.find(
+        (item) => item.title === "Monitoring"
+      )?.isActive
     ).toBe(false)
 
     expect(
-      observeMenu.navMain[0]?.items?.find((item) => item.title === "Observe")
-        ?.isActive
+      monitoringMenu.navMain[1]?.items?.find(
+        (item) => item.title === "Monitoring"
+      )?.isActive
     ).toBe(true)
     expect(
-      observeMenu.navMain[0]?.items?.find((item) => item.title === "Operate")
-        ?.isActive
+      monitoringMenu.navMain[1]?.items?.find(
+        (item) => item.title === "Manage"
+      )?.isActive
     ).toBe(false)
   })
 
@@ -73,7 +81,9 @@ describe("resolveSidebarMenu", () => {
     expect(navMain[0]?.isActive).toBe(true)
 
     expect(projects.map((project) => project.name)).toContain("Documentation")
-    expect(projects.map((project) => project.name)).not.toContain("Deployments")
+    expect(projects.map((project) => project.name)).not.toContain(
+      "Applications"
+    )
     expect(projects.map((project) => project.name)).not.toContain(
       "Tenant Management"
     )
