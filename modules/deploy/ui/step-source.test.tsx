@@ -59,7 +59,9 @@ describe("StepSource", () => {
 
     const view = render(<StepSource {...props} />)
 
-    expect(view.getByText("Select an owner to unlock repository options.")).toBeTruthy()
+    expect(
+      view.getByText("Select an owner to unlock repository options.")
+    ).toBeTruthy()
     expect(view.getByText("Pick an owner first.")).toBeTruthy()
     expect(view.getByText("Select a repository to load branches.")).toBeTruthy()
     expect(
@@ -109,7 +111,9 @@ describe("StepSource", () => {
     const view = render(<StepSource {...props} />)
 
     expect(
-      view.getByText("GitHub connected. Select an owner and repository to continue.")
+      view.getByText(
+        "GitHub connected. Select an owner and repository to continue."
+      )
     ).toBeTruthy()
 
     fireEvent.click(view.getByRole("button", { name: "Connect GitHub" }))
@@ -129,9 +133,13 @@ describe("StepSource", () => {
       view.getByText("GitHub connection failed. Please try connecting again.")
     ).toBeTruthy()
     expect(
-      view.getByText("We could not load owners. Try searching again or reconnect GitHub.")
+      view.getByText(
+        "We could not load owners. Try searching again or reconnect GitHub."
+      )
     ).toBeTruthy()
-    expect(view.getByText("We could not load repositories for this owner.")).toBeTruthy()
+    expect(
+      view.getByText("We could not load repositories for this owner.")
+    ).toBeTruthy()
   })
 
   it("disables selectors while owners and repositories are loading", () => {
@@ -144,7 +152,9 @@ describe("StepSource", () => {
 
     expect(view.getByLabelText("Owner selector")).toBeDisabled()
     expect(view.getByLabelText("Repository selector")).toBeDisabled()
-    expect(view.getByText("Loading owners from your GitHub installations.")).toBeTruthy()
+    expect(
+      view.getByText("Loading owners from your GitHub installations.")
+    ).toBeTruthy()
     expect(view.getByText("Loading repositories.")).toBeTruthy()
   })
 })
