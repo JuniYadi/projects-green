@@ -159,10 +159,7 @@ const formatTimestamp = (value: string) => {
 }
 
 const toMemberInitials = (displayName: string) => {
-  const parts = displayName
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
+  const parts = displayName.trim().split(/\s+/).filter(Boolean)
 
   if (parts.length === 0) {
     return "?"
@@ -551,14 +548,18 @@ export function OrganizationAdminSurface({
                 <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto]">
                   <Input
                     value={memberSearchQuery}
-                    onChange={(event) => setMemberSearchQuery(event.target.value)}
+                    onChange={(event) =>
+                      setMemberSearchQuery(event.target.value)
+                    }
                     placeholder="Search by name, email, or ID"
                     aria-label="Search members"
                   />
                   <select
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                     value={effectiveMemberRoleFilter}
-                    onChange={(event) => setMemberRoleFilter(event.target.value)}
+                    onChange={(event) =>
+                      setMemberRoleFilter(event.target.value)
+                    }
                     aria-label="Filter by role"
                   >
                     <option value={ALL_MEMBER_ROLES_FILTER}>All roles</option>
@@ -571,7 +572,9 @@ export function OrganizationAdminSurface({
                   <select
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                     value={effectiveMemberStatusFilter}
-                    onChange={(event) => setMemberStatusFilter(event.target.value)}
+                    onChange={(event) =>
+                      setMemberStatusFilter(event.target.value)
+                    }
                     aria-label="Filter by status"
                   >
                     <option value={ALL_MEMBER_STATUSES_FILTER}>
@@ -643,7 +646,9 @@ export function OrganizationAdminSurface({
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-sm font-medium">{member.displayName}</p>
+                        <p className="text-sm font-medium">
+                          {member.displayName}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {member.email ?? member.userId}
                         </p>
