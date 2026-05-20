@@ -16,10 +16,26 @@ import {
 
 type OrganizationOnboardingProps = {
   nextPath: string
+  userEmail?: string
+  showWarning?: boolean
+}
+
+const getOrgNameSuggestion = (email?: string): string => {
+  if (!email) return ""
+  const localPart = email.split("@")[0] || ""
+  const parts = localPart.split(/[.\-_+]/)
+  const capitalized = parts
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+  const baseName = capitalized.join(" ")
+  return baseName ? `${baseName} Org's` : ""
 }
 
 export function OrganizationOnboarding({
   nextPath,
+  userEmail,
+  showWarning,
 }: OrganizationOnboardingProps) {
   const router = useRouter()
   const { switchToOrganization } = useAuth({ ensureSignedIn: true })
@@ -28,7 +44,9 @@ export function OrganizationOnboarding({
   const [memberships, setMemberships] = useState<TenantBootstrapMembership[]>(
     []
   )
-  const [organizationName, setOrganizationName] = useState("")
+  const [organizationName, setOrganizationName] = useState(() =>
+    getOrgNameSuggestion(userEmail)
+  )
   const [isCreating, setIsCreating] = useState(false)
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
 
@@ -82,6 +100,22 @@ export function OrganizationOnboarding({
       isActive = false
     }
   }, [])
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isCreating || Boolean(switchingOrgId)) {
+        return
+      }
+      event.preventDefault()
+      event.returnValue = "Organization setup is required. Are you sure you want to leave?"
+      return event.returnValue
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+  }, [isCreating, switchingOrgId])
 
   const handleSwitchOrganization = async (organizationId: string) => {
     setError(null)
@@ -145,8 +179,27 @@ export function OrganizationOnboarding({
     }
   }
 
+  const hasInvitations =
+    !isLoading &&
+    (activeMemberships.length > 0 || pendingMemberships.length > 0)
+
   return (
     <div className="space-y-6">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold">Set up your organization</h1>
+        <p className="text-sm text-muted-foreground">
+          {hasInvitations
+            ? "Create your first organization or join one where you already have an active membership."
+            : "Create your first organization to get started."}
+        </p>
+      </header>
+
+      {showWarning ? (
+        <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
+          Organization setup is required to access the console.
+        </div>
+      ) : null}
+
       {error ? (
         <p className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
@@ -179,70 +232,55 @@ export function OrganizationOnboarding({
         </form>
       </section>
 
-      <section className="space-y-3 rounded-lg border border-border p-4 md:p-6">
-        <h2 className="text-lg font-semibold">Join existing organization</h2>
-        <p className="text-sm text-muted-foreground">
-          Select from your active organization memberships.
-        </p>
-
-        {isLoading ? (
+      {!isLoading && (activeMemberships.length > 0 || pendingMemberships.length > 0) ? (
+        <section className="space-y-3 rounded-lg border border-border p-4 md:p-6">
+          <h2 className="text-lg font-semibold">Join existing organization</h2>
           <p className="text-sm text-muted-foreground">
-            Loading organization memberships...
+            Select from your active organization memberships.
           </p>
-        ) : null}
 
-        {!isLoading && activeMemberships.length > 0 ? (
-          <div className="space-y-2">
-            {activeMemberships.map((membership) => {
-              const isSwitching = switchingOrgId === membership.organizationId
+          {activeMemberships.length > 0 ? (
+            <div className="space-y-2">
+              {activeMemberships.map((membership) => {
+                const isSwitching = switchingOrgId === membership.organizationId
 
-              return (
-                <div
-                  key={membership.organizationId}
-                  className="flex items-center justify-between gap-3 border border-border p-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {membership.organizationName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Role: {membership.roleSlug ?? "member"}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={Boolean(switchingOrgId)}
-                    onClick={() => {
-                      void handleSwitchOrganization(membership.organizationId)
-                    }}
+                return (
+                  <div
+                    key={membership.organizationId}
+                    className="flex items-center justify-between gap-3 border border-border p-3"
                   >
-                    {isSwitching ? "Switching..." : "Join"}
-                  </Button>
-                </div>
-              )
-            })}
-          </div>
-        ) : null}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {membership.organizationName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Role: {membership.roleSlug ?? "member"}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={Boolean(switchingOrgId)}
+                      onClick={() => {
+                        void handleSwitchOrganization(membership.organizationId)
+                      }}
+                    >
+                      {isSwitching ? "Switching..." : "Join"}
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
 
-        {!isLoading &&
-        activeMemberships.length === 0 &&
-        pendingMemberships.length > 0 ? (
-          <p className="text-sm text-muted-foreground">
-            You have pending invitations. Accept an invitation first, then come
-            back here to join.
-          </p>
-        ) : null}
-
-        {!isLoading &&
-        activeMemberships.length === 0 &&
-        pendingMemberships.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No active memberships found yet. Create a new organization above, or
-            ask an owner/admin to invite you.
-          </p>
-        ) : null}
-      </section>
+          {activeMemberships.length === 0 && pendingMemberships.length > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              You have pending invitations. Accept an invitation first, then come
+              back here to join.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
     </div>
   )
 }
