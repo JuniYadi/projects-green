@@ -44,9 +44,17 @@ export function NavMain({
           const isActive = item.isActive || hasActiveChild
 
           return (
-            <Collapsible key={`${item.title}-${isActive}`} asChild defaultOpen={isActive}>
+            <Collapsible
+              key={`${item.title}-${isActive}`}
+              asChild
+              defaultOpen={isActive}
+            >
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={item.title} isActive={isActive}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title}
+                  isActive={isActive}
+                >
                   <Link href={item.url}>
                     {item.icon}
                     <span>{item.title}</span>
@@ -56,8 +64,7 @@ export function NavMain({
                   <>
                     <CollapsibleTrigger asChild>
                       <SidebarMenuAction className="data-[state=open]:rotate-90">
-                        <CaretRightIcon
-                        />
+                        <CaretRightIcon />
                         <span className="sr-only">Toggle</span>
                       </SidebarMenuAction>
                     </CollapsibleTrigger>
