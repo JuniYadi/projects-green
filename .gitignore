@@ -38,3 +38,5 @@ docker/
 *.tsbuildinfo
 next-env.d.ts
 temp/
+goal/
+goals/
