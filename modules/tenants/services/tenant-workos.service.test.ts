@@ -8,7 +8,9 @@ const mockListOrganizationMemberships = mock(async () => ({
   autoPagination: mockAutoPagination,
 }))
 const mockGetOrganizationMembership = mock(async () => null)
-const mockListInvitations = mock(async () => ({ autoPagination: mockAutoPagination }))
+const mockListInvitations = mock(async () => ({
+  autoPagination: mockAutoPagination,
+}))
 const mockSendInvitation = mock(async () => null)
 const mockGetInvitation = mock(async () => null)
 let mockRevokeInvitation: ReturnType<typeof mock> | undefined = mock(
@@ -91,9 +93,8 @@ const {
   isActiveOwnerMembership,
 } = await import("@/modules/tenants/services/tenant-workos.service")
 
-const { TenantWorkOSOperationUnsupportedError } = await import(
-  "@/modules/tenants/services/tenant-workos.errors"
-)
+const { TenantWorkOSOperationUnsupportedError } =
+  await import("@/modules/tenants/services/tenant-workos.errors")
 
 type MembershipFixture = {
   id: string
@@ -395,9 +396,12 @@ describe("tenant-workos service", () => {
 
     const updated = await updateTenantMembershipRole("mem_target", "admin")
     expect(updated.role).toBe("admin")
-    expect(mockUpdateOrganizationMembership).toHaveBeenCalledWith("mem_target", {
-      roleSlug: "user_admin",
-    })
+    expect(mockUpdateOrganizationMembership).toHaveBeenCalledWith(
+      "mem_target",
+      {
+        roleSlug: "user_admin",
+      }
+    )
 
     await deleteTenantMembership("mem_target")
     expect(mockDeleteOrganizationMembership).toHaveBeenCalledWith("mem_target")
@@ -485,9 +489,12 @@ describe("tenant-workos service", () => {
       previousRoleSlug: null,
       updatedRoleSlug: "user_owner",
     })
-    expect(mockUpdateOrganizationMembership).toHaveBeenCalledWith("mem_creator", {
-      roleSlug: "user_owner",
-    })
+    expect(mockUpdateOrganizationMembership).toHaveBeenCalledWith(
+      "mem_creator",
+      {
+        roleSlug: "user_owner",
+      }
+    )
   })
 
   it("skips creator-role remediation when membership is missing or already valid", async () => {
@@ -765,7 +772,9 @@ describe("tenant-workos service", () => {
     mockGetOrganization.mockImplementationOnce(async () => {
       throw new Error("broken")
     })
-    await expect(getTenantOrganizationById("org_error")).rejects.toThrow("broken")
+    await expect(getTenantOrganizationById("org_error")).rejects.toThrow(
+      "broken"
+    )
 
     mockUpdateOrganization.mockImplementationOnce(async () =>
       makeOrganization({
