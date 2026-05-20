@@ -1,5 +1,10 @@
 # Kubernetes App Lifecycle Dummy UX Specification
 
+## Companion Document
+
+For post-deploy infrastructure management UX (environment variables, release
+updates, file mounts, domains, and SSL), refer to `docs/app-manage.md`.
+
 ## Objective
 
 Implement a dummy Kubernetes lifecycle workspace at `/console/app/deploy` that
