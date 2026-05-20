@@ -143,14 +143,17 @@ function DeployWizardInner() {
   const [ownerOptions, setOwnerOptions] = useState<Owner[]>([])
   const [repositoryOptions, setRepositoryOptions] = useState<Repository[]>([])
   const [ownerOptionsLoading, setOwnerOptionsLoading] = useState(true)
-  const [repositoryOptionsLoading, setRepositoryOptionsLoading] = useState(false)
-  const [ownerOptionsError, setOwnerOptionsError] = useState<string | null>(null)
-  const [repositoryOptionsError, setRepositoryOptionsError] = useState<string | null>(
+  const [repositoryOptionsLoading, setRepositoryOptionsLoading] =
+    useState(false)
+  const [ownerOptionsError, setOwnerOptionsError] = useState<string | null>(
     null
   )
-  const [repositoryById, setRepositoryById] = useState<Record<string, Repository>>(
-    {}
-  )
+  const [repositoryOptionsError, setRepositoryOptionsError] = useState<
+    string | null
+  >(null)
+  const [repositoryById, setRepositoryById] = useState<
+    Record<string, Repository>
+  >({})
   const [isConnectingGithub, setIsConnectingGithub] = useState(false)
 
   const githubConnectionStatus: GithubConnectionStatus = (() => {
@@ -213,7 +216,9 @@ function DeployWizardInner() {
   }, [selectedRepository, state.source.repositoryId])
 
   const selectedBranch = useMemo(() => {
-    return branches.find((branch) => branch.name === state.source.branchName) ?? null
+    return (
+      branches.find((branch) => branch.name === state.source.branchName) ?? null
+    )
   }, [branches, state.source.branchName])
 
   useEffect(() => {
@@ -339,9 +344,11 @@ function DeployWizardInner() {
   )
   const environmentValid = environmentValidationMessages.length === 0
   const normalizedCustomDomain = state.environment.customDomain.trim()
-  const hasMissingCustomDomain = !state.environment.useGeneratedSubdomain &&
+  const hasMissingCustomDomain =
+    !state.environment.useGeneratedSubdomain &&
     normalizedCustomDomain.length === 0
-  const hasInvalidCustomDomain = !state.environment.useGeneratedSubdomain &&
+  const hasInvalidCustomDomain =
+    !state.environment.useGeneratedSubdomain &&
     normalizedCustomDomain.length > 0 &&
     !isValidCustomDomain(normalizedCustomDomain)
 
@@ -354,7 +361,9 @@ function DeployWizardInner() {
   }
 
   useEffect(() => {
-    const queryStep = parseStepQueryValue(searchParams.get(DEPLOY_STEP_QUERY_KEY))
+    const queryStep = parseStepQueryValue(
+      searchParams.get(DEPLOY_STEP_QUERY_KEY)
+    )
     const clampedQueryStep = clampStepToUnlocked(queryStep, state)
 
     if (clampedQueryStep !== state.step) {
@@ -365,7 +374,9 @@ function DeployWizardInner() {
   }, [])
 
   useEffect(() => {
-    const queryStep = parseStepQueryValue(searchParams.get(DEPLOY_STEP_QUERY_KEY))
+    const queryStep = parseStepQueryValue(
+      searchParams.get(DEPLOY_STEP_QUERY_KEY)
+    )
 
     if (queryStep === state.step) {
       return
@@ -383,7 +394,10 @@ function DeployWizardInner() {
 
     const timeoutId = window.setTimeout(() => {
       const nextTick = state.monitor.tick + 1
-      const nextStatus = resolveMonitorStatus(nextTick, state.monitor.shouldFail)
+      const nextStatus = resolveMonitorStatus(
+        nextTick,
+        state.monitor.shouldFail
+      )
 
       dispatch({ type: "increment-monitor-tick" })
       dispatch({ type: "set-monitor-status", payload: nextStatus })
@@ -392,7 +406,13 @@ function DeployWizardInner() {
     return () => {
       window.clearTimeout(timeoutId)
     }
-  }, [dispatch, state.monitor.isActive, state.monitor.shouldFail, state.monitor.tick, state.step])
+  }, [
+    dispatch,
+    state.monitor.isActive,
+    state.monitor.shouldFail,
+    state.monitor.tick,
+    state.step,
+  ])
 
   const handleOwnerSelect = (ownerId: string) => {
     setRepositorySearch("")
@@ -413,8 +433,10 @@ function DeployWizardInner() {
   }
 
   const handleRepositorySelect = (repositoryId: string) => {
-    const defaultBranchFromApi = repositoryById[repositoryId]?.defaultBranch ?? ""
-    const branchName = defaultBranchFromApi || getDefaultBranchName(repositoryId)
+    const defaultBranchFromApi =
+      repositoryById[repositoryId]?.defaultBranch ?? ""
+    const branchName =
+      defaultBranchFromApi || getDefaultBranchName(repositoryId)
     const detectionResult = getDetectionForRepository(repositoryId)
 
     dispatch({
@@ -439,7 +461,9 @@ function DeployWizardInner() {
     const next = new URLSearchParams(searchParams.toString())
     next.delete("github")
     next.set(DEPLOY_STEP_QUERY_KEY, "source")
-    const returnTo = next.toString() ? `${pathname}?${next.toString()}` : pathname
+    const returnTo = next.toString()
+      ? `${pathname}?${next.toString()}`
+      : pathname
 
     const installStartQuery = new URLSearchParams({ returnTo })
     window.location.assign(
@@ -471,8 +495,12 @@ function DeployWizardInner() {
     dispatch({
       type: "start-monitor",
       payload: {
-        shouldFail: shouldDeploymentFailForRepository(state.source.repositoryId),
-        failureReason: shouldDeploymentFailForRepository(state.source.repositoryId)
+        shouldFail: shouldDeploymentFailForRepository(
+          state.source.repositoryId
+        ),
+        failureReason: shouldDeploymentFailForRepository(
+          state.source.repositoryId
+        )
           ? FAILURE_REASON
           : null,
       },
