@@ -5,9 +5,11 @@ import { createFrameworkDetectionRoutes } from "@/modules/framework-detection/ap
 
 describe("frameworkDetectionRoutes", () => {
   it("returns 400 for invalid payload", async () => {
-    const app = new Elysia().use(createFrameworkDetectionRoutes(async () => {
-      throw new Error("should not be called")
-    }))
+    const app = new Elysia().use(
+      createFrameworkDetectionRoutes(async () => {
+        throw new Error("should not be called")
+      })
+    )
 
     const response = await app.handle(
       new Request("http://localhost/framework-detection", {
