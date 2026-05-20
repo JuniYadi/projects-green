@@ -12,7 +12,8 @@ describe("PortalDocumentationsPage", () => {
 
     expect(view.getByText("Documentation Registry")).toBeTruthy()
     expect(
-      view.getByRole("link", { name: "Open Console Organization Admin" })
+      view
+        .getByRole("link", { name: "Open Console Organization Admin" })
         .getAttribute("href")
     ).toBe("/en/console/organization")
     expect(view.queryByText("Effective role:")).toBeNull()
