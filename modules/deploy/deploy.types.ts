@@ -41,6 +41,10 @@ export type EnvVar = {
   id: string
   key: string
   value: string
+  type?: "plain" | "secret"
+  scope?: "all" | "build" | "runtime"
+  lastUpdatedAt?: string
+  isStoredSecret?: boolean
   masked?: boolean
 }
 

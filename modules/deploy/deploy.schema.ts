@@ -11,6 +11,7 @@ import type {
   DetectionResult,
   EnvVar,
 } from "@/modules/deploy/deploy.types"
+import { ENV_VAR_MAX_VALUE_SIZE } from "@/modules/deploy/environment-vars"
 
 export const CUSTOM_DOMAIN_PATTERN =
   /^(?=.{1,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i
@@ -48,7 +49,14 @@ export const sourceStepSchema = z.object({
 const envVarSchema = z.object({
   id: z.string().trim().min(1),
   key: z.string().trim().min(1, "Environment key is required."),
-  value: z.string().trim().min(1, "Environment value is required."),
+  value: z.string().max(
+    ENV_VAR_MAX_VALUE_SIZE,
+    `Environment value cannot exceed ${ENV_VAR_MAX_VALUE_SIZE} characters.`
+  ),
+  type: z.enum(["plain", "secret"]).optional(),
+  scope: z.enum(["all", "build", "runtime"]).optional(),
+  lastUpdatedAt: z.string().optional(),
+  isStoredSecret: z.boolean().optional(),
   masked: z.boolean().optional(),
 })
 
@@ -98,6 +106,23 @@ export const environmentStepSchema = z
         path: ["envVars"],
         message:
           "Environment keys must use uppercase letters, numbers, or underscores.",
+      })
+    }
+
+    const missingValue = value.envVars.find((item) => {
+      const hasStoredSecret = item.type === "secret" && item.isStoredSecret
+      if (hasStoredSecret) {
+        return false
+      }
+
+      return item.value.trim().length === 0
+    })
+
+    if (missingValue) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["envVars"],
+        message: "Environment value is required.",
       })
     }
 

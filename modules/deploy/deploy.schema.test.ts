@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test"
 
 import {
+  ENV_VAR_MAX_VALUE_SIZE,
+} from "@/modules/deploy/environment-vars"
+import {
   getEnvironmentValidationMessages,
   isValidCustomDomain,
   isValidEnvVarKey,
@@ -181,6 +184,38 @@ describe("environment step validation", () => {
             id: "1",
             key: "apiKey",
             value: "secret",
+          },
+        ],
+      })
+    ).toBe(false)
+  })
+
+  it("allows stored secret values to remain undisclosed after save", () => {
+    expect(
+      validateEnvironmentStep({
+        ...baseEnvironmentState,
+        envVars: [
+          {
+            id: "secret-1",
+            key: "APP_KEY",
+            value: "",
+            type: "secret",
+            isStoredSecret: true,
+          },
+        ],
+      })
+    ).toBe(true)
+  })
+
+  it("rejects oversize env var values", () => {
+    expect(
+      validateEnvironmentStep({
+        ...baseEnvironmentState,
+        envVars: [
+          {
+            id: "1",
+            key: "BIG_VALUE",
+            value: "a".repeat(ENV_VAR_MAX_VALUE_SIZE + 1),
           },
         ],
       })

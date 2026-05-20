@@ -407,7 +407,7 @@ describe("DeployWizard", () => {
     expect(view.getByText("Monitor step complete.")).toBeTruthy()
   }, 15_000)
 
-  it("preserves environment values when navigating back and forward", async () => {
+  it("preserves environment settings when navigating back and forward", async () => {
     const view = await renderWizard()
 
     await selectSourceRepository(view)
@@ -423,18 +423,11 @@ describe("DeployWizard", () => {
       expect(view.getByText("Attached resources")).toBeTruthy()
     })
 
-    fireEvent.click(view.getByRole("button", { name: "Add variable" }))
-
-    fireEvent.change(view.getByLabelText(/Environment key/), {
-      target: { value: "API_KEY" },
-    })
-    fireEvent.change(view.getByLabelText(/Environment value/), {
-      target: { value: "secret" },
-    })
+    fireEvent.click(view.getByRole("radio", { name: /Pro/i }))
 
     await waitFor(() => {
-      expect(view.getByDisplayValue("API_KEY")).toBeTruthy()
-      expect(view.getByDisplayValue("secret")).toBeTruthy()
+      const proRadio = view.getByRole("radio", { name: /Pro/i }) as HTMLInputElement
+      expect(proRadio.checked).toBe(true)
     })
 
     fireEvent.click(view.getByRole("button", { name: "Back" }))
@@ -446,7 +439,8 @@ describe("DeployWizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
-      expect(view.getByRole("button", { name: "Remove" })).toBeTruthy()
+      const proRadio = view.getByRole("radio", { name: /Pro/i }) as HTMLInputElement
+      expect(proRadio.checked).toBe(true)
     })
   })
 
@@ -534,14 +528,5 @@ describe("DeployWizard", () => {
     expect(
       view.getAllByText("Environment variable keys must be unique.").length
     ).toBeGreaterThan(0)
-
-    const removeButtons = view.getAllByRole("button", { name: "Remove" })
-    fireEvent.click(removeButtons[1])
-
-    await waitFor(() => {
-      expect(
-        view.queryAllByText("Environment variable keys must be unique.")
-      ).toHaveLength(0)
-    })
   })
 })

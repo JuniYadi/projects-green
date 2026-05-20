@@ -10,22 +10,18 @@ type StepEnvironmentProps = {
   generatedSubdomain: string
   useGeneratedSubdomain: boolean
   customDomain: string
+  environmentId: string
   envVars: EnvVar[]
   resourcePlanId: ResourcePlanId
-  hasDuplicateEnvKeys: boolean
   hasMissingCustomDomain: boolean
   hasInvalidCustomDomain: boolean
-  hasInvalidEnvVarKeys: boolean
-  hasIncompleteEnvVarRows: boolean
   validationMessages: string[]
   canDeploy: boolean
   onBack: () => void
   onDeploy: () => void
   onDomainToggleChange: (value: boolean) => void
   onCustomDomainChange: (value: string) => void
-  onAddEnvVar: () => void
-  onUpdateEnvVar: (id: string, field: "key" | "value", value: string) => void
-  onRemoveEnvVar: (id: string) => void
+  onEnvVarsChange: (envVars: EnvVar[]) => void
   onResourcePlanChange: (value: ResourcePlanId) => void
 }
 
@@ -33,22 +29,18 @@ export function StepEnvironment({
   generatedSubdomain,
   useGeneratedSubdomain,
   customDomain,
+  environmentId,
   envVars,
   resourcePlanId,
-  hasDuplicateEnvKeys,
   hasMissingCustomDomain,
   hasInvalidCustomDomain,
-  hasInvalidEnvVarKeys,
-  hasIncompleteEnvVarRows,
   validationMessages,
   canDeploy,
   onBack,
   onDeploy,
   onDomainToggleChange,
   onCustomDomainChange,
-  onAddEnvVar,
-  onUpdateEnvVar,
-  onRemoveEnvVar,
+  onEnvVarsChange,
   onResourcePlanChange,
 }: StepEnvironmentProps) {
   const targetDomain = useGeneratedSubdomain
@@ -154,12 +146,8 @@ export function StepEnvironment({
           <p className="text-sm font-medium">Environment variables</p>
           <EnvVarsEditor
             envVars={envVars}
-            hasDuplicateKeys={hasDuplicateEnvKeys}
-            hasInvalidKeyFormat={hasInvalidEnvVarKeys}
-            hasIncompleteRows={hasIncompleteEnvVarRows}
-            onAdd={onAddEnvVar}
-            onUpdate={onUpdateEnvVar}
-            onRemove={onRemoveEnvVar}
+            environmentId={environmentId}
+            onChange={onEnvVarsChange}
           />
         </div>
 
