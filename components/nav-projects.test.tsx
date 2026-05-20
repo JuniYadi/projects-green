@@ -13,8 +13,8 @@ describe("NavProjects", () => {
           <NavProjects
             projects={[
               {
-                name: "Deployments",
-                url: "/console/app/deploy",
+                name: "Applications",
+                url: "/console/app",
                 icon: <span aria-hidden="true">D</span>,
               },
               {
@@ -30,8 +30,8 @@ describe("NavProjects", () => {
 
     expect(view.getByText("Projects")).toBeTruthy()
     expect(
-      view.getByRole("link", { name: "Deployments" }).getAttribute("href")
-    ).toBe("/console/app/deploy")
+      view.getByRole("link", { name: "Applications" }).getAttribute("href")
+    ).toBe("/console/app")
     expect(
       view.getByRole("link", { name: "Tenant Management" }).getAttribute("href")
     ).toBe("/console/organization")
