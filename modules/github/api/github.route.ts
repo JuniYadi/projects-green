@@ -214,9 +214,7 @@ export const createGithubRoutes = (
       withGithubFeatureFlag(dependencies.service, async ({ request, set }) => {
         const eventName = request.headers.get("x-github-event")?.trim()
         const deliveryId = request.headers.get("x-github-delivery")?.trim()
-        const signature = request.headers
-          .get("x-hub-signature-256")
-          ?.trim()
+        const signature = request.headers.get("x-hub-signature-256")?.trim()
 
         if (!eventName || !deliveryId || !signature) {
           set.status = 400
