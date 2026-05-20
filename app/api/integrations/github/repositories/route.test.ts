@@ -23,12 +23,14 @@ const mockCreateGithubService = mock(() => ({
   assertEnabled: mockGithubServiceAssertEnabled,
 }))
 
-const mockWithAuth = mock(async (): Promise<AuthResult> => ({
-  user: {
-    id: "user_123",
-  },
-  organizationId: "org_123",
-}))
+const mockWithAuth = mock(
+  async (): Promise<AuthResult> => ({
+    user: {
+      id: "user_123",
+    },
+    organizationId: "org_123",
+  })
+)
 
 const mockFindMany = mock(async () => [
   {
@@ -122,7 +124,8 @@ describe("GET /api/integrations/github/repositories", () => {
       throw new MockGithubIntegrationDisabledError()
     })
 
-    const route = await import("@/app/api/integrations/github/repositories/route")
+    const route =
+      await import("@/app/api/integrations/github/repositories/route")
     const response = await route.GET(
       new NextRequest("http://localhost/api/integrations/github/repositories")
     )
@@ -135,12 +138,15 @@ describe("GET /api/integrations/github/repositories", () => {
   })
 
   it("returns 401 when user is unauthenticated", async () => {
-    mockWithAuth.mockImplementation(async (): Promise<AuthResult> => ({
-      user: null,
-      organizationId: null,
-    }))
+    mockWithAuth.mockImplementation(
+      async (): Promise<AuthResult> => ({
+        user: null,
+        organizationId: null,
+      })
+    )
 
-    const route = await import("@/app/api/integrations/github/repositories/route")
+    const route =
+      await import("@/app/api/integrations/github/repositories/route")
     const response = await route.GET(
       new NextRequest("http://localhost/api/integrations/github/repositories")
     )
@@ -152,7 +158,8 @@ describe("GET /api/integrations/github/repositories", () => {
   })
 
   it("returns 400 for invalid cursor", async () => {
-    const route = await import("@/app/api/integrations/github/repositories/route")
+    const route =
+      await import("@/app/api/integrations/github/repositories/route")
     const response = await route.GET(
       new NextRequest(
         "http://localhost/api/integrations/github/repositories?cursor=bad_cursor"
@@ -167,7 +174,8 @@ describe("GET /api/integrations/github/repositories", () => {
   })
 
   it("returns 400 for out-of-range cursor (above max signed 64-bit)", async () => {
-    const route = await import("@/app/api/integrations/github/repositories/route")
+    const route =
+      await import("@/app/api/integrations/github/repositories/route")
     const response = await route.GET(
       new NextRequest(
         "http://localhost/api/integrations/github/repositories?cursor=9223372036854775808"
@@ -182,7 +190,8 @@ describe("GET /api/integrations/github/repositories", () => {
   })
 
   it("returns 400 for out-of-range cursor (below min signed 64-bit)", async () => {
-    const route = await import("@/app/api/integrations/github/repositories/route")
+    const route =
+      await import("@/app/api/integrations/github/repositories/route")
     const response = await route.GET(
       new NextRequest(
         "http://localhost/api/integrations/github/repositories?cursor=-9223372036854775809"
@@ -197,7 +206,8 @@ describe("GET /api/integrations/github/repositories", () => {
   })
 
   it("applies owner/query filters, paginates with limit, and returns nextCursor", async () => {
-    const route = await import("@/app/api/integrations/github/repositories/route")
+    const route =
+      await import("@/app/api/integrations/github/repositories/route")
     const response = await route.GET(
       new NextRequest(
         "http://localhost/api/integrations/github/repositories?ownerId=acme&query=api&limit=2&cursor=100"
