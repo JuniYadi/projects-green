@@ -45,6 +45,8 @@ export type TenantBootstrapCreateResponse = {
   organizationId: string
 }
 
+export type TenantOrganizationCreateResponse = TenantBootstrapCreateResponse
+
 export type TenantMembershipSummary = {
   id: string
   organizationId: string
