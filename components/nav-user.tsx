@@ -4,11 +4,7 @@ import { useAuth } from "@workos-inc/authkit-nextjs/components"
 import { useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,19 +49,20 @@ const resolveInitials = (name: string, email: string) => {
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase()
 }
 
-export function NavUser({
-  user,
-}: {
-  user: AppSidebarUser
-}) {
+export function NavUser({ user }: { user: AppSidebarUser }) {
   const { isMobile } = useSidebar()
   const { signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const initials = resolveInitials(user.name, user.email)
-  const [avatarStatus, setAvatarStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle")
-  const hasAvatarUrl = useMemo(() => Boolean(user.avatarUrl?.trim()), [user.avatarUrl])
+  const [avatarStatus, setAvatarStatus] = useState<
+    "idle" | "loading" | "loaded" | "error"
+  >("idle")
+  const hasAvatarUrl = useMemo(
+    () => Boolean(user.avatarUrl?.trim()),
+    [user.avatarUrl]
+  )
   const showFallback = !hasAvatarUrl || avatarStatus === "error"
   const {
     locale: pathnameLocale,
@@ -108,7 +105,11 @@ export function NavUser({
                     onLoadingStatusChange={setAvatarStatus}
                   />
                 ) : null}
-                {showFallback ? <AvatarFallback className="rounded-lg">{initials}</AvatarFallback> : null}
+                {showFallback ? (
+                  <AvatarFallback className="rounded-lg">
+                    {initials}
+                  </AvatarFallback>
+                ) : null}
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -134,7 +135,11 @@ export function NavUser({
                       onLoadingStatusChange={setAvatarStatus}
                     />
                   ) : null}
-                  {showFallback ? <AvatarFallback className="rounded-lg">{initials}</AvatarFallback> : null}
+                  {showFallback ? (
+                    <AvatarFallback className="rounded-lg">
+                      {initials}
+                    </AvatarFallback>
+                  ) : null}
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
