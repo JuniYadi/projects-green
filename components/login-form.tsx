@@ -95,12 +95,15 @@ export function LoginForm({
         body: JSON.stringify({ email: emailResult.data }),
       })
 
-      const payload = (await response
-        .json()
-        .catch(() => null)) as ApiErrorPayload | { message?: string } | null
+      const payload = (await response.json().catch(() => null)) as
+        | ApiErrorPayload
+        | { message?: string }
+        | null
 
       if (!response.ok) {
-        setServerFieldErrors((payload as ApiErrorPayload | null)?.fieldErrors ?? {})
+        setServerFieldErrors(
+          (payload as ApiErrorPayload | null)?.fieldErrors ?? {}
+        )
         setSubmitError(
           (payload as ApiErrorPayload | null)?.message ??
             "Failed to send verification code. Please try again."
@@ -276,7 +279,9 @@ export function LoginForm({
               }}
             />
             {emailErrors.length > 0 ? (
-              <FieldError errors={emailErrors.map((message) => ({ message }))} />
+              <FieldError
+                errors={emailErrors.map((message) => ({ message }))}
+              />
             ) : null}
           </Field>
 
@@ -298,7 +303,9 @@ export function LoginForm({
                 }}
               />
               {codeErrors.length > 0 ? (
-                <FieldError errors={codeErrors.map((message) => ({ message }))} />
+                <FieldError
+                  errors={codeErrors.map((message) => ({ message }))}
+                />
               ) : null}
             </Field>
           ) : null}
