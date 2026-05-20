@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 import { cn } from "@/lib/utils"
 
 type LifecycleNavItem = {
@@ -12,24 +14,30 @@ type LifecycleNavItem = {
   href: string
 }
 
-const LIFECYCLE_NAV_ITEMS: LifecycleNavItem[] = [
+const buildLifecycleNavItems = (locale: AppLocale): LifecycleNavItem[] => [
   {
     id: "deploy",
     label: "Deploy",
     description: "Day-0 release setup",
-    href: "/console/app/deploy",
+    href: localizePathname({ pathname: "/console/app/deploy", locale }),
   },
   {
     id: "operate",
     label: "Operate",
     description: "Day-1 runtime controls",
-    href: "/console/app/deploy/operate",
+    href: localizePathname({
+      pathname: "/console/app/deploy/operate",
+      locale,
+    }),
   },
   {
     id: "observe",
     label: "Observe",
     description: "Day-2 health and telemetry",
-    href: "/console/app/deploy/observe",
+    href: localizePathname({
+      pathname: "/console/app/deploy/observe",
+      locale,
+    }),
   },
 ]
 
@@ -47,14 +55,16 @@ const resolveActiveItem = (pathname: string): string => {
 
 export function LifecycleNav() {
   const pathname = usePathname()
-  const activeItem = resolveActiveItem(pathname)
+  const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
+  const activeItem = resolveActiveItem(pathnameWithoutLocale)
+  const items = buildLifecycleNavItems((locale ?? defaultLocale) as AppLocale)
 
   return (
     <nav
       className="grid gap-2 sm:grid-cols-3"
       aria-label="Deployment lifecycle views"
     >
-      {LIFECYCLE_NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const isActive = item.id === activeItem
 
         return (
