@@ -271,7 +271,9 @@ describe("githubRoutes", () => {
     )
 
     const cursorResponse = await cursorApp.handle(
-      new Request("http://localhost/integrations/github/repositories?cursor=bad")
+      new Request(
+        "http://localhost/integrations/github/repositories?cursor=bad"
+      )
     )
     const configResponse = await configApp.handle(
       new Request("http://localhost/integrations/github/repositories")
