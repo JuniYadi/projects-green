@@ -49,8 +49,9 @@ const getCookieMaxAge = () => {
 const getSessionCookieHeader = (sessionData: string, requestUrl: string) => {
   const cookieName = process.env.WORKOS_COOKIE_NAME?.trim() || "wos-session"
   const cookieDomain = process.env.WORKOS_COOKIE_DOMAIN?.trim()
-  const sameSite = (process.env.WORKOS_COOKIE_SAMESITE?.trim() || "lax")
-    .toLowerCase()
+  const sameSite = (
+    process.env.WORKOS_COOKIE_SAMESITE?.trim() || "lax"
+  ).toLowerCase()
   const safeSameSite =
     sameSite === "none" || sameSite === "strict" || sameSite === "lax"
       ? sameSite
