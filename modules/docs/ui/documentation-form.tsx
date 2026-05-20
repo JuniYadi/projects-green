@@ -82,9 +82,10 @@ export function DocumentationForm() {
         }),
       })
 
-      const payload = (await response
-        .json()
-        .catch(() => null)) as UiDocSuccessResponse | UiDocErrorResponse | null
+      const payload = (await response.json().catch(() => null)) as
+        | UiDocSuccessResponse
+        | UiDocErrorResponse
+        | null
 
       if (!response.ok || !payload || payload.ok !== true) {
         const payloadMessage =
@@ -159,9 +160,14 @@ export function DocumentationForm() {
           id="doc-howto"
           value={form.howToText}
           onChange={(event) =>
-            setForm((current) => ({ ...current, howToText: event.target.value }))
+            setForm((current) => ({
+              ...current,
+              howToText: event.target.value,
+            }))
           }
-          placeholder={"Open console\nCheck summary cards\nOpen documentation panel"}
+          placeholder={
+            "Open console\nCheck summary cards\nOpen documentation panel"
+          }
           className="min-h-32 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-hidden focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
         />
       </div>
@@ -174,9 +180,14 @@ export function DocumentationForm() {
           id="doc-notes"
           value={form.notesText}
           onChange={(event) =>
-            setForm((current) => ({ ...current, notesText: event.target.value }))
+            setForm((current) => ({
+              ...current,
+              notesText: event.target.value,
+            }))
           }
-          placeholder={"Only console is covered in v1\nMore pages can be added later"}
+          placeholder={
+            "Only console is covered in v1\nMore pages can be added later"
+          }
           className="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-hidden focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
         />
       </div>
@@ -188,7 +199,9 @@ export function DocumentationForm() {
         </p>
       ) : null}
 
-      {submitError ? <p className="text-sm text-destructive">{submitError}</p> : null}
+      {submitError ? (
+        <p className="text-sm text-destructive">{submitError}</p>
+      ) : null}
 
       <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Saving..." : "Save Documentation"}
