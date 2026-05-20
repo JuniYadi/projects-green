@@ -38,9 +38,11 @@ export const getPlatformRoleForUser = async (
     return "none"
   }
 
-  const platformUserRoleDelegate = (prisma as unknown as {
-    platformUserRole?: PlatformUserRoleDelegate
-  }).platformUserRole
+  const platformUserRoleDelegate = (
+    prisma as unknown as {
+      platformUserRole?: PlatformUserRoleDelegate
+    }
+  ).platformUserRole
 
   if (!platformUserRoleDelegate) {
     return "none"
