@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { localizePathname, getLocaleFromPathname } from "@/lib/i18n/pathname"
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
+import { NavOrganization } from "@/components/nav-organization"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
@@ -13,9 +14,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import {
   BookOpenIcon,
@@ -78,7 +76,8 @@ const buildConsoleNavMain = (
     title: "Console",
     url: localizePathname({ pathname: "/console", locale }),
     icon: <GaugeIcon />,
-    isActive: startsWithRoute(pathname, "/console"),
+    isActive:
+      pathname === "/console" || startsWithRoute(pathname, "/console/organization"),
     items: [
       {
         title: "Overview",
@@ -86,36 +85,38 @@ const buildConsoleNavMain = (
         isActive: pathname === "/console",
       },
       {
+        title: "Tenant Management",
+        url: localizePathname({ pathname: "/console/organization", locale }),
+        isActive: startsWithRoute(pathname, "/console/organization"),
+      },
+    ],
+  },
+  {
+    title: "Applications",
+    url: localizePathname({ pathname: "/console/app", locale }),
+    icon: <RocketLaunchIcon />,
+    isActive: startsWithRoute(pathname, "/console/app"),
+    items: [
+      {
         title: "Deploy",
         url: localizePathname({ pathname: "/console/app/deploy", locale }),
         isActive: pathname === "/console/app/deploy",
       },
       {
-        title: "Operate",
+        title: "Manage",
         url: localizePathname({
-          pathname: "/console/app/deploy/operate",
+          pathname: "/console/app/manage",
           locale,
         }),
-        isActive: startsWithRoute(
-          pathname,
-          "/console/app/deploy/operate"
-        ),
+        isActive: startsWithRoute(pathname, "/console/app/manage"),
       },
       {
-        title: "Observe",
+        title: "Monitoring",
         url: localizePathname({
-          pathname: "/console/app/deploy/observe",
+          pathname: "/console/app/monitoring",
           locale,
         }),
-        isActive: startsWithRoute(
-          pathname,
-          "/console/app/deploy/observe"
-        ),
-      },
-      {
-        title: "Tenant Management",
-        url: localizePathname({ pathname: "/console/organization", locale }),
-        isActive: startsWithRoute(pathname, "/console/organization"),
+        isActive: startsWithRoute(pathname, "/console/app/monitoring"),
       },
     ],
   },
@@ -155,8 +156,8 @@ const navSecondary = [
 
 const buildConsoleProjects = (locale: AppLocale): AppSidebarProject[] => [
   {
-    name: "Deployments",
-    url: localizePathname({ pathname: "/console/app/deploy", locale }),
+    name: "Applications",
+    url: localizePathname({ pathname: "/console/app", locale }),
     icon: <RocketLaunchIcon />,
   },
   {
@@ -239,39 +240,10 @@ export function AppSidebar({
     locale: locale ?? defaultLocale,
   })
 
-  const organizationName =
-    organization.name?.trim() || organization.id?.trim() || "No organization"
-  const organizationMeta = organization.id
-    ? "Organization"
-    : "No active organization"
-  const orgInitials =
-    organizationName
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() ?? "")
-      .join("") || "NO"
-
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="#">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <span className="text-xs font-semibold">{orgInitials}</span>
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">
-                    {organizationName}
-                  </span>
-                  <span className="truncate text-xs">{organizationMeta}</span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <NavOrganization organization={organization} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
