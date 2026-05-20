@@ -100,7 +100,10 @@ export const evaluatePushDispatch = ({
   payload: JsonObject
   connectionEnabled: boolean
   branchFilters: string[]
-}): GithubWebhookDispatchResult & { branch: string | null; commitSha: string | null } => {
+}): GithubWebhookDispatchResult & {
+  branch: string | null
+  commitSha: string | null
+} => {
   if (eventName !== "push") {
     return {
       outcome: "skipped",
