@@ -145,4 +145,124 @@ describe("ManagePage", () => {
     const lastCall = replaceCalls[replaceCalls.length - 1]
     expect(lastCall).toContain("tab=domains")
   })
+
+  it("covers env, mounts, scaling, and metrics tab interactions", async () => {
+    const view = await renderPage()
+
+    const alertMock = mock(() => undefined)
+    globalThis.alert = alertMock as unknown as typeof alert
+
+    fireEvent.click(view.getByText("Environment & Net"))
+    expect(view.getByText("Environment Variables")).toBeTruthy()
+
+    fireEvent.click(view.getByRole("button", { name: "Bulk Import .env" }))
+    expect(view.getByText("Bulk Import .env Variables")).toBeTruthy()
+    fireEvent.click(view.getByRole("button", { name: "Cancel" }))
+    expect(view.queryByText("Bulk Import .env Variables")).toBeFalsy()
+
+    fireEvent.click(view.getByRole("button", { name: "Bulk Import .env" }))
+    fireEvent.click(view.getByRole("button", { name: "Import Variables" }))
+    expect(view.getByText("Bulk Import .env Variables")).toBeTruthy()
+    fireEvent.click(view.getByRole("button", { name: "Cancel" }))
+    expect(view.queryByText("Bulk Import .env Variables")).toBeFalsy()
+
+    fireEvent.change(view.getByPlaceholderText("KEY (e.g. CACHE_DRIVER)"), {
+      target: { value: "custom-value" },
+    })
+    fireEvent.change(view.getByPlaceholderText("Value"), {
+      target: { value: "enabled" },
+    })
+    fireEvent.click(view.getByRole("button", { name: "Add Var" }))
+
+    fireEvent.click(view.getByRole("button", { name: "DISABLED" }))
+    expect(view.getByText("TRUST ACTIVE")).toBeTruthy()
+    expect(
+      view.getByText(
+        "✓ Trust proxies is active. Real client IPs will show in application code (request()->ip())."
+      )
+    ).toBeTruthy()
+
+    fireEvent.click(view.getByText("Storage & Mounts"))
+    expect(view.getByText("Active Pod File Mounts")).toBeTruthy()
+
+    fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
+    expect(view.getByText("All fields are required")).toBeTruthy()
+
+    fireEvent.change(
+      view.getByPlaceholderText("e.g. application-private-key"),
+      {
+        target: { value: "my mount" },
+      }
+    )
+    fireEvent.change(
+      view.getByPlaceholderText(
+        "e.g. /var/www/html/storage/app/key.pem"
+      ),
+      {
+        target: { value: "/bin/forbidden.pem" },
+      }
+    )
+    fireEvent.change(
+      view.getByPlaceholderText(/-----BEGIN PRIVATE KEY-----/),
+      {
+        target: { value: "-----BEGIN PRIVATE KEY-----test" },
+      }
+    )
+    fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
+
+    fireEvent.change(
+      view.getByPlaceholderText(
+        "e.g. /var/www/html/storage/app/key.pem"
+      ),
+      {
+        target: { value: "relative/path.pem" },
+      }
+    )
+    fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
+
+    fireEvent.change(
+      view.getByPlaceholderText(
+        "e.g. /var/www/html/storage/app/key.pem"
+      ),
+      {
+        target: { value: "/var/www/html/storage/app/new.pem" },
+      }
+    )
+    fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
+
+    fireEvent.click(view.getByText("Autoscaling & Tuning"))
+    expect(view.getByText("Autoscaling Policies (HPA / VPA)")).toBeTruthy()
+
+    fireEvent.click(view.getByRole("button", { name: "+" }))
+    expect(view.getByText("3")).toBeTruthy()
+    fireEvent.click(view.getByRole("button", { name: "-" }))
+    expect(view.getByText("2")).toBeTruthy()
+
+    const scalingToggles = view.getAllByRole("button", {
+      name: "Disabled",
+    })
+    fireEvent.click(scalingToggles[0])
+    expect(view.getByRole("button", { name: "Active" })).toBeTruthy()
+    expect(view.getByText("Min Replicas")).toBeTruthy()
+
+    const hpaInputs = view.getAllByRole("spinbutton")
+    fireEvent.change(hpaInputs[0], { target: { value: "3" } })
+    fireEvent.change(hpaInputs[1], { target: { value: "10" } })
+    fireEvent.change(hpaInputs[2], { target: { value: "65" } })
+
+    fireEvent.click(view.getByRole("button", { name: "Disabled" }))
+    const modeButtons = ["Off", "Initial", "Auto"]
+    for (const mode of modeButtons) {
+      fireEvent.click(view.getByRole("button", { name: mode }))
+    }
+
+    fireEvent.click(
+      view.getByRole("button", { name: "Save Resource Settings" })
+    )
+    expect(alertMock).toHaveBeenCalled()
+
+    fireEvent.click(view.getByText("Telemetry & Metrics"))
+    expect(view.getByText("Live Resource Monitoring")).toBeTruthy()
+    expect(view.getByText("⚠️ Low RAM Headroom")).toBeTruthy()
+  })
 })
