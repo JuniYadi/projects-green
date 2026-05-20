@@ -33,7 +33,9 @@ describe("StepEnvironment", () => {
     expect(view.getByText("Domain mode")).toBeTruthy()
     expect(view.getByText("Managed subdomain")).toBeTruthy()
     expect(view.getAllByText("Custom domain").length).toBeGreaterThan(0)
-    expect(view.getByText("Preview domain: console-next-app.pfn.app")).toBeTruthy()
+    expect(
+      view.getByText("Preview domain: console-next-app.pfn.app")
+    ).toBeTruthy()
     expect(view.getByText("Ready: deploy to", { exact: false })).toBeTruthy()
     expect(view.getByRole("button", { name: "Deploy" })).toBeEnabled()
   })

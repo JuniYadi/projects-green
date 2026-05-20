@@ -53,8 +53,10 @@ const createWebhookPrismaHarness = ({
           deliveryId: data.deliveryId as string,
           eventName: data.eventName as string,
           action: (data.action as string | null) ?? null,
-          githubInstallationId: (data.githubInstallationId as bigint | null) ?? null,
-          githubRepositoryId: (data.githubRepositoryId as bigint | null) ?? null,
+          githubInstallationId:
+            (data.githubInstallationId as bigint | null) ?? null,
+          githubRepositoryId:
+            (data.githubRepositoryId as bigint | null) ?? null,
           payloadJson: data.payloadJson,
           payloadSha256: data.payloadSha256 as string,
           enqueueStatus: (data.enqueueStatus as string) ?? "queued",
@@ -662,13 +664,15 @@ describe("enqueueGithubWebhookEvent", () => {
 
     const prismaClient = {
       githubWebhookEvent: {
-        findUnique: mock(async ({ where }: { where: { deliveryId?: string } }) => {
-          if (where.deliveryId === "delivery_race") {
-            return { id: "event_existing" }
-          }
+        findUnique: mock(
+          async ({ where }: { where: { deliveryId?: string } }) => {
+            if (where.deliveryId === "delivery_race") {
+              return { id: "event_existing" }
+            }
 
-          return null
-        }),
+            return null
+          }
+        ),
         create: mock(async () => {
           const error = new Error("Unique conflict") as Error & { code: string }
           error.code = "P2002"

@@ -20,7 +20,10 @@ export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
 
   const confidence = detectionResult.confidence
 
-  if (detectionResult.status === "failed" || confidence < LOW_CONFIDENCE_THRESHOLD) {
+  if (
+    detectionResult.status === "failed" ||
+    confidence < LOW_CONFIDENCE_THRESHOLD
+  ) {
     return (
       <p
         className={cn(

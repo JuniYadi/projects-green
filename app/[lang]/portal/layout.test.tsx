@@ -14,16 +14,18 @@ type MockAuthPayload = {
   organizationId: string | undefined
 }
 
-const mockWithAuth = mock(async (): Promise<MockAuthPayload> => ({
-  user: {
-    id: "user_123",
-    firstName: "Jane",
-    lastName: "Doe",
-    email: "jane@example.com",
-    profilePictureUrl: " https://example.com/avatar.png ",
-  },
-  organizationId: "org_123",
-}))
+const mockWithAuth = mock(
+  async (): Promise<MockAuthPayload> => ({
+    user: {
+      id: "user_123",
+      firstName: "Jane",
+      lastName: "Doe",
+      email: "jane@example.com",
+      profilePictureUrl: " https://example.com/avatar.png ",
+    },
+    organizationId: "org_123",
+  })
+)
 
 const mockGetUser = mock(async () => ({
   id: "user_123",
@@ -91,10 +93,7 @@ mock.module("@/components/ui/sidebar", () => {
       <main data-testid="sidebar-inset">{children}</main>
     ),
     SidebarTrigger: ({ className }: { className?: string }) => (
-      <button
-        className={className}
-        type="button"
-      >
+      <button className={className} type="button">
         Toggle
       </button>
     ),
@@ -103,12 +102,22 @@ mock.module("@/components/ui/sidebar", () => {
 
 mock.module("@/components/ui/breadcrumb", () => {
   return {
-    Breadcrumb: ({ children }: { children: React.ReactNode }) => <nav>{children}</nav>,
-    BreadcrumbList: ({ children }: { children: React.ReactNode }) => <ol>{children}</ol>,
-    BreadcrumbItem: ({ children }: { children: React.ReactNode }) => <li>{children}</li>,
-    BreadcrumbLink: ({ children, href }: { children: React.ReactNode; href: string }) => (
-      <a href={href}>{children}</a>
+    Breadcrumb: ({ children }: { children: React.ReactNode }) => (
+      <nav>{children}</nav>
     ),
+    BreadcrumbList: ({ children }: { children: React.ReactNode }) => (
+      <ol>{children}</ol>
+    ),
+    BreadcrumbItem: ({ children }: { children: React.ReactNode }) => (
+      <li>{children}</li>
+    ),
+    BreadcrumbLink: ({
+      children,
+      href,
+    }: {
+      children: React.ReactNode
+      href: string
+    }) => <a href={href}>{children}</a>,
     BreadcrumbSeparator: () => <span>/</span>,
     BreadcrumbPage: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>

@@ -6,12 +6,14 @@ type AuthResult = {
   organizationId: string | null
 }
 
-const mockWithAuth = mock(async (): Promise<AuthResult> => ({
-  user: {
-    id: "user_123",
-  },
-  organizationId: "org_123",
-}))
+const mockWithAuth = mock(
+  async (): Promise<AuthResult> => ({
+    user: {
+      id: "user_123",
+    },
+    organizationId: "org_123",
+  })
+)
 
 class MockGithubIntegrationDisabledError extends Error {
   constructor() {
@@ -241,10 +243,12 @@ describe("GET /api/integrations/github/install/callback", () => {
   })
 
   it("returns 401 when there is no authenticated user", async () => {
-    mockWithAuth.mockImplementation(async (): Promise<AuthResult> => ({
-      user: null,
-      organizationId: null,
-    }))
+    mockWithAuth.mockImplementation(
+      async (): Promise<AuthResult> => ({
+        user: null,
+        organizationId: null,
+      })
+    )
 
     const route =
       await import("@/app/api/integrations/github/install/callback/route")

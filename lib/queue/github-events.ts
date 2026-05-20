@@ -91,13 +91,12 @@ export const createGithubEventsQueue = ({
   defaultJobOptions?: JobsOptions
 } = {}): GithubEventsQueue => {
   const managedQueue = queue
-  const ownedQueue =
-    managedQueue
-      ? null
-      : new Queue<GithubEventJobData>(queueName, {
-          connection: getGithubEventsRedisConnection(),
-          defaultJobOptions,
-        })
+  const ownedQueue = managedQueue
+    ? null
+    : new Queue<GithubEventJobData>(queueName, {
+        connection: getGithubEventsRedisConnection(),
+        defaultJobOptions,
+      })
   const queueClient: QueueAddOnly =
     managedQueue ?? (ownedQueue as Queue<GithubEventJobData>)
 

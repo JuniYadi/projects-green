@@ -16,9 +16,8 @@ mock.module("next/navigation", () => {
 })
 
 const loadOrganizationAdminSurface = async () => {
-  const surfaceModule = await import(
-    "@/modules/tenants/ui/organization-admin-surface"
-  )
+  const surfaceModule =
+    await import("@/modules/tenants/ui/organization-admin-surface")
   return surfaceModule.OrganizationAdminSurface
 }
 
@@ -114,14 +113,13 @@ const mockTenantFetch = (config: FetchMockConfig) => {
         return jsonResponse({
           ok: true,
           orgId: "org_123",
-          organization:
-            config.organization ?? {
-              id: "org_123",
-              name: "Acme Org",
-              allowProfilesOutsideOrganization: false,
-              createdAt: "2026-05-17T00:00:00.000Z",
-              updatedAt: "2026-05-17T00:00:00.000Z",
-            },
+          organization: config.organization ?? {
+            id: "org_123",
+            name: "Acme Org",
+            allowProfilesOutsideOrganization: false,
+            createdAt: "2026-05-17T00:00:00.000Z",
+            updatedAt: "2026-05-17T00:00:00.000Z",
+          },
         })
       }
 
@@ -187,7 +185,9 @@ describe("OrganizationAdminSurface", () => {
     })
 
     expect(
-      view.getByText("You do not have permission to manage members in this organization.")
+      view.getByText(
+        "You do not have permission to manage members in this organization."
+      )
     ).toBeTruthy()
 
     fireEvent.click(view.getByRole("button", { name: "Invitations" }))
@@ -209,7 +209,11 @@ describe("OrganizationAdminSurface", () => {
       auth: {
         effectiveGlobalRole: "none",
         effectiveTenantRole: "owner",
-        allowedActions: ["manage_tenant", "transfer_ownership", "promote_member"],
+        allowedActions: [
+          "manage_tenant",
+          "transfer_ownership",
+          "promote_member",
+        ],
       },
       members: [
         makeMember({
@@ -249,16 +253,16 @@ describe("OrganizationAdminSurface", () => {
         effectiveTenantRole: "owner",
         allowedActions: ["manage_tenant", "promote_member"],
       },
-      members: [
-        makeMember(),
-      ],
+      members: [makeMember()],
       invitations: [],
     })
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
     await waitFor(() => {
-      expect(view.getByRole("button", { name: "Promote to Admin" })).toBeTruthy()
+      expect(
+        view.getByRole("button", { name: "Promote to Admin" })
+      ).toBeTruthy()
     })
 
     fireEvent.click(view.getByRole("button", { name: "Promote to Admin" }))
@@ -270,7 +274,8 @@ describe("OrganizationAdminSurface", () => {
     expect(
       requests.some(
         (request) =>
-          request.method === "POST" && request.url.includes("/members/m_1/promote")
+          request.method === "POST" &&
+          request.url.includes("/members/m_1/promote")
       )
     ).toBe(true)
   })
@@ -344,7 +349,9 @@ describe("OrganizationAdminSurface", () => {
       ).toBeInTheDocument()
     })
 
-    fireEvent.click(view.getByRole("button", { name: "Clear search and filters" }))
+    fireEvent.click(
+      view.getByRole("button", { name: "Clear search and filters" })
+    )
 
     await waitFor(() => {
       expect(view.getByText("Owner Active")).toBeInTheDocument()
@@ -352,9 +359,9 @@ describe("OrganizationAdminSurface", () => {
 
     expect(view.getByText("Admin Pending")).toBeInTheDocument()
     expect(view.getByText("Member Inactive")).toBeInTheDocument()
-    expect((view.getByLabelText("Search members") as HTMLInputElement).value).toBe(
-      ""
-    )
+    expect(
+      (view.getByLabelText("Search members") as HTMLInputElement).value
+    ).toBe("")
     expect(view.getByText("Showing 3 of 3 members.")).toBeInTheDocument()
   })
 
@@ -407,7 +414,8 @@ describe("OrganizationAdminSurface", () => {
     expect(
       requests.some(
         (request) =>
-          request.method === "POST" && request.url.includes("/members/m_2/promote")
+          request.method === "POST" &&
+          request.url.includes("/members/m_2/promote")
       )
     ).toBe(true)
   })

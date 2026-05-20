@@ -10,7 +10,7 @@ type RepositorySummaryBarProps = {
 const Item = ({ label, value }: { label: string; value: string }) => {
   return (
     <div className="rounded-md border border-border px-2 py-1.5">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+      <p className="text-[11px] tracking-wide text-muted-foreground uppercase">
         {label}
       </p>
       <p className="text-xs font-medium">{value}</p>

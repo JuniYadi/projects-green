@@ -62,8 +62,14 @@ describe("tenant permissions", () => {
   })
 
   it("enforces manage/invite/promote/demote/transfer rules by tenant role", () => {
-    const owner = { platformRole: "none" as const, tenantRole: "owner" as const }
-    const admin = { platformRole: "none" as const, tenantRole: "admin" as const }
+    const owner = {
+      platformRole: "none" as const,
+      tenantRole: "owner" as const,
+    }
+    const admin = {
+      platformRole: "none" as const,
+      tenantRole: "admin" as const,
+    }
     const member = {
       platformRole: "none" as const,
       tenantRole: "member" as const,

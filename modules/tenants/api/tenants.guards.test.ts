@@ -13,9 +13,8 @@ mock.module("@/lib/platform-role", () => ({
   getPlatformRoleForUser: async () => "none",
 }))
 
-const { ensureTenantContextAccess } = await import(
-  "@/modules/tenants/api/tenants.guards"
-)
+const { ensureTenantContextAccess } =
+  await import("@/modules/tenants/api/tenants.guards")
 
 describe("tenants.guards", () => {
   it("returns policy error when tenant role is missing for matching organization context", () => {

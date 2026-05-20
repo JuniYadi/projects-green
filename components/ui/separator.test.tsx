@@ -16,10 +16,7 @@ describe("Separator", () => {
 
   it("supports vertical orientation and custom classes", () => {
     const view = render(
-      <Separator
-        orientation="vertical"
-        className="custom-separator"
-      />
+      <Separator orientation="vertical" className="custom-separator" />
     )
     const separator = view.container.querySelector(
       '[data-slot="separator"]'

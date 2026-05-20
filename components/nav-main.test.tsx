@@ -34,12 +34,12 @@ describe("NavMain", () => {
     )
 
     expect(view.getByText("Platform")).toBeTruthy()
-    expect(view.getByRole("link", { name: "Console" }).getAttribute("href")).toBe(
-      "/console"
-    )
-    expect(view.getByRole("link", { name: "Portal" }).getAttribute("href")).toBe(
-      "/portal"
-    )
+    expect(
+      view.getByRole("link", { name: "Console" }).getAttribute("href")
+    ).toBe("/console")
+    expect(
+      view.getByRole("link", { name: "Portal" }).getAttribute("href")
+    ).toBe("/portal")
     expect(view.getByRole("link", { name: "Members" })).toBeTruthy()
     expect(view.getByRole("link", { name: "Settings" })).toBeTruthy()
   })

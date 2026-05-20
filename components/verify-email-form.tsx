@@ -60,23 +60,28 @@ export function VerifyEmailForm({
           setServerFieldErrors({})
 
           if (!pendingAuthenticationToken) {
-            setSubmitError("Verification session is missing. Please start login again.")
+            setSubmitError(
+              "Verification session is missing. Please start login again."
+            )
             return
           }
 
           setIsSubmitting(true)
 
           try {
-            const response = await fetch("/api/auth/email-verification/complete", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                code,
-                pendingAuthenticationToken,
-              }),
-            })
+            const response = await fetch(
+              "/api/auth/email-verification/complete",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  code,
+                  pendingAuthenticationToken,
+                }),
+              }
+            )
 
             const payload = (await response
               .json()
@@ -103,7 +108,8 @@ export function VerifyEmailForm({
           <div className="flex flex-col gap-1 text-center">
             <h1 className="text-xl font-bold">Verify your email</h1>
             <FieldDescription>
-              Enter the code sent to {email ? <strong>{email}</strong> : "your email"}.
+              Enter the code sent to{" "}
+              {email ? <strong>{email}</strong> : "your email"}.
             </FieldDescription>
           </div>
 

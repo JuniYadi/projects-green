@@ -59,9 +59,10 @@ export function DashboardDocsDrawer() {
           }
         )
 
-        const payload = (await response
-          .json()
-          .catch(() => null)) as UiDocSuccessResponse | UiDocErrorResponse | null
+        const payload = (await response.json().catch(() => null)) as
+          | UiDocSuccessResponse
+          | UiDocErrorResponse
+          | null
 
         if (!isActive) {
           return
@@ -164,7 +165,7 @@ export function DashboardDocsDrawer() {
                 </section>
 
                 <section className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     How To Use
                   </h4>
                   <ol className="list-decimal space-y-1 pl-5 text-sm">
@@ -176,7 +177,7 @@ export function DashboardDocsDrawer() {
 
                 {state.data.notes?.length ? (
                   <section className="space-y-2">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       Notes
                     </h4>
                     <ul className="list-disc space-y-1 pl-5 text-sm">

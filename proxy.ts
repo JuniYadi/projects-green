@@ -25,7 +25,9 @@ const LOCALE_EXCLUDED_PATHS = ["/api", "/callback"]
 type UserArea = "console" | "portal"
 
 const isProtectedPath = (pathname: string) => {
-  return PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  return PROTECTED_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  )
 }
 
 const isPortalPath = (pathname: string) => {
@@ -133,8 +135,7 @@ export default async function proxy(request: NextRequest) {
     session.role,
     session.roles
   )
-  const isSuperAdmin =
-    platformRole === "super_admin" || hasClaimedSuperAdmin
+  const isSuperAdmin = platformRole === "super_admin" || hasClaimedSuperAdmin
 
   const userArea = resolveUserArea(session)
 

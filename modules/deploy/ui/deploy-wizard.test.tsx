@@ -333,7 +333,9 @@ describe("DeployWizard", () => {
     expect(view.getByText("Monitor step complete.")).toBeTruthy()
     expect(view.getByText("Stream: Deployment finished.")).toBeTruthy()
     expect(
-      view.getByText("[runtime] Attempt 1: rollout failed during health checks.")
+      view.getByText(
+        "[runtime] Attempt 1: rollout failed during health checks."
+      )
     ).toBeTruthy()
 
     expect(view.getByRole("button", { name: "Retry" })).toBeTruthy()

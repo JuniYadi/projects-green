@@ -138,7 +138,8 @@ const deployWizardReducer = (
         monitor: {
           ...state.monitor,
           status: action.payload,
-          isActive: action.payload === "queued" ||
+          isActive:
+            action.payload === "queued" ||
             action.payload === "building" ||
             action.payload === "deploying",
         },
@@ -294,7 +295,9 @@ export const useDeployWizardState = () => {
   const context = useContext(DeployWizardStateContext)
 
   if (!context) {
-    throw new Error("useDeployWizardState must be used inside DeployWizardProvider")
+    throw new Error(
+      "useDeployWizardState must be used inside DeployWizardProvider"
+    )
   }
 
   return context

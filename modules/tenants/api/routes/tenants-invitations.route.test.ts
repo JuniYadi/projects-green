@@ -304,10 +304,9 @@ describe("tenants-invitations routes", () => {
       const app = await getApp()
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/revoke",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/revoke", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as {
         ok: boolean
@@ -324,10 +323,9 @@ describe("tenants-invitations routes", () => {
       mockGetTenantInvitationById.mockImplementation(async () => null)
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_x/revoke",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_x/revoke", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -342,10 +340,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/revoke",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/revoke", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -360,10 +357,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/revoke",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/revoke", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -384,10 +380,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/revoke",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/revoke", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -405,10 +400,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/revoke",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/revoke", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -423,10 +417,9 @@ describe("tenants-invitations routes", () => {
       })
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/revoke",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/revoke", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -440,10 +433,9 @@ describe("tenants-invitations routes", () => {
       const app = await getApp()
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/cancel",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/cancel", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as {
         ok: boolean
@@ -460,10 +452,9 @@ describe("tenants-invitations routes", () => {
       mockGetTenantInvitationById.mockImplementation(async () => null)
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_x/cancel",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_x/cancel", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -478,10 +469,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/cancel",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/cancel", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -496,10 +486,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/cancel",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/cancel", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -520,10 +509,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/cancel",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/cancel", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -541,10 +529,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/cancel",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/cancel", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -559,10 +546,9 @@ describe("tenants-invitations routes", () => {
       })
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/cancel",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/cancel", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -576,10 +562,9 @@ describe("tenants-invitations routes", () => {
       const app = await getApp()
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/resend",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/resend", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as {
         ok: boolean
@@ -595,10 +580,9 @@ describe("tenants-invitations routes", () => {
       mockGetTenantInvitationById.mockImplementation(async () => null)
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_x/resend",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_x/resend", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -613,10 +597,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/resend",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/resend", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -631,10 +614,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/resend",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/resend", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -655,10 +637,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/resend",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/resend", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -676,10 +657,9 @@ describe("tenants-invitations routes", () => {
       )
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/resend",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/resend", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -694,10 +674,9 @@ describe("tenants-invitations routes", () => {
       })
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/resend",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/resend", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 
@@ -712,10 +691,9 @@ describe("tenants-invitations routes", () => {
       })
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/tenants/org_1/invitations/inv_1/resend",
-          { method: "POST" }
-        )
+        new Request("http://localhost/tenants/org_1/invitations/inv_1/resend", {
+          method: "POST",
+        })
       )
       const body = (await response.json()) as TenantApiError
 

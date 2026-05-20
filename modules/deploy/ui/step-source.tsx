@@ -1,4 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { Branch, Owner, Repository } from "@/modules/deploy/deploy.types"
@@ -64,10 +70,11 @@ export function StepSource({
   const repositorySelected = selectedRepositoryId.length > 0
   const branchSelected = selectedBranchName.length > 0
   const selectedOwnerName =
-    owners.find((owner) => owner.id === selectedOwnerId)?.name ?? selectedOwnerId
+    owners.find((owner) => owner.id === selectedOwnerId)?.name ??
+    selectedOwnerId
   const selectedRepositoryName =
-    repositories.find((repository) => repository.id === selectedRepositoryId)?.name ??
-    selectedRepositoryId
+    repositories.find((repository) => repository.id === selectedRepositoryId)
+      ?.name ?? selectedRepositoryId
 
   const ownerStateMessage = (() => {
     if (ownerOptionsError) {
@@ -229,7 +236,9 @@ export function StepSource({
               )
             })}
           </select>
-          <p className="text-xs text-muted-foreground">{repositoryStateMessage}</p>
+          <p className="text-xs text-muted-foreground">
+            {repositoryStateMessage}
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -251,7 +260,9 @@ export function StepSource({
                 )
               })}
             </select>
-            <p className="text-xs text-muted-foreground">{branchStateMessage}</p>
+            <p className="text-xs text-muted-foreground">
+              {branchStateMessage}
+            </p>
           </div>
 
           <div className="space-y-1">

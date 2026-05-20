@@ -24,7 +24,12 @@ const DEFAULT_MAX_DEPTH = 8
 const DEFAULT_CLONE_TIMEOUT_MS = 60_000
 const DEFAULT_SCAN_TIMEOUT_MS = 30_000
 
-const JS_LOCKFILES = ["bun.lock", "package-lock.json", "pnpm-lock.yaml", "yarn.lock"]
+const JS_LOCKFILES = [
+  "bun.lock",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "yarn.lock",
+]
 
 const AI_DECISION_SCHEMA = z.object({
   primaryFrameworkId: z.string().trim().min(1),
@@ -115,13 +120,10 @@ const cloneRepository = async (
     return
   }
 
-  await runGit(
-    ["fetch", "--depth", "1", "origin", input.ref],
-    {
-      cwd: destinationPath,
-      timeoutMs,
-    }
-  )
+  await runGit(["fetch", "--depth", "1", "origin", input.ref], {
+    cwd: destinationPath,
+    timeoutMs,
+  })
   await runGit(["checkout", "--detach", "FETCH_HEAD"], {
     cwd: destinationPath,
     timeoutMs,
@@ -253,14 +255,15 @@ const buildInventory = async (
   }
 
   if (fileSet.has("package.json")) {
-    const packageText = await readFile(path.join(rootPath, "package.json"), "utf8")
-    const packageJson = parseJsonObject(packageText) as
-      | {
-          dependencies?: Record<string, string>
-          devDependencies?: Record<string, string>
-          scripts?: Record<string, string>
-        }
-      | null
+    const packageText = await readFile(
+      path.join(rootPath, "package.json"),
+      "utf8"
+    )
+    const packageJson = parseJsonObject(packageText) as {
+      dependencies?: Record<string, string>
+      devDependencies?: Record<string, string>
+      scripts?: Record<string, string>
+    } | null
 
     const dependencies = {
       ...(packageJson?.dependencies ?? {}),
@@ -287,13 +290,14 @@ const buildInventory = async (
   }
 
   if (fileSet.has("composer.json")) {
-    const composerText = await readFile(path.join(rootPath, "composer.json"), "utf8")
-    const composerJson = parseJsonObject(composerText) as
-      | {
-          require?: Record<string, string>
-          ["require-dev"]?: Record<string, string>
-        }
-      | null
+    const composerText = await readFile(
+      path.join(rootPath, "composer.json"),
+      "utf8"
+    )
+    const composerJson = parseJsonObject(composerText) as {
+      require?: Record<string, string>
+      ["require-dev"]?: Record<string, string>
+    } | null
 
     const dependencies = {
       ...(composerJson?.require ?? {}),
@@ -481,7 +485,9 @@ const buildRequiredDependencies = (
 ) => {
   const dependencies: RequiredDependency[] = []
   const addDependency = (nextDependency: RequiredDependency) => {
-    if (dependencies.some((dependency) => dependency.id === nextDependency.id)) {
+    if (
+      dependencies.some((dependency) => dependency.id === nextDependency.id)
+    ) {
       return
     }
 
@@ -495,8 +501,7 @@ const buildRequiredDependencies = (
   if (hasNodeLockfile) {
     addDependency({
       id: "node",
-      kind:
-        primary?.ecosystem === "node" ? "runtime" : "toolchain",
+      kind: primary?.ecosystem === "node" ? "runtime" : "toolchain",
       requiredFor:
         primary?.ecosystem === "node" ? "app_runtime" : "asset_build",
       confidence: 0.9,
@@ -507,7 +512,10 @@ const buildRequiredDependencies = (
     })
   }
 
-  if (inventory.lockfiles.has("composer.lock") || inventory.files.includes("composer.json")) {
+  if (
+    inventory.lockfiles.has("composer.lock") ||
+    inventory.files.includes("composer.json")
+  ) {
     addDependency({
       id: "php",
       kind: primary?.ecosystem === "php" ? "runtime" : "toolchain",
@@ -521,7 +529,10 @@ const buildRequiredDependencies = (
     })
   }
 
-  if (inventory.lockfiles.has("Gemfile.lock") || inventory.files.includes("Gemfile")) {
+  if (
+    inventory.lockfiles.has("Gemfile.lock") ||
+    inventory.files.includes("Gemfile")
+  ) {
     addDependency({
       id: "ruby",
       kind: primary?.ecosystem === "ruby" ? "runtime" : "toolchain",
@@ -650,7 +661,9 @@ const resolveWithAi = async (
   return result.object
 }
 
-const toDetectedFramework = (candidate: FrameworkCandidate): DetectedFramework => {
+const toDetectedFramework = (
+  candidate: FrameworkCandidate
+): DetectedFramework => {
   return {
     id: candidate.id,
     name: candidate.name,
@@ -742,7 +755,11 @@ const fromInventory = async (
   const requiredDependencies = buildRequiredDependencies(selected, inventory)
 
   for (const nextDependency of aiDependencies) {
-    if (!requiredDependencies.some((dependency) => dependency.id === nextDependency.id)) {
+    if (
+      !requiredDependencies.some(
+        (dependency) => dependency.id === nextDependency.id
+      )
+    ) {
       requiredDependencies.push(nextDependency)
     }
   }
@@ -775,7 +792,9 @@ export const detectFrameworkFromGitRepo = async (
   const maxDepth = input.maxDepth ?? DEFAULT_MAX_DEPTH
   const scanTimeoutMs = input.scanTimeoutMs ?? DEFAULT_SCAN_TIMEOUT_MS
 
-  const tempRootPath = await mkdtemp(path.join(tmpdir(), "framework-detection-"))
+  const tempRootPath = await mkdtemp(
+    path.join(tmpdir(), "framework-detection-")
+  )
 
   try {
     const clone = dependencies.cloneRepository ?? cloneRepository

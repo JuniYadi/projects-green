@@ -86,48 +86,7 @@ export const createTenantsOrganizationRoutes = (
   }
 
   return new Elysia()
-  .get("/tenants/:orgId/organization", async ({ params, set }) => {
-    const actorResult = await requireTenantActor(set)
-    if (isTenantApiError(actorResult)) {
-      return actorResult
-    }
-
-    const hasContextAccess = await ensureTenantContextAccess(
-      params.orgId,
-      actorResult,
-      set
-    )
-    if (hasContextAccess !== true) {
-      return hasContextAccess
-    }
-
-    if (
-      !canManageTenant({
-        platformRole: actorResult.platformRole,
-        tenantRole: actorResult.tenantRole,
-      })
-    ) {
-      return toPolicyError(
-        set,
-        "TENANT_MANAGE_REQUIRED",
-        "You do not have permission to view organization settings."
-      )
-    }
-
-    const organization = await getTenantOrganizationById(params.orgId)
-    if (!organization) {
-      return toNotFoundError(set, "Organization not found.")
-    }
-
-    return {
-      ok: true,
-      orgId: params.orgId,
-      organization,
-    } satisfies TenantOrganizationResponse
-  })
-  .post(
-    "/tenants/:orgId/organization/update",
-    async ({ params, body, set }) => {
+    .get("/tenants/:orgId/organization", async ({ params, set }) => {
       const actorResult = await requireTenantActor(set)
       if (isTenantApiError(actorResult)) {
         return actorResult
@@ -151,82 +110,7 @@ export const createTenantsOrganizationRoutes = (
         return toPolicyError(
           set,
           "TENANT_MANAGE_REQUIRED",
-          "You do not have permission to update organization settings."
-        )
-      }
-
-      try {
-        const organization = await updateTenantOrganization({
-          organizationId: params.orgId,
-          name: body.name,
-          metadata: body.metadata,
-        })
-
-        return {
-          ok: true,
-          organization,
-        } satisfies TenantOrganizationUpdateResponse
-      } catch (error) {
-        if (error instanceof UnprocessableEntityException) {
-          set.status = 422
-
-          return {
-            ok: false,
-            error: "ORGANIZATION_UPDATE_INVALID",
-            message: error.message,
-          }
-        }
-
-        if (error instanceof NotFoundException) {
-          set.status = 404
-
-          return {
-            ok: false,
-            error: "ORGANIZATION_NOT_FOUND",
-            message: "The organization could not be found.",
-          }
-        }
-
-        set.status = 500
-
-        return {
-          ok: false,
-          error: "ORGANIZATION_UPDATE_FAILED",
-          message: "Unable to update organization settings right now.",
-        }
-      }
-    },
-    {
-      body: organizationUpdatePayloadSchema,
-    }
-  )
-  .post(
-    "/tenants/:orgId/organization/delete",
-    async ({ params, body, set }) => {
-      const actorResult = await requireTenantActor(set)
-      if (isTenantApiError(actorResult)) {
-        return actorResult
-      }
-
-      const hasContextAccess = await ensureTenantContextAccess(
-        params.orgId,
-        actorResult,
-        set
-      )
-      if (hasContextAccess !== true) {
-        return hasContextAccess
-      }
-
-      if (
-        !canTransferOwnership({
-          platformRole: actorResult.platformRole,
-          tenantRole: actorResult.tenantRole,
-        })
-      ) {
-        return toPolicyError(
-          set,
-          "ORGANIZATION_DELETE_FORBIDDEN",
-          "Only tenant owners or super admins can delete the organization."
+          "You do not have permission to view organization settings."
         )
       }
 
@@ -235,70 +119,186 @@ export const createTenantsOrganizationRoutes = (
         return toNotFoundError(set, "Organization not found.")
       }
 
-      if (body.confirmOrganizationId.trim() !== params.orgId) {
-        set.status = 422
-
-        return {
-          ok: false,
-          error: "ORGANIZATION_DELETE_CONFIRMATION_MISMATCH",
-          message:
-            "Confirmation does not match the requested organization. Deletion cancelled.",
+      return {
+        ok: true,
+        orgId: params.orgId,
+        organization,
+      } satisfies TenantOrganizationResponse
+    })
+    .post(
+      "/tenants/:orgId/organization/update",
+      async ({ params, body, set }) => {
+        const actorResult = await requireTenantActor(set)
+        if (isTenantApiError(actorResult)) {
+          return actorResult
         }
-      }
 
-      if (body.confirmOrganizationName.trim() !== organization.name.trim()) {
-        set.status = 422
-
-        return {
-          ok: false,
-          error: "ORGANIZATION_DELETE_CONFIRMATION_MISMATCH",
-          message:
-            "Confirmation does not match the organization name. Deletion cancelled.",
+        const hasContextAccess = await ensureTenantContextAccess(
+          params.orgId,
+          actorResult,
+          set
+        )
+        if (hasContextAccess !== true) {
+          return hasContextAccess
         }
-      }
 
-      try {
-        await deleteTenantOrganization(params.orgId)
-      } catch (error) {
-        if (error instanceof NotFoundException) {
-          set.status = 404
+        if (
+          !canManageTenant({
+            platformRole: actorResult.platformRole,
+            tenantRole: actorResult.tenantRole,
+          })
+        ) {
+          return toPolicyError(
+            set,
+            "TENANT_MANAGE_REQUIRED",
+            "You do not have permission to update organization settings."
+          )
+        }
+
+        try {
+          const organization = await updateTenantOrganization({
+            organizationId: params.orgId,
+            name: body.name,
+            metadata: body.metadata,
+          })
+
+          return {
+            ok: true,
+            organization,
+          } satisfies TenantOrganizationUpdateResponse
+        } catch (error) {
+          if (error instanceof UnprocessableEntityException) {
+            set.status = 422
+
+            return {
+              ok: false,
+              error: "ORGANIZATION_UPDATE_INVALID",
+              message: error.message,
+            }
+          }
+
+          if (error instanceof NotFoundException) {
+            set.status = 404
+
+            return {
+              ok: false,
+              error: "ORGANIZATION_NOT_FOUND",
+              message: "The organization could not be found.",
+            }
+          }
+
+          set.status = 500
 
           return {
             ok: false,
-            error: "ORGANIZATION_NOT_FOUND",
-            message: "The organization could not be found.",
+            error: "ORGANIZATION_UPDATE_FAILED",
+            message: "Unable to update organization settings right now.",
           }
         }
+      },
+      {
+        body: organizationUpdatePayloadSchema,
+      }
+    )
+    .post(
+      "/tenants/:orgId/organization/delete",
+      async ({ params, body, set }) => {
+        const actorResult = await requireTenantActor(set)
+        if (isTenantApiError(actorResult)) {
+          return actorResult
+        }
 
-        if (error instanceof UnprocessableEntityException) {
+        const hasContextAccess = await ensureTenantContextAccess(
+          params.orgId,
+          actorResult,
+          set
+        )
+        if (hasContextAccess !== true) {
+          return hasContextAccess
+        }
+
+        if (
+          !canTransferOwnership({
+            platformRole: actorResult.platformRole,
+            tenantRole: actorResult.tenantRole,
+          })
+        ) {
+          return toPolicyError(
+            set,
+            "ORGANIZATION_DELETE_FORBIDDEN",
+            "Only tenant owners or super admins can delete the organization."
+          )
+        }
+
+        const organization = await getTenantOrganizationById(params.orgId)
+        if (!organization) {
+          return toNotFoundError(set, "Organization not found.")
+        }
+
+        if (body.confirmOrganizationId.trim() !== params.orgId) {
           set.status = 422
 
           return {
             ok: false,
-            error: "ORGANIZATION_DELETE_INVALID",
-            message: error.message,
+            error: "ORGANIZATION_DELETE_CONFIRMATION_MISMATCH",
+            message:
+              "Confirmation does not match the requested organization. Deletion cancelled.",
           }
         }
 
-        set.status = 500
+        if (body.confirmOrganizationName.trim() !== organization.name.trim()) {
+          set.status = 422
+
+          return {
+            ok: false,
+            error: "ORGANIZATION_DELETE_CONFIRMATION_MISMATCH",
+            message:
+              "Confirmation does not match the organization name. Deletion cancelled.",
+          }
+        }
+
+        try {
+          await deleteTenantOrganization(params.orgId)
+        } catch (error) {
+          if (error instanceof NotFoundException) {
+            set.status = 404
+
+            return {
+              ok: false,
+              error: "ORGANIZATION_NOT_FOUND",
+              message: "The organization could not be found.",
+            }
+          }
+
+          if (error instanceof UnprocessableEntityException) {
+            set.status = 422
+
+            return {
+              ok: false,
+              error: "ORGANIZATION_DELETE_INVALID",
+              message: error.message,
+            }
+          }
+
+          set.status = 500
+
+          return {
+            ok: false,
+            error: "ORGANIZATION_DELETE_FAILED",
+            message: "Unable to delete organization right now.",
+          }
+        }
 
         return {
-          ok: false,
-          error: "ORGANIZATION_DELETE_FAILED",
-          message: "Unable to delete organization right now.",
-        }
+          ok: true,
+          organizationDeleted: true,
+          organizationId: params.orgId,
+        } satisfies TenantOrganizationDeleteResponse
+      },
+      {
+        body: organizationDeletePayloadSchema,
       }
-
-      return {
-        ok: true,
-        organizationDeleted: true,
-        organizationId: params.orgId,
-      } satisfies TenantOrganizationDeleteResponse
-    },
-    {
-      body: organizationDeletePayloadSchema,
-    }
-  )
+    )
 }
 
 export const tenantsOrganizationRoutes = createTenantsOrganizationRoutes()

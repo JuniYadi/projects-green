@@ -167,6 +167,8 @@ describe("detectFrameworkFromGitRepo", () => {
     )
 
     expect(result.primaryFramework?.id).toBe("react")
-    expect(result.warnings.some((warning) => warning.includes("AI fallback skipped"))).toBe(true)
+    expect(
+      result.warnings.some((warning) => warning.includes("AI fallback skipped"))
+    ).toBe(true)
   })
 })

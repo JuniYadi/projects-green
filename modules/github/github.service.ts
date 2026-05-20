@@ -732,7 +732,9 @@ export const syncGithubInstallation = async ({
         accountType: installation.account.type,
         targetType: installation.target_type,
         targetId:
-          installation.target_id === null ? null : BigInt(installation.target_id),
+          installation.target_id === null
+            ? null
+            : BigInt(installation.target_id),
         workosUserId,
         organizationId,
         status: "active",
@@ -744,7 +746,9 @@ export const syncGithubInstallation = async ({
         accountType: installation.account.type,
         targetType: installation.target_type,
         targetId:
-          installation.target_id === null ? null : BigInt(installation.target_id),
+          installation.target_id === null
+            ? null
+            : BigInt(installation.target_id),
         workosUserId,
         organizationId,
         status: "active",

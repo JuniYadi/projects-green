@@ -15,10 +15,7 @@ describe("Skeleton", () => {
 
   it("merges custom class names", () => {
     const view = render(
-      <Skeleton
-        data-testid="custom-skeleton"
-        className="h-8 w-24"
-      />
+      <Skeleton data-testid="custom-skeleton" className="h-8 w-24" />
     )
 
     expect(view.getByTestId("custom-skeleton")).toHaveClass("h-8")

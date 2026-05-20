@@ -126,92 +126,108 @@ export const createTenantsBootstrapRoutes = (
   }
 
   return new Elysia()
-  .get("/tenants/bootstrap", async ({ set }) => {
-    const actorResult = await requireTenantActor(set)
-    if (isTenantApiError(actorResult)) {
-      return actorResult
-    }
-
-    const memberships = await listTenantBootstrapMembershipsForUser(
-      actorResult.userId
-    )
-
-    return {
-      ok: true,
-      currentOrganizationId: actorResult.organizationId,
-      memberships,
-    } satisfies TenantBootstrapResponse
-  })
-  .post(
-    "/tenants/bootstrap/create",
-    async ({ body, set }) => {
+    .get("/tenants/bootstrap", async ({ set }) => {
       const actorResult = await requireTenantActor(set)
       if (isTenantApiError(actorResult)) {
         return actorResult
       }
 
-      if (actorResult.organizationId) {
-        set.status = 409
-
-        return {
-          ok: false,
-          error: "ORGANIZATION_CONTEXT_EXISTS",
-          message:
-            "You already have an active organization context in this session.",
-        }
-      }
-
-      const existingMemberships = await listTenantBootstrapMembershipsForUser(
+      const memberships = await listTenantBootstrapMembershipsForUser(
         actorResult.userId
       )
-      const activeMembership = existingMemberships.find(
-        (membership) => membership.status === "active"
-      )
 
-      if (activeMembership) {
-        set.status = 409
-
-        return {
-          ok: false,
-          error: "ACTIVE_MEMBERSHIP_EXISTS",
-          message:
-            "You already belong to an organization. Select and join it instead.",
+      return {
+        ok: true,
+        currentOrganizationId: actorResult.organizationId,
+        memberships,
+      } satisfies TenantBootstrapResponse
+    })
+    .post(
+      "/tenants/bootstrap/create",
+      async ({ body, set }) => {
+        const actorResult = await requireTenantActor(set)
+        if (isTenantApiError(actorResult)) {
+          return actorResult
         }
-      }
 
-      try {
-        const organization = await createTenantOrganization(body.name.trim())
-
-        const creatorRoleIsAvailable = await hasBootstrapCreatorRole(
-          organization.id
-        )
-
-        if (!creatorRoleIsAvailable) {
-          await rollbackOrganizationCreation(deleteTenantOrganization, organization.id)
-          set.status = 422
+        if (actorResult.organizationId) {
+          set.status = 409
 
           return {
             ok: false,
-            error: "CREATOR_ROLE_MISSING",
+            error: "ORGANIZATION_CONTEXT_EXISTS",
             message:
-              "Required WorkOS role 'user_owner' is missing. Run `bun run seed:workos-roles` and retry.",
+              "You already have an active organization context in this session.",
+          }
+        }
+
+        const existingMemberships = await listTenantBootstrapMembershipsForUser(
+          actorResult.userId
+        )
+        const activeMembership = existingMemberships.find(
+          (membership) => membership.status === "active"
+        )
+
+        if (activeMembership) {
+          set.status = 409
+
+          return {
+            ok: false,
+            error: "ACTIVE_MEMBERSHIP_EXISTS",
+            message:
+              "You already belong to an organization. Select and join it instead.",
           }
         }
 
         try {
-          await createTenantMembership({
-            organizationId: organization.id,
-            userId: actorResult.userId,
-            roleSlug: getBootstrapCreatorRoleSlug(),
-          })
+          const organization = await createTenantOrganization(body.name.trim())
 
-          const creatorHasValidRole = await verifyCreatorMembershipRole({
-            listTenantBootstrapMembershipsForUser,
-            organizationId: organization.id,
-            userId: actorResult.userId,
-          })
+          const creatorRoleIsAvailable = await hasBootstrapCreatorRole(
+            organization.id
+          )
 
-          if (!creatorHasValidRole) {
+          if (!creatorRoleIsAvailable) {
+            await rollbackOrganizationCreation(
+              deleteTenantOrganization,
+              organization.id
+            )
+            set.status = 422
+
+            return {
+              ok: false,
+              error: "CREATOR_ROLE_MISSING",
+              message:
+                "Required WorkOS role 'user_owner' is missing. Run `bun run seed:workos-roles` and retry.",
+            }
+          }
+
+          try {
+            await createTenantMembership({
+              organizationId: organization.id,
+              userId: actorResult.userId,
+              roleSlug: getBootstrapCreatorRoleSlug(),
+            })
+
+            const creatorHasValidRole = await verifyCreatorMembershipRole({
+              listTenantBootstrapMembershipsForUser,
+              organizationId: organization.id,
+              userId: actorResult.userId,
+            })
+
+            if (!creatorHasValidRole) {
+              await rollbackOrganizationCreation(
+                deleteTenantOrganization,
+                organization.id
+              )
+              set.status = 500
+
+              return {
+                ok: false,
+                error: "ORGANIZATION_BOOTSTRAP_FAILED",
+                message: "Unable to create organization right now.",
+              }
+            }
+          } catch {
             await rollbackOrganizationCreation(
               deleteTenantOrganization,
               organization.id
@@ -224,8 +240,46 @@ export const createTenantsBootstrapRoutes = (
               message: "Unable to create organization right now.",
             }
           }
-        } catch {
-          await rollbackOrganizationCreation(deleteTenantOrganization, organization.id)
+
+          set.status = 201
+
+          return {
+            ok: true,
+            organizationId: organization.id,
+          } satisfies TenantBootstrapCreateResponse
+        } catch (error) {
+          if (error instanceof ConflictException) {
+            set.status = 409
+
+            return {
+              ok: false,
+              error: "ORGANIZATION_CONFLICT",
+              message:
+                "Organization bootstrap could not be completed due to a conflict.",
+            }
+          }
+
+          if (error instanceof UnprocessableEntityException) {
+            set.status = 422
+
+            return {
+              ok: false,
+              error: "ORGANIZATION_BOOTSTRAP_INVALID",
+              message: error.message,
+            }
+          }
+
+          if (error instanceof NotFoundException) {
+            set.status = 404
+
+            return {
+              ok: false,
+              error: "ORGANIZATION_BOOTSTRAP_NOT_FOUND",
+              message:
+                "Organization bootstrap failed because a required WorkOS resource was not found.",
+            }
+          }
+
           set.status = 500
 
           return {
@@ -234,59 +288,11 @@ export const createTenantsBootstrapRoutes = (
             message: "Unable to create organization right now.",
           }
         }
-
-        set.status = 201
-
-        return {
-          ok: true,
-          organizationId: organization.id,
-        } satisfies TenantBootstrapCreateResponse
-      } catch (error) {
-        if (error instanceof ConflictException) {
-          set.status = 409
-
-          return {
-            ok: false,
-            error: "ORGANIZATION_CONFLICT",
-            message:
-              "Organization bootstrap could not be completed due to a conflict.",
-          }
-        }
-
-        if (error instanceof UnprocessableEntityException) {
-          set.status = 422
-
-          return {
-            ok: false,
-            error: "ORGANIZATION_BOOTSTRAP_INVALID",
-            message: error.message,
-          }
-        }
-
-        if (error instanceof NotFoundException) {
-          set.status = 404
-
-          return {
-            ok: false,
-            error: "ORGANIZATION_BOOTSTRAP_NOT_FOUND",
-            message:
-              "Organization bootstrap failed because a required WorkOS resource was not found.",
-          }
-        }
-
-        set.status = 500
-
-        return {
-          ok: false,
-          error: "ORGANIZATION_BOOTSTRAP_FAILED",
-          message: "Unable to create organization right now.",
-        }
+      },
+      {
+        body: bootstrapCreatePayloadSchema,
       }
-    },
-    {
-      body: bootstrapCreatePayloadSchema,
-    }
-  )
+    )
 }
 
 export const tenantsBootstrapRoutes = createTenantsBootstrapRoutes()

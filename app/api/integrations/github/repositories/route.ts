@@ -173,7 +173,7 @@ export const GET = async (request: NextRequest) => {
       syncedAt: record.lastSyncedAt?.toISOString() ?? null,
     })),
     nextCursor: hasNextPage
-      ? pageItems[pageItems.length - 1]?.githubRepositoryId.toString() ?? null
+      ? (pageItems[pageItems.length - 1]?.githubRepositoryId.toString() ?? null)
       : null,
   })
 }

@@ -50,7 +50,9 @@ export default async function ConsoleLayout({
 
   const workosUser = await getLatestWorkOSUser(auth.user)
   const sidebarUser = resolveSidebarUser(workosUser)
-  const sidebarOrganization = await resolveSidebarOrganization(auth.organizationId)
+  const sidebarOrganization = await resolveSidebarOrganization(
+    auth.organizationId
+  )
 
   return (
     <SidebarProvider>

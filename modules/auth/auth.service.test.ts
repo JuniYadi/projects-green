@@ -35,8 +35,7 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
     userManagement: {
       createMagicAuth: mockCreateMagicAuth,
       authenticateWithMagicAuth: mockAuthenticateWithMagicAuth,
-      authenticateWithEmailVerification:
-        mockAuthenticateWithEmailVerification,
+      authenticateWithEmailVerification: mockAuthenticateWithEmailVerification,
       createUser: mockCreateUser,
       authenticateWithPassword: mockAuthenticateWithPassword,
     },
@@ -115,9 +114,7 @@ describe("authService", () => {
     it("creates AuthEmailAlreadyExistsError", () => {
       const err = new AuthEmailAlreadyExistsError()
       expect(err.name).toBe("AuthEmailAlreadyExistsError")
-      expect(err.message).toBe(
-        "An account with this email already exists."
-      )
+      expect(err.message).toBe("An account with this email already exists.")
     })
   })
 
@@ -132,7 +129,11 @@ describe("authService", () => {
     it("silently swallows NotFoundException", async () => {
       const { NotFoundException } = await import("@workos-inc/node")
       mockCreateMagicAuth.mockImplementation(async () => {
-        throw new NotFoundException({ message: "not found", code: "not_found", requestID: "req_1" })
+        throw new NotFoundException({
+          message: "not found",
+          code: "not_found",
+          requestID: "req_1",
+        })
       })
 
       // Should not throw
@@ -276,7 +277,11 @@ describe("authService", () => {
     it("throws InvalidAuthCredentialsError for NotFoundException", async () => {
       const { NotFoundException } = await import("@workos-inc/node")
       mockAuthenticateWithEmailVerification.mockImplementation(async () => {
-        throw new NotFoundException({ message: "not found", code: "not_found", requestID: "req_1" })
+        throw new NotFoundException({
+          message: "not found",
+          code: "not_found",
+          requestID: "req_1",
+        })
       })
 
       await expect(

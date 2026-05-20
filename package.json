@@ -15,6 +15,7 @@
     "worker:github": "bun run scripts/github-worker.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "github:worker": "bun run scripts/github-worker.ts",
     "remediate:creator-tenant-roles": "bun run scripts/remediate-creator-tenant-roles.ts",

@@ -39,7 +39,9 @@ const getVisibleLogLines = (
   const currentStatusIndex = statusOrder.findIndex((item) => item === status)
 
   return lines.filter((line) => {
-    const lineStatusIndex = statusOrder.findIndex((item) => item === line.status)
+    const lineStatusIndex = statusOrder.findIndex(
+      (item) => item === line.status
+    )
     const inScope = scope === "all" ? true : line.scope === scope
     return inScope && lineStatusIndex <= currentStatusIndex
   })
@@ -143,7 +145,9 @@ export function LogsPanel({
 
         <ul className="max-h-52 space-y-1 overflow-y-auto border border-border bg-black p-3 text-xs text-emerald-300">
           {visibleLines.length === 0 ? (
-            <li className="text-zinc-400">Logs will appear after deploy starts.</li>
+            <li className="text-zinc-400">
+              Logs will appear after deploy starts.
+            </li>
           ) : (
             visibleLines.map((line) => {
               return (

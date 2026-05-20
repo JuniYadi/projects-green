@@ -24,7 +24,9 @@ const parseRedisDb = (pathname: string) => {
   const parsed = Number.parseInt(value, 10)
 
   if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new Error("REDIS_URL must include a valid non-negative database index")
+    throw new Error(
+      "REDIS_URL must include a valid non-negative database index"
+    )
   }
 
   return parsed

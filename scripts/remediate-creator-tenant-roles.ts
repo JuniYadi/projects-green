@@ -120,8 +120,9 @@ try {
     missingRoleDetectedCount: results.filter(
       (result) => result.status === "MISSING_ROLE_DETECTED"
     ).length,
-    alreadyValidCount: results.filter((result) => result.status === "ALREADY_VALID")
-      .length,
+    alreadyValidCount: results.filter(
+      (result) => result.status === "ALREADY_VALID"
+    ).length,
     membershipNotFoundCount: results.filter(
       (result) => result.status === "MEMBERSHIP_NOT_FOUND"
     ).length,
