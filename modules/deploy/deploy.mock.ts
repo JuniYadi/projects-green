@@ -175,7 +175,10 @@ export const DEPLOY_LOG_LINES: DeployLogLine[] = [
 export const FAILURE_REASON =
   "Build failed: package lockfile is out of sync with package.json."
 
-const filterByText = <T extends { name: string }>(items: T[], search: string) => {
+const filterByText = <T extends { name: string }>(
+  items: T[],
+  search: string
+) => {
   const normalizedSearch = search.trim().toLowerCase()
 
   if (!normalizedSearch) {
