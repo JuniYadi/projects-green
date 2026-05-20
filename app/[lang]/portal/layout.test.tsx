@@ -52,7 +52,14 @@ mock.module("@workos-inc/authkit-nextjs", () => {
 
 mock.module("next/navigation", () => {
   return createNavigationMock({
-    pathname: "/portal/documentations",
+    pathname: "/en/portal/documentations",
+    redirect: mockRedirect,
+  })
+})
+
+mock.module("next/navigation.js", () => {
+  return createNavigationMock({
+    pathname: "/en/portal/documentations",
     redirect: mockRedirect,
   })
 })
@@ -134,9 +141,10 @@ describe("PortalLayout", () => {
   })
 
   it("renders shared portal shell around children", async () => {
-    const layoutModule = await import("@/app/portal/layout")
+    const layoutModule = await import("@/app/[lang]/portal/layout")
     const ui = await layoutModule.default({
       children: <div>Child Content</div>,
+      params: Promise.resolve({ lang: "en" }),
     })
 
     const view = render(ui)
@@ -165,16 +173,19 @@ describe("PortalLayout", () => {
       organizationId: undefined,
     }))
 
-    const layoutModule = await import("@/app/portal/layout")
+    const layoutModule = await import("@/app/[lang]/portal/layout")
 
     await expect(
-      layoutModule.default({ children: <div>Child Content</div> })
+      layoutModule.default({
+        children: <div>Child Content</div>,
+        params: Promise.resolve({ lang: "en" }),
+      })
     ).rejects.toThrow(
-      "REDIRECT:/onboarding/organization?next=%2Fportal"
+      "REDIRECT:/en/onboarding/organization?next=%2Fen%2Fportal"
     )
 
     expect(mockRedirect).toHaveBeenCalledWith(
-      "/onboarding/organization?next=%2Fportal"
+      "/en/onboarding/organization?next=%2Fen%2Fportal"
     )
   })
 })
