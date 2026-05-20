@@ -1,17 +1,21 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { OrganizationOnboarding } from "@/modules/tenants/ui/organization-onboarding"
 
-const getSafeNext = (next: string | undefined) => {
+const getSafeNext = (next: string | undefined, fallbackPath: string) => {
   if (!next || !next.startsWith("/")) {
-    return "/console"
+    return fallbackPath
   }
 
   return next
 }
 
 type OnboardingPageProps = {
+  params: Promise<{
+    lang: string
+  }>
   searchParams?: Promise<{
     next?: string
   }>
@@ -19,10 +23,14 @@ type OnboardingPageProps = {
 
 export default async function OrganizationOnboardingPage({
   searchParams,
+  params,
 }: OnboardingPageProps) {
+  const { lang } = await params
+  const locale = resolveLocaleOrDefault(lang)
   const auth = await withAuth({ ensureSignedIn: true })
-  const params = await searchParams
-  const nextPath = getSafeNext(params?.next)
+  const search = await searchParams
+  const fallbackPath = localizePathname({ pathname: "/console", locale })
+  const nextPath = getSafeNext(search?.next, fallbackPath)
 
   if (auth.organizationId) {
     redirect(nextPath)
