@@ -43,7 +43,9 @@ type GithubRepositoryConnectionRecord = {
 }
 
 type GithubWebhookEventStore = {
-  create: (args: { data: Record<string, unknown> }) => Promise<GithubWebhookEventRecord>
+  create: (args: {
+    data: Record<string, unknown>
+  }) => Promise<GithubWebhookEventRecord>
   findUnique: (args: {
     where: {
       id?: string
@@ -93,22 +95,13 @@ export type CreateGithubWebhookEventInput = {
 }
 
 export type GithubWebhookHandlerEventStore = {
-  findByDeliveryId: (
-    deliveryId: string
-  ) => Promise<GithubWebhookRecord | null>
-  create: (
-    input: CreateGithubWebhookEventInput
-  ) => Promise<GithubWebhookRecord>
-  markEnqueueFailed: (
-    eventId: string,
-    processError: string
-  ) => Promise<void>
+  findByDeliveryId: (deliveryId: string) => Promise<GithubWebhookRecord | null>
+  create: (input: CreateGithubWebhookEventInput) => Promise<GithubWebhookRecord>
+  markEnqueueFailed: (eventId: string, processError: string) => Promise<void>
 }
 
 export type GithubWebhookQueueProducer = {
-  enqueueEventId: (
-    eventId: string
-  ) => Promise<void>
+  enqueueEventId: (eventId: string) => Promise<void>
 }
 
 export type GithubWebhookHandlerDeps = {
@@ -312,7 +305,9 @@ export const matchesBranchFilters = ({
     return false
   }
 
-  return branchFilters.some((candidate) => candidate.trim() === normalizedBranch)
+  return branchFilters.some(
+    (candidate) => candidate.trim() === normalizedBranch
+  )
 }
 
 export const evaluatePushRules = ({
@@ -475,7 +470,8 @@ export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
       })
     } catch (error) {
       if (isUniqueConstraintError(error)) {
-        const existingEventAfterRace = await deps.store.findByDeliveryId(deliveryId)
+        const existingEventAfterRace =
+          await deps.store.findByDeliveryId(deliveryId)
 
         return Response.json(
           {
@@ -553,7 +549,8 @@ export const enqueueGithubWebhookEvent = async ({
   const payload = parseWebhookPayload(rawBody)
   const dbClient =
     prismaClient ??
-    ((await import("@/lib/prisma")).prisma as unknown as GithubWebhookPrismaClient)
+    ((await import("@/lib/prisma"))
+      .prisma as unknown as GithubWebhookPrismaClient)
 
   const duplicate = await dbClient.githubWebhookEvent.findUnique({
     where: {
@@ -688,7 +685,8 @@ export const processGithubWebhookEvent = async ({
 }): Promise<ProcessWebhookEventResult> => {
   const dbClient =
     prismaClient ??
-    ((await import("@/lib/prisma")).prisma as unknown as GithubWebhookPrismaClient)
+    ((await import("@/lib/prisma"))
+      .prisma as unknown as GithubWebhookPrismaClient)
 
   const event = await dbClient.githubWebhookEvent.findUnique({
     where: {
@@ -853,7 +851,9 @@ export const processGithubWebhookEvent = async ({
       },
       data: {
         processStatus: isTerminalAttempt ? "dead_lettered" : "retrying",
-        enqueueStatus: isTerminalAttempt ? "dead_lettered" : event.enqueueStatus,
+        enqueueStatus: isTerminalAttempt
+          ? "dead_lettered"
+          : event.enqueueStatus,
         processError: `${idempotencyKey}: ${toErrorMessage(error)}`,
         processedAt: isTerminalAttempt ? new Date() : null,
       },
