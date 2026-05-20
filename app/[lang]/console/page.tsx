@@ -38,7 +38,8 @@ export default async function ConsolePage({ params }: ConsolePageProps) {
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Console</h1>
         <p className="text-sm text-muted-foreground">
-          Choose a workspace entry point to manage your organization and product.
+          Choose a workspace entry point to manage your organization and
+          product.
         </p>
       </header>
 
