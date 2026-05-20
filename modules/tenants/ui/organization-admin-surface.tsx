@@ -1,9 +1,11 @@
 "use client"
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
+import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -177,6 +179,9 @@ export function OrganizationAdminSurface({
   organizationId,
 }: OrganizationAdminSurfaceProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const { locale } = getLocaleFromPathname(pathname)
+  const activeLocale = (locale ?? defaultLocale) as AppLocale
   const [activeTab, setActiveTab] = useState<TabKey>("members")
 
   const [authorization, setAuthorization] =
@@ -1017,8 +1022,17 @@ export function OrganizationAdminSurface({
                       return
                     }
 
+                    const onboardingPath = localizePathname({
+                      pathname: "/onboarding/organization",
+                      locale: activeLocale,
+                    })
+                    const consolePath = localizePathname({
+                      pathname: "/console",
+                      locale: activeLocale,
+                    })
+
                     router.replace(
-                      `/onboarding/organization?next=${encodeURIComponent("/console")}`
+                      `${onboardingPath}?next=${encodeURIComponent(consolePath)}`
                     )
                     router.refresh()
                   })()
