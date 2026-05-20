@@ -26,10 +26,10 @@ export default async function ConsolePage({ params }: ConsolePageProps) {
         "Create and maintain contextual UI docs for routes and team workflows.",
     },
     {
-      title: "Deployments",
-      href: localizePathname({ pathname: "/console/app/deploy", locale }),
+      title: "Applications",
+      href: localizePathname({ pathname: "/console/app", locale }),
       description:
-        "Build, configure, and monitor deployment readiness from the console.",
+        "Deploy, manage, and monitor application lifecycle workflows.",
     },
   ]
 
