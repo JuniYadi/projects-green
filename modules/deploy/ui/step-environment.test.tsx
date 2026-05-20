@@ -8,22 +8,18 @@ const createProps = () => {
     generatedSubdomain: "console-next-app.pfn.app",
     useGeneratedSubdomain: true,
     customDomain: "",
+    environmentId: "staging",
     envVars: [],
     resourcePlanId: "starter" as const,
-    hasDuplicateEnvKeys: false,
     hasMissingCustomDomain: false,
     hasInvalidCustomDomain: false,
-    hasInvalidEnvVarKeys: false,
-    hasIncompleteEnvVarRows: false,
     validationMessages: [],
     canDeploy: true,
     onBack: mock(() => {}),
     onDeploy: mock(() => {}),
     onDomainToggleChange: mock(() => {}),
     onCustomDomainChange: mock(() => {}),
-    onAddEnvVar: mock(() => {}),
-    onUpdateEnvVar: mock(() => {}),
-    onRemoveEnvVar: mock(() => {}),
+    onEnvVarsChange: mock(() => {}),
     onResourcePlanChange: mock(() => {}),
   }
 }
@@ -38,9 +34,7 @@ describe("StepEnvironment", () => {
     expect(view.getByText("Managed subdomain")).toBeTruthy()
     expect(view.getAllByText("Custom domain").length).toBeGreaterThan(0)
     expect(view.getByText("Preview domain: console-next-app.pfn.app")).toBeTruthy()
-    expect(
-      view.getByText("Ready: deploy to", { exact: false })
-    ).toBeTruthy()
+    expect(view.getByText("Ready: deploy to", { exact: false })).toBeTruthy()
     expect(view.getByRole("button", { name: "Deploy" })).toBeEnabled()
   })
 
@@ -50,9 +44,6 @@ describe("StepEnvironment", () => {
     props.customDomain = "https://invalid.domain"
     props.hasMissingCustomDomain = false
     props.hasInvalidCustomDomain = true
-    props.hasDuplicateEnvKeys = true
-    props.hasInvalidEnvVarKeys = true
-    props.hasIncompleteEnvVarRows = true
     props.validationMessages = [
       "Enter a valid domain such as app.example.com.",
       "Environment variable keys must be unique.",
@@ -62,9 +53,7 @@ describe("StepEnvironment", () => {
     const view = render(<StepEnvironment {...props} />)
 
     expect(view.getByRole("alert")).toBeTruthy()
-    expect(
-      view.getByText("Environment settings need attention")
-    ).toBeTruthy()
+    expect(view.getByText("Environment settings need attention")).toBeTruthy()
     expect(
       view.getAllByText("Enter a valid domain such as", { exact: false }).length
     ).toBeGreaterThan(0)
@@ -74,21 +63,13 @@ describe("StepEnvironment", () => {
     expect(view.getByRole("button", { name: "Deploy" })).toBeDisabled()
   })
 
-  it("calls handlers for domain, env vars, and resource plan", () => {
+  it("calls handlers for domain, plan, and deploy", () => {
     const props = createProps()
-    props.useGeneratedSubdomain = true
-    props.envVars = [{ id: "env-1", key: "API_KEY", value: "secret" }]
 
     const view = render(<StepEnvironment {...props} />)
 
     fireEvent.click(view.getByRole("radio", { name: /Custom domain/i }))
     expect(props.onDomainToggleChange).toHaveBeenCalledWith(false)
-
-    fireEvent.click(view.getByRole("button", { name: "Add variable" }))
-    expect(props.onAddEnvVar).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(view.getByRole("button", { name: "Remove" }))
-    expect(props.onRemoveEnvVar).toHaveBeenCalledWith("env-1")
 
     fireEvent.click(view.getByRole("radio", { name: /Pro/i }))
     expect(props.onResourcePlanChange).toHaveBeenCalledWith("pro")
