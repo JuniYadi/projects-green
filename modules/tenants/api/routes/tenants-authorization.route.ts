@@ -1,6 +1,9 @@
 import { Elysia } from "elysia"
 
-import { isTenantApiError, type RouteSet } from "@/modules/tenants/api/tenants.errors"
+import {
+  isTenantApiError,
+  type RouteSet,
+} from "@/modules/tenants/api/tenants.errors"
 import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
 import type {
   TenantApiError,
@@ -47,32 +50,35 @@ export const createTenantsAuthorizationRoutes = (
       ...deps,
     }
 
-  return new Elysia().get("/tenants/:orgId/authorization", async ({ params, set }) => {
-    const actorResult = await requireTenantActor(set)
-    if (isTenantApiError(actorResult)) {
-      return actorResult
-    }
+  return new Elysia().get(
+    "/tenants/:orgId/authorization",
+    async ({ params, set }) => {
+      const actorResult = await requireTenantActor(set)
+      if (isTenantApiError(actorResult)) {
+        return actorResult
+      }
 
-    const hasContextAccess = await ensureTenantContextAccess(
-      params.orgId,
-      actorResult,
-      set
-    )
-    if (hasContextAccess !== true) {
-      return hasContextAccess
-    }
+      const hasContextAccess = await ensureTenantContextAccess(
+        params.orgId,
+        actorResult,
+        set
+      )
+      if (hasContextAccess !== true) {
+        return hasContextAccess
+      }
 
-    return {
-      ok: true,
-      orgId: params.orgId,
-      effectiveGlobalRole: actorResult.platformRole,
-      effectiveTenantRole: actorResult.tenantRole,
-      allowedActions: buildAllowedActions({
-        platformRole: actorResult.platformRole,
-        tenantRole: actorResult.tenantRole,
-      }),
-    } satisfies TenantAuthorizationResponse
-  })
+      return {
+        ok: true,
+        orgId: params.orgId,
+        effectiveGlobalRole: actorResult.platformRole,
+        effectiveTenantRole: actorResult.tenantRole,
+        allowedActions: buildAllowedActions({
+          platformRole: actorResult.platformRole,
+          tenantRole: actorResult.tenantRole,
+        }),
+      } satisfies TenantAuthorizationResponse
+    }
+  )
 }
 
 export const tenantsAuthorizationRoutes = createTenantsAuthorizationRoutes()
