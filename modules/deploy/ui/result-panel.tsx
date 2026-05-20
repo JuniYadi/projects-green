@@ -27,7 +27,9 @@ export function ResultPanel({
   if (status === "queued" || status === "building" || status === "deploying") {
     return (
       <div className="space-y-2 border border-primary/40 bg-primary/10 p-4">
-        <p className="text-sm font-medium text-primary">Deployment in progress</p>
+        <p className="text-sm font-medium text-primary">
+          Deployment in progress
+        </p>
         <p className="text-xs text-primary/80">
           Attempt {attempt}: waiting for final runtime result.
         </p>
@@ -54,7 +56,9 @@ export function ResultPanel({
   if (status === "failed") {
     return (
       <div className="space-y-3 border border-destructive/40 bg-destructive/10 p-4">
-        <p className="text-sm font-medium text-destructive">Deployment failed</p>
+        <p className="text-sm font-medium text-destructive">
+          Deployment failed
+        </p>
         <p className="text-xs text-destructive">
           Attempt {attempt} failed.{" "}
           {failureReason ??
