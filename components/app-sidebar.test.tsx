@@ -7,6 +7,7 @@ describe("resolveSidebarMenu", () => {
     const { navMain, projects } = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/app/deploy",
+      locale: "en",
     })
 
     expect(navMain.map((item) => item.title)).toEqual(["Console"])
@@ -32,11 +33,13 @@ describe("resolveSidebarMenu", () => {
     const operateMenu = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/app/deploy/operate/build-logs",
+      locale: "en",
     })
 
     const observeMenu = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/app/deploy/observe/metrics",
+      locale: "en",
     })
 
     expect(
@@ -62,6 +65,7 @@ describe("resolveSidebarMenu", () => {
     const { navMain, projects } = resolveSidebarMenu({
       surface: "portal",
       pathname: "/portal/documentations",
+      locale: "en",
     })
 
     expect(navMain.map((item) => item.title)).toEqual(["Documentation"])
