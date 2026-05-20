@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
+import {
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from "@workos-inc/node"
 
 import { createTenantsBootstrapRoutes } from "@/modules/tenants/api/routes/tenants-bootstrap.route"
 import type {
@@ -197,6 +202,208 @@ describe("tenants-bootstrap routes", () => {
     })
   })
 
+  it("returns memberships for GET /tenants/bootstrap", async () => {
+    mockListTenantBootstrapMembershipsForUser.mockImplementation(async () => [
+      makeBootstrapMembership({
+        organizationId: "org_active",
+        organizationName: "Acme Active",
+      }),
+    ])
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/bootstrap")
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      currentOrganizationId: string | null
+      memberships: TenantBootstrapMembership[]
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(body.currentOrganizationId).toBeNull()
+    expect(body.memberships).toHaveLength(1)
+    expect(body.memberships[0]?.organizationId).toBe("org_active")
+  })
+
+  it("returns 409 when actor already has organization context", async () => {
+    mockRequireTenantActor.mockImplementation(async () => ({
+      ...defaultActor,
+      organizationId: "org_1",
+    }))
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/bootstrap/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme" }),
+      })
+    )
+    const body = (await response.json()) as TenantApiError
+
+    expect(response.status).toBe(409)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_CONTEXT_EXISTS")
+    expect(mockCreateTenantOrganization).not.toHaveBeenCalled()
+  })
+
+  it("returns 422 when bootstrap creator role is missing and rolls back", async () => {
+    mockHasBootstrapCreatorRole.mockImplementation(async () => false)
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/bootstrap/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme" }),
+      })
+    )
+    const body = (await response.json()) as TenantApiError
+
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("CREATOR_ROLE_MISSING")
+    expect(mockDeleteTenantOrganization).toHaveBeenCalledWith("org_new")
+  })
+
+  it("returns 500 when membership creation fails and rolls back", async () => {
+    mockCreateTenantMembership.mockImplementation(async () => {
+      throw new Error("membership failure")
+    })
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/bootstrap/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme" }),
+      })
+    )
+    const body = (await response.json()) as TenantApiError
+
+    expect(response.status).toBe(500)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_BOOTSTRAP_FAILED")
+    expect(mockDeleteTenantOrganization).toHaveBeenCalledWith("org_new")
+  })
+
+  it("returns conflict when organization creation raises ConflictException", async () => {
+    mockCreateTenantOrganization.mockImplementation(async () => {
+      throw new ConflictException({
+        message: "conflict",
+        code: "conflict",
+        requestID: "req_conflict",
+      })
+    })
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/bootstrap/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme" }),
+      })
+    )
+    const body = (await response.json()) as TenantApiError
+
+    expect(response.status).toBe(409)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_CONFLICT")
+  })
+
+  it("returns 422 when organization creation raises UnprocessableEntityException", async () => {
+    mockCreateTenantOrganization.mockImplementation(async () => {
+      throw new UnprocessableEntityException({
+        message: "invalid organization",
+        code: "unprocessable_entity",
+        requestID: "req_422",
+        errors: [],
+      })
+    })
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/bootstrap/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme" }),
+      })
+    )
+    const body = (await response.json()) as TenantApiError
+
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_BOOTSTRAP_INVALID")
+  })
+
+  it("returns 404 when organization creation raises NotFoundException", async () => {
+    mockCreateTenantOrganization.mockImplementation(async () => {
+      throw new NotFoundException({
+        message: "missing dependency",
+        code: "not_found",
+        requestID: "req_404",
+      })
+    })
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/bootstrap/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme" }),
+      })
+    )
+    const body = (await response.json()) as TenantApiError
+
+    expect(response.status).toBe(404)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_BOOTSTRAP_NOT_FOUND")
+  })
+
+  it("returns 500 when organization creation throws unknown error", async () => {
+    mockCreateTenantOrganization.mockImplementation(async () => {
+      throw new Error("unexpected")
+    })
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/bootstrap/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme" }),
+      })
+    )
+    const body = (await response.json()) as TenantApiError
+
+    expect(response.status).toBe(500)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORGANIZATION_BOOTSTRAP_FAILED")
+  })
+
   it("rolls back organization when creator role is not valid after membership creation", async () => {
     let membershipsReadCount = 0
     mockListTenantBootstrapMembershipsForUser.mockImplementation(async () => {
@@ -277,5 +484,19 @@ describe("tenants-bootstrap routes", () => {
     expect(body.ok).toBe(false)
     expect(body.error).toBe("UNAUTHORIZED")
     expect(mockCreateTenantOrganization).not.toHaveBeenCalled()
+  })
+
+  it("returns unauthorized actor failures for GET /tenants/bootstrap", async () => {
+    mockRequireTenantActor.mockImplementation(async () => toUnauthorizedError())
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/bootstrap")
+    )
+    const body = (await response.json()) as TenantApiError
+
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("UNAUTHORIZED")
   })
 })
