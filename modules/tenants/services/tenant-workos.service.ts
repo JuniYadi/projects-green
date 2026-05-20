@@ -123,9 +123,9 @@ const toTenantMembershipSummary = (
   const roleSlug = membership.role?.slug ?? null
   const profile = toMembershipProfile(membership)
   const normalizedUserId = normalizeNullableString(membership.userId)
-  const email = profile?.email ?? (isLikelyEmail(normalizedUserId)
-    ? normalizedUserId
-    : null)
+  const email =
+    profile?.email ??
+    (isLikelyEmail(normalizedUserId) ? normalizedUserId : null)
   const displayName =
     profile?.displayName ?? email ?? normalizedUserId ?? membership.id
   const avatarUrl = profile?.profilePictureUrl ?? null
@@ -417,8 +417,10 @@ const selectHighestPriorityMembership = (
   }
 
   return [...memberships].sort((left, right) => {
-    return resolveMembershipPriority(left.status) -
+    return (
+      resolveMembershipPriority(left.status) -
       resolveMembershipPriority(right.status)
+    )
   })[0]
 }
 
@@ -448,7 +450,9 @@ export const remediateCreatorMembershipTenantRole = async (params: {
   const missingRoleMemberships = findMembershipsMissingTenantRole(memberships)
 
   const creatorMembership = selectHighestPriorityMembership(
-    memberships.filter((membership) => membership.userId === params.creatorUserId)
+    memberships.filter(
+      (membership) => membership.userId === params.creatorUserId
+    )
   )
 
   if (!creatorMembership) {
@@ -644,8 +648,9 @@ export const updateTenantOrganization = async (params: {
     organizationUpdateInput.metadata = params.metadata
   }
 
-  const organization =
-    await getWorkOS().organizations.updateOrganization(organizationUpdateInput)
+  const organization = await getWorkOS().organizations.updateOrganization(
+    organizationUpdateInput
+  )
 
   return toTenantOrganizationSummary(organization as WorkOSOrganization)
 }
