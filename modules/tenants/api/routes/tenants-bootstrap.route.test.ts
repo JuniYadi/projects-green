@@ -52,21 +52,23 @@ const mockCreateTenantOrganization = mock(async (_name: string) => ({
   externalId: null,
 }))
 const mockHasBootstrapCreatorRole = mock(async () => true)
-const mockCreateTenantMembership = mock(async (params: {
-  organizationId: string
-  userId: string
-  roleSlug: string
-}) => ({
-  id: "mem_new",
-  object: "organization_membership",
-  organizationId: params.organizationId,
-  organizationName: "Acme",
-  userId: params.userId,
-  status: "active",
-  role: { slug: "user_owner" },
-  createdAt: "2026-05-17T00:00:00.000Z",
-  updatedAt: "2026-05-17T00:00:00.000Z",
-}))
+const mockCreateTenantMembership = mock(
+  async (params: {
+    organizationId: string
+    userId: string
+    roleSlug: string
+  }) => ({
+    id: "mem_new",
+    object: "organization_membership",
+    organizationId: params.organizationId,
+    organizationName: "Acme",
+    userId: params.userId,
+    status: "active",
+    role: { slug: "user_owner" },
+    createdAt: "2026-05-17T00:00:00.000Z",
+    updatedAt: "2026-05-17T00:00:00.000Z",
+  })
+)
 const mockDeleteTenantOrganization = mock(async () => undefined)
 const mockGetBootstrapCreatorRoleSlug = mock(() => "user_owner")
 type BootstrapRouteDeps = NonNullable<
@@ -97,9 +99,7 @@ const getApp = async () => {
       mockGetBootstrapCreatorRoleSlug as BootstrapRouteDeps["getBootstrapCreatorRoleSlug"],
   }
 
-  return new Elysia().use(
-    createTenantsBootstrapRoutes(deps)
-  )
+  return new Elysia().use(createTenantsBootstrapRoutes(deps))
 }
 
 describe("tenants-bootstrap routes", () => {
