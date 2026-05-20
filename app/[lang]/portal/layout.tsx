@@ -18,6 +18,7 @@ import {
   resolveSidebarOrganization,
   resolveSidebarUser,
 } from "@/lib/sidebar-session"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { DashboardDocsDrawer } from "@/modules/docs/ui/dashboard-docs-drawer"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
@@ -26,13 +27,29 @@ const ONBOARDING_PATH = "/onboarding/organization"
 
 export default async function PortalLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode
+  params: Promise<{
+    lang: string
+  }>
 }>) {
+  const { lang } = await params
+  const locale = resolveLocaleOrDefault(lang)
   const auth = await withAuth({ ensureSignedIn: true })
+  const portalDocsPath = localizePathname({
+    pathname: "/portal/documentations",
+    locale,
+  })
 
   if (!auth.organizationId) {
-    redirect(`${ONBOARDING_PATH}?next=${encodeURIComponent("/portal")}`)
+    const onboardingPath = localizePathname({
+      pathname: ONBOARDING_PATH,
+      locale,
+    })
+    const portalPath = localizePathname({ pathname: "/portal", locale })
+
+    redirect(`${onboardingPath}?next=${encodeURIComponent(portalPath)}`)
   }
 
   const workosUser = await getLatestWorkOSUser(auth.user)
@@ -57,7 +74,7 @@ export default async function PortalLayout({
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/portal/documentations">
+                  <BreadcrumbLink href={portalDocsPath}>
                     Documentation
                   </BreadcrumbLink>
                 </BreadcrumbItem>
