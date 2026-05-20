@@ -22,32 +22,32 @@ const buildLifecycleNavItems = (locale: AppLocale): LifecycleNavItem[] => [
     href: localizePathname({ pathname: "/console/app/deploy", locale }),
   },
   {
-    id: "operate",
-    label: "Operate",
+    id: "manage",
+    label: "Manage",
     description: "Day-1 runtime controls",
     href: localizePathname({
-      pathname: "/console/app/deploy/operate",
+      pathname: "/console/app/manage",
       locale,
     }),
   },
   {
-    id: "observe",
-    label: "Observe",
+    id: "monitoring",
+    label: "Monitoring",
     description: "Day-2 health and telemetry",
     href: localizePathname({
-      pathname: "/console/app/deploy/observe",
+      pathname: "/console/app/monitoring",
       locale,
     }),
   },
 ]
 
 const resolveActiveItem = (pathname: string): string => {
-  if (pathname.startsWith("/console/app/deploy/observe")) {
-    return "observe"
+  if (pathname.startsWith("/console/app/monitoring")) {
+    return "monitoring"
   }
 
-  if (pathname.startsWith("/console/app/deploy/operate")) {
-    return "operate"
+  if (pathname.startsWith("/console/app/manage")) {
+    return "manage"
   }
 
   return "deploy"
