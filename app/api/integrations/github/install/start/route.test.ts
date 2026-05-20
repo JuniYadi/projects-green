@@ -23,12 +23,14 @@ const mockCreateGithubService = mock(() => ({
   assertEnabled: mockGithubServiceAssertEnabled,
 }))
 
-const mockWithAuth = mock(async (): Promise<AuthResult> => ({
-  user: {
-    id: "user_123",
-  },
-  organizationId: "org_123",
-}))
+const mockWithAuth = mock(
+  async (): Promise<AuthResult> => ({
+    user: {
+      id: "user_123",
+    },
+    organizationId: "org_123",
+  })
+)
 
 const mockIssueGithubInstallState = mock(async () => ({
   state: "state_token",
@@ -111,7 +113,8 @@ describe("GET /api/integrations/github/install/start", () => {
       throw new MockGithubIntegrationDisabledError()
     })
 
-    const route = await import("@/app/api/integrations/github/install/start/route")
+    const route =
+      await import("@/app/api/integrations/github/install/start/route")
     const response = await route.GET(
       new NextRequest("http://localhost/api/integrations/github/install/start")
     )
@@ -124,12 +127,15 @@ describe("GET /api/integrations/github/install/start", () => {
   })
 
   it("returns 401 when request is unauthenticated", async () => {
-    mockWithAuth.mockImplementation(async (): Promise<AuthResult> => ({
-      user: null,
-      organizationId: null,
-    }))
+    mockWithAuth.mockImplementation(
+      async (): Promise<AuthResult> => ({
+        user: null,
+        organizationId: null,
+      })
+    )
 
-    const route = await import("@/app/api/integrations/github/install/start/route")
+    const route =
+      await import("@/app/api/integrations/github/install/start/route")
     const response = await route.GET(
       new NextRequest("http://localhost/api/integrations/github/install/start")
     )
@@ -141,7 +147,8 @@ describe("GET /api/integrations/github/install/start", () => {
   })
 
   it("issues state and redirects user to GitHub install URL", async () => {
-    const route = await import("@/app/api/integrations/github/install/start/route")
+    const route =
+      await import("@/app/api/integrations/github/install/start/route")
     const response = await route.GET(
       new NextRequest(
         "http://localhost/api/integrations/github/install/start?returnTo=/console/app/deploy"
