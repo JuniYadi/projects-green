@@ -3,6 +3,7 @@
 import * as React from "react"
 import { usePathname } from "next/navigation"
 
+import { localizePathname, getLocaleFromPathname } from "@/lib/i18n/pathname"
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -27,6 +28,7 @@ import {
   RocketLaunchIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react"
+import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
 const startsWithRoute = (pathname: string, route: string) =>
   pathname === route || pathname.startsWith(`${route}/`)
@@ -68,26 +70,32 @@ type AppSidebarProject = {
   icon: React.ReactNode
 }
 
-const buildConsoleNavMain = (pathname: string): AppSidebarNavItem[] => [
+const buildConsoleNavMain = (
+  pathname: string,
+  locale: AppLocale
+): AppSidebarNavItem[] => [
   {
     title: "Console",
-    url: "/console",
+    url: localizePathname({ pathname: "/console", locale }),
     icon: <GaugeIcon />,
     isActive: startsWithRoute(pathname, "/console"),
     items: [
       {
         title: "Overview",
-        url: "/console",
+        url: localizePathname({ pathname: "/console", locale }),
         isActive: pathname === "/console",
       },
       {
         title: "Deploy",
-        url: "/console/app/deploy",
+        url: localizePathname({ pathname: "/console/app/deploy", locale }),
         isActive: pathname === "/console/app/deploy",
       },
       {
         title: "Operate",
-        url: "/console/app/deploy/operate",
+        url: localizePathname({
+          pathname: "/console/app/deploy/operate",
+          locale,
+        }),
         isActive: startsWithRoute(
           pathname,
           "/console/app/deploy/operate"
@@ -95,7 +103,10 @@ const buildConsoleNavMain = (pathname: string): AppSidebarNavItem[] => [
       },
       {
         title: "Observe",
-        url: "/console/app/deploy/observe",
+        url: localizePathname({
+          pathname: "/console/app/deploy/observe",
+          locale,
+        }),
         isActive: startsWithRoute(
           pathname,
           "/console/app/deploy/observe"
@@ -103,23 +114,26 @@ const buildConsoleNavMain = (pathname: string): AppSidebarNavItem[] => [
       },
       {
         title: "Tenant Management",
-        url: "/console/organization",
+        url: localizePathname({ pathname: "/console/organization", locale }),
         isActive: startsWithRoute(pathname, "/console/organization"),
       },
     ],
   },
 ]
 
-const buildPortalNavMain = (pathname: string): AppSidebarNavItem[] => [
+const buildPortalNavMain = (
+  pathname: string,
+  locale: AppLocale
+): AppSidebarNavItem[] => [
   {
     title: "Documentation",
-    url: "/portal/documentations",
+    url: localizePathname({ pathname: "/portal/documentations", locale }),
     icon: <BookOpenIcon />,
     isActive: startsWithRoute(pathname, "/portal/documentations"),
     items: [
       {
         title: "Registry",
-        url: "/portal/documentations",
+        url: localizePathname({ pathname: "/portal/documentations", locale }),
         isActive: startsWithRoute(pathname, "/portal/documentations"),
       },
     ],
@@ -139,15 +153,15 @@ const navSecondary = [
   },
 ]
 
-const consoleProjects: AppSidebarProject[] = [
+const buildConsoleProjects = (locale: AppLocale): AppSidebarProject[] => [
   {
     name: "Deployments",
-    url: "/console/app/deploy",
+    url: localizePathname({ pathname: "/console/app/deploy", locale }),
     icon: <RocketLaunchIcon />,
   },
   {
     name: "Tenant Management",
-    url: "/console/organization",
+    url: localizePathname({ pathname: "/console/organization", locale }),
     icon: <UsersThreeIcon />,
   },
   {
@@ -167,10 +181,10 @@ const consoleProjects: AppSidebarProject[] = [
   },
 ]
 
-const portalProjects: AppSidebarProject[] = [
+const buildPortalProjects = (locale: AppLocale): AppSidebarProject[] => [
   {
     name: "Documentation",
-    url: "/portal/documentations",
+    url: localizePathname({ pathname: "/portal/documentations", locale }),
     icon: <BookOpenIcon />,
   },
   {
@@ -193,16 +207,21 @@ const portalProjects: AppSidebarProject[] = [
 export const resolveSidebarMenu = ({
   surface,
   pathname,
+  locale,
 }: {
   surface: AppSidebarSurface
   pathname: string
+  locale: AppLocale
 }) => {
   return {
     navMain:
       surface === "console"
-        ? buildConsoleNavMain(pathname)
-        : buildPortalNavMain(pathname),
-    projects: surface === "console" ? consoleProjects : portalProjects,
+        ? buildConsoleNavMain(pathname, locale)
+        : buildPortalNavMain(pathname, locale),
+    projects:
+      surface === "console"
+        ? buildConsoleProjects(locale)
+        : buildPortalProjects(locale),
   }
 }
 
@@ -213,9 +232,11 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname()
+  const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
   const { navMain, projects } = resolveSidebarMenu({
     surface,
-    pathname,
+    pathname: pathnameWithoutLocale,
+    locale: locale ?? defaultLocale,
   })
 
   const organizationName =

@@ -2,6 +2,7 @@
 
 import { useAuth } from "@workos-inc/authkit-nextjs/components"
 import { useMemo, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import {
   Avatar,
@@ -14,7 +15,12 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -24,6 +30,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { CaretUpDownIcon, SparkleIcon, CheckCircleIcon, CreditCardIcon, BellIcon, SignOutIcon } from "@phosphor-icons/react"
+import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { getMessages } from "@/lib/i18n/messages"
+import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 
 import type { AppSidebarUser } from "@/components/app-sidebar"
 
@@ -51,10 +60,36 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const { signOut } = useAuth()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const initials = resolveInitials(user.name, user.email)
   const [avatarStatus, setAvatarStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle")
   const hasAvatarUrl = useMemo(() => Boolean(user.avatarUrl?.trim()), [user.avatarUrl])
   const showFallback = !hasAvatarUrl || avatarStatus === "error"
+  const {
+    locale: pathnameLocale,
+    pathnameWithoutLocale,
+  } = getLocaleFromPathname(pathname)
+  const activeLocale = (pathnameLocale ?? defaultLocale) as AppLocale
+  const messages = getMessages(activeLocale)
+
+  const handleLocaleChange = (nextLocale: string) => {
+    if (nextLocale === activeLocale) {
+      return
+    }
+
+    const localizedPathname = localizePathname({
+      pathname: pathnameWithoutLocale,
+      locale: nextLocale as AppLocale,
+    })
+    const query = searchParams.toString()
+    const targetPath = query
+      ? `${localizedPathname}?${query}`
+      : localizedPathname
+
+    router.replace(targetPath)
+  }
 
   return (
     <SidebarMenu>
@@ -80,6 +115,7 @@ export function NavUser({
                 <span className="truncate text-xs">{user.email}</span>
               </div>
               <CaretUpDownIcon className="ml-auto size-4" />
+              <span className="sr-only">{messages.navUser.label}</span>
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -111,7 +147,7 @@ export function NavUser({
               <DropdownMenuItem>
                 <SparkleIcon
                 />
-                Upgrade to Pro
+                {messages.navUser.menu.upgrade}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -119,29 +155,56 @@ export function NavUser({
               <DropdownMenuItem>
                 <CheckCircleIcon
                 />
-                Account
+                {messages.navUser.menu.account}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <CreditCardIcon
                 />
-                Billing
+                {messages.navUser.menu.billing}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <BellIcon
                 />
-                Notifications
+                {messages.navUser.menu.notifications}
               </DropdownMenuItem>
             </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                {messages.navUser.languageLabel}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuLabel>
+                  {messages.navUser.languageMenuLabel}
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={activeLocale}
+                  onValueChange={handleLocaleChange}
+                >
+                  <DropdownMenuRadioItem value="en">
+                    {messages.navUser.languages.en}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="id">
+                    {messages.navUser.languages.id}
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault()
-                void signOut({ returnTo: "/login" })
+                void signOut({
+                  returnTo: localizePathname({
+                    pathname: "/login",
+                    locale: activeLocale,
+                  }),
+                })
               }}
             >
               <SignOutIcon
               />
-              Log out
+              {messages.navUser.menu.logout}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -1,6 +1,15 @@
 import { authkit, handleAuthkitHeaders } from "@workos-inc/authkit-nextjs"
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
+import {
+  localeCookieName,
+  type AppLocale,
+} from "@/lib/i18n/config"
+import { resolveRequestLocale } from "@/lib/i18n/request-locale"
+import {
+  getLocaleFromPathname,
+  localizePathname,
+} from "@/lib/i18n/pathname"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import {
   hasScopedSuperAdminClaim,
@@ -11,6 +20,7 @@ const CONSOLE_HOME = "/console"
 const PORTAL_HOME = "/portal"
 
 const PROTECTED_PATHS = ["/", CONSOLE_HOME, PORTAL_HOME]
+const LOCALE_EXCLUDED_PATHS = ["/api", "/callback"]
 
 type UserArea = "console" | "portal"
 
@@ -28,6 +38,31 @@ const isConsolePath = (pathname: string) => {
 
 const getHomePath = (area: UserArea) => {
   return area === "portal" ? PORTAL_HOME : CONSOLE_HOME
+}
+
+const shouldSkipLocaleRouting = (pathname: string) => {
+  return LOCALE_EXCLUDED_PATHS.some(
+    (excludedPath) =>
+      pathname === excludedPath || pathname.startsWith(`${excludedPath}/`)
+  )
+}
+
+const withLocaleCookie = (response: NextResponse, locale: AppLocale) => {
+  response.cookies.set(localeCookieName, locale, { path: "/" })
+  return response
+}
+
+const getPreferredLocale = (request: NextRequest): AppLocale =>
+  resolveRequestLocale({
+    acceptLanguageHeader: request.headers.get("accept-language") ?? undefined,
+    cookieLocale: request.cookies.get(localeCookieName)?.value,
+  })
+
+const withLocalePrefix = (pathname: string, locale: AppLocale) => {
+  return localizePathname({
+    pathname,
+    locale,
+  })
 }
 
 const resolveUserArea = (session: { role?: string; roles?: string[] }) => {
@@ -50,18 +85,43 @@ const resolveUserArea = (session: { role?: string; roles?: string[] }) => {
 export default async function proxy(request: NextRequest) {
   const { session, headers } = await authkit(request)
   const { pathname, search } = request.nextUrl
+  const {
+    locale: localeFromPathname,
+    pathnameWithoutLocale,
+  } = getLocaleFromPathname(pathname)
+  const locale = localeFromPathname ?? getPreferredLocale(request)
+  const normalizedPathname = pathnameWithoutLocale
 
-  if (isProtectedPath(pathname) && !session.user) {
-    const next = `${pathname}${search}`
-    const loginPath = `/login?next=${encodeURIComponent(next)}`
+  if (!localeFromPathname && !shouldSkipLocaleRouting(normalizedPathname)) {
+    const localizedPathname = withLocalePrefix(normalizedPathname, locale)
+    const redirectUrl = new URL(`${localizedPathname}${search}`, request.url)
 
-    return handleAuthkitHeaders(request, headers, {
+    return withLocaleCookie(NextResponse.redirect(redirectUrl), locale)
+  }
+
+  const responseOptions = (options?: { redirect: string }) => {
+    if (!options) {
+      return withLocaleCookie(handleAuthkitHeaders(request, headers), locale)
+    }
+
+    return withLocaleCookie(
+      handleAuthkitHeaders(request, headers, options),
+      locale
+    )
+  }
+
+  if (isProtectedPath(normalizedPathname) && !session.user) {
+    const next = withLocalePrefix(normalizedPathname, locale)
+    const localizedNext = `${next}${search}`
+    const loginPath = `${withLocalePrefix("/login", locale)}?next=${encodeURIComponent(localizedNext)}`
+
+    return responseOptions({
       redirect: loginPath,
     })
   }
 
   if (!session.user) {
-    return handleAuthkitHeaders(request, headers)
+    return responseOptions()
   }
 
   const platformRole =
@@ -78,10 +138,10 @@ export default async function proxy(request: NextRequest) {
 
   const userArea = resolveUserArea(session)
 
-  if (pathname === "/") {
+  if (normalizedPathname === "/") {
     if (isSuperAdmin) {
-      return handleAuthkitHeaders(request, headers, {
-        redirect: PORTAL_HOME,
+      return responseOptions({
+        redirect: withLocalePrefix(PORTAL_HOME, locale),
       })
     }
 
@@ -90,22 +150,22 @@ export default async function proxy(request: NextRequest) {
         "[auth] Signed-in user missing expected WorkOS role claims for root route; falling back to console."
       )
 
-      return handleAuthkitHeaders(request, headers, {
-        redirect: CONSOLE_HOME,
+      return responseOptions({
+        redirect: withLocalePrefix(CONSOLE_HOME, locale),
       })
     }
 
-    return handleAuthkitHeaders(request, headers, {
-      redirect: getHomePath(userArea),
+    return responseOptions({
+      redirect: withLocalePrefix(getHomePath(userArea), locale),
     })
   }
 
-  if (!isPortalPath(pathname) && !isConsolePath(pathname)) {
-    return handleAuthkitHeaders(request, headers)
+  if (!isPortalPath(normalizedPathname) && !isConsolePath(normalizedPathname)) {
+    return responseOptions()
   }
 
   if (isSuperAdmin) {
-    return handleAuthkitHeaders(request, headers)
+    return responseOptions()
   }
 
   if (!userArea) {
@@ -113,25 +173,28 @@ export default async function proxy(request: NextRequest) {
       "[auth] Signed-in user missing expected WorkOS role claims for protected route; limiting access to console."
     )
 
-    if (isPortalPath(pathname)) {
-      return handleAuthkitHeaders(request, headers, {
-        redirect: CONSOLE_HOME,
+    if (isPortalPath(normalizedPathname)) {
+      return responseOptions({
+        redirect: withLocalePrefix(CONSOLE_HOME, locale),
       })
     }
 
-    return handleAuthkitHeaders(request, headers)
+    return responseOptions()
   }
 
   const areaHomePath = getHomePath(userArea)
-  const isAuthorizedPath = userArea === "portal" ? isPortalPath(pathname) : isConsolePath(pathname)
+  const isAuthorizedPath =
+    userArea === "portal"
+      ? isPortalPath(normalizedPathname)
+      : isConsolePath(normalizedPathname)
 
   if (!isAuthorizedPath) {
-    return handleAuthkitHeaders(request, headers, {
-      redirect: areaHomePath,
+    return responseOptions({
+      redirect: withLocalePrefix(areaHomePath, locale),
     })
   }
 
-  return handleAuthkitHeaders(request, headers)
+  return responseOptions()
 }
 
 export const config = {

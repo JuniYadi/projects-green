@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render } from "@testing-library/react"
+import { fireEvent, render } from "@testing-library/react"
 
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 const mockSignOut = mock(async () => {})
+const mockReplace = mock(() => {})
+let mockPathname = "/en/console"
+let mockSearchParams = new URLSearchParams()
 
 mock.module("@workos-inc/authkit-nextjs/components", () => {
   return {
@@ -12,9 +15,34 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
   }
 })
 
+mock.module("next/navigation", () => {
+  return {
+    redirect: () => {},
+    usePathname: () => mockPathname,
+    useSearchParams: () => mockSearchParams,
+    useRouter: () => ({
+      replace: mockReplace,
+    }),
+  }
+})
+
+mock.module("next/navigation.js", () => {
+  return {
+    redirect: () => {},
+    usePathname: () => mockPathname,
+    useSearchParams: () => mockSearchParams,
+    useRouter: () => ({
+      replace: mockReplace,
+    }),
+  }
+})
+
 describe("NavUser", () => {
   beforeEach(() => {
     mockSignOut.mockClear()
+    mockReplace.mockClear()
+    mockPathname = "/en/console"
+    mockSearchParams = new URLSearchParams()
   })
 
   it("renders user profile identity with initials fallback when avatar is missing", async () => {
@@ -57,5 +85,31 @@ describe("NavUser", () => {
     )
 
     expect(view.getAllByText("OW").length).toBeGreaterThan(0)
+  })
+
+  it("switches locale while preserving the current route context", async () => {
+    const { NavUser } = await import("@/components/nav-user")
+
+    const view = render(
+      <SidebarProvider>
+        <TooltipProvider>
+          <NavUser
+            user={{
+              name: "Jane Doe",
+              email: "jane@example.com",
+              avatarUrl: null,
+            }}
+          />
+        </TooltipProvider>
+      </SidebarProvider>
+    )
+
+    fireEvent.pointerDown(view.getByRole("button"))
+    fireEvent.click(await view.findByText("Language"))
+    fireEvent.click(
+      await view.findByRole("menuitemradio", { name: "Indonesian" })
+    )
+
+    expect(mockReplace).toHaveBeenCalledWith("/id/console")
   })
 })
