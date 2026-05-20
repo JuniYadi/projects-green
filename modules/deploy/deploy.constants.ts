@@ -42,8 +42,7 @@ export const HIGH_CONFIDENCE_THRESHOLD = 80
 export const LOW_CONFIDENCE_THRESHOLD = 50
 
 export const DEPLOY_WIZARD_STORAGE_VERSION = 1
-export const DEPLOY_WIZARD_STORAGE_KEY =
-  "pfnapp.console.deploy-wizard.v1"
+export const DEPLOY_WIZARD_STORAGE_KEY = "pfnapp.console.deploy-wizard.v1"
 
 export const DEFAULT_SOURCE_STATE: DeploySourceState = {
   ownerId: "",
