@@ -15,18 +15,14 @@ type MockActor = {
 let actorContext: MockActor | TenantApiError
 let contextAccessResponse: true | TenantApiError
 
-const mockRequireTenantActor = mock(
-  async (...args: unknown[]) => {
-    void args
-    return actorContext
-  }
-)
-const mockEnsureTenantContextAccess = mock(
-  (...args: unknown[]) => {
-    void args
-    return contextAccessResponse
-  }
-)
+const mockRequireTenantActor = mock(async (...args: unknown[]) => {
+  void args
+  return actorContext
+})
+const mockEnsureTenantContextAccess = mock((...args: unknown[]) => {
+  void args
+  return contextAccessResponse
+})
 
 const loadApp = async () => {
   return new Elysia().use(
@@ -48,18 +44,14 @@ describe("tenantsAuthorizationRoutes", () => {
     contextAccessResponse = true
     mockRequireTenantActor.mockClear()
     mockEnsureTenantContextAccess.mockClear()
-    mockRequireTenantActor.mockImplementation(
-      async (...args: unknown[]) => {
-        void args
-        return actorContext
-      }
-    )
-    mockEnsureTenantContextAccess.mockImplementation(
-      (...args: unknown[]) => {
-        void args
-        return contextAccessResponse
-      }
-    )
+    mockRequireTenantActor.mockImplementation(async (...args: unknown[]) => {
+      void args
+      return actorContext
+    })
+    mockEnsureTenantContextAccess.mockImplementation((...args: unknown[]) => {
+      void args
+      return contextAccessResponse
+    })
   })
 
   it("returns allowed action matrix for owner/admin/member/super_admin", async () => {
@@ -168,13 +160,11 @@ describe("tenantsAuthorizationRoutes", () => {
       message:
         "The requested tenant does not match your active organization context.",
     }
-    mockEnsureTenantContextAccess.mockImplementation(
-      (...args: unknown[]) => {
-        const set = args[2] as { status?: number }
-        set.status = 403
-        return contextAccessResponse
-      }
-    )
+    mockEnsureTenantContextAccess.mockImplementation((...args: unknown[]) => {
+      const set = args[2] as { status?: number }
+      set.status = 403
+      return contextAccessResponse
+    })
 
     const response = await app.handle(
       new Request("http://localhost/tenants/org_456/authorization")
