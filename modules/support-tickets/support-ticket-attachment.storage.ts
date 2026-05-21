@@ -1,12 +1,5 @@
 import { randomUUID } from "node:crypto"
 
-import {
-  HeadObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3"
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
-
 export class SupportTicketAttachmentStorageConfigurationError extends Error {
   constructor(message: string) {
     super(message)
@@ -70,23 +63,43 @@ const getPresignTtlSeconds = () => {
 }
 
 type AttachmentStorageConfig = {
+  accessKeyId?: string
   bucket: string
+  endpoint?: string
   prefix: string
   presignTtlSeconds: number
   region: string
+  secretAccessKey?: string
+  sessionToken?: string
+  virtualHostedStyle?: boolean
+}
+
+const getOptionalEnv = (name: string) => {
+  const value = process.env[name]?.trim()
+
+  return value || undefined
 }
 
 const loadStorageConfig = (): AttachmentStorageConfig => {
+  const virtualHostedStyle =
+    process.env.SUPPORT_TICKET_ATTACHMENT_S3_VIRTUAL_HOSTED_STYLE?.trim()
+
   return {
+    accessKeyId: getOptionalEnv("SUPPORT_TICKET_ATTACHMENT_S3_ACCESS_KEY_ID"),
     bucket: getRequiredEnv("SUPPORT_TICKET_ATTACHMENT_S3_BUCKET"),
+    endpoint: getOptionalEnv("SUPPORT_TICKET_ATTACHMENT_S3_ENDPOINT"),
     region: getRequiredEnv("SUPPORT_TICKET_ATTACHMENT_S3_REGION"),
     prefix: getStoragePrefix(),
     presignTtlSeconds: getPresignTtlSeconds(),
+    secretAccessKey: getOptionalEnv(
+      "SUPPORT_TICKET_ATTACHMENT_S3_SECRET_ACCESS_KEY"
+    ),
+    sessionToken: getOptionalEnv("SUPPORT_TICKET_ATTACHMENT_S3_SESSION_TOKEN"),
+    virtualHostedStyle:
+      virtualHostedStyle === undefined
+        ? undefined
+        : ["1", "true", "yes", "on"].includes(virtualHostedStyle.toLowerCase()),
   }
-}
-
-const createS3Client = (region: string) => {
-  return new S3Client({ region })
 }
 
 export type SupportTicketAttachmentKeyContext = {
@@ -160,7 +173,15 @@ export type SupportTicketAttachmentStorage = {
 export const createSupportTicketAttachmentStorage =
   (): SupportTicketAttachmentStorage => {
     const config = loadStorageConfig()
-    const s3 = createS3Client(config.region)
+    const s3 = new Bun.S3Client({
+      bucket: config.bucket,
+      region: config.region,
+      endpoint: config.endpoint,
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+      sessionToken: config.sessionToken,
+      virtualHostedStyle: config.virtualHostedStyle,
+    })
 
     return {
       async createPresignedUpload(input) {
@@ -171,23 +192,10 @@ export const createSupportTicketAttachmentStorage =
           uploaderWorkosUserId: input.uploaderWorkosUserId,
         })
 
-        const command = new PutObjectCommand({
-          Bucket: config.bucket,
-          Key: key,
-          ContentLength: input.sizeBytes,
-          ContentType: input.mimeType,
-          ChecksumSHA256: input.checksumSha256 ?? undefined,
-          Metadata: {
-            attachmentid: input.attachmentId,
-            organizationid: input.organizationId,
-            ticketid: input.ticketId,
-            uploaderid: input.uploaderWorkosUserId,
-            originalname: input.fileName,
-          },
-        })
-
-        const uploadUrl = await getSignedUrl(s3, command, {
+        const uploadUrl = s3.presign(key, {
+          method: "PUT",
           expiresIn: config.presignTtlSeconds,
+          type: input.mimeType,
         })
         const expiresAt = new Date(
           Date.now() + config.presignTtlSeconds * 1000
@@ -209,58 +217,27 @@ export const createSupportTicketAttachmentStorage =
       },
       async verifyUploadedObject(input) {
         try {
-          const result = await s3.send(
-            new HeadObjectCommand({
-              Bucket: config.bucket,
-              Key: input.storageKey,
-            })
-          )
+          const file = s3.file(input.storageKey)
+          const exists = await file.exists()
 
-          if (result.ContentLength !== input.sizeBytes) {
+          if (!exists) {
+            throw new SupportTicketAttachmentUploadNotFoundError()
+          }
+
+          const result = await file.stat()
+
+          if (result.size !== input.sizeBytes) {
             throw new SupportTicketAttachmentUploadValidationError(
               "Uploaded attachment size does not match registration payload."
             )
           }
 
-          if (result.ContentType !== input.mimeType) {
+          if (result.type !== input.mimeType) {
             throw new SupportTicketAttachmentUploadValidationError(
               "Uploaded attachment MIME type does not match registration payload."
             )
           }
-
-          if (input.checksumSha256 && result.ChecksumSHA256) {
-            if (result.ChecksumSHA256 !== input.checksumSha256) {
-              throw new SupportTicketAttachmentUploadValidationError(
-                "Uploaded attachment checksum does not match registration payload."
-              )
-            }
-          }
-
-          const metadata = result.Metadata ?? {}
-          const metadataMatches =
-            metadata.attachmentid === input.attachmentId &&
-            metadata.organizationid === input.organizationId &&
-            metadata.ticketid === input.ticketId &&
-            metadata.uploaderid === input.uploaderWorkosUserId
-
-          if (!metadataMatches) {
-            throw new SupportTicketAttachmentUploadValidationError(
-              "Uploaded attachment metadata does not match expected ownership."
-            )
-          }
         } catch (error) {
-          if (
-            typeof error === "object" &&
-            error !== null &&
-            "$metadata" in error &&
-            typeof (error as { $metadata?: { httpStatusCode?: number } })
-              .$metadata?.httpStatusCode === "number" &&
-            (error as { $metadata?: { httpStatusCode?: number } }).$metadata
-              ?.httpStatusCode === 404
-          ) {
-            throw new SupportTicketAttachmentUploadNotFoundError()
-          }
-
           throw error
         }
       },
