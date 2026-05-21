@@ -87,6 +87,7 @@ model GithubRepositoryConnection {
   @@index([installationId])
   @@index([fullName])
 }
+
 model GithubWebhookEvent {
   id                   String   @id @default(cuid())
   deliveryId           String   @unique
@@ -107,4 +108,60 @@ model GithubWebhookEvent {
   @@index([githubInstallationId])
   @@index([githubRepositoryId])
   @@index([processStatus])
+}
+
+enum SupportTicketDepartment {
+  BILLING
+  TECHNICAL
+  ACCOUNT
+  COMPLIANCE
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model SupportTicket {
+  id                        String                  @id @default(cuid())
+  ticketNumber              String                  @unique
+  organizationId            String
+  requesterWorkosUserId     String
+  assignedAgentWorkosUserId String?
+  department                SupportTicketDepartment
+  status                    SupportTicketStatus     @default(OPEN)
+  subject                   String
+  description               String?
+  attachmentsJson           Json?
+  resolvedAt                DateTime?
+  closedAt                  DateTime?
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+
+  replies SupportTicketReply[]
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, status])
+  @@index([requesterWorkosUserId])
+  @@index([assignedAgentWorkosUserId])
+  @@index([department])
+}
+
+model SupportTicketReply {
+  id               String   @id @default(cuid())
+  ticketId         String
+  authorWorkosUserId String
+  body             String
+  isInternalNote   Boolean  @default(false)
+  attachmentsJson  Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@index([authorWorkosUserId])
+  @@index([isInternalNote])
 }

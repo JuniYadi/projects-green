@@ -4,10 +4,17 @@ import type { ColumnDef } from "@tanstack/react-table"
 
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import {
+  SUPPORT_TICKET_DEPARTMENT_LABELS,
+  SUPPORT_TICKET_STATUS_LABELS,
+  type SupportTicketDepartment,
+  type SupportTicketStatus,
+} from "@/modules/support-tickets/support-ticket.types"
 
 type SupportTicket = {
+  department: SupportTicketDepartment
   priority: "Low" | "Medium" | "High" | "Urgent"
-  status: "Open" | "In Progress" | "Pending" | "Resolved"
+  status: SupportTicketStatus
   ticketId: string
   title: string
 }
@@ -16,26 +23,30 @@ const supportTicketRows: SupportTicket[] = [
   {
     ticketId: "TCK-2018",
     title: "Domain verification pending",
+    department: "technical",
     priority: "High",
-    status: "In Progress",
+    status: "in_progress",
   },
   {
     ticketId: "TCK-2012",
     title: "Usage report export request",
+    department: "billing",
     priority: "Medium",
-    status: "Open",
+    status: "open",
   },
   {
     ticketId: "TCK-2008",
     title: "User invitation resend failed",
+    department: "account",
     priority: "Urgent",
-    status: "Pending",
+    status: "resolved",
   },
   {
     ticketId: "TCK-2007",
     title: "Invoice receipt address update",
+    department: "compliance",
     priority: "Low",
-    status: "Resolved",
+    status: "closed",
   },
 ]
 
@@ -46,7 +57,9 @@ const supportTicketColumns: ColumnDef<SupportTicket>[] = [
       <DataTableColumnHeader column={column} title="Ticket ID" />
     ),
     cell: ({ row }) => (
-      <span className="font-medium text-foreground">{row.original.ticketId}</span>
+      <span className="font-medium text-foreground">
+        {row.original.ticketId}
+      </span>
     ),
   },
   {
@@ -60,6 +73,15 @@ const supportTicketColumns: ColumnDef<SupportTicket>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Status" />
     ),
+    cell: ({ row }) => SUPPORT_TICKET_STATUS_LABELS[row.original.status],
+  },
+  {
+    accessorKey: "department",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Department" />
+    ),
+    cell: ({ row }) =>
+      SUPPORT_TICKET_DEPARTMENT_LABELS[row.original.department],
   },
   {
     accessorKey: "priority",
@@ -82,10 +104,21 @@ export function SupportTicketsTable() {
           label: "Status",
           allLabel: "All status",
           options: [
-            { label: "Open", value: "Open" },
-            { label: "In Progress", value: "In Progress" },
-            { label: "Pending", value: "Pending" },
-            { label: "Resolved", value: "Resolved" },
+            { label: "Open", value: "open" },
+            { label: "In Progress", value: "in_progress" },
+            { label: "Resolved", value: "resolved" },
+            { label: "Closed", value: "closed" },
+          ],
+        },
+        {
+          columnId: "department",
+          label: "Department",
+          allLabel: "All departments",
+          options: [
+            { label: "Billing", value: "billing" },
+            { label: "Technical", value: "technical" },
+            { label: "Account", value: "account" },
+            { label: "Compliance", value: "compliance" },
           ],
         },
         {
