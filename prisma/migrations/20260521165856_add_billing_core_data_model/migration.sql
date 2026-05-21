@@ -299,6 +299,9 @@ CREATE INDEX "BillingSubscription_billingAccountId_status_idx" ON "BillingSubscr
 CREATE UNIQUE INDEX "BillingSubscription_billingAccountId_externalKey_key" ON "BillingSubscription"("billingAccountId", "externalKey");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "BillingSubscription_billingAccountId_null_externalKey_key" ON "BillingSubscription"("billingAccountId") WHERE "externalKey" IS NULL;
+
+-- CreateIndex
 CREATE INDEX "SubscriptionVersion_subscriptionId_effectiveFrom_idx" ON "SubscriptionVersion"("subscriptionId", "effectiveFrom" DESC);
 
 -- CreateIndex
@@ -392,6 +395,9 @@ CREATE INDEX "BillingRun_billingAccountId_runType_startedAt_idx" ON "BillingRun"
 CREATE UNIQUE INDEX "BillingRun_billingAccountId_runType_periodStart_periodEnd_key" ON "BillingRun"("billingAccountId", "runType", "periodStart", "periodEnd");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "BillingRun_global_runType_period_key" ON "BillingRun"("runType", "periodStart", "periodEnd") WHERE "billingAccountId" IS NULL;
+
+-- CreateIndex
 CREATE INDEX "BillingAuditLog_billingAccountId_createdAt_idx" ON "BillingAuditLog"("billingAccountId", "createdAt" DESC);
 
 -- CreateIndex
@@ -483,9 +489,39 @@ ADD CONSTRAINT "SubscriptionVersion_effective_window_check"
 CHECK ("effectiveTo" IS NULL OR "effectiveTo" > "effectiveFrom");
 
 -- AddCheckConstraint
+ALTER TABLE "SubscriptionVersion"
+ADD CONSTRAINT "SubscriptionVersion_quantity_nonnegative_check"
+CHECK ("quantity" >= 0);
+
+-- AddCheckConstraint
 ALTER TABLE "MeterPrice"
 ADD CONSTRAINT "MeterPrice_effective_window_check"
 CHECK ("effectiveTo" IS NULL OR "effectiveTo" > "effectiveFrom");
+
+-- AddCheckConstraint
+ALTER TABLE "MeterPrice"
+ADD CONSTRAINT "MeterPrice_unitPrice_nonnegative_check"
+CHECK ("unitPrice" >= 0);
+
+-- AddCheckConstraint
+ALTER TABLE "MeterPrice"
+ADD CONSTRAINT "MeterPrice_includedUnits_nonnegative_check"
+CHECK ("includedUnits" >= 0);
+
+-- AddCheckConstraint
+ALTER TABLE "UsageEvent"
+ADD CONSTRAINT "UsageEvent_quantity_nonnegative_check"
+CHECK ("quantity" >= 0);
+
+-- AddCheckConstraint
+ALTER TABLE "RatedUsage"
+ADD CONSTRAINT "RatedUsage_quantity_nonnegative_check"
+CHECK ("quantity" >= 0);
+
+-- AddCheckConstraint
+ALTER TABLE "RatedUsage"
+ADD CONSTRAINT "RatedUsage_amount_nonnegative_check"
+CHECK ("amount" >= 0);
 
 -- AddCheckConstraint
 ALTER TABLE "Invoice"
