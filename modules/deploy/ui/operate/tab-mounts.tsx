@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Key, Trash } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -26,26 +26,29 @@ type TabMountsProps = {
   >
 }
 
-export function TabMounts({
-  selectedEnv,
-  mounts,
-  setMounts,
-}: TabMountsProps) {
+export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
   const [newMountName, setNewMountName] = useState("")
   const [newMountPath, setNewMountPath] = useState("")
-  const [newMountContent, setNewMountContent] = useState("")
   const [newMountReadOnly, setNewMountReadOnly] = useState(true)
   const [mountError, setMountError] = useState("")
+  const mountContentInputRef = useRef<HTMLTextAreaElement>(null)
+
+  const buildContentSummary = (content: string, mountPath: string) => {
+    const bytes = new TextEncoder().encode(content)
+    let hash = 0
+    for (const byte of bytes) {
+      hash = (hash * 31 + byte) >>> 0
+    }
+    const extension = mountPath.split(".").pop()?.toLowerCase() ?? "txt"
+    return `[REDACTED] type=${extension} bytes=${bytes.length} fingerprint=${hash.toString(16)}`
+  }
 
   const handleAddMount = (e: React.FormEvent) => {
     e.preventDefault()
     setMountError("")
+    const mountContent = mountContentInputRef.current?.value ?? ""
 
-    if (
-      !newMountName.trim() ||
-      !newMountPath.trim() ||
-      !newMountContent.trim()
-    ) {
+    if (!newMountName.trim() || !newMountPath.trim() || !mountContent.trim()) {
       setMountError("All fields are required")
       return
     }
@@ -84,10 +87,7 @@ export function TabMounts({
       sourceType: "secret",
       fileMode: "0400",
       readOnly: newMountReadOnly,
-      contentSummary:
-        newMountContent.slice(0, 45) +
-        (newMountContent.length > 45 ? "..." : "") +
-        ` (${newMountContent.length} bytes)`,
+      contentSummary: buildContentSummary(mountContent, newMountPath.trim()),
     }
 
     setMounts((prev) => ({
@@ -96,7 +96,9 @@ export function TabMounts({
     }))
     setNewMountName("")
     setNewMountPath("")
-    setNewMountContent("")
+    if (mountContentInputRef.current) {
+      mountContentInputRef.current.value = ""
+    }
   }
 
   const handleDeleteMount = (id: string) => {
@@ -109,9 +111,9 @@ export function TabMounts({
   return (
     <div className="grid gap-6 md:grid-cols-3">
       {/* Create Mount form */}
-      <Card className="border-white/[0.06] bg-black/25 col-span-1">
+      <Card className="col-span-1 border-white/[0.06] bg-black/25">
         <CardHeader>
-          <CardTitle className="text-base font-bold text-white flex items-center gap-1.5">
+          <CardTitle className="flex items-center gap-1.5 text-base font-bold text-white">
             <Key size={18} className="text-primary" /> Mount Private Key / Files
           </CardTitle>
           <CardDescription>
@@ -120,13 +122,13 @@ export function TabMounts({
         </CardHeader>
         <CardContent className="space-y-4 text-xs">
           {mountError && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg font-medium text-[11px]">
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-[11px] font-medium text-red-400">
               {mountError}
             </div>
           )}
           <form onSubmit={handleAddMount} className="space-y-3">
             <div className="space-y-1">
-              <label className="text-muted-foreground font-medium block">
+              <label className="block font-medium text-muted-foreground">
                 Mount Name
               </label>
               <Input
@@ -137,33 +139,32 @@ export function TabMounts({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-muted-foreground font-medium block">
+              <label className="block font-medium text-muted-foreground">
                 Container Target Path
               </label>
               <Input
                 placeholder="e.g. /var/www/html/storage/app/key.pem"
                 value={newMountPath}
                 onChange={(e) => setNewMountPath(e.target.value)}
-                className="h-8 text-xs font-mono"
+                className="h-8 font-mono text-xs"
               />
-              <span className="text-[10px] text-muted-foreground block leading-tight">
+              <span className="block text-[10px] leading-tight text-muted-foreground">
                 Must be absolute. Path is write-protected for security.
               </span>
             </div>
             <div className="space-y-1">
-              <label className="text-muted-foreground font-medium block">
+              <label className="block font-medium text-muted-foreground">
                 PEM Content / Private Key Data
               </label>
               <textarea
+                ref={mountContentInputRef}
                 placeholder="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0..."
-                value={newMountContent}
-                onChange={(e) => setNewMountContent(e.target.value)}
                 rows={6}
-                className="w-full bg-black/50 text-white border border-white/[0.1] rounded-lg p-2.5 font-mono text-[10px] focus:outline-none"
+                className="w-full rounded-lg border border-white/[0.1] bg-black/50 p-2.5 font-mono text-[10px] text-white focus:outline-none"
               />
             </div>
 
-            <label className="flex items-center gap-1.5 text-muted-foreground select-none cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-1.5 text-muted-foreground select-none">
               <input
                 type="checkbox"
                 checked={newMountReadOnly}
@@ -173,7 +174,7 @@ export function TabMounts({
               Read-Only (Recommended: Mode 0400)
             </label>
 
-            <Button type="submit" className="w-full h-8 text-xs mt-2">
+            <Button type="submit" className="mt-2 h-8 w-full text-xs">
               Create File Mount
             </Button>
           </form>
@@ -191,24 +192,24 @@ export function TabMounts({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-lg border border-white/[0.08] overflow-hidden text-xs">
-            <div className="grid grid-cols-4 bg-white/[0.02] border-b border-white/[0.08] p-3 text-muted-foreground uppercase font-semibold">
+          <div className="overflow-hidden rounded-lg border border-white/[0.08] text-xs">
+            <div className="grid grid-cols-4 border-b border-white/[0.08] bg-white/[0.02] p-3 font-semibold text-muted-foreground uppercase">
               <span>Mount Target</span>
               <span>Type / Mode</span>
               <span>Content Summary</span>
-              <th className="text-right font-normal">Actions</th>
+              <span className="text-right font-normal">Actions</span>
             </div>
 
             <div className="divide-y divide-white/[0.06]">
               {mounts[selectedEnv].map((item) => (
                 <div
                   key={item.id}
-                  className="grid grid-cols-4 p-3 items-center hover:bg-white/[0.01]"
+                  className="grid grid-cols-4 items-center p-3 hover:bg-white/[0.01]"
                 >
-                  <span className="font-mono font-bold text-white break-all pr-2">
+                  <span className="pr-2 font-mono font-bold break-all text-white">
                     {item.mountPath}
                   </span>
-                  <span className="text-muted-foreground font-mono">
+                  <span className="font-mono text-muted-foreground">
                     {item.sourceType.toUpperCase()} ({item.fileMode})
                     {item.readOnly && (
                       <span className="block text-[9px] text-green-400">
@@ -216,7 +217,7 @@ export function TabMounts({
                       </span>
                     )}
                   </span>
-                  <span className="font-mono text-muted-foreground text-[10px] break-all max-w-[200px] whitespace-pre block bg-black/30 p-1.5 border border-white/5 rounded">
+                  <span className="block max-w-[200px] rounded border border-white/5 bg-black/30 p-1.5 font-mono text-[10px] break-all whitespace-pre text-muted-foreground">
                     {item.contentSummary}
                   </span>
                   <span className="text-right">
@@ -225,7 +226,7 @@ export function TabMounts({
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteMount(item.id)}
-                      className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                     >
                       <Trash size={14} />
                     </Button>
@@ -241,15 +242,15 @@ export function TabMounts({
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/[0.06] bg-black/40 p-4 text-xs space-y-2 leading-relaxed">
-            <span className="font-bold text-white block">
+          <div className="space-y-2 rounded-xl border border-white/[0.06] bg-black/40 p-4 text-xs leading-relaxed">
+            <span className="block font-bold text-white">
               In-Container Mounting Mechanics
             </span>
             <p className="text-muted-foreground">
               Private keys are stored in encrypted Kubernetes{" "}
               <code>Secrets</code>, then mapped at boot via a volume definition:
             </p>
-            <pre className="p-2.5 bg-black/80 rounded border border-white/[0.06] text-[10px] font-mono text-green-400 overflow-x-auto">
+            <pre className="overflow-x-auto rounded border border-white/[0.06] bg-black/80 p-2.5 font-mono text-[10px] text-green-400">
               {`volumes:
   - name: secure-key-volume
     secret:

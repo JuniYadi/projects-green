@@ -14,8 +14,8 @@ describe("MonitoringPage", () => {
     const view = render(<MonitoringPage />)
 
     expect(view.getAllByText("Monitoring").length).toBeGreaterThan(0)
-    expect(view.getByText("Monitoring Overview")).toBeTruthy()
-    expect(view.getByText("Rollout Events")).toBeTruthy()
-    expect(view.queryByText("Deploy Application")).toBeNull()
+    expect(view.getByText("Monitoring Overview")).toBeInTheDocument()
+    expect(view.getByText("Rollout Events")).toBeInTheDocument()
+    expect(view.queryByText("Deploy Application")).not.toBeInTheDocument()
   })
 })

@@ -74,4 +74,6 @@ export const createTenantsOrganizationsRoutes = (
   )
 }
 
+export type App = ReturnType<typeof createTenantsOrganizationsRoutes>
+
 export const tenantsOrganizationsRoutes = createTenantsOrganizationsRoutes()

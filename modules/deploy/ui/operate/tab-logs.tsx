@@ -10,6 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 
 import type { LogMessage } from "@/modules/deploy/operate.types"
 
@@ -121,12 +124,11 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
           </CardDescription>
         </div>
         <div className="flex gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer">
-            <input
-              type="checkbox"
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground select-none">
+            <Checkbox
               checked={isLiveTailing}
-              onChange={(e) => setIsLiveTailing(e.target.checked)}
-              className="rounded border-white/20 bg-black/50 accent-primary"
+              onCheckedChange={(checked) => setIsLiveTailing(checked === true)}
+              className="border-white/20 bg-black/50 data-[state=checked]:bg-primary"
             />
             Live Tail
           </label>
@@ -134,47 +136,49 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search & Level Filter bar */}
-        <div className="flex flex-wrap gap-2 items-center bg-black/40 border border-white/[0.06] p-3 rounded-lg text-xs">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.06] bg-black/40 p-3 text-xs">
+          <div className="relative min-w-[200px] flex-1">
             <MagnifyingGlass
               size={16}
-              className="absolute left-3 top-2.5 text-muted-foreground"
+              className="absolute top-2.5 left-3 text-muted-foreground"
             />
-            <input
+            <Input
               type="text"
               placeholder="Search logs (e.g. nginx, connect, database)..."
               value={logFilterQuery}
               onChange={(e) => setLogFilterQuery(e.target.value)}
-              className="bg-black/50 text-white rounded-lg border border-white/[0.1] pl-9 pr-3 py-2 w-full text-xs focus:outline-none focus:border-primary"
+              className="h-8 bg-black/50 pl-9 text-xs"
             />
           </div>
 
           <div className="flex gap-1.5">
             {(["ALL", "INFO", "WARN", "ERROR"] as const).map((lvl) => (
-              <button
+              <Button
                 key={lvl}
                 type="button"
                 onClick={() => setLogFilterLevel(lvl)}
+                variant={logFilterLevel === lvl ? "default" : "outline"}
+                size="xs"
                 className={`rounded px-2.5 py-1.5 font-bold transition-all ${
                   logFilterLevel === lvl
-                    ? "bg-primary text-white"
-                    : "bg-black/40 text-muted-foreground hover:text-white border border-white/[0.08]"
+                    ? "text-white"
+                    : "bg-black/40 text-muted-foreground hover:text-white"
                 }`}
               >
                 {lvl}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         {/* Logs display shell */}
-        <div className="rounded-xl bg-black border border-white/[0.08] p-5 font-mono text-[11px] leading-relaxed max-h-[380px] min-h-[250px] overflow-y-auto space-y-1">
+        <div className="max-h-[380px] min-h-[250px] space-y-1 overflow-y-auto rounded-xl border border-white/[0.08] bg-black p-5 font-mono text-[11px] leading-relaxed">
           {filteredLogs.map((log, idx) => (
             <div
               key={idx}
-              className="flex gap-2.5 select-text hover:bg-white/[0.02] p-0.5 rounded"
+              className="flex gap-2.5 rounded p-0.5 select-text hover:bg-white/[0.02]"
             >
-              <span className="text-muted-foreground shrink-0">
+              <span className="shrink-0 text-muted-foreground">
                 [{log.timestamp}]
               </span>
               <span
@@ -188,13 +192,13 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
               >
                 {log.level}
               </span>
-              <span className="text-purple-400 shrink-0">[{log.source}]</span>
-              <span className="text-white break-all">{log.message}</span>
+              <span className="shrink-0 text-purple-400">[{log.source}]</span>
+              <span className="break-all text-white">{log.message}</span>
             </div>
           ))}
 
           {filteredLogs.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground font-sans">
+            <div className="p-8 text-center font-sans text-muted-foreground">
               No log outputs correspond to the search queries.
             </div>
           )}

@@ -19,6 +19,27 @@ export function TabMetrics({
   cpuLimit = "1000m",
   memLimit = "512Mi",
 }: TabMetricsProps) {
+  const cpuUsage = "340m"
+  const memoryUsage = "468MiB"
+  const cpuUsageValue = Number.parseFloat(cpuUsage.replace(/[^0-9.]/g, ""))
+  const cpuLimitValue = Number.parseFloat(cpuLimit.replace(/[^0-9.]/g, ""))
+  const memoryUsageValue = Number.parseFloat(
+    memoryUsage.replace(/[^0-9.]/g, "")
+  )
+  const memoryLimitValue = Number.parseFloat(memLimit.replace(/[^0-9.]/g, ""))
+  const cpuPercent =
+    Number.isFinite(cpuUsageValue) &&
+    Number.isFinite(cpuLimitValue) &&
+    cpuLimitValue > 0
+      ? Math.round((cpuUsageValue / cpuLimitValue) * 100)
+      : 0
+  const memoryPercent =
+    Number.isFinite(memoryUsageValue) &&
+    Number.isFinite(memoryLimitValue) &&
+    memoryLimitValue > 0
+      ? Math.round((memoryUsageValue / memoryLimitValue) * 100)
+      : 0
+
   return (
     <div className="grid gap-6 md:grid-cols-3">
       {/* Real-time telemetry */}
@@ -34,44 +55,44 @@ export function TabMetrics({
         <CardContent className="space-y-6">
           {/* CPU usage bar */}
           <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-white font-medium flex items-center gap-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 font-medium text-white">
                 <Cpu size={14} className="text-primary" /> CPU Allocation
               </span>
               <span className="font-mono text-muted-foreground">
-                340m / {cpuLimit} (34%)
+                {cpuUsage} / {cpuLimit} ({cpuPercent}%)
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-neutral-900 border border-white/[0.08] p-0.5">
+            <div className="h-3 overflow-hidden rounded-full border border-white/[0.08] bg-neutral-900 p-0.5">
               <div
                 className="h-full rounded-full bg-primary transition-all duration-1000"
-                style={{ width: "34%" }}
+                style={{ width: `${cpuPercent}%` }}
               />
             </div>
           </div>
 
           {/* RAM usage bar */}
           <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-white font-medium flex items-center gap-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 font-medium text-white">
                 <HardDrive size={14} className="text-primary" /> RAM Allocation
               </span>
               <span className="font-mono text-muted-foreground">
-                468MiB / {memLimit} (91%)
+                {memoryUsage} / {memLimit} ({memoryPercent}%)
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-neutral-900 border border-white/[0.08] p-0.5">
+            <div className="h-3 overflow-hidden rounded-full border border-white/[0.08] bg-neutral-900 p-0.5">
               <div
                 className="h-full rounded-full bg-red-500 transition-all duration-1000"
-                style={{ width: "91%" }}
+                style={{ width: `${memoryPercent}%` }}
               />
             </div>
           </div>
 
           {/* Traffic usage bar */}
           <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-white font-medium flex items-center gap-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 font-medium text-white">
                 <Pulse size={14} className="text-primary" /> Network Ingress
                 Requests
               </span>
@@ -79,7 +100,7 @@ export function TabMetrics({
                 242 requests/sec (Normal)
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-neutral-900 border border-white/[0.08] p-0.5">
+            <div className="h-3 overflow-hidden rounded-full border border-white/[0.08] bg-neutral-900 p-0.5">
               <div
                 className="h-full rounded-full bg-green-500 transition-all duration-1000"
                 style={{ width: "65%" }}
@@ -92,7 +113,7 @@ export function TabMetrics({
       {/* Recommendations / warnings (Q7 Answer) */}
       <Card className="border-white/[0.06] bg-black/25">
         <CardHeader>
-          <CardTitle className="text-base font-bold text-white flex items-center gap-1.5">
+          <CardTitle className="flex items-center gap-1.5 text-base font-bold text-white">
             <Warning size={18} className="text-yellow-500" /> Resource Advisory
           </CardTitle>
           <CardDescription>
@@ -100,8 +121,8 @@ export function TabMetrics({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs leading-relaxed">
-          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-red-300 space-y-2">
-            <span className="font-bold uppercase tracking-wider block">
+          <div className="space-y-2 rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-red-300">
+            <span className="block font-bold tracking-wider uppercase">
               ⚠️ Low RAM Headroom
             </span>
             <p>
@@ -109,14 +130,14 @@ export function TabMetrics({
               (468MiB of 512MiB). This triggers warning signals. Under load,
               pods will suffer OOMKilled restarts.
             </p>
-            <p className="font-semibold text-white bg-black/40 p-2 rounded border border-white/5 font-mono text-[10px]">
+            <p className="rounded border border-white/5 bg-black/40 p-2 font-mono text-[10px] font-semibold text-white">
               Recommendation: Scale your Memory Limit to 1024MiB (1GiB) in the
               &apos;Autoscaling &amp; Tuning&apos; tab.
             </p>
           </div>
 
-          <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-4 text-green-300 space-y-2">
-            <span className="font-bold uppercase tracking-wider block">
+          <div className="space-y-2 rounded-lg border border-green-500/20 bg-green-500/5 p-4 text-green-300">
+            <span className="block font-bold tracking-wider uppercase">
               ✓ CPU Headroom Adequate
             </span>
             <p>

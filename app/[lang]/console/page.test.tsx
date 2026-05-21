@@ -10,10 +10,10 @@ describe("ConsolePage", () => {
     })
     const view = render(ui)
 
-    expect(view.getByRole("heading", { name: "Console" })).toBeTruthy()
-    expect(view.getByText("Tenant Management")).toBeTruthy()
-    expect(view.getByText("Documentation Registry")).toBeTruthy()
-    expect(view.getByText("Applications")).toBeTruthy()
+    expect(view.getByRole("heading", { name: "Console" })).toBeInTheDocument()
+    expect(view.getByText("Tenant Management")).toBeInTheDocument()
+    expect(view.getByText("Documentation Registry")).toBeInTheDocument()
+    expect(view.getByText("Applications")).toBeInTheDocument()
 
     const links = view.getAllByRole("link", { name: "Open" })
     expect(links.map((link) => link.getAttribute("href"))).toEqual([

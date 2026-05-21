@@ -8,6 +8,7 @@ const mockReplace = mock(() => {})
 const mockRefresh = mock(() => {})
 let mockPathname = "/en/console"
 let mockSearchParams = new URLSearchParams()
+const originalFetch = globalThis.fetch
 
 const jsonResponse = (body: unknown, status = 200) => {
   return new Response(JSON.stringify(body), {
@@ -52,6 +53,7 @@ mock.module("next/navigation.js", () => {
 
 describe("NavUser", () => {
   afterEach(() => {
+    globalThis.fetch = originalFetch
     cleanup()
   })
 
@@ -97,14 +99,14 @@ describe("NavUser", () => {
       </SidebarProvider>
     )
 
-    expect(view.getByText("Jane Doe")).toBeTruthy()
-    expect(view.getByText("jane@example.com")).toBeTruthy()
-    expect(view.getAllByText("JD").length).toBeGreaterThan(0)
+    expect(view.getByText("Jane Doe")).toBeInTheDocument()
+    expect(view.getByText("jane@example.com")).toBeInTheDocument()
+    expect(view.getAllByText("JD")[0]).toBeInTheDocument()
 
     fireEvent.pointerDown(view.getByRole("button"))
 
     await waitFor(() => {
-      expect(view.getByText("Signed in via: Google OAuth")).toBeTruthy()
+      expect(view.getByText("Signed in via: Google OAuth")).toBeInTheDocument()
     })
   })
 

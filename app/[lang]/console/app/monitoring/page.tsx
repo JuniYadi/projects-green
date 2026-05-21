@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -9,6 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
 
 type K8sEnvironmentId = "dev" | "staging" | "prod"
@@ -205,13 +213,12 @@ export default function MonitoringPage() {
     MOCK_DEPLOYMENTS.dev[0]?.id ?? ""
   )
   const [eventFilter, setEventFilter] = useState<
-    "all" | "succeeded" | "failed"
+    "all" | "succeeded" | "failed" | "rolled_back"
   >("all")
 
   const deployments = MOCK_DEPLOYMENTS[selectedEnvironmentId] ?? []
   const resourceUsage = MOCK_RESOURCE_USAGE[selectedDeploymentId] ?? null
   const podHealth = MOCK_POD_HEALTH[selectedDeploymentId] ?? null
-  const driftStatus = MOCK_DRIFT_STATUS[selectedEnvironmentId] ?? "unknown"
   const rolloutEvents = MOCK_ROLLOUT_EVENTS[selectedEnvironmentId] ?? []
 
   const filteredEvents =
@@ -254,23 +261,26 @@ export default function MonitoringPage() {
             <div className="grid gap-3 sm:grid-cols-3">
               {K8S_ENVIRONMENTS.map((environment) => {
                 const isSelected = environment.id === selectedEnvironmentId
+                const driftStatus =
+                  MOCK_DRIFT_STATUS[environment.id] ?? "unknown"
 
                 return (
-                  <button
+                  <Button
                     key={environment.id}
                     type="button"
                     onClick={() => handleEnvironmentChange(environment.id)}
-                    className={`rounded-md border p-3 text-left text-sm ${
+                    variant={isSelected ? "secondary" : "outline"}
+                    className={`h-auto rounded-md p-3 text-left text-sm ${
                       isSelected
                         ? "border-primary bg-primary/10"
-                        : "border-border bg-background"
+                        : "bg-background"
                     }`}
                   >
                     <p className="font-medium">{environment.label}</p>
                     <p className="text-muted-foreground">
                       Drift: {driftStatus}
                     </p>
-                  </button>
+                  </Button>
                 )
               })}
             </div>
@@ -280,19 +290,20 @@ export default function MonitoringPage() {
                 const isSelected = deployment.id === selectedDeploymentId
 
                 return (
-                  <button
+                  <Button
                     key={deployment.id}
                     type="button"
                     onClick={() => setSelectedDeploymentId(deployment.id)}
-                    className={`rounded-md border p-2 text-left text-sm ${
+                    variant={isSelected ? "secondary" : "outline"}
+                    className={`h-auto rounded-md p-2 text-left text-sm ${
                       isSelected
                         ? "border-primary bg-primary/10"
-                        : "border-border bg-background"
+                        : "bg-background"
                     }`}
                   >
                     {deployment.name} &bull; {deployment.version} &bull;{" "}
                     {deployment.status}
-                  </button>
+                  </Button>
                 )
               })}
             </div>
@@ -398,19 +409,24 @@ export default function MonitoringPage() {
           <CardContent className="space-y-3">
             <label className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Filter:</span>
-              <select
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              <Select
                 value={eventFilter}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   setEventFilter(
-                    event.target.value as "all" | "succeeded" | "failed"
+                    value as "all" | "succeeded" | "failed" | "rolled_back"
                   )
                 }
               >
-                <option value="all">All events</option>
-                <option value="succeeded">Succeeded</option>
-                <option value="failed">Failed</option>
-              </select>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All events</SelectItem>
+                  <SelectItem value="succeeded">Succeeded</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="rolled_back">Rolled back</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
 
             <div className="space-y-2">

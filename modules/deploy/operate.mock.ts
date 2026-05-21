@@ -102,7 +102,7 @@ export const INITIAL_ENV_VARS: Record<K8sEnvironmentId, EnvVar[]> = {
     {
       id: "env-5",
       key: "DB_PASSWORD",
-      value: "supersecretdevpassword",
+      value: "<REDACTED_SECRET>",
       isSecret: true,
       updatedAt: "2026-05-20",
     },
@@ -139,7 +139,7 @@ export const INITIAL_ENV_VARS: Record<K8sEnvironmentId, EnvVar[]> = {
     {
       id: "env-10",
       key: "DB_PASSWORD",
-      value: "stagingdbpass2026",
+      value: "<REDACTED_SECRET>",
       isSecret: true,
       updatedAt: "2026-05-19",
     },
@@ -169,14 +169,14 @@ export const INITIAL_ENV_VARS: Record<K8sEnvironmentId, EnvVar[]> = {
     {
       id: "env-14",
       key: "DB_PASSWORD",
-      value: "prod-secure-db-password-998",
+      value: "<REDACTED_SECRET>",
       isSecret: true,
       updatedAt: "2026-05-15",
     },
     {
       id: "env-15",
       key: "APP_KEY",
-      value: "base64:fHsdjKJHDF2378sdjhfkjsdfhsiuhu128=",
+      value: "<REDACTED_SECRET>",
       isSecret: true,
       updatedAt: "2026-05-15",
     },
@@ -192,8 +192,7 @@ export const INITIAL_MOUNTS: Record<K8sEnvironmentId, VolumeMount[]> = {
       sourceType: "secret",
       fileMode: "0400",
       readOnly: true,
-      contentSummary:
-        '-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQD... (640 bytes)',
+      contentSummary: "[REDACTED_PRIVATE_KEY] (640 bytes)",
     },
   ],
   staging: [
@@ -204,8 +203,7 @@ export const INITIAL_MOUNTS: Record<K8sEnvironmentId, VolumeMount[]> = {
       sourceType: "secret",
       fileMode: "0400",
       readOnly: true,
-      contentSummary:
-        "-----BEGIN CERTIFICATE-----\nMIIDezCCAmOgAwIBAgIUa7R5VfP... (1200 bytes)",
+      contentSummary: "[REDACTED_CERTIFICATE] (1200 bytes)",
     },
   ],
   prod: [
@@ -216,8 +214,7 @@ export const INITIAL_MOUNTS: Record<K8sEnvironmentId, VolumeMount[]> = {
       sourceType: "secret",
       fileMode: "0400",
       readOnly: true,
-      contentSummary:
-        "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA3T7mYw5Gq... (1672 bytes)",
+      contentSummary: "[REDACTED_PRIVATE_KEY] (1672 bytes)",
     },
   ],
 }
@@ -233,8 +230,7 @@ export const INITIAL_LOGS: LogMessage[] = [
     timestamp: "17:54:11",
     level: "INFO",
     source: "php-fpm",
-    message:
-      "fpm is running, ready to handle requests on port 9000",
+    message: "fpm is running, ready to handle requests on port 9000",
   },
   {
     timestamp: "17:54:12",
@@ -247,8 +243,7 @@ export const INITIAL_LOGS: LogMessage[] = [
     timestamp: "17:54:15",
     level: "INFO",
     source: "database",
-    message:
-      "MySQL connection pool initialized. 12 active connections",
+    message: "MySQL connection pool initialized. 12 active connections",
   },
   {
     timestamp: "17:54:30",

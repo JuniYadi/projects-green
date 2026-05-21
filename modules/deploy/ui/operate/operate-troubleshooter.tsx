@@ -1,13 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import {
-  MagnifyingGlass,
-  Wrench,
-  ArrowRight,
-} from "@phosphor-icons/react"
+import { useEffect, useRef, useState } from "react"
+import { MagnifyingGlass, Wrench, ArrowRight } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 import type { OperateTabId } from "@/modules/deploy/operate.constants"
 
@@ -100,8 +97,8 @@ export function OperateTroubleshooter({
   onDeepLink,
 }: OperateTroubleshooterProps) {
   const [troubleshooterSearch, setTroubleshooterSearch] = useState("")
-
-  if (!isOpen) return null
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null)
 
   const filteredFaqs = FAQ_LIST.filter(
     (f) =>
@@ -114,12 +111,42 @@ export function OperateTroubleshooter({
     onClose()
   }
 
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    lastFocusedElementRef.current = document.activeElement as HTMLElement | null
+    dialogRef.current?.focus()
+
+    return () => {
+      lastFocusedElementRef.current?.focus()
+    }
+  }, [isOpen])
+
+  if (!isOpen) return null
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex justify-end">
-      <div className="bg-neutral-950 border-l border-white/10 w-full max-w-lg p-6 space-y-5 overflow-y-auto flex flex-col h-full shadow-2xl">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/80">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="operate-faq-title"
+        tabIndex={-1}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            onClose()
+          }
+        }}
+        className="flex h-full w-full max-w-lg flex-col space-y-5 overflow-y-auto border-l border-white/10 bg-neutral-950 p-6 shadow-2xl"
+      >
         <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <h3
+              id="operate-faq-title"
+              className="flex items-center gap-2 text-base font-bold text-white"
+            >
               <Wrench size={18} className="text-primary" /> Application
               Operations FAQ
             </h3>
@@ -131,6 +158,7 @@ export function OperateTroubleshooter({
             type="button"
             variant="ghost"
             onClick={onClose}
+            aria-label="Close operations FAQ"
             className="text-muted-foreground hover:text-white"
           >
             Close
@@ -141,14 +169,14 @@ export function OperateTroubleshooter({
         <div className="relative">
           <MagnifyingGlass
             size={16}
-            className="absolute left-3 top-2.5 text-muted-foreground"
+            className="absolute top-2.5 left-3 text-muted-foreground"
           />
-          <input
+          <Input
             type="text"
             placeholder="Search troubleshooting questions..."
             value={troubleshooterSearch}
             onChange={(e) => setTroubleshooterSearch(e.target.value)}
-            className="bg-black/50 text-white rounded-lg border border-white/[0.1] pl-9 pr-3 py-2 w-full text-xs focus:outline-none"
+            className="h-8 bg-black/50 pl-9 text-xs"
           />
         </div>
 
@@ -157,26 +185,28 @@ export function OperateTroubleshooter({
           {filteredFaqs.map((faq, idx) => (
             <div
               key={idx}
-              className="rounded-lg border border-white/[0.06] bg-black/35 p-4 space-y-2"
+              className="space-y-2 rounded-lg border border-white/[0.06] bg-black/35 p-4"
             >
-              <h4 className="font-bold text-white text-xs leading-snug">
+              <h4 className="text-xs leading-snug font-bold text-white">
                 {faq.q}
               </h4>
-              <p className="text-muted-foreground text-[11px] leading-relaxed">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
                 {faq.a}
               </p>
-              <button
+              <Button
                 type="button"
                 onClick={() => handleDeepLink(faq.tab)}
-                className="inline-flex items-center gap-1.5 text-[10px] text-primary font-semibold hover:underline mt-1 cursor-pointer"
+                variant="link"
+                size="xs"
+                className="mt-1 h-auto p-0 text-[10px]"
               >
                 Go to Setting <ArrowRight size={10} />
-              </button>
+              </Button>
             </div>
           ))}
 
           {filteredFaqs.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground text-xs">
+            <div className="p-8 text-center text-xs text-muted-foreground">
               No matches for search terms. Try keywords like &quot;SSL&quot;,
               &quot;Cloudflare&quot;, &quot;metrics&quot;, &quot;replica&quot;,
               or &quot;private&quot;.

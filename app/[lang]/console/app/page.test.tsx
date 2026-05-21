@@ -10,10 +10,12 @@ describe("ApplicationsPage", () => {
     })
     const view = render(ui)
 
-    expect(view.getByRole("heading", { name: "Applications" })).toBeTruthy()
-    expect(view.getByText("Deploy")).toBeTruthy()
-    expect(view.getByText("Manage")).toBeTruthy()
-    expect(view.getByText("Monitoring")).toBeTruthy()
+    expect(
+      view.getByRole("heading", { name: "Applications" })
+    ).toBeInTheDocument()
+    expect(view.getByText("Deploy")).toBeInTheDocument()
+    expect(view.getByText("Manage")).toBeInTheDocument()
+    expect(view.getByText("Monitoring")).toBeInTheDocument()
 
     const links = view.getAllByRole("link", { name: "Open" })
     expect(links.map((link) => link.getAttribute("href"))).toEqual([

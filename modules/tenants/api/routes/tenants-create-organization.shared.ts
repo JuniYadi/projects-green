@@ -29,14 +29,15 @@ export type TenantCreateOrganizationDeps = {
   getBootstrapCreatorRoleSlug: typeof getBootstrapCreatorRoleSlug
 }
 
-export const defaultTenantCreateOrganizationDeps: TenantCreateOrganizationDeps = {
-  listTenantBootstrapMembershipsForUser,
-  createTenantOrganization,
-  hasBootstrapCreatorRole,
-  createTenantMembership,
-  deleteTenantOrganization,
-  getBootstrapCreatorRoleSlug,
-}
+export const defaultTenantCreateOrganizationDeps: TenantCreateOrganizationDeps =
+  {
+    listTenantBootstrapMembershipsForUser,
+    createTenantOrganization,
+    hasBootstrapCreatorRole,
+    createTenantMembership,
+    deleteTenantOrganization,
+    getBootstrapCreatorRoleSlug,
+  }
 
 const CREATOR_MEMBERSHIP_VERIFICATION_ATTEMPTS = 4
 const CREATOR_MEMBERSHIP_RETRY_DELAY_MS = 120
@@ -67,8 +68,15 @@ const verifyCreatorMembershipRole = async (params: {
       )
     })
 
-    const creatorRole = normalizeTenantRole(creatorMembership?.roleSlug)
-    if (creatorRole) {
+    const normalizedCreatorRole = normalizeTenantRole(
+      creatorMembership?.roleSlug
+    )
+    const rawCreatorRole = creatorMembership?.roleSlug?.trim().toLowerCase()
+    if (
+      normalizedCreatorRole === "owner" ||
+      rawCreatorRole === "bootstrap" ||
+      rawCreatorRole === "user_bootstrap"
+    ) {
       return true
     }
 
@@ -89,6 +97,18 @@ const rollbackOrganizationCreation = async (
     return true
   } catch {
     return false
+  }
+}
+
+const toRollbackFailedResponse = (
+  set: RouteSet,
+  organizationId: string
+): TenantApiError => {
+  set.status = 500
+  return {
+    ok: false,
+    error: "ROLLBACK_FAILED",
+    message: `Unable to roll back organization bootstrap for ${organizationId}.`,
   }
 }
 
@@ -115,11 +135,23 @@ export const createTenantOrganizationWithCreator = async (params: {
   try {
     const organization = await createTenantOrganization(organizationName.trim())
 
-    const creatorRoleIsAvailable = await hasBootstrapCreatorRole(organization.id)
+    const creatorRoleIsAvailable = await hasBootstrapCreatorRole(
+      organization.id
+    )
     if (!creatorRoleIsAvailable) {
-      await rollbackOrganizationCreation(deleteTenantOrganization, organization.id)
-      set.status = 422
+      const rollbackSucceeded = await rollbackOrganizationCreation(
+        deleteTenantOrganization,
+        organization.id
+      )
+      if (!rollbackSucceeded) {
+        console.error("deleteTenantOrganization rollback failed", {
+          organizationId: organization.id,
+          reason: "CREATOR_ROLE_MISSING",
+        })
+        return toRollbackFailedResponse(set, organization.id)
+      }
 
+      set.status = 422
       return {
         ok: false,
         error: "CREATOR_ROLE_MISSING",
@@ -142,10 +174,17 @@ export const createTenantOrganizationWithCreator = async (params: {
       })
 
       if (!creatorHasValidRole) {
-        await rollbackOrganizationCreation(
+        const rollbackSucceeded = await rollbackOrganizationCreation(
           deleteTenantOrganization,
           organization.id
         )
+        if (!rollbackSucceeded) {
+          console.error("deleteTenantOrganization rollback failed", {
+            organizationId: organization.id,
+            reason: "CREATOR_MEMBERSHIP_VERIFICATION_FAILED",
+          })
+          return toRollbackFailedResponse(set, organization.id)
+        }
         set.status = 500
 
         return {
@@ -154,8 +193,48 @@ export const createTenantOrganizationWithCreator = async (params: {
           message: "Unable to create organization right now.",
         }
       }
-    } catch {
-      await rollbackOrganizationCreation(deleteTenantOrganization, organization.id)
+    } catch (error) {
+      const rollbackSucceeded = await rollbackOrganizationCreation(
+        deleteTenantOrganization,
+        organization.id
+      )
+      if (!rollbackSucceeded) {
+        console.error("deleteTenantOrganization rollback failed", {
+          organizationId: organization.id,
+          reason: "MEMBERSHIP_CREATION_ERROR",
+        })
+        return toRollbackFailedResponse(set, organization.id)
+      }
+
+      if (error instanceof ConflictException) {
+        set.status = 409
+        return {
+          ok: false,
+          error: "ORGANIZATION_CONFLICT",
+          message:
+            "Organization bootstrap could not be completed due to a conflict.",
+        }
+      }
+
+      if (error instanceof UnprocessableEntityException) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "ORGANIZATION_BOOTSTRAP_INVALID",
+          message: error.message,
+        }
+      }
+
+      if (error instanceof NotFoundException) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "ORGANIZATION_BOOTSTRAP_NOT_FOUND",
+          message:
+            "Organization bootstrap failed because a required WorkOS resource was not found.",
+        }
+      }
+
       set.status = 500
 
       return {
@@ -178,7 +257,8 @@ export const createTenantOrganizationWithCreator = async (params: {
       return {
         ok: false,
         error: "ORGANIZATION_CONFLICT",
-        message: "Organization bootstrap could not be completed due to a conflict.",
+        message:
+          "Organization bootstrap could not be completed due to a conflict.",
       }
     }
 

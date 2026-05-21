@@ -26,9 +26,7 @@ const renderPage = async (query = "") => {
   currentQuery = query
   replaceCalls.splice(0)
 
-  const pageModule = await import(
-    "@/app/[lang]/console/app/manage/page"
-  )
+  const pageModule = await import("@/app/[lang]/console/app/manage/page")
   return render(<pageModule.default />)
 }
 
@@ -41,33 +39,33 @@ describe("ManagePage", () => {
   it("renders manage page and shows tabs", async () => {
     const view = await renderPage()
 
-    expect(view.getByText("Manage Application")).toBeTruthy()
-    expect(view.queryByText("Deploy Application")).toBeFalsy()
+    expect(view.getByText("Manage Application")).toBeInTheDocument()
+    expect(view.queryByText("Deploy Application")).not.toBeInTheDocument()
 
-    expect(view.getByText("laravel-shop")).toBeTruthy()
+    expect(view.getByText("laravel-shop")).toBeInTheDocument()
 
     // Check tab buttons
-    expect(view.getByText("Overview")).toBeTruthy()
-    expect(view.getByText("Domains & SSL")).toBeTruthy()
-    expect(view.getByText("Environment & Net")).toBeTruthy()
-    expect(view.getByText("Storage & Mounts")).toBeTruthy()
-    expect(view.getByText("Autoscaling & Tuning")).toBeTruthy()
-    expect(view.getByText("Telemetry & Metrics")).toBeTruthy()
-    expect(view.getByText("Opensearch Logs")).toBeTruthy()
+    expect(view.getByText("Overview")).toBeInTheDocument()
+    expect(view.getByText("Domains & SSL")).toBeInTheDocument()
+    expect(view.getByText("Environment & Net")).toBeInTheDocument()
+    expect(view.getByText("Storage & Mounts")).toBeInTheDocument()
+    expect(view.getByText("Autoscaling & Tuning")).toBeInTheDocument()
+    expect(view.getByText("Telemetry & Metrics")).toBeInTheDocument()
+    expect(view.getByText("Opensearch Logs")).toBeInTheDocument()
   })
 
   it("can open operations FAQ troubleshooter", async () => {
     const view = await renderPage()
 
     const faqButton = view.getByText("Operations FAQ")
-    expect(faqButton).toBeTruthy()
+    expect(faqButton).toBeInTheDocument()
 
     // Click to open FAQ troubleshooter drawer
     fireEvent.click(faqButton)
-    expect(view.getByText("Application Operations FAQ")).toBeTruthy()
+    expect(view.getByText("Application Operations FAQ")).toBeInTheDocument()
     expect(
       view.getByPlaceholderText("Search troubleshooting questions...")
-    ).toBeTruthy()
+    ).toBeInTheDocument()
   })
 
   it("covers all 14 operational questions in the FAQ drawer", async () => {
@@ -93,7 +91,7 @@ describe("ManagePage", () => {
     ]
 
     for (const question of questions) {
-      expect(view.getByText(question)).toBeTruthy()
+      expect(view.getByText(question)).toBeInTheDocument()
     }
   })
 
@@ -123,7 +121,7 @@ describe("ManagePage", () => {
     const view = await renderPage("tab=logs&env=staging")
 
     // The logs tab should be active (showing the log viewer)
-    expect(view.getByText("Opensearch Log Viewer")).toBeTruthy()
+    expect(view.getByText("Opensearch Log Viewer")).toBeInTheDocument()
   })
 
   it("deep links from FAQ to correct tab and updates URL", async () => {
@@ -138,8 +136,10 @@ describe("ManagePage", () => {
     fireEvent.click(goButtons[1])
 
     // Troubleshooter should close and domains tab should be active
-    expect(view.queryByText("Application Operations FAQ")).toBeFalsy()
-    expect(view.getByText("Custom Domain Settings")).toBeTruthy()
+    expect(
+      view.queryByText("Application Operations FAQ")
+    ).not.toBeInTheDocument()
+    expect(view.getByText("Custom Domain Settings")).toBeInTheDocument()
 
     // URL should reflect the tab change
     const lastCall = replaceCalls[replaceCalls.length - 1]
@@ -153,18 +153,22 @@ describe("ManagePage", () => {
     globalThis.alert = alertMock as unknown as typeof alert
 
     fireEvent.click(view.getByText("Environment & Net"))
-    expect(view.getByText("Environment Variables")).toBeTruthy()
+    expect(view.getByText("Environment Variables")).toBeInTheDocument()
 
     fireEvent.click(view.getByRole("button", { name: "Bulk Import .env" }))
-    expect(view.getByText("Bulk Import .env Variables")).toBeTruthy()
+    expect(view.getByText("Bulk Import .env Variables")).toBeInTheDocument()
     fireEvent.click(view.getByRole("button", { name: "Cancel" }))
-    expect(view.queryByText("Bulk Import .env Variables")).toBeFalsy()
+    expect(
+      view.queryByText("Bulk Import .env Variables")
+    ).not.toBeInTheDocument()
 
     fireEvent.click(view.getByRole("button", { name: "Bulk Import .env" }))
     fireEvent.click(view.getByRole("button", { name: "Import Variables" }))
-    expect(view.getByText("Bulk Import .env Variables")).toBeTruthy()
+    expect(view.getByText("Bulk Import .env Variables")).toBeInTheDocument()
     fireEvent.click(view.getByRole("button", { name: "Cancel" }))
-    expect(view.queryByText("Bulk Import .env Variables")).toBeFalsy()
+    expect(
+      view.queryByText("Bulk Import .env Variables")
+    ).not.toBeInTheDocument()
 
     fireEvent.change(view.getByPlaceholderText("KEY (e.g. CACHE_DRIVER)"), {
       target: { value: "custom-value" },
@@ -175,18 +179,18 @@ describe("ManagePage", () => {
     fireEvent.click(view.getByRole("button", { name: "Add Var" }))
 
     fireEvent.click(view.getByRole("button", { name: "DISABLED" }))
-    expect(view.getByText("TRUST ACTIVE")).toBeTruthy()
+    expect(view.getByText("TRUST ACTIVE")).toBeInTheDocument()
     expect(
       view.getByText(
         "✓ Trust proxies is active. Real client IPs will show in application code (request()->ip())."
       )
-    ).toBeTruthy()
+    ).toBeInTheDocument()
 
     fireEvent.click(view.getByText("Storage & Mounts"))
-    expect(view.getByText("Active Pod File Mounts")).toBeTruthy()
+    expect(view.getByText("Active Pod File Mounts")).toBeInTheDocument()
 
     fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
-    expect(view.getByText("All fields are required")).toBeTruthy()
+    expect(view.getByText("All fields are required")).toBeInTheDocument()
 
     fireEvent.change(
       view.getByPlaceholderText("e.g. application-private-key"),
@@ -195,25 +199,18 @@ describe("ManagePage", () => {
       }
     )
     fireEvent.change(
-      view.getByPlaceholderText(
-        "e.g. /var/www/html/storage/app/key.pem"
-      ),
+      view.getByPlaceholderText("e.g. /var/www/html/storage/app/key.pem"),
       {
         target: { value: "/bin/forbidden.pem" },
       }
     )
-    fireEvent.change(
-      view.getByPlaceholderText(/-----BEGIN PRIVATE KEY-----/),
-      {
-        target: { value: "-----BEGIN PRIVATE KEY-----test" },
-      }
-    )
+    fireEvent.change(view.getByPlaceholderText(/-----BEGIN PRIVATE KEY-----/), {
+      target: { value: "-----BEGIN PRIVATE KEY-----test" },
+    })
     fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
 
     fireEvent.change(
-      view.getByPlaceholderText(
-        "e.g. /var/www/html/storage/app/key.pem"
-      ),
+      view.getByPlaceholderText("e.g. /var/www/html/storage/app/key.pem"),
       {
         target: { value: "relative/path.pem" },
       }
@@ -221,9 +218,7 @@ describe("ManagePage", () => {
     fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
 
     fireEvent.change(
-      view.getByPlaceholderText(
-        "e.g. /var/www/html/storage/app/key.pem"
-      ),
+      view.getByPlaceholderText("e.g. /var/www/html/storage/app/key.pem"),
       {
         target: { value: "/var/www/html/storage/app/new.pem" },
       }
@@ -231,19 +226,21 @@ describe("ManagePage", () => {
     fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
 
     fireEvent.click(view.getByText("Autoscaling & Tuning"))
-    expect(view.getByText("Autoscaling Policies (HPA / VPA)")).toBeTruthy()
+    expect(
+      view.getByText("Autoscaling Policies (HPA / VPA)")
+    ).toBeInTheDocument()
 
     fireEvent.click(view.getByRole("button", { name: "+" }))
-    expect(view.getByText("3")).toBeTruthy()
+    expect(view.getByText("3")).toBeInTheDocument()
     fireEvent.click(view.getByRole("button", { name: "-" }))
-    expect(view.getByText("2")).toBeTruthy()
+    expect(view.getByText("2")).toBeInTheDocument()
 
     const scalingToggles = view.getAllByRole("button", {
       name: "Disabled",
     })
     fireEvent.click(scalingToggles[0])
-    expect(view.getByRole("button", { name: "Active" })).toBeTruthy()
-    expect(view.getByText("Min Replicas")).toBeTruthy()
+    expect(view.getByRole("button", { name: "Active" })).toBeInTheDocument()
+    expect(view.getByText("Min Replicas")).toBeInTheDocument()
 
     const hpaInputs = view.getAllByRole("spinbutton")
     fireEvent.change(hpaInputs[0], { target: { value: "3" } })
@@ -262,7 +259,7 @@ describe("ManagePage", () => {
     expect(alertMock).toHaveBeenCalled()
 
     fireEvent.click(view.getByText("Telemetry & Metrics"))
-    expect(view.getByText("Live Resource Monitoring")).toBeTruthy()
-    expect(view.getByText("⚠️ Low RAM Headroom")).toBeTruthy()
+    expect(view.getByText("Live Resource Monitoring")).toBeInTheDocument()
+    expect(view.getByText("⚠️ Low RAM Headroom")).toBeInTheDocument()
   })
 })

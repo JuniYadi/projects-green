@@ -8,6 +8,8 @@ const mockSwitchToOrganization = mock(async () => {})
 const mockReplace = mock(() => {})
 const mockRefresh = mock(() => {})
 const mockPrompt = mock(() => "Acme New")
+const originalPrompt = window.prompt
+const originalFetch = globalThis.fetch
 let mockPathname = "/en/console/organization"
 let mockSearchParams = new URLSearchParams("tab=members")
 
@@ -52,6 +54,8 @@ mock.module("next/navigation.js", () => {
 
 describe("NavOrganization", () => {
   afterEach(() => {
+    window.prompt = originalPrompt
+    globalThis.fetch = originalFetch
     cleanup()
   })
 
@@ -196,22 +200,16 @@ describe("NavOrganization", () => {
         globalThis.fetch as unknown as { mock: { calls: unknown[][] } }
       ).mock.calls
       const hasCreateCall = fetchCalls.some((call) => {
-        const input = call[0] as
-          | string
-          | URL
-          | { url?: string }
-          | undefined
+        const input = call[0] as string | URL | { url?: string } | undefined
         const path =
           typeof input === "string"
             ? input
             : input instanceof URL
               ? input.pathname
-              : input?.url ?? ""
+              : (input?.url ?? "")
         return path.includes("/api/tenants/organizations/create")
       })
-      expect(
-        hasCreateCall
-      ).toBe(true)
+      expect(hasCreateCall).toBe(true)
       expect(mockSwitchToOrganization).toHaveBeenCalledWith("org_new", {
         returnTo: "/en/console/organization?tab=members",
       })

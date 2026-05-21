@@ -21,6 +21,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 import type {
   K8sEnvironmentId,
@@ -73,10 +80,23 @@ export function TabDomains({
   }
 
   const handleDeleteDomain = (id: string) => {
-    setDomains((prev) => ({
-      ...prev,
-      [selectedEnv]: prev[selectedEnv].filter((d) => d.id !== id),
-    }))
+    setDomains((prev) => {
+      const currentDomains = prev[selectedEnv]
+      const removedDomain = currentDomains.find((domain) => domain.id === id)
+      const remainingDomains = currentDomains.filter(
+        (domain) => domain.id !== id
+      )
+
+      return {
+        ...prev,
+        [selectedEnv]: removedDomain?.isPrimary
+          ? remainingDomains.map((domain, index) => ({
+              ...domain,
+              isPrimary: index === 0,
+            }))
+          : remainingDomains,
+      }
+    })
   }
 
   const handleForceSSL = (id: string) => {
@@ -117,7 +137,7 @@ export function TabDomains({
             <div className="relative flex-1">
               <Globe
                 size={18}
-                className="absolute left-3 top-3 text-muted-foreground"
+                className="absolute top-3 left-3 text-muted-foreground"
               />
               <Input
                 placeholder="e.g. shop.acme.com"
@@ -126,27 +146,31 @@ export function TabDomains({
                 className="pl-10"
               />
             </div>
-            <select
+            <Select
               value={newDomainTls}
-              onChange={(e) =>
-                setNewDomainTls(
-                  e.target.value as "active" | "expired" | "pending"
-                )
+              onValueChange={(value) =>
+                setNewDomainTls(value as "active" | "expired" | "pending")
               }
-              className="bg-black/50 text-white rounded-lg border border-white/[0.1] px-3 text-sm focus:outline-none"
             >
-              <option value="active">Active SSL</option>
-              <option value="pending">Pending Verification</option>
-              <option value="expired">Expired SSL (Simulation)</option>
-            </select>
+              <SelectTrigger className="h-9 w-[210px] bg-black/50 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active SSL</SelectItem>
+                <SelectItem value="pending">Pending Verification</SelectItem>
+                <SelectItem value="expired">
+                  Expired SSL (Simulation)
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <Button type="submit">Add Domain</Button>
           </form>
 
           {/* Domain Table */}
-          <div className="rounded-lg border border-white/[0.08] overflow-hidden">
-            <table className="w-full text-left border-collapse text-xs">
+          <div className="overflow-hidden rounded-lg border border-white/[0.08]">
+            <table className="w-full border-collapse text-left text-xs">
               <thead>
-                <tr className="bg-white/[0.02] border-b border-white/[0.08] text-muted-foreground uppercase font-semibold">
+                <tr className="border-b border-white/[0.08] bg-white/[0.02] font-semibold text-muted-foreground uppercase">
                   <th className="p-3">Domain</th>
                   <th className="p-3">DNS Status</th>
                   <th className="p-3">TLS Certificate</th>
@@ -157,13 +181,13 @@ export function TabDomains({
                 {domains[selectedEnv].map((item) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-white/[0.01] transition-all"
+                    className="transition-all hover:bg-white/[0.01]"
                   >
                     <td className="p-3 font-medium text-white">
                       <div className="flex items-center gap-1.5">
                         {item.domain}
                         {item.isPrimary && (
-                          <span className="bg-primary/20 text-primary border border-primary/30 text-[9px] px-1.5 py-0.2 rounded font-semibold uppercase">
+                          <span className="py-0.2 rounded border border-primary/30 bg-primary/20 px-1.5 text-[9px] font-semibold text-primary uppercase">
                             Primary
                           </span>
                         )}
@@ -175,7 +199,7 @@ export function TabDomains({
                           <CheckCircle size={12} /> Target verified
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-yellow-400 animate-pulse">
+                        <span className="inline-flex animate-pulse items-center gap-1 text-yellow-400">
                           <Warning size={12} /> Pending propagation
                         </span>
                       )}
@@ -188,28 +212,25 @@ export function TabDomains({
                         </span>
                       )}
                       {item.tlsStatus === "expired" && (
-                        <span className="inline-flex items-center gap-1 text-red-400 font-semibold">
+                        <span className="inline-flex items-center gap-1 font-semibold text-red-400">
                           <ShieldWarning size={14} /> EXPIRED ({item.expiresAt})
                         </span>
                       )}
                       {item.tlsStatus === "pending" && (
                         <span className="inline-flex items-center gap-1 text-yellow-400">
-                          <ArrowClockwise
-                            size={14}
-                            className="animate-spin"
-                          />{" "}
+                          <ArrowClockwise size={14} className="animate-spin" />{" "}
                           Issuing certificate...
                         </span>
                       )}
                     </td>
-                    <td className="p-3 text-right space-x-1.5">
+                    <td className="space-x-1.5 p-3 text-right">
                       {item.tlsStatus === "expired" && (
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
                           onClick={() => handleForceSSL(item.id)}
-                          className="h-7 px-2 text-[10px] border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10"
+                          className="h-7 border-yellow-500/40 px-2 text-[10px] text-yellow-400 hover:bg-yellow-500/10"
                         >
                           Force Renew SSL
                         </Button>
@@ -219,7 +240,7 @@ export function TabDomains({
                         size="sm"
                         variant="ghost"
                         onClick={() => handleDeleteDomain(item.id)}
-                        className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                       >
                         <Trash size={14} />
                       </Button>
@@ -242,62 +263,64 @@ export function TabDomains({
           </div>
 
           {/* DNS instructions card (Q2 Answer) */}
-          <div className="rounded-xl border border-white/[0.06] bg-black/40 p-5 space-y-4 text-xs">
+          <div className="space-y-4 rounded-xl border border-white/[0.06] bg-black/40 p-5 text-xs">
             <div className="space-y-1">
-              <span className="font-bold text-white flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 font-bold text-white">
                 <Wrench size={16} className="text-primary" /> DNS Configuration
                 Requirements
               </span>
               <p className="text-muted-foreground">
-                Configure these DNS records in your domain registrar panel to map
-                traffic to this application.
+                Configure these DNS records in your domain registrar panel to
+                map traffic to this application.
               </p>
             </div>
 
             <div className="grid gap-3 font-mono text-[11px]">
-              <div className="grid grid-cols-4 bg-white/[0.02] border border-white/[0.08] p-2.5 rounded-lg items-center">
-                <span className="text-muted-foreground font-semibold">
+              <div className="grid grid-cols-4 items-center rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5">
+                <span className="font-semibold text-muted-foreground">
                   TYPE
                 </span>
-                <span className="text-muted-foreground font-semibold">
+                <span className="font-semibold text-muted-foreground">
                   HOST
                 </span>
-                <span className="text-muted-foreground font-semibold col-span-2">
+                <span className="col-span-2 font-semibold text-muted-foreground">
                   VALUE / TARGET
                 </span>
               </div>
-              <div className="grid grid-cols-4 border border-white/[0.06] p-2.5 rounded-lg items-center">
-                <span className="text-green-400 font-bold">A</span>
+              <div className="grid grid-cols-4 items-center rounded-lg border border-white/[0.06] p-2.5">
+                <span className="font-bold text-green-400">A</span>
                 <span className="text-white">@</span>
-                <span className="text-white col-span-2 flex items-center justify-between">
+                <span className="col-span-2 flex items-center justify-between text-white">
                   76.76.21.21
-                  <button
+                  <Button
                     type="button"
-                    onClick={() =>
-                      navigator.clipboard.writeText("76.76.21.21")
-                    }
-                    className="text-[10px] text-primary hover:underline font-sans cursor-pointer"
+                    onClick={() => navigator.clipboard.writeText("76.76.21.21")}
+                    variant="link"
+                    size="xs"
+                    className="h-auto p-0 font-sans text-[10px]"
                   >
                     Copy
-                  </button>
+                  </Button>
                 </span>
               </div>
-              <div className="grid grid-cols-4 border border-white/[0.06] p-2.5 rounded-lg items-center">
-                <span className="text-green-400 font-bold">CNAME</span>
+              <div className="grid grid-cols-4 items-center rounded-lg border border-white/[0.06] p-2.5">
+                <span className="font-bold text-green-400">CNAME</span>
                 <span className="text-white">www</span>
-                <span className="text-white col-span-2 flex items-center justify-between">
+                <span className="col-span-2 flex items-center justify-between text-white">
                   laravel-shop.projects-green.dev
-                  <button
+                  <Button
                     type="button"
                     onClick={() =>
                       navigator.clipboard.writeText(
                         "laravel-shop.projects-green.dev"
                       )
                     }
-                    className="text-[10px] text-primary hover:underline font-sans cursor-pointer"
+                    variant="link"
+                    size="xs"
+                    className="h-auto p-0 font-sans text-[10px]"
                   >
                     Copy
-                  </button>
+                  </Button>
                 </span>
               </div>
             </div>
@@ -306,9 +329,9 @@ export function TabDomains({
       </Card>
 
       {/* Cloudflare Troubleshooting Guides (Q9, Q10 Answers) */}
-      <Card className="border-white/[0.06] bg-black/25 space-y-4">
+      <Card className="space-y-4 border-white/[0.06] bg-black/25">
         <CardHeader>
-          <CardTitle className="text-base font-bold text-white flex items-center gap-1.5">
+          <CardTitle className="flex items-center gap-1.5 text-base font-bold text-white">
             <Globe size={18} className="text-orange-500" /> Cloudflare Advisory
           </CardTitle>
           <CardDescription>
@@ -317,36 +340,40 @@ export function TabDomains({
         </CardHeader>
         <CardContent className="space-y-4 text-xs leading-relaxed">
           {/* Cloudflare config options simulator */}
-          <div className="rounded-lg bg-black/40 border border-white/[0.06] p-4 space-y-3">
+          <div className="space-y-3 rounded-lg border border-white/[0.06] bg-black/40 p-4">
             <div className="flex items-center justify-between">
-              <span className="text-white font-medium">
+              <span className="font-medium text-white">
                 Cloudflare Proxy Status
               </span>
-              <button
+              <Button
                 type="button"
                 onClick={() => setCloudflareProxied(!cloudflareProxied)}
-                className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer transition-all ${
+                variant="ghost"
+                size="xs"
+                className={`px-2.5 py-1 text-[10px] font-bold transition-all ${
                   cloudflareProxied
-                    ? "bg-orange-500/20 text-orange-400 border border-orange-500/30"
-                    : "bg-white/10 text-muted-foreground border border-white/10"
+                    ? "border border-orange-500/30 bg-orange-500/20 text-orange-400"
+                    : "border border-white/10 bg-white/10 text-muted-foreground"
                 }`}
               >
                 {cloudflareProxied
                   ? "Proxied (Orange Cloud)"
                   : "DNS Only (Grey Cloud)"}
-              </button>
+              </Button>
             </div>
 
             <div className="space-y-1">
-              <span className="text-muted-foreground block text-[10px]">
+              <span className="block text-[10px] text-muted-foreground">
                 Cloudflare SSL/TLS Encryption Mode:
               </span>
-              <div className="grid grid-cols-3 gap-1 bg-black/60 rounded border border-white/[0.06] p-0.5">
+              <div className="grid grid-cols-3 gap-1 rounded border border-white/[0.06] bg-black/60 p-0.5">
                 {(["flexible", "full", "strict"] as const).map((m) => (
-                  <button
+                  <Button
                     key={m}
                     type="button"
                     onClick={() => setCloudflareSslMode(m)}
+                    variant="ghost"
+                    size="xs"
                     className={`rounded py-1 text-[9px] font-bold capitalize transition-all ${
                       cloudflareSslMode === m
                         ? "bg-primary text-white"
@@ -354,7 +381,7 @@ export function TabDomains({
                     }`}
                   >
                     {m}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -362,34 +389,34 @@ export function TabDomains({
 
           {/* Question 9 Explanation */}
           <div className="space-y-1.5 border-l-2 border-orange-500/40 pl-3">
-            <h4 className="font-bold text-white text-[13px]">
+            <h4 className="text-[13px] font-bold text-white">
               SSL Failures Behind Proxy
             </h4>
-            <p className="text-muted-foreground text-[11px]">
+            <p className="text-[11px] text-muted-foreground">
               If Cloudflare proxy is active before we verify your custom domain,
               our system&apos;s Let&apos;s Encrypt automated HTTP challenge
               might fail. Cloudflare intercepts verification traffic.
             </p>
-            <p className="font-semibold text-primary text-[11px]">
+            <p className="text-[11px] font-semibold text-primary">
               Recommendation: Temporarily switch Cloudflare to &quot;DNS
-              Only&quot; (Grey Cloud) until SSL is issued. Once active, proxy can
-              be re-enabled.
+              Only&quot; (Grey Cloud) until SSL is issued. Once active, proxy
+              can be re-enabled.
             </p>
           </div>
 
           {/* Question 10 Explanation */}
           <div className="space-y-1.5 border-l-2 border-red-500/40 pl-3">
-            <h4 className="font-bold text-white text-[13px]">
+            <h4 className="text-[13px] font-bold text-white">
               Redirect Loops (ERR_TOO_MANY_REDIRECTS)
             </h4>
-            <p className="text-muted-foreground text-[11px]">
+            <p className="text-[11px] text-muted-foreground">
               Using &quot;Flexible&quot; SSL forces Cloudflare to access our
               cluster over HTTP (port 80). Since our router mandates HTTPS
               redirection, it redirects Cloudflare back to HTTPS, causing an
               infinite loop.
             </p>
             <p
-              className={`font-semibold text-[11px] ${cloudflareSslMode === "flexible" ? "text-yellow-400 underline" : "text-green-400"}`}
+              className={`text-[11px] font-semibold ${cloudflareSslMode === "flexible" ? "text-yellow-400 underline" : "text-green-400"}`}
             >
               {cloudflareSslMode === "flexible"
                 ? "⚠️ Current Config: Flexible mode will trigger a loop. Change Cloudflare SSL setting to 'Full' or 'Full (strict)'."

@@ -156,6 +156,7 @@ export function NavOrganization({
       router.refresh()
     } catch {
       setActionError(messages.navOrganization.switchOrganizationError)
+    } finally {
       setSwitchingOrgId(null)
     }
   }
@@ -261,12 +262,15 @@ export function NavOrganization({
               ? activeMemberships.map((membership) => {
                   const isCurrent =
                     membership.organizationId === currentOrganizationId
-                  const isSwitching = switchingOrgId === membership.organizationId
+                  const isSwitching =
+                    switchingOrgId === membership.organizationId
 
                   return (
                     <DropdownMenuItem
                       key={membership.organizationId}
-                      disabled={isCurrent || Boolean(switchingOrgId) || isCreating}
+                      disabled={
+                        isCurrent || Boolean(switchingOrgId) || isCreating
+                      }
                       onSelect={(event) => {
                         event.preventDefault()
                         void handleSwitchOrganization(membership.organizationId)

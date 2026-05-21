@@ -18,11 +18,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
 
-import type {
-  K8sEnvironmentId,
-  EnvVar,
-} from "@/modules/deploy/operate.types"
+import type { K8sEnvironmentId, EnvVar } from "@/modules/deploy/operate.types"
 
 type TabEnvProps = {
   selectedEnv: K8sEnvironmentId
@@ -38,19 +37,21 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
   const [newEnvSecret, setNewEnvSecret] = useState(false)
   const [bulkEnvText, setBulkEnvText] = useState("")
   const [isBulkOpen, setIsBulkOpen] = useState(false)
-  const [visibleSecrets, setVisibleSecrets] = useState<
-    Record<string, boolean>
-  >({})
+  const [visibleSecrets, setVisibleSecrets] = useState<Record<string, boolean>>(
+    {}
+  )
 
   const [trustProxy, setTrustProxy] = useState(false)
 
   const handleAddEnv = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newEnvKey.trim()) return
+    const sanitizedKey = newEnvKey.toUpperCase().replace(/[^A-Z0-9_]/g, "")
+    if (!sanitizedKey) return
 
     const newObj: EnvVar = {
       id: `env-${Date.now()}`,
-      key: newEnvKey.toUpperCase().replace(/[^A-Z0-9_]/g, ""),
+      key: sanitizedKey,
       value: newEnvVal,
       isSecret: newEnvSecret,
       updatedAt: new Date().toISOString().split("T")[0],
@@ -89,6 +90,7 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
           .trim()
           .toUpperCase()
           .replace(/[^A-Z0-9_]/g, "")
+        if (!key) return
         let val = trimmed.substring(eqIdx + 1).trim()
 
         if (
@@ -147,7 +149,7 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsBulkOpen(true)}
-                className="h-8 text-xs border-white/[0.08]"
+                className="h-8 border-white/[0.08] text-xs"
               >
                 Bulk Import .env
               </Button>
@@ -157,26 +159,27 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
             {/* Env Var Form */}
             <form
               onSubmit={handleAddEnv}
-              className="flex flex-wrap gap-2 items-center rounded-lg border border-white/[0.06] bg-black/30 p-3"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.06] bg-black/30 p-3"
             >
               <Input
                 placeholder="KEY (e.g. CACHE_DRIVER)"
                 value={newEnvKey}
                 onChange={(e) => setNewEnvKey(e.target.value)}
-                className="flex-1 min-w-[150px] uppercase h-9 text-xs"
+                className="h-9 min-w-[150px] flex-1 text-xs uppercase"
               />
               <Input
                 placeholder="Value"
                 value={newEnvVal}
                 onChange={(e) => setNewEnvVal(e.target.value)}
-                className="flex-2 min-w-[200px] h-9 text-xs"
+                className="h-9 min-w-[200px] flex-2 text-xs"
               />
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer">
-                <input
-                  type="checkbox"
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground select-none">
+                <Checkbox
                   checked={newEnvSecret}
-                  onChange={(e) => setNewEnvSecret(e.target.checked)}
-                  className="rounded border-white/20 bg-black/50 accent-primary"
+                  onCheckedChange={(checked) =>
+                    setNewEnvSecret(checked === true)
+                  }
+                  className="border-white/20 bg-black/50 data-[state=checked]:bg-primary"
                 />
                 Secret Value
               </label>
@@ -186,42 +189,42 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
             </form>
 
             {/* Env List */}
-            <div className="rounded-lg border border-white/[0.08] overflow-hidden text-xs">
-              <div className="grid grid-cols-4 bg-white/[0.02] border-b border-white/[0.08] p-3 text-muted-foreground uppercase font-semibold">
+            <div className="overflow-hidden rounded-lg border border-white/[0.08] text-xs">
+              <div className="grid grid-cols-4 border-b border-white/[0.08] bg-white/[0.02] p-3 font-semibold text-muted-foreground uppercase">
                 <span className="col-span-2">Name / Key</span>
                 <span>Value</span>
                 <span className="text-right">Actions</span>
               </div>
 
-              <div className="divide-y divide-white/[0.06] max-h-[350px] overflow-y-auto">
+              <div className="max-h-[350px] divide-y divide-white/[0.06] overflow-y-auto">
                 {envVars[selectedEnv].map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-4 p-3 items-center hover:bg-white/[0.01]"
+                    className="grid grid-cols-4 items-center p-3 hover:bg-white/[0.01]"
                   >
-                    <span className="col-span-2 font-mono font-bold text-white break-all pr-2">
+                    <span className="col-span-2 pr-2 font-mono font-bold break-all text-white">
                       {item.key}
                       {item.isSecret && (
-                        <span className="ml-1.5 bg-red-500/10 border border-red-500/20 text-red-400 text-[8px] px-1.5 py-0.2 rounded font-mono font-normal">
+                        <span className="py-0.2 ml-1.5 rounded border border-red-500/20 bg-red-500/10 px-1.5 font-mono text-[8px] font-normal text-red-400">
                           SECRET
                         </span>
                       )}
                     </span>
-                    <span className="font-mono text-muted-foreground break-all">
+                    <span className="font-mono break-all text-muted-foreground">
                       {item.isSecret && !visibleSecrets[item.id] ? (
                         <span>••••••••••••••••</span>
                       ) : (
                         <span className="text-white">{item.value}</span>
                       )}
                     </span>
-                    <span className="text-right space-x-1">
+                    <span className="space-x-1 text-right">
                       {item.isSecret && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleSecretVisibility(item.id)}
-                          className="h-7 w-7 p-0 hover:bg-white/[0.06] text-muted-foreground hover:text-white"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:bg-white/[0.06] hover:text-white"
                         >
                           {visibleSecrets[item.id] ? (
                             <EyeSlash size={14} />
@@ -235,7 +238,7 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteEnv(item.id)}
-                        className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                       >
                         <Trash size={14} />
                       </Button>
@@ -250,7 +253,7 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
         {/* Reverse Proxy / Trust Proxy Configuration (Q11 Answer) */}
         <Card className="border-white/[0.06] bg-black/25">
           <CardHeader>
-            <CardTitle className="text-base font-bold text-white flex items-center gap-1.5">
+            <CardTitle className="flex items-center gap-1.5 text-base font-bold text-white">
               <ArrowsLeftRight size={18} className="text-primary" /> Reverse
               Proxy Ingress
             </CardTitle>
@@ -259,51 +262,53 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-xs leading-relaxed">
-            <div className="rounded-lg bg-black/40 border border-white/[0.06] p-4 space-y-3">
+            <div className="space-y-3 rounded-lg border border-white/[0.06] bg-black/40 p-4">
               <div className="flex items-center justify-between">
-                <span className="text-white font-medium">
+                <span className="font-medium text-white">
                   Trust Forwarded Headers
                 </span>
-                <button
+                <Button
                   type="button"
                   onClick={() => setTrustProxy(!trustProxy)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded cursor-pointer transition-all ${
+                  variant="ghost"
+                  size="sm"
+                  className={`px-3 py-1.5 text-xs font-bold transition-all ${
                     trustProxy
                       ? "bg-primary text-white"
-                      : "bg-white/10 text-muted-foreground border border-white/10"
+                      : "border border-white/10 bg-white/10 text-muted-foreground"
                   }`}
                 >
                   {trustProxy ? "TRUST ACTIVE" : "DISABLED"}
-                </button>
+                </Button>
               </div>
-              <p className="text-muted-foreground text-[11px]">
+              <p className="text-[11px] text-muted-foreground">
                 Configures nginx and application environment variable:{" "}
                 <code>TRUST_PROXIES=*</code>.
               </p>
             </div>
 
-            <div className="space-y-2 pl-3 border-l-2 border-blue-500/40">
-              <h4 className="font-bold text-white text-[13px]">
+            <div className="space-y-2 border-l-2 border-blue-500/40 pl-3">
+              <h4 className="text-[13px] font-bold text-white">
                 User IP Resolution (Q11)
               </h4>
-              <p className="text-muted-foreground text-[11px]">
+              <p className="text-[11px] text-muted-foreground">
                 When deployed behind proxy loads (like Cloudflare, ALB, or local
                 nginx Ingress), client requests show internal local cluster IPs
                 (e.g. <code>10.0.12.33</code>) in application logging.
               </p>
-              <p className="text-muted-foreground text-[11px]">
+              <p className="text-[11px] text-muted-foreground">
                 <strong>Solution:</strong> Enabling &quot;Trust Forwarded
                 Headers&quot; commands the application server to read client
                 parameters from the <code>X-Forwarded-For</code> header sent by
                 proxies.
               </p>
               {trustProxy ? (
-                <span className="inline-flex items-center gap-1 text-green-400 font-semibold text-[11px]">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-green-400">
                   ✓ Trust proxies is active. Real client IPs will show in
                   application code (request()-&gt;ip()).
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-yellow-400 font-semibold text-[11px]">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-yellow-400">
                   ⚠️ Currently disabled. Client IP will register as internal
                   cluster IP.
                 </span>
@@ -315,8 +320,8 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
 
       {/* BULK IMPORT .ENV MODAL */}
       {isBulkOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-white/10 rounded-xl max-w-lg w-full p-5 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg space-y-4 rounded-xl border border-white/10 bg-neutral-900 p-5">
             <h3 className="text-base font-bold text-white">
               Bulk Import .env Variables
             </h3>
@@ -324,12 +329,12 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
               Paste plain text .env definitions (KEY=VALUE). Lines starting with
               # will be skipped.
             </p>
-            <textarea
+            <Textarea
               value={bulkEnvText}
               onChange={(e) => setBulkEnvText(e.target.value)}
               placeholder="APP_KEY=base64:...\nDB_DATABASE=shop\nCACHE_DRIVER=redis"
               rows={8}
-              className="w-full bg-black/50 text-white border border-white/[0.1] rounded-lg p-3 font-mono text-xs focus:outline-none"
+              className="w-full bg-black/50 p-3 font-mono text-xs"
             />
             <div className="flex justify-end gap-2 text-xs">
               <Button

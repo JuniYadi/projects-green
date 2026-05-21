@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ArrowClockwise,
   CheckCircle,
@@ -29,6 +29,20 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
     "idle" | "fetching" | "building" | "restarting" | "success"
   >("idle")
   const [buildLogs, setBuildLogs] = useState<string[]>([])
+  const rebuildTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([])
+
+  const clearRebuildTimers = () => {
+    for (const timerId of rebuildTimersRef.current) {
+      clearTimeout(timerId)
+    }
+    rebuildTimersRef.current = []
+  }
+
+  useEffect(() => {
+    return () => {
+      clearRebuildTimers()
+    }
+  }, [])
 
   const healthStatus: AppStatusType =
     diagnosticMode === "healthy"
@@ -40,12 +54,13 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
           : "degraded"
 
   const handleRebuild = () => {
+    clearRebuildTimers()
     setRebuildState("fetching")
     setBuildLogs([
       "[17:55:00] Pulling latest updates from git repository acme/laravel-shop:main...",
     ])
 
-    setTimeout(() => {
+    const buildingTimerId = setTimeout(() => {
       setRebuildState("building")
       setBuildLogs((prev) => [
         ...prev,
@@ -58,8 +73,9 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
         "[17:55:11] Pushing container to registry... Done",
       ])
     }, 2000)
+    rebuildTimersRef.current.push(buildingTimerId)
 
-    setTimeout(() => {
+    const restartingTimerId = setTimeout(() => {
       setRebuildState("restarting")
       setBuildLogs((prev) => [
         ...prev,
@@ -70,15 +86,18 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
         "[17:55:18] Terminating old pod replicas...",
       ])
     }, 5000)
+    rebuildTimersRef.current.push(restartingTimerId)
 
-    setTimeout(() => {
+    const successTimerId = setTimeout(() => {
       setRebuildState("success")
       setBuildLogs((prev) => [
         ...prev,
         "[17:55:20] Deployment completed. Site is healthy and active.",
       ])
-      setTimeout(() => setRebuildState("idle"), 3000)
+      const resetTimerId = setTimeout(() => setRebuildState("idle"), 3000)
+      rebuildTimersRef.current.push(resetTimerId)
     }, 8000)
+    rebuildTimersRef.current.push(successTimerId)
   }
 
   return (
@@ -94,23 +113,23 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
               Git repository synchronization and pipeline builds
             </CardDescription>
           </div>
-          <span className="flex h-2.5 w-2.5 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500"></span>
           </span>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 rounded-lg bg-black/40 border border-white/[0.06] p-4 text-sm">
+          <div className="grid grid-cols-2 gap-4 rounded-lg border border-white/[0.06] bg-black/40 p-4 text-sm">
             <div className="space-y-1">
-              <span className="text-xs text-muted-foreground block">
+              <span className="block text-xs text-muted-foreground">
                 Source Provider
               </span>
-              <span className="font-semibold text-white flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 font-semibold text-white">
                 GitHub
               </span>
             </div>
             <div className="space-y-1">
-              <span className="text-xs text-muted-foreground block">
+              <span className="block text-xs text-muted-foreground">
                 Repository
               </span>
               <span className="font-semibold text-white">
@@ -118,13 +137,13 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
               </span>
             </div>
             <div className="space-y-1">
-              <span className="text-xs text-muted-foreground block">
+              <span className="block text-xs text-muted-foreground">
                 Active Branch
               </span>
-              <span className="font-mono text-primary font-bold">main</span>
+              <span className="font-mono font-bold text-primary">main</span>
             </div>
             <div className="space-y-1">
-              <span className="text-xs text-muted-foreground block">
+              <span className="block text-xs text-muted-foreground">
                 Last Synced Commit
               </span>
               <span className="font-mono font-semibold text-white">
@@ -155,7 +174,7 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
             </div>
 
             {rebuildState !== "idle" && (
-              <div className="rounded-lg bg-black/90 p-4 font-mono text-xs text-green-400 max-h-[160px] overflow-y-auto border border-green-500/20">
+              <div className="max-h-[160px] overflow-y-auto rounded-lg border border-green-500/20 bg-black/90 p-4 font-mono text-xs text-green-400">
                 {buildLogs.map((log, idx) => (
                   <div key={idx}>{log}</div>
                 ))}
@@ -171,23 +190,21 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
           <CardTitle className="text-base font-bold text-white">
             Accessibility Diagnostics
           </CardTitle>
-          <CardDescription>
-            App endpoint availability auditing
-          </CardDescription>
+          <CardDescription>App endpoint availability auditing</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div
-            className={`rounded-lg border p-4 text-xs space-y-3 ${
+            className={`space-y-3 rounded-lg border p-4 text-xs ${
               diagnosticMode === "healthy"
                 ? "border-green-500/20 bg-green-500/5 text-green-300"
                 : "border-red-500/20 bg-red-500/5 text-red-300"
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="font-bold uppercase tracking-wider">
+              <span className="font-bold tracking-wider uppercase">
                 Health Status Check
               </span>
-              <span className="font-mono text-white text-[10px] bg-black/50 px-2 py-0.5 rounded border border-white/[0.06]">
+              <span className="rounded border border-white/[0.06] bg-black/50 px-2 py-0.5 font-mono text-[10px] text-white">
                 {diagnosticMode === "healthy"
                   ? "HTTP 200 OK"
                   : diagnosticMode === "error_502"
@@ -215,7 +232,7 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
                   Kubernetes pod is not listening on the expected port
                   (targetPort: 8080) or crashed on boot.
                 </p>
-                <p className="text-white bg-black/30 p-2 rounded border border-white/5 font-mono text-[10px]">
+                <p className="rounded border border-white/5 bg-black/30 p-2 font-mono text-[10px] text-white">
                   Solution: Go to your Dockerfile/code configuration and ensure
                   the app starts up on port 8080. Check &apos;Opensearch
                   Logs&apos; to verify PHP-FPM / Node boot errors.
@@ -233,7 +250,7 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
                   expired on 2026-05-18. Kubernetes cert-manager failed
                   validation because DNS is misconfigured.
                 </p>
-                <p className="text-white bg-black/30 p-2 rounded border border-white/5 font-mono text-[10px]">
+                <p className="rounded border border-white/5 bg-black/30 p-2 font-mono text-[10px] text-white">
                   Solution: Visit the &apos;Domains &amp; SSL&apos; tab, check
                   that your DNS records target the cluster IP exactly, and click
                   &apos;Force SSL Renewal&apos;.
@@ -251,7 +268,7 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
                   active. Cloudflare hits our ingress controller on HTTP, which
                   redirects to HTTPS, and sends it back to Cloudflare.
                 </p>
-                <p className="text-white bg-black/30 p-2 rounded border border-white/5 font-mono text-[10px]">
+                <p className="rounded border border-white/5 bg-black/30 p-2 font-mono text-[10px] text-white">
                   Solution: Change your Cloudflare SSL/TLS setting from
                   &apos;Flexible&apos; to &apos;Full&apos; or &apos;Full
                   (strict)&apos; to encrypt traffic to the origin.
@@ -260,19 +277,19 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
             )}
           </div>
 
-          <div className="rounded-lg bg-black/40 border border-white/[0.06] p-3 text-xs space-y-2">
-            <span className="font-medium text-white block">
+          <div className="space-y-2 rounded-lg border border-white/[0.06] bg-black/40 p-3 text-xs">
+            <span className="block font-medium text-white">
               Cluster Endpoint Details
             </span>
-            <div className="flex items-center justify-between text-muted-foreground font-mono">
+            <div className="flex items-center justify-between font-mono text-muted-foreground">
               <span>Cluster Host:</span>
               <span className="text-white">k8s-ingress-prod.local</span>
             </div>
-            <div className="flex items-center justify-between text-muted-foreground font-mono">
+            <div className="flex items-center justify-between font-mono text-muted-foreground">
               <span>Target Port:</span>
               <span className="text-white">80 / 8080 (TCP)</span>
             </div>
-            <div className="flex items-center justify-between text-muted-foreground font-mono">
+            <div className="flex items-center justify-between font-mono text-muted-foreground">
               <span>Replicas:</span>
               <span className="text-white">{replicas} active</span>
             </div>
