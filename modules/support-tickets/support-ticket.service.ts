@@ -5,6 +5,13 @@ import {
   supportTicketStatusSchema,
 } from "@/modules/support-tickets/support-ticket.schema"
 import {
+  createSupportTicketContentCipher,
+  SupportTicketCiphertextFormatError,
+  type SupportTicketContentCipher,
+  SupportTicketDecryptionError,
+  SupportTicketEncryptionConfigurationError,
+} from "@/modules/support-tickets/support-ticket-content-cipher"
+import {
   assertSupportTicketStatusTransition,
   canCreateSupportTicketInternalReply,
   canCreateSupportTicketReply,
@@ -32,6 +39,13 @@ export class SupportTicketAccessDeniedError extends Error {
   constructor(action: string) {
     super(`You do not have permission to ${action} this support ticket.`)
     this.name = "SupportTicketAccessDeniedError"
+  }
+}
+
+export class SupportTicketContentUnavailableError extends Error {
+  constructor() {
+    super("Support ticket content is unavailable.")
+    this.name = "SupportTicketContentUnavailableError"
   }
 }
 
@@ -64,6 +78,7 @@ const defaultTicketNumberFactory = () => {
 }
 
 type CreateSupportTicketServiceOptions = {
+  contentCipher?: SupportTicketContentCipher
   repository?: SupportTicketRepository
   ticketNumberFactory?: () => string
 }
@@ -129,43 +144,141 @@ const toTransitionTimestamps = (
   }
 }
 
+const createLazyDefaultContentCipher = (): SupportTicketContentCipher => {
+  let cipher: SupportTicketContentCipher | null = null
+
+  return {
+    encrypt(value) {
+      cipher ??= createSupportTicketContentCipher()
+      return cipher.encrypt(value)
+    },
+    decrypt(value) {
+      cipher ??= createSupportTicketContentCipher()
+      return cipher.decrypt(value)
+    },
+  }
+}
+
+const toSafeContentError = (error: unknown) => {
+  if (
+    error instanceof SupportTicketEncryptionConfigurationError ||
+    error instanceof SupportTicketCiphertextFormatError ||
+    error instanceof SupportTicketDecryptionError
+  ) {
+    return new SupportTicketContentUnavailableError()
+  }
+
+  return error
+}
+
+const encryptTicketContent = (
+  cipher: SupportTicketContentCipher,
+  input: CreateSupportTicketInput
+): CreateSupportTicketInput => {
+  return {
+    ...input,
+    subject: cipher.encrypt(input.subject),
+    description: input.description ? cipher.encrypt(input.description) : null,
+  }
+}
+
+const decryptTicketContent = (
+  cipher: SupportTicketContentCipher,
+  ticket: SupportTicket
+): SupportTicket => {
+  return {
+    ...ticket,
+    subject: cipher.decrypt(ticket.subject),
+    description: ticket.description ? cipher.decrypt(ticket.description) : null,
+  }
+}
+
+const encryptReplyContent = (
+  cipher: SupportTicketContentCipher,
+  input: CreateSupportTicketReplyInput
+): CreateSupportTicketReplyInput => {
+  return {
+    ...input,
+    body: cipher.encrypt(input.body),
+  }
+}
+
+const decryptReplyContent = (
+  cipher: SupportTicketContentCipher,
+  reply: SupportTicketThread["replies"][number]
+): SupportTicketThread["replies"][number] => {
+  return {
+    ...reply,
+    body: cipher.decrypt(reply.body),
+  }
+}
+
 export const createSupportTicketService = (
   options: CreateSupportTicketServiceOptions = {}
 ): SupportTicketService => {
   const repository = options.repository ?? createLazyDefaultRepository()
+  const contentCipher =
+    options.contentCipher ?? createLazyDefaultContentCipher()
   const ticketNumberFactory =
     options.ticketNumberFactory ?? defaultTicketNumberFactory
 
   return {
     async createTicket(input) {
       const parsedInput = createSupportTicketInputSchema.parse(input)
+      const ticketNumber = ticketNumberFactory()
 
-      return repository.createTicket({
-        ...parsedInput,
-        ticketNumber: ticketNumberFactory(),
-      })
+      try {
+        const encryptedInput = encryptTicketContent(contentCipher, parsedInput)
+        const storedTicket = await repository.createTicket({
+          ...encryptedInput,
+          ticketNumber,
+        })
+
+        return decryptTicketContent(contentCipher, storedTicket)
+      } catch (error) {
+        throw toSafeContentError(error)
+      }
     },
     async listTickets(input) {
       const actor = supportTicketActorContextSchema.parse(input.actor)
-
-      return repository.listTicketsByOrganization({
+      const tickets = await repository.listTicketsByOrganization({
         organizationId: actor.organizationId,
         limit: input.limit,
       })
+
+      try {
+        return tickets.map((ticket) => decryptTicketContent(contentCipher, ticket))
+      } catch (error) {
+        throw toSafeContentError(error)
+      }
     },
     async getTicketThread(input) {
       const actor = supportTicketActorContextSchema.parse(input.actor)
-      const ticket = await repository.getTicketThread(input.ticketId)
+      const ticketOwnership = await repository.getTicketById(input.ticketId)
 
-      if (!ticket) {
+      if (!ticketOwnership) {
         throw new SupportTicketNotFoundError(input.ticketId)
       }
 
-      if (!canReadSupportTicket(actor, ticket.ticket)) {
+      if (!canReadSupportTicket(actor, ticketOwnership)) {
         throw new SupportTicketAccessDeniedError("read")
       }
 
-      return ticket
+      const ticketThread = await repository.getTicketThread(input.ticketId)
+      if (!ticketThread) {
+        throw new SupportTicketNotFoundError(input.ticketId)
+      }
+
+      try {
+        return {
+          ticket: decryptTicketContent(contentCipher, ticketThread.ticket),
+          replies: ticketThread.replies.map((reply) =>
+            decryptReplyContent(contentCipher, reply)
+          ),
+        }
+      } catch (error) {
+        throw toSafeContentError(error)
+      }
     },
     async transitionStatus(input) {
       const actor = supportTicketActorContextSchema.parse(input.actor)
@@ -184,13 +297,18 @@ export const createSupportTicketService = (
 
       const now = new Date()
       const timestamps = toTransitionTimestamps(ticket, nextStatus, now)
-
-      return repository.updateTicketStatus({
+      const updatedTicket = await repository.updateTicketStatus({
         ticketId: input.ticketId,
         status: nextStatus,
         resolvedAt: timestamps.resolvedAt,
         closedAt: timestamps.closedAt,
       })
+
+      try {
+        return decryptTicketContent(contentCipher, updatedTicket)
+      } catch (error) {
+        throw toSafeContentError(error)
+      }
     },
     async addReply(input) {
       const actor = supportTicketActorContextSchema.parse(input.actor)
@@ -209,7 +327,13 @@ export const createSupportTicketService = (
         throw new SupportTicketAccessDeniedError("add a reply to")
       }
 
-      return repository.createReply(reply)
+      try {
+        const encryptedReply = encryptReplyContent(contentCipher, reply)
+        const storedReply = await repository.createReply(encryptedReply)
+        return decryptReplyContent(contentCipher, storedReply)
+      } catch (error) {
+        throw toSafeContentError(error)
+      }
     },
   }
 }
