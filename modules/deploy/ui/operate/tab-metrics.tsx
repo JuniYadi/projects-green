@@ -66,6 +66,28 @@ const parseMemoryToBytes = (value: string) => {
   return numeric * factor
 }
 
+const formatCoreValue = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0"
+  }
+
+  return value >= 1 ? value.toFixed(1) : value.toFixed(2)
+}
+
+const formatMemoryValue = (bytes: number) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 MiB"
+  }
+
+  const gib = 1024 ** 3
+  const mib = 1024 ** 2
+  if (bytes >= gib) {
+    return `${(bytes / gib).toFixed(2)} GiB`
+  }
+
+  return `${(bytes / mib).toFixed(0)} MiB`
+}
+
 export function TabMetrics({
   cpuLimit = "1000m",
   memLimit = "512Mi",
@@ -169,9 +191,11 @@ export function TabMetrics({
               ⚠️ Low RAM Headroom
             </span>
             <p>
-              Your app is utilizing <strong>91% of allocated RAM</strong>{" "}
-              (468MiB of 512MiB). This triggers warning signals. Under load,
-              pods will suffer OOMKilled restarts.
+              Your app is utilizing{" "}
+              <strong>{memoryPercent}% of allocated RAM</strong> (
+              {formatMemoryValue(memoryUsageValue)} of{" "}
+              {formatMemoryValue(memoryLimitValue)}). This triggers warning
+              signals. Under load, pods will suffer OOMKilled restarts.
             </p>
             <p className="rounded border border-white/5 bg-black/40 p-2 font-mono text-[10px] font-semibold text-white">
               Recommendation: Scale your Memory Limit to 1024MiB (1GiB) in the
@@ -184,8 +208,11 @@ export function TabMetrics({
               ✓ CPU Headroom Adequate
             </span>
             <p>
-              CPU usage is steady at 34% (340m cores). The allocated 1.0 core
-              limit provides plenty of buffer for routing requests.
+              CPU usage is steady at {cpuPercent}% (
+              {formatCoreValue(cpuUsageValue)} of{" "}
+              {formatCoreValue(cpuLimitValue)} cores). The allocated{" "}
+              {formatCoreValue(cpuLimitValue)} core limit provides plenty of
+              buffer for routing requests.
             </p>
           </div>
         </CardContent>
