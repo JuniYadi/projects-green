@@ -37,10 +37,10 @@ describe("InvoiceDetailPage", () => {
     const view = render(ui)
 
     expect(
-      view.getByText(
+      view.getAllByText(
         /Invoice "invoice_unknown" is not available in mocked records\./
-      )
-    ).toBeInTheDocument()
+      ).length
+    ).toBeGreaterThan(0)
   })
 
   it("accepts scenario override from query params", async () => {

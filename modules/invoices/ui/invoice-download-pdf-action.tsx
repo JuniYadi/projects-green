@@ -89,34 +89,50 @@ export function InvoiceDownloadPdfAction({
   const isInitiating = actionState.status === "initiating"
   const isDisabled = isInitiating || actionState.status === "disabled"
 
+  const resetActionState = () => {
+    setActionState(INITIAL_ACTION_STATE)
+    setLastEndpoint(null)
+  }
+
   const handleDownload = async () => {
     setActionState({
       status: "initiating",
       message: "Initiating mocked download request...",
     })
 
-    const result = await runInvoicePdfDownloadPlaceholder({
-      invoiceId,
-      invoiceNumber: downloadData.invoice.invoiceNumber,
-      outcome: mockOutcome,
-      delayMs: mockDelayMs,
-    })
-
-    setLastEndpoint(result.endpoint)
-
-    if (result.status === "failure") {
-      setActionState({
-        status: "failure",
-        message: `[${result.code}] ${result.message}`,
+    try {
+      const result = await runInvoicePdfDownloadPlaceholder({
+        invoiceId,
+        invoiceNumber: downloadData.invoice.invoiceNumber,
+        outcome: mockOutcome,
+        delayMs: mockDelayMs,
       })
 
-      return
-    }
+      setLastEndpoint(result.endpoint)
 
-    setActionState({
-      status: result.status,
-      message: result.message,
-    })
+      if (result.status === "failure") {
+        setActionState({
+          status: "failure",
+          message: `[${result.code}] ${result.message}`,
+        })
+
+        return
+      }
+
+      setActionState({
+        status: result.status,
+        message: result.message,
+      })
+    } catch (error) {
+      setLastEndpoint(null)
+
+      setActionState({
+        status: "failure",
+        message: `Unexpected error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      })
+    }
   }
 
   return (
@@ -149,7 +165,7 @@ export function InvoiceDownloadPdfAction({
                   actionState.status === "disabled" &&
                   option.value !== "disabled"
                 ) {
-                  setActionState(INITIAL_ACTION_STATE)
+                  resetActionState()
                 }
               }}
             >
@@ -172,7 +188,7 @@ export function InvoiceDownloadPdfAction({
           type="button"
           size="sm"
           variant="ghost"
-          onClick={() => setActionState(INITIAL_ACTION_STATE)}
+          onClick={resetActionState}
         >
           Reset state
         </Button>

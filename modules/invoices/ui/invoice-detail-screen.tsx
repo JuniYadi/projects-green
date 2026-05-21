@@ -246,7 +246,7 @@ export function InvoiceDetailScreen({
 
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href="#invoice-download-pdf">Download PDF</Link>
+            <Link href="#invoice-download-panel">Download PDF</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link href={`${invoiceBasePath}?flow=payment`}>Pay Invoice</Link>
@@ -287,17 +287,19 @@ export function InvoiceDetailScreen({
         </div>
       </div>
 
-      <InvoiceScreenStatePanel
-        flow="download"
-        state={downloadState}
-        integrationTodos={INVOICE_INTEGRATION_TODOS.download}
-        renderSuccess={(downloadData) => (
-          <InvoiceDownloadPdfAction
-            invoiceId={invoiceId}
-            downloadData={downloadData}
-          />
-        )}
-      />
+      <div id="invoice-download-panel">
+        <InvoiceScreenStatePanel
+          flow="download"
+          state={downloadState}
+          integrationTodos={INVOICE_INTEGRATION_TODOS.download}
+          renderSuccess={(downloadData) => (
+            <InvoiceDownloadPdfAction
+              invoiceId={invoiceId}
+              downloadData={downloadData}
+            />
+          )}
+        />
+      </div>
 
       <InvoiceScreenStatePanel
         flow="view"

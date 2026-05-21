@@ -30,13 +30,13 @@ describe("InvoiceDownloadPdfAction", () => {
 
     expect(
       view.getByText("Ready to trigger mocked PDF download flow.")
-    ).toBeTruthy()
+    ).toBeInTheDocument()
     fireEvent.click(view.getByRole("button", { name: "Download PDF (Mock)" }))
 
     await waitFor(() => {
       expect(
         view.getByText("Mock PDF request for INV-2026-0041 completed.")
-      ).toBeTruthy()
+      ).toBeInTheDocument()
     })
   })
 
@@ -57,7 +57,7 @@ describe("InvoiceDownloadPdfAction", () => {
         view.getByText(
           "[INVOICE_PDF_PLACEHOLDER_FAILED] Mock request for INV-2026-0041 failed before file delivery."
         )
-      ).toBeTruthy()
+      ).toBeInTheDocument()
     })
 
     fireEvent.click(view.getByRole("button", { name: "Disabled" }))
@@ -68,12 +68,11 @@ describe("InvoiceDownloadPdfAction", () => {
         view.getByText(
           "Mock download for INV-2026-0041 is disabled by scenario."
         )
-      ).toBeTruthy()
+      ).toBeInTheDocument()
     })
 
-    const downloadButton = view.getByRole("button", {
-      name: "Download PDF (Mock)",
-    }) as HTMLButtonElement
-    expect(downloadButton.disabled).toBe(true)
+    expect(
+      view.getByRole("button", { name: "Download PDF (Mock)" })
+    ).toBeDisabled()
   })
 })
