@@ -28,6 +28,7 @@ import {
 } from "@/modules/invoices/invoices.helpers"
 import {
   INVOICE_INTEGRATION_TODOS,
+  resolveInvoiceDownloadScenarioState,
   resolveInvoiceViewScenarioState,
 } from "@/modules/invoices/invoices.mock"
 import type {
@@ -35,6 +36,7 @@ import type {
   InvoiceScreenScenario,
   InvoiceStatus,
 } from "@/modules/invoices/invoices.types"
+import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 import { InvoiceScreenStatePanel } from "@/modules/invoices/ui/invoice-screen-state-panel"
 import { InvoiceStatusPill } from "@/modules/invoices/ui/invoice-status-pill"
 
@@ -213,8 +215,15 @@ export function InvoiceDetailScreen({
   const [scenario, setScenario] =
     useState<InvoiceScreenScenario>(initialScenario)
 
-  const state = useMemo(() => {
+  const viewState = useMemo(() => {
     return resolveInvoiceViewScenarioState({
+      invoiceId,
+      scenario,
+    })
+  }, [invoiceId, scenario])
+
+  const downloadState = useMemo(() => {
+    return resolveInvoiceDownloadScenarioState({
       invoiceId,
       scenario,
     })
@@ -237,9 +246,7 @@ export function InvoiceDetailScreen({
 
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href={`${invoiceBasePath}?flow=download`}>
-              Download Invoice
-            </Link>
+            <Link href="#invoice-download-pdf">Download PDF</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link href={`${invoiceBasePath}?flow=payment`}>Pay Invoice</Link>
@@ -281,8 +288,20 @@ export function InvoiceDetailScreen({
       </div>
 
       <InvoiceScreenStatePanel
+        flow="download"
+        state={downloadState}
+        integrationTodos={INVOICE_INTEGRATION_TODOS.download}
+        renderSuccess={(downloadData) => (
+          <InvoiceDownloadPdfAction
+            invoiceId={invoiceId}
+            downloadData={downloadData}
+          />
+        )}
+      />
+
+      <InvoiceScreenStatePanel
         flow="view"
-        state={state}
+        state={viewState}
         integrationTodos={INVOICE_INTEGRATION_TODOS.view}
         renderSuccess={(detail) => (
           <div className="grid gap-4">

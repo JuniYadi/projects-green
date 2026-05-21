@@ -2,6 +2,7 @@ import type {
   InvoiceFlowId,
   InvoiceFlowScenarioRegistry,
   InvoiceDetail,
+  InvoiceDownloadData,
   InvoiceListItem,
   InvoiceScreenScenario,
   InvoiceScreenState,
@@ -238,6 +239,45 @@ export const resolveInvoiceViewScenarioState = ({
   return {
     ...INVOICE_FLOW_STATE_REGISTRY.view.success,
     data: buildInvoiceDetailFromListItem(invoice),
+  }
+}
+
+export const resolveInvoiceDownloadScenarioState = ({
+  invoiceId,
+  scenario,
+}: {
+  invoiceId: string
+  scenario: InvoiceScreenScenario
+}): InvoiceScreenState<"download", InvoiceDownloadData> => {
+  const invoice = getInvoiceListItemById(invoiceId)
+
+  if (scenario !== "success") {
+    if (!invoice && scenario === "empty") {
+      const emptyState = INVOICE_FLOW_STATE_REGISTRY.download.empty
+
+      return {
+        ...emptyState,
+        message: `Invoice "${invoiceId}" is not available in mocked records.`,
+      }
+    }
+
+    return INVOICE_FLOW_STATE_REGISTRY.download[scenario]
+  }
+
+  if (!invoice) {
+    return {
+      ...INVOICE_FLOW_STATE_REGISTRY.download.empty,
+      description: "No downloadable invoice file exists for this invoice.",
+      message: `Invoice "${invoiceId}" is not available in mocked records.`,
+    }
+  }
+
+  return {
+    ...INVOICE_FLOW_STATE_REGISTRY.download.success,
+    data: {
+      ...INVOICE_FLOW_STATE_REGISTRY.download.success.data,
+      invoice,
+    },
   }
 }
 
