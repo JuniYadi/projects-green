@@ -111,9 +111,9 @@ describe("Operate tabs coverage", () => {
         "laravel-shop.projects-green.dev"
       )
 
-      const deleteButtons = view
-        .getAllByRole("button")
-        .filter((button) => button.className.includes("text-red-400"))
+      const deleteButtons = view.getAllByRole("button", {
+        name: /delete domain/i,
+      })
       fireEvent.click(deleteButtons[0])
     } finally {
       Object.defineProperty(navigator, "clipboard", {

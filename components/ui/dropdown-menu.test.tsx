@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 import { describe, expect, it } from "bun:test"
 import { render } from "@testing-library/react"
 
@@ -57,6 +55,8 @@ describe("DropdownMenu", () => {
     )
 
     expect(view.getByText("Open")).toBeInTheDocument()
-    expect(view.container.querySelector('[data-slot="dropdown-menu-trigger"]')).toBeTruthy()
+    expect(
+      view.container.querySelector('[data-slot="dropdown-menu-trigger"]')
+    ).toBeInTheDocument()
   })
 })

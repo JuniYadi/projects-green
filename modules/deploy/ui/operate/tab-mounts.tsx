@@ -11,7 +11,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 import type {
   K8sEnvironmentId,
@@ -156,7 +158,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
               <label className="block font-medium text-muted-foreground">
                 PEM Content / Private Key Data
               </label>
-              <textarea
+              <Textarea
                 ref={mountContentInputRef}
                 placeholder="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0..."
                 rows={6}
@@ -165,10 +167,11 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
             </div>
 
             <label className="flex cursor-pointer items-center gap-1.5 text-muted-foreground select-none">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={newMountReadOnly}
-                onChange={(e) => setNewMountReadOnly(e.target.checked)}
+                onCheckedChange={(value) =>
+                  setNewMountReadOnly(Boolean(value))
+                }
                 className="rounded border-white/20 bg-black/50 accent-primary"
               />
               Read-Only (Recommended: Mode 0400)

@@ -26,7 +26,9 @@ describe("Avatar", () => {
       </AvatarGroup>
     )
 
-    expect(view.container.querySelector('[data-slot="avatar-group"]')).toBeTruthy()
+    expect(
+      view.container.querySelector('[data-slot="avatar-group"]')
+    ).toBeInTheDocument()
     expect(view.getByText("JA")).toBeInTheDocument()
     expect(view.getByText("+2")).toBeInTheDocument()
   })

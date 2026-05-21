@@ -240,6 +240,8 @@ export function TabDomains({
                         size="sm"
                         variant="ghost"
                         onClick={() => handleDeleteDomain(item.id)}
+                        aria-label={`Delete domain ${item.domain}`}
+                        title={`Delete domain ${item.domain}`}
                         className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                       >
                         <Trash size={14} />

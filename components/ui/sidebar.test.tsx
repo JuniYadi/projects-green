@@ -78,8 +78,12 @@ describe("Sidebar", () => {
 
     expect(view.getByText("Dashboard")).toBeInTheDocument()
     expect(view.getByText("Main panel")).toBeInTheDocument()
-    expect(view.container.querySelector('[data-slot="sidebar-trigger"]')).toBeTruthy()
-    expect(view.container.querySelector('[data-slot="sidebar-rail"]')).toBeTruthy()
+    expect(
+      view.container.querySelector('[data-slot="sidebar-trigger"]')
+    ).toBeInTheDocument()
+    expect(
+      view.container.querySelector('[data-slot="sidebar-rail"]')
+    ).toBeInTheDocument()
     expect(view.container.querySelector('[data-slot="sidebar"]')).toHaveAttribute(
       "data-state",
       "expanded"

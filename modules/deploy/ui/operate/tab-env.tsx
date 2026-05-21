@@ -224,6 +224,16 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleSecretVisibility(item.id)}
+                          aria-label={
+                            visibleSecrets[item.id]
+                              ? `Hide secret for ${item.key}`
+                              : `Show secret for ${item.key}`
+                          }
+                          title={
+                            visibleSecrets[item.id]
+                              ? `Hide secret for ${item.key}`
+                              : `Show secret for ${item.key}`
+                          }
                           className="h-7 w-7 p-0 text-muted-foreground hover:bg-white/[0.06] hover:text-white"
                         >
                           {visibleSecrets[item.id] ? (
@@ -238,6 +248,8 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteEnv(item.id)}
+                        aria-label={`Delete environment variable ${item.key}`}
+                        title={`Delete environment variable ${item.key}`}
                         className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                       >
                         <Trash size={14} />

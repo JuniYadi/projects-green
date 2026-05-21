@@ -15,29 +15,72 @@ type TabMetricsProps = {
   memLimit: string
 }
 
+const clampPercent = (value: number) => {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+
+  return Math.min(100, Math.max(0, Math.round(value)))
+}
+
+const parseCpuToCores = (value: string) => {
+  const normalized = value.trim().toLowerCase()
+  const numeric = Number.parseFloat(normalized.replace(/[^0-9.]/g, ""))
+  if (!Number.isFinite(numeric)) {
+    return 0
+  }
+
+  return normalized.endsWith("m") ? numeric / 1000 : numeric
+}
+
+const parseMemoryToBytes = (value: string) => {
+  const normalized = value.trim().toLowerCase()
+  const match = normalized.match(/^([0-9]*\.?[0-9]+)\s*([a-z]+)?$/)
+  if (!match) {
+    return 0
+  }
+
+  const numeric = Number.parseFloat(match[1])
+  if (!Number.isFinite(numeric)) {
+    return 0
+  }
+
+  const unit = (match[2] ?? "b").replace(/b$/, "")
+  const factors: Record<string, number> = {
+    "": 1,
+    k: 1_000,
+    m: 1_000_000,
+    g: 1_000_000_000,
+    t: 1_000_000_000_000,
+    ki: 1024,
+    mi: 1024 ** 2,
+    gi: 1024 ** 3,
+    ti: 1024 ** 4,
+  }
+
+  const factor = factors[unit]
+  if (!factor) {
+    return 0
+  }
+
+  return numeric * factor
+}
+
 export function TabMetrics({
   cpuLimit = "1000m",
   memLimit = "512Mi",
 }: TabMetricsProps) {
   const cpuUsage = "340m"
   const memoryUsage = "468MiB"
-  const cpuUsageValue = Number.parseFloat(cpuUsage.replace(/[^0-9.]/g, ""))
-  const cpuLimitValue = Number.parseFloat(cpuLimit.replace(/[^0-9.]/g, ""))
-  const memoryUsageValue = Number.parseFloat(
-    memoryUsage.replace(/[^0-9.]/g, "")
-  )
-  const memoryLimitValue = Number.parseFloat(memLimit.replace(/[^0-9.]/g, ""))
+  const cpuUsageValue = parseCpuToCores(cpuUsage)
+  const cpuLimitValue = parseCpuToCores(cpuLimit)
+  const memoryUsageValue = parseMemoryToBytes(memoryUsage)
+  const memoryLimitValue = parseMemoryToBytes(memLimit)
   const cpuPercent =
-    Number.isFinite(cpuUsageValue) &&
-    Number.isFinite(cpuLimitValue) &&
-    cpuLimitValue > 0
-      ? Math.round((cpuUsageValue / cpuLimitValue) * 100)
-      : 0
+    cpuLimitValue > 0 ? clampPercent((cpuUsageValue / cpuLimitValue) * 100) : 0
   const memoryPercent =
-    Number.isFinite(memoryUsageValue) &&
-    Number.isFinite(memoryLimitValue) &&
     memoryLimitValue > 0
-      ? Math.round((memoryUsageValue / memoryLimitValue) * 100)
+      ? clampPercent((memoryUsageValue / memoryLimitValue) * 100)
       : 0
 
   return (

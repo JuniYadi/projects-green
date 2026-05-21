@@ -25,9 +25,13 @@ describe("Card", () => {
       </Card>
     )
 
-    expect(view.container.querySelector('[data-slot="card"]')).toBeTruthy()
-    expect(view.container.querySelector('[data-slot="card-header"]')).toBeTruthy()
-    expect(view.container.querySelector('[data-slot="card-action"]')).toBeTruthy()
+    expect(view.container.querySelector('[data-slot="card"]')).toBeInTheDocument()
+    expect(
+      view.container.querySelector('[data-slot="card-header"]')
+    ).toBeInTheDocument()
+    expect(
+      view.container.querySelector('[data-slot="card-action"]')
+    ).toBeInTheDocument()
     expect(view.getByText("Deploy status")).toBeInTheDocument()
     expect(view.getByText("Body")).toBeInTheDocument()
     expect(view.getByText("Footer")).toBeInTheDocument()
