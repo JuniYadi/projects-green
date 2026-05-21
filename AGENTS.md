@@ -36,6 +36,12 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - DRY (Don't Repeat Yourself): extract shared helpers for repeated setup, fixtures, and assertions (especially in tests) instead of copy-pasting logic across files.
 - KISS (Keep It Simple, Stupid): prefer straightforward implementations and tests with clear intent; avoid over-engineering, unnecessary abstractions, and brittle test scaffolding.
 
+## Console Surface Consistency
+- Keep all pages under `app/[lang]/console/**` visually consistent with the console overview page structure.
+- Use `main` wrapper class `flex flex-1 flex-col gap-6 p-6 pt-0` for content pages unless a parent layout already provides the same spacing contract.
+- Use shared table primitives and the shared TanStack table pattern for tabular data so sorting, filtering, and column visibility behavior remains consistent between console pages.
+- Avoid one-off page-specific spacing/layout patterns for invoices, support tickets, and other console subpages unless explicitly required by product design.
+
 ## Testing Guidelines
 - Test runner: `bun test` (`bunfig.toml` preloads `test/setup.ts`).
 - UI tests use Testing Library with Happy DOM and `@testing-library/jest-dom` matchers.

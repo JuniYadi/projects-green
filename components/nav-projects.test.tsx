@@ -6,21 +6,22 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 describe("NavProjects", () => {
-  it("renders project links and actions shell", () => {
+  it("renders quick menu links", () => {
     const view = render(
       <SidebarProvider>
         <TooltipProvider>
           <NavProjects
             projects={[
               {
-                name: "Applications",
-                url: "/console/app",
-                icon: <span aria-hidden="true">D</span>,
+                name: "Overview",
+                url: "/console",
+                icon: <span aria-hidden="true">O</span>,
+                isActive: true,
               },
               {
-                name: "Tenant Management",
-                url: "/console/organization",
-                icon: <span aria-hidden="true">T</span>,
+                name: "Invoices",
+                url: "/console/invoices",
+                icon: <span aria-hidden="true">I</span>,
               },
             ]}
           />
@@ -30,11 +31,10 @@ describe("NavProjects", () => {
 
     expect(view.getByText("Projects")).toBeTruthy()
     expect(
-      view.getByRole("link", { name: "Applications" }).getAttribute("href")
-    ).toBe("/console/app")
-    expect(
-      view.getByRole("link", { name: "Tenant Management" }).getAttribute("href")
-    ).toBe("/console/organization")
-    expect(view.getAllByText("More").length).toBeGreaterThan(0)
+      view.getByRole("link", { name: "Overview" }).getAttribute("href")
+    ).toBe("/console")
+    expect(view.getByRole("link", { name: "Invoices" }).getAttribute("href")).toBe(
+      "/console/invoices"
+    )
   })
 })

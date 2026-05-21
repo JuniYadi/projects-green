@@ -17,14 +17,10 @@ import {
 } from "@/components/ui/sidebar"
 import {
   BookOpenIcon,
-  ChartPieIcon,
-  CropIcon,
   GaugeIcon,
   LifebuoyIcon,
-  MapTrifoldIcon,
   PaperPlaneTiltIcon,
   RocketLaunchIcon,
-  UsersThreeIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
@@ -66,31 +62,13 @@ type AppSidebarProject = {
   name: string
   url: string
   icon: React.ReactNode
+  isActive?: boolean
 }
 
 const buildConsoleNavMain = (
   pathname: string,
   locale: AppLocale
 ): AppSidebarNavItem[] => [
-  {
-    title: "Console",
-    url: localizePathname({ pathname: "/console", locale }),
-    icon: <GaugeIcon />,
-    isActive:
-      pathname === "/console" || startsWithRoute(pathname, "/console/organization"),
-    items: [
-      {
-        title: "Overview",
-        url: localizePathname({ pathname: "/console", locale }),
-        isActive: pathname === "/console",
-      },
-      {
-        title: "Tenant Management",
-        url: localizePathname({ pathname: "/console/organization", locale }),
-        isActive: startsWithRoute(pathname, "/console/organization"),
-      },
-    ],
-  },
   {
     title: "Applications",
     url: localizePathname({ pathname: "/console/app", locale }),
@@ -154,54 +132,39 @@ const navSecondary = [
   },
 ]
 
-const buildConsoleProjects = (locale: AppLocale): AppSidebarProject[] => [
+const buildConsoleProjects = (
+  pathname: string,
+  locale: AppLocale
+): AppSidebarProject[] => [
   {
-    name: "Applications",
-    url: localizePathname({ pathname: "/console/app", locale }),
-    icon: <RocketLaunchIcon />,
+    name: "Overview",
+    url: localizePathname({ pathname: "/console", locale }),
+    icon: <GaugeIcon />,
+    isActive: pathname === "/console",
   },
   {
-    name: "Tenant Management",
-    url: localizePathname({ pathname: "/console/organization", locale }),
-    icon: <UsersThreeIcon />,
+    name: "Invoices",
+    url: localizePathname({ pathname: "/console/invoices", locale }),
+    icon: <BookOpenIcon />,
+    isActive: startsWithRoute(pathname, "/console/invoices"),
   },
   {
-    name: "Analytics",
-    url: "#",
-    icon: <ChartPieIcon />,
-  },
-  {
-    name: "Design Engineering",
-    url: "#",
-    icon: <CropIcon />,
-  },
-  {
-    name: "Travel",
-    url: "#",
-    icon: <MapTrifoldIcon />,
+    name: "Support Tickets",
+    url: localizePathname({ pathname: "/console/support-tickets", locale }),
+    icon: <LifebuoyIcon />,
+    isActive: startsWithRoute(pathname, "/console/support-tickets"),
   },
 ]
 
-const buildPortalProjects = (locale: AppLocale): AppSidebarProject[] => [
+const buildPortalProjects = (
+  pathname: string,
+  locale: AppLocale
+): AppSidebarProject[] => [
   {
     name: "Documentation",
     url: localizePathname({ pathname: "/portal/documentations", locale }),
     icon: <BookOpenIcon />,
-  },
-  {
-    name: "Analytics",
-    url: "#",
-    icon: <ChartPieIcon />,
-  },
-  {
-    name: "Design Engineering",
-    url: "#",
-    icon: <CropIcon />,
-  },
-  {
-    name: "Travel",
-    url: "#",
-    icon: <MapTrifoldIcon />,
+    isActive: startsWithRoute(pathname, "/portal/documentations"),
   },
 ]
 
@@ -221,8 +184,8 @@ export const resolveSidebarMenu = ({
         : buildPortalNavMain(pathname, locale),
     projects:
       surface === "console"
-        ? buildConsoleProjects(locale)
-        : buildPortalProjects(locale),
+        ? buildConsoleProjects(pathname, locale)
+        : buildPortalProjects(pathname, locale),
   }
 }
 
@@ -246,8 +209,8 @@ export function AppSidebar({
         <NavOrganization organization={organization} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navMain} />
         <NavProjects projects={projects} />
+        <NavMain items={navMain} />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

@@ -10,27 +10,24 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(navMain.map((item) => item.title)).toEqual([
-      "Console",
-      "Applications",
-    ])
+    expect(navMain.map((item) => item.title)).toEqual(["Applications"])
     expect(navMain[0]?.items?.map((item) => item.title)).toEqual([
-      "Overview",
-      "Tenant Management",
-    ])
-    expect(navMain[1]?.items?.map((item) => item.title)).toEqual([
       "Deploy",
       "Manage",
       "Monitoring",
     ])
-    expect(navMain[1]?.isActive).toBe(true)
+    expect(navMain[0]?.isActive).toBe(true)
 
-    expect(projects.map((project) => project.name)).toContain("Applications")
-    expect(projects.map((project) => project.name)).toContain(
-      "Tenant Management"
-    )
+    expect(projects.map((project) => project.name)).toEqual([
+      "Overview",
+      "Invoices",
+      "Support Tickets",
+    ])
     expect(projects.map((project) => project.name)).not.toContain(
       "Documentation"
+    )
+    expect(projects.map((project) => project.name)).not.toContain(
+      "Tenant Management"
     )
   })
 
@@ -48,25 +45,46 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(
-      manageMenu.navMain[1]?.items?.find((item) => item.title === "Manage")
+      manageMenu.navMain[0]?.items?.find((item) => item.title === "Manage")
         ?.isActive
     ).toBe(true)
     expect(
-      manageMenu.navMain[1]?.items?.find(
+      manageMenu.navMain[0]?.items?.find(
         (item) => item.title === "Monitoring"
       )?.isActive
     ).toBe(false)
 
     expect(
-      monitoringMenu.navMain[1]?.items?.find(
+      monitoringMenu.navMain[0]?.items?.find(
         (item) => item.title === "Monitoring"
       )?.isActive
     ).toBe(true)
     expect(
-      monitoringMenu.navMain[1]?.items?.find(
+      monitoringMenu.navMain[0]?.items?.find(
         (item) => item.title === "Manage"
       )?.isActive
     ).toBe(false)
+  })
+
+  it("marks quick menu items active for console utility routes", () => {
+    const invoicesMenu = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/invoices",
+      locale: "en",
+    })
+    const supportMenu = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/support-tickets/thread-1",
+      locale: "en",
+    })
+
+    expect(
+      invoicesMenu.projects.find((item) => item.name === "Invoices")?.isActive
+    ).toBe(true)
+    expect(
+      supportMenu.projects.find((item) => item.name === "Support Tickets")
+        ?.isActive
+    ).toBe(true)
   })
 
   it("returns portal-only navigation and projects for portal surface", () => {

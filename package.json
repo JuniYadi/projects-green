@@ -31,6 +31,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@tanstack/react-form": "^1.32.0",
+    "@tanstack/react-table": "^8.21.3",
     "@workos-inc/authkit-nextjs": "^4.1.0",
     "ai": "^6.0.184",
     "bullmq": "^5.76.8",
