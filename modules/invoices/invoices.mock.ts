@@ -1,7 +1,10 @@
 import type {
   InvoiceFlowId,
   InvoiceFlowScenarioRegistry,
+  InvoiceDetail,
   InvoiceListItem,
+  InvoiceScreenScenario,
+  InvoiceScreenState,
 } from "@/modules/invoices/invoices.types"
 
 export const INVOICE_LIST_ROWS: InvoiceListItem[] = [
@@ -54,6 +57,190 @@ export const INVOICE_LIST_ROWS: InvoiceListItem[] = [
 
 const DEFAULT_INVOICE = INVOICE_LIST_ROWS[2]
 
+type InvoiceViewDetailProfile = Pick<
+  InvoiceDetail,
+  | "customerName"
+  | "customerEmail"
+  | "notes"
+  | "subtotalAmount"
+  | "taxAmount"
+  | "lineItems"
+>
+
+const DEFAULT_VIEW_DETAIL_PROFILE: InvoiceViewDetailProfile = {
+  customerName: "Acme Corporation",
+  customerEmail: "billing@acme.example",
+  notes: "Thank you for your business.",
+  subtotalAmount: 130,
+  taxAmount: 19,
+  lineItems: [
+    {
+      id: "line_1",
+      description: "Platform Pro Plan",
+      quantity: 1,
+      unitPrice: 99,
+      lineTotal: 99,
+    },
+    {
+      id: "line_2",
+      description: "Additional teammate seats",
+      quantity: 5,
+      unitPrice: 6.2,
+      lineTotal: 31,
+    },
+  ],
+}
+
+const INVOICE_VIEW_DETAIL_PROFILE_BY_ID: Partial<
+  Record<string, InvoiceViewDetailProfile>
+> = {
+  invoice_43: {
+    customerName: "Acme Corporation",
+    customerEmail: "billing@acme.example",
+    notes: "Paid via stored card ending in 4242.",
+    subtotalAmount: 120,
+    taxAmount: 9,
+    lineItems: [
+      {
+        id: "line_1",
+        description: "Platform Pro Plan",
+        quantity: 1,
+        unitPrice: 99,
+        lineTotal: 99,
+      },
+      {
+        id: "line_2",
+        description: "Additional teammate seats",
+        quantity: 3,
+        unitPrice: 7,
+        lineTotal: 21,
+      },
+    ],
+  },
+  invoice_42: {
+    customerName: "Acme Corporation",
+    customerEmail: "billing@acme.example",
+    notes: "Payment settled on receipt.",
+    subtotalAmount: 118,
+    taxAmount: 11,
+    lineItems: [
+      {
+        id: "line_1",
+        description: "Platform Pro Plan",
+        quantity: 1,
+        unitPrice: 99,
+        lineTotal: 99,
+      },
+      {
+        id: "line_2",
+        description: "Additional teammate seats",
+        quantity: 2,
+        unitPrice: 9.5,
+        lineTotal: 19,
+      },
+    ],
+  },
+  invoice_41: DEFAULT_VIEW_DETAIL_PROFILE,
+  invoice_40: {
+    customerName: "Acme Corporation",
+    customerEmail: "billing@acme.example",
+    notes: "Payment is overdue. Please settle to avoid service interruption.",
+    subtotalAmount: 161,
+    taxAmount: 18,
+    lineItems: [
+      {
+        id: "line_1",
+        description: "Platform Pro Plan",
+        quantity: 1,
+        unitPrice: 99,
+        lineTotal: 99,
+      },
+      {
+        id: "line_2",
+        description: "Additional teammate seats",
+        quantity: 6,
+        unitPrice: 10.33,
+        lineTotal: 61.98,
+      },
+    ],
+  },
+  invoice_39: {
+    customerName: "Acme Corporation",
+    customerEmail: "billing@acme.example",
+    notes: "Cancellation request is under review by billing operations.",
+    subtotalAmount: 158,
+    taxAmount: 21,
+    lineItems: [
+      {
+        id: "line_1",
+        description: "Platform Pro Plan",
+        quantity: 1,
+        unitPrice: 99,
+        lineTotal: 99,
+      },
+      {
+        id: "line_2",
+        description: "Additional teammate seats",
+        quantity: 5,
+        unitPrice: 11.8,
+        lineTotal: 59,
+      },
+    ],
+  },
+}
+
+const buildInvoiceDetailFromListItem = (
+  invoice: InvoiceListItem
+): InvoiceDetail => {
+  const profile =
+    INVOICE_VIEW_DETAIL_PROFILE_BY_ID[invoice.id] ?? DEFAULT_VIEW_DETAIL_PROFILE
+
+  return {
+    ...invoice,
+    ...profile,
+  }
+}
+
+export const getInvoiceListItemById = (invoiceId: string) => {
+  return INVOICE_LIST_ROWS.find((invoice) => invoice.id === invoiceId) ?? null
+}
+
+export const resolveInvoiceViewScenarioState = ({
+  invoiceId,
+  scenario,
+}: {
+  invoiceId: string
+  scenario: InvoiceScreenScenario
+}): InvoiceScreenState<"view", InvoiceDetail> => {
+  const invoice = getInvoiceListItemById(invoiceId)
+
+  if (scenario !== "success") {
+    if (!invoice && scenario === "empty") {
+      const emptyState = INVOICE_FLOW_STATE_REGISTRY.view.empty
+
+      return {
+        ...emptyState,
+        message: `Invoice "${invoiceId}" is not available in mocked records.`,
+      }
+    }
+
+    return INVOICE_FLOW_STATE_REGISTRY.view[scenario]
+  }
+
+  if (!invoice) {
+    return {
+      ...INVOICE_FLOW_STATE_REGISTRY.view.empty,
+      description: "No detail data found for this invoice.",
+      message: `Invoice "${invoiceId}" is not available in mocked records.`,
+    }
+  }
+
+  return {
+    ...INVOICE_FLOW_STATE_REGISTRY.view.success,
+    data: buildInvoiceDetailFromListItem(invoice),
+  }
+}
+
 export const INVOICE_FLOW_STATE_REGISTRY: InvoiceFlowScenarioRegistry = {
   view: {
     loading: {
@@ -67,30 +254,7 @@ export const INVOICE_FLOW_STATE_REGISTRY: InvoiceFlowScenarioRegistry = {
       scenario: "success",
       title: "Invoice detail",
       description: "Detailed invoice summary ready.",
-      data: {
-        ...DEFAULT_INVOICE,
-        customerName: "Acme Corporation",
-        customerEmail: "billing@acme.example",
-        notes: "Thank you for your business.",
-        subtotalAmount: 130,
-        taxAmount: 19,
-        lineItems: [
-          {
-            id: "line_1",
-            description: "Platform Pro Plan",
-            quantity: 1,
-            unitPrice: 99,
-            lineTotal: 99,
-          },
-          {
-            id: "line_2",
-            description: "Additional teammate seats",
-            quantity: 5,
-            unitPrice: 10,
-            lineTotal: 50,
-          },
-        ],
-      },
+      data: buildInvoiceDetailFromListItem(DEFAULT_INVOICE),
     },
     failure: {
       flow: "view",

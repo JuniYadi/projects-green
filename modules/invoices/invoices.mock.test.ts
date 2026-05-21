@@ -1,9 +1,11 @@
 import { describe, expect, it } from "bun:test"
 
 import {
+  getInvoiceListItemById,
   INVOICE_FLOW_STATE_REGISTRY,
   INVOICE_INTEGRATION_TODOS,
   INVOICE_LIST_ROWS,
+  resolveInvoiceViewScenarioState,
 } from "@/modules/invoices/invoices.mock"
 
 describe("invoice mock contracts", () => {
@@ -51,5 +53,30 @@ describe("invoice mock contracts", () => {
     expect(INVOICE_INTEGRATION_TODOS.download.length).toBeGreaterThan(0)
     expect(INVOICE_INTEGRATION_TODOS.payment.length).toBeGreaterThan(0)
     expect(INVOICE_INTEGRATION_TODOS.cancel_request.length).toBeGreaterThan(0)
+  })
+
+  it("resolves view state by invoice id and scenario", () => {
+    const successState = resolveInvoiceViewScenarioState({
+      invoiceId: "invoice_41",
+      scenario: "success",
+    })
+    if (successState.scenario !== "success") {
+      throw new Error("expected success scenario")
+    }
+
+    expect(successState.data.id).toBe("invoice_41")
+
+    const emptyState = resolveInvoiceViewScenarioState({
+      invoiceId: "invoice_missing",
+      scenario: "success",
+    })
+    expect(emptyState.scenario).toBe("empty")
+  })
+
+  it("finds invoice rows by id", () => {
+    expect(getInvoiceListItemById("invoice_42")?.invoiceNumber).toBe(
+      "INV-2026-0042"
+    )
+    expect(getInvoiceListItemById("unknown")).toBeNull()
   })
 })

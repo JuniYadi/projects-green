@@ -15,11 +15,17 @@ describe("InvoicesPage", () => {
     expect(view.getByRole("button", { name: "Invoice ID" })).toBeInTheDocument()
     expect(view.getByLabelText("Filter by Invoice ID...")).toBeInTheDocument()
     expect(view.getAllByText("INV-2026-0041").length).toBeGreaterThan(0)
+    expect(view.getByRole("link", { name: "INV-2026-0041" })).toHaveAttribute(
+      "href",
+      "/en/console/invoices/invoice_41"
+    )
     expect(view.getByText("$149.00")).toBeInTheDocument()
     expect(view.getAllByText("Pending").length).toBeGreaterThan(0)
     expect(view.getByText("Invoice Screen Foundation Preview")).toBeTruthy()
     expect(
-      view.getByText("Shared screen-state preview for upcoming invoice surfaces.")
+      view.getByText(
+        "Shared screen-state preview for upcoming invoice surfaces."
+      )
     ).toBeTruthy()
   })
 })
