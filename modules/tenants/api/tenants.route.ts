@@ -5,6 +5,7 @@ import { tenantsBootstrapRoutes } from "@/modules/tenants/api/routes/tenants-boo
 import { tenantsInvitationRoutes } from "@/modules/tenants/api/routes/tenants-invitations.route"
 import { tenantsMembershipRoutes } from "@/modules/tenants/api/routes/tenants-memberships.route"
 import { tenantsOrganizationRoutes } from "@/modules/tenants/api/routes/tenants-organization.route"
+import { tenantsOrganizationsRoutes } from "@/modules/tenants/api/routes/tenants-organizations.route"
 import { tenantsOwnershipRoutes } from "@/modules/tenants/api/routes/tenants-ownership.route"
 
 export const tenantsRoutes = new Elysia()
@@ -13,4 +14,5 @@ export const tenantsRoutes = new Elysia()
   .use(tenantsMembershipRoutes)
   .use(tenantsInvitationRoutes)
   .use(tenantsOrganizationRoutes)
+  .use(tenantsOrganizationsRoutes)
   .use(tenantsOwnershipRoutes)

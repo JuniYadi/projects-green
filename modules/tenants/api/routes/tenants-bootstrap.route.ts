@@ -1,9 +1,4 @@
 import { Elysia } from "elysia"
-import {
-  ConflictException,
-  NotFoundException,
-  UnprocessableEntityException,
-} from "@workos-inc/node"
 
 import {
   isTenantApiError,
@@ -13,30 +8,18 @@ import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
 import { bootstrapCreatePayloadSchema } from "@/modules/tenants/api/tenants.schema"
 import type {
   TenantApiError,
-  TenantBootstrapCreateResponse,
-  TenantBootstrapMembership,
   TenantBootstrapResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
 import {
-  createTenantMembership,
-  createTenantOrganization,
-  deleteTenantOrganization,
-  getBootstrapCreatorRoleSlug,
-  hasBootstrapCreatorRole,
-  listTenantBootstrapMembershipsForUser,
-} from "@/modules/tenants/services/tenant-workos.service"
-import { normalizeTenantRole } from "@/modules/tenants/tenant-policy"
+  createTenantOrganizationWithCreator,
+  defaultTenantCreateOrganizationDeps,
+  type TenantCreateOrganizationDeps,
+} from "@/modules/tenants/api/routes/tenants-create-organization.shared"
 
-type TenantsBootstrapRouteDeps = {
+type TenantsBootstrapRouteDeps = TenantCreateOrganizationDeps & {
   requireTenantActor: (
     set: RouteSet
   ) => Promise<TenantActorContext | TenantApiError>
-  listTenantBootstrapMembershipsForUser: typeof listTenantBootstrapMembershipsForUser
-  createTenantOrganization: typeof createTenantOrganization
-  hasBootstrapCreatorRole: typeof hasBootstrapCreatorRole
-  createTenantMembership: typeof createTenantMembership
-  deleteTenantOrganization: typeof deleteTenantOrganization
-  getBootstrapCreatorRoleSlug: typeof getBootstrapCreatorRoleSlug
 }
 
 const defaultRequireTenantActor: TenantsBootstrapRouteDeps["requireTenantActor"] =
@@ -47,66 +30,7 @@ const defaultRequireTenantActor: TenantsBootstrapRouteDeps["requireTenantActor"]
 
 const defaultTenantsBootstrapRouteDeps: TenantsBootstrapRouteDeps = {
   requireTenantActor: defaultRequireTenantActor,
-  listTenantBootstrapMembershipsForUser,
-  createTenantOrganization,
-  hasBootstrapCreatorRole,
-  createTenantMembership,
-  deleteTenantOrganization,
-  getBootstrapCreatorRoleSlug,
-}
-
-const CREATOR_MEMBERSHIP_VERIFICATION_ATTEMPTS = 4
-const CREATOR_MEMBERSHIP_RETRY_DELAY_MS = 120
-
-const delay = async (milliseconds: number) => {
-  await new Promise((resolve) => setTimeout(resolve, milliseconds))
-}
-
-const verifyCreatorMembershipRole = async (params: {
-  listTenantBootstrapMembershipsForUser: (
-    userId: string
-  ) => Promise<TenantBootstrapMembership[]>
-  organizationId: string
-  userId: string
-}) => {
-  for (
-    let attempt = 0;
-    attempt < CREATOR_MEMBERSHIP_VERIFICATION_ATTEMPTS;
-    attempt += 1
-  ) {
-    const memberships = await params.listTenantBootstrapMembershipsForUser(
-      params.userId
-    )
-    const creatorMembership = memberships.find((membership) => {
-      return (
-        membership.organizationId === params.organizationId &&
-        membership.status === "active"
-      )
-    })
-
-    const creatorRole = normalizeTenantRole(creatorMembership?.roleSlug)
-    if (creatorRole) {
-      return true
-    }
-
-    if (attempt < CREATOR_MEMBERSHIP_VERIFICATION_ATTEMPTS - 1) {
-      await delay(CREATOR_MEMBERSHIP_RETRY_DELAY_MS)
-    }
-  }
-
-  return false
-}
-
-const rollbackOrganizationCreation = async (
-  deleteTenantOrganization: TenantsBootstrapRouteDeps["deleteTenantOrganization"],
-  organizationId: string
-) => {
-  try {
-    await deleteTenantOrganization(organizationId)
-    return true
-  } catch {
-    return false
-  }
+  ...defaultTenantCreateOrganizationDeps,
 }
 
 export const createTenantsBootstrapRoutes = (
@@ -179,115 +103,19 @@ export const createTenantsBootstrapRoutes = (
           }
         }
 
-        try {
-          const organization = await createTenantOrganization(body.name.trim())
-
-          const creatorRoleIsAvailable = await hasBootstrapCreatorRole(
-            organization.id
-          )
-
-          if (!creatorRoleIsAvailable) {
-            await rollbackOrganizationCreation(
-              deleteTenantOrganization,
-              organization.id
-            )
-            set.status = 422
-
-            return {
-              ok: false,
-              error: "CREATOR_ROLE_MISSING",
-              message:
-                "Required WorkOS role 'user_owner' is missing. Run `bun run seed:workos-roles` and retry.",
-            }
-          }
-
-          try {
-            await createTenantMembership({
-              organizationId: organization.id,
-              userId: actorResult.userId,
-              roleSlug: getBootstrapCreatorRoleSlug(),
-            })
-
-            const creatorHasValidRole = await verifyCreatorMembershipRole({
-              listTenantBootstrapMembershipsForUser,
-              organizationId: organization.id,
-              userId: actorResult.userId,
-            })
-
-            if (!creatorHasValidRole) {
-              await rollbackOrganizationCreation(
-                deleteTenantOrganization,
-                organization.id
-              )
-              set.status = 500
-
-              return {
-                ok: false,
-                error: "ORGANIZATION_BOOTSTRAP_FAILED",
-                message: "Unable to create organization right now.",
-              }
-            }
-          } catch {
-            await rollbackOrganizationCreation(
-              deleteTenantOrganization,
-              organization.id
-            )
-            set.status = 500
-
-            return {
-              ok: false,
-              error: "ORGANIZATION_BOOTSTRAP_FAILED",
-              message: "Unable to create organization right now.",
-            }
-          }
-
-          set.status = 201
-
-          return {
-            ok: true,
-            organizationId: organization.id,
-          } satisfies TenantBootstrapCreateResponse
-        } catch (error) {
-          if (error instanceof ConflictException) {
-            set.status = 409
-
-            return {
-              ok: false,
-              error: "ORGANIZATION_CONFLICT",
-              message:
-                "Organization bootstrap could not be completed due to a conflict.",
-            }
-          }
-
-          if (error instanceof UnprocessableEntityException) {
-            set.status = 422
-
-            return {
-              ok: false,
-              error: "ORGANIZATION_BOOTSTRAP_INVALID",
-              message: error.message,
-            }
-          }
-
-          if (error instanceof NotFoundException) {
-            set.status = 404
-
-            return {
-              ok: false,
-              error: "ORGANIZATION_BOOTSTRAP_NOT_FOUND",
-              message:
-                "Organization bootstrap failed because a required WorkOS resource was not found.",
-            }
-          }
-
-          set.status = 500
-
-          return {
-            ok: false,
-            error: "ORGANIZATION_BOOTSTRAP_FAILED",
-            message: "Unable to create organization right now.",
-          }
-        }
+        return createTenantOrganizationWithCreator({
+          set,
+          userId: actorResult.userId,
+          organizationName: body.name,
+          deps: {
+            listTenantBootstrapMembershipsForUser,
+            createTenantOrganization,
+            hasBootstrapCreatorRole,
+            createTenantMembership,
+            deleteTenantOrganization,
+            getBootstrapCreatorRoleSlug,
+          },
+        })
       },
       {
         body: bootstrapCreatePayloadSchema,

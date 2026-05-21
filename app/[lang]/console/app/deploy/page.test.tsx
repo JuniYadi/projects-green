@@ -7,6 +7,12 @@ mock.module("@/modules/deploy/ui/deploy-wizard", () => {
   }
 })
 
+mock.module("next/navigation", () => {
+  return {
+    usePathname: () => "/console/app/deploy",
+  }
+})
+
 describe("DeployPage", () => {
   it("renders deploy wizard", async () => {
     const deployPageModule = await import("@/app/[lang]/console/app/deploy/page")
