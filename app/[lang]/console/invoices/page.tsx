@@ -10,7 +10,7 @@ type InvoicesPageProps = {
 }
 
 export default async function InvoicesPage({ params }: InvoicesPageProps) {
-  await params
+  const { lang } = await params
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -27,7 +27,7 @@ export default async function InvoicesPage({ params }: InvoicesPageProps) {
             <CardTitle className="text-base">Billing History</CardTitle>
           </CardHeader>
           <CardContent>
-            <InvoicesTable />
+            <InvoicesTable lang={lang} />
           </CardContent>
         </Card>
 

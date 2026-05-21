@@ -67,8 +67,18 @@ export const INVOICE_SCREEN_SCENARIO_OPTIONS: Array<{
   { value: "empty", label: "Empty" },
 ]
 
+export const isInvoiceScreenScenario = (
+  value: string
+): value is InvoiceScreenScenario => {
+  return INVOICE_SCREEN_SCENARIO_OPTIONS.some(
+    (scenarioOption) => scenarioOption.value === value
+  )
+}
+
 export const INVOICE_STATUS_FILTER_OPTIONS = (
-  Object.entries(INVOICE_STATUS_META) as Array<[InvoiceStatus, InvoiceStatusMeta]>
+  Object.entries(INVOICE_STATUS_META) as Array<
+    [InvoiceStatus, InvoiceStatusMeta]
+  >
 ).map(([value, meta]) => ({ value, label: meta.label }))
 
 export const formatInvoiceCurrency = (
