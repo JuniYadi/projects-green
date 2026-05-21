@@ -7,6 +7,7 @@ import { docsRoutes } from "@/modules/docs/api/docs.route"
 import { deployRoutes } from "@/modules/deploy/api/deploy.route"
 import { frameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
 import { githubRoutes } from "@/modules/github/api/github.route"
+import { supportTicketAttachmentRoutes } from "@/modules/support-tickets/api/support-ticket-attachments.route"
 import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
 import { usersRoutes } from "@/modules/users/api/users.route"
 
@@ -70,6 +71,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(deployRoutes)
   .use(frameworkDetectionRoutes)
   .use(githubRoutes)
+  .use(supportTicketAttachmentRoutes)
   .use(tenantsRoutes)
   .use(authRoutes)
   .use(usersRoutes)

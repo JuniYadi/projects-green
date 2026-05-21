@@ -71,6 +71,29 @@ const normalizeAttachmentMetadata = (
     .map((parsed) => parsed.data)
 }
 
+type AttachmentPersistenceTx = {
+  supportTicket: {
+    findUnique: (args: {
+      where: {
+        id: string
+      }
+      select: {
+        attachmentsJson: true
+      }
+    }) => Promise<{
+      attachmentsJson: Prisma.JsonValue | null
+    } | null>
+    update: (args: {
+      where: {
+        id: string
+      }
+      data: {
+        attachmentsJson: Prisma.JsonArray
+      }
+    }) => Promise<unknown>
+  }
+}
+
 const mapTicketRecord = (record: PrismaSupportTicket): SupportTicket => {
   return {
     id: record.id,
@@ -106,6 +129,10 @@ const mapReplyRecord = (
 }
 
 export type SupportTicketRepository = {
+  appendTicketAttachment?: (input: {
+    attachment: SupportTicketAttachmentMetadata
+    ticketId: string
+  }) => Promise<SupportTicketAttachmentMetadata[]>
   createReply(
     input: CreateSupportTicketReplyInput
   ): Promise<SupportTicketThread["replies"][number]>
@@ -127,6 +154,47 @@ export type SupportTicketRepository = {
 }
 
 export const supportTicketRepository: SupportTicketRepository = {
+  async appendTicketAttachment(input) {
+    return prisma.$transaction(async (tx: AttachmentPersistenceTx) => {
+      const ticket = await tx.supportTicket.findUnique({
+        where: {
+          id: input.ticketId,
+        },
+        select: {
+          attachmentsJson: true,
+        },
+      })
+
+      if (!ticket) {
+        throw new Error(`Support ticket ${input.ticketId} was not found.`)
+      }
+
+      const current = normalizeAttachmentMetadata(ticket.attachmentsJson)
+      const alreadyExists = current.some((item) => {
+        return (
+          item.id === input.attachment.id ||
+          item.storageKey === input.attachment.storageKey
+        )
+      })
+
+      if (alreadyExists) {
+        return current
+      }
+
+      const next = [...current, input.attachment]
+
+      await tx.supportTicket.update({
+        where: {
+          id: input.ticketId,
+        },
+        data: {
+          attachmentsJson: next as Prisma.JsonArray,
+        },
+      })
+
+      return next
+    })
+  },
   async createTicket(input) {
     const ticket = await prisma.supportTicket.create({
       data: {
