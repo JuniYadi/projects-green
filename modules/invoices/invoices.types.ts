@@ -113,8 +113,10 @@ export type InvoiceFlowDataMap = {
 }
 
 export type InvoiceFlowScenarioRegistry = {
-  [K in InvoiceFlowId]: Record<
-    InvoiceScreenScenario,
-    InvoiceScreenState<K, InvoiceFlowDataMap[K]>
-  >
+  [K in InvoiceFlowId]: {
+    [S in InvoiceScreenScenario]: Extract<
+      InvoiceScreenState<K, InvoiceFlowDataMap[K]>,
+      { scenario: S }
+    >
+  }
 }

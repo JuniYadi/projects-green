@@ -83,7 +83,17 @@ export const formatInvoiceCurrency = (
 }
 
 export const formatInvoiceDate = (value: string, locale = DEFAULT_LOCALE) => {
-  return new Date(value).toLocaleDateString(locale, {
+  const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/
+  let date: Date
+
+  if (dateOnlyPattern.test(value)) {
+    const [year, month, day] = value.split("-").map(Number)
+    date = new Date(year, month - 1, day)
+  } else {
+    date = new Date(value)
+  }
+
+  return date.toLocaleDateString(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
