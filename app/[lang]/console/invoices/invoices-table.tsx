@@ -4,81 +4,49 @@ import type { ColumnDef } from "@tanstack/react-table"
 
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import {
+  formatInvoiceCurrency,
+  formatInvoiceDate,
+  INVOICE_STATUS_FILTER_OPTIONS,
+} from "@/modules/invoices/invoices.helpers"
+import { INVOICE_LIST_ROWS } from "@/modules/invoices/invoices.mock"
+import type { InvoiceListItem } from "@/modules/invoices/invoices.types"
+import { InvoiceStatusPill } from "@/modules/invoices/ui/invoice-status-pill"
 
-type InvoiceRecord = {
-  amount: number
-  date: string
-  invoiceId: string
-  status: "Paid" | "Pending" | "Overdue"
-}
-
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-})
-
-const invoiceRows: InvoiceRecord[] = [
+const invoiceColumns: ColumnDef<InvoiceListItem>[] = [
   {
-    invoiceId: "INV-2026-0043",
-    date: "2026-05-03",
-    amount: 129,
-    status: "Paid",
-  },
-  {
-    invoiceId: "INV-2026-0042",
-    date: "2026-04-03",
-    amount: 129,
-    status: "Paid",
-  },
-  {
-    invoiceId: "INV-2026-0041",
-    date: "2026-03-03",
-    amount: 149,
-    status: "Pending",
-  },
-  {
-    invoiceId: "INV-2026-0040",
-    date: "2026-02-03",
-    amount: 179,
-    status: "Overdue",
-  },
-]
-
-const invoiceColumns: ColumnDef<InvoiceRecord>[] = [
-  {
-    accessorKey: "invoiceId",
+    accessorKey: "invoiceNumber",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Invoice ID" />
     ),
     cell: ({ row }) => (
-      <span className="font-medium text-foreground">{row.original.invoiceId}</span>
+      <span className="font-medium text-foreground">
+        {row.original.invoiceNumber}
+      </span>
     ),
   },
   {
-    accessorKey: "date",
+    accessorKey: "issuedAt",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Date" />
     ),
-    cell: ({ row }) =>
-      new Date(row.original.date).toLocaleDateString("en-US", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
+    cell: ({ row }) => formatInvoiceDate(row.original.issuedAt),
     sortingFn: "datetime",
   },
   {
-    accessorKey: "amount",
+    accessorKey: "totalAmount",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Amount" />
     ),
-    cell: ({ row }) => currencyFormatter.format(row.original.amount),
+    cell: ({ row }) =>
+      formatInvoiceCurrency(row.original.totalAmount, row.original.currency),
   },
   {
     accessorKey: "status",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Status" />
     ),
+    cell: ({ row }) => <InvoiceStatusPill status={row.original.status} />,
   },
 ]
 
@@ -86,22 +54,18 @@ export function InvoicesTable() {
   return (
     <DataTable
       columns={invoiceColumns}
-      data={invoiceRows}
+      data={INVOICE_LIST_ROWS}
       searchPlaceholder="Filter by Invoice ID..."
-      searchableColumns={["invoiceId"]}
+      searchableColumns={["invoiceNumber"]}
       facetFilters={[
         {
           columnId: "status",
           label: "Status",
           allLabel: "All status",
-          options: [
-            { label: "Paid", value: "Paid" },
-            { label: "Pending", value: "Pending" },
-            { label: "Overdue", value: "Overdue" },
-          ],
+          options: INVOICE_STATUS_FILTER_OPTIONS,
         },
       ]}
-      initialSorting={[{ id: "date", desc: true }]}
+      initialSorting={[{ id: "issuedAt", desc: true }]}
       emptyMessage="No invoices match your filters."
     />
   )
