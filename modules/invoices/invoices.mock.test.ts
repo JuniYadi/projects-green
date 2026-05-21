@@ -5,6 +5,7 @@ import {
   INVOICE_FLOW_STATE_REGISTRY,
   INVOICE_INTEGRATION_TODOS,
   INVOICE_LIST_ROWS,
+  resolveInvoiceDownloadScenarioState,
   resolveInvoiceViewScenarioState,
 } from "@/modules/invoices/invoices.mock"
 
@@ -67,6 +68,25 @@ describe("invoice mock contracts", () => {
     expect(successState.data.id).toBe("invoice_41")
 
     const emptyState = resolveInvoiceViewScenarioState({
+      invoiceId: "invoice_missing",
+      scenario: "success",
+    })
+    expect(emptyState.scenario).toBe("empty")
+  })
+
+  it("resolves download state by invoice id and scenario", () => {
+    const successState = resolveInvoiceDownloadScenarioState({
+      invoiceId: "invoice_42",
+      scenario: "success",
+    })
+    if (successState.scenario !== "success") {
+      throw new Error("expected success scenario")
+    }
+
+    expect(successState.data.invoice.id).toBe("invoice_42")
+    expect(successState.data.defaultFormat).toBe("pdf")
+
+    const emptyState = resolveInvoiceDownloadScenarioState({
       invoiceId: "invoice_missing",
       scenario: "success",
     })

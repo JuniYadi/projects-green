@@ -1,7 +1,9 @@
 import type {
+  InvoiceFlowDataMap,
   InvoiceFlowId,
   InvoiceFlowScenarioRegistry,
   InvoiceDetail,
+  InvoiceDownloadData,
   InvoiceListItem,
   InvoiceScreenScenario,
   InvoiceScreenState,
@@ -205,6 +207,52 @@ export const getInvoiceListItemById = (invoiceId: string) => {
   return INVOICE_LIST_ROWS.find((invoice) => invoice.id === invoiceId) ?? null
 }
 
+const resolveInvoiceFlowScenarioState = <TFlow extends InvoiceFlowId>({
+  flow,
+  invoiceId,
+  scenario,
+  emptyDescription,
+  buildSuccessData,
+}: {
+  flow: TFlow
+  invoiceId: string
+  scenario: InvoiceScreenScenario
+  emptyDescription: string
+  buildSuccessData: (
+    invoice: InvoiceListItem
+  ) => Partial<InvoiceFlowDataMap[TFlow]>
+}): InvoiceScreenState<TFlow, InvoiceFlowDataMap[TFlow]> => {
+  const invoice = getInvoiceListItemById(invoiceId)
+  const flowStates = INVOICE_FLOW_STATE_REGISTRY[flow]
+
+  if (scenario !== "success") {
+    if (!invoice && scenario === "empty") {
+      return {
+        ...flowStates.empty,
+        message: `Invoice "${invoiceId}" is not available in mocked records.`,
+      }
+    }
+
+    return flowStates[scenario]
+  }
+
+  if (!invoice) {
+    return {
+      ...flowStates.empty,
+      description: emptyDescription,
+      message: `Invoice "${invoiceId}" is not available in mocked records.`,
+    }
+  }
+
+  return {
+    ...flowStates.success,
+    data: {
+      ...flowStates.success.data,
+      ...buildSuccessData(invoice),
+    } as InvoiceFlowDataMap[TFlow],
+  }
+}
+
 export const resolveInvoiceViewScenarioState = ({
   invoiceId,
   scenario,
@@ -212,33 +260,29 @@ export const resolveInvoiceViewScenarioState = ({
   invoiceId: string
   scenario: InvoiceScreenScenario
 }): InvoiceScreenState<"view", InvoiceDetail> => {
-  const invoice = getInvoiceListItemById(invoiceId)
+  return resolveInvoiceFlowScenarioState({
+    flow: "view",
+    invoiceId,
+    scenario,
+    emptyDescription: "No detail data found for this invoice.",
+    buildSuccessData: (invoice) => buildInvoiceDetailFromListItem(invoice),
+  })
+}
 
-  if (scenario !== "success") {
-    if (!invoice && scenario === "empty") {
-      const emptyState = INVOICE_FLOW_STATE_REGISTRY.view.empty
-
-      return {
-        ...emptyState,
-        message: `Invoice "${invoiceId}" is not available in mocked records.`,
-      }
-    }
-
-    return INVOICE_FLOW_STATE_REGISTRY.view[scenario]
-  }
-
-  if (!invoice) {
-    return {
-      ...INVOICE_FLOW_STATE_REGISTRY.view.empty,
-      description: "No detail data found for this invoice.",
-      message: `Invoice "${invoiceId}" is not available in mocked records.`,
-    }
-  }
-
-  return {
-    ...INVOICE_FLOW_STATE_REGISTRY.view.success,
-    data: buildInvoiceDetailFromListItem(invoice),
-  }
+export const resolveInvoiceDownloadScenarioState = ({
+  invoiceId,
+  scenario,
+}: {
+  invoiceId: string
+  scenario: InvoiceScreenScenario
+}): InvoiceScreenState<"download", InvoiceDownloadData> => {
+  return resolveInvoiceFlowScenarioState({
+    flow: "download",
+    invoiceId,
+    scenario,
+    emptyDescription: "No downloadable invoice file exists for this invoice.",
+    buildSuccessData: (invoice) => ({ invoice }),
+  })
 }
 
 export const INVOICE_FLOW_STATE_REGISTRY: InvoiceFlowScenarioRegistry = {
