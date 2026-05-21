@@ -10,7 +10,9 @@ describe("SupportTicketsPage", () => {
     })
     const view = render(ui)
 
-    expect(view.getByRole("heading", { name: "Support Tickets" })).toBeInTheDocument()
+    expect(
+      view.getByRole("heading", { name: "Support Tickets" })
+    ).toBeInTheDocument()
     expect(view.getByText("Ticket Queue")).toBeInTheDocument()
     expect(view.getByRole("button", { name: "Ticket ID" })).toBeInTheDocument()
     expect(
@@ -18,6 +20,8 @@ describe("SupportTicketsPage", () => {
     ).toBeInTheDocument()
     expect(view.getByText("Domain verification pending")).toBeInTheDocument()
     expect(view.getByText("TCK-2018")).toBeInTheDocument()
+    expect(view.getByText("Technical")).toBeInTheDocument()
+    expect(view.getByText("In Progress")).toBeInTheDocument()
     expect(view.getByText("High")).toBeInTheDocument()
   })
 })
