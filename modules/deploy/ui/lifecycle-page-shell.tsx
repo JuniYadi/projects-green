@@ -15,20 +15,18 @@ export function LifecyclePageShell({
   children,
 }: LifecyclePageShellProps) {
   return (
-    <main className="mx-auto w-full max-w-5xl p-6 md:p-8">
-      <div className="flex flex-col gap-4">
-        <Card>
-          <CardHeader className="gap-2">
-            <CardTitle>{title}</CardTitle>
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </CardHeader>
-          <CardContent>
-            <LifecycleNav />
-          </CardContent>
-        </Card>
+    <section className="flex w-full flex-col gap-4">
+      <Card>
+        <CardHeader className="gap-2">
+          <CardTitle>{title}</CardTitle>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </CardHeader>
+        <CardContent>
+          <LifecycleNav />
+        </CardContent>
+      </Card>
 
-        {children}
-      </div>
-    </main>
+      {children}
+    </section>
   )
 }
