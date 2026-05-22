@@ -306,7 +306,7 @@ export function TabMetrics({
           
           <div className="space-y-2 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-red-300">
             <span className="flex items-center gap-1.5 font-bold tracking-wider uppercase text-[10px] text-red-400">
-              <Warning size={14} /> Low RAM Headroom
+              <Warning size={14} /> ⚠️ Low RAM Headroom
             </span>
             <p className="text-xs text-red-200/90 leading-relaxed pt-0.5">
               Your app is utilizing{" "}
