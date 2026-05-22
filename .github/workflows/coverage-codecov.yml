@@ -36,10 +36,11 @@ jobs:
       - name: Prepare test env file from .env.example
         run: |
           cp .env.example .env
-          grep -v '^#' .env | grep '=' | while IFS='=' read -r key value; do
+          for line in $(grep -v '^#' .env | grep '='); do
+            key=$(echo "$line" | cut -d'=' -f1)
+            value=$(echo "$line" | cut -d'=' -f2- | sed 's/^"*//;s/"*$//')
             echo "${key}=${value}" >> $GITHUB_ENV
           done
-          echo "DATABASE_URL is set"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
