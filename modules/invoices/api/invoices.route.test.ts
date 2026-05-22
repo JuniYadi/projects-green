@@ -207,4 +207,27 @@ describe("invoices routes", () => {
     expect(payload.ok).toBe(false)
     expect(payload.error).toBe("INVOICE_CANCEL_NOT_ALLOWED")
   })
+
+  it("returns 400 for missing organization", async () => {
+    const app = createApp({
+      auth: {
+        user: { id: "user_1" },
+        organizationId: null,
+      },
+    })
+
+    const response = await app.handle(new Request("http://localhost/invoices"))
+    expect(response.status).toBe(403)
+  })
+
+  it("returns 500 when list invoices fails", async () => {
+    const service = createService()
+    service.listInvoices = mock(async () => {
+      throw new Error("database error")
+    })
+    const app = createApp({ service })
+
+    const response = await app.handle(new Request("http://localhost/invoices"))
+    expect(response.status).toBe(500)
+  })
 })

@@ -8,6 +8,8 @@ import {
 import {
   createSupportTicketService,
   SupportTicketAccessDeniedError,
+  SupportTicketNotFoundError,
+  SupportTicketContentUnavailableError,
 } from "@/modules/support-tickets/support-ticket.service"
 import type { SupportTicketRepository } from "@/modules/support-tickets/support-ticket.repository"
 import type {
@@ -391,5 +393,117 @@ describe("supportTicketService", () => {
     expect(thread.ticket.subject).toBe("Cannot deploy")
     expect(thread.ticket.description).toBe("Deployment fails during build.")
     expect(thread.ticket.secureForm).toBe("Legacy secure ticket")
+  })
+
+  it("throws NotFoundError when ticket does not exist", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.getTicketThread({
+        ticketId: "nonexistent",
+        actor: {
+          organizationId: "org_1",
+          workosUserId: "user_requester",
+        },
+      })
+    ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
+  })
+
+  it("throws ContentUnavailableError when content cannot be decrypted", async () => {
+    const { SupportTicketCiphertextFormatError } = await import(
+      "@/modules/support-tickets/support-ticket-content-cipher"
+    )
+    const brokenCipher: SupportTicketContentCipher = {
+      encrypt(value) {
+        return value
+      },
+      decrypt() {
+        throw new SupportTicketCiphertextFormatError()
+      },
+    }
+
+    const encryptedTicket: SupportTicket = {
+      ...baseTicket,
+      subject: "stenc.v1.encrypted",
+      description: "stenc.v1.encrypted",
+    }
+    const tickets = new Map<string, SupportTicket>([
+      [encryptedTicket.id, encryptedTicket],
+    ])
+    const replies: SupportTicketThread["replies"] = []
+
+    const repository: SupportTicketRepository = {
+      async createUploadSession() {
+        throw new Error("not implemented")
+      },
+      async getUploadSessionById() {
+        return null
+      },
+      async markUploadSessionRegistered() {
+        throw new Error("not implemented")
+      },
+      async createTicket() {
+        throw new Error("not implemented")
+      },
+      async listTicketsByOrganization() {
+        return [...tickets.values()]
+      },
+      async getTicketById(ticketId) {
+        return tickets.get(ticketId) ?? null
+      },
+      async getTicketThread(ticketId) {
+        const ticket = tickets.get(ticketId)
+        if (!ticket) {
+          return null
+        }
+        return { ticket, replies }
+      },
+      async updateTicketStatus() {
+        throw new Error("not implemented")
+      },
+      async createReply() {
+        throw new Error("not implemented")
+      },
+    }
+
+    const service = createSupportTicketService({
+      contentCipher: brokenCipher,
+      repository,
+    })
+
+    await expect(
+      service.getTicketThread({
+        ticketId: "ticket_1",
+        actor: {
+          organizationId: "org_1",
+          workosUserId: "user_requester",
+        },
+      })
+    ).rejects.toBeInstanceOf(SupportTicketContentUnavailableError)
+  })
+
+  it("generates ticket numbers in correct format", async () => {
+    const { repository } = createRepositoryStub()
+    const factory = () => "TCK-12345678-ABCDEF"
+
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+      ticketNumberFactory: factory,
+    })
+
+    const ticket = await service.createTicket({
+      organizationId: "org_1",
+      requesterWorkosUserId: "user_requester",
+      department: "technical",
+      priority: "medium",
+      subject: "Test ticket",
+    })
+
+    expect(ticket.ticketNumber).toBe("TCK-12345678-ABCDEF")
   })
 })

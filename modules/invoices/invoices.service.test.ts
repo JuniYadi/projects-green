@@ -4,6 +4,8 @@ import {
   createInvoiceService,
   InvoiceCancelNotAllowedError,
   InvoiceNotFoundError,
+  toInvoiceStatus,
+  toInvoiceDetail,
 } from "@/modules/invoices/invoices.service"
 
 const baseInvoice = {
@@ -117,5 +119,131 @@ describe("invoice service", () => {
     expect(
       service.getInvoiceDetail({ organizationId: "org_1", invoiceId: "missing" })
     ).rejects.toBeInstanceOf(InvoiceNotFoundError)
+  })
+
+  it("maps all Prisma status values to app status", () => {
+    expect(toInvoiceStatus("DRAFT")).toBe("draft")
+    expect(toInvoiceStatus("OPEN")).toBe("open")
+    expect(toInvoiceStatus("PAID")).toBe("paid")
+    expect(toInvoiceStatus("VOID")).toBe("canceled")
+    expect(toInvoiceStatus("UNCOLLECTIBLE")).toBe("uncollectible")
+  })
+
+  it("returns payment method options", () => {
+    const service = createInvoiceService({})
+    const options = service.getPaymentMethodOptions()
+
+    expect(options).toHaveLength(2)
+    expect(options[0]?.type).toBe("card")
+    expect(options[1]?.type).toBe("bank_transfer")
+  })
+
+  it("handles null and undefined in list response", async () => {
+    const nullDatesRecord = {
+      id: "inv_null",
+      billingAccountId: "ba_1",
+      subscriptionId: null,
+      billingRunId: null,
+      invoiceNumber: "INV-NULL",
+      periodStart: new Date("2026-05-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-05-31T23:59:59.000Z"),
+      currency: "USD",
+      status: "OPEN" as const,
+      subtotalAmount: 100,
+      taxAmount: 10,
+      discountAmount: 0,
+      totalAmount: null as unknown as number,
+      issuedAt: null,
+      dueAt: null,
+      paidAt: null,
+      metadataJson: null,
+      createdAt: new Date("2026-05-02T00:00:00.000Z"),
+      updatedAt: new Date("2026-05-02T00:00:00.000Z"),
+    }
+
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [nullDatesRecord],
+        findByIdForOrganization: async () => null,
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+
+    const list = await service.listInvoices({
+      organizationId: "org_1",
+      query: {},
+    })
+
+    expect(list[0]?.issuedAt).toBeNull()
+    expect(list[0]?.dueAt).toBeNull()
+    expect(list[0]?.totalAmount).toBe(0)
+  })
+
+  it("handles detail line item with fallback description", () => {
+    const detailWithEmptyLine = {
+      ...detailRecord,
+      lines: [
+        {
+          id: "line_empty",
+          invoiceId: "inv_1",
+          lineType: "METERED" as const,
+          description: "   ",
+          quantity: null,
+          unitPrice: undefined,
+          amount: null,
+          currency: "USD",
+          periodStart: null,
+          periodEnd: null,
+          metadataJson: null,
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+          updatedAt: new Date("2026-05-02T00:00:00.000Z"),
+        },
+      ],
+    }
+
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [],
+        findByIdForOrganization: async () => detailWithEmptyLine,
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+
+    return service.getInvoiceDetail({
+      organizationId: "org_1",
+      invoiceId: "inv_1",
+    }).then(detail => {
+      expect(detail.lineItems[0]?.description).toBe("Metered usage")
+      expect(detail.lineItems[0]?.quantity).toBe(0)
+      expect(detail.lineItems[0]?.unitPrice).toBe(0)
+      expect(detail.lineItems[0]?.amount).toBe(0)
+    })
+  })
+
+  it("cancels invoice successfully", async () => {
+    let currentStatus: "OPEN" | "VOID" = "OPEN"
+
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [],
+        findByIdForOrganization: async () => {
+          const record = {
+            ...detailRecord,
+            status: currentStatus,
+          }
+          return record
+        },
+        updateStatusByIdForOrganization: async () => {
+          currentStatus = "VOID"
+        },
+      },
+    })
+
+    const result = await service.cancelInvoice({
+      organizationId: "org_1",
+      invoiceId: "inv_1",
+    })
+
+    expect(result.status).toBe("canceled")
   })
 })
