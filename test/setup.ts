@@ -1,4 +1,4 @@
-import { afterEach, expect, mock } from "bun:test"
+import { afterEach, expect } from "bun:test"
 import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import { cleanup } from "@testing-library/react"
 import * as matchers from "@testing-library/jest-dom/matchers"
@@ -22,15 +22,8 @@ if (!window.matchMedia) {
   })
 }
 
-// Mock Prisma client globally to prevent DATABASE_URL errors in tests
-// that rely on the real prisma module being mocked in their test file.
-// This ensures prisma is never instantiated with a real connection.
-mock.module("@/lib/prisma", () => ({
-  prisma: {
-    $connect: mock.fn(),
-    $disconnect: mock.fn(),
-  },
-}))
+// Note: Prisma mocking is done in individual test files using mock.module()
+// to avoid module evaluation order issues with DATABASE_URL check
 
 afterEach(() => {
   cleanup()
