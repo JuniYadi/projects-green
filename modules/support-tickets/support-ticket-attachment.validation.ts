@@ -1,17 +1,5 @@
 import { z } from "zod"
 
-export const SUPPORT_TICKET_ATTACHMENT_ALLOWED_EXTENSIONS = [
-  "csv",
-  "jpeg",
-  "jpg",
-  "json",
-  "log",
-  "pdf",
-  "png",
-  "txt",
-  "webp",
-] as const
-
 const EXTENSION_MIME_ALLOWLIST: Record<string, readonly string[]> = {
   csv: ["text/csv", "application/csv"],
   jpeg: ["image/jpeg"],
@@ -24,7 +12,35 @@ const EXTENSION_MIME_ALLOWLIST: Record<string, readonly string[]> = {
   webp: ["image/webp"],
 }
 
+const DEFAULT_ALLOWED_EXTENSIONS = Object.keys(EXTENSION_MIME_ALLOWLIST).sort()
 const DEFAULT_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
+
+const parseAllowedExtensions = () => {
+  const rawValue = process.env.SUPPORT_TICKET_ATTACHMENT_ALLOWED_EXTENSIONS?.trim()
+
+  if (!rawValue) {
+    return DEFAULT_ALLOWED_EXTENSIONS
+  }
+
+  const parsed = rawValue
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+
+  if (!parsed.length) {
+    return DEFAULT_ALLOWED_EXTENSIONS
+  }
+
+  const normalized = [...new Set(parsed)].filter((item) => {
+    return item in EXTENSION_MIME_ALLOWLIST
+  })
+
+  if (!normalized.length) {
+    return DEFAULT_ALLOWED_EXTENSIONS
+  }
+
+  return normalized
+}
 
 const parseMaxFileSizeBytes = () => {
   const rawValue = process.env.SUPPORT_TICKET_ATTACHMENT_MAX_SIZE_BYTES?.trim()
@@ -41,6 +57,9 @@ const parseMaxFileSizeBytes = () => {
 
   return parsed
 }
+
+export const SUPPORT_TICKET_ATTACHMENT_ALLOWED_EXTENSIONS =
+  parseAllowedExtensions()
 
 export const SUPPORT_TICKET_ATTACHMENT_MAX_SIZE_BYTES = parseMaxFileSizeBytes()
 
@@ -111,7 +130,7 @@ const assertMimeTypeAllowed = (mimeType: string) => {
 }
 
 const assertExtensionAllowed = (extension: string) => {
-  if (!(extension in EXTENSION_MIME_ALLOWLIST)) {
+  if (!SUPPORT_TICKET_ATTACHMENT_ALLOWED_EXTENSIONS.includes(extension)) {
     throw new SupportTicketAttachmentValidationError(
       "UNSUPPORTED_EXTENSION",
       "Attachment extension is not allowed."
@@ -122,7 +141,7 @@ const assertExtensionAllowed = (extension: string) => {
 const assertMimeMatchesExtension = (extension: string, mimeType: string) => {
   const allowedMimes = EXTENSION_MIME_ALLOWLIST[extension]
 
-  if (!allowedMimes.includes(mimeType)) {
+  if (!allowedMimes?.includes(mimeType)) {
     throw new SupportTicketAttachmentValidationError(
       "MIME_EXTENSION_MISMATCH",
       "Attachment MIME type does not match its extension allowlist."

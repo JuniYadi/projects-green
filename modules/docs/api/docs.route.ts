@@ -1,10 +1,12 @@
 import { Elysia } from "elysia"
+import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
 
+import { getPlatformRoleForUser } from "@/lib/platform-role"
 import {
-  getDocByPath,
   normalizeDocPath,
-  upsertDocByPath,
+  getDocByPath as getDocByPathService,
+  upsertDocByPath as upsertDocByPathService,
 } from "@/modules/docs/docs.service"
 
 const docsQuerySchema = z.object({
@@ -17,89 +19,173 @@ const docsBodySchema = z.object({
   purpose: z.string().min(1),
   howTo: z.array(z.string().min(1)).min(1),
   notes: z.array(z.string().min(1)).optional(),
-  updatedAt: z.string().min(1).optional(),
+  organizationId: z.string().min(1).nullable().optional(),
 })
 
-export const docsRoutes = new Elysia()
-  .get("/docs", ({ query, set }) => {
-    const parsed = docsQuerySchema.safeParse(query)
+type DocsAuthContext = {
+  organizationId?: string | null
+  user: {
+    email?: string | null
+    id: string
+  } | null
+}
 
-    if (!parsed.success) {
-      set.status = 400
-      return {
-        ok: false as const,
-        error: "INVALID_PATH" as const,
-        message: "Query parameter `path` is required.",
+type RouteSet = {
+  status?: number | string
+}
+
+type DocsRouteDependencies = {
+  authenticate: () => Promise<DocsAuthContext>
+  getPlatformRole: (input: {
+    email?: string | null
+    id?: string | null
+  }) => Promise<"none" | "super_admin">
+  getDocByPath: typeof getDocByPathService
+  upsertDocByPath: typeof upsertDocByPathService
+}
+
+const createDefaultDependencies = (): DocsRouteDependencies => ({
+  authenticate: () => withAuth(),
+  getPlatformRole: getPlatformRoleForUser,
+  getDocByPath: getDocByPathService,
+  upsertDocByPath: upsertDocByPathService,
+})
+
+const toUnauthorized = (set: RouteSet) => {
+  set.status = 401
+
+  return {
+    ok: false as const,
+    error: "UNAUTHORIZED" as const,
+    message: "You must be signed in to access documentation.",
+  }
+}
+
+const toForbidden = (set: RouteSet) => {
+  set.status = 403
+
+  return {
+    ok: false as const,
+    error: "FORBIDDEN" as const,
+    message: "Only super admins can update documentation entries.",
+  }
+}
+
+export const createDocsRoutes = (
+  dependencies: DocsRouteDependencies = createDefaultDependencies()
+) =>
+  new Elysia()
+    .get("/docs", async ({ query, set }) => {
+      const auth = await dependencies.authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
       }
-    }
 
-    const doc = getDocByPath(parsed.data.path)
+      const parsed = docsQuerySchema.safeParse(query)
 
-    if (!doc) {
-      set.status = 404
-      return {
-        ok: false as const,
-        error: "DOC_NOT_FOUND" as const,
-        message: `No documentation found for path "${parsed.data.path}".`,
+      if (!parsed.success) {
+        set.status = 400
+        return {
+          ok: false as const,
+          error: "INVALID_PATH" as const,
+          message: "Query parameter `path` is required.",
+        }
       }
-    }
 
-    return {
-      ok: true as const,
-      ...doc,
-    }
-  })
-  .post("/docs", ({ body, set }) => {
-    const parsed = docsBodySchema.safeParse(body)
+      const doc = await dependencies.getDocByPath({
+        path: parsed.data.path,
+        organizationId: auth.organizationId ?? null,
+      })
 
-    if (!parsed.success) {
-      set.status = 400
-      return {
-        ok: false as const,
-        error: "INVALID_PAYLOAD" as const,
-        message: "Invalid documentation payload.",
+      if (!doc) {
+        set.status = 404
+        return {
+          ok: false as const,
+          error: "DOC_NOT_FOUND" as const,
+          message: `No documentation found for path "${parsed.data.path}".`,
+        }
       }
-    }
 
-    const normalizedPath = normalizeDocPath(parsed.data.path)
-
-    if (!normalizedPath) {
-      set.status = 400
       return {
-        ok: false as const,
-        error: "INVALID_PATH" as const,
-        message: "Path must not be empty.",
+        ok: true as const,
+        ...doc,
       }
-    }
+    })
+    .post("/docs", async ({ body, set }) => {
+      const auth = await dependencies.authenticate()
 
-    const normalizedHowTo = parsed.data.howTo
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0)
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
 
-    if (!normalizedHowTo.length) {
-      set.status = 400
+      const platformRole = await dependencies.getPlatformRole({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
+
+      if (platformRole !== "super_admin") {
+        return toForbidden(set)
+      }
+
+      const parsed = docsBodySchema.safeParse(body)
+
+      if (!parsed.success) {
+        set.status = 400
+        return {
+          ok: false as const,
+          error: "INVALID_PAYLOAD" as const,
+          message: "Invalid documentation payload.",
+        }
+      }
+
+      const normalizedPath = normalizeDocPath(parsed.data.path)
+
+      if (!normalizedPath) {
+        set.status = 400
+        return {
+          ok: false as const,
+          error: "INVALID_PATH" as const,
+          message: "Path must not be empty.",
+        }
+      }
+
+      const normalizedHowTo = parsed.data.howTo
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
+
+      if (!normalizedHowTo.length) {
+        set.status = 400
+        return {
+          ok: false as const,
+          error: "INVALID_PAYLOAD" as const,
+          message: "How-to steps must contain at least one non-empty item.",
+        }
+      }
+
+      const targetOrganizationId =
+        parsed.data.organizationId === undefined
+          ? (auth.organizationId ?? null)
+          : parsed.data.organizationId
+
+      const savedDoc = await dependencies.upsertDocByPath({
+        organizationId: targetOrganizationId,
+        path: normalizedPath,
+        title: parsed.data.title.trim(),
+        purpose: parsed.data.purpose.trim(),
+        howTo: normalizedHowTo,
+        notes: parsed.data.notes
+          ?.map((item) => item.trim())
+          .filter((item) => item.length > 0),
+        updatedByWorkosUserId: auth.user.id,
+      })
+
+      set.status = 201
+
       return {
-        ok: false as const,
-        error: "INVALID_PAYLOAD" as const,
-        message: "How-to steps must contain at least one non-empty item.",
+        ok: true as const,
+        ...savedDoc,
       }
-    }
-
-    const savedDoc = upsertDocByPath({
-      path: normalizedPath,
-      title: parsed.data.title.trim(),
-      purpose: parsed.data.purpose.trim(),
-      howTo: normalizedHowTo,
-      notes: parsed.data.notes
-        ?.map((item) => item.trim())
-        .filter((item) => item.length > 0),
-      updatedAt: parsed.data.updatedAt ?? new Date().toISOString().slice(0, 10),
     })
 
-    set.status = 201
-
-    return {
-      ok: true as const,
-      ...savedDoc,
-    }
-  })
+export const docsRoutes = createDocsRoutes()

@@ -17,6 +17,30 @@ export const SUPPORT_TICKET_STATUSES = [
 
 export type SupportTicketStatus = (typeof SUPPORT_TICKET_STATUSES)[number]
 
+export const SUPPORT_TICKET_PRIORITIES = ["low", "medium", "high"] as const
+
+export type SupportTicketPriority = (typeof SUPPORT_TICKET_PRIORITIES)[number]
+
+export const SUPPORT_TICKET_SERVICES = [
+  "auth",
+  "billing",
+  "deploy",
+  "domains",
+  "integrations",
+  "data",
+  "other",
+] as const
+
+export type SupportTicketService = (typeof SUPPORT_TICKET_SERVICES)[number]
+
+export const SUPPORT_TICKET_ATTACHMENT_UPLOAD_TARGETS = [
+  "create",
+  "reply",
+] as const
+
+export type SupportTicketAttachmentUploadTarget =
+  (typeof SUPPORT_TICKET_ATTACHMENT_UPLOAD_TARGETS)[number]
+
 export const SUPPORT_TICKET_STATUS_LABELS: Record<SupportTicketStatus, string> =
   {
     open: "Open",
@@ -34,6 +58,26 @@ export const SUPPORT_TICKET_DEPARTMENT_LABELS: Record<
   account: "Account",
   compliance: "Compliance",
 }
+
+export const SUPPORT_TICKET_PRIORITY_LABELS: Record<
+  SupportTicketPriority,
+  string
+> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+}
+
+export const SUPPORT_TICKET_SERVICE_LABELS: Record<SupportTicketService, string> =
+  {
+    auth: "Auth",
+    billing: "Billing",
+    deploy: "Deploy",
+    domains: "Domains",
+    integrations: "Integrations",
+    data: "Data",
+    other: "Other",
+  }
 
 export type SupportTicketAttachmentMetadata = {
   checksumSha256?: string | null
@@ -57,7 +101,10 @@ export type SupportTicket = SupportTicketOwnership & {
   department: SupportTicketDepartment
   description: string | null
   id: string
+  priority: SupportTicketPriority
   resolvedAt: Date | null
+  secureForm: string | null
+  service: SupportTicketService | null
   status: SupportTicketStatus
   subject: string
   ticketNumber: string
@@ -72,6 +119,7 @@ export type SupportTicketReply = {
   createdAt: Date
   id: string
   isInternalNote: boolean
+  secureForm: string | null
   ticketId: string
   updatedAt: Date
 }
@@ -86,8 +134,12 @@ export type CreateSupportTicketInput = {
   department: SupportTicketDepartment
   description?: string | null
   organizationId: string
+  priority: SupportTicketPriority
   requesterWorkosUserId: string
+  secureForm?: string | null
+  service?: SupportTicketService | null
   subject: string
+  uploadSessionIds?: string[]
 }
 
 export type CreateSupportTicketReplyInput = {
@@ -95,7 +147,9 @@ export type CreateSupportTicketReplyInput = {
   authorWorkosUserId: string
   body: string
   isInternalNote?: boolean
+  secureForm?: string | null
   ticketId: string
+  uploadSessionIds?: string[]
 }
 
 export type SupportTicketActorContext = {
@@ -103,4 +157,25 @@ export type SupportTicketActorContext = {
   isSuperAdmin?: boolean
   organizationId: string
   workosUserId: string
+}
+
+export type SupportTicketAttachmentUploadSession = {
+  checksumSha256: string | null
+  consumedAt: Date | null
+  consumedReplyId: string | null
+  consumedTicketId: string | null
+  createdAt: Date
+  expiresAt: Date
+  fileName: string
+  id: string
+  mimeType: string
+  organizationId: string
+  registeredAt: Date | null
+  sizeBytes: number
+  storageBucket: string
+  storageKey: string
+  target: SupportTicketAttachmentUploadTarget
+  ticketId: string | null
+  updatedAt: Date
+  uploaderWorkosUserId: string
 }

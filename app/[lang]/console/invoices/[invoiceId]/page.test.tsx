@@ -1,57 +1,97 @@
-import { describe, expect, it } from "bun:test"
-import { render } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { render, waitFor } from "@testing-library/react"
 
-import InvoiceDetailPage from "@/app/[lang]/console/invoices/[invoiceId]/page"
+const mockRouterRefresh = mock(() => {})
+const originalFetch = globalThis.fetch
+
+mock.module("next/navigation", () => {
+  return {
+    useRouter: () => ({
+      refresh: mockRouterRefresh,
+      replace: () => {},
+      push: () => {},
+      prefetch: async () => undefined,
+    }),
+  }
+})
+
+const jsonResponse = (body: unknown, status = 200) => {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+}
 
 describe("InvoiceDetailPage", () => {
-  it("renders invoice detail sections from mocked state", async () => {
+  beforeEach(() => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.includes("/api/invoices/inv_1")) {
+        return jsonResponse({
+          ok: true,
+          canMarkCanceled: true,
+          invoice: {
+            id: "inv_1",
+            invoiceNumber: "INV-2026-0001",
+            issuedAt: "2026-05-02T00:00:00.000Z",
+            dueAt: "2026-05-17T00:00:00.000Z",
+            totalAmount: 110,
+            currency: "USD",
+            status: "open",
+            subtotalAmount: 100,
+            taxAmount: 10,
+            discountAmount: 0,
+            periodStart: "2026-05-01T00:00:00.000Z",
+            periodEnd: "2026-05-31T23:59:59.000Z",
+            paidAt: null,
+            lineItems: [
+              {
+                id: "line_1",
+                description: "Pro Plan",
+                quantity: 1,
+                unitPrice: 100,
+                amount: 100,
+                currency: "USD",
+              },
+            ],
+          },
+        })
+      }
+
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    mockRouterRefresh.mockClear()
+    globalThis.fetch = originalFetch
+  })
+
+  it("renders invoice detail from API data", async () => {
+    const { default: InvoiceDetailPage } = await import(
+      "@/app/[lang]/console/invoices/[invoiceId]/page"
+    )
+
     const ui = await InvoiceDetailPage({
-      params: Promise.resolve({ lang: "en", invoiceId: "invoice_41" }),
-      searchParams: Promise.resolve({}),
+      params: Promise.resolve({ lang: "en", invoiceId: "inv_1" }),
     })
+
     const view = render(ui)
 
     expect(
       view.getByRole("heading", {
         name: "Invoice Detail",
       })
-    ).toBeInTheDocument()
-    expect(
-      view.getByRole("link", { name: "Back to Invoices" })
-    ).toHaveAttribute("href", "/en/console/invoices")
-    expect(view.getByText("Action Placeholders")).toBeInTheDocument()
-    expect(view.getByText("Identity")).toBeInTheDocument()
-    expect(view.getByText("Line Items Summary")).toBeInTheDocument()
-    expect(view.getByText("Totals")).toBeInTheDocument()
-    expect(view.getByText("Due & Payment Status")).toBeInTheDocument()
-    expect(view.getByText("Metadata")).toBeInTheDocument()
-    expect(view.getAllByText("INV-2026-0041").length).toBeGreaterThan(0)
-    expect(view.getAllByText("Pending").length).toBeGreaterThan(0)
-  })
+    ).toBeTruthy()
 
-  it("defaults to empty scenario for unknown invoice ids", async () => {
-    const ui = await InvoiceDetailPage({
-      params: Promise.resolve({ lang: "en", invoiceId: "invoice_unknown" }),
-      searchParams: Promise.resolve({}),
+    await waitFor(() => {
+      expect(view.getByText("Overview")).toBeTruthy()
+      expect(view.getAllByText("INV-2026-0001").length).toBeGreaterThan(0)
+      expect(view.getByText("Mark Invoice Canceled")).toBeTruthy()
+      expect(view.getByText("Pay Invoice")).toBeTruthy()
     })
-    const view = render(ui)
-
-    expect(
-      view.getAllByText(
-        /Invoice "invoice_unknown" is not available in mocked records\./
-      ).length
-    ).toBeGreaterThan(0)
-  })
-
-  it("accepts scenario override from query params", async () => {
-    const ui = await InvoiceDetailPage({
-      params: Promise.resolve({ lang: "en", invoiceId: "invoice_41" }),
-      searchParams: Promise.resolve({ scenario: "loading" }),
-    })
-    const view = render(ui)
-
-    expect(
-      view.getByText("Preparing detailed invoice summary.")
-    ).toBeInTheDocument()
   })
 })

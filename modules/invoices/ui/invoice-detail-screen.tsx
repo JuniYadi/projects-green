@@ -1,9 +1,10 @@
 "use client"
 
-import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -12,6 +13,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import {
   Table,
   TableBody,
   TableCell,
@@ -19,306 +28,403 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   formatInvoiceCurrency,
   formatInvoiceDate,
-  INVOICE_SCREEN_SCENARIO_OPTIONS,
-  isInvoiceScreenScenario,
+  getInvoiceStatusLabel,
 } from "@/modules/invoices/invoices.helpers"
-import {
-  INVOICE_INTEGRATION_TODOS,
-  resolveInvoiceDownloadScenarioState,
-  resolveInvoiceViewScenarioState,
-} from "@/modules/invoices/invoices.mock"
 import type {
   InvoiceDetail,
-  InvoiceScreenScenario,
-  InvoiceStatus,
+  InvoiceDetailSuccessResponse,
+  InvoiceErrorResponse,
 } from "@/modules/invoices/invoices.types"
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
-import { InvoiceScreenStatePanel } from "@/modules/invoices/ui/invoice-screen-state-panel"
 import { InvoiceStatusPill } from "@/modules/invoices/ui/invoice-status-pill"
-
-const INVOICE_STATUS_SUMMARY: Record<InvoiceStatus, string> = {
-  draft: "Draft invoice. Payment is not open yet.",
-  pending: "Payment is due and awaiting settlement.",
-  paid: "Invoice has been fully paid.",
-  overdue: "Payment is overdue. Follow-up is required.",
-  cancel_requested: "Cancellation request is currently under review.",
-  canceled: "Invoice has been canceled.",
-}
 
 type InvoiceDetailScreenProps = {
   invoiceId: string
   lang: string
-  initialScenario: InvoiceScreenScenario
 }
 
-const InvoiceIdentitySection = ({ detail }: { detail: InvoiceDetail }) => {
-  return (
-    <section className="grid gap-2 rounded-md border p-4">
-      <h3 className="text-sm font-semibold">Identity</h3>
-      <dl className="grid gap-2 text-sm md:grid-cols-2">
-        <div>
-          <dt className="text-xs text-muted-foreground">Invoice Number</dt>
-          <dd className="font-medium">{detail.invoiceNumber}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Invoice ID</dt>
-          <dd className="font-medium">{detail.id}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Customer</dt>
-          <dd className="font-medium">{detail.customerName}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Billing Email</dt>
-          <dd className="font-medium">{detail.customerEmail}</dd>
-        </div>
-      </dl>
-    </section>
-  )
+type InvoiceDetailRequestState =
+  | { status: "loading" }
+  | {
+      status: "success"
+      invoice: InvoiceDetail
+      canMarkCanceled: boolean
+    }
+  | {
+      status: "error"
+      message: string
+    }
+
+const PAYMENT_METHODS = [
+  { id: "pm_card_4242", label: "Visa ending in 4242" },
+  { id: "pm_bank_9124", label: "Bank transfer ending in 9124" },
+]
+
+const getErrorMessage = (payload: InvoiceErrorResponse | null) => {
+  if (payload?.message) {
+    return payload.message
+  }
+
+  return "Unable to load invoice detail right now."
 }
 
-const InvoiceStatusSection = ({ detail }: { detail: InvoiceDetail }) => {
-  return (
-    <section className="grid gap-2 rounded-md border p-4">
-      <h3 className="text-sm font-semibold">Due & Payment Status</h3>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <InvoiceStatusPill status={detail.status} />
-        <p className="text-muted-foreground">
-          {INVOICE_STATUS_SUMMARY[detail.status]}
-        </p>
-      </div>
-      <dl className="grid gap-2 text-sm md:grid-cols-2">
-        <div>
-          <dt className="text-xs text-muted-foreground">Issued Date</dt>
-          <dd className="font-medium">{formatInvoiceDate(detail.issuedAt)}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Due Date</dt>
-          <dd className="font-medium">{formatInvoiceDate(detail.dueAt)}</dd>
-        </div>
-      </dl>
-    </section>
-  )
-}
-
-const InvoiceLineItemsSection = ({ detail }: { detail: InvoiceDetail }) => {
-  return (
-    <section className="grid gap-2 rounded-md border p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Line Items Summary</h3>
-        <p className="text-xs text-muted-foreground">
-          {detail.lineItems.length} line item
-          {detail.lineItems.length > 1 ? "s" : ""}
-        </p>
-      </div>
-
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Description</TableHead>
-            <TableHead className="text-right">Qty</TableHead>
-            <TableHead className="text-right">Unit Price</TableHead>
-            <TableHead className="text-right">Line Total</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {detail.lineItems.map((lineItem) => (
-            <TableRow key={lineItem.id}>
-              <TableCell className="font-medium">
-                {lineItem.description}
-              </TableCell>
-              <TableCell className="text-right">{lineItem.quantity}</TableCell>
-              <TableCell className="text-right">
-                {formatInvoiceCurrency(lineItem.unitPrice, detail.currency)}
-              </TableCell>
-              <TableCell className="text-right">
-                {formatInvoiceCurrency(lineItem.lineTotal, detail.currency)}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </section>
-  )
-}
-
-const InvoiceTotalsSection = ({ detail }: { detail: InvoiceDetail }) => {
-  return (
-    <section className="grid gap-2 rounded-md border p-4">
-      <h3 className="text-sm font-semibold">Totals</h3>
-      <dl className="grid gap-2 text-sm">
-        <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">Subtotal</dt>
-          <dd className="font-medium">
-            {formatInvoiceCurrency(detail.subtotalAmount, detail.currency)}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">Tax</dt>
-          <dd className="font-medium">
-            {formatInvoiceCurrency(detail.taxAmount, detail.currency)}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-2 border-t pt-2">
-          <dt className="font-semibold">Total</dt>
-          <dd className="font-semibold">
-            {formatInvoiceCurrency(detail.totalAmount, detail.currency)}
-          </dd>
-        </div>
-      </dl>
-    </section>
-  )
-}
-
-const InvoiceMetadataSection = ({
-  detail,
-  scenario,
-}: {
-  detail: InvoiceDetail
-  scenario: InvoiceScreenScenario
-}) => {
-  return (
-    <section className="grid gap-2 rounded-md border p-4">
-      <h3 className="text-sm font-semibold">Metadata</h3>
-      <dl className="grid gap-2 text-sm md:grid-cols-2">
-        <div>
-          <dt className="text-xs text-muted-foreground">Mock Source</dt>
-          <dd className="font-medium">modules/invoices/invoices.mock.ts</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Scenario</dt>
-          <dd className="font-medium">{scenario}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Currency</dt>
-          <dd className="font-medium">{detail.currency}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Notes</dt>
-          <dd className="font-medium">{detail.notes}</dd>
-        </div>
-      </dl>
-    </section>
-  )
-}
-
-export function InvoiceDetailScreen({
-  invoiceId,
-  lang,
-  initialScenario,
-}: InvoiceDetailScreenProps) {
+export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProps) {
   const locale = resolveLocaleOrDefault(lang)
-  const [scenario, setScenario] =
-    useState<InvoiceScreenScenario>(initialScenario)
-
-  const viewState = useMemo(() => {
-    return resolveInvoiceViewScenarioState({
-      invoiceId,
-      scenario,
-    })
-  }, [invoiceId, scenario])
-
-  const downloadState = useMemo(() => {
-    return resolveInvoiceDownloadScenarioState({
-      invoiceId,
-      scenario,
-    })
-  }, [invoiceId, scenario])
-
-  const invoiceBasePath = localizePathname({
-    pathname: `/console/invoices/${invoiceId}`,
-    locale,
+  const router = useRouter()
+  const [state, setState] = useState<InvoiceDetailRequestState>({
+    status: "loading",
   })
+  const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false)
+  const [paymentMethodId, setPaymentMethodId] = useState(PAYMENT_METHODS[0].id)
+  const [isCancelSheetOpen, setIsCancelSheetOpen] = useState(false)
+  const [isCanceling, setIsCanceling] = useState(false)
+  const [cancelErrorMessage, setCancelErrorMessage] = useState<string | null>(null)
+
+  const fetchDetail = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const response = await fetch(`/api/invoices/${invoiceId}`, {
+          signal,
+        })
+
+        const payload = (await response.json().catch(() => null)) as
+          | InvoiceDetailSuccessResponse
+          | InvoiceErrorResponse
+          | null
+
+        if (!response.ok || !payload || payload.ok !== true) {
+          setState({
+            status: "error",
+            message: getErrorMessage(payload as InvoiceErrorResponse | null),
+          })
+          return
+        }
+
+        setState({
+          status: "success",
+          invoice: payload.invoice,
+          canMarkCanceled: payload.canMarkCanceled,
+        })
+      } catch (error) {
+        if (signal?.aborted) {
+          return
+        }
+
+        setState({
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to load invoice detail right now.",
+        })
+      }
+    },
+    [invoiceId]
+  )
+
+  const loadDetail = async () => {
+    setState({ status: "loading" })
+    await fetchDetail()
+  }
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchDetail(controller.signal)
+
+    return () => {
+      controller.abort()
+    }
+  }, [fetchDetail])
+
+  const handleMarkCanceled = async () => {
+    setIsCanceling(true)
+    setCancelErrorMessage(null)
+
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/cancel`, {
+        method: "POST",
+      })
+
+      const payload = (await response.json().catch(() => null)) as
+        | { ok: true; invoice: InvoiceDetail }
+        | InvoiceErrorResponse
+        | null
+
+      if (!response.ok || !payload || payload.ok !== true) {
+        setCancelErrorMessage(getErrorMessage(payload as InvoiceErrorResponse | null))
+        setIsCanceling(false)
+        return
+      }
+
+      setState({
+        status: "success",
+        invoice: payload.invoice,
+        canMarkCanceled: false,
+      })
+      setIsCancelSheetOpen(false)
+      router.refresh()
+    } catch (error) {
+      setCancelErrorMessage(
+        error instanceof Error ? error.message : "Unable to cancel invoice."
+      )
+    } finally {
+      setIsCanceling(false)
+    }
+  }
+
+  if (state.status === "loading") {
+    return (
+      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+        Loading invoice detail...
+      </div>
+    )
+  }
+
+  if (state.status === "error") {
+    return (
+      <div className="grid gap-3 rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm">
+        <p className="text-destructive">{state.message}</p>
+        <div>
+          <Button type="button" size="sm" variant="outline" onClick={() => void loadDetail()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const { invoice } = state
+  const canPay = invoice.status === "open"
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h2 className="text-base font-semibold">Action Placeholders</h2>
-          <p className="text-xs text-muted-foreground">
-            Screen-first action entry points for upcoming invoice workflows.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="#invoice-download-panel">Download PDF</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`${invoiceBasePath}?flow=payment`}>Pay Invoice</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`${invoiceBasePath}?flow=cancel_request`}>
-              Request Cancel
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-muted-foreground">
-          Use scenario controls to validate loading, empty, and failure
-          placeholders.
-        </p>
-        <div className="w-full sm:w-[220px]">
-          <Select
-            value={scenario}
-            onValueChange={(value) => {
-              if (isInvoiceScreenScenario(value)) {
-                setScenario(value)
-              }
-            }}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Invoice Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <InvoiceDownloadPdfAction
+            invoiceId={invoice.id}
+            invoiceNumber={invoice.invoiceNumber}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setIsPaymentDrawerOpen(true)}
+            disabled={!canPay}
           >
-            <SelectTrigger size="sm">
-              <SelectValue placeholder="Scenario" />
-            </SelectTrigger>
-            <SelectContent>
-              {INVOICE_SCREEN_SCENARIO_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+            Pay Invoice
+          </Button>
+          {state.canMarkCanceled ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={() => {
+                setCancelErrorMessage(null)
+                setIsCancelSheetOpen(true)
+              }}
+            >
+              Mark Invoice Canceled
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
 
-      <div id="invoice-download-panel">
-        <InvoiceScreenStatePanel
-          flow="download"
-          state={downloadState}
-          integrationTodos={INVOICE_INTEGRATION_TODOS.download}
-          renderSuccess={(downloadData) => (
-            <InvoiceDownloadPdfAction
-              invoiceId={invoiceId}
-              downloadData={downloadData}
-            />
-          )}
-        />
-      </div>
-
-      <InvoiceScreenStatePanel
-        flow="view"
-        state={viewState}
-        integrationTodos={INVOICE_INTEGRATION_TODOS.view}
-        renderSuccess={(detail) => (
-          <div className="grid gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-medium">{detail.invoiceNumber}</p>
-              <InvoiceStatusPill status={detail.status} />
-            </div>
-            <InvoiceIdentitySection detail={detail} />
-            <InvoiceStatusSection detail={detail} />
-            <InvoiceLineItemsSection detail={detail} />
-            <InvoiceTotalsSection detail={detail} />
-            <InvoiceMetadataSection detail={detail} scenario={scenario} />
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Overview</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 text-sm md:grid-cols-2">
+          <div>
+            <p className="text-xs text-muted-foreground">Invoice Number</p>
+            <p className="font-medium">{invoice.invoiceNumber}</p>
           </div>
-        )}
-      />
+          <div>
+            <p className="text-xs text-muted-foreground">Invoice ID</p>
+            <p className="font-medium">{invoice.id}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Status</p>
+            <div className="pt-1">
+              <InvoiceStatusPill status={invoice.status} />
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Period</p>
+            <p className="font-medium">
+              {formatInvoiceDate(invoice.periodStart, locale)} -{" "}
+              {formatInvoiceDate(invoice.periodEnd, locale)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Issued Date</p>
+            <p className="font-medium">{formatInvoiceDate(invoice.issuedAt, locale)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Due Date</p>
+            <p className="font-medium">{formatInvoiceDate(invoice.dueAt, locale)}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Line Items</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoice.lineItems.map((lineItem) => (
+                <TableRow key={lineItem.id}>
+                  <TableCell className="font-medium">{lineItem.description}</TableCell>
+                  <TableCell className="text-right">{lineItem.quantity}</TableCell>
+                  <TableCell className="text-right">
+                    {formatInvoiceCurrency(
+                      lineItem.unitPrice,
+                      lineItem.currency,
+                      locale
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatInvoiceCurrency(lineItem.amount, lineItem.currency, locale)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Totals</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-muted-foreground">Subtotal</p>
+            <p className="font-medium">
+              {formatInvoiceCurrency(invoice.subtotalAmount, invoice.currency, locale)}
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-muted-foreground">Tax</p>
+            <p className="font-medium">
+              {formatInvoiceCurrency(invoice.taxAmount, invoice.currency, locale)}
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-muted-foreground">Discount</p>
+            <p className="font-medium">
+              {formatInvoiceCurrency(invoice.discountAmount, invoice.currency, locale)}
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-2 border-t pt-2">
+            <p className="font-semibold">Total</p>
+            <p className="font-semibold">
+              {formatInvoiceCurrency(invoice.totalAmount, invoice.currency, locale)}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Sheet open={isPaymentDrawerOpen} onOpenChange={setIsPaymentDrawerOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Pay Invoice</SheetTitle>
+            <SheetDescription>
+              {invoice.invoiceNumber} · {formatInvoiceCurrency(invoice.totalAmount, invoice.currency, locale)}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="grid gap-4 px-4 pt-4 text-sm">
+            <div className="grid gap-2">
+              <p className="text-xs text-muted-foreground">Invoice Status</p>
+              <p className="font-medium">{getInvoiceStatusLabel(invoice.status)}</p>
+            </div>
+            <div className="grid gap-2">
+              <p className="text-xs text-muted-foreground">Payment Method</p>
+              <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((method) => (
+                    <SelectItem key={method.id} value={method.id}>
+                      {method.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              Payment gateway integration is pending. This drawer is ready for
+              gateway intent + confirmation wiring.
+            </p>
+          </div>
+
+          <SheetFooter>
+            <Button type="button" disabled>
+              Confirm Payment (Gateway Pending)
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={isCancelSheetOpen} onOpenChange={setIsCancelSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Mark Invoice Canceled</SheetTitle>
+            <SheetDescription>
+              This action sets invoice {invoice.invoiceNumber} to canceled status.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="grid gap-4 px-4 pt-4 text-sm">
+            <p>
+              Are you sure you want to mark this invoice as canceled? This action
+              is intended for billing corrections.
+            </p>
+            {cancelErrorMessage ? (
+              <p className="text-xs text-destructive">{cancelErrorMessage}</p>
+            ) : null}
+          </div>
+
+          <SheetFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsCancelSheetOpen(false)}
+            >
+              Keep Invoice
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleMarkCanceled()}
+              disabled={isCanceling}
+            >
+              {isCanceling ? "Canceling..." : "Confirm Canceled"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </section>
   )
 }

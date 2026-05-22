@@ -1,6 +1,7 @@
 "use client"
 
-import { Cpu, HardDrive, Pulse, Warning } from "@phosphor-icons/react"
+import { useEffect, useState } from "react"
+import { Cpu, HardDrive, Pulse, Warning, CheckCircle } from "@phosphor-icons/react"
 
 import {
   Card,
@@ -11,15 +12,14 @@ import {
 } from "@/components/ui/card"
 
 type TabMetricsProps = {
-  cpuLimit: string
-  memLimit: string
+  cpuLimit?: string
+  memLimit?: string
 }
 
 const clampPercent = (value: number) => {
   if (!Number.isFinite(value)) {
     return 0
   }
-
   return Math.min(100, Math.max(0, Math.round(value)))
 }
 
@@ -29,7 +29,6 @@ const parseCpuToCores = (value: string) => {
   if (!Number.isFinite(numeric)) {
     return 0
   }
-
   return normalized.endsWith("m") ? numeric / 1000 : numeric
 }
 
@@ -70,7 +69,6 @@ const formatCoreValue = (value: number) => {
   if (!Number.isFinite(value) || value <= 0) {
     return "0"
   }
-
   return value >= 1 ? value.toFixed(1) : value.toFixed(2)
 }
 
@@ -94,10 +92,12 @@ export function TabMetrics({
 }: TabMetricsProps) {
   const cpuUsage = "340m"
   const memoryUsage = "468MiB"
+  
   const cpuUsageValue = parseCpuToCores(cpuUsage)
   const cpuLimitValue = parseCpuToCores(cpuLimit)
   const memoryUsageValue = parseMemoryToBytes(memoryUsage)
   const memoryLimitValue = parseMemoryToBytes(memLimit)
+  
   const cpuPercent =
     cpuLimitValue > 0 ? clampPercent((cpuUsageValue / cpuLimitValue) * 100) : 0
   const memoryPercent =
@@ -105,116 +105,231 @@ export function TabMetrics({
       ? clampPercent((memoryUsageValue / memoryLimitValue) * 100)
       : 0
 
+  // Real-time telemetry sliding values (15 points)
+  const [cpuHistory, setCpuHistory] = useState<number[]>([320, 340, 310, 350, 330, 360, 340, 330, 350, 340, 335, 345, 340, 338, 340])
+  const [ramHistory, setRamHistory] = useState<number[]>([450, 455, 460, 458, 462, 465, 468, 467, 468, 466, 469, 468, 470, 468, 468])
+  const [networkHistory, setNetworkHistory] = useState<number[]>([210, 230, 245, 220, 215, 250, 240, 235, 242, 240, 244, 238, 245, 241, 242])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCpuHistory((prev) => {
+        const last = prev[prev.length - 1]
+        const delta = (Math.random() - 0.5) * 30
+        // clamp around cpuUsageValue * 1000 (340)
+        const next = Math.max(280, Math.min(420, Math.round(last + delta)))
+        return [...prev.slice(1), next]
+      })
+
+      setRamHistory((prev) => {
+        const last = prev[prev.length - 1]
+        const delta = (Math.random() - 0.5) * 8
+        // clamp around memoryUsageValue / mib (468)
+        const next = Math.max(450, Math.min(485, Math.round(last + delta)))
+        return [...prev.slice(1), next]
+      })
+
+      setNetworkHistory((prev) => {
+        const last = prev[prev.length - 1]
+        const delta = (Math.random() - 0.5) * 25
+        const next = Math.max(180, Math.min(310, Math.round(last + delta)))
+        return [...prev.slice(1), next]
+      })
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const generateSvgPath = (points: number[], width: number, height: number, min: number, max: number) => {
+    if (points.length === 0) return ""
+    const xStep = width / (points.length - 1)
+    const range = max - min || 1
+    return points
+      .map((val, i) => {
+        const x = i * xStep
+        const y = height - ((val - min) / range) * height
+        return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`
+      })
+      .join(" ")
+  }
+
+  const generateAreaPath = (points: number[], width: number, height: number, min: number, max: number) => {
+    if (points.length === 0) return ""
+    const path = generateSvgPath(points, width, height, min, max)
+    return `${path} L ${width} ${height} L 0 ${height} Z`
+  }
+
   return (
     <div className="grid gap-6 md:grid-cols-3">
       {/* Real-time telemetry */}
-      <Card className="col-span-2 border-white/[0.06] bg-black/25">
-        <CardHeader>
+      <Card size="sm" className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+        <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold text-white">
             Live Resource Monitoring
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs text-muted-foreground">
             Track CPU, RAM, and Network HTTP traffic in real-time
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* CPU usage bar */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 font-medium text-white">
-                <Cpu size={14} className="text-primary" /> CPU Allocation
+          
+          {/* CPU Telemetry Card */}
+          <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-xs font-bold text-white">
+                <Cpu size={16} className="text-emerald-400" /> CPU Allocation
               </span>
-              <span className="font-mono text-muted-foreground">
-                {cpuUsage} / {cpuLimit} ({cpuPercent}%)
+              <span className="font-mono text-xs font-semibold text-white/95">
+                {cpuUsage} / {cpuLimit} <span className="text-emerald-400">({cpuPercent}%)</span>
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full border border-white/[0.08] bg-neutral-900 p-0.5">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-1000"
-                style={{ width: `${cpuPercent}%` }}
-              />
+            
+            {/* Sparkline chart */}
+            <div className="h-[70px] w-full relative overflow-hidden rounded-lg bg-neutral-950/50 border border-white/[0.04] p-1">
+              <svg className="w-full h-full" viewBox="0 0 400 70" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d={generateAreaPath(cpuHistory, 400, 70, 0, 1000)}
+                  fill="url(#cpuGradient)"
+                />
+                <path
+                  d={generateSvgPath(cpuHistory, 400, 70, 0, 1000)}
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="2"
+                />
+              </svg>
+            </div>
+
+            <div className="flex justify-between text-[10px] text-muted-foreground font-medium pt-0.5">
+              <span>0% request</span>
+              <span>Limit: {cpuLimit}</span>
             </div>
           </div>
 
-          {/* RAM usage bar */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 font-medium text-white">
-                <HardDrive size={14} className="text-primary" /> RAM Allocation
+          {/* RAM Telemetry Card */}
+          <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-xs font-bold text-white">
+                <HardDrive size={16} className="text-red-400" /> RAM Allocation
               </span>
-              <span className="font-mono text-muted-foreground">
-                {memoryUsage} / {memLimit} ({memoryPercent}%)
+              <span className="font-mono text-xs font-semibold text-white/95">
+                {memoryUsage} / {memLimit} <span className="text-red-400">({memoryPercent}%)</span>
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full border border-white/[0.08] bg-neutral-900 p-0.5">
-              <div
-                className="h-full rounded-full bg-red-500 transition-all duration-1000"
-                style={{ width: `${memoryPercent}%` }}
-              />
+
+            {/* Sparkline chart */}
+            <div className="h-[70px] w-full relative overflow-hidden rounded-lg bg-neutral-950/50 border border-white/[0.04] p-1">
+              <svg className="w-full h-full" viewBox="0 0 400 70" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="ramGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d={generateAreaPath(ramHistory, 400, 70, 0, 1024)}
+                  fill="url(#ramGradient)"
+                />
+                <path
+                  d={generateSvgPath(ramHistory, 400, 70, 0, 1024)}
+                  fill="none"
+                  stroke="#f43f5e"
+                  strokeWidth="2"
+                />
+              </svg>
+            </div>
+
+            <div className="flex justify-between text-[10px] text-muted-foreground font-medium pt-0.5">
+              <span>0 MB request</span>
+              <span>Limit: {memLimit}</span>
             </div>
           </div>
 
-          {/* Traffic usage bar */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 font-medium text-white">
-                <Pulse size={14} className="text-primary" /> Network Ingress
-                Requests
+          {/* Network Ingress Telemetry Card */}
+          <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-xs font-bold text-white">
+                <Pulse size={16} className="text-purple-400" /> Network Ingress
               </span>
-              <span className="font-mono text-muted-foreground">
-                242 requests/sec (Normal)
+              <span className="font-mono text-xs font-semibold text-white/95">
+                {networkHistory[networkHistory.length - 1]} rps <span className="text-purple-400">(Normal)</span>
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full border border-white/[0.08] bg-neutral-900 p-0.5">
-              <div
-                className="h-full rounded-full bg-green-500 transition-all duration-1000"
-                style={{ width: "65%" }}
-              />
+
+            {/* Sparkline chart */}
+            <div className="h-[70px] w-full relative overflow-hidden rounded-lg bg-neutral-950/50 border border-white/[0.04] p-1">
+              <svg className="w-full h-full" viewBox="0 0 400 70" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="networkGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#c084fc" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#c084fc" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d={generateAreaPath(networkHistory, 400, 70, 0, 500)}
+                  fill="url(#networkGradient)"
+                />
+                <path
+                  d={generateSvgPath(networkHistory, 400, 70, 0, 500)}
+                  fill="none"
+                  stroke="#c084fc"
+                  strokeWidth="2"
+                />
+              </svg>
+            </div>
+
+            <div className="flex justify-between text-[10px] text-muted-foreground font-medium pt-0.5">
+              <span>0 rps</span>
+              <span>Max Capacity: 1000 rps</span>
             </div>
           </div>
+
         </CardContent>
       </Card>
 
-      {/* Recommendations / warnings (Q7 Answer) */}
-      <Card className="border-white/[0.06] bg-black/25">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-1.5 text-base font-bold text-white">
-            <Warning size={18} className="text-yellow-500" /> Resource Advisory
+      {/* Recommendations / warnings */}
+      <Card size="sm" className="col-span-1 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md h-fit">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
+            <Warning size={18} className="text-amber-500" /> Resource Advisory
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs text-muted-foreground">
             Analytics recommendations based on historic metrics
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs leading-relaxed">
-          <div className="space-y-2 rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-red-300">
-            <span className="block font-bold tracking-wider uppercase">
-              ⚠️ Low RAM Headroom
+          
+          <div className="space-y-2 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-red-300">
+            <span className="flex items-center gap-1.5 font-bold tracking-wider uppercase text-[10px] text-red-400">
+              <Warning size={14} /> Low RAM Headroom
             </span>
-            <p>
+            <p className="text-xs text-red-200/90 leading-relaxed pt-0.5">
               Your app is utilizing{" "}
               <strong>{memoryPercent}% of allocated RAM</strong> (
               {formatMemoryValue(memoryUsageValue)} of{" "}
-              {formatMemoryValue(memoryLimitValue)}). This triggers warning
-              signals. Under load, pods will suffer OOMKilled restarts.
+              {formatMemoryValue(memoryLimitValue)}). Under load, pods will suffer OOMKilled restarts.
             </p>
-            <p className="rounded border border-white/5 bg-black/40 p-2 font-mono text-[10px] font-semibold text-white">
-              Recommendation: Scale your Memory Limit to 1024MiB (1GiB) in the
-              &apos;Autoscaling &amp; Tuning&apos; tab.
+            <p className="rounded-lg border border-red-500/10 bg-black/60 p-3 font-mono text-[10px] font-semibold text-white leading-relaxed">
+              Recommendation: Scale Memory Limit to 1024MiB (1GiB) in the Tuning tab.
             </p>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-green-500/20 bg-green-500/5 p-4 text-green-300">
-            <span className="block font-bold tracking-wider uppercase">
-              ✓ CPU Headroom Adequate
+          <div className="space-y-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-emerald-300">
+            <span className="flex items-center gap-1.5 font-bold tracking-wider uppercase text-[10px] text-emerald-400">
+              <CheckCircle size={14} /> CPU Headroom Adequate
             </span>
-            <p>
+            <p className="text-xs text-emerald-200/90 leading-relaxed pt-0.5">
               CPU usage is steady at {cpuPercent}% (
               {formatCoreValue(cpuUsageValue)} of{" "}
-              {formatCoreValue(cpuLimitValue)} cores). The allocated{" "}
-              {formatCoreValue(cpuLimitValue)} core limit provides plenty of
-              buffer for routing requests.
+              {formatCoreValue(cpuLimitValue)} cores). Limit provides adequate buffer.
             </p>
           </div>
+
         </CardContent>
       </Card>
     </div>

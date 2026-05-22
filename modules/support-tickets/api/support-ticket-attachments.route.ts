@@ -19,13 +19,8 @@ import {
   SupportTicketAttachmentValidationError,
   supportTicketAttachmentUploadInputSchema,
 } from "@/modules/support-tickets/support-ticket-attachment.validation"
+import { supportTicketAttachmentUploadTargetSchema } from "@/modules/support-tickets/support-ticket.schema"
 import { resolveTenantRoleFromClaims } from "@/modules/tenants/tenant-policy"
-
-const supportTicketAttachmentRegisterInputSchema =
-  supportTicketAttachmentUploadInputSchema.extend({
-    id: z.string().trim().min(1, "id is required."),
-    storageKey: z.string().trim().min(1, "storageKey is required."),
-  })
 
 type SupportTicketAuthContext = {
   organizationId?: string | null
@@ -176,16 +171,13 @@ const createRouteHandler = (
     actor: SupportTicketAttachmentActorContext
     body: Record<string, unknown>
     set: RouteSet
-    ticketId: string
   }) => Promise<unknown>
 ) => {
   return async ({
     body,
-    params,
     set,
   }: {
     body: Record<string, unknown>
-    params: { ticketId: string }
     set: RouteSet
   }) => {
     const auth = await dependencies.authenticate()
@@ -203,7 +195,6 @@ const createRouteHandler = (
         actor,
         body,
         set,
-        ticketId: params.ticketId,
       })
     } catch (error) {
       if (error instanceof Error && error.message === "UNAUTHORIZED") {
@@ -215,17 +206,34 @@ const createRouteHandler = (
   }
 }
 
+const supportTicketAttachmentPresignInputSchema =
+  supportTicketAttachmentUploadInputSchema.extend({
+    target: supportTicketAttachmentUploadTargetSchema,
+    ticketId: z.string().trim().min(1).optional(),
+  })
+
+const supportTicketAttachmentRegisterInputSchema =
+  supportTicketAttachmentUploadInputSchema.extend({
+    id: z.string().trim().min(1, "id is required."),
+    storageBucket: z.string().trim().min(1, "storageBucket is required."),
+    storageKey: z.string().trim().min(1, "storageKey is required."),
+    target: supportTicketAttachmentUploadTargetSchema,
+    ticketId: z.string().trim().min(1).optional(),
+  })
+
 export const createSupportTicketAttachmentRoutes = (
   dependencies: SupportTicketAttachmentRouteDependencies = createDefaultDependencies()
 ) => {
   return new Elysia({ prefix: "/support-tickets" })
     .post(
-      "/:ticketId/attachments/presign",
-      createRouteHandler(dependencies, async ({ actor, body, ticketId }) => {
+      "/attachments/presign",
+      createRouteHandler(dependencies, async ({ actor, body }) => {
         const upload =
           await dependencies.service.createPresignedAttachmentUpload({
             actor,
-            ticketId,
+            target: body.target as "create" | "reply",
+            ticketId:
+              typeof body.ticketId === "string" ? String(body.ticketId) : undefined,
             fileName: String(body.fileName),
             mimeType: String(body.mimeType),
             sizeBytes: Number(body.sizeBytes),
@@ -241,22 +249,22 @@ export const createSupportTicketAttachmentRoutes = (
         }
       }),
       {
-        body: supportTicketAttachmentUploadInputSchema,
-        params: z.object({
-          ticketId: z.string().trim().min(1, "ticketId is required."),
-        }),
+        body: supportTicketAttachmentPresignInputSchema,
       }
     )
     .post(
-      "/:ticketId/attachments/register",
-      createRouteHandler(dependencies, async ({ actor, body, ticketId }) => {
+      "/attachments/register",
+      createRouteHandler(dependencies, async ({ actor, body }) => {
         const attachment = await dependencies.service.registerAttachment({
           actor,
-          ticketId,
+          target: body.target as "create" | "reply",
+          ticketId:
+            typeof body.ticketId === "string" ? String(body.ticketId) : undefined,
           id: String(body.id),
           fileName: String(body.fileName),
           mimeType: String(body.mimeType),
           sizeBytes: Number(body.sizeBytes),
+          storageBucket: String(body.storageBucket),
           storageKey: String(body.storageKey),
           checksumSha256:
             body.checksumSha256 === null || body.checksumSha256 === undefined
@@ -271,9 +279,6 @@ export const createSupportTicketAttachmentRoutes = (
       }),
       {
         body: supportTicketAttachmentRegisterInputSchema,
-        params: z.object({
-          ticketId: z.string().trim().min(1, "ticketId is required."),
-        }),
       }
     )
 }

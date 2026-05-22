@@ -1,24 +1,33 @@
-export type InvoiceFlowId = "view" | "download" | "payment" | "cancel_request"
-
-export type InvoiceScreenScenario = "loading" | "success" | "failure" | "empty"
-
 export type InvoiceStatus =
   | "draft"
-  | "pending"
+  | "open"
   | "paid"
-  | "overdue"
-  | "cancel_requested"
   | "canceled"
+  | "uncollectible"
 
-export type InvoiceCurrency = "USD"
+export type InvoiceListSortBy =
+  | "invoiceNumber"
+  | "issuedAt"
+  | "dueAt"
+  | "totalAmount"
+  | "status"
+
+export type InvoiceSortDirection = "asc" | "desc"
+
+export type InvoiceListQuery = {
+  search?: string
+  sortBy?: InvoiceListSortBy
+  sortDir?: InvoiceSortDirection
+  status?: InvoiceStatus
+}
 
 export type InvoiceListItem = {
   id: string
   invoiceNumber: string
-  issuedAt: string
-  dueAt: string
+  issuedAt: string | null
+  dueAt: string | null
   totalAmount: number
-  currency: InvoiceCurrency
+  currency: string
   status: InvoiceStatus
 }
 
@@ -27,22 +36,18 @@ export type InvoiceLineItem = {
   description: string
   quantity: number
   unitPrice: number
-  lineTotal: number
+  amount: number
+  currency: string
 }
 
 export type InvoiceDetail = InvoiceListItem & {
-  customerName: string
-  customerEmail: string
-  notes: string
   subtotalAmount: number
   taxAmount: number
+  discountAmount: number
+  periodStart: string
+  periodEnd: string
+  paidAt: string | null
   lineItems: InvoiceLineItem[]
-}
-
-export type InvoiceDownloadData = {
-  availableFormats: Array<"pdf">
-  defaultFormat: "pdf"
-  invoice: InvoiceListItem
 }
 
 export type InvoicePaymentMethod = {
@@ -52,71 +57,30 @@ export type InvoicePaymentMethod = {
   last4: string | null
 }
 
-export type InvoicePaymentData = {
-  invoice: InvoiceListItem
-  balanceDueAmount: number
-  paymentMethods: InvoicePaymentMethod[]
-  defaultMethodId: string | null
+export type InvoiceListSuccessResponse = {
+  ok: true
+  invoices: InvoiceListItem[]
 }
 
-export type InvoiceCancelRequestData = {
-  invoice: InvoiceListItem
-  canRequestCancel: boolean
-  requestReasons: string[]
-  existingRequestNote: string | null
+export type InvoiceDetailSuccessResponse = {
+  ok: true
+  invoice: InvoiceDetail
+  canMarkCanceled: boolean
 }
 
-type InvoiceScreenBase<TFlow extends InvoiceFlowId> = {
-  flow: TFlow
-  title: string
-  description: string
+export type InvoiceCancelSuccessResponse = {
+  ok: true
+  invoice: InvoiceDetail
 }
 
-export type InvoiceScreenLoadingState<TFlow extends InvoiceFlowId> =
-  InvoiceScreenBase<TFlow> & {
-    scenario: "loading"
-  }
-
-export type InvoiceScreenSuccessState<
-  TFlow extends InvoiceFlowId,
-  TData,
-> = InvoiceScreenBase<TFlow> & {
-  scenario: "success"
-  data: TData
-}
-
-export type InvoiceScreenEmptyState<TFlow extends InvoiceFlowId> =
-  InvoiceScreenBase<TFlow> & {
-    scenario: "empty"
-    message: string
-  }
-
-export type InvoiceScreenFailureState<TFlow extends InvoiceFlowId> =
-  InvoiceScreenBase<TFlow> & {
-    scenario: "failure"
-    code: string
-    message: string
-    retryable: boolean
-  }
-
-export type InvoiceScreenState<TFlow extends InvoiceFlowId, TData> =
-  | InvoiceScreenLoadingState<TFlow>
-  | InvoiceScreenSuccessState<TFlow, TData>
-  | InvoiceScreenEmptyState<TFlow>
-  | InvoiceScreenFailureState<TFlow>
-
-export type InvoiceFlowDataMap = {
-  view: InvoiceDetail
-  download: InvoiceDownloadData
-  payment: InvoicePaymentData
-  cancel_request: InvoiceCancelRequestData
-}
-
-export type InvoiceFlowScenarioRegistry = {
-  [K in InvoiceFlowId]: {
-    [S in InvoiceScreenScenario]: Extract<
-      InvoiceScreenState<K, InvoiceFlowDataMap[K]>,
-      { scenario: S }
-    >
-  }
+export type InvoiceErrorResponse = {
+  ok: false
+  error:
+    | "UNAUTHORIZED"
+    | "FORBIDDEN"
+    | "NOT_FOUND"
+    | "INVALID_QUERY"
+    | "INVOICE_CANCEL_NOT_ALLOWED"
+    | "INTERNAL_SERVER_ERROR"
+  message: string
 }

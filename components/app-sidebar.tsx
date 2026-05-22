@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sidebar"
 import {
   BookOpenIcon,
+  ChatCircleTextIcon,
   GaugeIcon,
   LifebuoyIcon,
   PaperPlaneTiltIcon,
@@ -119,18 +120,45 @@ const buildPortalNavMain = (
   },
 ]
 
-const navSecondary = [
-  {
-    title: "Support",
-    url: "#",
-    icon: <LifebuoyIcon />,
-  },
-  {
-    title: "Feedback",
-    url: "#",
-    icon: <PaperPlaneTiltIcon />,
-  },
-]
+const buildNavSecondary = (input: {
+  surface: AppSidebarSurface
+  currentPathname: string
+}) => {
+  const items: {
+    title: string
+    url: string
+    icon: React.ReactNode
+  }[] = [
+    {
+      title: "Support",
+      url: "#",
+      icon: <LifebuoyIcon />,
+    },
+    {
+      title: "Feedback",
+      url: "#",
+      icon: <PaperPlaneTiltIcon />,
+    },
+  ]
+
+  if (input.surface === "console") {
+    items.unshift({
+      title: "Knowledge Chat",
+      url: `${input.currentPathname}?kb=1`,
+      icon: <ChatCircleTextIcon />,
+    })
+  }
+
+  return items
+}
+
+export const resolveSidebarSecondaryLinks = ({
+  surface,
+  currentPathname,
+}: {
+  surface: AppSidebarSurface
+  currentPathname: string
+}) => buildNavSecondary({ surface, currentPathname })
 
 const buildConsoleProjects = (
   pathname: string,
@@ -201,6 +229,10 @@ export function AppSidebar({
     surface,
     pathname: pathnameWithoutLocale,
     locale: locale ?? defaultLocale,
+  })
+  const navSecondary = resolveSidebarSecondaryLinks({
+    surface,
+    currentPathname: pathname,
   })
 
   return (

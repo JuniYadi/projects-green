@@ -6,6 +6,7 @@ import {
 } from "@/modules/support-tickets/support-ticket.schema"
 import {
   createSupportTicketContentCipher,
+  isSupportTicketEncryptedPayload,
   SupportTicketCiphertextFormatError,
   type SupportTicketContentCipher,
   SupportTicketDecryptionError,
@@ -13,6 +14,7 @@ import {
 } from "@/modules/support-tickets/support-ticket-content-cipher"
 import {
   assertSupportTicketStatusTransition,
+  canCloseSupportTicket,
   canCreateSupportTicketInternalReply,
   canCreateSupportTicketReply,
   canReadSupportTicket,
@@ -92,6 +94,18 @@ const createLazyDefaultRepository = (): SupportTicketRepository => {
   }
 
   return {
+    async createUploadSession(input) {
+      const repository = await loadRepository()
+      return repository.createUploadSession(input)
+    },
+    async getUploadSessionById(id) {
+      const repository = await loadRepository()
+      return repository.getUploadSessionById(id)
+    },
+    async markUploadSessionRegistered(input) {
+      const repository = await loadRepository()
+      return repository.markUploadSessionRegistered(input)
+    },
     async createTicket(input) {
       const repository = await loadRepository()
       return repository.createTicket(input)
@@ -171,14 +185,24 @@ const toSafeContentError = (error: unknown) => {
   return error
 }
 
+const maybeDecryptLegacyValue = (
+  cipher: SupportTicketContentCipher,
+  value: string | null
+) => {
+  if (!value || !isSupportTicketEncryptedPayload(value)) {
+    return value
+  }
+
+  return cipher.decrypt(value)
+}
+
 const encryptTicketContent = (
   cipher: SupportTicketContentCipher,
   input: CreateSupportTicketInput
 ): CreateSupportTicketInput => {
   return {
     ...input,
-    subject: cipher.encrypt(input.subject),
-    description: input.description ? cipher.encrypt(input.description) : null,
+    secureForm: input.secureForm ? cipher.encrypt(input.secureForm) : null,
   }
 }
 
@@ -188,8 +212,9 @@ const decryptTicketContent = (
 ): SupportTicket => {
   return {
     ...ticket,
-    subject: cipher.decrypt(ticket.subject),
-    description: ticket.description ? cipher.decrypt(ticket.description) : null,
+    subject: maybeDecryptLegacyValue(cipher, ticket.subject) ?? "",
+    description: maybeDecryptLegacyValue(cipher, ticket.description),
+    secureForm: maybeDecryptLegacyValue(cipher, ticket.secureForm),
   }
 }
 
@@ -199,7 +224,7 @@ const encryptReplyContent = (
 ): CreateSupportTicketReplyInput => {
   return {
     ...input,
-    body: cipher.encrypt(input.body),
+    secureForm: input.secureForm ? cipher.encrypt(input.secureForm) : null,
   }
 }
 
@@ -209,7 +234,8 @@ const decryptReplyContent = (
 ): SupportTicketThread["replies"][number] => {
   return {
     ...reply,
-    body: cipher.decrypt(reply.body),
+    body: maybeDecryptLegacyValue(cipher, reply.body) ?? "",
+    secureForm: maybeDecryptLegacyValue(cipher, reply.secureForm),
   }
 }
 
@@ -289,7 +315,12 @@ export const createSupportTicketService = (
         throw new SupportTicketNotFoundError(input.ticketId)
       }
 
-      if (!canUpdateSupportTicketStatus(actor, ticket)) {
+      const isAllowedToUpdate =
+        nextStatus === "closed"
+          ? canCloseSupportTicket(actor, ticket)
+          : canUpdateSupportTicketStatus(actor, ticket)
+
+      if (!isAllowedToUpdate) {
         throw new SupportTicketAccessDeniedError("update status of")
       }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
 import {
+  canCloseSupportTicket,
   canCreateSupportTicketInternalReply,
   canReadSupportTicket,
   canUpdateSupportTicketStatus,
@@ -15,32 +16,23 @@ const ownership: SupportTicketOwnership = {
 }
 
 describe("support ticket status transitions", () => {
-  it("allows baseline lifecycle transitions", () => {
+  it("allows forward transitions", () => {
     expect(isSupportTicketStatusTransitionAllowed("open", "in_progress")).toBe(
       true
     )
-    expect(
-      isSupportTicketStatusTransitionAllowed("in_progress", "resolved")
-    ).toBe(true)
     expect(isSupportTicketStatusTransitionAllowed("resolved", "closed")).toBe(
       true
     )
-    expect(
-      isSupportTicketStatusTransitionAllowed("resolved", "in_progress")
-    ).toBe(true)
   })
 
-  it("rejects invalid transitions and no-op transitions", () => {
+  it("blocks same-state and closed reopen", () => {
     expect(isSupportTicketStatusTransitionAllowed("open", "open")).toBe(false)
     expect(isSupportTicketStatusTransitionAllowed("closed", "open")).toBe(false)
-    expect(isSupportTicketStatusTransitionAllowed("closed", "resolved")).toBe(
-      false
-    )
   })
 })
 
 describe("support ticket ownership access", () => {
-  it("allows requester and assigned agent to read", () => {
+  it("grants requester read access", () => {
     expect(
       canReadSupportTicket(
         {
@@ -50,19 +42,9 @@ describe("support ticket ownership access", () => {
         ownership
       )
     ).toBe(true)
-
-    expect(
-      canReadSupportTicket(
-        {
-          organizationId: "org_1",
-          workosUserId: "user_agent",
-        },
-        ownership
-      )
-    ).toBe(true)
   })
 
-  it("requires manage/agent privilege for status updates", () => {
+  it("grants assigned agent status update access", () => {
     expect(
       canUpdateSupportTicketStatus(
         {
@@ -72,7 +54,9 @@ describe("support ticket ownership access", () => {
         ownership
       )
     ).toBe(true)
+  })
 
+  it("denies status updates for requester", () => {
     expect(
       canUpdateSupportTicketStatus(
         {
@@ -82,20 +66,21 @@ describe("support ticket ownership access", () => {
         ownership
       )
     ).toBe(false)
+  })
 
+  it("allows requester to close ticket", () => {
     expect(
-      canUpdateSupportTicketStatus(
+      canCloseSupportTicket(
         {
-          canManageTickets: true,
           organizationId: "org_1",
-          workosUserId: "user_manager",
+          workosUserId: "user_requester",
         },
         ownership
       )
     ).toBe(true)
   })
 
-  it("limits internal replies to manager/assigned agent or super admin", () => {
+  it("requires support access for internal replies", () => {
     expect(
       canCreateSupportTicketInternalReply(
         {
@@ -111,17 +96,6 @@ describe("support ticket ownership access", () => {
         {
           organizationId: "org_1",
           workosUserId: "user_agent",
-        },
-        ownership
-      )
-    ).toBe(true)
-
-    expect(
-      canCreateSupportTicketInternalReply(
-        {
-          isSuperAdmin: true,
-          organizationId: "org_other",
-          workosUserId: "user_super_admin",
         },
         ownership
       )

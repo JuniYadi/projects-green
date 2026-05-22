@@ -131,6 +131,12 @@ mock.module("@/modules/docs/ui/dashboard-docs-drawer", () => {
   }
 })
 
+mock.module("@/modules/docs/ui/dashboard-knowledge-chat-sheet", () => {
+  return {
+    DashboardKnowledgeChatSheet: () => <div>Knowledge Chat Sheet</div>,
+  }
+})
+
 describe("ConsoleLayout", () => {
   beforeEach(() => {
     mockWithAuth.mockClear()
@@ -165,6 +171,7 @@ describe("ConsoleLayout", () => {
     expect(view.getByTestId("sidebar-provider")).toBeTruthy()
     expect(view.getByText("Sidebar:console:Jane Doe:Acme Inc")).toBeTruthy()
     expect(view.getByText("Docs Drawer")).toBeTruthy()
+    expect(view.getByText("Knowledge Chat Sheet")).toBeTruthy()
     expect(view.getByText("Console")).toBeTruthy()
     expect(view.getByText("Workspace")).toBeTruthy()
     expect(view.getByText("Child Content")).toBeTruthy()

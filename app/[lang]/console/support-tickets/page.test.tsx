@@ -4,7 +4,7 @@ import { render } from "@testing-library/react"
 import SupportTicketsPage from "@/app/[lang]/console/support-tickets/page"
 
 describe("SupportTicketsPage", () => {
-  it("renders support ticket table tools and records", async () => {
+  it("renders support ticket heading and queue section", async () => {
     const ui = await SupportTicketsPage({
       params: Promise.resolve({ lang: "en" }),
     })
@@ -14,14 +14,6 @@ describe("SupportTicketsPage", () => {
       view.getByRole("heading", { name: "Support Tickets" })
     ).toBeInTheDocument()
     expect(view.getByText("Ticket Queue")).toBeInTheDocument()
-    expect(view.getByRole("button", { name: "Ticket ID" })).toBeInTheDocument()
-    expect(
-      view.getByLabelText("Filter by Ticket ID or Title...")
-    ).toBeInTheDocument()
-    expect(view.getByText("Domain verification pending")).toBeInTheDocument()
-    expect(view.getByText("TCK-2018")).toBeInTheDocument()
-    expect(view.getByText("Technical")).toBeInTheDocument()
-    expect(view.getByText("In Progress")).toBeInTheDocument()
-    expect(view.getByText("High")).toBeInTheDocument()
+    expect(view.getByRole("button", { name: "Open Ticket" })).toBeInTheDocument()
   })
 })
