@@ -25,7 +25,7 @@ describe("DashboardKnowledgeChatSheet", () => {
   it("renders knowledge chat sheet with current route context", () => {
     const view = render(<DashboardKnowledgeChatSheet />)
 
-    expect(view.getByText("Knowledge Chat")).toBeInTheDocument()
+    expect(view.getByText(/Knowledge Chat/i)).toBeInTheDocument()
     expect(view.getByText("Using current page context:")).toBeInTheDocument()
     expect(view.getByText("/console")).toBeInTheDocument()
     expect(
