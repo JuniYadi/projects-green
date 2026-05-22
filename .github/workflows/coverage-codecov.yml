@@ -34,7 +34,12 @@ jobs:
           date
 
       - name: Prepare test env file from .env.example
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          grep -v '^#' .env | grep '=' | while IFS='=' read -r key value; do
+            echo "${key}=${value}" >> $GITHUB_ENV
+          done
+          echo "DATABASE_URL is set"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
