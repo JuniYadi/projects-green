@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/sidebar"
 import {
   BookOpenIcon,
-  ChatCircleTextIcon,
+  CaretLeftIcon,
   GaugeIcon,
   LifebuoyIcon,
+  Lightning,
   PaperPlaneTiltIcon,
   RocketLaunchIcon,
 } from "@phosphor-icons/react"
@@ -66,40 +67,77 @@ type AppSidebarProject = {
   isActive?: boolean
 }
 
-const buildConsoleNavMain = (
-  pathname: string,
-  locale: AppLocale
-): AppSidebarNavItem[] => [
+interface SidebarContextConfig {
+  context: string
+  matches: (pathname: string) => boolean
+  getProjects: (pathname: string, locale: AppLocale) => AppSidebarProject[]
+  getNavMain: (pathname: string, locale: AppLocale) => AppSidebarNavItem[]
+}
+
+const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
   {
-    title: "Applications",
-    url: localizePathname({ pathname: "/console/app", locale }),
-    icon: <RocketLaunchIcon />,
-    isActive: startsWithRoute(pathname, "/console/app"),
-    items: [
+    context: "applications",
+    matches: (path) => startsWithRoute(path, "/console/app"),
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Console",
+        url: localizePathname({ pathname: "/console", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
       {
         title: "Deploy",
         url: localizePathname({ pathname: "/console/app/deploy", locale }),
-        isActive: pathname === "/console/app/deploy",
+        icon: <RocketLaunchIcon />,
+        isActive: path === "/console/app/deploy",
       },
       {
         title: "Manage",
-        url: localizePathname({
-          pathname: "/console/app/manage",
-          locale,
-        }),
-        isActive: startsWithRoute(pathname, "/console/app/manage"),
+        url: localizePathname({ pathname: "/console/app/manage", locale }),
+        icon: <GaugeIcon />,
+        isActive: startsWithRoute(path, "/console/app/manage"),
       },
       {
         title: "Monitoring",
-        url: localizePathname({
-          pathname: "/console/app/monitoring",
-          locale,
-        }),
-        isActive: startsWithRoute(pathname, "/console/app/monitoring"),
+        url: localizePathname({ pathname: "/console/app/monitoring", locale }),
+        icon: <BookOpenIcon />,
+        isActive: startsWithRoute(path, "/console/app/monitoring"),
       },
     ],
   },
 ]
+
+const getHubMenu = (path: string, locale: AppLocale) => ({
+  projects: [
+    {
+      name: "Overview",
+      url: localizePathname({ pathname: "/console", locale }),
+      icon: <GaugeIcon />,
+      isActive: path === "/console",
+    },
+    {
+      name: "Invoices",
+      url: localizePathname({ pathname: "/console/invoices", locale }),
+      icon: <BookOpenIcon />,
+      isActive: startsWithRoute(path, "/console/invoices"),
+    },
+    {
+      name: "Support Tickets",
+      url: localizePathname({ pathname: "/console/support-tickets", locale }),
+      icon: <LifebuoyIcon />,
+      isActive: startsWithRoute(path, "/console/support-tickets"),
+    },
+  ],
+  navMain: [
+    {
+      title: "Applications",
+      url: localizePathname({ pathname: "/console/app", locale }),
+      icon: <RocketLaunchIcon />,
+      isActive: startsWithRoute(path, "/console/app"),
+    },
+  ],
+})
 
 const buildPortalNavMain = (
   pathname: string,
@@ -143,9 +181,9 @@ const buildNavSecondary = (input: {
 
   if (input.surface === "console") {
     items.unshift({
-      title: "Knowledge Chat",
+      title: "Thunder AI Help",
       url: `${input.currentPathname}?kb=1`,
-      icon: <ChatCircleTextIcon />,
+      icon: <Lightning />,
     })
   }
 
@@ -159,30 +197,6 @@ export const resolveSidebarSecondaryLinks = ({
   surface: AppSidebarSurface
   currentPathname: string
 }) => buildNavSecondary({ surface, currentPathname })
-
-const buildConsoleProjects = (
-  pathname: string,
-  locale: AppLocale
-): AppSidebarProject[] => [
-  {
-    name: "Overview",
-    url: localizePathname({ pathname: "/console", locale }),
-    icon: <GaugeIcon />,
-    isActive: pathname === "/console",
-  },
-  {
-    name: "Invoices",
-    url: localizePathname({ pathname: "/console/invoices", locale }),
-    icon: <BookOpenIcon />,
-    isActive: startsWithRoute(pathname, "/console/invoices"),
-  },
-  {
-    name: "Support Tickets",
-    url: localizePathname({ pathname: "/console/support-tickets", locale }),
-    icon: <LifebuoyIcon />,
-    isActive: startsWithRoute(pathname, "/console/support-tickets"),
-  },
-]
 
 const buildPortalProjects = (
   pathname: string,
@@ -204,17 +218,26 @@ export const resolveSidebarMenu = ({
   surface: AppSidebarSurface
   pathname: string
   locale: AppLocale
-}) => {
-  return {
-    navMain:
-      surface === "console"
-        ? buildConsoleNavMain(pathname, locale)
-        : buildPortalNavMain(pathname, locale),
-    projects:
-      surface === "console"
-        ? buildConsoleProjects(pathname, locale)
-        : buildPortalProjects(pathname, locale),
+}): {
+  navMain: AppSidebarNavItem[]
+  projects: AppSidebarProject[]
+} => {
+  if (surface !== "console") {
+    return {
+      navMain: buildPortalNavMain(pathname, locale),
+      projects: buildPortalProjects(pathname, locale),
+    }
   }
+
+  const matchingContext = CONSOLE_CONTEXTS.find((cfg) => cfg.matches(pathname))
+  if (matchingContext) {
+    return {
+      navMain: matchingContext.getNavMain(pathname, locale),
+      projects: matchingContext.getProjects(pathname, locale),
+    }
+  }
+
+  return getHubMenu(pathname, locale)
 }
 
 export function AppSidebar({
