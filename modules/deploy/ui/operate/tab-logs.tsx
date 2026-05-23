@@ -192,7 +192,7 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
         </div>
 
         {/* Logs display shell */}
-        <div className="max-h-[350px] min-h-[220px] space-y-1 overflow-y-auto rounded-xl border border-white/[0.08] bg-[#050507] px-4 py-3.5 font-mono text-[11px] leading-relaxed shadow-inner">
+        <div className="max-h-[350px] min-h-[220px] space-y-1 overflow-auto rounded-xl border border-white/[0.08] bg-[#050507] px-4 py-3.5 font-mono text-[11px] leading-relaxed shadow-inner">
           {filteredLogs.map((log, idx) => {
             const levelBadgeStyle =
               log.level === "ERROR"
