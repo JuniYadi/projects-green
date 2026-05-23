@@ -256,6 +256,23 @@ export const createSupportTicketRoutes = (
         body: supportTicketCreateBodySchema,
       }
     )
+    .post(
+      "/preview",
+      createRouteHandler(dependencies, async ({ body }) => {
+        const payload = z.object({ markdown: z.string() }).parse(body)
+        let html = typeof Bun !== "undefined" ? Bun.markdown.html(payload.markdown) : payload.markdown
+        html = html
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;")
+        return {
+          ok: true as const,
+          html,
+        }
+      })
+    )
     .get(
       "/:ticketId",
       createRouteHandler(dependencies, async ({ actor, params }) => {

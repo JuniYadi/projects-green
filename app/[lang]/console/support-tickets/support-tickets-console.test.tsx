@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { render, waitFor } from "@testing-library/react"
+import "@testing-library/jest-dom"
 
 import { SupportTicketsConsole } from "@/app/[lang]/console/support-tickets/support-tickets-console"
 
@@ -116,7 +117,7 @@ describe("SupportTicketsConsole", () => {
     )
   })
 
-  it("requires subject before creating a ticket", async () => {
+  it("provides a link to the ticket creation page", async () => {
     const view = render(<SupportTicketsConsole lang="en" />)
     await waitFor(() =>
       expect(
@@ -124,15 +125,8 @@ describe("SupportTicketsConsole", () => {
       ).toBeInTheDocument()
     )
 
-    fireEvent.click(view.getByRole("button", { name: "Open Ticket" }))
-    await waitFor(() =>
-      expect(view.getByRole("button", { name: "Submit Ticket" })).toBeInTheDocument()
-    )
-    fireEvent.click(view.getByRole("button", { name: "Submit Ticket" }))
-
-    await waitFor(() =>
-      expect(view.getByText("Subject is required.")).toBeInTheDocument()
-    )
+    const openTicketLink = view.getByRole("link", { name: "Open Ticket" })
+    expect(openTicketLink).toBeInTheDocument()
+    expect(openTicketLink).toHaveAttribute("href", "/en/console/support-tickets/new")
   })
-
 })

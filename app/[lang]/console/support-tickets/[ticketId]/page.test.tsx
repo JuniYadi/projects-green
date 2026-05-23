@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { render } from "@testing-library/react"
+import "@testing-library/jest-dom"
 
 import SupportTicketDetailPage from "@/app/[lang]/console/support-tickets/[ticketId]/page"
 

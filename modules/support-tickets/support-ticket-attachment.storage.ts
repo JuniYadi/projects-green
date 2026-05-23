@@ -43,13 +43,13 @@ const getRequiredEnv = (name: string) => {
 }
 
 const getStoragePrefix = () => {
-  const value = process.env.SUPPORT_TICKET_ATTACHMENT_S3_PREFIX?.trim()
+  const value = process.env.S3_PREFIX?.trim()
 
   return value ? value.replace(/^\/+|\/+$/g, "") : DEFAULT_PREFIX
 }
 
 const getPresignTtlSeconds = () => {
-  const rawValue = process.env.SUPPORT_TICKET_ATTACHMENT_PRESIGN_TTL_SECONDS
+  const rawValue = process.env.S3_PRESIGN_TTL_SECONDS
 
   if (!rawValue?.trim()) {
     return DEFAULT_PRESIGN_TTL_SECONDS
@@ -84,19 +84,19 @@ const getOptionalEnv = (name: string) => {
 
 const loadStorageConfig = (): AttachmentStorageConfig => {
   const virtualHostedStyle =
-    process.env.SUPPORT_TICKET_ATTACHMENT_S3_VIRTUAL_HOSTED_STYLE?.trim()
+    process.env.S3_VIRTUAL_HOSTED_STYLE?.trim()
 
   return {
-    accessKeyId: getOptionalEnv("SUPPORT_TICKET_ATTACHMENT_S3_ACCESS_KEY_ID"),
-    bucket: getRequiredEnv("SUPPORT_TICKET_ATTACHMENT_S3_BUCKET"),
-    endpoint: getOptionalEnv("SUPPORT_TICKET_ATTACHMENT_S3_ENDPOINT"),
-    region: getRequiredEnv("SUPPORT_TICKET_ATTACHMENT_S3_REGION"),
+    accessKeyId: getOptionalEnv("S3_ACCESS_KEY_ID"),
+    bucket: getRequiredEnv("S3_BUCKET"),
+    endpoint: getOptionalEnv("S3_ENDPOINT"),
+    region: getRequiredEnv("S3_REGION"),
     prefix: getStoragePrefix(),
     presignTtlSeconds: getPresignTtlSeconds(),
     secretAccessKey: getOptionalEnv(
-      "SUPPORT_TICKET_ATTACHMENT_S3_SECRET_ACCESS_KEY"
+      "S3_SECRET_ACCESS_KEY"
     ),
-    sessionToken: getOptionalEnv("SUPPORT_TICKET_ATTACHMENT_S3_SESSION_TOKEN"),
+    sessionToken: getOptionalEnv("S3_SESSION_TOKEN"),
     virtualHostedStyle:
       virtualHostedStyle === undefined
         ? undefined
