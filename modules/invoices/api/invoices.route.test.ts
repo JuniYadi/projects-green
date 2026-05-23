@@ -2,6 +2,7 @@ import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
 import { createInvoicesRoutes } from "@/modules/invoices/api/invoices.route"
+import type { InvoiceEmailService } from "@/modules/invoices/email.service"
 import {
   InvoiceCancelNotAllowedError,
   InvoiceNotFoundError,
@@ -58,6 +59,7 @@ const createService = (): InvoiceService => {
 
 const createApp = (input: {
   service?: InvoiceService
+  emailService?: InvoiceEmailService
   auth?: Partial<{
     user: { id: string; email?: string | null } | null
     organizationId?: string | null
@@ -67,6 +69,14 @@ const createApp = (input: {
   platformRole?: "none" | "super_admin"
 }) => {
   const service = input.service ?? createService()
+
+  const mockEmailService: InvoiceEmailService = input.emailService ?? {
+    sendInvoiceCreated: mock(async () => {}),
+    sendPaymentReminder: mock(async () => {}),
+    sendInvoicePaid: mock(async () => {}),
+    sendInvoiceOverdue: mock(async () => {}),
+    sendInvoiceCancelled: mock(async () => {}),
+  }
 
   return new Elysia().use(
     createInvoicesRoutes({
@@ -79,6 +89,7 @@ const createApp = (input: {
       }),
       getPlatformRole: async () => input.platformRole ?? "none",
       service,
+      emailService: mockEmailService,
     })
   )
 }
@@ -293,5 +304,171 @@ describe("invoices routes", () => {
 
     const response = await app.handle(new Request("http://localhost/invoices"))
     expect(response.status).toBe(500)
+  })
+
+  describe("notify endpoints", () => {
+    it("sends invoice created notification", async () => {
+      const mockEmailService: InvoiceEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+        sendPaymentReminder: mock(async () => {}),
+        sendInvoicePaid: mock(async () => {}),
+        sendInvoiceOverdue: mock(async () => {}),
+        sendInvoiceCancelled: mock(async () => {}),
+      }
+      const app = createApp({ emailService: mockEmailService })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ recipientEmail: "test@example.com" }),
+        })
+      )
+      const payload = (await response.json()) as { ok: boolean; message: string }
+
+      expect(response.status).toBe(200)
+      expect(payload.ok).toBe(true)
+      expect(payload.message).toContain("created notification sent")
+      expect(mockEmailService.sendInvoiceCreated).toHaveBeenCalledWith(
+        invoiceDetail,
+        "test@example.com"
+      )
+    })
+
+    it("sends invoice paid notification", async () => {
+      const mockEmailService: InvoiceEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+        sendPaymentReminder: mock(async () => {}),
+        sendInvoicePaid: mock(async () => {}),
+        sendInvoiceOverdue: mock(async () => {}),
+        sendInvoiceCancelled: mock(async () => {}),
+      }
+      const app = createApp({ emailService: mockEmailService })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/paid", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ recipientEmail: "test@example.com" }),
+        })
+      )
+      const payload = (await response.json()) as { ok: boolean; message: string }
+
+      expect(response.status).toBe(200)
+      expect(payload.ok).toBe(true)
+      expect(mockEmailService.sendInvoicePaid).toHaveBeenCalled()
+    })
+
+    it("sends payment reminder notification", async () => {
+      const mockEmailService: InvoiceEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+        sendPaymentReminder: mock(async () => {}),
+        sendInvoicePaid: mock(async () => {}),
+        sendInvoiceOverdue: mock(async () => {}),
+        sendInvoiceCancelled: mock(async () => {}),
+      }
+      const app = createApp({ emailService: mockEmailService })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/reminder", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ recipientEmail: "test@example.com" }),
+        })
+      )
+      const payload = (await response.json()) as { ok: boolean; message: string }
+
+      expect(response.status).toBe(200)
+      expect(payload.ok).toBe(true)
+      expect(mockEmailService.sendPaymentReminder).toHaveBeenCalled()
+    })
+
+    it("sends invoice overdue notification", async () => {
+      const mockEmailService: InvoiceEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+        sendPaymentReminder: mock(async () => {}),
+        sendInvoicePaid: mock(async () => {}),
+        sendInvoiceOverdue: mock(async () => {}),
+        sendInvoiceCancelled: mock(async () => {}),
+      }
+      const app = createApp({ emailService: mockEmailService })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/overdue", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ recipientEmail: "test@example.com" }),
+        })
+      )
+      const payload = (await response.json()) as { ok: boolean; message: string }
+
+      expect(response.status).toBe(200)
+      expect(payload.ok).toBe(true)
+      expect(mockEmailService.sendInvoiceOverdue).toHaveBeenCalled()
+    })
+
+    it("sends invoice cancelled notification with reason", async () => {
+      const mockEmailService: InvoiceEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+        sendPaymentReminder: mock(async () => {}),
+        sendInvoicePaid: mock(async () => {}),
+        sendInvoiceOverdue: mock(async () => {}),
+        sendInvoiceCancelled: mock(async () => {}),
+      }
+      const app = createApp({ emailService: mockEmailService })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/cancelled", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            recipientEmail: "test@example.com",
+            reason: "Customer requested",
+          }),
+        })
+      )
+      const payload = (await response.json()) as { ok: boolean; message: string }
+
+      expect(response.status).toBe(200)
+      expect(payload.ok).toBe(true)
+      expect(mockEmailService.sendInvoiceCancelled).toHaveBeenCalledWith(
+        invoiceDetail,
+        "test@example.com",
+        "Customer requested"
+      )
+    })
+
+    it("returns 403 for member role on notify endpoints", async () => {
+      const app = createApp({
+        auth: {
+          role: "user_member",
+          roles: ["user_member"],
+        },
+      })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+        })
+      )
+
+      expect(response.status).toBe(403)
+    })
+
+    it("returns 404 when invoice not found on notify", async () => {
+      const service = createService()
+      service.getInvoiceDetail = mock(async () => {
+        throw new InvoiceNotFoundError("inv_missing")
+      })
+      const app = createApp({ service })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_missing/notify/created", {
+          method: "POST",
+        })
+      )
+
+      expect(response.status).toBe(404)
+    })
   })
 })
