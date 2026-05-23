@@ -21,7 +21,7 @@ const FAQ_LIST: Array<{
 }> = [
   {
     q: "1. How do I manage my app?",
-    a: "Manage your app configurations through the tabs above: 'Overview' tracks general deployment states and trigger rebuilds, 'Domains & SSL' configures ingress records and TLS certificates, 'Environment & Networking' handles configuration variables, 'Storage & Mounts' mounts configuration files/secrets into container pods, 'Autoscaling' scales replicas dynamically, and 'Metrics' tracks load.",
+    a: "Manage your app configurations through the tabs above: 'Overview' tracks general deployment states and trigger rebuilds, 'Domains & SSL' configures ingress records and TLS certificates, 'Environment' handles configuration variables, 'Storages' mounts configuration files/secrets into container pods, 'Autoscaling' scales replicas dynamically, and 'Metrics' tracks load.",
     tab: "overview",
   },
   {
@@ -31,12 +31,12 @@ const FAQ_LIST: Array<{
   },
   {
     q: "3. How do I add environment variables?",
-    a: "Go to the 'Environment & Net' tab. Enter the variable Name and Value. Toggle the 'Secret Value' option to mask the variable on the interface and store it encrypted in secrets. Click 'Save Variable'. You can also import `.env` files in bulk using the 'Bulk Import' simulator.",
+    a: "Go to the 'Environment' tab. Enter the variable Name and Value. Toggle the 'Secret Value' option to mask the variable on the interface and store it encrypted in secrets. Click 'Save Variable'. You can also import `.env` files in bulk using the 'Bulk Import' simulator.",
     tab: "env",
   },
   {
     q: "4. I want to mount a private key file, how?",
-    a: "Under the 'Storage & Mounts' tab, create a new Volume Mount. Provide a target Container Path (e.g. /var/www/html/storage/app/key.pem), set the mode to read-only, choose 'Secret (PEM)' as the source type, and paste your PEM key block. The platform mounts it as a secure file into your container pods.",
+    a: "Under the 'Storages' tab, create a new Volume Mount. Provide a target Container Path (e.g. /var/www/html/storage/app/key.pem), set the mode to read-only, choose 'Secret (PEM)' as the source type, and paste your PEM key block. The platform mounts it as a secure file into your container pods.",
     tab: "mounts",
   },
   {
@@ -51,7 +51,7 @@ const FAQ_LIST: Array<{
   },
   {
     q: "7. My app is slow, is resource enough to handle the traffic? Where can I see metrics?",
-    a: "Go to the 'Telemetry & Metrics' tab to view live CPU, RAM, and HTTP network requests. If usage is close to 100%, consider customizing limits under 'Scaling & Tuning' or enable Horizontal Pod Autoscaling (HPA) to spin up extra replicas.",
+    a: "Go to the 'Metrics' tab to view live CPU, RAM, and HTTP network requests. If usage is close to 100%, consider customizing limits under 'Autoscaling' or enable Horizontal Pod Autoscaling (HPA) to spin up extra replicas.",
     tab: "metrics",
   },
   {
@@ -71,22 +71,22 @@ const FAQ_LIST: Array<{
   },
   {
     q: "11. I'm behind a proxy, client IPs show local IP instead of real IP.",
-    a: "Go to 'Environment & Net' -> 'Reverse Proxy Configuration'. Toggle 'Trust Reverse Proxy Forwarded Headers'. This configures nginx/app ingress to read client IPs from the X-Forwarded-For header instead of returning internal load balancer node IPs.",
+    a: "Go to 'Environment' -> 'Reverse Proxy Configuration'. Toggle 'Trust Reverse Proxy Forwarded Headers'. This configures nginx/app ingress to read client IPs from the X-Forwarded-For header instead of returning internal load balancer node IPs.",
     tab: "env",
   },
   {
     q: "12. I need to customize my app resource because of lack of RAM.",
-    a: "Go to the 'Autoscaling & Tuning' tab. Locate 'Resource Sizing'. You can scale Memory limits and CPU limits directly by typing or sliding. Click 'Save configurations' to initiate a rolling update with the new constraints.",
+    a: "Go to the 'Autoscaling' tab. Locate 'Resource Sizing'. You can scale Memory limits and CPU limits directly by typing or sliding. Click 'Save configurations' to initiate a rolling update with the new constraints.",
     tab: "scaling",
   },
   {
     q: "13. I need to add replica on my server, or enable HPA or VPA limits.",
-    a: "Go to 'Autoscaling & Tuning' tab -> scaling policies. You can manually adjust the replica counter, or toggle 'Horizontal Pod Autoscaler (HPA)' to set minimum/maximum replicas and target load metrics. Toggle VPA to let the cluster optimize limits automatically.",
+    a: "Go to 'Autoscaling' tab -> scaling policies. You can manually adjust the replica counter, or toggle 'Horizontal Pod Autoscaler (HPA)' to set minimum/maximum replicas and target load metrics. Toggle VPA to let the cluster optimize limits automatically.",
     tab: "scaling",
   },
   {
     q: "14. I need to see logs of my app (Opensearch Integration).",
-    a: "Navigate to the 'Opensearch Log Viewer' tab. You can search key terms, filter by logs level (INFO, WARN, ERROR), and toggle live-tail streams. This is powered directly by our backend cluster Opensearch indexing.",
+    a: "Navigate to the 'Logs' tab. You can search key terms, filter by logs level (INFO, WARN, ERROR), and toggle live-tail streams. This is powered directly by our backend cluster Opensearch indexing.",
     tab: "logs",
   },
 ]
