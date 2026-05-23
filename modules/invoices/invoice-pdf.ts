@@ -40,6 +40,7 @@ const toPdfLines = (invoice: InvoiceDetail) => {
 }
 
 export const buildInvoicePdfBytes = (invoice: InvoiceDetail): Uint8Array => {
+  const encoder = new TextEncoder()
   const lines = toPdfLines(invoice)
   const streamBody = [
     "BT",
@@ -54,36 +55,39 @@ export const buildInvoicePdfBytes = (invoice: InvoiceDetail): Uint8Array => {
     }),
     "ET",
   ].join("\n")
+  const streamLength = encoder.encode(streamBody).byteLength
 
   const objects = [
     "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
     "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
     "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n",
-    `4 0 obj\n<< /Length ${streamBody.length} >>\nstream\n${streamBody}\nendstream\nendobj\n`,
+    `4 0 obj\n<< /Length ${streamLength} >>\nstream\n${streamBody}\nendstream\nendobj\n`,
     "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
   ]
 
-  let output = "%PDF-1.4\n"
+  const outputParts = ["%PDF-1.4\n"]
+  let outputByteLength = encoder.encode(outputParts[0] ?? "").byteLength
   const offsets = [0]
 
   for (const object of objects) {
-    offsets.push(output.length)
-    output += object
+    offsets.push(outputByteLength)
+    outputParts.push(object)
+    outputByteLength += encoder.encode(object).byteLength
   }
 
-  const xrefOffset = output.length
-  output += `xref\n0 ${objects.length + 1}\n`
-  output += "0000000000 65535 f \n"
+  const xrefOffset = outputByteLength
+  outputParts.push(`xref\n0 ${objects.length + 1}\n`)
+  outputParts.push("0000000000 65535 f \n")
 
   for (const offset of offsets.slice(1)) {
-    output += `${String(offset).padStart(10, "0")} 00000 n \n`
+    outputParts.push(`${String(offset).padStart(10, "0")} 00000 n \n`)
   }
 
-  output += "trailer\n"
-  output += `<< /Size ${objects.length + 1} /Root 1 0 R >>\n`
-  output += "startxref\n"
-  output += `${xrefOffset}\n`
-  output += "%%EOF"
+  outputParts.push("trailer\n")
+  outputParts.push(`<< /Size ${objects.length + 1} /Root 1 0 R >>\n`)
+  outputParts.push("startxref\n")
+  outputParts.push(`${xrefOffset}\n`)
+  outputParts.push("%%EOF")
 
-  return new TextEncoder().encode(output)
+  return encoder.encode(outputParts.join(""))
 }

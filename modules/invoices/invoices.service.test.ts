@@ -102,7 +102,7 @@ describe("invoice service", () => {
       },
     })
 
-    expect(
+    await expect(
       service.cancelInvoice({ organizationId: "org_1", invoiceId: "inv_1" })
     ).rejects.toBeInstanceOf(InvoiceCancelNotAllowedError)
   })
@@ -116,7 +116,7 @@ describe("invoice service", () => {
       },
     })
 
-    expect(
+    await expect(
       service.getInvoiceDetail({ organizationId: "org_1", invoiceId: "missing" })
     ).rejects.toBeInstanceOf(InvoiceNotFoundError)
   })
@@ -179,7 +179,7 @@ describe("invoice service", () => {
     expect(list[0]?.totalAmount).toBe(0)
   })
 
-  it("handles detail line item with fallback description", () => {
+  it("handles detail line item with fallback description", async () => {
     const detailWithEmptyLine = {
       ...detailRecord,
       lines: [
@@ -209,15 +209,15 @@ describe("invoice service", () => {
       },
     })
 
-    return service.getInvoiceDetail({
+    const detail = await service.getInvoiceDetail({
       organizationId: "org_1",
       invoiceId: "inv_1",
-    }).then(detail => {
-      expect(detail.lineItems[0]?.description).toBe("Metered usage")
-      expect(detail.lineItems[0]?.quantity).toBe(0)
-      expect(detail.lineItems[0]?.unitPrice).toBe(0)
-      expect(detail.lineItems[0]?.amount).toBe(0)
     })
+
+    expect(detail.lineItems[0]?.description).toBe("Metered usage")
+    expect(detail.lineItems[0]?.quantity).toBe(0)
+    expect(detail.lineItems[0]?.unitPrice).toBe(0)
+    expect(detail.lineItems[0]?.amount).toBe(0)
   })
 
   it("cancels invoice successfully", async () => {

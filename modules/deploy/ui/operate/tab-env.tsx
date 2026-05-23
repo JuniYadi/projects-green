@@ -185,6 +185,15 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                   <button
                     type="button"
                     onClick={() => setNewEnvSecret(!newEnvSecret)}
+                    onKeyDown={(event) => {
+                      if (event.key === " " || event.key === "Enter") {
+                        event.preventDefault()
+                        setNewEnvSecret((value) => !value)
+                      }
+                    }}
+                    role="switch"
+                    aria-checked={newEnvSecret}
+                    aria-label="Encrypt value as secret"
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                       newEnvSecret ? "bg-primary" : "bg-neutral-800"
                     }`}

@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
 
+import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
   createSupportTicketService,
   SupportTicketAccessDeniedError,
@@ -98,11 +99,16 @@ const toErrorResponse = (set: RouteSet, error: unknown) => {
 
   if (error instanceof z.ZodError) {
     set.status = 422
+    const issues = error.issues.map((issue) => ({
+      path: issue.path,
+      message: issue.message,
+    }))
+
     return {
       ok: false as const,
       error: "VALIDATION_ERROR" as const,
       message: "Please fix the highlighted fields and try again.",
-      issues: error.issues,
+      fieldErrors: fieldErrorMapFromIssues(issues),
     }
   }
 
@@ -320,3 +326,4 @@ export const createSupportTicketRoutes = (
 }
 
 export const supportTicketRoutes = createSupportTicketRoutes()
+export type App = ReturnType<typeof createSupportTicketRoutes>

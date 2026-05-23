@@ -73,3 +73,15 @@ CREATE INDEX "SupportTicket_priority_idx" ON "SupportTicket"("priority");
 
 -- CreateIndex
 CREATE INDEX "SupportTicket_service_idx" ON "SupportTicket"("service");
+
+-- AddForeignKey
+ALTER TABLE "SupportTicketAttachmentUploadSession"
+ADD CONSTRAINT "SupportTicketAttachmentUploadSession_consumedTicketId_fkey"
+FOREIGN KEY ("consumedTicketId") REFERENCES "SupportTicket"("id")
+ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SupportTicketAttachmentUploadSession"
+ADD CONSTRAINT "SupportTicketAttachmentUploadSession_consumedReplyId_fkey"
+FOREIGN KEY ("consumedReplyId") REFERENCES "SupportTicketReply"("id")
+ON DELETE SET NULL ON UPDATE CASCADE;

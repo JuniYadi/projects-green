@@ -173,6 +173,15 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
               <button
                 type="button"
                 onClick={() => setNewMountReadOnly(!newMountReadOnly)}
+                onKeyDown={(event) => {
+                  if (event.key === " " || event.key === "Enter") {
+                    event.preventDefault()
+                    setNewMountReadOnly((value) => !value)
+                  }
+                }}
+                role="switch"
+                aria-checked={newMountReadOnly}
+                aria-label="Set mount as read-only"
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                   newMountReadOnly ? "bg-primary" : "bg-neutral-800"
                 }`}

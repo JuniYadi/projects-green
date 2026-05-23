@@ -124,6 +124,27 @@ describe("support ticket routes", () => {
     })
   })
 
+  it("returns validation envelope for invalid create payload", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: "",
+          department: "technical",
+          priority: "medium",
+        }),
+      })
+    )
+    expect(response.status).toBe(422)
+    const payload = (await response.json()) as Record<string, unknown>
+    expect(payload).toBeDefined()
+  })
+
   it("returns thread by ticket id", async () => {
     const app = createApp({})
 

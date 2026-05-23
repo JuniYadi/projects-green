@@ -3,6 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
 
 import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
   normalizeDocPath,
   getDocByPath as getDocByPathService,
@@ -71,6 +72,20 @@ const toForbidden = (set: RouteSet) => {
   }
 }
 
+const toValidationError = (
+  set: RouteSet,
+  issues: Array<{ path: Array<PropertyKey>; message: string }>
+) => {
+  set.status = 422
+
+  return {
+    ok: false as const,
+    error: "VALIDATION_ERROR" as const,
+    message: "Please fix the highlighted fields and try again.",
+    fieldErrors: fieldErrorMapFromIssues(issues),
+  }
+}
+
 export const createDocsRoutes = (
   dependencies: DocsRouteDependencies = createDefaultDependencies()
 ) =>
@@ -85,12 +100,7 @@ export const createDocsRoutes = (
       const parsed = docsQuerySchema.safeParse(query)
 
       if (!parsed.success) {
-        set.status = 400
-        return {
-          ok: false as const,
-          error: "INVALID_PATH" as const,
-          message: "Query parameter `path` is required.",
-        }
+        return toValidationError(set, parsed.error.issues)
       }
 
       const doc = await dependencies.getDocByPath({
@@ -131,23 +141,18 @@ export const createDocsRoutes = (
       const parsed = docsBodySchema.safeParse(body)
 
       if (!parsed.success) {
-        set.status = 400
-        return {
-          ok: false as const,
-          error: "INVALID_PAYLOAD" as const,
-          message: "Invalid documentation payload.",
-        }
+        return toValidationError(set, parsed.error.issues)
       }
 
       const normalizedPath = normalizeDocPath(parsed.data.path)
 
       if (!normalizedPath) {
-        set.status = 400
-        return {
-          ok: false as const,
-          error: "INVALID_PATH" as const,
-          message: "Path must not be empty.",
-        }
+        return toValidationError(set, [
+          {
+            path: ["path"],
+            message: "Path must not be empty.",
+          },
+        ])
       }
 
       const normalizedHowTo = parsed.data.howTo
@@ -155,12 +160,12 @@ export const createDocsRoutes = (
         .filter((item) => item.length > 0)
 
       if (!normalizedHowTo.length) {
-        set.status = 400
-        return {
-          ok: false as const,
-          error: "INVALID_PAYLOAD" as const,
-          message: "How-to steps must contain at least one non-empty item.",
-        }
+        return toValidationError(set, [
+          {
+            path: ["howTo"],
+            message: "How-to steps must contain at least one non-empty item.",
+          },
+        ])
       }
 
       const targetOrganizationId =
@@ -189,3 +194,4 @@ export const createDocsRoutes = (
     })
 
 export const docsRoutes = createDocsRoutes()
+export type App = ReturnType<typeof createDocsRoutes>

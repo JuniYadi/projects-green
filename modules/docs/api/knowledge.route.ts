@@ -4,6 +4,7 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { streamText } from "ai"
 import { z } from "zod"
 
+import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
   normalizeDocPath,
   searchKnowledgeDocs as searchKnowledgeDocsService,
@@ -135,6 +136,20 @@ const toUnauthorized = (set: RouteSet) => {
   }
 }
 
+const toValidationError = (
+  set: RouteSet,
+  issues: Array<{ path: Array<PropertyKey>; message: string }>
+) => {
+  set.status = 422
+
+  return {
+    ok: false as const,
+    error: "VALIDATION_ERROR" as const,
+    message: "Please fix the highlighted fields and try again.",
+    fieldErrors: fieldErrorMapFromIssues(issues),
+  }
+}
+
 const streamKnowledgeAnswerDefault = (input: {
   messages: KnowledgeChatRequest["messages"]
   docs: Awaited<ReturnType<typeof searchKnowledgeDocsService>>
@@ -187,24 +202,18 @@ export const createKnowledgeRoutes = (
       const parsed = knowledgeChatBodySchema.safeParse(body)
 
       if (!parsed.success) {
-        set.status = 400
-
-        return {
-          ok: false as const,
-          error: "INVALID_PAYLOAD" as const,
-          message: "Invalid chat payload.",
-        }
+        return toValidationError(set, parsed.error.issues)
       }
 
       const routePath = normalizeDocPath(parsed.data.routePath)
 
       if (!routePath) {
-        set.status = 400
-        return {
-          ok: false as const,
-          error: "INVALID_PATH" as const,
-          message: "Route path must not be empty.",
-        }
+        return toValidationError(set, [
+          {
+            path: ["routePath"],
+            message: "Route path must not be empty.",
+          },
+        ])
       }
 
       const latestUserQuery = extractLatestUserQuery(parsed.data.messages)
@@ -301,3 +310,4 @@ export const createKnowledgeRoutes = (
   )
 
 export const knowledgeRoutes = createKnowledgeRoutes()
+export type App = ReturnType<typeof createKnowledgeRoutes>

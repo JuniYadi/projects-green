@@ -10,12 +10,15 @@ describe("SupportTicketsPage", () => {
       params: Promise.resolve({ lang: "en" }),
     })
 
+    let view!: ReturnType<typeof render>
+
     await act(async () => {
-      render(ui)
+      view = render(ui)
     })
 
     expect(
-      document.querySelector('h1, [role="heading"]')
+      view.getByRole("heading", { name: "Support Tickets" })
     ).toBeInTheDocument()
+    expect(view.getByText("Ticket Queue")).toBeInTheDocument()
   })
 })

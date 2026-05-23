@@ -142,4 +142,29 @@ describe("knowledgeRoutes", () => {
     expect(frames[1]?.type).toBe("done")
     expect(frames[1]?.answer).toBe("I don't know from the current knowledgebase.")
   })
+
+  it("returns validation envelope for invalid request payload", async () => {
+    const response = await createApp().handle(
+      new Request("http://localhost/knowledge/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          routePath: "   ",
+          messages: [{ role: "user", content: "help" }],
+        }),
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      fieldErrors?: Record<string, string[]>
+    }
+
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("VALIDATION_ERROR")
+    expect(body.fieldErrors?.routePath?.length).toBeGreaterThan(0)
+  })
 })

@@ -119,6 +119,23 @@ describe("invoices routes", () => {
     expect(service.listInvoices).toHaveBeenCalledTimes(1)
   })
 
+  it("returns validation envelope for invalid list query", async () => {
+    const app = createApp({})
+    const response = await app.handle(
+      new Request("http://localhost/invoices?sortDir=invalid")
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      fieldErrors?: Record<string, string[]>
+    }
+
+    expect(response.status).toBe(422)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("VALIDATION_ERROR")
+    expect(payload.fieldErrors?.sortDir?.length).toBeGreaterThan(0)
+  })
+
   it("returns not found for missing invoice detail", async () => {
     const service = createService()
     service.getInvoiceDetail = mock(async () => {
@@ -148,6 +165,25 @@ describe("invoices routes", () => {
     expect(response.headers.get("content-type")).toBe("application/pdf")
     const bytes = await response.arrayBuffer()
     expect(bytes.byteLength).toBeGreaterThan(200)
+  })
+
+  it("returns validation envelope for invalid invoice id params", async () => {
+    const app = createApp({})
+    const response = await app.handle(
+      new Request("http://localhost/invoices/%20", {
+        method: "GET",
+      })
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      fieldErrors?: Record<string, string[]>
+    }
+
+    expect(response.status).toBe(422)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("VALIDATION_ERROR")
+    expect(payload.fieldErrors?.invoiceId?.length).toBeGreaterThan(0)
   })
 
   it("forbids cancel for non owner/admin and allows for super admin", async () => {
@@ -208,7 +244,35 @@ describe("invoices routes", () => {
     expect(payload.error).toBe("INVOICE_CANCEL_NOT_ALLOWED")
   })
 
-  it("returns 400 for missing organization", async () => {
+  it("returns 500 when role resolution fails in cancel flow", async () => {
+    const app = new Elysia().use(
+      createInvoicesRoutes({
+        authenticate: async () => ({
+          user: { id: "user_1", email: "owner@example.com" },
+          organizationId: "org_1",
+          role: "user_owner",
+          roles: ["user_owner"],
+        }),
+        getPlatformRole: async () => {
+          throw new Error("role provider unavailable")
+        },
+        service: createService(),
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", {
+        method: "POST",
+      })
+    )
+    const payload = (await response.json()) as { ok: boolean; error: string }
+
+    expect(response.status).toBe(500)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("INTERNAL_SERVER_ERROR")
+  })
+
+  it("returns 403 for missing organization", async () => {
     const app = createApp({
       auth: {
         user: { id: "user_1" },

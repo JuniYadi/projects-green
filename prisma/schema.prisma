@@ -266,7 +266,8 @@ model SupportTicket {
   createdAt                 DateTime                @default(now())
   updatedAt                 DateTime                @updatedAt
 
-  replies SupportTicketReply[]
+  replies                SupportTicketReply[]
+  consumedUploadSessions SupportTicketAttachmentUploadSession[] @relation("SupportTicketConsumedSessions")
 
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, status])
@@ -286,7 +287,8 @@ model SupportTicketReply {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket                 SupportTicket                        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  consumedUploadSessions SupportTicketAttachmentUploadSession[] @relation("SupportTicketReplyConsumedSessions")
 
   @@index([ticketId, createdAt])
   @@index([authorWorkosUserId])
@@ -312,6 +314,8 @@ model SupportTicketAttachmentUploadSession {
   consumedReplyId    String?
   createdAt          DateTime                            @default(now())
   updatedAt          DateTime                            @updatedAt
+  consumedTicket     SupportTicket?                      @relation("SupportTicketConsumedSessions", fields: [consumedTicketId], references: [id], onDelete: SetNull)
+  consumedReply      SupportTicketReply?                 @relation("SupportTicketReplyConsumedSessions", fields: [consumedReplyId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, uploaderWorkosUserId])
   @@index([target, ticketId])

@@ -52,12 +52,17 @@ export type ApiErrorResponse = {
 }
 
 export const fieldErrorMapFromIssues = (
-  issues: Array<{ path: Array<string | number>; message: string }>
+  issues: Array<{ path: Array<PropertyKey>; message: string }>
 ) => {
   const fieldErrors: Record<string, string[]> = {}
 
   for (const issue of issues) {
-    const key = issue.path.join(".")
+    const key = issue.path
+      .filter(
+        (segment): segment is string | number =>
+          typeof segment === "string" || typeof segment === "number"
+      )
+      .join(".")
 
     if (!key) {
       continue

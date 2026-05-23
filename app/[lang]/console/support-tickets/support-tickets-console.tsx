@@ -151,7 +151,13 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
   }
 
   useEffect(() => {
-    loadTickets()
+    const timeoutId = window.setTimeout(() => {
+      void loadTickets()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [])
 
   const resetCreateForm = () => {

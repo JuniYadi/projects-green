@@ -103,6 +103,20 @@ describe("docsRoutes", () => {
     expect(body.title.length).toBeGreaterThan(0)
   })
 
+  it("returns validation envelope for invalid docs query", async () => {
+    const response = await createApp().handle(new Request("http://localhost/docs"))
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      fieldErrors?: Record<string, string[]>
+    }
+
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("VALIDATION_ERROR")
+    expect(body.fieldErrors?.path?.length).toBeGreaterThan(0)
+  })
+
   it("returns 404 for unknown docs path", async () => {
     mockGetDocByPath.mockResolvedValueOnce(null)
 
@@ -166,5 +180,33 @@ describe("docsRoutes", () => {
     expect(body.ok).toBe(true)
     expect(body.path).toBe("/console")
     expect(mockUpsertDocByPath).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns validation envelope for invalid docs payload", async () => {
+    const response = await createApp().handle(
+      new Request("http://localhost/docs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          path: "",
+          title: "",
+          purpose: "",
+          howTo: [],
+        }),
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      fieldErrors?: Record<string, string[]>
+    }
+
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("VALIDATION_ERROR")
+    expect(body.fieldErrors?.path?.length).toBeGreaterThan(0)
+    expect(body.fieldErrors?.title?.length).toBeGreaterThan(0)
   })
 })

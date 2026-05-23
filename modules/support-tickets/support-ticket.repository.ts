@@ -243,17 +243,27 @@ type ConsumeUploadSessionInput = {
   uploaderWorkosUserId: string
 }
 
+type ConsumedUploadSessions = {
+  attachments: SupportTicketAttachmentMetadata[]
+  consumedAt: Date
+}
+
 const consumeUploadSessions = async (
   tx: Prisma.TransactionClient,
   input: ConsumeUploadSessionInput
 ) => {
   if (!input.uploadSessionIds.length) {
-    return [] as SupportTicketAttachmentMetadata[]
+    return {
+      attachments: [] as SupportTicketAttachmentMetadata[],
+      consumedAt: new Date(),
+    } satisfies ConsumedUploadSessions
   }
 
   const uniqueIds = [...new Set(input.uploadSessionIds)]
   const now = new Date()
-  const sessions = await tx.supportTicketAttachmentUploadSession.findMany({
+  const consumedAt = new Date()
+
+  const claimResult = await tx.supportTicketAttachmentUploadSession.updateMany({
     where: {
       id: {
         in: uniqueIds,
@@ -270,15 +280,34 @@ const consumeUploadSessions = async (
         gt: now,
       },
     },
+    data: {
+      consumedAt,
+    },
   })
 
-  if (sessions.length !== uniqueIds.length) {
+  if (claimResult.count !== uniqueIds.length) {
     throw new Error(
       "One or more attachment upload sessions are missing, expired, or not registered."
     )
   }
 
-  return sessions.map(mapUploadSessionToAttachment)
+  const sessions = await tx.supportTicketAttachmentUploadSession.findMany({
+    where: {
+      id: {
+        in: uniqueIds,
+      },
+      consumedAt,
+    },
+  })
+
+  if (sessions.length !== uniqueIds.length) {
+    throw new Error("Unable to finalize attachment upload session claims.")
+  }
+
+  return {
+    attachments: sessions.map(mapUploadSessionToAttachment),
+    consumedAt,
+  } satisfies ConsumedUploadSessions
 }
 
 export type SupportTicketRepository = {
@@ -423,13 +452,14 @@ export const supportTicketRepository: SupportTicketRepository = {
         },
       })
 
-      const uploadAttachments = await consumeUploadSessions(tx, {
+      const consumedSessions = await consumeUploadSessions(tx, {
         organizationId: input.organizationId,
         uploaderWorkosUserId: input.requesterWorkosUserId,
         target: "create",
         ticketId: null,
         uploadSessionIds: input.uploadSessionIds ?? [],
       })
+      const uploadAttachments = consumedSessions.attachments
 
       const mergedAttachments = appendUniqueAttachments(
         normalizeAttachmentMetadata(created.attachmentsJson),
@@ -442,9 +472,9 @@ export const supportTicketRepository: SupportTicketRepository = {
             id: {
               in: uploadAttachments.map((attachment) => attachment.id),
             },
+            consumedAt: consumedSessions.consumedAt,
           },
           data: {
-            consumedAt: new Date(),
             consumedTicketId: created.id,
           },
         })
@@ -554,13 +584,14 @@ export const supportTicketRepository: SupportTicketRepository = {
         },
       })
 
-      const uploadAttachments = await consumeUploadSessions(tx, {
+      const consumedSessions = await consumeUploadSessions(tx, {
         organizationId: ticket.organizationId,
         uploaderWorkosUserId: input.authorWorkosUserId,
         target: "reply",
         ticketId: input.ticketId,
         uploadSessionIds: input.uploadSessionIds ?? [],
       })
+      const uploadAttachments = consumedSessions.attachments
 
       const mergedAttachments = appendUniqueAttachments(
         normalizeAttachmentMetadata(created.attachmentsJson),
@@ -573,9 +604,9 @@ export const supportTicketRepository: SupportTicketRepository = {
             id: {
               in: uploadAttachments.map((attachment) => attachment.id),
             },
+            consumedAt: consumedSessions.consumedAt,
           },
           data: {
-            consumedAt: new Date(),
             consumedReplyId: created.id,
           },
         })

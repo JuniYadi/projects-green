@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
 
+import { fieldErrorMapFromIssues } from "@/lib/validation"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 import { buildInvoicePdfBytes } from "@/modules/invoices/invoice-pdf"
 import { canManageInvoiceCancellation } from "@/modules/invoices/invoices.policy"
@@ -86,12 +87,16 @@ const toForbidden = (set: RouteSet, message: string) => {
   }
 }
 
-const toInvalidQuery = (set: RouteSet, message: string) => {
-  set.status = 400
+const toValidationError = (
+  set: RouteSet,
+  issues: Array<{ path: Array<PropertyKey>; message: string }>
+) => {
+  set.status = 422
   return {
     ok: false as const,
-    error: "INVALID_QUERY" as const,
-    message,
+    error: "VALIDATION_ERROR" as const,
+    message: "Please fix the highlighted fields and try again.",
+    fieldErrors: fieldErrorMapFromIssues(issues),
   }
 }
 
@@ -166,10 +171,7 @@ export const createInvoicesRoutes = (
       const parsedQuery = listQuerySchema.safeParse(query)
 
       if (!parsedQuery.success) {
-        return toInvalidQuery(
-          set,
-          "Invalid invoice list query parameters were provided."
-        )
+        return toValidationError(set, parsedQuery.error.issues)
       }
 
       try {
@@ -205,7 +207,7 @@ export const createInvoicesRoutes = (
       const parsedParams = paramsSchema.safeParse(params)
 
       if (!parsedParams.success) {
-        return toInvalidQuery(set, "Invoice id is required.")
+        return toValidationError(set, parsedParams.error.issues)
       }
 
       try {
@@ -248,7 +250,7 @@ export const createInvoicesRoutes = (
       const parsedParams = paramsSchema.safeParse(params)
 
       if (!parsedParams.success) {
-        return toInvalidQuery(set, "Invoice id is required.")
+        return toValidationError(set, parsedParams.error.issues)
       }
 
       try {
@@ -292,22 +294,22 @@ export const createInvoicesRoutes = (
       const parsedParams = paramsSchema.safeParse(params)
 
       if (!parsedParams.success) {
-        return toInvalidQuery(set, "Invoice id is required.")
-      }
-
-      const actorRoles = await toActorRoles({
-        auth,
-        getPlatformRole: dependencies.getPlatformRole,
-      })
-
-      if (!canManageInvoiceCancellation(actorRoles)) {
-        return toForbidden(
-          set,
-          "Only owner/admin members can mark invoices as canceled."
-        )
+        return toValidationError(set, parsedParams.error.issues)
       }
 
       try {
+        const actorRoles = await toActorRoles({
+          auth,
+          getPlatformRole: dependencies.getPlatformRole,
+        })
+
+        if (!canManageInvoiceCancellation(actorRoles)) {
+          return toForbidden(
+            set,
+            "Only owner/admin members can mark invoices as canceled."
+          )
+        }
+
         const invoice = await dependencies.service.cancelInvoice({
           organizationId: auth.organizationId,
           invoiceId: parsedParams.data.invoiceId,
@@ -332,3 +334,4 @@ export const createInvoicesRoutes = (
 }
 
 export const invoicesRoutes = createInvoicesRoutes()
+export type App = ReturnType<typeof createInvoicesRoutes>

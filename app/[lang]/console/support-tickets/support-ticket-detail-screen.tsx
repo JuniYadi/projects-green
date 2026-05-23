@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,27 +30,43 @@ export function SupportTicketDetailScreen({ ticketId }: SupportTicketDetailScree
   const [files, setFiles] = useState<File[]>([])
   const [isSubmittingReply, setIsSubmittingReply] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
+  const requestSequenceRef = useRef(0)
 
   const loadThread = async () => {
+    const requestId = requestSequenceRef.current + 1
+    requestSequenceRef.current = requestId
     setIsLoading(true)
     setErrorMessage(null)
 
     try {
       const nextThread = await apiClient.getTicketThread(ticketId)
-      setThread(nextThread)
+      if (requestSequenceRef.current === requestId) {
+        setThread(nextThread)
+      }
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to load support ticket thread."
-      )
+      if (requestSequenceRef.current === requestId) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to load support ticket thread."
+        )
+      }
     } finally {
-      setIsLoading(false)
+      if (requestSequenceRef.current === requestId) {
+        setIsLoading(false)
+      }
     }
   }
 
   useEffect(() => {
-    loadThread()
+    const timeoutId = window.setTimeout(() => {
+      void loadThread()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      requestSequenceRef.current += 1
+    }
   }, [ticketId])
 
   const ticket = thread?.ticket ?? null
