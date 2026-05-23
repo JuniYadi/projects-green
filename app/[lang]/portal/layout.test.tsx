@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { beforeEach, afterAll, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
 
 import { createAuthMock, createNavigationMock } from "@/test/layout-test-mocks"
@@ -125,13 +125,13 @@ mock.module("@/components/ui/breadcrumb", () => {
   }
 })
 
-mock.module("@/modules/docs/ui/dashboard-docs-drawer", () => {
-  return {
-    DashboardDocsDrawer: () => <div>Docs Drawer</div>,
-  }
-})
+// No mock needed for ThunderAiHelpDrawer to avoid cache pollution
 
 describe("PortalLayout", () => {
+  afterAll(() => {
+    mock.restore()
+  })
+
   beforeEach(() => {
     mockWithAuth.mockClear()
     mockGetUser.mockClear()
@@ -164,7 +164,7 @@ describe("PortalLayout", () => {
 
     expect(view.getByTestId("sidebar-provider")).toBeTruthy()
     expect(view.getByText("Sidebar:portal:Jane Doe:Acme Inc")).toBeTruthy()
-    expect(view.getByText("Docs Drawer")).toBeTruthy()
+    expect(view.getByText("AI Help")).toBeTruthy()
     expect(view.getByText("Documentation")).toBeTruthy()
     expect(view.getByText("Registry")).toBeTruthy()
     expect(view.getByText("Child Content")).toBeTruthy()
