@@ -260,7 +260,13 @@ export const createSupportTicketRoutes = (
       "/preview",
       createRouteHandler(dependencies, async ({ body }) => {
         const payload = z.object({ markdown: z.string() }).parse(body)
-        const html = typeof Bun !== "undefined" ? Bun.markdown.html(payload.markdown) : payload.markdown
+        let html = typeof Bun !== "undefined" ? Bun.markdown.html(payload.markdown) : payload.markdown
+        html = html
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;")
         return {
           ok: true as const,
           html,
