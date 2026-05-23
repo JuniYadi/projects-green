@@ -20,6 +20,13 @@ describe("i18n pathname helpers", () => {
     })
   })
 
+  it("strips dynamic locale route segment from pathname templates", () => {
+    expect(getLocaleFromPathname("/[lang]/console/support-tickets")).toEqual({
+      locale: null,
+      pathnameWithoutLocale: "/console/support-tickets",
+    })
+  })
+
   it("replaces existing locale when localizing pathname", () => {
     expect(
       localizePathname({
