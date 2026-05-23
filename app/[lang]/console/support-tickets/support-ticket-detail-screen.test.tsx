@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
+import "@testing-library/jest-dom"
 
 import { SupportTicketDetailScreen } from "@/app/[lang]/console/support-tickets/support-ticket-detail-screen"
 
