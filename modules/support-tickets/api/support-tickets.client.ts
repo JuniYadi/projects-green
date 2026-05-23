@@ -6,6 +6,7 @@ import type {
   SupportTicketPriority,
   SupportTicketReply,
   SupportTicketService,
+  SupportTicketStatus,
 } from "@/modules/support-tickets/support-ticket.types"
 
 type TicketThreadResponse = {
@@ -217,6 +218,91 @@ export const createSupportTicketsClient = () => {
       )
 
       return payload.attachment
+    },
+    async listAdminTickets() {
+      const payload = await requestJson<{
+        ok: true
+        tickets: SupportTicket[]
+      }>("/api/support-tickets/admin", undefined, "Unable to load support tickets.")
+
+      return payload.tickets
+    },
+    async createAdminTicket(input: {
+      organizationId: string
+      department: SupportTicketDepartment
+      description?: string | null
+      priority: SupportTicketPriority
+      secureForm?: string | null
+      service?: SupportTicketService | null
+      subject: string
+      uploadSessionIds?: string[]
+    }) {
+      const payload = await requestJson<{
+        ok: true
+        ticket: SupportTicket
+      }>(
+        "/api/support-tickets/admin",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(input),
+        },
+        "Unable to create support ticket."
+      )
+
+      return payload.ticket
+    },
+    async updateAdminTicket(
+      ticketId: string,
+      data: {
+        department?: SupportTicketDepartment
+        priority?: SupportTicketPriority
+        service?: SupportTicketService | null
+        subject?: string
+        description?: string | null
+        status?: SupportTicketStatus
+        assignedAgentWorkosUserId?: string | null
+      }
+    ) {
+      const payload = await requestJson<{
+        ok: true
+        ticket: SupportTicket
+      }>(
+        `/api/support-tickets/admin/${ticketId}`,
+        {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(data),
+        },
+        "Unable to update support ticket."
+      )
+
+      return payload.ticket
+    },
+    async deleteAdminTicket(ticketId: string) {
+      const payload = await requestJson<{
+        ok: true
+      }>(
+        `/api/support-tickets/admin/${ticketId}`,
+        {
+          method: "DELETE",
+        },
+        "Unable to delete support ticket."
+      )
+
+      return payload.ok
+    },
+    async listAdminOrganizations() {
+      const payload = await requestJson<{
+        ok: true
+        organizations: Array<{ id: string; name: string }>
+      }>("/api/support-tickets/admin/organizations", undefined, "Unable to load organizations.")
+
+      return payload.organizations
     },
   }
 }
