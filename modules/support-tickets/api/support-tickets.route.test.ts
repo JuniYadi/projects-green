@@ -389,4 +389,123 @@ describe("support ticket routes", () => {
     expect(response.status).toBe(200)
     expect(deletedId).toBe("ticket_1")
   })
+
+  it("blocks non-admins from admin/organizations route", async () => {
+    const app = createAdminApp({}, "none")
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/admin/organizations", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "FORBIDDEN",
+    })
+  })
+
+  it("blocks non-admins from admin create route", async () => {
+    const app = createAdminApp({}, "none")
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/admin", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          organizationId: "org_custom",
+          subject: "Admin created",
+          department: "technical",
+          priority: "high",
+        }),
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "FORBIDDEN",
+    })
+  })
+
+  it("blocks non-admins from admin update route", async () => {
+    const app = createAdminApp({}, "none")
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/admin/ticket_1", {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          priority: "low",
+        }),
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "FORBIDDEN",
+    })
+  })
+
+  it("blocks non-admins from admin delete route", async () => {
+    const app = createAdminApp({}, "none")
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/admin/ticket_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "FORBIDDEN",
+    })
+  })
+
+  it("blocks members from admin routes even with owner role", async () => {
+    const app = new Elysia().use(
+      createSupportTicketRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          role: "user_owner",
+          roles: ["user_owner"],
+          user: {
+            id: "user_owner",
+            email: "owner@example.com",
+          },
+        }),
+        getPlatformRole: async () => "none",
+        service: {
+          async listTickets() { return [baseTicket] },
+          async createTicket() { return baseTicket },
+          async getTicketThread() { return { ticket: baseTicket, replies: [] } },
+          async addReply() { return { id: "reply_1", ticketId: "ticket_1", authorWorkosUserId: "user_1", body: "Ok", secureForm: null, isInternalNote: false, attachmentMetadata: [], createdAt: new Date(), updatedAt: new Date() } },
+          async transitionStatus() { return baseTicket },
+          async listAllTickets() { return [baseTicket] },
+          async updateTicket() { return baseTicket },
+          async deleteTicket() { return true },
+        } as SupportTicketService,
+        emailService: {
+          async sendTicketCreated() {},
+          async sendTicketReplied() {},
+          async sendTicketClosed() {},
+        },
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/admin", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(403)
+  })
 })
