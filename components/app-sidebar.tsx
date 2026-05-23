@@ -208,6 +208,12 @@ const buildPortalProjects = (
     icon: <BookOpenIcon />,
     isActive: startsWithRoute(pathname, "/portal/documentations"),
   },
+  {
+    name: "Support Tickets",
+    url: localizePathname({ pathname: "/portal/support-tickets", locale }),
+    icon: <LifebuoyIcon />,
+    isActive: startsWithRoute(pathname, "/portal/support-tickets"),
+  },
 ]
 
 export const resolveSidebarMenu = ({

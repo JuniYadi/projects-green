@@ -114,10 +114,54 @@ const createRepositoryStub = () => {
         status: input.status,
         resolvedAt: input.resolvedAt,
         closedAt: input.closedAt,
+        secureForm: input.status === "closed" ? null : current.secureForm,
+      }
+
+      if (input.status === "closed") {
+        for (let i = 0; i < replies.length; i++) {
+          if (replies[i].ticketId === input.ticketId) {
+            replies[i].secureForm = null
+          }
+        }
       }
 
       tickets.set(input.ticketId, updatedTicket)
       return updatedTicket
+    },
+    async listAllTickets(input) {
+      return [...tickets.values()].slice(0, input.limit ?? 50)
+    },
+    async updateTicket(input) {
+      const current = tickets.get(input.ticketId)
+      if (!current) {
+        throw new Error("missing ticket")
+      }
+
+      const updatedTicket: SupportTicket = {
+        ...current,
+        ...input.data,
+        secureForm: input.clearSecureForm ? null : current.secureForm,
+      }
+
+      if (input.clearSecureForm) {
+        for (let i = 0; i < replies.length; i++) {
+          if (replies[i].ticketId === input.ticketId) {
+            replies[i].secureForm = null
+          }
+        }
+      }
+
+      tickets.set(input.ticketId, updatedTicket)
+      return updatedTicket
+    },
+    async deleteTicket(ticketId) {
+      tickets.delete(ticketId)
+      for (let i = replies.length - 1; i >= 0; i--) {
+        if (replies[i].ticketId === ticketId) {
+          replies.splice(i, 1)
+        }
+      }
+      return true
     },
     async createReply(input) {
       const reply: SupportTicketThread["replies"][number] = {
@@ -140,6 +184,7 @@ const createRepositoryStub = () => {
   return {
     repository,
     tickets,
+    replies,
   }
 }
 
@@ -323,6 +368,15 @@ describe("supportTicketService", () => {
         tickets.set(input.ticketId, updatedTicket)
         return updatedTicket
       },
+      async listAllTickets() {
+        return []
+      },
+      async updateTicket() {
+        throw new Error("not implemented")
+      },
+      async deleteTicket() {
+        return true
+      },
       async createReply(input) {
         storedReplySecureForm = input.secureForm ?? ""
         const reply: SupportTicketThread["replies"][number] = {
@@ -465,6 +519,15 @@ describe("supportTicketService", () => {
       async updateTicketStatus() {
         throw new Error("not implemented")
       },
+      async listAllTickets() {
+        return []
+      },
+      async updateTicket() {
+        throw new Error("not implemented")
+      },
+      async deleteTicket() {
+        return true
+      },
       async createReply() {
         throw new Error("not implemented")
       },
@@ -505,5 +568,89 @@ describe("supportTicketService", () => {
     })
 
     expect(ticket.ticketNumber).toBe("TCK-12345678-ABCDEF")
+  })
+
+  it("wipes secure details of ticket and replies on ticket close", async () => {
+    const { repository, tickets, replies } = createRepositoryStub()
+    tickets.set("ticket_1", {
+      ...baseTicket,
+      secureForm: "highly_sensitive_credentials",
+    })
+    replies.push({
+      id: "reply_1",
+      ticketId: "ticket_1",
+      authorWorkosUserId: "user_agent",
+      body: "Please check this VPN config.",
+      secureForm: "sensitive_vpn_credentials",
+      isInternalNote: false,
+      attachmentMetadata: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const closedTicket = await service.transitionStatus({
+      ticketId: "ticket_1",
+      nextStatus: "closed",
+      actor: {
+        organizationId: "org_1",
+        workosUserId: "user_requester",
+      },
+    })
+
+    expect(closedTicket.status).toBe("closed")
+    expect(closedTicket.secureForm).toBeNull()
+    expect(replies[0].secureForm).toBeNull()
+  })
+
+  it("supports super admin CRUD: listAllTickets, updateTicket, deleteTicket", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const adminActor = {
+      isSuperAdmin: true,
+      workosUserId: "admin_user",
+      organizationId: "org_admin",
+    }
+
+    const allTickets = await service.listAllTickets({
+      actor: adminActor,
+    })
+    expect(allTickets.length).toBeGreaterThanOrEqual(1)
+
+    const updated = await service.updateTicket({
+      actor: adminActor,
+      ticketId: "ticket_1",
+      data: {
+        department: "billing",
+        priority: "low",
+        service: "billing",
+        status: "in_progress",
+      },
+    })
+    expect(updated.department).toBe("billing")
+    expect(updated.priority).toBe("low")
+    expect(updated.service).toBe("billing")
+    expect(updated.status).toBe("in_progress")
+
+    const deleted = await service.deleteTicket({
+      actor: adminActor,
+      ticketId: "ticket_1",
+    })
+    expect(deleted).toBe(true)
+
+    await expect(
+      service.getTicketThread({
+        actor: adminActor,
+        ticketId: "ticket_1",
+      })
+    ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
   })
 })

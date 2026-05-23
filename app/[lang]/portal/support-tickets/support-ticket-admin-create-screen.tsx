@@ -28,7 +28,7 @@ import {
 } from "@/modules/support-tickets/support-ticket.types"
 import { formatBytes } from "@/lib/utils"
 
-type SupportTicketCreateScreenProps = {
+type SupportTicketAdminCreateScreenProps = {
   lang: string
 }
 
@@ -39,13 +39,17 @@ type FileWithPreview = {
 
 const apiClient = createSupportTicketsClient()
 
-export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenProps) {
+export function SupportTicketAdminCreateScreen({ lang }: SupportTicketAdminCreateScreenProps) {
   const router = useRouter()
   const locale = resolveLocaleOrDefault(lang)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedOrgId, setSelectedOrgId] = useState<string>("")
+  const [isOrgsLoading, setIsOrgsLoading] = useState(true)
+
   const [department, setDepartment] = useState<SupportTicketDepartment>("technical")
   const [priority, setPriority] = useState<SupportTicketPriority>("medium")
   const [service, setService] = useState<SupportTicketService | "none">("none")
@@ -72,7 +76,25 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
     }
   }, [])
 
-  // Prompt the user if they try to reload or navigate away during submission
+  useEffect(() => {
+    const loadOrgs = async () => {
+      try {
+        const list = await apiClient.listAdminOrganizations()
+        setOrganizations(list)
+        if (list.length > 0) {
+          setSelectedOrgId(list[0].id)
+        }
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error ? error.message : "Unable to load organizations."
+        )
+      } finally {
+        setIsOrgsLoading(false)
+      }
+    }
+    loadOrgs()
+  }, [])
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isSubmitting) {
@@ -113,7 +135,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
   }
 
   const listPath = localizePathname({
-    pathname: "/console/support-tickets",
+    pathname: "/portal/support-tickets",
     locale,
   })
 
@@ -157,6 +179,11 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
     const description = descriptionRef.current?.value || ""
     const secureForm = secureFormRef.current?.value || ""
 
+    if (!selectedOrgId) {
+      setErrorMessage("Please select an organization.")
+      return
+    }
+
     if (!subject.trim()) {
       setErrorMessage("Subject is required.")
       return
@@ -167,7 +194,8 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
 
     try {
       const uploadSessionIds = await uploadFiles("create")
-      await apiClient.createTicket({
+      await apiClient.createAdminTicket({
+        organizationId: selectedOrgId,
         subject: subject.trim(),
         department,
         priority,
@@ -224,12 +252,39 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
               <CardTitle className="text-base font-semibold text-foreground">Ticket Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Organization Selection (Admin Only) */}
+              <div className="grid gap-2">
+                <Label htmlFor="ticket-organization" className="text-xs font-semibold text-muted-foreground">
+                  Organization
+                </Label>
+                {isOrgsLoading ? (
+                  <p className="text-xs text-muted-foreground italic">Loading organizations...</p>
+                ) : (
+                  <Select
+                    value={selectedOrgId}
+                    onValueChange={(nextValue) => setSelectedOrgId(nextValue)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="ticket-organization" className="w-full bg-background/50 border-border text-foreground">
+                      <SelectValue placeholder="Select target organization" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id} className="text-foreground hover:bg-muted">
+                          {org.name} ({org.id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="ticket-subject" className="text-xs font-semibold text-muted-foreground">Subject</Label>
                 <Input
                   id="ticket-subject"
                   ref={subjectRef}
-                  placeholder="Describe your issue"
+                  placeholder="Describe the issue"
                   disabled={isSubmitting}
                   className="bg-background/50 border-border text-foreground focus-visible:ring-primary/50"
                 />
@@ -270,7 +325,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                 </div>
 
                 {/* General Message Tab */}
-                <div data-testid="message-tab-content" className={activeTab === "message" ? "space-y-2" : "hidden"}>
+                <div className={activeTab === "message" ? "space-y-2" : "hidden"}>
                   <Label htmlFor="ticket-description" className="text-xs font-semibold text-muted-foreground">
                     Message (optional)
                   </Label>
@@ -278,13 +333,13 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                     id="ticket-description"
                     ref={descriptionRef}
                     rows={6}
-                    placeholder="Add any details about your request"
+                    placeholder="Add any details about this request"
                     disabled={isSubmitting}
                   />
                 </div>
 
                 {/* Secure Details Tab */}
-                <div data-testid="secure-tab-content" className={activeTab === "secure" ? "space-y-4" : "hidden"}>
+                <div className={activeTab === "secure" ? "space-y-4" : "hidden"}>
                   <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4 space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
@@ -298,7 +353,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Details entered here are encrypted end-to-end and only visible to engineers assigned to your ticket. Use this section for passwords, tokens, API keys, or sensitive credentials.
+                      Details entered here are encrypted end-to-end and only visible to engineers assigned to this ticket. Use this section for passwords, tokens, API keys, or sensitive credentials.
                     </p>
                   </div>
                   <div className="grid gap-2">
@@ -341,7 +396,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                       const isImage = item.file.type.startsWith("image/")
                       return (
                         <div
-                          key={idx}
+                           key={idx}
                           className="relative group rounded-lg border border-border bg-card/50 p-2 flex items-center gap-3"
                         >
                           {isImage && item.previewUrl ? (
@@ -396,7 +451,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
           </Card>
         </div>
 
-        {/* Right Column: Settings, Attachments, Actions */}
+        {/* Right Column: Settings, Actions */}
         <div className="space-y-6">
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader>
@@ -477,7 +532,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                 type="button"
                 className="w-full"
                 onClick={onSubmitCreateTicket}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isOrgsLoading}
               >
                 {isSubmitting ? "Submitting..." : "Submit Ticket"}
               </Button>

@@ -1,6 +1,5 @@
 import { getSignInUrl } from "@workos-inc/authkit-nextjs"
-import { redirect } from "next/navigation"
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 const providerMap = {
   apple: "AppleOAuth",
@@ -39,12 +38,12 @@ export const GET = async (request: NextRequest) => {
   )
 
   if (!oauthProvider) {
-    redirect(signInUrl)
+    return NextResponse.redirect(signInUrl)
   }
 
   const directProviderUrl = new URL(signInUrl)
   directProviderUrl.searchParams.set("provider", oauthProvider)
   directProviderUrl.searchParams.delete("screen_hint")
 
-  redirect(directProviderUrl.toString())
+  return NextResponse.redirect(directProviderUrl.toString())
 }

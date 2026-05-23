@@ -15,6 +15,7 @@ type LoginPageProps = {
   }>
   searchParams?: Promise<{
     next?: string
+    error?: string
   }>
 }
 
@@ -39,7 +40,7 @@ export default async function LoginPage({
           </div>
           Acme Inc.
         </a>
-        <LoginForm nextPath={next} />
+        <LoginForm nextPath={next} errorMessage={search?.error} />
       </div>
     </div>
   )

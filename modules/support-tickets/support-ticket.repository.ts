@@ -21,7 +21,7 @@ import type {
   SupportTicketAttachmentUploadTarget,
   SupportTicketDepartment,
   SupportTicketPriority,
-  SupportTicketService,
+  SupportTicketService as SupportTicketServiceCategory,
   SupportTicketStatus,
   SupportTicketThread,
 } from "@/modules/support-tickets/support-ticket.types"
@@ -85,7 +85,7 @@ const PRISMA_TO_DOMAIN_PRIORITY: Record<
 }
 
 const DOMAIN_TO_PRISMA_SERVICE: Record<
-  SupportTicketService,
+  SupportTicketServiceCategory,
   PrismaSupportTicketService
 > = {
   auth: "AUTH",
@@ -99,7 +99,7 @@ const DOMAIN_TO_PRISMA_SERVICE: Record<
 
 const PRISMA_TO_DOMAIN_SERVICE: Record<
   PrismaSupportTicketService,
-  SupportTicketService
+  SupportTicketServiceCategory
 > = {
   AUTH: "auth",
   BILLING: "billing",
@@ -359,6 +359,23 @@ export type SupportTicketRepository = {
     status: SupportTicketStatus
     ticketId: string
   }): Promise<SupportTicket>
+  listAllTickets(input: {
+    limit?: number
+  }): Promise<SupportTicket[]>
+  updateTicket(input: {
+    ticketId: string
+    data: {
+      department?: SupportTicketDepartment
+      priority?: SupportTicketPriority
+      service?: SupportTicketServiceCategory | null
+      subject?: string
+      description?: string | null
+      status?: SupportTicketStatus
+      assignedAgentWorkosUserId?: string | null
+    }
+    clearSecureForm?: boolean
+  }): Promise<SupportTicket>
+  deleteTicket(ticketId: string): Promise<boolean>
 }
 
 export const supportTicketRepository: SupportTicketRepository = {
@@ -545,6 +562,33 @@ export const supportTicketRepository: SupportTicketRepository = {
     }
   },
   async updateTicketStatus(input) {
+    if (input.status === "closed") {
+      return prisma.$transaction(async (tx) => {
+        const ticket = await tx.supportTicket.update({
+          where: {
+            id: input.ticketId,
+          },
+          data: {
+            status: DOMAIN_TO_PRISMA_STATUS[input.status],
+            resolvedAt: input.resolvedAt,
+            closedAt: input.closedAt,
+            secureForm: null,
+          },
+        })
+
+        await tx.supportTicketReply.updateMany({
+          where: {
+            ticketId: input.ticketId,
+          },
+          data: {
+            secureForm: null,
+          },
+        })
+
+        return mapTicketRecord(ticket)
+      })
+    }
+
     const ticket = await prisma.supportTicket.update({
       where: {
         id: input.ticketId,
@@ -557,6 +601,83 @@ export const supportTicketRepository: SupportTicketRepository = {
     })
 
     return mapTicketRecord(ticket)
+  },
+  async listAllTickets(input) {
+    const rows = await prisma.supportTicket.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: input.limit ?? 50,
+    })
+
+    return rows.map(mapTicketRecord)
+  },
+  async updateTicket(input) {
+    const updateData: Prisma.SupportTicketUpdateInput = {}
+    if (input.data.department !== undefined) {
+      updateData.department = DOMAIN_TO_PRISMA_DEPARTMENT[input.data.department]
+    }
+    if (input.data.priority !== undefined) {
+      updateData.priority = DOMAIN_TO_PRISMA_PRIORITY[input.data.priority]
+    }
+    if (input.data.service !== undefined) {
+      updateData.service = input.data.service ? DOMAIN_TO_PRISMA_SERVICE[input.data.service] : null
+    }
+    if (input.data.subject !== undefined) {
+      updateData.subject = input.data.subject
+    }
+    if (input.data.description !== undefined) {
+      updateData.description = input.data.description
+    }
+    if (input.data.status !== undefined) {
+      updateData.status = DOMAIN_TO_PRISMA_STATUS[input.data.status]
+    }
+    if (input.data.assignedAgentWorkosUserId !== undefined) {
+      updateData.assignedAgentWorkosUserId = input.data.assignedAgentWorkosUserId
+    }
+
+    if (input.clearSecureForm) {
+      updateData.secureForm = null
+    }
+
+    if (input.clearSecureForm) {
+      return prisma.$transaction(async (tx) => {
+        const ticket = await tx.supportTicket.update({
+          where: {
+            id: input.ticketId,
+          },
+          data: updateData,
+        })
+
+        await tx.supportTicketReply.updateMany({
+          where: {
+            ticketId: input.ticketId,
+          },
+          data: {
+            secureForm: null,
+          },
+        })
+
+        return mapTicketRecord(ticket)
+      })
+    }
+
+    const ticket = await prisma.supportTicket.update({
+      where: {
+        id: input.ticketId,
+      },
+      data: updateData,
+    })
+
+    return mapTicketRecord(ticket)
+  },
+  async deleteTicket(ticketId) {
+    await prisma.supportTicket.delete({
+      where: {
+        id: ticketId,
+      },
+    })
+    return true
   },
   async createReply(input) {
     return prisma.$transaction(async (tx) => {

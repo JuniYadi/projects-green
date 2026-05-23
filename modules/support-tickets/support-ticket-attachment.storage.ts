@@ -176,6 +176,7 @@ export type SupportTicketAttachmentStorage = {
     uploaderWorkosUserId: string
   }) => string
   verifyUploadedObject: (input: VerifyUploadedObjectInput) => Promise<void>
+  getFile?: (storageKey: string) => ReturnType<Bun.S3Client["file"]>
 }
 
 export const createSupportTicketAttachmentStorage =
@@ -192,6 +193,9 @@ export const createSupportTicketAttachmentStorage =
     })
 
     return {
+      getFile(storageKey) {
+        return s3.file(storageKey)
+      },
       async createPresignedUpload(input) {
         const key = buildSupportTicketAttachmentStorageKey({
           extension: input.extension,

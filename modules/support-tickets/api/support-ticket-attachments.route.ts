@@ -66,6 +66,7 @@ const toUnauthorized = (set: RouteSet) => {
 }
 
 const toErrorResponse = (set: RouteSet, error: unknown) => {
+  console.error("[Attachment API Error]:", error)
   if (error instanceof SupportTicketAttachmentNotFoundError) {
     set.status = 404
     return {

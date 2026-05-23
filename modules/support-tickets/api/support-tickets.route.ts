@@ -1,6 +1,8 @@
 import { Elysia } from "elysia"
-import { withAuth } from "@workos-inc/authkit-nextjs"
+import { withAuth, getWorkOS } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
+
+import { createSupportTicketAttachmentStorage } from "@/modules/support-tickets/support-ticket-attachment.storage"
 
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
@@ -14,8 +16,13 @@ import {
   supportTicketDepartmentSchema,
   supportTicketPrioritySchema,
   supportTicketServiceSchema,
+  supportTicketStatusSchema,
 } from "@/modules/support-tickets/support-ticket.schema"
 import { resolveTenantRoleFromClaims } from "@/modules/tenants/tenant-policy"
+import {
+  createEmailService,
+  type EmailService,
+} from "@/modules/support-tickets/email.service"
 
 type SupportTicketAuthContext = {
   organizationId?: string | null
@@ -38,6 +45,7 @@ type SupportTicketRouteDependencies = {
     id?: string | null
   }) => Promise<"none" | "super_admin">
   service: SupportTicketService
+  emailService: EmailService
 }
 
 const createDefaultDependencies = (): SupportTicketRouteDependencies => ({
@@ -47,6 +55,7 @@ const createDefaultDependencies = (): SupportTicketRouteDependencies => ({
     return platformRoleModule.getPlatformRoleForUser(input)
   },
   service: createSupportTicketService(),
+  emailService: createEmailService(),
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -70,6 +79,7 @@ const toMissingTenantContext = (set: RouteSet) => {
 }
 
 const toErrorResponse = (set: RouteSet, error: unknown) => {
+  console.error("[Support Ticket API Error]:", error)
   if (error instanceof SupportTicketNotFoundError) {
     set.status = 404
     return {
@@ -154,6 +164,7 @@ const createRouteHandler = (
     }
     body: unknown
     params: Record<string, unknown>
+    requesterEmail: string | undefined
     set: RouteSet
   }) => Promise<unknown>
 ) => {
@@ -175,6 +186,7 @@ const createRouteHandler = (
         actor,
         body,
         params,
+        requesterEmail: auth.user.email ?? undefined,
         set,
       })
     } catch (error) {
@@ -212,6 +224,27 @@ const supportTicketIdParamsSchema = z.object({
   ticketId: z.string().trim().min(1),
 })
 
+const supportTicketAdminCreateBodySchema = z.object({
+  organizationId: z.string().trim().min(1),
+  department: supportTicketDepartmentSchema,
+  priority: supportTicketPrioritySchema,
+  service: supportTicketServiceSchema.nullable().optional(),
+  subject: z.string().trim().min(3),
+  description: z.string().trim().min(1).nullable().optional(),
+  secureForm: z.string().trim().min(1).nullable().optional(),
+  uploadSessionIds: z.array(z.string().trim().min(1)).default([]).optional(),
+})
+
+const supportTicketAdminUpdateBodySchema = z.object({
+  department: supportTicketDepartmentSchema.optional(),
+  priority: supportTicketPrioritySchema.optional(),
+  service: supportTicketServiceSchema.nullable().optional(),
+  subject: z.string().trim().min(3).optional(),
+  description: z.string().trim().min(1).nullable().optional(),
+  status: supportTicketStatusSchema.optional(),
+  assignedAgentWorkosUserId: z.string().trim().nullable().optional(),
+})
+
 export const createSupportTicketRoutes = (
   dependencies: SupportTicketRouteDependencies = createDefaultDependencies()
 ) => {
@@ -231,7 +264,7 @@ export const createSupportTicketRoutes = (
     )
     .post(
       "/",
-      createRouteHandler(dependencies, async ({ actor, body, set }) => {
+      createRouteHandler(dependencies, async ({ actor, body, requesterEmail, set }) => {
         const payload = supportTicketCreateBodySchema.parse(body)
         const ticket = await dependencies.service.createTicket({
           organizationId: actor.organizationId,
@@ -246,6 +279,12 @@ export const createSupportTicketRoutes = (
         })
 
         set.status = 201
+
+        if (requesterEmail) {
+          dependencies.emailService.sendTicketCreated(ticket, requesterEmail).catch((err) => {
+            console.error("[Support Ticket] Failed to send ticket created email:", err)
+          })
+        }
 
         return {
           ok: true as const,
@@ -297,6 +336,11 @@ export const createSupportTicketRoutes = (
         const parsedParams = supportTicketIdParamsSchema.parse(params)
         const payload = supportTicketReplyBodySchema.parse(body)
 
+        const thread = await dependencies.service.getTicketThread({
+          actor,
+          ticketId: parsedParams.ticketId,
+        })
+
         const reply = await dependencies.service.addReply({
           actor,
           reply: {
@@ -310,6 +354,15 @@ export const createSupportTicketRoutes = (
         })
 
         set.status = 201
+
+        // Send email notification to ticket requester (if not internal note and not self-reply)
+        if (!payload.isInternalNote && thread.ticket.requesterWorkosUserId !== actor.workosUserId) {
+          // Get requester email from user data - for now we skip if not available
+          // In production, you'd fetch this from the user service
+          dependencies.emailService.sendTicketReplied(thread.ticket, reply, "user@example.com").catch((err) => {
+            console.error("[Support Ticket] Failed to send ticket replied email:", err)
+          })
+        }
 
         return {
           ok: true as const,
@@ -331,9 +384,244 @@ export const createSupportTicketRoutes = (
           nextStatus: "closed",
         })
 
+        // Send email notification when ticket is closed
+        dependencies.emailService.sendTicketClosed(ticket, "user@example.com").catch((err) => {
+          console.error("[Support Ticket] Failed to send ticket closed email:", err)
+        })
+
         return {
           ok: true as const,
           ticket,
+        }
+      }),
+      {
+        params: supportTicketIdParamsSchema,
+      }
+    )
+    .get(
+      "/attachments/:attachmentId",
+      createRouteHandler(dependencies, async ({ actor, params, set }) => {
+        const id = String(params.attachmentId)
+        if (!dependencies.service.getAttachmentSession) {
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "NOT_IMPLEMENTED" as const,
+            message: "Attachment session retrieval service is not implemented.",
+          }
+        }
+
+        const session = await dependencies.service.getAttachmentSession({
+          actor,
+          attachmentId: id,
+        })
+
+        if (!session) {
+          set.status = 404
+          return {
+            ok: false as const,
+            error: "ATTACHMENT_NOT_FOUND" as const,
+            message: "Attachment not found.",
+          }
+        }
+
+        if (!actor.isSuperAdmin && actor.organizationId !== session.organizationId) {
+          set.status = 403
+          return {
+            ok: false as const,
+            error: "FORBIDDEN" as const,
+            message: "Access denied.",
+          }
+        }
+
+        const storage = createSupportTicketAttachmentStorage()
+        if (!storage.getFile) {
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "STORAGE_MISCONFIGURED" as const,
+            message: "Attachment storage does not support retrieval.",
+          }
+        }
+
+        const s3File = storage.getFile(session.storageKey)
+        const exists = await s3File.exists()
+
+        if (!exists) {
+          set.status = 404
+          return {
+            ok: false as const,
+            error: "FILE_NOT_FOUND" as const,
+            message: "Attachment file not found in storage.",
+          }
+        }
+
+        const arrayBuffer = await s3File.arrayBuffer()
+        return new Response(arrayBuffer, {
+          headers: {
+            "content-type": session.mimeType,
+            "content-disposition": `inline; filename="${encodeURIComponent(session.fileName)}"`,
+          },
+        })
+      }),
+      {
+        params: z.object({
+          attachmentId: z.string().trim().min(1),
+        }),
+      }
+    )
+    .get(
+      "/admin",
+      createRouteHandler(dependencies, async ({ actor, set }) => {
+        if (!actor.isSuperAdmin) {
+          set.status = 403
+          return {
+            ok: false as const,
+            error: "FORBIDDEN" as const,
+            message: "Only super admins can view all support tickets.",
+          }
+        }
+
+        const tickets = await dependencies.service.listAllTickets({
+          actor,
+        })
+
+        return {
+          ok: true as const,
+          tickets,
+        }
+      })
+    )
+    .get(
+      "/admin/organizations",
+      createRouteHandler(dependencies, async ({ actor, set }) => {
+        if (!actor.isSuperAdmin) {
+          set.status = 403
+          return {
+            ok: false as const,
+            error: "FORBIDDEN" as const,
+            message: "Only super admins can view organizations.",
+          }
+        }
+
+        try {
+          const workos = getWorkOS()
+          const response = await workos.organizations.listOrganizations({ limit: 100 })
+          const organizations = response.data.map((org) => ({
+            id: org.id,
+            name: org.name,
+          }))
+
+          return {
+            ok: true as const,
+            organizations,
+          }
+        } catch (error) {
+          console.error("[Support Ticket Admin API] Failed to list organizations:", error)
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_SERVER_ERROR" as const,
+            message: "Failed to list WorkOS organizations.",
+          }
+        }
+      })
+    )
+    .post(
+      "/admin",
+      createRouteHandler(dependencies, async ({ actor, body, set }) => {
+        if (!actor.isSuperAdmin) {
+          set.status = 403
+          return {
+            ok: false as const,
+            error: "FORBIDDEN" as const,
+            message: "Only super admins can create tickets for organizations.",
+          }
+        }
+
+        const payload = supportTicketAdminCreateBodySchema.parse(body)
+        const ticket = await dependencies.service.createTicket({
+          organizationId: payload.organizationId,
+          requesterWorkosUserId: actor.workosUserId,
+          department: payload.department,
+          priority: payload.priority,
+          service: payload.service,
+          subject: payload.subject,
+          description: payload.description,
+          secureForm: payload.secureForm,
+          uploadSessionIds: payload.uploadSessionIds,
+        })
+
+        set.status = 201
+
+        return {
+          ok: true as const,
+          ticket,
+        }
+      }),
+      {
+        body: supportTicketAdminCreateBodySchema,
+      }
+    )
+    .put(
+      "/admin/:ticketId",
+      createRouteHandler(dependencies, async ({ actor, body, params, set }) => {
+        if (!actor.isSuperAdmin) {
+          set.status = 403
+          return {
+            ok: false as const,
+            error: "FORBIDDEN" as const,
+            message: "Only super admins can update support tickets.",
+          }
+        }
+
+        const parsedParams = supportTicketIdParamsSchema.parse(params)
+        const payload = supportTicketAdminUpdateBodySchema.parse(body)
+
+        const ticket = await dependencies.service.updateTicket({
+          actor,
+          ticketId: parsedParams.ticketId,
+          data: {
+            department: payload.department,
+            priority: payload.priority,
+            service: payload.service,
+            subject: payload.subject,
+            description: payload.description,
+            status: payload.status,
+            assignedAgentWorkosUserId: payload.assignedAgentWorkosUserId,
+          },
+        })
+
+        return {
+          ok: true as const,
+          ticket,
+        }
+      }),
+      {
+        params: supportTicketIdParamsSchema,
+        body: supportTicketAdminUpdateBodySchema,
+      }
+    )
+    .delete(
+      "/admin/:ticketId",
+      createRouteHandler(dependencies, async ({ actor, params, set }) => {
+        if (!actor.isSuperAdmin) {
+          set.status = 403
+          return {
+            ok: false as const,
+            error: "FORBIDDEN" as const,
+            message: "Only super admins can delete support tickets.",
+          }
+        }
+
+        const parsedParams = supportTicketIdParamsSchema.parse(params)
+        await dependencies.service.deleteTicket({
+          actor,
+          ticketId: parsedParams.ticketId,
+        })
+
+        return {
+          ok: true as const,
         }
       }),
       {

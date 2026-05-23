@@ -21,6 +21,10 @@ import {
   resolveTenantRoleFromClaims,
   type TenantRole,
 } from "@/modules/tenants/tenant-policy"
+import {
+  createInvoiceEmailService,
+  type InvoiceEmailService,
+} from "@/modules/invoices/email.service"
 
 const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
@@ -35,6 +39,15 @@ const listQuerySchema = z.object({
 
 const paramsSchema = z.object({
   invoiceId: z.string().trim().min(1),
+})
+
+const notifyRecipientSchema = z.object({
+  recipientEmail: z.string().email().optional(),
+})
+
+const notifyCancelledSchema = z.object({
+  recipientEmail: z.string().email().optional(),
+  reason: z.string().trim().optional(),
 })
 
 type InvoicesAuthContext = {
@@ -58,6 +71,7 @@ type InvoiceRouteDependencies = {
     email?: string | null
   }) => Promise<PlatformAccessRole>
   service: InvoiceService
+  emailService: InvoiceEmailService
 }
 
 const createDefaultDependencies = (): InvoiceRouteDependencies => ({
@@ -67,6 +81,7 @@ const createDefaultDependencies = (): InvoiceRouteDependencies => ({
     return platformRoleModule.getPlatformRoleForUser(input)
   },
   service: createInvoiceService(),
+  emailService: createInvoiceEmailService(),
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -315,6 +330,13 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
+        // Send cancellation notification email
+        if (auth.user?.email) {
+          dependencies.emailService.sendInvoiceCancelled(invoice, auth.user.email).catch((err) => {
+            console.error("[Invoices] Failed to send invoice cancelled email:", err)
+          })
+        }
+
         return {
           ok: true as const,
           invoice,
@@ -329,6 +351,295 @@ export const createInvoicesRoutes = (
         }
 
         return toServerError(set, "Unable to cancel invoice right now.")
+      }
+    })
+    .post("/:invoiceId/notify/created", async ({ params, body, set }) => {
+      const auth = await dependencies.authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      if (!auth.organizationId) {
+        return toForbidden(set, "No active organization found for invoices.")
+      }
+
+      const parsedParams = paramsSchema.safeParse(params)
+      if (!parsedParams.success) {
+        return toValidationError(set, parsedParams.error.issues)
+      }
+
+      const parsedBody = notifyRecipientSchema.safeParse(body ?? {})
+      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+
+      if (!recipientEmail) {
+        return toValidationError(set, [{
+          path: ["recipientEmail"],
+          message: "Recipient email is required when user has no email",
+        }])
+      }
+
+      try {
+        const actorRoles = await toActorRoles({
+          auth,
+          getPlatformRole: dependencies.getPlatformRole,
+        })
+
+        if (!canManageInvoiceCancellation(actorRoles)) {
+          return toForbidden(set, "Only owner/admin members can send notifications.")
+        }
+
+        const invoice = await dependencies.service.getInvoiceDetail({
+          organizationId: auth.organizationId,
+          invoiceId: parsedParams.data.invoiceId,
+        })
+
+        dependencies.emailService.sendInvoiceCreated(invoice, recipientEmail).catch((err) => {
+          console.error("[Invoices] Failed to send invoice created email:", err)
+        })
+
+        return {
+          ok: true as const,
+          message: `Invoice ${invoice.invoiceNumber} created notification sent`,
+        }
+      } catch (error) {
+        if (error instanceof InvoiceNotFoundError) {
+          return toNotFound(set, error.message)
+        }
+
+        return toServerError(set, "Unable to send notification right now.")
+      }
+    })
+    .post("/:invoiceId/notify/paid", async ({ params, body, set }) => {
+      const auth = await dependencies.authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      if (!auth.organizationId) {
+        return toForbidden(set, "No active organization found for invoices.")
+      }
+
+      const parsedParams = paramsSchema.safeParse(params)
+      if (!parsedParams.success) {
+        return toValidationError(set, parsedParams.error.issues)
+      }
+
+      const parsedBody = notifyRecipientSchema.safeParse(body ?? {})
+      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+
+      if (!recipientEmail) {
+        return toValidationError(set, [{
+          path: ["recipientEmail"],
+          message: "Recipient email is required when user has no email",
+        }])
+      }
+
+      try {
+        const actorRoles = await toActorRoles({
+          auth,
+          getPlatformRole: dependencies.getPlatformRole,
+        })
+
+        if (!canManageInvoiceCancellation(actorRoles)) {
+          return toForbidden(set, "Only owner/admin members can send notifications.")
+        }
+
+        const invoice = await dependencies.service.getInvoiceDetail({
+          organizationId: auth.organizationId,
+          invoiceId: parsedParams.data.invoiceId,
+        })
+
+        dependencies.emailService.sendInvoicePaid(invoice, recipientEmail).catch((err) => {
+          console.error("[Invoices] Failed to send invoice paid email:", err)
+        })
+
+        return {
+          ok: true as const,
+          message: `Invoice ${invoice.invoiceNumber} paid notification sent`,
+        }
+      } catch (error) {
+        if (error instanceof InvoiceNotFoundError) {
+          return toNotFound(set, error.message)
+        }
+
+        return toServerError(set, "Unable to send notification right now.")
+      }
+    })
+    .post("/:invoiceId/notify/reminder", async ({ params, body, set }) => {
+      const auth = await dependencies.authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      if (!auth.organizationId) {
+        return toForbidden(set, "No active organization found for invoices.")
+      }
+
+      const parsedParams = paramsSchema.safeParse(params)
+      if (!parsedParams.success) {
+        return toValidationError(set, parsedParams.error.issues)
+      }
+
+      const parsedBody = notifyRecipientSchema.safeParse(body ?? {})
+      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+
+      if (!recipientEmail) {
+        return toValidationError(set, [{
+          path: ["recipientEmail"],
+          message: "Recipient email is required when user has no email",
+        }])
+      }
+
+      try {
+        const actorRoles = await toActorRoles({
+          auth,
+          getPlatformRole: dependencies.getPlatformRole,
+        })
+
+        if (!canManageInvoiceCancellation(actorRoles)) {
+          return toForbidden(set, "Only owner/admin members can send notifications.")
+        }
+
+        const invoice = await dependencies.service.getInvoiceDetail({
+          organizationId: auth.organizationId,
+          invoiceId: parsedParams.data.invoiceId,
+        })
+
+        dependencies.emailService.sendPaymentReminder(invoice, recipientEmail).catch((err) => {
+          console.error("[Invoices] Failed to send payment reminder email:", err)
+        })
+
+        return {
+          ok: true as const,
+          message: `Invoice ${invoice.invoiceNumber} payment reminder sent`,
+        }
+      } catch (error) {
+        if (error instanceof InvoiceNotFoundError) {
+          return toNotFound(set, error.message)
+        }
+
+        return toServerError(set, "Unable to send notification right now.")
+      }
+    })
+    .post("/:invoiceId/notify/overdue", async ({ params, body, set }) => {
+      const auth = await dependencies.authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      if (!auth.organizationId) {
+        return toForbidden(set, "No active organization found for invoices.")
+      }
+
+      const parsedParams = paramsSchema.safeParse(params)
+      if (!parsedParams.success) {
+        return toValidationError(set, parsedParams.error.issues)
+      }
+
+      const parsedBody = notifyRecipientSchema.safeParse(body ?? {})
+      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+
+      if (!recipientEmail) {
+        return toValidationError(set, [{
+          path: ["recipientEmail"],
+          message: "Recipient email is required when user has no email",
+        }])
+      }
+
+      try {
+        const actorRoles = await toActorRoles({
+          auth,
+          getPlatformRole: dependencies.getPlatformRole,
+        })
+
+        if (!canManageInvoiceCancellation(actorRoles)) {
+          return toForbidden(set, "Only owner/admin members can send notifications.")
+        }
+
+        const invoice = await dependencies.service.getInvoiceDetail({
+          organizationId: auth.organizationId,
+          invoiceId: parsedParams.data.invoiceId,
+        })
+
+        dependencies.emailService.sendInvoiceOverdue(invoice, recipientEmail).catch((err) => {
+          console.error("[Invoices] Failed to send invoice overdue email:", err)
+        })
+
+        return {
+          ok: true as const,
+          message: `Invoice ${invoice.invoiceNumber} overdue notification sent`,
+        }
+      } catch (error) {
+        if (error instanceof InvoiceNotFoundError) {
+          return toNotFound(set, error.message)
+        }
+
+        return toServerError(set, "Unable to send notification right now.")
+      }
+    })
+    .post("/:invoiceId/notify/cancelled", async ({ params, body, set }) => {
+      const auth = await dependencies.authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      if (!auth.organizationId) {
+        return toForbidden(set, "No active organization found for invoices.")
+      }
+
+      const parsedParams = paramsSchema.safeParse(params)
+      if (!parsedParams.success) {
+        return toValidationError(set, parsedParams.error.issues)
+      }
+
+      const parsedBody = notifyCancelledSchema.safeParse(body ?? {})
+      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+
+      if (!recipientEmail) {
+        return toValidationError(set, [{
+          path: ["recipientEmail"],
+          message: "Recipient email is required when user has no email",
+        }])
+      }
+
+      try {
+        const actorRoles = await toActorRoles({
+          auth,
+          getPlatformRole: dependencies.getPlatformRole,
+        })
+
+        if (!canManageInvoiceCancellation(actorRoles)) {
+          return toForbidden(set, "Only owner/admin members can send notifications.")
+        }
+
+        const invoice = await dependencies.service.getInvoiceDetail({
+          organizationId: auth.organizationId,
+          invoiceId: parsedParams.data.invoiceId,
+        })
+
+        dependencies.emailService.sendInvoiceCancelled(
+          invoice,
+          recipientEmail,
+          parsedBody.data.reason,
+        ).catch((err) => {
+          console.error("[Invoices] Failed to send invoice cancelled email:", err)
+        })
+
+        return {
+          ok: true as const,
+          message: `Invoice ${invoice.invoiceNumber} cancelled notification sent`,
+        }
+      } catch (error) {
+        if (error instanceof InvoiceNotFoundError) {
+          return toNotFound(set, error.message)
+        }
+
+        return toServerError(set, "Unable to send notification right now.")
       }
     })
 }

@@ -1,31 +1,6 @@
-import { Button } from "@/components/ui/button"
-import { eden } from "@/lib/eden"
-
-export default async function Page() {
-  const { data, error } = await eden.api.health.get()
-
-  if (error) {
-    return <>{error}</>
-  }
-  return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-
-        <p>
-          {data.ok
-            ? "API is healthy and ready to use!"
-            : "API is not healthy. Please check your server."}
-        </p>
-      </div>
-    </div>
-  )
-}
+// This file is intentionally empty.
+// The homepage is served from app/[lang]/(home)/page.tsx
+// Next.js route groups allow (home) to resolve to the same /[lang] URL.
+// Having both this file AND (home)/page.tsx causes a route conflict.
+// Delete this file if you see a build error about duplicate routes.
+export { default, metadata } from "./(home)/page"
