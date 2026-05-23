@@ -142,7 +142,6 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
     const description = descriptionRef.current?.value || ""
     const secureForm = secureFormRef.current?.value || ""
 
-    console.log("onSubmitCreateTicket SUBJECT STATE VALUE:", subject)
     if (!subject.trim()) {
       setErrorMessage("Subject is required.")
       return
