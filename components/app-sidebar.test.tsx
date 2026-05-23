@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test"
 
-import { resolveSidebarMenu } from "@/components/app-sidebar"
+import {
+  resolveSidebarMenu,
+  resolveSidebarSecondaryLinks,
+} from "@/components/app-sidebar"
 
 describe("resolveSidebarMenu", () => {
   it("returns console-only navigation and projects for console surface", () => {
@@ -104,6 +107,18 @@ describe("resolveSidebarMenu", () => {
     )
     expect(projects.map((project) => project.name)).not.toContain(
       "Tenant Management"
+    )
+  })
+
+  it("includes knowledge chat trigger link for console sidebar secondary links", () => {
+    const items = resolveSidebarSecondaryLinks({
+      surface: "console",
+      currentPathname: "/en/console",
+    })
+
+    expect(items.map((item) => item.title)).toContain("Knowledge Chat")
+    expect(items.find((item) => item.title === "Knowledge Chat")?.url).toBe(
+      "/en/console?kb=1"
     )
   })
 })

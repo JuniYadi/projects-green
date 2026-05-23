@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto"
 
+import type { SupportTicketAttachmentUploadTarget } from "@/modules/support-tickets/support-ticket.types"
+
 export class SupportTicketAttachmentStorageConfigurationError extends Error {
   constructor(message: string) {
     super(message)
@@ -105,7 +107,8 @@ const loadStorageConfig = (): AttachmentStorageConfig => {
 export type SupportTicketAttachmentKeyContext = {
   extension: string
   organizationId: string
-  ticketId: string
+  target: SupportTicketAttachmentUploadTarget
+  ticketId: string | null
   uploaderWorkosUserId: string
 }
 
@@ -113,11 +116,13 @@ export const buildSupportTicketAttachmentStoragePrefix = (
   context: Omit<SupportTicketAttachmentKeyContext, "extension">
 ) => {
   const config = loadStorageConfig()
+  const ticketScope = context.ticketId ? sanitizeSegment(context.ticketId) : "pending"
 
   return [
     config.prefix,
     sanitizeSegment(context.organizationId),
-    sanitizeSegment(context.ticketId),
+    sanitizeSegment(context.target),
+    ticketScope,
     sanitizeSegment(context.uploaderWorkosUserId),
   ].join("/")
 }
@@ -140,7 +145,8 @@ type CreatePresignedUploadInput = {
   mimeType: string
   organizationId: string
   sizeBytes: number
-  ticketId: string
+  target: SupportTicketAttachmentUploadTarget
+  ticketId: string | null
   uploaderWorkosUserId: string
 }
 
@@ -151,7 +157,8 @@ type VerifyUploadedObjectInput = {
   organizationId: string
   sizeBytes: number
   storageKey: string
-  ticketId: string
+  target: SupportTicketAttachmentUploadTarget
+  ticketId: string | null
   uploaderWorkosUserId: string
 }
 
@@ -164,7 +171,8 @@ export type SupportTicketAttachmentStorage = {
   }>
   getExpectedStorageKeyPrefix: (context: {
     organizationId: string
-    ticketId: string
+    target: SupportTicketAttachmentUploadTarget
+    ticketId: string | null
     uploaderWorkosUserId: string
   }) => string
   verifyUploadedObject: (input: VerifyUploadedObjectInput) => Promise<void>
@@ -188,6 +196,7 @@ export const createSupportTicketAttachmentStorage =
         const key = buildSupportTicketAttachmentStorageKey({
           extension: input.extension,
           organizationId: input.organizationId,
+          target: input.target,
           ticketId: input.ticketId,
           uploaderWorkosUserId: input.uploaderWorkosUserId,
         })
@@ -211,6 +220,7 @@ export const createSupportTicketAttachmentStorage =
       getExpectedStorageKeyPrefix(context) {
         return buildSupportTicketAttachmentStoragePrefix({
           organizationId: context.organizationId,
+          target: context.target,
           ticketId: context.ticketId,
           uploaderWorkosUserId: context.uploaderWorkosUserId,
         })

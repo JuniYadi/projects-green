@@ -7,6 +7,7 @@ const PAYLOAD_PREFIX = "stenc"
 const PAYLOAD_VERSION = "v1"
 const PAYLOAD_SEGMENT_COUNT = 5
 const DEFAULT_KEY_ENV_NAME = "SUPPORT_TICKET_CONTENT_ENCRYPTION_KEY"
+const PAYLOAD_PREFIX_VERSION = `${PAYLOAD_PREFIX}.${PAYLOAD_VERSION}.`
 
 export class SupportTicketEncryptionConfigurationError extends Error {
   constructor(message: string) {
@@ -32,6 +33,10 @@ export class SupportTicketDecryptionError extends Error {
 export type SupportTicketContentCipher = {
   decrypt(value: string): string
   encrypt(value: string): string
+}
+
+export const isSupportTicketEncryptedPayload = (value: string) => {
+  return value.startsWith(PAYLOAD_PREFIX_VERSION)
 }
 
 const parseBase64Key = (value: string) => {

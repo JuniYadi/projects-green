@@ -100,6 +100,21 @@ export const canUpdateSupportTicketStatus = (
   return isAssignedAgent(actor, ownership)
 }
 
+export const canCloseSupportTicket = (
+  actor: SupportTicketActorContext,
+  ownership: SupportTicketOwnership
+) => {
+  if (!hasOrganizationAccess(actor, ownership)) {
+    return false
+  }
+
+  if (actor.isSuperAdmin || actor.canManageTickets) {
+    return true
+  }
+
+  return isRequester(actor, ownership) || isAssignedAgent(actor, ownership)
+}
+
 export const canCreateSupportTicketReply = (
   actor: SupportTicketActorContext,
   ownership: SupportTicketOwnership

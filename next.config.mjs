@@ -3,7 +3,11 @@ const nextConfig = {
   turbopack: {
     root: '.',
   },
-  allowedDevOrigins: ['127.0.0.1', 'localhost']
+  allowedDevOrigins: ['127.0.0.1', 'localhost'],
+  experimental: {
+    preloadEntriesOnStart: false,
+    webpackMemoryOptimizations: true,
+  }
 }
 
 export default nextConfig

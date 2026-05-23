@@ -4,6 +4,7 @@ import {
   createSupportTicketAttachmentService,
   SupportTicketAttachmentAccessDeniedError,
   SupportTicketAttachmentUploadExpiredError,
+  SupportTicketAttachmentUploadMismatchError,
 } from "@/modules/support-tickets/support-ticket-attachment.service"
 import { SupportTicketAttachmentUploadNotFoundError } from "@/modules/support-tickets/support-ticket-attachment.storage"
 import { SupportTicketAttachmentValidationError } from "@/modules/support-tickets/support-ticket-attachment.validation"
@@ -16,26 +17,38 @@ const baseTicket: SupportTicket = {
   requesterWorkosUserId: "user_requester",
   assignedAgentWorkosUserId: "user_agent",
   department: "technical",
+  priority: "medium",
+  service: "deploy",
   status: "open",
-  subject: "subject",
-  description: "description",
+  subject: "Cannot deploy",
+  description: null,
+  secureForm: null,
   attachmentMetadata: [],
-  createdAt: new Date("2026-05-21T00:00:00.000Z"),
-  updatedAt: new Date("2026-05-21T00:00:00.000Z"),
+  createdAt: new Date("2026-05-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-05-01T00:00:00.000Z"),
   resolvedAt: null,
   closedAt: null,
 }
 
-const actor = {
-  workosUserId: "user_requester",
-  organizationId: "org_1",
-}
-
 const createDeps = () => {
-  const attachments: Array<{ id: string; storageKey: string }> = []
+  const sessions = new Map<
+    string,
+    {
+      id: string
+      organizationId: string
+      uploaderWorkosUserId: string
+      target: "create" | "reply"
+      ticketId: string | null
+      storageKey: string
+      storageBucket: string
+      consumedAt: Date | null
+      expiresAt: Date
+      registeredAt: Date | null
+    }
+  >()
 
   return {
-    attachments,
+    sessions,
     repository: {
       async getTicketById(ticketId: string) {
         if (ticketId !== baseTicket.id) {
@@ -44,27 +57,70 @@ const createDeps = () => {
 
         return baseTicket
       },
-      async appendTicketAttachment(input: {
-        attachment: {
-          id: string
-          storageKey: string
-        }
+      async createUploadSession(input: {
+        id: string
+        organizationId: string
+        uploaderWorkosUserId: string
+        target: "create" | "reply"
+        ticketId: string | null
+        storageKey: string
+        storageBucket: string
+        expiresAt: Date
       }) {
-        attachments.push(input.attachment)
-        return []
+        sessions.set(input.id, {
+          id: input.id,
+          organizationId: input.organizationId,
+          uploaderWorkosUserId: input.uploaderWorkosUserId,
+          target: input.target,
+          ticketId: input.ticketId,
+          storageKey: input.storageKey,
+          storageBucket: input.storageBucket,
+          consumedAt: null,
+          expiresAt: input.expiresAt,
+          registeredAt: null,
+        })
+        return input
+      },
+      async getUploadSessionById(id: string) {
+        return sessions.get(id) ?? null
+      },
+      async markUploadSessionRegistered(input: { id: string }) {
+        const session = sessions.get(input.id)
+        if (!session) {
+          throw new Error("missing session")
+        }
+
+        const next = {
+          ...session,
+          registeredAt: new Date(),
+        }
+        sessions.set(input.id, next)
+
+        return next
       },
     },
     storage: {
-      async createPresignedUpload(input: { extension: string }) {
+      async createPresignedUpload(input: {
+        extension: string
+        target: "create" | "reply"
+        ticketId: string | null
+      }) {
+        const ticketScope = input.ticketId ?? "pending"
         return {
           bucket: "support-ticket-bucket",
-          key: `support-ticket-attachments/org_1/ticket_1/user_requester/1.${input.extension}`,
+          key: `support-ticket-attachments/org_1/${input.target}/${ticketScope}/user_requester/1.${input.extension}`,
           uploadUrl: "https://example.com/upload",
-          expiresAt: "2026-05-21T01:00:00.000Z",
+          expiresAt: "2030-05-21T00:00:00.000Z",
         }
       },
-      getExpectedStorageKeyPrefix() {
-        return "support-ticket-attachments/org_1/ticket_1/user_requester"
+      getExpectedStorageKeyPrefix(context: {
+        organizationId: string
+        target: "create" | "reply"
+        ticketId: string | null
+        uploaderWorkosUserId: string
+      }) {
+        const ticketScope = context.ticketId ?? "pending"
+        return `support-ticket-attachments/${context.organizationId}/${context.target}/${ticketScope}/${context.uploaderWorkosUserId}`
       },
       async verifyUploadedObject() {
         return
@@ -74,20 +130,21 @@ const createDeps = () => {
 }
 
 describe("support ticket attachment service", () => {
-  it("rejects presign for unauthorized actor", async () => {
+  it("rejects presign for unauthorized reply actor", async () => {
     const deps = createDeps()
     const service = createSupportTicketAttachmentService(deps)
 
     await expect(
       service.createPresignedAttachmentUpload({
         actor: {
-          workosUserId: "user_other",
           organizationId: "org_1",
+          workosUserId: "user_not_owner",
         },
+        target: "reply",
         ticketId: "ticket_1",
-        fileName: "incident.pdf",
+        fileName: "issue.pdf",
         mimeType: "application/pdf",
-        sizeBytes: 2048,
+        sizeBytes: 1024,
       })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentAccessDeniedError)
   })
@@ -98,40 +155,55 @@ describe("support ticket attachment service", () => {
 
     await expect(
       service.createPresignedAttachmentUpload({
-        actor,
-        ticketId: "ticket_1",
-        fileName: "malware.exe",
+        actor: {
+          organizationId: "org_1",
+          workosUserId: "user_requester",
+        },
+        target: "create",
+        fileName: "issue.exe",
         mimeType: "application/octet-stream",
-        sizeBytes: 2048,
+        sizeBytes: 1024,
       })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentValidationError)
   })
 
-  it("registers validated attachment metadata", async () => {
+  it("registers validated upload session metadata", async () => {
     const deps = createDeps()
     const service = createSupportTicketAttachmentService(deps)
 
-    const attachment = await service.registerAttachment({
-      actor,
-      ticketId: "ticket_1",
-      id: "att_1",
-      fileName: "incident.pdf",
+    const upload = await service.createPresignedAttachmentUpload({
+      actor: {
+        organizationId: "org_1",
+        workosUserId: "user_requester",
+      },
+      target: "create",
+      fileName: "issue.pdf",
       mimeType: "application/pdf",
-      sizeBytes: 2048,
-      storageKey:
-        "support-ticket-attachments/org_1/ticket_1/user_requester/123-att.pdf",
+      sizeBytes: 512,
     })
 
-    expect(attachment.id).toBe("att_1")
+    const attachment = await service.registerAttachment({
+      actor: {
+        organizationId: "org_1",
+        workosUserId: "user_requester",
+      },
+      target: "create",
+      id: upload.attachmentId,
+      fileName: "issue.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 512,
+      storageBucket: upload.storageBucket,
+      storageKey: upload.storageKey,
+    })
+
+    expect(attachment.id).toBe(upload.attachmentId)
     expect(attachment.storageKey).toContain("support-ticket-attachments")
-    expect(deps.attachments).toHaveLength(1)
-    expect(deps.attachments[0]?.id).toBe("att_1")
   })
 
-  it("rejects registration when uploaded object is missing or expired", async () => {
+  it("maps upload not found as expired", async () => {
     const deps = createDeps()
     const service = createSupportTicketAttachmentService({
-      repository: deps.repository,
+      ...deps,
       storage: {
         ...deps.storage,
         async verifyUploadedObject() {
@@ -140,17 +212,63 @@ describe("support ticket attachment service", () => {
       },
     })
 
+    const upload = await service.createPresignedAttachmentUpload({
+      actor: {
+        organizationId: "org_1",
+        workosUserId: "user_requester",
+      },
+      target: "create",
+      fileName: "issue.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 512,
+    })
+
     await expect(
       service.registerAttachment({
-        actor,
-        ticketId: "ticket_1",
-        id: "att_1",
-        fileName: "incident.pdf",
+        actor: {
+          organizationId: "org_1",
+          workosUserId: "user_requester",
+        },
+        target: "create",
+        id: upload.attachmentId,
+        fileName: "issue.pdf",
         mimeType: "application/pdf",
-        sizeBytes: 2048,
-        storageKey:
-          "support-ticket-attachments/org_1/ticket_1/user_requester/123-att.pdf",
+        sizeBytes: 512,
+        storageBucket: upload.storageBucket,
+        storageKey: upload.storageKey,
       })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadExpiredError)
+  })
+
+  it("rejects mismatched storage key registration", async () => {
+    const deps = createDeps()
+    const service = createSupportTicketAttachmentService(deps)
+
+    const upload = await service.createPresignedAttachmentUpload({
+      actor: {
+        organizationId: "org_1",
+        workosUserId: "user_requester",
+      },
+      target: "create",
+      fileName: "issue.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 512,
+    })
+
+    await expect(
+      service.registerAttachment({
+        actor: {
+          organizationId: "org_1",
+          workosUserId: "user_requester",
+        },
+        target: "create",
+        id: upload.attachmentId,
+        fileName: "issue.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+        storageBucket: upload.storageBucket,
+        storageKey: "bad-prefix/file.pdf",
+      })
+    ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadMismatchError)
   })
 })

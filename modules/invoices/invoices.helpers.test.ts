@@ -1,32 +1,35 @@
 import { describe, expect, it } from "bun:test"
 
 import {
+  DEFAULT_INVOICE_SORT,
   formatInvoiceCurrency,
   formatInvoiceDate,
   getInvoiceStatusLabel,
-  resolveInvoiceFlowState,
+  INVOICE_STATUS_FILTER_OPTIONS,
 } from "@/modules/invoices/invoices.helpers"
-import { INVOICE_FLOW_STATE_REGISTRY } from "@/modules/invoices/invoices.mock"
 
 describe("invoice helpers", () => {
-  it("resolves flow scenarios from shared registry", () => {
-    const state = resolveInvoiceFlowState(
-      INVOICE_FLOW_STATE_REGISTRY,
-      "payment",
-      "failure"
-    )
+  it("exposes list defaults and status filter options", () => {
+    expect(DEFAULT_INVOICE_SORT).toEqual({
+      sortBy: "issuedAt",
+      sortDir: "desc",
+    })
 
-    expect(state.flow).toBe("payment")
-    expect(state.scenario).toBe("failure")
-    if (state.scenario !== "failure") {
-      throw new Error("expected failure scenario")
-    }
-    expect(state.code).toBe("INVOICE_PAYMENT_OPTIONS_FAILED")
+    expect(INVOICE_STATUS_FILTER_OPTIONS).toEqual([
+      { value: "draft", label: "Draft" },
+      { value: "open", label: "Open" },
+      { value: "paid", label: "Paid" },
+      { value: "canceled", label: "Canceled" },
+      { value: "uncollectible", label: "Uncollectible" },
+    ])
   })
 
-  it("formats invoice label, currency, and date consistently", () => {
-    expect(getInvoiceStatusLabel("cancel_requested")).toBe("Cancel Requested")
-    expect(formatInvoiceCurrency(149)).toBe("$149.00")
-    expect(formatInvoiceDate("2026-03-03")).toBe("Mar 03, 2026")
+  it("formats invoice labels, currency, and date consistently", () => {
+    expect(getInvoiceStatusLabel("canceled")).toBe("Canceled")
+    expect(formatInvoiceCurrency(149.5, "USD")).toBe("$149.50")
+    expect(formatInvoiceDate("2026-05-21T00:00:00.000Z", "en-US")).toBe(
+      "May 21, 2026"
+    )
+    expect(formatInvoiceDate(null, "en-US")).toBe("-")
   })
 })

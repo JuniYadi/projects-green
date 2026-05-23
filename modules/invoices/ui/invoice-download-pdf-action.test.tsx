@@ -1,78 +1,103 @@
-import { describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 
-import type { InvoiceDownloadData } from "@/modules/invoices/invoices.types"
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 
-const DOWNLOAD_DATA: InvoiceDownloadData = {
-  invoice: {
-    id: "invoice_41",
-    invoiceNumber: "INV-2026-0041",
-    issuedAt: "2026-03-03",
-    dueAt: "2026-03-17",
-    totalAmount: 149,
-    currency: "USD",
-    status: "pending",
-  },
-  availableFormats: ["pdf"],
-  defaultFormat: "pdf",
-}
+const originalFetch = globalThis.fetch
+const originalCreateObjectURL = URL.createObjectURL
+const originalRevokeObjectURL = URL.revokeObjectURL
 
 describe("InvoiceDownloadPdfAction", () => {
-  it("handles idle to success transition", async () => {
-    const view = render(
-      <InvoiceDownloadPdfAction
-        invoiceId="invoice_41"
-        downloadData={DOWNLOAD_DATA}
-        mockDelayMs={0}
-      />
-    )
-
-    expect(
-      view.getByText("Ready to trigger mocked PDF download flow.")
-    ).toBeInTheDocument()
-    fireEvent.click(view.getByRole("button", { name: "Download PDF (Mock)" }))
-
-    await waitFor(() => {
-      expect(
-        view.getByText("Mock PDF request for INV-2026-0041 completed.")
-      ).toBeInTheDocument()
-    })
+  beforeEach(() => {
+    URL.createObjectURL = mock(() => "blob:mock") as unknown as typeof URL.createObjectURL
+    URL.revokeObjectURL = mock(() => undefined) as unknown as typeof URL.revokeObjectURL
   })
 
-  it("handles failure and disabled outcomes", async () => {
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    URL.createObjectURL = originalCreateObjectURL
+    URL.revokeObjectURL = originalRevokeObjectURL
+  })
+
+  it("downloads PDF when API succeeds", async () => {
+    globalThis.fetch = mock(async () => {
+      return new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+        },
+      })
+    }) as unknown as typeof fetch
+
+    const clickMock = mock(() => {})
+    const appendMock = mock(() => {})
+    const removeMock = mock(() => {})
+    const originalCreateElement = document.createElement.bind(document)
+
+    const createElementSpy = mock((tagName: string) => {
+      if (tagName === "a") {
+        return {
+          href: "",
+          download: "",
+          click: clickMock,
+          remove: removeMock,
+        }
+      }
+
+      return originalCreateElement(tagName)
+    })
+
+    document.createElement = createElementSpy as unknown as typeof document.createElement
+
+    const originalAppend = document.body.append.bind(document.body)
+    document.body.append = appendMock as unknown as typeof document.body.append
+
     const view = render(
       <InvoiceDownloadPdfAction
-        invoiceId="invoice_41"
-        downloadData={DOWNLOAD_DATA}
-        mockDelayMs={0}
+        invoiceId="inv_1"
+        invoiceNumber="INV-2026-0001"
       />
     )
 
-    fireEvent.click(view.getByRole("button", { name: "Failure" }))
-    fireEvent.click(view.getByRole("button", { name: "Download PDF (Mock)" }))
+    fireEvent.click(view.getByRole("button", { name: "Download PDF" }))
 
     await waitFor(() => {
-      expect(
-        view.getByText(
-          "[INVOICE_PDF_PLACEHOLDER_FAILED] Mock request for INV-2026-0041 failed before file delivery."
-        )
-      ).toBeInTheDocument()
+      expect(clickMock).toHaveBeenCalled()
+      expect(URL.createObjectURL).toHaveBeenCalled()
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock")
     })
 
-    fireEvent.click(view.getByRole("button", { name: "Disabled" }))
-    fireEvent.click(view.getByRole("button", { name: "Download PDF (Mock)" }))
+    document.createElement = originalCreateElement
+    document.body.append = originalAppend
+  })
+
+  it("shows error message when API fails", async () => {
+    globalThis.fetch = mock(async () => {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          message: "Invoice PDF is unavailable.",
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+    }) as unknown as typeof fetch
+
+    const view = render(
+      <InvoiceDownloadPdfAction
+        invoiceId="inv_1"
+        invoiceNumber="INV-2026-0001"
+      />
+    )
+
+    fireEvent.click(view.getByRole("button", { name: "Download PDF" }))
 
     await waitFor(() => {
-      expect(
-        view.getByText(
-          "Mock download for INV-2026-0041 is disabled by scenario."
-        )
-      ).toBeInTheDocument()
+      expect(view.getByText("Invoice PDF is unavailable.")).toBeTruthy()
     })
-
-    expect(
-      view.getByRole("button", { name: "Download PDF (Mock)" })
-    ).toBeDisabled()
   })
 })

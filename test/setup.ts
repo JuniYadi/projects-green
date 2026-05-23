@@ -22,6 +22,9 @@ if (!window.matchMedia) {
   })
 }
 
+// Note: Prisma mocking is done in individual test files using mock.module()
+// to avoid module evaluation order issues with DATABASE_URL check
+
 afterEach(() => {
   cleanup()
 })

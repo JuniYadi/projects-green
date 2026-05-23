@@ -28,6 +28,24 @@ model PlatformUserRole {
   updatedAt    DateTime     @updatedAt
 }
 
+model KnowledgeDocument {
+  id                    String   @id @default(cuid())
+  organizationId        String?
+  path                  String
+  title                 String
+  purpose               String
+  howTo                 String[]
+  notes                 String[]
+  searchText            String
+  updatedByWorkosUserId String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([organizationId, path])
+  @@index([organizationId, updatedAt(sort: Desc)])
+  @@index([updatedAt(sort: Desc)])
+}
+
 model GithubInstallStateNonce {
   id             String   @id @default(cuid())
   nonceHash      String   @unique
@@ -124,6 +142,27 @@ enum SupportTicketStatus {
   CLOSED
 }
 
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SupportTicketService {
+  AUTH
+  BILLING
+  DEPLOY
+  DOMAINS
+  INTEGRATIONS
+  DATA
+  OTHER
+}
+
+enum SupportTicketAttachmentUploadTarget {
+  CREATE
+  REPLY
+}
+
 enum BillingAccountStatus {
   ACTIVE
   SUSPENDED
@@ -215,16 +254,20 @@ model SupportTicket {
   requesterWorkosUserId     String
   assignedAgentWorkosUserId String?
   department                SupportTicketDepartment
+  priority                  SupportTicketPriority
+  service                   SupportTicketService?
   status                    SupportTicketStatus     @default(OPEN)
   subject                   String
   description               String?
+  secureForm                String?
   attachmentsJson           Json?
   resolvedAt                DateTime?
   closedAt                  DateTime?
   createdAt                 DateTime                @default(now())
   updatedAt                 DateTime                @updatedAt
 
-  replies SupportTicketReply[]
+  replies                SupportTicketReply[]
+  consumedUploadSessions SupportTicketAttachmentUploadSession[] @relation("SupportTicketConsumedSessions")
 
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([organizationId, status])
@@ -234,20 +277,50 @@ model SupportTicket {
 }
 
 model SupportTicketReply {
-  id               String   @id @default(cuid())
-  ticketId         String
+  id                 String   @id @default(cuid())
+  ticketId           String
   authorWorkosUserId String
-  body             String
-  isInternalNote   Boolean  @default(false)
-  attachmentsJson  Json?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  body               String
+  secureForm         String?
+  isInternalNote     Boolean  @default(false)
+  attachmentsJson    Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket                 SupportTicket                        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  consumedUploadSessions SupportTicketAttachmentUploadSession[] @relation("SupportTicketReplyConsumedSessions")
 
   @@index([ticketId, createdAt])
   @@index([authorWorkosUserId])
   @@index([isInternalNote])
+}
+
+model SupportTicketAttachmentUploadSession {
+  id                 String                              @id
+  organizationId     String
+  uploaderWorkosUserId String
+  target             SupportTicketAttachmentUploadTarget
+  ticketId           String?
+  fileName           String
+  mimeType           String
+  sizeBytes          Int
+  checksumSha256     String?
+  storageKey         String
+  storageBucket      String
+  expiresAt          DateTime
+  registeredAt       DateTime?
+  consumedAt         DateTime?
+  consumedTicketId   String?
+  consumedReplyId    String?
+  createdAt          DateTime                            @default(now())
+  updatedAt          DateTime                            @updatedAt
+  consumedTicket     SupportTicket?                      @relation("SupportTicketConsumedSessions", fields: [consumedTicketId], references: [id], onDelete: SetNull)
+  consumedReply      SupportTicketReply?                 @relation("SupportTicketReplyConsumedSessions", fields: [consumedReplyId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, uploaderWorkosUserId])
+  @@index([target, ticketId])
+  @@index([expiresAt])
+  @@index([consumedAt])
 }
 
 model BillingAccount {

@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 
 import type { LogMessage } from "@/modules/deploy/operate.types"
@@ -113,92 +112,127 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
   }, [logs, logFilterQuery, logFilterLevel])
 
   return (
-    <Card className="border-white/[0.06] bg-black/25">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card size="sm" className="border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div className="space-y-1">
           <CardTitle className="text-base font-bold text-white">
             Opensearch Log Viewer
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs text-muted-foreground">
             Live streaming log aggregates index from this workspace cluster
           </CardDescription>
         </div>
-        <div className="flex gap-2">
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground select-none">
-            <Checkbox
-              checked={isLiveTailing}
-              onCheckedChange={(checked) => setIsLiveTailing(checked === true)}
-              className="border-white/20 bg-black/50 data-[state=checked]:bg-primary"
-            />
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground select-none cursor-pointer" onClick={() => setIsLiveTailing(!isLiveTailing)}>
             Live Tail
-          </label>
+          </span>
+          <button
+            type="button"
+            aria-label="Live Tail"
+            onClick={() => setIsLiveTailing(!isLiveTailing)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              isLiveTailing ? "bg-primary" : "bg-neutral-800"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                isLiveTailing ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search & Level Filter bar */}
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/[0.06] bg-black/40 p-3 text-xs">
-          <div className="relative min-w-[200px] flex-1">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.06] bg-black/40 px-4 py-2.5 text-xs">
+          <div className="relative min-w-[240px] flex-1">
             <MagnifyingGlass
-              size={16}
-              className="absolute top-2.5 left-3 text-muted-foreground"
+              size={15}
+              className="absolute top-1/2 -translate-y-1/2 left-3 text-muted-foreground"
             />
             <Input
               type="text"
               placeholder="Search logs (e.g. nginx, connect, database)..."
               value={logFilterQuery}
               onChange={(e) => setLogFilterQuery(e.target.value)}
-              className="h-8 bg-black/50 pl-9 text-xs"
+              className="h-8 bg-black/50 border-white/[0.08] pl-9 text-xs rounded-lg focus:border-primary/50"
             />
           </div>
 
           <div className="flex gap-1.5">
-            {(["ALL", "INFO", "WARN", "ERROR"] as const).map((lvl) => (
-              <Button
-                key={lvl}
-                type="button"
-                onClick={() => setLogFilterLevel(lvl)}
-                variant={logFilterLevel === lvl ? "default" : "outline"}
-                size="xs"
-                className={`rounded px-2.5 py-1.5 font-bold transition-all ${
-                  logFilterLevel === lvl
-                    ? "text-white"
-                    : "bg-black/40 text-muted-foreground hover:text-white"
-                }`}
-              >
-                {lvl}
-              </Button>
-            ))}
+            {(["ALL", "INFO", "WARN", "ERROR"] as const).map((lvl) => {
+              const isActive = logFilterLevel === lvl
+              const dotColor =
+                lvl === "INFO"
+                  ? "bg-blue-400"
+                  : lvl === "WARN"
+                    ? "bg-amber-400"
+                    : lvl === "ERROR"
+                      ? "bg-red-400"
+                      : "bg-white"
+              return (
+                <Button
+                  key={lvl}
+                  type="button"
+                  onClick={() => setLogFilterLevel(lvl)}
+                  variant={isActive ? "default" : "outline"}
+                  size="xs"
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold h-8 transition-all flex items-center gap-1.5 ${
+                    isActive
+                      ? "text-white bg-primary hover:bg-primary/95"
+                      : "bg-black/40 text-muted-foreground hover:text-white border-white/[0.08] hover:bg-white/[0.02]"
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                  {lvl}
+                </Button>
+              )
+            })}
           </div>
         </div>
 
         {/* Logs display shell */}
-        <div className="max-h-[380px] min-h-[250px] space-y-1 overflow-y-auto rounded-xl border border-white/[0.08] bg-black p-5 font-mono text-[11px] leading-relaxed">
-          {filteredLogs.map((log, idx) => (
-            <div
-              key={idx}
-              className="flex gap-2.5 rounded p-0.5 select-text hover:bg-white/[0.02]"
-            >
-              <span className="shrink-0 text-muted-foreground">
-                [{log.timestamp}]
-              </span>
-              <span
-                className={`shrink-0 font-bold ${
-                  log.level === "ERROR"
-                    ? "text-red-500"
-                    : log.level === "WARN"
-                      ? "text-yellow-500"
-                      : "text-blue-400"
-                }`}
+        <div className="max-h-[350px] min-h-[220px] space-y-1 overflow-y-auto rounded-xl border border-white/[0.08] bg-[#050507] px-4 py-3.5 font-mono text-[11px] leading-relaxed shadow-inner">
+          {filteredLogs.map((log, idx) => {
+            const levelBadgeStyle =
+              log.level === "ERROR"
+                ? "bg-red-500/10 text-red-400 border-red-500/20"
+                : log.level === "WARN"
+                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                  : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+
+            const sourceBadgeStyle =
+              log.source === "nginx"
+                ? "text-purple-400"
+                : log.source === "app"
+                  ? "text-cyan-400"
+                  : "text-amber-300"
+
+            return (
+              <div
+                key={idx}
+                className="flex items-start gap-3 rounded-lg px-2 py-1 select-text hover:bg-white/[0.03] transition-colors border border-transparent hover:border-white/[0.03]"
               >
-                {log.level}
-              </span>
-              <span className="shrink-0 text-purple-400">[{log.source}]</span>
-              <span className="break-all text-white">{log.message}</span>
-            </div>
-          ))}
+                <span className="shrink-0 text-muted-foreground/60 font-semibold select-none">
+                  {log.timestamp}
+                </span>
+                <span
+                  className={`shrink-0 font-bold px-1.5 py-0.2 rounded border text-[9px] uppercase tracking-wider ${levelBadgeStyle}`}
+                >
+                  {log.level}
+                </span>
+                <span className={`shrink-0 font-semibold text-[10px] ${sourceBadgeStyle}`}>
+                  [{log.source}]
+                </span>
+                <span className="break-all text-white/90 leading-relaxed font-medium">
+                  {log.message}
+                </span>
+              </div>
+            )
+          })}
 
           {filteredLogs.length === 0 && (
-            <div className="p-8 text-center font-sans text-muted-foreground">
+            <div className="p-10 text-center font-sans text-xs text-muted-foreground/80 font-medium">
               No log outputs correspond to the search queries.
             </div>
           )}

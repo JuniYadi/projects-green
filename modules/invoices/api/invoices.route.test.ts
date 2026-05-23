@@ -1,0 +1,297 @@
+import { describe, expect, it, mock } from "bun:test"
+import { Elysia } from "elysia"
+
+import { createInvoicesRoutes } from "@/modules/invoices/api/invoices.route"
+import {
+  InvoiceCancelNotAllowedError,
+  InvoiceNotFoundError,
+  type InvoiceService,
+} from "@/modules/invoices/invoices.service"
+import type { InvoiceDetail } from "@/modules/invoices/invoices.types"
+
+const invoiceDetail: InvoiceDetail = {
+  id: "inv_1",
+  invoiceNumber: "INV-2026-0001",
+  issuedAt: "2026-05-02T00:00:00.000Z",
+  dueAt: "2026-05-17T00:00:00.000Z",
+  totalAmount: 110,
+  currency: "USD",
+  status: "open",
+  subtotalAmount: 100,
+  taxAmount: 10,
+  discountAmount: 0,
+  periodStart: "2026-05-01T00:00:00.000Z",
+  periodEnd: "2026-05-31T23:59:59.000Z",
+  paidAt: null,
+  lineItems: [
+    {
+      id: "line_1",
+      description: "Pro Plan",
+      quantity: 1,
+      unitPrice: 100,
+      amount: 100,
+      currency: "USD",
+    },
+  ],
+}
+
+const createService = (): InvoiceService => {
+  return {
+    listInvoices: mock(async () => [
+      {
+        id: "inv_1",
+        invoiceNumber: "INV-2026-0001",
+        issuedAt: "2026-05-02T00:00:00.000Z",
+        dueAt: "2026-05-17T00:00:00.000Z",
+        totalAmount: 110,
+        currency: "USD",
+        status: "open" as const,
+      },
+    ]),
+    getInvoiceDetail: mock(async () => invoiceDetail),
+    cancelInvoice: mock(
+      async () => ({ ...invoiceDetail, status: "canceled" as const })
+    ),
+    getPaymentMethodOptions: () => [],
+  }
+}
+
+const createApp = (input: {
+  service?: InvoiceService
+  auth?: Partial<{
+    user: { id: string; email?: string | null } | null
+    organizationId?: string | null
+    role?: string | null
+    roles?: string[] | null
+  }>
+  platformRole?: "none" | "super_admin"
+}) => {
+  const service = input.service ?? createService()
+
+  return new Elysia().use(
+    createInvoicesRoutes({
+      authenticate: async () => ({
+        user: { id: "user_1", email: "owner@example.com" },
+        organizationId: "org_1",
+        role: "user_owner",
+        roles: ["user_owner"],
+        ...input.auth,
+      }),
+      getPlatformRole: async () => input.platformRole ?? "none",
+      service,
+    })
+  )
+}
+
+describe("invoices routes", () => {
+  it("returns 401 when request is unauthenticated", async () => {
+    const app = createApp({
+      auth: {
+        user: null,
+      },
+    })
+
+    const response = await app.handle(new Request("http://localhost/invoices"))
+    const payload = (await response.json()) as { ok: boolean; error: string }
+
+    expect(response.status).toBe(401)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("UNAUTHORIZED")
+  })
+
+  it("returns invoice list for authenticated organization", async () => {
+    const service = createService()
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request(
+        "http://localhost/invoices?search=INV&status=open&sortBy=issuedAt&sortDir=desc"
+      )
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      invoices: Array<{ invoiceNumber: string }>
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.invoices[0]?.invoiceNumber).toBe("INV-2026-0001")
+    expect(service.listInvoices).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns validation envelope for invalid list query", async () => {
+    const app = createApp({})
+    const response = await app.handle(
+      new Request("http://localhost/invoices?sortDir=invalid")
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      fieldErrors?: Record<string, string[]>
+    }
+
+    expect(response.status).toBe(422)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("VALIDATION_ERROR")
+    expect(payload.fieldErrors?.sortDir?.length).toBeGreaterThan(0)
+  })
+
+  it("returns not found for missing invoice detail", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => {
+      throw new InvoiceNotFoundError("inv_missing")
+    })
+
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_missing")
+    )
+    const payload = (await response.json()) as { ok: boolean; error: string }
+
+    expect(response.status).toBe(404)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("NOT_FOUND")
+  })
+
+  it("returns PDF response with content-type", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/pdf")
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toBe("application/pdf")
+    const bytes = await response.arrayBuffer()
+    expect(bytes.byteLength).toBeGreaterThan(200)
+  })
+
+  it("returns validation envelope for invalid invoice id params", async () => {
+    const app = createApp({})
+    const response = await app.handle(
+      new Request("http://localhost/invoices/%20", {
+        method: "GET",
+      })
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      fieldErrors?: Record<string, string[]>
+    }
+
+    expect(response.status).toBe(422)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("VALIDATION_ERROR")
+    expect(payload.fieldErrors?.invoiceId?.length).toBeGreaterThan(0)
+  })
+
+  it("forbids cancel for non owner/admin and allows for super admin", async () => {
+    const memberApp = createApp({
+      auth: {
+        role: "user_member",
+        roles: ["user_member"],
+      },
+    })
+
+    const memberResponse = await memberApp.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", {
+        method: "POST",
+      })
+    )
+
+    expect(memberResponse.status).toBe(403)
+
+    const superAdminApp = createApp({
+      auth: {
+        role: "user_member",
+        roles: ["user_member"],
+      },
+      platformRole: "super_admin",
+    })
+
+    const superAdminResponse = await superAdminApp.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", {
+        method: "POST",
+      })
+    )
+    const payload = (await superAdminResponse.json()) as {
+      ok: boolean
+      invoice: { status: string }
+    }
+
+    expect(superAdminResponse.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.invoice.status).toBe("canceled")
+  })
+
+  it("returns conflict when cancel is not allowed", async () => {
+    const service = createService()
+    service.cancelInvoice = mock(async () => {
+      throw new InvoiceCancelNotAllowedError("inv_1", "paid")
+    })
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", {
+        method: "POST",
+      })
+    )
+    const payload = (await response.json()) as { ok: boolean; error: string }
+
+    expect(response.status).toBe(409)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("INVOICE_CANCEL_NOT_ALLOWED")
+  })
+
+  it("returns 500 when role resolution fails in cancel flow", async () => {
+    const app = new Elysia().use(
+      createInvoicesRoutes({
+        authenticate: async () => ({
+          user: { id: "user_1", email: "owner@example.com" },
+          organizationId: "org_1",
+          role: "user_owner",
+          roles: ["user_owner"],
+        }),
+        getPlatformRole: async () => {
+          throw new Error("role provider unavailable")
+        },
+        service: createService(),
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", {
+        method: "POST",
+      })
+    )
+    const payload = (await response.json()) as { ok: boolean; error: string }
+
+    expect(response.status).toBe(500)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("INTERNAL_SERVER_ERROR")
+  })
+
+  it("returns 403 for missing organization", async () => {
+    const app = createApp({
+      auth: {
+        user: { id: "user_1" },
+        organizationId: null,
+      },
+    })
+
+    const response = await app.handle(new Request("http://localhost/invoices"))
+    expect(response.status).toBe(403)
+  })
+
+  it("returns 500 when list invoices fails", async () => {
+    const service = createService()
+    service.listInvoices = mock(async () => {
+      throw new Error("database error")
+    })
+    const app = createApp({ service })
+
+    const response = await app.handle(new Request("http://localhost/invoices"))
+    expect(response.status).toBe(500)
+  })
+})

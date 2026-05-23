@@ -16,6 +16,7 @@ import type {
   SupportTicket,
   SupportTicketActorContext,
   SupportTicketAttachmentMetadata,
+  SupportTicketAttachmentUploadTarget,
   SupportTicketOwnership,
 } from "@/modules/support-tickets/support-ticket.types"
 
@@ -55,11 +56,46 @@ export type SupportTicketAttachmentActorContext = {
 }
 
 type SupportTicketAttachmentRepository = {
-  appendTicketAttachment: (input: {
-    attachment: SupportTicketAttachmentMetadata
-    ticketId: string
-  }) => Promise<SupportTicketAttachmentMetadata[]>
+  createUploadSession: (input: {
+    checksumSha256?: string | null
+    expiresAt: Date
+    fileName: string
+    id: string
+    mimeType: string
+    organizationId: string
+    sizeBytes: number
+    storageBucket: string
+    storageKey: string
+    target: SupportTicketAttachmentUploadTarget
+    ticketId: string | null
+    uploaderWorkosUserId: string
+  }) => Promise<unknown>
   getTicketById: (ticketId: string) => Promise<SupportTicket | null>
+  getUploadSessionById: (id: string) => Promise<{
+    id: string
+    organizationId: string
+    uploaderWorkosUserId: string
+    target: SupportTicketAttachmentUploadTarget
+    ticketId: string | null
+    storageKey: string
+    storageBucket: string
+    consumedAt: Date | null
+    expiresAt: Date
+    registeredAt: Date | null
+  } | null>
+  markUploadSessionRegistered: (input: {
+    checksumSha256?: string | null
+    fileName: string
+    id: string
+    mimeType: string
+    organizationId: string
+    sizeBytes: number
+    storageBucket: string
+    storageKey: string
+    target: SupportTicketAttachmentUploadTarget
+    ticketId: string | null
+    uploaderWorkosUserId: string
+  }) => Promise<unknown>
 }
 
 type CreatePresignedAttachmentUploadInput = {
@@ -68,7 +104,8 @@ type CreatePresignedAttachmentUploadInput = {
   fileName: string
   mimeType: string
   sizeBytes: number
-  ticketId: string
+  target: SupportTicketAttachmentUploadTarget
+  ticketId?: string
 }
 
 type RegisterSupportTicketAttachmentInput = {
@@ -78,8 +115,10 @@ type RegisterSupportTicketAttachmentInput = {
   id: string
   mimeType: string
   sizeBytes: number
+  storageBucket: string
   storageKey: string
-  ticketId: string
+  target: SupportTicketAttachmentUploadTarget
+  ticketId?: string
 }
 
 export type SupportTicketAttachmentService = {
@@ -116,16 +155,17 @@ const createLazyAttachmentRepository =
         const repository = await loadRepository()
         return repository.getTicketById(ticketId)
       },
-      async appendTicketAttachment(input) {
+      async createUploadSession(input) {
         const repository = await loadRepository()
-
-        if (!repository.appendTicketAttachment) {
-          throw new Error(
-            "Support ticket attachment persistence is unavailable."
-          )
-        }
-
-        return repository.appendTicketAttachment(input)
+        return repository.createUploadSession(input)
+      },
+      async getUploadSessionById(id) {
+        const repository = await loadRepository()
+        return repository.getUploadSessionById(id)
+      },
+      async markUploadSessionRegistered(input) {
+        const repository = await loadRepository()
+        return repository.markUploadSessionRegistered(input)
       },
     }
   }
@@ -142,7 +182,7 @@ const toTicketActorContext = (
   }
 }
 
-const ensureTicketAccess = async (
+const ensureReplyTicketAccess = async (
   repository: SupportTicketAttachmentRepository,
   actor: SupportTicketAttachmentActorContext,
   ticketId: string,
@@ -163,6 +203,45 @@ const ensureTicketAccess = async (
   return ticket
 }
 
+const resolveUploadContext = async (
+  repository: SupportTicketAttachmentRepository,
+  input: {
+    actor: SupportTicketAttachmentActorContext
+    target: SupportTicketAttachmentUploadTarget
+    ticketId?: string
+    action: string
+  }
+) => {
+  if (input.target === "reply") {
+    if (!input.ticketId) {
+      throw new SupportTicketAttachmentUploadMismatchError(
+        "ticketId is required for reply attachment uploads."
+      )
+    }
+
+    const ticket = await ensureReplyTicketAccess(
+      repository,
+      input.actor,
+      input.ticketId,
+      input.action
+    )
+
+    return {
+      organizationId: ticket.organizationId,
+      ticketId: ticket.id,
+    }
+  }
+
+  if (!input.actor.organizationId) {
+    throw new SupportTicketAttachmentAccessDeniedError(input.action)
+  }
+
+  return {
+    organizationId: input.actor.organizationId,
+    ticketId: null,
+  }
+}
+
 export const createSupportTicketAttachmentService = (
   options: CreateSupportTicketAttachmentServiceOptions = {}
 ): SupportTicketAttachmentService => {
@@ -176,12 +255,13 @@ export const createSupportTicketAttachmentService = (
 
   return {
     async createPresignedAttachmentUpload(input) {
-      const ticket = await ensureTicketAccess(
-        repository,
-        input.actor,
-        input.ticketId,
-        "upload attachments to"
-      )
+      const context = await resolveUploadContext(repository, {
+        actor: input.actor,
+        target: input.target,
+        ticketId: input.ticketId,
+        action: "upload attachments to",
+      })
+
       const validated = validateSupportTicketAttachmentUploadInput({
         checksumSha256: input.checksumSha256,
         fileName: input.fileName,
@@ -197,9 +277,25 @@ export const createSupportTicketAttachmentService = (
         extension: validated.extension,
         fileName: validated.fileName,
         mimeType: validated.mimeType,
-        organizationId: ticket.organizationId,
+        organizationId: context.organizationId,
         sizeBytes: validated.sizeBytes,
-        ticketId: ticket.id,
+        target: input.target,
+        ticketId: context.ticketId,
+        uploaderWorkosUserId: input.actor.workosUserId,
+      })
+
+      await repository.createUploadSession({
+        id: attachmentId,
+        checksumSha256: validated.checksumSha256,
+        expiresAt: new Date(upload.expiresAt),
+        fileName: validated.fileName,
+        mimeType: validated.mimeType,
+        organizationId: context.organizationId,
+        sizeBytes: validated.sizeBytes,
+        storageBucket: upload.bucket,
+        storageKey: upload.key,
+        target: input.target,
+        ticketId: context.ticketId,
         uploaderWorkosUserId: input.actor.workosUserId,
       })
 
@@ -212,12 +308,13 @@ export const createSupportTicketAttachmentService = (
       }
     },
     async registerAttachment(input) {
-      const ticket = await ensureTicketAccess(
-        repository,
-        input.actor,
-        input.ticketId,
-        "register attachments on"
-      )
+      const context = await resolveUploadContext(repository, {
+        actor: input.actor,
+        target: input.target,
+        ticketId: input.ticketId,
+        action: "register attachments on",
+      })
+
       const validated = validateSupportTicketAttachmentUploadInput({
         checksumSha256: input.checksumSha256,
         fileName: input.fileName,
@@ -226,8 +323,9 @@ export const createSupportTicketAttachmentService = (
       })
       const attachmentStorage = resolveStorage()
       const expectedPrefix = attachmentStorage.getExpectedStorageKeyPrefix({
-        organizationId: ticket.organizationId,
-        ticketId: ticket.id,
+        organizationId: context.organizationId,
+        target: input.target,
+        ticketId: context.ticketId,
         uploaderWorkosUserId: input.actor.workosUserId,
       })
 
@@ -242,15 +340,36 @@ export const createSupportTicketAttachmentService = (
         )
       }
 
+      const session = await repository.getUploadSessionById(input.id)
+
+      if (!session || session.consumedAt || session.expiresAt <= new Date()) {
+        throw new SupportTicketAttachmentUploadExpiredError()
+      }
+
+      const isSessionOwnerMatch =
+        session.organizationId === context.organizationId &&
+        session.uploaderWorkosUserId === input.actor.workosUserId &&
+        session.target === input.target &&
+        session.ticketId === context.ticketId &&
+        session.storageKey === input.storageKey &&
+        session.storageBucket === input.storageBucket
+
+      if (!isSessionOwnerMatch) {
+        throw new SupportTicketAttachmentUploadMismatchError(
+          "Attachment upload session does not match registration scope."
+        )
+      }
+
       try {
         await attachmentStorage.verifyUploadedObject({
           attachmentId: input.id,
           checksumSha256: validated.checksumSha256,
           mimeType: validated.mimeType,
-          organizationId: ticket.organizationId,
+          organizationId: context.organizationId,
           sizeBytes: validated.sizeBytes,
           storageKey: input.storageKey,
-          ticketId: ticket.id,
+          target: input.target,
+          ticketId: context.ticketId,
           uploaderWorkosUserId: input.actor.workosUserId,
         })
       } catch (error) {
@@ -272,7 +391,21 @@ export const createSupportTicketAttachmentService = (
         )
       }
 
-      const attachment: SupportTicketAttachmentMetadata = {
+      await repository.markUploadSessionRegistered({
+        id: input.id,
+        checksumSha256: validated.checksumSha256,
+        fileName: validated.fileName,
+        mimeType: validated.mimeType,
+        organizationId: context.organizationId,
+        sizeBytes: validated.sizeBytes,
+        storageBucket: input.storageBucket,
+        storageKey: input.storageKey,
+        target: input.target,
+        ticketId: context.ticketId,
+        uploaderWorkosUserId: input.actor.workosUserId,
+      })
+
+      return {
         id: input.id,
         fileName: validated.fileName,
         mimeType: validated.mimeType,
@@ -281,13 +414,6 @@ export const createSupportTicketAttachmentService = (
         checksumSha256: validated.checksumSha256 ?? null,
         uploadedAt: new Date().toISOString(),
       }
-
-      await repository.appendTicketAttachment({
-        ticketId: ticket.id,
-        attachment,
-      })
-
-      return attachment
     },
   }
 }

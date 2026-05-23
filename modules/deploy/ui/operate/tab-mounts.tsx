@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -113,71 +112,89 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
   return (
     <div className="grid gap-6 md:grid-cols-3">
       {/* Create Mount form */}
-      <Card className="col-span-1 border-white/[0.06] bg-black/25">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-1.5 text-base font-bold text-white">
-            <Key size={18} className="text-primary" /> Mount Private Key / Files
+      <Card size="sm" className="col-span-1 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
+            <Key size={18} className="text-primary" /> Mount Keys & Files
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs text-muted-foreground">
             Mount certificates or secrets securely as localized file paths
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs">
           {mountError && (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-[11px] font-medium text-red-400">
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs font-semibold text-red-400">
               {mountError}
             </div>
           )}
-          <form onSubmit={handleAddMount} className="space-y-3">
-            <div className="space-y-1">
-              <label className="block font-medium text-muted-foreground">
+          <form onSubmit={handleAddMount} className="space-y-3.5">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground">
                 Mount Name
               </label>
               <Input
                 placeholder="e.g. application-private-key"
                 value={newMountName}
                 onChange={(e) => setNewMountName(e.target.value)}
-                className="h-8 text-xs"
+                className="h-9 bg-black/40 border-white/[0.08] focus:border-primary/50 text-xs"
               />
             </div>
-            <div className="space-y-1">
-              <label className="block font-medium text-muted-foreground">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground">
                 Container Target Path
               </label>
               <Input
                 placeholder="e.g. /var/www/html/storage/app/key.pem"
                 value={newMountPath}
                 onChange={(e) => setNewMountPath(e.target.value)}
-                className="h-8 font-mono text-xs"
+                className="h-9 bg-black/40 border-white/[0.08] focus:border-primary/50 font-mono text-xs"
               />
-              <span className="block text-[10px] leading-tight text-muted-foreground">
-                Must be absolute. Path is write-protected for security.
+              <span className="block text-[10px] leading-relaxed text-muted-foreground/80">
+                Must be absolute. Path is write-protected for container security.
               </span>
             </div>
-            <div className="space-y-1">
-              <label className="block font-medium text-muted-foreground">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground">
                 PEM Content / Private Key Data
               </label>
               <Textarea
                 ref={mountContentInputRef}
                 placeholder="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0..."
                 rows={6}
-                className="w-full rounded-lg border border-white/[0.1] bg-black/50 p-2.5 font-mono text-[10px] text-white focus:outline-none"
+                className="w-full rounded-xl border border-white/[0.08] bg-black/50 p-3 font-mono text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-primary/50 leading-relaxed"
               />
             </div>
 
-            <label className="flex cursor-pointer items-center gap-1.5 text-muted-foreground select-none">
-              <Checkbox
-                checked={newMountReadOnly}
-                onCheckedChange={(value) =>
-                  setNewMountReadOnly(Boolean(value))
-                }
-                className="rounded border-white/20 bg-black/50 accent-primary"
-              />
-              Read-Only (Recommended: Mode 0400)
-            </label>
+            <div className="flex items-center justify-between gap-3 border border-white/[0.06] bg-black/40 rounded-xl p-3.5">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-semibold text-white">Read-Only Mount</span>
+                <span className="text-[10px] text-muted-foreground">Mode 0400 (Highly Recommended for keys/certs).</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNewMountReadOnly(!newMountReadOnly)}
+                onKeyDown={(event) => {
+                  if (event.key === " " || event.key === "Enter") {
+                    event.preventDefault()
+                    setNewMountReadOnly((value) => !value)
+                  }
+                }}
+                role="switch"
+                aria-checked={newMountReadOnly}
+                aria-label="Set mount as read-only"
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  newMountReadOnly ? "bg-primary" : "bg-neutral-800"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    newMountReadOnly ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
 
-            <Button type="submit" className="mt-2 h-8 w-full text-xs">
+            <Button type="submit" className="mt-2 h-9 w-full text-xs font-medium bg-primary hover:bg-primary/95 text-white">
               Create File Mount
             </Button>
           </form>
@@ -185,45 +202,47 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
       </Card>
 
       {/* Active Mounts List */}
-      <Card className="col-span-2 border-white/[0.06] bg-black/25">
-        <CardHeader>
+      <Card size="sm" className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+        <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold text-white">
             Active Pod File Mounts
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs text-muted-foreground">
             File injections mapped directly into target containers
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="overflow-hidden rounded-lg border border-white/[0.08] text-xs">
-            <div className="grid grid-cols-4 border-b border-white/[0.08] bg-white/[0.02] p-3 font-semibold text-muted-foreground uppercase">
-              <span>Mount Target</span>
-              <span>Type / Mode</span>
-              <span>Content Summary</span>
-              <span className="text-right font-normal">Actions</span>
+          <div className="overflow-hidden rounded-xl border border-white/[0.08] text-xs bg-black/20">
+            <div className="grid grid-cols-12 border-b border-white/[0.08] bg-white/[0.02] px-4 py-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider">
+              <span className="col-span-4">Mount Target</span>
+              <span className="col-span-3">Type / Mode</span>
+              <span className="col-span-3">Content Summary</span>
+              <span className="col-span-2 text-right font-normal">Actions</span>
             </div>
 
             <div className="divide-y divide-white/[0.06]">
               {mounts[selectedEnv].map((item) => (
                 <div
                   key={item.id}
-                  className="grid grid-cols-4 items-center p-3 hover:bg-white/[0.01]"
+                  className="grid grid-cols-12 items-center px-4 py-3.5 hover:bg-white/[0.02] transition-colors"
                 >
-                  <span className="pr-2 font-mono font-bold break-all text-white">
+                  <span className="col-span-4 pr-2 font-mono font-bold break-all text-white/95 text-xs">
                     {item.mountPath}
                   </span>
-                  <span className="font-mono text-muted-foreground">
-                    {item.sourceType.toUpperCase()} ({item.fileMode})
+                  <span className="col-span-3 font-mono text-muted-foreground text-xs flex flex-col gap-0.5">
+                    <span>{item.sourceType.toUpperCase()} ({item.fileMode})</span>
                     {item.readOnly && (
-                      <span className="block text-[9px] text-green-400">
-                        Read-Only
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400">
+                        ● Read-Only
                       </span>
                     )}
                   </span>
-                  <span className="block max-w-[200px] rounded border border-white/5 bg-black/30 p-1.5 font-mono text-[10px] break-all whitespace-pre text-muted-foreground">
-                    {item.contentSummary}
+                  <span className="col-span-3">
+                    <span className="inline-block max-w-full rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 font-mono text-[9px] break-all whitespace-pre text-muted-foreground/90 leading-normal">
+                      {item.contentSummary}
+                    </span>
                   </span>
-                  <span className="text-right">
+                  <span className="col-span-2 text-right">
                     <Button
                       type="button"
                       variant="ghost"
@@ -238,7 +257,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
               ))}
 
               {mounts[selectedEnv].length === 0 && (
-                <div className="p-6 text-center text-muted-foreground">
+                <div className="p-6 text-center text-muted-foreground font-medium">
                   No private key or volume files mounted.
                 </div>
               )}
@@ -246,14 +265,14 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
           </div>
 
           <div className="space-y-2 rounded-xl border border-white/[0.06] bg-black/40 p-4 text-xs leading-relaxed">
-            <span className="block font-bold text-white">
+            <span className="block font-bold text-white text-xs">
               In-Container Mounting Mechanics
             </span>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground leading-normal">
               Private keys are stored in encrypted Kubernetes{" "}
-              <code>Secrets</code>, then mapped at boot via a volume definition:
+              <code className="text-white font-mono bg-white/5 px-1 py-0.5 rounded text-[10px]">Secrets</code>, then mapped at boot via a volume definition:
             </p>
-            <pre className="overflow-x-auto rounded border border-white/[0.06] bg-black/80 p-2.5 font-mono text-[10px] text-green-400">
+            <pre className="overflow-x-auto rounded-xl border border-white/[0.06] bg-black/80 p-3.5 font-mono text-[10px] text-emerald-400 leading-relaxed">
               {`volumes:
   - name: secure-key-volume
     secret:

@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 import { InvoicesTable } from "@/app/[lang]/console/invoices/invoices-table"
-import { InvoiceFoundationPreview } from "@/modules/invoices/ui/invoice-foundation-preview"
 
 type InvoicesPageProps = {
   params: Promise<{
@@ -17,7 +16,7 @@ export default async function InvoicesPage({ params }: InvoicesPageProps) {
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Invoices</h1>
         <p className="text-sm text-muted-foreground">
-          Review recent billing records for your active organization.
+          Review billing records, download receipts, and manage invoice status.
         </p>
       </header>
 
@@ -28,17 +27,6 @@ export default async function InvoicesPage({ params }: InvoicesPageProps) {
           </CardHeader>
           <CardContent>
             <InvoicesTable lang={lang} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              Invoice Screen Foundation Preview
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <InvoiceFoundationPreview />
           </CardContent>
         </Card>
       </section>

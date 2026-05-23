@@ -4,10 +4,13 @@ import { z } from "zod"
 
 import { authRoutes } from "@/modules/auth/api/auth.route"
 import { docsRoutes } from "@/modules/docs/api/docs.route"
+import { knowledgeRoutes } from "@/modules/docs/api/knowledge.route"
 import { deployRoutes } from "@/modules/deploy/api/deploy.route"
 import { frameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
 import { githubRoutes } from "@/modules/github/api/github.route"
+import { invoicesRoutes } from "@/modules/invoices/api/invoices.route"
 import { supportTicketAttachmentRoutes } from "@/modules/support-tickets/api/support-ticket-attachments.route"
+import { supportTicketRoutes } from "@/modules/support-tickets/api/support-tickets.route"
 import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
 import { usersRoutes } from "@/modules/users/api/users.route"
 
@@ -68,9 +71,12 @@ const toFieldErrors = (
 export const app = new Elysia({ prefix: "/api" })
   .use(openapi())
   .use(docsRoutes)
+  .use(knowledgeRoutes)
   .use(deployRoutes)
   .use(frameworkDetectionRoutes)
   .use(githubRoutes)
+  .use(invoicesRoutes)
+  .use(supportTicketRoutes)
   .use(supportTicketAttachmentRoutes)
   .use(tenantsRoutes)
   .use(authRoutes)

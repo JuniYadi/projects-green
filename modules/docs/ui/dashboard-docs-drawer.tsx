@@ -15,8 +15,7 @@ import type {
   UiDocErrorResponse,
   UiDocSuccessResponse,
 } from "@/modules/docs/docs.types"
-
-const CONSOLE_PATH = "/console"
+import { getLocaleFromPathname } from "@/lib/i18n/pathname"
 
 type RequestState =
   | { status: "idle" }
@@ -37,6 +36,8 @@ export function DashboardDocsDrawer() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [state, setState] = useState<RequestState>({ status: "idle" })
+  const { pathnameWithoutLocale } = getLocaleFromPathname(pathname)
+  const docPath = pathnameWithoutLocale || "/console"
 
   const isOpen = searchParams.get("doc") === "1"
 
@@ -53,7 +54,7 @@ export function DashboardDocsDrawer() {
 
       try {
         const response = await fetch(
-          `/api/docs?path=${encodeURIComponent(CONSOLE_PATH)}`,
+          `/api/docs?path=${encodeURIComponent(docPath)}`,
           {
             signal: controller.signal,
           }
@@ -100,7 +101,7 @@ export function DashboardDocsDrawer() {
       isActive = false
       controller.abort()
     }
-  }, [isOpen])
+  }, [docPath, isOpen])
 
   const openDrawer = () => {
     const next = new URLSearchParams(searchParams.toString())
@@ -140,7 +141,7 @@ export function DashboardDocsDrawer() {
           <SheetHeader>
             <SheetTitle>Page Documentation</SheetTitle>
             <SheetDescription>
-              Purpose and usage guide for {CONSOLE_PATH}
+              Purpose and usage guide for {docPath}
             </SheetDescription>
           </SheetHeader>
 
