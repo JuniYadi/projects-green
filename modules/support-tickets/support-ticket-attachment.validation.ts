@@ -16,7 +16,7 @@ const DEFAULT_ALLOWED_EXTENSIONS = Object.keys(EXTENSION_MIME_ALLOWLIST).sort()
 const DEFAULT_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
 const parseAllowedExtensions = () => {
-  const rawValue = process.env.SUPPORT_TICKET_ATTACHMENT_ALLOWED_EXTENSIONS?.trim()
+  const rawValue = process.env.S3_ATTACHMENT_ALLOWED_EXTENSIONS?.trim()
 
   if (!rawValue) {
     return DEFAULT_ALLOWED_EXTENSIONS
@@ -43,7 +43,7 @@ const parseAllowedExtensions = () => {
 }
 
 const parseMaxFileSizeBytes = () => {
-  const rawValue = process.env.SUPPORT_TICKET_ATTACHMENT_MAX_SIZE_BYTES?.trim()
+  const rawValue = process.env.S3_ATTACHMENT_MAX_SIZE_BYTES?.trim()
 
   if (!rawValue) {
     return DEFAULT_MAX_FILE_SIZE_BYTES
@@ -58,10 +58,10 @@ const parseMaxFileSizeBytes = () => {
   return parsed
 }
 
-export const SUPPORT_TICKET_ATTACHMENT_ALLOWED_EXTENSIONS =
+export const S3_ATTACHMENT_ALLOWED_EXTENSIONS =
   parseAllowedExtensions()
 
-export const SUPPORT_TICKET_ATTACHMENT_MAX_SIZE_BYTES = parseMaxFileSizeBytes()
+export const S3_ATTACHMENT_MAX_SIZE_BYTES = parseMaxFileSizeBytes()
 
 export type SupportTicketAttachmentValidationCode =
   | "UNSUPPORTED_EXTENSION"
@@ -108,10 +108,10 @@ const getFileExtension = (fileName: string) => {
 }
 
 const assertFileSizeAllowed = (sizeBytes: number) => {
-  if (sizeBytes > SUPPORT_TICKET_ATTACHMENT_MAX_SIZE_BYTES) {
+  if (sizeBytes > S3_ATTACHMENT_MAX_SIZE_BYTES) {
     throw new SupportTicketAttachmentValidationError(
       "FILE_TOO_LARGE",
-      `Attachment exceeds ${SUPPORT_TICKET_ATTACHMENT_MAX_SIZE_BYTES} bytes.`
+      `Attachment exceeds ${S3_ATTACHMENT_MAX_SIZE_BYTES} bytes.`
     )
   }
 }
@@ -130,7 +130,7 @@ const assertMimeTypeAllowed = (mimeType: string) => {
 }
 
 const assertExtensionAllowed = (extension: string) => {
-  if (!SUPPORT_TICKET_ATTACHMENT_ALLOWED_EXTENSIONS.includes(extension)) {
+  if (!S3_ATTACHMENT_ALLOWED_EXTENSIONS.includes(extension)) {
     throw new SupportTicketAttachmentValidationError(
       "UNSUPPORTED_EXTENSION",
       "Attachment extension is not allowed."

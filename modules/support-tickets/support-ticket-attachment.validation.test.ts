@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
 import {
-  SUPPORT_TICKET_ATTACHMENT_MAX_SIZE_BYTES,
+  S3_ATTACHMENT_MAX_SIZE_BYTES,
   SupportTicketAttachmentValidationError,
   validateSupportTicketAttachmentUploadInput,
 } from "@/modules/support-tickets/support-ticket-attachment.validation"
@@ -41,7 +41,7 @@ describe("support ticket attachment validation", () => {
       validateSupportTicketAttachmentUploadInput({
         fileName: "evidence.pdf",
         mimeType: "application/pdf",
-        sizeBytes: SUPPORT_TICKET_ATTACHMENT_MAX_SIZE_BYTES + 1,
+        sizeBytes: S3_ATTACHMENT_MAX_SIZE_BYTES + 1,
       })
     ).toThrow(SupportTicketAttachmentValidationError)
 
@@ -49,7 +49,7 @@ describe("support ticket attachment validation", () => {
       validateSupportTicketAttachmentUploadInput({
         fileName: "evidence.pdf",
         mimeType: "application/pdf",
-        sizeBytes: SUPPORT_TICKET_ATTACHMENT_MAX_SIZE_BYTES + 1,
+        sizeBytes: S3_ATTACHMENT_MAX_SIZE_BYTES + 1,
       })
     ).toThrow("Attachment exceeds")
   })
