@@ -26,8 +26,12 @@ import type {
   CreateSupportTicketReplyInput,
   SupportTicket,
   SupportTicketActorContext,
+  SupportTicketAttachmentUploadSession,
   SupportTicketStatus,
   SupportTicketThread,
+  SupportTicketDepartment,
+  SupportTicketPriority,
+  SupportTicketService as SupportTicketServiceType,
 } from "@/modules/support-tickets/support-ticket.types"
 
 export class SupportTicketNotFoundError extends Error {
@@ -70,6 +74,31 @@ export type SupportTicketService = {
     nextStatus: SupportTicketStatus
     ticketId: string
   }): Promise<SupportTicket>
+  getAttachmentSession?(input: {
+    actor: SupportTicketActorContext
+    attachmentId: string
+  }): Promise<SupportTicketAttachmentUploadSession | null>
+  listAllTickets(input: {
+    actor: SupportTicketActorContext
+    limit?: number
+  }): Promise<SupportTicket[]>
+  updateTicket(input: {
+    actor: SupportTicketActorContext
+    ticketId: string
+    data: {
+      department?: SupportTicketDepartment
+      priority?: SupportTicketPriority
+      service?: SupportTicketServiceType | null
+      subject?: string
+      description?: string | null
+      status?: SupportTicketStatus
+      assignedAgentWorkosUserId?: string | null
+    }
+  }): Promise<SupportTicket>
+  deleteTicket(input: {
+    actor: SupportTicketActorContext
+    ticketId: string
+  }): Promise<boolean>
 }
 
 const defaultTicketNumberFactory = () => {
@@ -125,6 +154,18 @@ const createLazyDefaultRepository = (): SupportTicketRepository => {
     async updateTicketStatus(input) {
       const repository = await loadRepository()
       return repository.updateTicketStatus(input)
+    },
+    async listAllTickets(input) {
+      const repository = await loadRepository()
+      return repository.listAllTickets(input)
+    },
+    async updateTicket(input) {
+      const repository = await loadRepository()
+      return repository.updateTicket(input)
+    },
+    async deleteTicket(ticketId) {
+      const repository = await loadRepository()
+      return repository.deleteTicket(ticketId)
     },
     async createReply(input) {
       const repository = await loadRepository()
@@ -365,6 +406,68 @@ export const createSupportTicketService = (
       } catch (error) {
         throw toSafeContentError(error)
       }
+    },
+    async getAttachmentSession(input) {
+      supportTicketActorContextSchema.parse(input.actor)
+      const session = await repository.getUploadSessionById(input.attachmentId)
+      return session
+    },
+    async listAllTickets(input) {
+      const actor = supportTicketActorContextSchema.parse(input.actor)
+      if (!actor.isSuperAdmin) {
+        throw new SupportTicketAccessDeniedError("list all")
+      }
+
+      const tickets = await repository.listAllTickets({
+        limit: input.limit,
+      })
+
+      try {
+        return tickets.map((ticket) => decryptTicketContent(contentCipher, ticket))
+      } catch (error) {
+        throw toSafeContentError(error)
+      }
+    },
+    async updateTicket(input) {
+      const actor = supportTicketActorContextSchema.parse(input.actor)
+      if (!actor.isSuperAdmin) {
+        throw new SupportTicketAccessDeniedError("update")
+      }
+
+      const ticket = await repository.getTicketById(input.ticketId)
+      if (!ticket) {
+        throw new SupportTicketNotFoundError(input.ticketId)
+      }
+
+      let clearSecureForm = false
+      if (input.data.status === "closed" && ticket.status !== "closed") {
+        clearSecureForm = true
+      }
+
+      const updatedTicket = await repository.updateTicket({
+        ticketId: input.ticketId,
+        data: input.data,
+        clearSecureForm,
+      })
+
+      try {
+        return decryptTicketContent(contentCipher, updatedTicket)
+      } catch (error) {
+        throw toSafeContentError(error)
+      }
+    },
+    async deleteTicket(input) {
+      const actor = supportTicketActorContextSchema.parse(input.actor)
+      if (!actor.isSuperAdmin) {
+        throw new SupportTicketAccessDeniedError("delete")
+      }
+
+      const ticket = await repository.getTicketById(input.ticketId)
+      if (!ticket) {
+        throw new SupportTicketNotFoundError(input.ticketId)
+      }
+
+      return repository.deleteTicket(input.ticketId)
     },
   }
 }
