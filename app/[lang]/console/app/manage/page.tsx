@@ -67,21 +67,21 @@ const TABS: Array<{
 }> = [
   { id: "overview", label: "Overview", icon: <Pulse size={16} /> },
   { id: "domains", label: "Domains & SSL", icon: <Globe size={16} /> },
-  { id: "env", label: "Environment & Net", icon: <Lightning size={16} /> },
-  { id: "mounts", label: "Storage & Mounts", icon: <Key size={16} /> },
+  { id: "env", label: "Environment", icon: <Lightning size={16} /> },
+  { id: "mounts", label: "Storages", icon: <Key size={16} /> },
   {
     id: "scaling",
-    label: "Autoscaling & Tuning",
+    label: "Autoscaling",
     icon: <Cpu size={16} />,
   },
   {
     id: "metrics",
-    label: "Telemetry & Metrics",
+    label: "Metrics",
     icon: <HardDrive size={16} />,
   },
   {
     id: "logs",
-    label: "Opensearch Logs",
+    label: "Logs",
     icon: <TerminalIcon size={16} />,
   },
 ]

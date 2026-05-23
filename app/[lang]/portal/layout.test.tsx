@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { beforeEach, afterAll, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
+import "@testing-library/jest-dom"
 
 import { createAuthMock, createNavigationMock } from "@/test/layout-test-mocks"
 
@@ -125,13 +126,13 @@ mock.module("@/components/ui/breadcrumb", () => {
   }
 })
 
-mock.module("@/modules/docs/ui/dashboard-docs-drawer", () => {
-  return {
-    DashboardDocsDrawer: () => <div>Docs Drawer</div>,
-  }
-})
+// No mock needed for ThunderAiHelpDrawer to avoid cache pollution
 
 describe("PortalLayout", () => {
+  afterAll(() => {
+    mock.restore()
+  })
+
   beforeEach(() => {
     mockWithAuth.mockClear()
     mockGetUser.mockClear()
@@ -162,12 +163,12 @@ describe("PortalLayout", () => {
     expect(mockGetUser).toHaveBeenCalledWith("user_123")
     expect(mockGetOrganization).toHaveBeenCalledWith("org_123")
 
-    expect(view.getByTestId("sidebar-provider")).toBeTruthy()
-    expect(view.getByText("Sidebar:portal:Jane Doe:Acme Inc")).toBeTruthy()
-    expect(view.getByText("Docs Drawer")).toBeTruthy()
-    expect(view.getByText("Documentation")).toBeTruthy()
-    expect(view.getByText("Registry")).toBeTruthy()
-    expect(view.getByText("Child Content")).toBeTruthy()
+    expect(view.getByTestId("sidebar-provider")).toBeInTheDocument()
+    expect(view.getByText("Sidebar:portal:Jane Doe:Acme Inc")).toBeInTheDocument()
+    expect(view.getByText("AI Help")).toBeInTheDocument()
+    expect(view.getByText("Documentation")).toBeInTheDocument()
+    expect(view.getByText("Registry")).toBeInTheDocument()
+    expect(view.getByText("Child Content")).toBeInTheDocument()
   })
 
   it("redirects to onboarding when organization is missing", async () => {

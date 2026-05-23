@@ -19,8 +19,7 @@ import {
   resolveSidebarUser,
 } from "@/lib/sidebar-session"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { DashboardDocsDrawer } from "@/modules/docs/ui/dashboard-docs-drawer"
-import { DashboardKnowledgeChatSheet } from "@/modules/docs/ui/dashboard-knowledge-chat-sheet"
+import { ThunderAiHelpDrawer } from "@/modules/docs/ui/thunder-ai-help-drawer"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 
@@ -83,10 +82,9 @@ export default async function ConsoleLayout({
             </Breadcrumb>
           </div>
           <div className="ml-auto px-6">
-            <DashboardDocsDrawer />
+            <ThunderAiHelpDrawer />
           </div>
         </header>
-        <DashboardKnowledgeChatSheet />
         {children}
       </SidebarInset>
     </SidebarProvider>

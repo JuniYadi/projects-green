@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, fireEvent } from "@testing-library/react"
+import "@testing-library/jest-dom"
 
 let currentQuery = ""
 const replaceCalls: string[] = []
@@ -47,11 +48,11 @@ describe("ManagePage", () => {
     // Check tab buttons
     expect(view.getByText("Overview")).toBeInTheDocument()
     expect(view.getByText("Domains & SSL")).toBeInTheDocument()
-    expect(view.getByText("Environment & Net")).toBeInTheDocument()
-    expect(view.getByText("Storage & Mounts")).toBeInTheDocument()
-    expect(view.getByText("Autoscaling & Tuning")).toBeInTheDocument()
-    expect(view.getByText("Telemetry & Metrics")).toBeInTheDocument()
-    expect(view.getByText("Opensearch Logs")).toBeInTheDocument()
+    expect(view.getByText("Environment")).toBeInTheDocument()
+    expect(view.getByText("Storages")).toBeInTheDocument()
+    expect(view.getByText("Autoscaling")).toBeInTheDocument()
+    expect(view.getByText("Metrics")).toBeInTheDocument()
+    expect(view.getByText("Logs")).toBeInTheDocument()
   })
 
   it("can open operations FAQ troubleshooter", async () => {
@@ -154,7 +155,7 @@ describe("ManagePage", () => {
     globalThis.alert = alertMock as unknown as typeof alert
 
     try {
-      fireEvent.click(view.getByText("Environment & Net"))
+      fireEvent.click(view.getByText("Environment"))
       expect(view.getByText("Environment Variables")).toBeInTheDocument()
 
       fireEvent.click(view.getByRole("button", { name: "Bulk Import .env" }))
@@ -188,7 +189,7 @@ describe("ManagePage", () => {
         )
       ).toBeInTheDocument()
 
-      fireEvent.click(view.getByText("Storage & Mounts"))
+      fireEvent.click(view.getByText("Storages"))
       expect(view.getByText("Active Pod File Mounts")).toBeInTheDocument()
 
       fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
@@ -230,7 +231,7 @@ describe("ManagePage", () => {
       )
       fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
 
-      fireEvent.click(view.getByText("Autoscaling & Tuning"))
+      fireEvent.click(view.getByText("Autoscaling"))
       expect(
         view.getByText("Autoscaling Policies (HPA / VPA)")
       ).toBeInTheDocument()
@@ -263,7 +264,7 @@ describe("ManagePage", () => {
       )
       expect(alertMock).toHaveBeenCalled()
 
-      fireEvent.click(view.getByText("Telemetry & Metrics"))
+      fireEvent.click(view.getByText("Metrics"))
       expect(view.getByText("Live Resource Monitoring")).toBeInTheDocument()
       expect(view.getByText("⚠️ Low RAM Headroom")).toBeInTheDocument()
     } finally {

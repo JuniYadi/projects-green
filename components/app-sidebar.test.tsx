@@ -4,37 +4,29 @@ import {
   resolveSidebarMenu,
   resolveSidebarSecondaryLinks,
 } from "@/components/app-sidebar"
+import { getLocaleFromPathname } from "@/lib/i18n/pathname"
 
 describe("resolveSidebarMenu", () => {
-  it("returns console-only navigation and projects for console surface", () => {
+  it("returns console-only navigation and projects for console surface (applications context)", () => {
     const { navMain, projects } = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/app/manage",
       locale: "en",
     })
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications"])
-    expect(navMain[0]?.items?.map((item) => item.title)).toEqual([
+    // Flat menu structure under applications context
+    expect(navMain.map((item) => item.title)).toEqual([
       "Deploy",
       "Manage",
       "Monitoring",
     ])
-    expect(navMain[0]?.isActive).toBe(true)
+    expect(navMain.find((item) => item.title === "Manage")?.isActive).toBe(true)
 
-    expect(projects.map((project) => project.name)).toEqual([
-      "Overview",
-      "Invoices",
-      "Support Tickets",
-    ])
-    expect(projects.map((project) => project.name)).not.toContain(
-      "Documentation"
-    )
-    expect(projects.map((project) => project.name)).not.toContain(
-      "Tenant Management"
-    )
+    // Escape hatch in projects
+    expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
   })
 
-  it("marks manage and monitoring submenus active for their routes", () => {
+  it("marks manage and monitoring active for their routes", () => {
     const manageMenu = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/app/manage/build-logs",
@@ -48,28 +40,21 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(
-      manageMenu.navMain[0]?.items?.find((item) => item.title === "Manage")
-        ?.isActive
+      manageMenu.navMain.find((item) => item.title === "Manage")?.isActive
     ).toBe(true)
     expect(
-      manageMenu.navMain[0]?.items?.find(
-        (item) => item.title === "Monitoring"
-      )?.isActive
+      manageMenu.navMain.find((item) => item.title === "Monitoring")?.isActive
     ).toBe(false)
 
     expect(
-      monitoringMenu.navMain[0]?.items?.find(
-        (item) => item.title === "Monitoring"
-      )?.isActive
+      monitoringMenu.navMain.find((item) => item.title === "Monitoring")?.isActive
     ).toBe(true)
     expect(
-      monitoringMenu.navMain[0]?.items?.find(
-        (item) => item.title === "Manage"
-      )?.isActive
+      monitoringMenu.navMain.find((item) => item.title === "Manage")?.isActive
     ).toBe(false)
   })
 
-  it("marks quick menu items active for console utility routes", () => {
+  it("marks items active for console utility routes in their context", () => {
     const invoicesMenu = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/invoices",
@@ -82,11 +67,59 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(
-      invoicesMenu.projects.find((item) => item.name === "Invoices")?.isActive
+      invoicesMenu.projects.find((project) => project.name === "Invoices")?.isActive
     ).toBe(true)
     expect(
-      supportMenu.projects.find((item) => item.name === "Support Tickets")
+      invoicesMenu.projects.map((project) => project.name)
+    ).toEqual(["Overview", "Invoices", "Support Tickets"])
+
+    expect(
+      supportMenu.projects.find((project) => project.name === "Support Tickets")
         ?.isActive
+    ).toBe(true)
+    expect(
+      supportMenu.projects.map((project) => project.name)
+    ).toEqual(["Overview", "Invoices", "Support Tickets"])
+  })
+
+  it("returns hub context when on /console page", () => {
+    const { navMain, projects } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console",
+      locale: "en",
+    })
+
+    // Hub context shows overview items under projects and top-level link under navMain
+    expect(projects.map((project) => project.name)).toEqual([
+      "Overview",
+      "Invoices",
+      "Support Tickets",
+    ])
+    expect(projects.find((project) => project.name === "Overview")?.isActive).toBe(true)
+
+    expect(navMain.map((item) => item.title)).toEqual(["Applications"])
+    expect(navMain[0]?.isActive).toBe(false)
+  })
+
+  it("resolves support tickets context from dynamic lang route templates", () => {
+    const { pathnameWithoutLocale } = getLocaleFromPathname(
+      "/[lang]/console/support-tickets"
+    )
+
+    const { navMain, projects } = resolveSidebarMenu({
+      surface: "console",
+      pathname: pathnameWithoutLocale,
+      locale: "en",
+    })
+
+    expect(navMain.map((item) => item.title)).toEqual(["Applications"])
+    expect(projects.map((project) => project.name)).toEqual([
+      "Overview",
+      "Invoices",
+      "Support Tickets",
+    ])
+    expect(
+      projects.find((project) => project.name === "Support Tickets")?.isActive
     ).toBe(true)
   })
 
@@ -110,14 +143,14 @@ describe("resolveSidebarMenu", () => {
     )
   })
 
-  it("includes knowledge chat trigger link for console sidebar secondary links", () => {
+  it("includes thunder AI help trigger link for console sidebar secondary links", () => {
     const items = resolveSidebarSecondaryLinks({
       surface: "console",
       currentPathname: "/en/console",
     })
 
-    expect(items.map((item) => item.title)).toContain("Knowledge Chat")
-    expect(items.find((item) => item.title === "Knowledge Chat")?.url).toBe(
+    expect(items.map((item) => item.title)).toContain("Thunder AI Help")
+    expect(items.find((item) => item.title === "Thunder AI Help")?.url).toBe(
       "/en/console?kb=1"
     )
   })

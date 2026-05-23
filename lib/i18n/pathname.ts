@@ -16,6 +16,10 @@ const normalizePathname = (pathname: string) => {
   return pathname.startsWith("/") ? pathname : `/${pathname}`
 }
 
+const isDynamicRouteSegment = (segment: string) => {
+  return segment.startsWith("[") && segment.endsWith("]")
+}
+
 export const getLocaleFromPathname = (pathname: string) => {
   const normalizedPathname = normalizePathname(pathname)
   const [empty, maybeLocale, ...rest] = normalizedPathname.split("/")
@@ -28,6 +32,15 @@ export const getLocaleFromPathname = (pathname: string) => {
   }
 
   if (!maybeLocale || !isLocale(maybeLocale)) {
+    if (maybeLocale && isDynamicRouteSegment(maybeLocale)) {
+      const remainder = rest.join("/")
+
+      return {
+        locale: null,
+        pathnameWithoutLocale: remainder ? `/${remainder}` : "/",
+      }
+    }
+
     return {
       locale: null,
       pathnameWithoutLocale: normalizedPathname,
