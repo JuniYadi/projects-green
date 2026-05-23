@@ -29,6 +29,31 @@ const jsonResponse = (body: unknown, status = 200) => {
   })
 }
 
+const renderScreen = (lang = "en") => render(<SupportTicketCreateScreen lang={lang} />)
+
+const fillSubjectAndSubmit = (
+  view: ReturnType<typeof renderScreen>,
+  value = "My test issue"
+) => {
+  const subjectInput = view.getByPlaceholderText("Describe your issue") as HTMLInputElement
+  const submitButton = view.getByRole("button", { name: "Submit Ticket" })
+  subjectInput.value = value
+  fireEvent.click(submitButton)
+}
+
+const attachFiles = (
+  view: ReturnType<typeof renderScreen>,
+  files: File[]
+) => {
+  const fileInput = view.getByLabelText("Attachments (optional)")
+  fireEvent.change(fileInput, { target: { files } })
+}
+
+const expectRedirected = () => {
+  expect(mockRouterPush).toHaveBeenCalledWith("/en/console/support-tickets")
+  expect(mockRouterRefresh).toHaveBeenCalled()
+}
+
 describe("SupportTicketCreateScreen", () => {
   beforeEach(() => {
     mockRouterPush.mockClear()
@@ -121,7 +146,7 @@ describe("SupportTicketCreateScreen", () => {
   })
 
   it("requires subject and displays error", async () => {
-    const view = render(<SupportTicketCreateScreen lang="en" />)
+    const view = renderScreen()
     const submitButton = view.getByRole("button", { name: "Submit Ticket" })
 
     fireEvent.click(submitButton)
@@ -132,53 +157,39 @@ describe("SupportTicketCreateScreen", () => {
   })
 
   it("submits the ticket and redirects", async () => {
-    const view = render(<SupportTicketCreateScreen lang="en" />)
-    const subjectInput = view.getByPlaceholderText("Describe your issue") as HTMLInputElement
-    const submitButton = view.getByRole("button", { name: "Submit Ticket" })
-
-    // Direct assignment works perfectly since inputs are now uncontrolled/ref-based
-    subjectInput.value = "My test issue"
-
-    fireEvent.click(submitButton)
+    const view = renderScreen()
+    fillSubjectAndSubmit(view)
 
     await waitFor(() => {
-      expect(mockRouterPush).toHaveBeenCalledWith("/en/console/support-tickets")
-      expect(mockRouterRefresh).toHaveBeenCalled()
+      expectRedirected()
     })
   })
 
   it("submits the ticket with attachments successfully", async () => {
-    const view = render(<SupportTicketCreateScreen lang="en" />)
-    const subjectInput = view.getByPlaceholderText("Describe your issue") as HTMLInputElement
-    const fileInput = view.getByLabelText("Attachments (optional)")
+    const view = renderScreen()
     const submitButton = view.getByRole("button", { name: "Submit Ticket" })
+    const subjectInput = view.getByPlaceholderText("Describe your issue") as HTMLInputElement
 
-    // Fill form
     subjectInput.value = "Issue with attachments"
 
-    // Simulate attaching a file
     const docFile = new File(["file content"], "receipt.pdf", { type: "application/pdf" })
-    fireEvent.change(fileInput, {
-      target: { files: [docFile] }
-    })
+    attachFiles(view, [docFile])
 
-    // Submit
     fireEvent.click(submitButton)
 
     await waitFor(() => {
-      expect(mockRouterPush).toHaveBeenCalledWith("/en/console/support-tickets")
-      expect(mockRouterRefresh).toHaveBeenCalled()
+      expectRedirected()
     })
   })
 
   it("renders markdown preview when toggle tab is clicked", async () => {
-    const view = render(<SupportTicketCreateScreen lang="en" />)
+    const view = renderScreen()
     const textareas = view.container.querySelectorAll("textarea")
     const descriptionTextarea = textareas[0]
     expect(descriptionTextarea).toBeTruthy()
 
     descriptionTextarea.value = "Hello **world**"
-    
+
     const previewButtons = view.getAllByRole("button", { name: "Preview" })
     fireEvent.click(previewButtons[0])
 
@@ -188,7 +199,7 @@ describe("SupportTicketCreateScreen", () => {
   })
 
   it("switches tabs and preserves input values", async () => {
-    const view = render(<SupportTicketCreateScreen lang="en" />)
+    const view = renderScreen()
 
     const textareas = view.container.querySelectorAll("textarea")
     const descriptionTextarea = textareas[0]
@@ -200,56 +211,41 @@ describe("SupportTicketCreateScreen", () => {
     const messageTabContent = view.getByTestId("message-tab-content")
     const secureTabContent = view.getByTestId("secure-tab-content")
 
-    // By default, message editor container is visible (does not have "hidden" class)
-    // and secure editor container is hidden (has "hidden" class)
     expect(messageTabContent.className).not.toContain("hidden")
     expect(secureTabContent.className).toContain("hidden")
 
-    // Click on Secure details tab
     const secureTabButton = view.getByRole("button", { name: /secure details/i })
     fireEvent.click(secureTabButton)
 
-    // Now message editor is hidden, secure editor is visible
     expect(messageTabContent.className).toContain("hidden")
     expect(secureTabContent.className).not.toContain("hidden")
 
-    // Values should still be preserved in textareas
     expect(descriptionTextarea.value).toBe("General info content")
     expect(secureTextarea.value).toBe("Super secret tokens")
   })
 
   it("renders image previews and document icons for attachments", async () => {
-    const view = render(<SupportTicketCreateScreen lang="en" />)
-    const fileInput = view.getByLabelText("Attachments (optional)")
+    const view = renderScreen()
 
-    // Create a mock image file and document file
     const imgFile = new File(["dummy image"], "screenshot.png", { type: "image/png" })
     const docFile = new File(["dummy doc"], "report.pdf", { type: "application/pdf" })
 
-    // Simulate selecting files
-    fireEvent.change(fileInput, {
-      target: { files: [imgFile, docFile] }
-    })
+    attachFiles(view, [imgFile, docFile])
 
-    // Expect the file names to be displayed
     expect(view.getByText("screenshot.png")).toBeTruthy()
     expect(view.getByText("report.pdf")).toBeTruthy()
 
-    // Expect image preview to have an img tag with mocked blob URL
     const imgPreview = view.getByAltText("screenshot.png") as HTMLImageElement
     expect(imgPreview).toBeTruthy()
     expect(imgPreview.src).toBe("blob:screenshot.png")
 
-    // Expect no img tag for document file
     expect(view.queryByAltText("report.pdf")).toBeNull()
 
-    // Test removing a file
     const removeButtons = view.getAllByRole("button", { name: "✕" })
     expect(removeButtons.length).toBe(2)
 
-    fireEvent.click(removeButtons[0]) // remove image
+    fireEvent.click(removeButtons[0])
 
-    // After removal, only document remains
     expect(view.queryByText("screenshot.png")).toBeNull()
     expect(view.getByText("report.pdf")).toBeTruthy()
   })
