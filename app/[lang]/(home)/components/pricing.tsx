@@ -14,6 +14,7 @@ const plans = [
     cta: "Start free",
     ctaHref: "/signup",
     ctaStyle: "border",
+    highlight: false,
     features: [
       { label: "3 projects", included: true },
       { label: "100 GB bandwidth/mo", included: true },
@@ -34,7 +35,8 @@ const plans = [
     description: "For startups and growing teams building real products.",
     cta: "Start 14-day trial",
     ctaHref: "/signup?plan=pro",
-    ctaStyle: "gradient",
+    ctaStyle: "primary",
+    highlight: true,
     features: [
       { label: "Unlimited projects", included: true },
       { label: "1 TB bandwidth/mo", included: true },
@@ -56,6 +58,7 @@ const plans = [
     cta: "Start 14-day trial",
     ctaHref: "/signup?plan=team",
     ctaStyle: "border",
+    highlight: false,
     features: [
       { label: "Unlimited projects", included: true },
       { label: "5 TB bandwidth/mo", included: true },
@@ -77,6 +80,7 @@ const plans = [
     cta: "Contact sales",
     ctaHref: "/contact",
     ctaStyle: "border",
+    highlight: false,
     features: [
       { label: "Unlimited projects", included: true },
       { label: "Unlimited bandwidth", included: true },
@@ -94,36 +98,36 @@ export function PricingSection() {
   const [yearly, setYearly] = useState(true)
 
   return (
-    <section id="pricing" className="relative py-28 bg-[#060b18]">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_50%,rgba(6,182,212,0.07),transparent)]" />
+    <section id="pricing" className="relative py-28 bg-background">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_50%,color-mix(in_oklch,var(--chart-3)_7%,transparent),transparent)]" />
 
       <div className="relative max-w-7xl mx-auto px-6">
         {/* Header */}
         <div className="text-center mb-14">
-          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6">
-            <span className="text-xs font-semibold text-white/50 uppercase tracking-widest">
+          <div className="inline-flex items-center gap-2 bg-secondary border border-border rounded-full px-4 py-1.5 mb-6">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
               Pricing
             </span>
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-5 tracking-tight">
+          <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-5 tracking-tight">
             Simple,{" "}
-            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-chart-3 to-chart-2 bg-clip-text text-transparent">
               transparent pricing
             </span>
           </h2>
-          <p className="text-lg text-white/40 max-w-xl mx-auto mb-8">
+          <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
             Start for free. Scale as you grow. No hidden fees, no surprises.
           </p>
 
           {/* Toggle */}
-          <div className="inline-flex items-center gap-3 bg-white/5 border border-white/10 rounded-full p-1">
+          <div className="inline-flex items-center gap-0 bg-secondary border border-border rounded-full p-1">
             <button
               id="pricing-toggle-monthly"
               onClick={() => setYearly(false)}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
                 !yearly
-                  ? "bg-white text-gray-900"
-                  : "text-white/50 hover:text-white"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Monthly
@@ -133,12 +137,12 @@ export function PricingSection() {
               onClick={() => setYearly(true)}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                 yearly
-                  ? "bg-white text-gray-900"
-                  : "text-white/50 hover:text-white"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Yearly
-              <span className="text-xs bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">
+              <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
                 -20%
               </span>
             </button>
@@ -152,35 +156,37 @@ export function PricingSection() {
               key={plan.id}
               id={`pricing-plan-${plan.id}`}
               className={`relative rounded-2xl border p-6 flex flex-col transition-all duration-300 ${
-                plan.id === "pro"
-                  ? "bg-gradient-to-b from-emerald-500/10 to-cyan-500/5 border-emerald-500/30 shadow-xl shadow-emerald-500/10 scale-[1.02]"
-                  : "bg-white/[0.03] border-white/8 hover:bg-white/[0.06] hover:border-white/15"
+                plan.highlight
+                  ? "bg-primary/10 border-primary/30 shadow-xl shadow-primary/10 scale-[1.02]"
+                  : "bg-card border-border hover:border-primary/20"
               }`}
             >
               {plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap shadow-lg shadow-emerald-500/30">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap shadow-lg shadow-primary/30">
                   {plan.badge}
                 </div>
               )}
 
               <div className="mb-6">
-                <h3 className="text-base font-bold text-white mb-1">{plan.name}</h3>
-                <p className="text-xs text-white/40 leading-relaxed">{plan.description}</p>
+                <h3 className="text-base font-bold text-foreground mb-1">{plan.name}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {plan.description}
+                </p>
               </div>
 
               <div className="mb-6">
                 {plan.monthlyPrice !== null ? (
                   <div className="flex items-end gap-1">
-                    <span className="text-4xl font-bold text-white">
+                    <span className="text-4xl font-bold text-foreground">
                       ${yearly ? plan.yearlyPrice : plan.monthlyPrice}
                     </span>
-                    <span className="text-white/40 text-sm mb-1">/mo</span>
+                    <span className="text-muted-foreground text-sm mb-1">/mo</span>
                   </div>
                 ) : (
-                  <div className="text-3xl font-bold text-white">Custom</div>
+                  <div className="text-3xl font-bold text-foreground">Custom</div>
                 )}
                 {yearly && plan.monthlyPrice !== null && plan.monthlyPrice > 0 && (
-                  <div className="text-xs text-emerald-400 mt-1">
+                  <div className="text-xs text-primary mt-1">
                     Save ${(plan.monthlyPrice - plan.yearlyPrice!) * 12}/year
                   </div>
                 )}
@@ -190,9 +196,9 @@ export function PricingSection() {
                 href={plan.ctaHref}
                 id={`pricing-cta-${plan.id}`}
                 className={`w-full text-center py-2.5 rounded-xl text-sm font-semibold transition-all mb-6 ${
-                  plan.ctaStyle === "gradient"
-                    ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white hover:from-emerald-400 hover:to-cyan-400 shadow-lg shadow-emerald-500/20"
-                    : "border border-white/15 text-white hover:bg-white/8"
+                  plan.ctaStyle === "primary"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                    : "border border-border text-foreground hover:bg-secondary"
                 }`}
               >
                 {plan.cta}
@@ -202,11 +208,11 @@ export function PricingSection() {
                 {plan.features.map((f) => (
                   <li key={f.label} className="flex items-center gap-2.5 text-sm">
                     {f.included ? (
-                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" weight="bold" />
+                      <Check className="w-4 h-4 text-primary flex-shrink-0" weight="bold" />
                     ) : (
-                      <X className="w-4 h-4 text-white/20 flex-shrink-0" weight="bold" />
+                      <X className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" weight="bold" />
                     )}
-                    <span className={f.included ? "text-white/70" : "text-white/25"}>
+                    <span className={f.included ? "text-foreground/80" : "text-muted-foreground/40"}>
                       {f.label}
                     </span>
                   </li>
@@ -216,7 +222,7 @@ export function PricingSection() {
           ))}
         </div>
 
-        <p className="text-center text-xs text-white/30 mt-10">
+        <p className="text-center text-xs text-muted-foreground/50 mt-10">
           All prices in USD. Cancel anytime. No credit card required for free plan.
         </p>
       </div>

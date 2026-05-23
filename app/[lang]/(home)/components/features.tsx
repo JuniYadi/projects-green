@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import {
   GitBranch,
   Timer,
@@ -135,14 +136,14 @@ export function FeaturesSection() {
               Get started in 2 minutes. No credit card required.
             </p>
           </div>
-          <a
+          <Link
             href="/signup"
             id="features-cta-signup"
-            className="group inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold px-7 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 whitespace-nowrap"
+            className="group inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-7 py-3 rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 whitespace-nowrap"
           >
             Get started free
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>
