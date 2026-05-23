@@ -237,6 +237,9 @@ export function ThunderAiHelpDrawer() {
 
       if (!stream) {
         setChatError("No response body from knowledge chat.")
+        setMessages((current) =>
+          current.filter((message) => message.id !== assistantMessageId)
+        )
         return
       }
 
@@ -283,6 +286,9 @@ export function ThunderAiHelpDrawer() {
 
           if (frame.type === "error") {
             setChatError(frame.message)
+            setMessages((current) =>
+              current.filter((message) => message.id !== assistantMessageId)
+            )
           }
         }
       }

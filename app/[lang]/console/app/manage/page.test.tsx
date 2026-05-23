@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, fireEvent } from "@testing-library/react"
+import "@testing-library/jest-dom"
 
 let currentQuery = ""
 const replaceCalls: string[] = []

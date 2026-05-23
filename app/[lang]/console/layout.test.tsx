@@ -1,5 +1,6 @@
 import { beforeEach, afterAll, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
+import "@testing-library/jest-dom"
 
 import { createAuthMock, createNavigationMock } from "@/test/layout-test-mocks"
 
@@ -162,12 +163,12 @@ describe("ConsoleLayout", () => {
     expect(mockGetUser).toHaveBeenCalledWith("user_123")
     expect(mockGetOrganization).toHaveBeenCalledWith("org_123")
 
-    expect(view.getByTestId("sidebar-provider")).toBeTruthy()
-    expect(view.getByText("Sidebar:console:Jane Doe:Acme Inc")).toBeTruthy()
-    expect(view.getByText("AI Help")).toBeTruthy()
-    expect(view.getByText("Console")).toBeTruthy()
-    expect(view.getByText("Workspace")).toBeTruthy()
-    expect(view.getByText("Child Content")).toBeTruthy()
+    expect(view.getByTestId("sidebar-provider")).toBeInTheDocument()
+    expect(view.getByText("Sidebar:console:Jane Doe:Acme Inc")).toBeInTheDocument()
+    expect(view.getByText("AI Help")).toBeInTheDocument()
+    expect(view.getByText("Console")).toBeInTheDocument()
+    expect(view.getByText("Workspace")).toBeInTheDocument()
+    expect(view.getByText("Child Content")).toBeInTheDocument()
   })
 
   it("redirects to onboarding when organization is missing", async () => {
