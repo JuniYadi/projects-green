@@ -32,11 +32,13 @@ const codeSchema = z
 
 type LoginFormProps = React.ComponentProps<"div"> & {
   nextPath?: string
+  errorMessage?: string
 }
 
 export function LoginForm({
   className,
   nextPath = "/",
+  errorMessage,
   ...props
 }: LoginFormProps) {
   const router = useRouter()
@@ -51,7 +53,7 @@ export function LoginForm({
   const [isCodeStep, setIsCodeStep] = useState(false)
   const [isRequestingCode, setIsRequestingCode] = useState(false)
   const [isVerifyingCode, setIsVerifyingCode] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(errorMessage ?? null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   const [serverFieldErrors, setServerFieldErrors] = useState<
     Record<string, string[]>
