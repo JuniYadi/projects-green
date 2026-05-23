@@ -10,7 +10,7 @@ import {
   SupportTicketService,
   SupportTicketStatus,
 } from "@prisma/client"
-import { PrismaClient } from "@prisma/client/index"
+import { PrismaClient } from "@prisma/client"
 
 const DATABASE_URL = process.env.DATABASE_URL?.trim()
 if (!DATABASE_URL) {
@@ -423,7 +423,7 @@ const main = async () => {
   const summary = {
     mode: "upsert",
     organizationId: input.organizationId,
-    requesterWorkosUserId: input.requesterWorkosUserId,
+    requesterWorkosUserIdHash: createHash("sha256").update(input.requesterWorkosUserId).digest("hex").slice(0, 16),
     seedTag: SEED_TAG,
     billingAccount: {
       created: 0,
