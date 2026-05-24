@@ -470,5 +470,50 @@ describe("invoices routes", () => {
 
       expect(response.status).toBe(404)
     })
+
+    it("cancelled endpoint works without body using default email", async () => {
+      const mockEmailService: InvoiceEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+        sendPaymentReminder: mock(async () => {}),
+        sendInvoicePaid: mock(async () => {}),
+        sendInvoiceOverdue: mock(async () => {}),
+        sendInvoiceCancelled: mock(async () => {}),
+      }
+      const app = createApp({ emailService: mockEmailService })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/cancelled", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      )
+
+      expect(response.status).toBe(200)
+    })
+
+    it("cancelled endpoint with invalid email returns validation error", async () => {
+      const mockEmailService: InvoiceEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+        sendPaymentReminder: mock(async () => {}),
+        sendInvoicePaid: mock(async () => {}),
+        sendInvoiceOverdue: mock(async () => {}),
+        sendInvoiceCancelled: mock(async () => {}),
+      }
+      const app = createApp({ emailService: mockEmailService })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/cancelled", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            recipientEmail: "not-an-email",
+            reason: "Test reason",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(422)
+    })
   })
 })
