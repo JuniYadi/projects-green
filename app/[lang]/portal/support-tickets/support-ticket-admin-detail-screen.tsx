@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
+import { SupportTicketDetailSkeleton } from "@/modules/support-tickets/ui/support-ticket-detail-skeleton"
 import {
   SUPPORT_TICKET_DEPARTMENT_LABELS,
   SUPPORT_TICKET_DEPARTMENTS,
@@ -546,7 +547,7 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
   }
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading ticket...</p>
+    return <SupportTicketDetailSkeleton />
   }
 
   if (!thread || !ticket) {

@@ -26,6 +26,7 @@ import {
   type SupportTicketPriority,
   type SupportTicketService,
 } from "@/modules/support-tickets/support-ticket.types"
+import { AdminOrgsSelectSkeleton } from "@/modules/support-tickets/ui/admin-orgs-select-skeleton"
 import { formatBytes } from "@/lib/utils"
 
 type SupportTicketAdminCreateScreenProps = {
@@ -258,7 +259,7 @@ export function SupportTicketAdminCreateScreen({ lang }: SupportTicketAdminCreat
                   Organization
                 </Label>
                 {isOrgsLoading ? (
-                  <p className="text-xs text-muted-foreground italic">Loading organizations...</p>
+                  <AdminOrgsSelectSkeleton />
                 ) : (
                   <Select
                     value={selectedOrgId}
