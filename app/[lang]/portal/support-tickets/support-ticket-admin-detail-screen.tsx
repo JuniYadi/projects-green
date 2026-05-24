@@ -35,6 +35,7 @@ import {
 import { formatBytes } from "@/lib/utils"
 import { MarkdownEditor } from "@/components/ui/markdown-editor"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 type SupportTicketAdminDetailScreenProps = {
   ticketId: string
@@ -44,6 +45,23 @@ type SupportTicketAdminDetailScreenProps = {
 type FileWithPreview = {
   file: File
   previewUrl?: string
+}
+
+const resolveInitials = (name: string, email?: string) => {
+  const normalizedName = name.trim()
+  const fallbackName = email?.trim().split("@")[0]?.trim()
+  const source = normalizedName || fallbackName || "User"
+  const parts = source.split(/\s+/).filter(Boolean)
+
+  if (parts.length === 0) {
+    return "U"
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase()
+  }
+
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase()
 }
 
 const apiClient = createSupportTicketsClient()
@@ -80,16 +98,24 @@ function SecureDetailsViewer({ content, label }: { content: string; label: strin
   )
 }
 
-function AttachmentItem({ attachment }: { attachment: SupportTicketAttachmentMetadata }) {
+function AttachmentItem({
+  attachment,
+  onPreview,
+}: {
+  attachment: SupportTicketAttachmentMetadata
+  onPreview: (attachment: SupportTicketAttachmentMetadata) => void
+}) {
   const isImage = attachment.mimeType.startsWith("image/")
   const downloadUrl = `/api/support-tickets/attachments/${attachment.id}`
 
   return (
-    <a
-      href={downloadUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="relative group rounded-lg border border-border bg-card/50 p-2 flex items-center gap-3 hover:bg-accent/50 transition-all cursor-pointer"
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault()
+        onPreview(attachment)
+      }}
+      className="w-full text-left relative group rounded-lg border border-border bg-card/50 p-2 flex items-center gap-3 hover:bg-accent/50 transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
     >
       {isImage ? (
         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-muted border border-border">
@@ -126,7 +152,7 @@ function AttachmentItem({ attachment }: { attachment: SupportTicketAttachmentMet
           {formatBytes(attachment.sizeBytes)}
         </p>
       </div>
-    </a>
+    </button>
   )
 }
 
@@ -154,6 +180,88 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
   const [isClosing, setIsClosing] = useState(false)
   const [isInternalNote, setIsInternalNote] = useState(false)
   const [activeTab, setActiveTab] = useState<"message" | "secure">("message")
+  const [activePreview, setActivePreview] = useState<SupportTicketAttachmentMetadata | null>(null)
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false)
+  const [previewContent, setPreviewContent] = useState<{
+    type: "image" | "pdf" | "csv" | "unsupported"
+    blobUrl?: string
+    textContent?: string
+    blob: Blob
+  } | null>(null)
+
+  const handleAttachmentClick = async (attachment: SupportTicketAttachmentMetadata) => {
+    setActivePreview(attachment)
+    setIsLoadingPreview(true)
+    setPreviewContent(null)
+
+    const downloadUrl = `/api/support-tickets/attachments/${attachment.id}`
+    try {
+      const response = await fetch(downloadUrl)
+      if (!response.ok) throw new Error("Failed to load preview")
+      const blob = await response.blob()
+
+      const mimeType = attachment.mimeType.toLowerCase()
+      const isImg = mimeType.startsWith("image/")
+      const isPdf = mimeType === "application/pdf" || attachment.fileName.toLowerCase().endsWith(".pdf")
+      const isCsv = mimeType === "text/csv" || attachment.fileName.toLowerCase().endsWith(".csv")
+
+      if (isImg) {
+        setPreviewContent({
+          type: "image",
+          blobUrl: URL.createObjectURL(blob),
+          blob,
+        })
+      } else if (isPdf) {
+        setPreviewContent({
+          type: "pdf",
+          blobUrl: URL.createObjectURL(blob),
+          blob,
+        })
+      } else if (isCsv) {
+        const text = await blob.text()
+        setPreviewContent({
+          type: "csv",
+          textContent: text,
+          blob,
+        })
+      } else {
+        setPreviewContent({
+          type: "unsupported",
+          blob,
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      setPreviewContent({
+        type: "unsupported",
+        blob: new Blob(),
+      })
+    } finally {
+      setIsLoadingPreview(false)
+    }
+  }
+
+  const triggerDownload = () => {
+    if (!previewContent?.blob || !activePreview) return
+    const blobUrl = URL.createObjectURL(previewContent.blob)
+    const link = document.createElement("a")
+    link.href = blobUrl
+    link.download = activePreview.fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(blobUrl)
+  }
+
+  const closePreview = () => {
+    if (previewContent?.blobUrl) {
+      URL.revokeObjectURL(previewContent.blobUrl)
+    }
+    setActivePreview(null)
+    setPreviewContent(null)
+    setIsLoadingPreview(false)
+  }
+
   const requestSequenceRef = useRef(0)
 
   const replyBodyRef = useRef<HTMLTextAreaElement>(null)
@@ -510,7 +618,10 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                 <div>
                   <h2 className="font-heading text-base font-semibold">{ticket.ticketNumber}</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Organization ID: <span className="font-mono">{ticket.organizationId}</span>
+                    Organization: <span className="font-semibold text-foreground">{ticket.organizationName || ticket.organizationId}</span>
+                    {ticket.organizationName && (
+                      <span className="font-mono text-muted-foreground text-[10px] ml-1.5">({ticket.organizationId})</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -538,7 +649,14 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
               {ticket.description ? (
                 <div className="rounded-lg bg-muted/30 p-4 text-sm border border-border/50">
                   <p className="font-semibold text-foreground">Message</p>
-                  <p className="mt-1.5 whitespace-pre-wrap text-muted-foreground leading-relaxed">{ticket.description}</p>
+                  {ticket.descriptionHtml ? (
+                    <div
+                      className="mt-1.5 text-muted-foreground text-sm space-y-3 leading-relaxed [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_a]:text-primary [&_a]:underline"
+                      dangerouslySetInnerHTML={{ __html: ticket.descriptionHtml }}
+                    />
+                  ) : (
+                    <p className="mt-1.5 whitespace-pre-wrap text-muted-foreground leading-relaxed">{ticket.description}</p>
+                  )}
                 </div>
               ) : null}
 
@@ -551,7 +669,11 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                   <p className="text-xs font-semibold text-muted-foreground">Attachments</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {ticket.attachmentMetadata.map((attachment) => (
-                      <AttachmentItem key={attachment.id} attachment={attachment} />
+                      <AttachmentItem
+                        key={attachment.id}
+                        attachment={attachment}
+                        onPreview={handleAttachmentClick}
+                      />
                     ))}
                   </div>
                 </div>
@@ -572,48 +694,93 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                 <p className="text-sm text-muted-foreground italic text-center py-4">No replies yet.</p>
               ) : (
                 <div className="space-y-4">
-                  {thread.replies.map((reply) => (
-                    <article
-                      key={reply.id}
-                      className={`rounded-lg border p-4 space-y-3 ${
-                        reply.isInternalNote
-                          ? "border-yellow-500/20 bg-yellow-500/[0.02]"
-                          : "border-border bg-background/50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-foreground">
-                            {reply.authorWorkosUserId}
-                          </span>
-                          {reply.isInternalNote && (
-                            <span className="bg-yellow-500/10 text-yellow-500 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
-                              Internal Note
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground font-medium">
-                          {new Date(reply.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                      <p className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">{reply.body}</p>
-                      
-                      {reply.secureForm ? (
-                        <SecureDetailsViewer content={reply.secureForm} label="Secure details" />
-                      ) : null}
-                      
-                      {reply.attachmentMetadata.length > 0 ? (
-                        <div className="space-y-1.5 pt-2">
-                          <p className="text-[10px] font-semibold text-muted-foreground">Attachments</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {reply.attachmentMetadata.map((attachment) => (
-                              <AttachmentItem key={attachment.id} attachment={attachment} />
-                            ))}
+                  {thread.replies.map((reply) => {
+                    const author = thread.users?.[reply.authorWorkosUserId] || {
+                      name: `User (${reply.authorWorkosUserId.slice(-4)})`,
+                      avatarUrl: null,
+                      isStaff: false,
+                    }
+                    const initials = resolveInitials(author.name)
+                    
+                    let cardClasses = "rounded-lg border p-4 space-y-3 relative overflow-hidden"
+                    if (reply.isInternalNote) {
+                      cardClasses += " border-yellow-500/30 border-l-4 border-l-yellow-500 bg-yellow-500/[0.05] dark:bg-yellow-500/[0.02]"
+                    } else if (author.isStaff) {
+                      cardClasses += " border-primary/30 border-l-4 border-l-primary bg-primary/[0.05] dark:bg-primary/[0.02] shadow-xs"
+                    } else {
+                      cardClasses += " border-border bg-muted/20 dark:bg-muted/10"
+                    }
+
+                    return (
+                      <article key={reply.id} className={cardClasses}>
+                        <div className="flex items-start justify-between flex-wrap gap-4 pb-2 border-b border-border/30">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8 rounded-full border border-border bg-muted">
+                              {author.avatarUrl ? (
+                                <AvatarImage src={author.avatarUrl} alt={author.name} />
+                              ) : null}
+                              <AvatarFallback className="rounded-full text-xs font-semibold">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="grid gap-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-foreground leading-none">
+                                  {author.name}
+                                </span>
+                                {reply.isInternalNote ? (
+                                  <span className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase">
+                                    Internal Note
+                                  </span>
+                                ) : author.isStaff ? (
+                                  <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary border border-primary/30">
+                                    Support Team
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-muted/60 dark:bg-muted/30 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground border border-border">
+                                    Customer
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-muted-foreground">
+                                {reply.authorWorkosUserId}
+                              </span>
+                            </div>
                           </div>
+                          <time className="text-[11px] text-muted-foreground font-medium self-center">
+                            {new Date(reply.createdAt).toLocaleString()}
+                          </time>
                         </div>
-                      ) : null}
-                    </article>
-                  ))}
+                        {reply.bodyHtml ? (
+                          <div
+                            className="text-foreground text-sm space-y-3 leading-relaxed pt-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_a]:text-primary [&_a]:underline"
+                            dangerouslySetInnerHTML={{ __html: reply.bodyHtml }}
+                          />
+                        ) : (
+                          <p className="whitespace-pre-wrap text-sm text-foreground leading-relaxed pt-1">{reply.body}</p>
+                        )}
+                        
+                        {reply.secureForm ? (
+                          <SecureDetailsViewer content={reply.secureForm} label="Secure details" />
+                        ) : null}
+                        
+                        {reply.attachmentMetadata.length > 0 ? (
+                          <div className="space-y-1.5 pt-2">
+                            <p className="text-[10px] font-semibold text-muted-foreground">Attachments</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {reply.attachmentMetadata.map((attachment) => (
+                                <AttachmentItem
+                                  key={attachment.id}
+                                  attachment={attachment}
+                                  onPreview={handleAttachmentClick}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </article>
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
@@ -932,6 +1099,104 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
           </Card>
         </div>
       </div>
+
+      {activePreview && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-fade-in"
+          onClick={closePreview}
+        >
+          <div 
+            className="relative max-w-4xl w-full bg-card border border-border rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border/50 bg-muted/30">
+              <div className="min-w-0 flex-1 pr-4">
+                <h3 className="font-semibold text-sm truncate text-foreground">
+                  {activePreview.fileName}
+                </h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {formatBytes(activePreview.sizeBytes)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isLoadingPreview}
+                  onClick={triggerDownload}
+                  className="flex items-center gap-1.5 h-8 text-xs font-semibold"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                  </svg>
+                  <span>Download</span>
+                </Button>
+                <button
+                  type="button"
+                  onClick={closePreview}
+                  className="h-8 w-8 rounded-md border border-border hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center text-xs transition-colors cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-black/5 dark:bg-black/20 min-h-0">
+              {isLoadingPreview ? (
+                <div className="flex flex-col items-center gap-2 py-12">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs text-muted-foreground">Loading preview...</span>
+                </div>
+              ) : previewContent ? (
+                <>
+                  {previewContent.type === "image" && previewContent.blobUrl && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={previewContent.blobUrl}
+                      alt={activePreview.fileName}
+                      className="max-h-[60vh] object-contain rounded-lg border border-border/50 shadow-sm"
+                    />
+                  )}
+
+                  {previewContent.type === "pdf" && previewContent.blobUrl && (
+                    <iframe
+                      src={previewContent.blobUrl}
+                      title={activePreview.fileName}
+                      className="w-full h-[60vh] border border-border/50 rounded-lg bg-background"
+                    />
+                  )}
+
+                  {previewContent.type === "csv" && previewContent.textContent && (
+                    <div className="w-full max-h-[60vh] overflow-auto bg-muted/40 p-4 border border-border/50 rounded-lg">
+                      <pre className="font-mono text-[11px] text-foreground whitespace-pre leading-relaxed text-left">
+                        {previewContent.textContent}
+                      </pre>
+                    </div>
+                  )}
+
+                  {previewContent.type === "unsupported" && (
+                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
+                      <div className="h-14 w-14 bg-muted rounded-full flex items-center justify-center text-muted-foreground border border-border">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">Preview Unavailable</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
+                          A preview {"isn't"} available for this file type. Please download the file to view its contents.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">Unable to load preview</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
