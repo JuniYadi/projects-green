@@ -27,7 +27,7 @@ const handler = createGithubWebhookHandler({
           action: input.action,
           githubInstallationId: input.githubInstallationId,
           githubRepositoryId: input.githubRepositoryId,
-          payloadJson: input.payloadJson as Record<string, unknown>,
+          payloadJson: input.payloadJson as any,
           payloadSha256: input.payloadSha256,
           signatureValid: true,
           enqueueStatus: "queued",
