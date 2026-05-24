@@ -370,7 +370,7 @@ export const createInvoicesRoutes = (
       }
 
       const parsedBody = notifyRecipientSchema.safeParse(body ?? {})
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail = parsedBody.data?.recipientEmail ?? auth.user.email ?? undefined
 
       if (!recipientEmail) {
         return toValidationError(set, [{
@@ -427,7 +427,7 @@ export const createInvoicesRoutes = (
       }
 
       const parsedBody = notifyRecipientSchema.safeParse(body ?? {})
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail = parsedBody.data?.recipientEmail ?? auth.user.email ?? undefined
 
       if (!recipientEmail) {
         return toValidationError(set, [{
@@ -484,7 +484,7 @@ export const createInvoicesRoutes = (
       }
 
       const parsedBody = notifyRecipientSchema.safeParse(body ?? {})
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail = parsedBody.data?.recipientEmail ?? auth.user.email ?? undefined
 
       if (!recipientEmail) {
         return toValidationError(set, [{
@@ -541,7 +541,7 @@ export const createInvoicesRoutes = (
       }
 
       const parsedBody = notifyRecipientSchema.safeParse(body ?? {})
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail = parsedBody.data?.recipientEmail ?? auth.user.email ?? undefined
 
       if (!recipientEmail) {
         return toValidationError(set, [{
@@ -598,7 +598,7 @@ export const createInvoicesRoutes = (
       }
 
       const parsedBody = notifyCancelledSchema.safeParse(body ?? {})
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail = parsedBody.data?.recipientEmail ?? auth.user.email ?? undefined
 
       if (!recipientEmail) {
         return toValidationError(set, [{
@@ -625,7 +625,7 @@ export const createInvoicesRoutes = (
         dependencies.emailService.sendInvoiceCancelled(
           invoice,
           recipientEmail,
-          parsedBody.data.reason,
+          parsedBody.data?.reason,
         ).catch((err) => {
           console.error("[Invoices] Failed to send invoice cancelled email:", err)
         })
