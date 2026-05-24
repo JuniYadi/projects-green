@@ -196,10 +196,10 @@ const toErrorMessage = (error: unknown) => {
 
 const isUniqueConstraintError = (error: unknown) => {
   return (
-    Boolean(error) &&
+    error !== null &&
     typeof error === "object" &&
     "code" in error &&
-    error.code === "P2002"
+    (error as Record<string, any>).code === "P2002"
   )
 }
 
