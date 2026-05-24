@@ -100,6 +100,7 @@ export type SupportTicket = SupportTicketOwnership & {
   createdAt: Date
   department: SupportTicketDepartment
   description: string | null
+  descriptionHtml?: string | null
   id: string
   priority: SupportTicketPriority
   resolvedAt: Date | null
@@ -110,12 +111,14 @@ export type SupportTicket = SupportTicketOwnership & {
   ticketNumber: string
   updatedAt: Date
   attachmentMetadata: SupportTicketAttachmentMetadata[]
+  organizationName?: string | null
 }
 
 export type SupportTicketReply = {
   attachmentMetadata: SupportTicketAttachmentMetadata[]
   authorWorkosUserId: string
   body: string
+  bodyHtml?: string | null
   createdAt: Date
   id: string
   isInternalNote: boolean
@@ -127,6 +130,14 @@ export type SupportTicketReply = {
 export type SupportTicketThread = {
   replies: SupportTicketReply[]
   ticket: SupportTicket
+  users?: Record<
+    string,
+    {
+      name: string
+      avatarUrl: string | null
+      isStaff: boolean
+    }
+  >
 }
 
 export type CreateSupportTicketInput = {
