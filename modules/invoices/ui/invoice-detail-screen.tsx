@@ -41,6 +41,7 @@ import type {
 } from "@/modules/invoices/invoices.types"
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 import { InvoiceStatusPill } from "@/modules/invoices/ui/invoice-status-pill"
+import { InvoiceDetailSkeleton } from "@/modules/invoices/ui/invoice-detail-skeleton"
 
 type InvoiceDetailScreenProps = {
   invoiceId: string
@@ -179,11 +180,7 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
   }
 
   if (state.status === "loading") {
-    return (
-      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-        Loading invoice detail...
-      </div>
-    )
+    return <InvoiceDetailSkeleton />
   }
 
   if (state.status === "error") {

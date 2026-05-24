@@ -97,7 +97,7 @@ describe("SupportTicketsConsole", () => {
     const view = render(<SupportTicketsConsole lang="en" />)
 
     expect(view.getByText("Ticket Queue")).toBeInTheDocument()
-    expect(view.getByText("Loading tickets...")).toBeInTheDocument()
+    expect(view.container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument()
 
     await waitFor(() =>
       expect(

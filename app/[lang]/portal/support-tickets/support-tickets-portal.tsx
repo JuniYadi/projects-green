@@ -13,6 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { TicketTableSkeleton } from "@/modules/support-tickets/ui/ticket-table-skeleton"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
 import {
@@ -160,7 +162,7 @@ export function SupportTicketsPortal({ lang }: SupportTicketsPortalProps) {
             </p>
           ) : null}
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading tickets...</p>
+            <TicketTableSkeleton />
           ) : (
             <DataTable
               columns={columns}
