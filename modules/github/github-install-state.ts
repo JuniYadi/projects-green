@@ -58,7 +58,7 @@ type GithubInstallStateNonceStore = {
 const getDefaultNonceStore =
   async (): Promise<GithubInstallStateNonceStore> => {
     const { prisma } = await import("@/lib/prisma")
-    return prisma.githubInstallStateNonce as GithubInstallStateNonceStore
+    return prisma.githubInstallStateNonce as unknown as GithubInstallStateNonceStore
   }
 
 export class GithubInstallStateError extends Error {
