@@ -63,7 +63,7 @@ const normalizeDependencies = (
   }
 }
 
-const withGithubFeatureFlag = <TContext extends { set: RouteSet }>(
+const withGithubFeatureFlag = <TContext extends { set: RouteSet } & Record<string, any>>(
   service: GithubService,
   handler: (context: TContext) => unknown
 ) => {
