@@ -1,5 +1,46 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
+
+const mockGetUser = mock(async (id: string) => ({
+  id,
+  email: "staff@example.com",
+  firstName: "Staff",
+  lastName: "User",
+  profilePictureUrl: null,
+}))
+
+const mockListOrganizationMemberships = mock(async () => ({
+  data: [
+    {
+      role: { slug: "admin_owner" },
+      roles: [{ slug: "admin_owner" }],
+    },
+  ],
+}))
+
+mock.module("@workos-inc/authkit-nextjs", () => {
+  return {
+    withAuth: async () => ({
+      organizationId: "org_1",
+      role: "member",
+      roles: ["member"],
+      user: {
+        id: "user_1",
+        email: "user@example.com",
+      },
+    }),
+    getWorkOS: () => ({
+      userManagement: {
+        getUser: mockGetUser,
+        listOrganizationMemberships: mockListOrganizationMemberships,
+      },
+      organizations: {
+        getOrganization: async () => ({ id: "org_1", name: "Org 1" }),
+      },
+    }),
+  }
+})
+
 
 import { createSupportTicketRoutes } from "@/modules/support-tickets/api/support-tickets.route"
 import {
@@ -150,6 +191,28 @@ describe("support ticket routes", () => {
     expect(payload).toBeDefined()
   })
 
+  it("converts markdown to unescaped HTML on preview", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/preview", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          markdown: "# Udah masuk\n\n- ok 1",
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const json = (await response.json()) as any
+    expect(json.ok).toBe(true)
+    expect(json.html).toContain("<h1>Udah masuk</h1>")
+    expect(json.html).toContain("<li>ok 1</li>")
+  })
+
   it("returns thread by ticket id", async () => {
     const app = createApp({})
 
@@ -164,6 +227,40 @@ describe("support ticket routes", () => {
       ok: true,
       thread: { ticket: { id: "ticket_1" } },
     })
+  })
+
+  it("marks a user as staff if they have platform super_admin role or scoped admin_owner claim in WorkOS organization memberships", async () => {
+    const app = createApp({
+      async getTicketThread() {
+        return {
+          ticket: baseTicket,
+          replies: [
+            {
+              id: "reply_1",
+              ticketId: "ticket_1",
+              authorWorkosUserId: "user_admin",
+              body: "I am staff",
+              secureForm: null,
+              isInternalNote: false,
+              attachmentMetadata: [],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ],
+        }
+      },
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const json = (await response.json()) as any
+    expect(json.ok).toBe(true)
+    expect(json.thread.users.user_admin.isStaff).toBe(true)
   })
 
   it("creates reply", async () => {
