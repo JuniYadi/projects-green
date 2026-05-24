@@ -18,7 +18,10 @@ import {
   supportTicketServiceSchema,
   supportTicketStatusSchema,
 } from "@/modules/support-tickets/support-ticket.schema"
-import { resolveTenantRoleFromClaims } from "@/modules/tenants/tenant-policy"
+import {
+  resolveTenantRoleFromClaims,
+  hasScopedSuperAdminClaim,
+} from "@/modules/tenants/tenant-policy"
 import {
   createEmailService,
   type EmailService,
@@ -144,11 +147,15 @@ const toActorContext = async (
     email: user.email,
   })
   const tenantRole = resolveTenantRoleFromClaims(auth.role, auth.roles ?? null)
+  const hasClaimedSuperAdmin = hasScopedSuperAdminClaim(
+    auth.role,
+    auth.roles ?? null
+  )
 
   return {
     workosUserId: user.id,
     organizationId: auth.organizationId,
-    isSuperAdmin: platformRole === "super_admin",
+    isSuperAdmin: platformRole === "super_admin" || hasClaimedSuperAdmin,
     canManageTickets: tenantRole === "owner" || tenantRole === "admin",
   }
 }
@@ -299,13 +306,7 @@ export const createSupportTicketRoutes = (
       "/preview",
       createRouteHandler(dependencies, async ({ body }) => {
         const payload = z.object({ markdown: z.string() }).parse(body)
-        let html = typeof Bun !== "undefined" ? Bun.markdown.html(payload.markdown) : payload.markdown
-        html = html
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;")
+        const html = typeof Bun !== "undefined" ? Bun.markdown.html(payload.markdown) : payload.markdown
         return {
           ok: true as const,
           html,
@@ -321,9 +322,107 @@ export const createSupportTicketRoutes = (
           ticketId: parsedParams.ticketId,
         })
 
+        // Fetch user profiles for all authors in the thread
+        const uniqueUserIds = new Set<string>()
+        if (thread.ticket.requesterWorkosUserId) {
+          uniqueUserIds.add(thread.ticket.requesterWorkosUserId)
+        }
+        if (thread.ticket.assignedAgentWorkosUserId) {
+          uniqueUserIds.add(thread.ticket.assignedAgentWorkosUserId)
+        }
+        for (const reply of thread.replies) {
+          if (reply.authorWorkosUserId) {
+            uniqueUserIds.add(reply.authorWorkosUserId)
+          }
+        }
+
+        const users: Record<string, { name: string; avatarUrl: string | null; isStaff: boolean }> = {}
+        const fetchPromises = Array.from(uniqueUserIds).map(async (userId) => {
+          try {
+            let email: string | null = null
+            let firstName = ""
+            let lastName = ""
+            let profilePictureUrl: string | null = null
+
+            try {
+              const workos = getWorkOS()
+              const user = await workos.userManagement.getUser(userId)
+              email = user.email ?? null
+              firstName = user.firstName ?? ""
+              lastName = user.lastName ?? ""
+              profilePictureUrl = user.profilePictureUrl ?? null
+            } catch (e) {
+              // Gracefully handle WorkOS client / configuration errors in development/testing
+            }
+
+            const platformRole = await dependencies.getPlatformRole({ id: userId, email: email })
+            let isStaff = platformRole === "super_admin"
+            if (!isStaff) {
+              try {
+                const workos = getWorkOS()
+                const memberships = await workos.userManagement.listOrganizationMemberships({
+                  userId,
+                })
+                isStaff = memberships.data.some((membership) =>
+                  hasScopedSuperAdminClaim(
+                    membership.role?.slug,
+                    membership.roles?.map((r) => r.slug)
+                  )
+                )
+              } catch (e) {
+                // Gracefully handle WorkOS client / configuration errors in development/testing
+              }
+            }
+            const fullName = [firstName, lastName].filter(Boolean).join(" ").trim()
+            const emailLocalPart = email?.split("@")[0]?.trim() ?? ""
+            const name = fullName || emailLocalPart || `User (${userId.slice(-4)})`
+
+            users[userId] = {
+              name,
+              avatarUrl: profilePictureUrl,
+              isStaff,
+            }
+          } catch (error) {
+            users[userId] = {
+              name: `User (${userId.slice(-4)})`,
+              avatarUrl: null,
+              isStaff: false,
+            }
+          }
+        })
+
+        let organizationName: string | null = null
+        const fetchOrgPromise = (async () => {
+          try {
+            const workos = getWorkOS()
+            const org = await workos.organizations.getOrganization(thread.ticket.organizationId)
+            organizationName = org.name ?? null
+          } catch (e) {
+            // Gracefully handle WorkOS organization lookup failure in dev/testing
+          }
+        })()
+
+        await Promise.all([...fetchPromises, fetchOrgPromise])
+
+        const compiledReplies = thread.replies.map((reply) => ({
+          ...reply,
+          bodyHtml: typeof Bun !== "undefined" ? Bun.markdown.html(reply.body) : reply.body,
+        }))
+        const compiledTicket = {
+          ...thread.ticket,
+          descriptionHtml: thread.ticket.description
+            ? (typeof Bun !== "undefined" ? Bun.markdown.html(thread.ticket.description) : thread.ticket.description)
+            : null,
+          organizationName,
+        }
+
         return {
           ok: true as const,
-          thread,
+          thread: {
+            ticket: compiledTicket,
+            replies: compiledReplies,
+            users,
+          },
         }
       }),
       {
