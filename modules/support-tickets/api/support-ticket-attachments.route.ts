@@ -20,7 +20,10 @@ import {
   supportTicketAttachmentUploadInputSchema,
 } from "@/modules/support-tickets/support-ticket-attachment.validation"
 import { supportTicketAttachmentUploadTargetSchema } from "@/modules/support-tickets/support-ticket.schema"
-import { resolveTenantRoleFromClaims } from "@/modules/tenants/tenant-policy"
+import {
+  resolveTenantRoleFromClaims,
+  hasScopedSuperAdminClaim,
+} from "@/modules/tenants/tenant-policy"
 
 type SupportTicketAuthContext = {
   organizationId?: string | null
@@ -157,11 +160,15 @@ const toAttachmentActorContext = async (
     email: user.email,
   })
   const tenantRole = resolveTenantRoleFromClaims(auth.role, auth.roles ?? null)
+  const hasClaimedSuperAdmin = hasScopedSuperAdminClaim(
+    auth.role,
+    auth.roles ?? null
+  )
 
   return {
     workosUserId: user.id,
     organizationId: auth.organizationId ?? null,
-    isSuperAdmin: platformRole === "super_admin",
+    isSuperAdmin: platformRole === "super_admin" || hasClaimedSuperAdmin,
     canManageTickets: tenantRole === "owner" || tenantRole === "admin",
   }
 }
