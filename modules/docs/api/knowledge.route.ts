@@ -1,6 +1,6 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
-import { createOpenAI } from "@ai-sdk/openai"
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { streamText } from "ai"
 import { z } from "zod"
 
@@ -154,17 +154,17 @@ const streamKnowledgeAnswerDefault = (input: {
   messages: KnowledgeChatRequest["messages"]
   docs: Awaited<ReturnType<typeof searchKnowledgeDocsService>>
 }) => {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  const apiKey = process.env.AI_API_KEY?.trim()
 
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured")
+    throw new Error("AI_API_KEY is not configured")
   }
 
-  const modelName = process.env.KNOWLEDGE_CHAT_MODEL?.trim() || "gpt-4.1-mini"
-  const provider = createOpenAI({ apiKey })
+  const modelName = process.env.AI_CHAT_MODEL?.trim() || "anthropic/claude-sonnet-4-5-20251120"
+  const provider = createOpenRouter({ apiKey })
 
   return streamText({
-    model: provider(modelName),
+    model: provider.chat(modelName),
     system: [
       "You are a private product knowledgebase assistant.",
       "Only answer from the provided knowledge documents.",

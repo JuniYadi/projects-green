@@ -32,7 +32,9 @@ mock.module("@/lib/prisma", () => ({
 
 const loadService = () => import("@/modules/docs/docs.service")
 
-const buildRecord = (input: Partial<KnowledgeDocRecord> = {}): KnowledgeDocRecord => ({
+const buildRecord = (
+  input: Partial<KnowledgeDocRecord> = {}
+): KnowledgeDocRecord => ({
   id: input.id ?? "kdoc_1",
   organizationId: input.organizationId ?? null,
   path: input.path ?? "/console",
@@ -92,14 +94,12 @@ describe("getDocByPath", () => {
 
   it("falls back to global docs when org-specific docs do not exist", async () => {
     const { getDocByPath } = await loadService()
-    mockFindFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(
-        buildRecord({
-          organizationId: null,
-          title: "Global Console",
-        })
-      )
+    mockFindFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(
+      buildRecord({
+        organizationId: null,
+        title: "Global Console",
+      })
+    )
 
     const doc = await getDocByPath({
       path: "/console",

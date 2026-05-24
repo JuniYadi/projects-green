@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma"
 import type { UiDocEntry } from "@/modules/docs/docs.types"
+import {
+  embedDocument,
+  EMBEDDING_DIMENSIONS,
+} from "@/modules/docs/docs-embedding.service"
 
 const SEARCH_TOKEN_PATTERN = /[a-z0-9]+/g
 const MAX_RETRIEVAL_CANDIDATES = 100
@@ -14,6 +18,7 @@ type KnowledgeDocumentRecord = {
   howTo: string[]
   notes: string[]
   searchText: string
+  embedding: number[]
   updatedByWorkosUserId: string
   createdAt: Date
   updatedAt: Date
@@ -48,13 +53,7 @@ const buildSearchText = (input: {
   howTo: string[]
   notes: string[]
 }) =>
-  [
-    input.path,
-    input.title,
-    input.purpose,
-    ...input.howTo,
-    ...input.notes,
-  ]
+  [input.path, input.title, input.purpose, ...input.howTo, ...input.notes]
     .join(" ")
     .toLowerCase()
 
@@ -166,6 +165,15 @@ export const upsertDocByPath = async (
     notes: normalizedNotes,
   })
 
+  // Generate embedding for semantic search
+  const embedding = await embedDocument({
+    path: normalizedPath,
+    title: input.title.trim(),
+    purpose: input.purpose.trim(),
+    howTo: normalizedHowTo,
+    notes: normalizedNotes,
+  })
+
   const existingDoc = await findDocumentByScope({
     organizationId: input.organizationId,
     path: normalizedPath,
@@ -180,6 +188,7 @@ export const upsertDocByPath = async (
           howTo: normalizedHowTo,
           notes: normalizedNotes,
           searchText,
+          embedding,
           updatedByWorkosUserId: input.updatedByWorkosUserId,
         },
       })
@@ -192,6 +201,7 @@ export const upsertDocByPath = async (
           howTo: normalizedHowTo,
           notes: normalizedNotes,
           searchText,
+          embedding,
           updatedByWorkosUserId: input.updatedByWorkosUserId,
         },
       })
@@ -221,6 +231,27 @@ const scoreDocument = (input: {
   const pathScore = routePath.includes(input.doc.path) ? 10 : 0
 
   return routeScore + lexicalScore + pathScore
+}
+
+/**
+ * Cosine similarity between two vectors.
+ */
+const cosineSimilarity = (a: number[], b: number[]): number => {
+  if (a.length !== b.length) return 0
+
+  let dot = 0
+  let normA = 0
+  let normB = 0
+
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]
+    normA += a[i] * a[i]
+    normB += b[i] * b[i]
+  }
+
+  const denom = Math.sqrt(normA) * Math.sqrt(normB)
+
+  return denom === 0 ? 0 : dot / denom
 }
 
 export const searchKnowledgeDocs = async (input: {
@@ -272,4 +303,146 @@ export const searchKnowledgeDocs = async (input: {
     updatedAt: doc.updatedAt.toISOString().slice(0, 10),
     score,
   }))
+}
+
+/**
+ * Semantic search using cosine similarity over embedding vectors.
+ * Falls back to lexical search if embedding is unavailable.
+ */
+export const semanticSearchKnowledgeDocs = async (input: {
+  organizationId: string | null
+  routePath: string
+  query: string
+  limit?: number
+}): Promise<KnowledgeDocMatch[]> => {
+  const normalizedRoutePath = normalizeDocPath(input.routePath)
+  const queryTokens = uniqueTokens(input.query)
+  const where = input.organizationId
+    ? {
+        OR: [
+          { organizationId: input.organizationId },
+          { organizationId: null },
+        ],
+      }
+    : { organizationId: null }
+
+  const candidates = (await prisma.knowledgeDocument.findMany({
+    where,
+    take: MAX_RETRIEVAL_CANDIDATES,
+  })) as KnowledgeDocumentRecord[]
+
+  // Compute query embedding (lexical fallback if AI_API_KEY not set)
+  let queryEmbedding: number[] | null = null
+  try {
+    const { embedding } = await embedDocument({
+      path: normalizedRoutePath,
+      title: input.query,
+      purpose: input.query,
+      howTo: [],
+      notes: [],
+    })
+    queryEmbedding = embedding
+  } catch {
+    // AI_API_KEY not configured — use lexical fallback
+    queryEmbedding = null
+  }
+
+  // Score each candidate: lexical score + semantic similarity
+  const scored = candidates
+    .map((doc) => {
+      const lexicalScore = scoreDocument({
+        doc,
+        routePath: normalizedRoutePath,
+        queryTokens,
+      })
+
+      let semanticScore = 0
+      if (
+        queryEmbedding &&
+        doc.embedding &&
+        doc.embedding.length === EMBEDDING_DIMENSIONS
+      ) {
+        semanticScore = cosineSimilarity(queryEmbedding, doc.embedding)
+      }
+
+      // Weighted combined score: 40% semantic, 60% lexical
+      const combinedScore = semanticScore * 0.4 + lexicalScore * 0.6
+
+      return { doc, score: combinedScore }
+    })
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, input.limit ?? MAX_RETRIEVAL_RESULTS)
+
+  return scored.map(({ doc, score }) => ({
+    id: doc.id,
+    organizationId: doc.organizationId,
+    path: doc.path,
+    title: doc.title,
+    purpose: doc.purpose,
+    howTo: doc.howTo,
+    notes: doc.notes,
+    updatedAt: doc.updatedAt.toISOString().slice(0, 10),
+    score,
+  }))
+}
+
+/**
+ * Re-embed all existing documents that have no embedding.
+ * Used for migration or when adding semantic search to existing data.
+ */
+export const backfillEmbeddings = async (batchSize = 50): Promise<{
+  processed: number
+  errors: string[]
+}> => {
+  const errors: string[] = []
+  let processed = 0
+
+  let cursor: string | undefined
+  let hasMore = true
+
+  while (hasMore) {
+    const docs = (await prisma.knowledgeDocument.findMany({
+      take: batchSize,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      where: {
+        embedding: {
+          equals: [], // Prisma ArrayNone filter
+        },
+      },
+      orderBy: { id: "asc" },
+    })) as KnowledgeDocumentRecord[]
+
+    if (docs.length === 0) {
+      hasMore = false
+      break
+    }
+
+    for (const doc of docs) {
+      try {
+        const embedding = await embedDocument({
+          path: doc.path,
+          title: doc.title,
+          purpose: doc.purpose,
+          howTo: doc.howTo,
+          notes: doc.notes,
+        })
+
+        await prisma.knowledgeDocument.update({
+          where: { id: doc.id },
+          data: { embedding },
+        })
+
+        processed++
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        errors.push(`[${doc.id}] ${message}`)
+      }
+    }
+
+    cursor = docs[docs.length - 1]?.id
+    hasMore = docs.length === batchSize
+  }
+
+  return { processed, errors }
 }
