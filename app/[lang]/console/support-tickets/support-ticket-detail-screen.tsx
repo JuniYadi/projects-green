@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
+import { SupportTicketDetailSkeleton } from "@/modules/support-tickets/ui/support-ticket-detail-skeleton"
 import {
   SUPPORT_TICKET_DEPARTMENT_LABELS,
   SUPPORT_TICKET_PRIORITY_LABELS,
@@ -431,7 +432,7 @@ export function SupportTicketDetailScreen({ ticketId }: SupportTicketDetailScree
   }
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading ticket...</p>
+    return <SupportTicketDetailSkeleton />
   }
 
   if (!thread || !ticket) {

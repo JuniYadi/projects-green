@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Button } from "@/components/ui/button"
+import { InvoicesTableSkeleton } from "@/modules/invoices/ui/invoices-table-skeleton"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   DEFAULT_INVOICE_SORT,
@@ -171,11 +172,7 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
   }, [fetchInvoices])
 
   if (state.status === "loading") {
-    return (
-      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-        Loading invoices...
-      </div>
-    )
+    return <InvoicesTableSkeleton />
   }
 
   if (state.status === "error") {
