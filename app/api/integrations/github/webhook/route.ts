@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 import { enqueueGithubWebhookEvent } from "@/lib/queue/github-events"
 import {
   createGithubService,
@@ -27,7 +28,7 @@ const handler = createGithubWebhookHandler({
           action: input.action,
           githubInstallationId: input.githubInstallationId,
           githubRepositoryId: input.githubRepositoryId,
-          payloadJson: input.payloadJson as Record<string, unknown>,
+          payloadJson: input.payloadJson as Prisma.InputJsonValue,
           payloadSha256: input.payloadSha256,
           signatureValid: true,
           enqueueStatus: "queued",

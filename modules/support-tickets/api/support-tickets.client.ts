@@ -12,6 +12,14 @@ import type {
 type TicketThreadResponse = {
   ticket: SupportTicket
   replies: SupportTicketReply[]
+  users?: Record<
+    string,
+    {
+      name: string
+      avatarUrl: string | null
+      isStaff: boolean
+    }
+  >
 }
 
 const parseJsonSafely = async (response: Response) => {

@@ -37,8 +37,8 @@ export default async function PortalLayout({
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
   const auth = await withAuth({ ensureSignedIn: true })
-  const portalDocsPath = localizePathname({
-    pathname: "/portal/documentations",
+  const portalPath = localizePathname({
+    pathname: "/portal",
     locale,
   })
 
@@ -47,7 +47,6 @@ export default async function PortalLayout({
       pathname: ONBOARDING_PATH,
       locale,
     })
-    const portalPath = localizePathname({ pathname: "/portal", locale })
 
     redirect(`${onboardingPath}?next=${encodeURIComponent(portalPath)}`)
   }
@@ -76,13 +75,13 @@ export default async function PortalLayout({
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href={portalDocsPath}>
-                    Documentation
+                  <BreadcrumbLink href={portalPath}>
+                    Portal
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Registry</BreadcrumbPage>
+                  <BreadcrumbPage>Workspace</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

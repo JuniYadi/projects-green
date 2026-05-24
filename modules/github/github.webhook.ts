@@ -194,12 +194,12 @@ const toErrorMessage = (error: unknown) => {
   return "Unknown processing error"
 }
 
-const isUniqueConstraintError = (error: unknown) => {
+const isUniqueConstraintError = (error: unknown): boolean => {
   return (
-    Boolean(error) &&
+    error !== null &&
     typeof error === "object" &&
     "code" in error &&
-    error.code === "P2002"
+    (error as { code?: string }).code === "P2002"
   )
 }
 

@@ -41,7 +41,7 @@ export default async function OrganizationOnboardingPage({
       <OrganizationOnboarding
         nextPath={nextPath}
         userEmail={auth.user.email}
-        showWarning={Boolean(params?.next)}
+        showWarning={Boolean(search?.next)}
       />
     </main>
   )

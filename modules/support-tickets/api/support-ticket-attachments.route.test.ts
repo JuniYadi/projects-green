@@ -312,7 +312,7 @@ describe("support ticket attachment routes", () => {
   it("maps storage configuration error", async () => {
     const app = createApp({
       async createPresignedAttachmentUpload() {
-        throw new SupportTicketAttachmentStorageConfigurationError()
+        throw new SupportTicketAttachmentStorageConfigurationError("storage misconfigured")
       },
     })
 

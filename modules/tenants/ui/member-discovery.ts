@@ -7,6 +7,7 @@ export type DiscoverableMember = {
   email: string | null
   status: string
   role: MemberRole
+  avatarUrl?: string | null
 }
 
 export type MemberDiscoveryFilters = {

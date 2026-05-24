@@ -166,8 +166,8 @@ describe("PortalLayout", () => {
     expect(view.getByTestId("sidebar-provider")).toBeInTheDocument()
     expect(view.getByText("Sidebar:portal:Jane Doe:Acme Inc")).toBeInTheDocument()
     expect(view.getByText("AI Help")).toBeInTheDocument()
-    expect(view.getByText("Documentation")).toBeInTheDocument()
-    expect(view.getByText("Registry")).toBeInTheDocument()
+    expect(view.getByText("Portal")).toBeInTheDocument()
+    expect(view.getByText("Workspace")).toBeInTheDocument()
     expect(view.getByText("Child Content")).toBeInTheDocument()
   })
 

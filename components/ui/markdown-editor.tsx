@@ -214,7 +214,7 @@ export const MarkdownEditor = React.forwardRef<HTMLTextAreaElement, MarkdownEdit
 
         {/* Content Pane */}
         <div className="flex-1 bg-transparent p-0.5">
-          {activeTab === "write" ? (
+          <div className={activeTab === "write" ? "block" : "hidden"}>
             <Textarea
               id={id}
               ref={localRef}
@@ -224,7 +224,8 @@ export const MarkdownEditor = React.forwardRef<HTMLTextAreaElement, MarkdownEdit
               defaultValue={defaultValue}
               className={`w-full min-h-[120px] bg-transparent border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-white rounded-none p-3 resize-y ${className}`}
             />
-          ) : (
+          </div>
+          {activeTab === "preview" && (
             <div className="p-3.5 min-h-[120px] overflow-y-auto max-h-[400px] border-0 rounded-none bg-neutral-900/10">
               {isLoading ? (
                 <div className="flex flex-col gap-2.5 animate-pulse">
