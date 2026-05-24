@@ -50,6 +50,15 @@ import {
 } from "@/modules/support-tickets/support-ticket.service"
 import type { SupportTicket } from "@/modules/support-tickets/support-ticket.types"
 
+type SupportTicketThreadResponse = {
+  ok: true
+  thread: {
+    ticket: SupportTicket
+    replies: Array<{ id: string; authorWorkosUserId: string; organizationName?: string | null }>
+    users?: Record<string, { isStaff: boolean }>
+  }
+}
+
 const baseTicket: SupportTicket = {
   id: "ticket_1",
   ticketNumber: "TCK-1001",
@@ -207,7 +216,7 @@ describe("support ticket routes", () => {
     )
 
     expect(response.status).toBe(200)
-    const json = (await response.json()) as any
+    const json = (await response.json()) as { ok: true; html: string }
     expect(json.ok).toBe(true)
     expect(json.html).toContain("<h1>Udah masuk</h1>")
     expect(json.html).toContain("<li>ok 1</li>")
@@ -258,9 +267,9 @@ describe("support ticket routes", () => {
     )
 
     expect(response.status).toBe(200)
-    const json = (await response.json()) as any
+    const json = (await response.json()) as SupportTicketThreadResponse
     expect(json.ok).toBe(true)
-    expect(json.thread.users.user_admin.isStaff).toBe(true)
+    expect(json.thread.users?.user_admin?.isStaff).toBe(true)
   })
 
   it("handles organization lookup error gracefully with null organizationName", async () => {
@@ -300,7 +309,7 @@ describe("support ticket routes", () => {
     )
 
     expect(response.status).toBe(200)
-    const json = (await response.json()) as any
+    const json = (await response.json()) as SupportTicketThreadResponse
     expect(json.ok).toBe(true)
     expect(json.thread.ticket.organizationName).toBeNull()
   })
