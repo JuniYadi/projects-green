@@ -4,6 +4,7 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto"
+import type { PrismaClient } from "@prisma/client"
 
 const GITHUB_INSTALL_STATE_TTL_MS = 10 * 60 * 1000
 
@@ -58,7 +59,7 @@ type GithubInstallStateNonceStore = {
 const getDefaultNonceStore =
   async (): Promise<GithubInstallStateNonceStore> => {
     const { prisma } = await import("@/lib/prisma")
-    return prisma.githubInstallStateNonce as unknown as GithubInstallStateNonceStore
+    return prisma.githubInstallStateNonce as GithubInstallStateNonceStore
   }
 
 export class GithubInstallStateError extends Error {

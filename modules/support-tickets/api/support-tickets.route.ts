@@ -306,7 +306,7 @@ export const createSupportTicketRoutes = (
       "/preview",
       createRouteHandler(dependencies, async ({ body }) => {
         const payload = z.object({ markdown: z.string() }).parse(body)
-        const html = typeof Bun !== "undefined" ? Bun.markdown.html(payload.markdown) : payload.markdown
+        const html = typeof Bun !== "undefined" ? Bun.markdown.html(payload.markdown, { tagFilter: true }) : payload.markdown
         return {
           ok: true as const,
           html,
@@ -406,12 +406,12 @@ export const createSupportTicketRoutes = (
 
         const compiledReplies = thread.replies.map((reply) => ({
           ...reply,
-          bodyHtml: typeof Bun !== "undefined" ? Bun.markdown.html(reply.body) : reply.body,
+          bodyHtml: typeof Bun !== "undefined" ? Bun.markdown.html(reply.body, { tagFilter: true }) : reply.body,
         }))
         const compiledTicket = {
           ...thread.ticket,
           descriptionHtml: thread.ticket.description
-            ? (typeof Bun !== "undefined" ? Bun.markdown.html(thread.ticket.description) : thread.ticket.description)
+            ? (typeof Bun !== "undefined" ? Bun.markdown.html(thread.ticket.description, { tagFilter: true }) : thread.ticket.description)
             : null,
           organizationName,
         }

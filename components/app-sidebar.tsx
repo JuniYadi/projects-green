@@ -22,6 +22,7 @@ import {
   LifebuoyIcon,
   Lightning,
   PaperPlaneTiltIcon,
+  ReceiptIcon,
   RocketLaunchIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
@@ -119,7 +120,7 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
     {
       name: "Invoices",
       url: localizePathname({ pathname: "/console/invoices", locale }),
-      icon: <BookOpenIcon />,
+      icon: <ReceiptIcon />,
       isActive: startsWithRoute(path, "/console/invoices"),
     },
     {
@@ -211,7 +212,7 @@ const buildPortalProjects = (
   {
     name: "Invoices",
     url: localizePathname({ pathname: "/portal/invoices", locale }),
-    icon: <BookOpenIcon />,
+    icon: <ReceiptIcon />,
     isActive: startsWithRoute(pathname, "/portal/invoices"),
   },
   {

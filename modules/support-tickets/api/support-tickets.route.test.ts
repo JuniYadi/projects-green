@@ -263,6 +263,48 @@ describe("support ticket routes", () => {
     expect(json.thread.users.user_admin.isStaff).toBe(true)
   })
 
+  it("handles organization lookup error gracefully with null organizationName", async () => {
+    const mockGetOrganization = mock(async (orgId: string) => {
+      throw new Error("Organization service unavailable")
+    })
+
+    mock.module("@workos-inc/authkit-nextjs", () => {
+      return {
+        withAuth: async () => ({
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+          user: {
+            id: "user_1",
+            email: "user@example.com",
+          },
+        }),
+        getWorkOS: () => ({
+          userManagement: {
+            getUser: mockGetUser,
+            listOrganizationMemberships: mockListOrganizationMemberships,
+          },
+          organizations: {
+            getOrganization: mockGetOrganization,
+          },
+        }),
+      }
+    })
+
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const json = (await response.json()) as any
+    expect(json.ok).toBe(true)
+    expect(json.thread.ticket.organizationName).toBeNull()
+  })
+
   it("creates reply", async () => {
     const app = createApp({})
 
