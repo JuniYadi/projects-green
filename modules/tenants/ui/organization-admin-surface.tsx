@@ -208,6 +208,12 @@ export function OrganizationAdminSurface({
   )
   const [organizationNameDraft, setOrganizationNameDraft] = useState("")
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
+  const [billingFullNameDraft, setBillingFullNameDraft] = useState("")
+  const [billingAddressDraft, setBillingAddressDraft] = useState("")
+  const [billingCityDraft, setBillingCityDraft] = useState("")
+  const [billingStateDraft, setBillingStateDraft] = useState("")
+  const [billingCountryDraft, setBillingCountryDraft] = useState("")
+  const [billingPostCodeDraft, setBillingPostCodeDraft] = useState("")
 
   const allowedActions = useMemo(() => {
     return new Set(authorization?.allowedActions ?? [])
@@ -295,6 +301,12 @@ export function OrganizationAdminSurface({
         setInvitations(invitationsPayload?.invitations ?? [])
         setOrganization(orgPayload?.organization ?? null)
         setOrganizationNameDraft(orgPayload?.organization.name ?? "")
+        setBillingFullNameDraft(orgPayload?.organization.metadata?.billing_full_name ?? "")
+        setBillingAddressDraft(orgPayload?.organization.metadata?.billing_address ?? "")
+        setBillingCityDraft(orgPayload?.organization.metadata?.billing_city ?? "")
+        setBillingStateDraft(orgPayload?.organization.metadata?.billing_state ?? "")
+        setBillingCountryDraft(orgPayload?.organization.metadata?.billing_country ?? "")
+        setBillingPostCodeDraft(orgPayload?.organization.metadata?.billing_post_code ?? "")
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -938,29 +950,126 @@ export function OrganizationAdminSurface({
             </CardHeader>
             <CardContent className="space-y-3">
               <form
-                className="space-y-3"
+                className="space-y-4"
                 onSubmit={(event) => {
                   event.preventDefault()
 
                   void runAction("update-organization", {
                     path: `/api/tenants/${organizationId}/organization/update`,
-                    body: { name: organizationNameDraft },
+                    body: {
+                      name: organizationNameDraft,
+                      metadata: {
+                        ...organization?.metadata,
+                        billing_full_name: billingFullNameDraft,
+                        billing_address: billingAddressDraft,
+                        billing_city: billingCityDraft,
+                        billing_state: billingStateDraft,
+                        billing_country: billingCountryDraft,
+                        billing_post_code: billingPostCodeDraft,
+                      },
+                    },
                     successMessage: "Organization profile updated.",
                   })
                 }}
               >
-                <Input
-                  value={organizationNameDraft}
-                  onChange={(event) =>
-                    setOrganizationNameDraft(event.target.value)
-                  }
-                  placeholder="Organization name"
-                  disabled={Boolean(pendingActionId)}
-                />
+                <div className="space-y-2">
+                  <label htmlFor="org-name" className="text-xs font-semibold text-muted-foreground">Organization Name</label>
+                  <Input
+                    id="org-name"
+                    value={organizationNameDraft}
+                    onChange={(event) =>
+                      setOrganizationNameDraft(event.target.value)
+                    }
+                    placeholder="Organization name"
+                    disabled={Boolean(pendingActionId)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="billing-full-name" className="text-xs font-semibold text-muted-foreground">Full Organization Name (for Billing/Support)</label>
+                  <Input
+                    id="billing-full-name"
+                    value={billingFullNameDraft}
+                    onChange={(event) =>
+                      setBillingFullNameDraft(event.target.value)
+                    }
+                    placeholder="e.g. PT. Maju Jaya Bersama"
+                    disabled={Boolean(pendingActionId)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="billing-address" className="text-xs font-semibold text-muted-foreground">Address</label>
+                  <Input
+                    id="billing-address"
+                    value={billingAddressDraft}
+                    onChange={(event) =>
+                      setBillingAddressDraft(event.target.value)
+                    }
+                    placeholder="e.g. Jl. Jend. Sudirman No. 12"
+                    disabled={Boolean(pendingActionId)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="billing-city" className="text-xs font-semibold text-muted-foreground">City</label>
+                    <Input
+                      id="billing-city"
+                      value={billingCityDraft}
+                      onChange={(event) =>
+                        setBillingCityDraft(event.target.value)
+                      }
+                      placeholder="e.g. Jakarta Selatan"
+                      disabled={Boolean(pendingActionId)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="billing-state" className="text-xs font-semibold text-muted-foreground">State / Province</label>
+                    <Input
+                      id="billing-state"
+                      value={billingStateDraft}
+                      onChange={(event) =>
+                        setBillingStateDraft(event.target.value)
+                      }
+                      placeholder="e.g. DKI Jakarta"
+                      disabled={Boolean(pendingActionId)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="billing-country" className="text-xs font-semibold text-muted-foreground">Country</label>
+                    <Input
+                      id="billing-country"
+                      value={billingCountryDraft}
+                      onChange={(event) =>
+                        setBillingCountryDraft(event.target.value)
+                      }
+                      placeholder="e.g. Indonesia"
+                      disabled={Boolean(pendingActionId)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="billing-post-code" className="text-xs font-semibold text-muted-foreground">Post Code</label>
+                    <Input
+                      id="billing-post-code"
+                      value={billingPostCodeDraft}
+                      onChange={(event) =>
+                        setBillingPostCodeDraft(event.target.value)
+                      }
+                      placeholder="e.g. 12190"
+                      disabled={Boolean(pendingActionId)}
+                    />
+                  </div>
+                </div>
+
                 <Button
                   type="submit"
-                  variant="outline"
+                  variant="default"
                   disabled={Boolean(pendingActionId)}
+                  className="mt-2"
                 >
                   {pendingActionId === "update-organization"
                     ? "Saving..."
