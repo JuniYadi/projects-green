@@ -161,7 +161,10 @@ const streamKnowledgeAnswerDefault = (input: {
   }
 
   const modelName = process.env.AI_CHAT_MODEL?.trim() || "anthropic/claude-sonnet-4-5-20251120"
-  const provider = createOpenRouter({ apiKey })
+  const provider = createOpenRouter({
+    apiKey,
+    baseURL: process.env.AI_BASE_URL?.trim() || "https://openrouter.ai/api/v1",
+  })
 
   return streamText({
     model: provider.chat(modelName),

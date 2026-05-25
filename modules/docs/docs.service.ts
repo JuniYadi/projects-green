@@ -165,14 +165,20 @@ export const upsertDocByPath = async (
     notes: normalizedNotes,
   })
 
-  // Generate embedding for semantic search
-  const embedding = await embedDocument({
-    path: normalizedPath,
-    title: input.title.trim(),
-    purpose: input.purpose.trim(),
-    howTo: normalizedHowTo,
-    notes: normalizedNotes,
-  })
+  // Generate embedding for semantic search (graceful fallback if AI not configured)
+  let embedding: number[]
+  try {
+    embedding = await embedDocument({
+      path: normalizedPath,
+      title: input.title.trim(),
+      purpose: input.purpose.trim(),
+      howTo: normalizedHowTo,
+      notes: normalizedNotes,
+    })
+  } catch (err) {
+    console.error("[upsertDocByPath] Embedding generation failed:", err)
+    embedding = new Array(EMBEDDING_DIMENSIONS).fill(0)
+  }
 
   const existingDoc = await findDocumentByScope({
     organizationId: input.organizationId,
@@ -334,14 +340,13 @@ export const semanticSearchKnowledgeDocs = async (input: {
   // Compute query embedding (lexical fallback if AI_API_KEY not set)
   let queryEmbedding: number[] | null = null
   try {
-    const { embedding } = await embedDocument({
+    queryEmbedding = await embedDocument({
       path: normalizedRoutePath,
       title: input.query,
       purpose: input.query,
       howTo: [],
       notes: [],
     })
-    queryEmbedding = embedding
   } catch {
     // AI_API_KEY not configured — use lexical fallback
     queryEmbedding = null
