@@ -736,7 +736,9 @@ model WhatsappDevice {
   dailyLimitMessage         Int                  @default(0)
   rates                     String?
   status                    WhatsappDeviceStatus @default(ACTIVE)
-  token                     String
+  token                     String?
+  tokenEncrypted            String?
+  tokenIv                   String?
   s3Path                    String?
   whatsappBusinessAccountId String?
   whatsappPhoneId           String?
