@@ -127,3 +127,30 @@
     @apply font-sans;
     }
 }
+
+/* Custom Traffic Flow Animations */
+.animate-traffic-flow {
+  animation: flow-global 1.2s linear infinite;
+}
+.animate-traffic-cf {
+  animation: flow-cf-global 1.5s linear infinite;
+}
+.animate-traffic-ingress {
+  animation: flow-ingress-global 1.0s linear infinite;
+}
+
+@keyframes flow-global {
+  to {
+    stroke-dashoffset: -18px;
+  }
+}
+@keyframes flow-cf-global {
+  to {
+    stroke-dashoffset: -60px;
+  }
+}
+@keyframes flow-ingress-global {
+  to {
+    stroke-dashoffset: -35px;
+  }
+}

@@ -43,6 +43,13 @@ export const enMessages: AppMessages = {
       en: "English",
       id: "Indonesian",
     },
+    themeLabel: "Theme",
+    themeMenuLabel: "Choose theme",
+    themes: {
+      light: "Light",
+      dark: "Dark",
+      system: "System",
+    },
     menu: {
       organizationMembers: "Organization members",
       organizationSettings: "Organization settings",

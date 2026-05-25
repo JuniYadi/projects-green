@@ -41,6 +41,13 @@ export type AppMessages = {
       en: string
       id: string
     }
+    themeLabel: string
+    themeMenuLabel: string
+    themes: {
+      light: string
+      dark: string
+      system: string
+    }
     menu: {
       organizationMembers: string
       organizationSettings: string

@@ -5,6 +5,8 @@ import { useAuth } from "@workos-inc/authkit-nextjs/components"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
+import { useTheme } from "next-themes"
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -26,7 +28,15 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { CaretUpDownIcon, CheckCircleIcon, SignOutIcon } from "@phosphor-icons/react"
+import {
+  CaretUpDownIcon,
+  CheckCircleIcon,
+  SignOutIcon,
+  GlobeIcon,
+  SunIcon,
+  MoonIcon,
+  MonitorIcon,
+} from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 import { getMessages } from "@/lib/i18n/messages"
 import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
@@ -122,6 +132,13 @@ export function NavUser({
   user: AppSidebarUser
 }) {
   const { isMobile } = useSidebar()
+  const { theme, setTheme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const { signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
@@ -201,6 +218,22 @@ export function NavUser({
     identityInfo?.lastSignInAt ?? null,
     messages.navUser.notAvailableLabel
   )
+
+  const currentThemeIcon = !mounted ? (
+    <SunIcon className="mr-2 h-4 w-4" />
+  ) : resolvedTheme === "dark" ? (
+    <MoonIcon className="mr-2 h-4 w-4" />
+  ) : (
+    <SunIcon className="mr-2 h-4 w-4" />
+  )
+
+  const currentThemeLabel = !mounted
+    ? messages.navUser.themes.system
+    : theme === "light"
+      ? messages.navUser.themes.light
+      : theme === "dark"
+        ? messages.navUser.themes.dark
+        : messages.navUser.themes.system
 
   return (
     <SidebarMenu>
@@ -291,7 +324,42 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                {messages.navUser.languageLabel}
+                {currentThemeIcon}
+                <span>{messages.navUser.themeLabel}</span>
+                <span className="ml-auto text-xs text-muted-foreground capitalize">
+                  {currentThemeLabel}
+                </span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuLabel>
+                  {messages.navUser.themeMenuLabel}
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={theme ?? "system"}
+                  onValueChange={(val) => setTheme(val)}
+                >
+                  <DropdownMenuRadioItem value="light" className="flex items-center gap-2">
+                    <SunIcon className="mr-2 h-4 w-4" />
+                    <span>{messages.navUser.themes.light}</span>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="dark" className="flex items-center gap-2">
+                    <MoonIcon className="mr-2 h-4 w-4" />
+                    <span>{messages.navUser.themes.dark}</span>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="system" className="flex items-center gap-2">
+                    <MonitorIcon className="mr-2 h-4 w-4" />
+                    <span>{messages.navUser.themes.system}</span>
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <GlobeIcon className="mr-2 h-4 w-4" />
+                <span>{messages.navUser.languageLabel}</span>
+                <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
+                  {activeLocale === "en" ? "🇺🇸 EN" : "🇮🇩 ID"}
+                </span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <DropdownMenuLabel>
@@ -301,11 +369,13 @@ export function NavUser({
                   value={activeLocale}
                   onValueChange={handleLocaleChange}
                 >
-                  <DropdownMenuRadioItem value="en">
-                    {messages.navUser.languages.en}
+                  <DropdownMenuRadioItem value="en" className="flex items-center gap-2">
+                    <span className="text-base select-none">🇺🇸</span>
+                    <span>{messages.navUser.languages.en}</span>
                   </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="id">
-                    {messages.navUser.languages.id}
+                  <DropdownMenuRadioItem value="id" className="flex items-center gap-2">
+                    <span className="text-base select-none">🇮🇩</span>
+                    <span>{messages.navUser.languages.id}</span>
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>

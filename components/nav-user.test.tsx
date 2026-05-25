@@ -154,9 +154,41 @@ describe("NavUser", () => {
     fireEvent.pointerDown(view.getByRole("button"))
     fireEvent.click(await view.findByText("Language"))
     fireEvent.click(
-      await view.findByRole("menuitemradio", { name: "Indonesian" })
+      await view.findByRole("menuitemradio", { name: /Indonesian/ })
     )
 
     expect(mockReplace).toHaveBeenCalledWith("/id/console")
+  })
+
+  it("renders theme sub-menu and allows theme switching", async () => {
+    const { NavUser } = await import("@/components/nav-user")
+
+    const view = render(
+      <SidebarProvider>
+        <NavUser
+          user={{
+            name: "Jane Doe",
+            email: "jane@example.com",
+            avatarUrl: null,
+          }}
+        />
+      </SidebarProvider>
+    )
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalled()
+    })
+
+    fireEvent.pointerDown(view.getByRole("button"))
+    
+    // Find and click the "Theme" submenu trigger
+    const themeTrigger = await view.findByText("Theme")
+    expect(themeTrigger).toBeInTheDocument()
+    fireEvent.click(themeTrigger)
+
+    // Verify Light, Dark, and System options exist
+    expect(await view.findByRole("menuitemradio", { name: /Light/ })).toBeInTheDocument()
+    expect(await view.findByRole("menuitemradio", { name: /Dark/ })).toBeInTheDocument()
+    expect(await view.findByRole("menuitemradio", { name: /System/ })).toBeInTheDocument()
   })
 })
