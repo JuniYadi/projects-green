@@ -33,11 +33,6 @@ const DEFAULT_ROLES = [
     name: "User Member",
     description: "User target with member organization permission.",
   },
-  {
-    slug: "admin_owner",
-    name: "Admin Owner",
-    description: "Admin target with owner role (treated as superadmin claim).",
-  },
 ]
 
 const args = process.argv.slice(2)
