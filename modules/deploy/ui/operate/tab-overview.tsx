@@ -119,10 +119,10 @@ export function TabOverview({
 
       <div className="grid gap-6 md:grid-cols-3">
       {/* Git Integration Details */}
-      <Card size="sm" className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+      <Card size="sm" className="col-span-2 border-border bg-card/50 dark:bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div className="space-y-1">
-            <CardTitle className="text-base font-bold text-white">
+            <CardTitle className="text-base font-bold text-foreground">
               Repository Deploy Status
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
@@ -136,13 +136,13 @@ export function TabOverview({
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Vercel-style deployment details */}
-          <div className="rounded-xl border border-white/[0.06] bg-neutral-900/40 p-4">
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <div className="space-y-1">
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Source Provider
                 </span>
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                   <GithubLogo size={16} className="text-muted-foreground" />
                   GitHub
                 </span>
@@ -151,7 +151,7 @@ export function TabOverview({
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Repository
                 </span>
-                <span className="text-sm font-semibold text-white">
+                <span className="text-sm font-semibold text-foreground">
                   acme/laravel-shop
                 </span>
               </div>
@@ -166,12 +166,12 @@ export function TabOverview({
               </div>
             </div>
             
-            <div className="mt-4 pt-4 border-t border-white/[0.06] space-y-1">
+            <div className="mt-4 pt-4 border-t border-border/60 space-y-1">
               <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Last Synced Commit
               </span>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-white bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08]">
+                <span className="font-mono text-xs text-foreground bg-muted px-1.5 py-0.5 rounded border border-border">
                   d4a7d0e
                 </span>
                 <span className="text-xs text-muted-foreground font-medium truncate">
@@ -205,9 +205,9 @@ export function TabOverview({
 
             {/* Premium Mac-like terminal logs */}
             {rebuildState !== "idle" && (
-              <div className="rounded-xl border border-white/[0.08] bg-black/95 shadow-2xl overflow-hidden animate-in fade-in duration-200">
+              <div className="rounded-xl border border-border bg-zinc-950 dark:bg-black/95 shadow-2xl overflow-hidden animate-in fade-in duration-200">
                 {/* Header bar */}
-                <div className="flex items-center justify-between bg-neutral-900/60 px-4 py-2 border-b border-white/[0.06]">
+                <div className="flex items-center justify-between bg-muted/60 dark:bg-neutral-900/60 px-4 py-2 border-b border-border/40">
                   <div className="flex items-center gap-1.5">
                     <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
                     <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
@@ -218,7 +218,7 @@ export function TabOverview({
                 </div>
                 
                 {/* Terminal content */}
-                <div className="max-h-[160px] overflow-y-auto p-4 font-mono text-[11px] text-green-400 leading-relaxed space-y-1 scrollbar-none select-text">
+                <div className="max-h-[160px] overflow-y-auto p-4 font-mono text-[11px] text-emerald-500 dark:text-green-400 leading-relaxed space-y-1 scrollbar-none select-text">
                   {buildLogs.map((log, idx) => (
                     <div key={idx} className="flex gap-2">
                       <span className="text-muted-foreground/40 select-none">{(idx + 1).toString().padStart(2, "0")}</span>
@@ -233,9 +233,9 @@ export function TabOverview({
       </Card>
 
       {/* Accessibility Diagnostics */}
-      <Card size="sm" className="border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+      <Card size="sm" className="border-border bg-card/50 dark:bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold text-white">
+          <CardTitle className="text-base font-bold text-foreground">
             Accessibility Diagnostics
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">App endpoint availability auditing</CardDescription>
@@ -244,15 +244,15 @@ export function TabOverview({
           <div
             className={`space-y-3 rounded-xl border p-4 text-xs transition-all duration-300 ${
               diagnosticMode === "healthy"
-                ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.02)]"
-                : "border-rose-500/20 bg-rose-500/5 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.02)]"
+                ? "border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-500/5 text-emerald-800 dark:text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.02)]"
+                : "border-rose-500/30 bg-rose-500/10 dark:bg-rose-500/5 text-rose-800 dark:text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.02)]"
             }`}
           >
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
               <span className="font-bold tracking-wider uppercase text-[10px] text-muted-foreground">
                 Health Status Check
               </span>
-              <span className="rounded-md border border-white/[0.08] bg-black/40 px-2 py-0.5 font-mono text-[10px] text-white">
+              <span className="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono text-[10px] text-foreground">
                 {diagnosticMode === "healthy"
                   ? "HTTP 200 OK"
                   : diagnosticMode === "error_502"
@@ -272,7 +272,7 @@ export function TabOverview({
 
             {diagnosticMode === "error_502" && (
               <div className="space-y-2 leading-relaxed">
-                <p className="font-semibold text-rose-400">
+                <p className="font-semibold text-rose-600 dark:text-rose-400">
                   Diagnostics failed: 502 Bad Gateway.
                 </p>
                 <p className="text-muted-foreground text-[11px]">
@@ -280,7 +280,7 @@ export function TabOverview({
                   Kubernetes pod is not listening on the expected port
                   (targetPort: 8080) or crashed on boot.
                 </p>
-                <p className="rounded-lg border border-white/5 bg-black/40 p-2.5 font-mono text-[10px] text-white leading-normal">
+                <p className="rounded-lg border border-border/40 bg-muted/30 dark:bg-black/40 p-2.5 font-mono text-[10px] text-foreground dark:text-white leading-normal">
                   Solution: Ensure the app starts up on port 8080. Check &apos;Opensearch
                   Logs&apos; to verify PHP-FPM / Node boot errors.
                 </p>
@@ -289,7 +289,7 @@ export function TabOverview({
 
             {diagnosticMode === "ssl_expired" && (
               <div className="space-y-2 leading-relaxed">
-                <p className="font-semibold text-rose-400">
+                <p className="font-semibold text-rose-600 dark:text-rose-400">
                   SSL Handshake Failure
                 </p>
                 <p className="text-muted-foreground text-[11px]">
@@ -297,7 +297,7 @@ export function TabOverview({
                   expired on 2026-05-18. Kubernetes cert-manager failed
                   validation because DNS is misconfigured.
                 </p>
-                <p className="rounded-lg border border-white/5 bg-black/40 p-2.5 font-mono text-[10px] text-white leading-normal">
+                <p className="rounded-lg border border-border/40 bg-muted/30 dark:bg-black/40 p-2.5 font-mono text-[10px] text-foreground dark:text-white leading-normal">
                   Solution: Visit the &apos;Domains &amp; SSL&apos; tab, check DNS mapping, and click &apos;Force SSL Renewal&apos;.
                 </p>
               </div>
@@ -305,35 +305,35 @@ export function TabOverview({
 
             {diagnosticMode === "redirect_loop" && (
               <div className="space-y-2 leading-relaxed">
-                <p className="font-semibold text-amber-400">
+                <p className="font-semibold text-amber-600 dark:text-amber-400">
                   Redirect Loop Detected
                 </p>
                 <p className="text-muted-foreground text-[11px]">
                   <strong>Root Cause:</strong> Cloudflare Flexible SSL is
                   active. Cloudflare hits ingress on HTTP, which redirects to HTTPS, sending it back to Cloudflare.
                 </p>
-                <p className="rounded-lg border border-white/5 bg-black/40 p-2.5 font-mono text-[10px] text-white leading-normal">
+                <p className="rounded-lg border border-border/40 bg-muted/30 dark:bg-black/40 p-2.5 font-mono text-[10px] text-foreground dark:text-white leading-normal">
                   Solution: Change Cloudflare SSL setting to &apos;Full&apos; or &apos;Full (strict)&apos;.
                 </p>
               </div>
             )}
           </div>
 
-          <div className="space-y-2 rounded-xl border border-white/[0.06] bg-neutral-900/40 p-3.5 text-xs">
-            <span className="block font-semibold text-white text-xs">
+          <div className="space-y-2 rounded-xl border border-border/60 bg-muted/30 p-3.5 text-xs">
+            <span className="block font-semibold text-foreground text-xs">
               Cluster Endpoint Details
             </span>
             <div className="flex items-center justify-between font-mono text-muted-foreground text-[11px] pt-1">
               <span>Cluster Host:</span>
-              <span className="text-white">k8s-ingress-prod.local</span>
+              <span className="text-foreground">k8s-ingress-prod.local</span>
             </div>
             <div className="flex items-center justify-between font-mono text-muted-foreground text-[11px]">
               <span>Target Port:</span>
-              <span className="text-white">80 / 8080 (TCP)</span>
+              <span className="text-foreground">80 / 8080 (TCP)</span>
             </div>
             <div className="flex items-center justify-between font-mono text-muted-foreground text-[11px]">
               <span>Replicas:</span>
-              <span className="text-white">{replicas} active</span>
+              <span className="text-foreground">{replicas} active</span>
             </div>
           </div>
         </CardContent>
