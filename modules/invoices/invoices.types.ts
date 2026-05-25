@@ -48,6 +48,7 @@ export type InvoiceDetail = InvoiceListItem & {
   periodEnd: string
   paidAt: string | null
   lineItems: InvoiceLineItem[]
+  billingAccountId?: string
 }
 
 export type InvoicePaymentMethod = {
@@ -66,6 +67,15 @@ export type InvoiceDetailSuccessResponse = {
   ok: true
   invoice: InvoiceDetail
   canMarkCanceled: boolean
+  organization?: {
+    name: string
+    billingFullName?: string | null
+    billingAddress?: string | null
+    billingCity?: string | null
+    billingState?: string | null
+    billingCountry?: string | null
+    billingPostCode?: string | null
+  } | null
 }
 
 export type InvoiceCancelSuccessResponse = {

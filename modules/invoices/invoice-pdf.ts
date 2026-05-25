@@ -5,7 +5,18 @@ const escapePdfText = (value: string) => {
   return value.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)")
 }
 
-const toPdfLines = (invoice: InvoiceDetail) => {
+const toPdfLines = (
+  invoice: InvoiceDetail,
+  organization?: {
+    name: string
+    billingFullName?: string | null
+    billingAddress?: string | null
+    billingCity?: string | null
+    billingState?: string | null
+    billingCountry?: string | null
+    billingPostCode?: string | null
+  } | null
+) => {
   const lines = [
     `Invoice ${invoice.invoiceNumber}`,
     `Invoice ID: ${invoice.id}`,
@@ -15,6 +26,17 @@ const toPdfLines = (invoice: InvoiceDetail) => {
     `Billing period: ${formatInvoiceDate(invoice.periodStart)} - ${formatInvoiceDate(
       invoice.periodEnd
     )}`,
+    "",
+    "Di Tagih Kepada (Billed To):",
+    `  ${organization?.billingFullName || organization?.name || "—"}`,
+    `  ${organization?.billingAddress || "—"}`,
+    `  ${[organization?.billingCity, organization?.billingState].filter(Boolean).join(", ") || "—"}`,
+    `  ${[organization?.billingCountry, organization?.billingPostCode].filter(Boolean).join(" ") || "—"}`,
+    "",
+    "Di Bayar Kepada (Paid To):",
+    "  PFNApp Technologies Inc.",
+    "  Sudirman Central Business District (SCBD)",
+    "  Jakarta, DKI Jakarta, Indonesia 12190",
     "",
     "Line items",
   ]
@@ -39,9 +61,20 @@ const toPdfLines = (invoice: InvoiceDetail) => {
   return lines
 }
 
-export const buildInvoicePdfBytes = (invoice: InvoiceDetail): Uint8Array => {
+export const buildInvoicePdfBytes = (
+  invoice: InvoiceDetail,
+  organization?: {
+    name: string
+    billingFullName?: string | null
+    billingAddress?: string | null
+    billingCity?: string | null
+    billingState?: string | null
+    billingCountry?: string | null
+    billingPostCode?: string | null
+  } | null
+): Uint8Array => {
   const encoder = new TextEncoder()
-  const lines = toPdfLines(invoice)
+  const lines = toPdfLines(invoice, organization)
   const streamBody = [
     "BT",
     "/F1 11 Tf",

@@ -94,13 +94,15 @@ const toPrismaSortDirection = (value: InvoiceSortDirection) => {
 }
 
 const buildInvoiceListWhere = (input: {
-  organizationId: string
+  organizationId?: string | null
   query: InvoiceListQuery
 }) => {
-  const where: Record<string, unknown> = {
-    billingAccount: {
+  const where: Record<string, unknown> = {}
+
+  if (input.organizationId) {
+    where.billingAccount = {
       organizationId: input.organizationId,
-    },
+    }
   }
 
   const search = input.query.search?.trim()
@@ -120,15 +122,15 @@ const buildInvoiceListWhere = (input: {
 
 export type InvoiceRepository = {
   listByOrganization: (input: {
-    organizationId: string
+    organizationId?: string | null
     query: InvoiceListQuery
   }) => Promise<InvoiceRecord[]>
   findByIdForOrganization: (input: {
-    organizationId: string
+    organizationId?: string | null
     invoiceId: string
   }) => Promise<InvoiceDetailRecord | null>
   updateStatusByIdForOrganization: (input: {
-    organizationId: string
+    organizationId?: string | null
     invoiceId: string
     status: PrismaInvoiceStatus
   }) => Promise<void>
@@ -159,10 +161,15 @@ export const createPrismaInvoiceRepository = (): InvoiceRepository => {
     async findByIdForOrganization({ organizationId, invoiceId }) {
       return getInvoiceDelegate().findFirst({
         where: {
-          id: invoiceId,
-          billingAccount: {
-            organizationId,
-          },
+          OR: [
+            { id: invoiceId },
+            { invoiceNumber: invoiceId },
+          ],
+          billingAccount: organizationId
+            ? {
+                organizationId,
+              }
+            : undefined,
         },
         include: {
           lines: {
@@ -181,10 +188,15 @@ export const createPrismaInvoiceRepository = (): InvoiceRepository => {
     async updateStatusByIdForOrganization({ organizationId, invoiceId, status }) {
       await getInvoiceDelegate().updateMany({
         where: {
-          id: invoiceId,
-          billingAccount: {
-            organizationId,
-          },
+          OR: [
+            { id: invoiceId },
+            { invoiceNumber: invoiceId },
+          ],
+          billingAccount: organizationId
+            ? {
+                organizationId,
+              }
+            : undefined,
         },
         data: {
           status,

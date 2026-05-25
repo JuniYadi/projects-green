@@ -351,7 +351,7 @@ export const createSupportTicketRoutes = (
               firstName = user.firstName ?? ""
               lastName = user.lastName ?? ""
               profilePictureUrl = user.profilePictureUrl ?? null
-            } catch (e) {
+            } catch {
               // Gracefully handle WorkOS client / configuration errors in development/testing
             }
 
@@ -369,7 +369,7 @@ export const createSupportTicketRoutes = (
                     membership.roles?.map((r) => r.slug)
                   )
                 )
-              } catch (e) {
+              } catch {
                 // Gracefully handle WorkOS client / configuration errors in development/testing
               }
             }
@@ -382,7 +382,7 @@ export const createSupportTicketRoutes = (
               avatarUrl: profilePictureUrl,
               isStaff,
             }
-          } catch (error) {
+          } catch {
             users[userId] = {
               name: `User (${userId.slice(-4)})`,
               avatarUrl: null,
@@ -392,12 +392,14 @@ export const createSupportTicketRoutes = (
         })
 
         let organizationName: string | null = null
+        let organizationMetadata: Record<string, string> | null = null
         const fetchOrgPromise = (async () => {
           try {
             const workos = getWorkOS()
             const org = await workos.organizations.getOrganization(thread.ticket.organizationId)
             organizationName = org.name ?? null
-          } catch (e) {
+            organizationMetadata = (org.metadata as Record<string, string>) ?? null
+          } catch {
             // Gracefully handle WorkOS organization lookup failure in dev/testing
           }
         })()
@@ -414,6 +416,7 @@ export const createSupportTicketRoutes = (
             ? (typeof Bun !== "undefined" ? Bun.markdown.html(thread.ticket.description, { tagFilter: true }) : thread.ticket.description)
             : null,
           organizationName,
+          organizationMetadata,
         }
 
         return {

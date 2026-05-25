@@ -5,7 +5,10 @@ import { z } from "zod"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 import { buildInvoicePdfBytes } from "@/modules/invoices/invoice-pdf"
-import { canManageInvoiceCancellation } from "@/modules/invoices/invoices.policy"
+import {
+  canManageInvoiceCancellation,
+  canManageInvoiceNotifications,
+} from "@/modules/invoices/invoices.policy"
 import {
   createInvoiceService,
   InvoiceCancelNotAllowedError,
@@ -25,6 +28,8 @@ import {
   createInvoiceEmailService,
   type InvoiceEmailService,
 } from "@/modules/invoices/email.service"
+import { getTenantOrganizationById } from "@/modules/tenants/services/tenant-workos.service"
+// prisma imported dynamically in routes below
 
 const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
@@ -72,6 +77,7 @@ type InvoiceRouteDependencies = {
   }) => Promise<PlatformAccessRole>
   service: InvoiceService
   emailService: InvoiceEmailService
+  getOrganizationIdByBillingAccount: (billingAccountId: string) => Promise<string | null>
 }
 
 const createDefaultDependencies = (): InvoiceRouteDependencies => ({
@@ -82,6 +88,14 @@ const createDefaultDependencies = (): InvoiceRouteDependencies => ({
   },
   service: createInvoiceService(),
   emailService: createInvoiceEmailService(),
+  getOrganizationIdByBillingAccount: async (billingAccountId) => {
+    const { prisma } = await import("@/lib/prisma")
+    const billingAccount = await prisma.billingAccount.findUnique({
+      where: { id: billingAccountId },
+      select: { organizationId: true },
+    })
+    return billingAccount?.organizationId ?? null
+  },
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -179,19 +193,25 @@ export const createInvoicesRoutes = (
         return toUnauthorized(set)
       }
 
-      if (!auth.organizationId) {
-        return toForbidden(set, "No active organization found for invoices.")
-      }
-
-      const parsedQuery = listQuerySchema.safeParse(query)
-
-      if (!parsedQuery.success) {
-        return toValidationError(set, parsedQuery.error.issues)
-      }
-
       try {
+        const actorRoles = await toActorRoles({
+          auth,
+          getPlatformRole: dependencies.getPlatformRole,
+        })
+
+        const isSuperAdmin = actorRoles.platformRole === "super_admin"
+        if (!isSuperAdmin && !auth.organizationId) {
+          return toForbidden(set, "No active organization found for invoices.")
+        }
+
+        const parsedQuery = listQuerySchema.safeParse(query)
+
+        if (!parsedQuery.success) {
+          return toValidationError(set, parsedQuery.error.issues)
+        }
+
         const invoices = await dependencies.service.listInvoices({
-          organizationId: auth.organizationId,
+          organizationId: isSuperAdmin ? null : auth.organizationId,
           query: {
             search: parsedQuery.data.search,
             status: parsedQuery.data.status,
@@ -215,10 +235,6 @@ export const createInvoicesRoutes = (
         return toUnauthorized(set)
       }
 
-      if (!auth.organizationId) {
-        return toForbidden(set, "No active organization found for invoices.")
-      }
-
       const parsedParams = paramsSchema.safeParse(params)
 
       if (!parsedParams.success) {
@@ -226,15 +242,29 @@ export const createInvoicesRoutes = (
       }
 
       try {
-        const invoice = await dependencies.service.getInvoiceDetail({
-          organizationId: auth.organizationId,
-          invoiceId: parsedParams.data.invoiceId,
-        })
-
         const actorRoles = await toActorRoles({
           auth,
           getPlatformRole: dependencies.getPlatformRole,
         })
+
+        const isSuperAdmin = actorRoles.platformRole === "super_admin"
+        if (!isSuperAdmin && !auth.organizationId) {
+          return toForbidden(set, "No active organization found for invoices.")
+        }
+
+        const invoice = await dependencies.service.getInvoiceDetail({
+          organizationId: isSuperAdmin ? null : auth.organizationId,
+          invoiceId: parsedParams.data.invoiceId,
+        })
+
+        const billingAccountId = invoice.billingAccountId
+        const orgId = billingAccountId
+          ? await dependencies.getOrganizationIdByBillingAccount(billingAccountId)
+          : null
+
+        const org = orgId
+          ? await getTenantOrganizationById(orgId)
+          : null
 
         return {
           ok: true as const,
@@ -242,6 +272,15 @@ export const createInvoicesRoutes = (
           canMarkCanceled:
             canManageInvoiceCancellation(actorRoles) &&
             isCancelableStatus(invoice.status),
+          organization: org ? {
+            name: org.name,
+            billingFullName: org.metadata?.billing_full_name ?? null,
+            billingAddress: org.metadata?.billing_address ?? null,
+            billingCity: org.metadata?.billing_city ?? null,
+            billingState: org.metadata?.billing_state ?? null,
+            billingCountry: org.metadata?.billing_country ?? null,
+            billingPostCode: org.metadata?.billing_post_code ?? null,
+          } : null,
         }
       } catch (error) {
         if (error instanceof InvoiceNotFoundError) {
@@ -258,10 +297,6 @@ export const createInvoicesRoutes = (
         return toUnauthorized(set)
       }
 
-      if (!auth.organizationId) {
-        return toForbidden(set, "No active organization found for invoices.")
-      }
-
       const parsedParams = paramsSchema.safeParse(params)
 
       if (!parsedParams.success) {
@@ -269,12 +304,39 @@ export const createInvoicesRoutes = (
       }
 
       try {
+        const actorRoles = await toActorRoles({
+          auth,
+          getPlatformRole: dependencies.getPlatformRole,
+        })
+
+        const isSuperAdmin = actorRoles.platformRole === "super_admin"
+        if (!isSuperAdmin && !auth.organizationId) {
+          return toForbidden(set, "No active organization found for invoices.")
+        }
+
         const invoice = await dependencies.service.getInvoiceDetail({
-          organizationId: auth.organizationId,
+          organizationId: isSuperAdmin ? null : auth.organizationId,
           invoiceId: parsedParams.data.invoiceId,
         })
 
-        const bytes = buildInvoicePdfBytes(invoice)
+        const billingAccountId = invoice.billingAccountId
+        const orgId = billingAccountId
+          ? await dependencies.getOrganizationIdByBillingAccount(billingAccountId)
+          : null
+
+        const org = orgId
+          ? await getTenantOrganizationById(orgId)
+          : null
+
+        const bytes = buildInvoicePdfBytes(invoice, org ? {
+          name: org.name,
+          billingFullName: org.metadata?.billing_full_name ?? null,
+          billingAddress: org.metadata?.billing_address ?? null,
+          billingCity: org.metadata?.billing_city ?? null,
+          billingState: org.metadata?.billing_state ?? null,
+          billingCountry: org.metadata?.billing_country ?? null,
+          billingPostCode: org.metadata?.billing_post_code ?? null,
+        } : null)
         const body = new Blob([new Uint8Array(bytes).buffer], {
           type: "application/pdf",
         })
@@ -302,10 +364,6 @@ export const createInvoicesRoutes = (
         return toUnauthorized(set)
       }
 
-      if (!auth.organizationId) {
-        return toForbidden(set, "No active organization found for invoices.")
-      }
-
       const parsedParams = paramsSchema.safeParse(params)
 
       if (!parsedParams.success) {
@@ -318,15 +376,20 @@ export const createInvoicesRoutes = (
           getPlatformRole: dependencies.getPlatformRole,
         })
 
+        const isSuperAdmin = actorRoles.platformRole === "super_admin"
+        if (!isSuperAdmin && !auth.organizationId) {
+          return toForbidden(set, "No active organization found for invoices.")
+        }
+
         if (!canManageInvoiceCancellation(actorRoles)) {
           return toForbidden(
             set,
-            "Only owner/admin members can mark invoices as canceled."
+            "Only portal administrators can mark invoices as canceled."
           )
         }
 
         const invoice = await dependencies.service.cancelInvoice({
-          organizationId: auth.organizationId,
+          organizationId: isSuperAdmin ? null : auth.organizationId,
           invoiceId: parsedParams.data.invoiceId,
         })
 
@@ -388,7 +451,7 @@ export const createInvoicesRoutes = (
           getPlatformRole: dependencies.getPlatformRole,
         })
 
-        if (!canManageInvoiceCancellation(actorRoles)) {
+        if (!canManageInvoiceNotifications(actorRoles)) {
           return toForbidden(set, "Only owner/admin members can send notifications.")
         }
 
@@ -448,7 +511,7 @@ export const createInvoicesRoutes = (
           getPlatformRole: dependencies.getPlatformRole,
         })
 
-        if (!canManageInvoiceCancellation(actorRoles)) {
+        if (!canManageInvoiceNotifications(actorRoles)) {
           return toForbidden(set, "Only owner/admin members can send notifications.")
         }
 
@@ -508,7 +571,7 @@ export const createInvoicesRoutes = (
           getPlatformRole: dependencies.getPlatformRole,
         })
 
-        if (!canManageInvoiceCancellation(actorRoles)) {
+        if (!canManageInvoiceNotifications(actorRoles)) {
           return toForbidden(set, "Only owner/admin members can send notifications.")
         }
 
@@ -568,7 +631,7 @@ export const createInvoicesRoutes = (
           getPlatformRole: dependencies.getPlatformRole,
         })
 
-        if (!canManageInvoiceCancellation(actorRoles)) {
+        if (!canManageInvoiceNotifications(actorRoles)) {
           return toForbidden(set, "Only owner/admin members can send notifications.")
         }
 
@@ -629,7 +692,7 @@ export const createInvoicesRoutes = (
           getPlatformRole: dependencies.getPlatformRole,
         })
 
-        if (!canManageInvoiceCancellation(actorRoles)) {
+        if (!canManageInvoiceNotifications(actorRoles)) {
           return toForbidden(set, "Only owner/admin members can send notifications.")
         }
 

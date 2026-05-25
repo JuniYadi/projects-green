@@ -27,15 +27,15 @@ export class InvoiceCancelNotAllowedError extends Error {
 
 export type InvoiceService = {
   listInvoices: (input: {
-    organizationId: string
+    organizationId?: string | null
     query: InvoiceListQuery
   }) => Promise<InvoiceListItem[]>
   getInvoiceDetail: (input: {
-    organizationId: string
+    organizationId?: string | null
     invoiceId: string
   }) => Promise<InvoiceDetail>
   cancelInvoice: (input: {
-    organizationId: string
+    organizationId?: string | null
     invoiceId: string
   }) => Promise<InvoiceDetail>
   getPaymentMethodOptions: () => InvoicePaymentMethod[]
@@ -137,6 +137,7 @@ export const toInvoiceDetail = (invoice: InvoiceDetailRecord): InvoiceDetail => 
     periodEnd: invoice.periodEnd.toISOString(),
     paidAt: invoice.paidAt?.toISOString() ?? null,
     lineItems: invoice.lines.map((line) => toInvoiceLineItem(line)),
+    billingAccountId: invoice.billingAccountId,
   }
 }
 
