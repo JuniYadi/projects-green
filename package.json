@@ -23,7 +23,9 @@
     "seed:invoices-support-tickets": "bun run scripts/seed-invoices-support-tickets.ts",
     "remediate:creator-tenant-roles": "bun run scripts/remediate-creator-tenant-roles.ts",
     "grant:super-admin": "node scripts/grant-super-admin.mjs",
-    "seed:workos-roles": "node scripts/seed-workos-roles.mjs"
+    "seed:workos-roles": "node scripts/seed-workos-roles.mjs",
+    "seed:super-admin": "bun run scripts/seed-super-admin.ts",
+    "bootstrap:super-admin": "bun run scripts/bootstrap-super-admin.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.64",

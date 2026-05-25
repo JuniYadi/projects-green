@@ -2,6 +2,7 @@ import { openapi } from "@elysia/openapi"
 import { Elysia } from "elysia"
 import { z } from "zod"
 
+import { adminRoutes } from "@/modules/admin/api/admin.route"
 import { authRoutes } from "@/modules/auth/api/auth.route"
 import { docsRoutes } from "@/modules/docs/api/docs.route"
 import { knowledgeRoutes } from "@/modules/docs/api/knowledge.route"
@@ -81,6 +82,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(supportTicketAttachmentRoutes)
   .use(tenantsRoutes)
   .use(authRoutes)
+  .use(adminRoutes)
   .use(usersRoutes)
   .use(whatsappRoutes)
   .onError(({ code, error, set }) => {
