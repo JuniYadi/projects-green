@@ -340,7 +340,7 @@ model BillingAccount {
   invoices        Invoice[]
   adjustments     BillingAdjustment[]
   runs            BillingRun[]
-  auditLogs       BillingAuditWhatsappLog[]
+  auditLogs       BillingAuditLog[]
 }
 
 model BillingSubscription {
@@ -613,7 +613,7 @@ model BillingRun {
 
   billingAccount BillingAccount? @relation(fields: [billingAccountId], references: [id], onDelete: SetNull)
   invoices       Invoice[]
-  auditLogs      BillingAuditWhatsappLog[]
+  auditLogs      BillingAuditLog[]
 
   @@unique([billingAccountId, runType, periodStart, periodEnd])
   @@index([billingAccountId, runType, startedAt(sort: Desc)])
@@ -732,10 +732,10 @@ model WhatsappDevice {
   updatedAt                  DateTime     @updatedAt
 
   contacts               WhatsappContact[]
-  contactGroups          ContactGroup[]
-  templates              MessageTemplate[]
-  broadcastCampaigns     BroadcastCampaign[]
-  messageConversations   MessageConversation[]
+  contactGroups          WhatsappContactGroup[]
+  templates              WhatsappTemplate[]
+  broadcastCampaigns     WhatsappBroadcastCampaign[]
+  messageConversations   WhatsappConversation[]
   dailyCounts            WhatsappDailyCount[]
   monthlyCounts          WhatsappMonthlyCount[]
   quotaSessions          WhatsappQuotaSession[]
@@ -761,8 +761,8 @@ model WhatsappContactGroup {
   updatedAt           DateTime           @updatedAt
 
   contacts            WhatsappContact[]
-  whatsappBroadcasts        BroadcastCampaign[]
-  broadcastRateState BroadcastRateState?
+  whatsappBroadcasts        WhatsappBroadcastCampaign[]
+  broadcastRateState     WhatsappBroadcastRateState?
 
   @@index([organizationId, status])
 }
@@ -848,7 +848,7 @@ model WhatsappBroadcastCampaign {
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
-  recipients WhatsappBroadcastRecipient[]
+  recipients              WhatsappBroadcastRecipient[]
 
   @@index([organizationId, status])
 }
@@ -880,7 +880,7 @@ model WhatsappConversation {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  messages WhatsappMessage[]
+  whatsappMessages        WhatsappMessage[]
 
   @@unique([organizationId, contactPhone])
   @@index([organizationId, lastMessageAt])
