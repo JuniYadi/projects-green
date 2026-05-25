@@ -11,12 +11,10 @@ const mockAuthenticate = mock(async () => ({
   },
 }))
 const mockSearchKnowledgeDocs = mock(async () => [])
-const mockStreamKnowledgeAnswer = mock(
-  async function* () {
-    yield "Hello "
-    yield "from KB"
-  }
-)
+const mockStreamKnowledgeAnswer = mock(async function* () {
+  yield "Hello "
+  yield "from KB"
+})
 
 const createApp = () =>
   new Elysia().use(
@@ -101,7 +99,9 @@ describe("knowledgeRoutes", () => {
     )
 
     expect(response.status).toBe(200)
-    expect(response.headers.get("content-type")).toContain("application/x-ndjson")
+    expect(response.headers.get("content-type")).toContain(
+      "application/x-ndjson"
+    )
 
     const bodyText = await response.text()
     const frames = bodyText
@@ -140,7 +140,9 @@ describe("knowledgeRoutes", () => {
 
     expect(frames[0]?.type).toBe("delta")
     expect(frames[1]?.type).toBe("done")
-    expect(frames[1]?.answer).toBe("I don't know from the current knowledgebase.")
+    expect(frames[1]?.answer).toBe(
+      "I don't know from the current knowledgebase."
+    )
   })
 
   it("returns validation envelope for invalid request payload", async () => {

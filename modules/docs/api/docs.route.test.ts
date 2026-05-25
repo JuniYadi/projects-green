@@ -104,7 +104,9 @@ describe("docsRoutes", () => {
   })
 
   it("returns validation envelope for invalid docs query", async () => {
-    const response = await createApp().handle(new Request("http://localhost/docs"))
+    const response = await createApp().handle(
+      new Request("http://localhost/docs")
+    )
     const body = (await response.json()) as {
       ok: boolean
       error: string

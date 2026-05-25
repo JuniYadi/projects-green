@@ -37,6 +37,7 @@ model KnowledgeDocument {
   howTo                 String[]
   notes                 String[]
   searchText            String
+  embedding             Float[]                @default([])
   updatedByWorkosUserId String
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -637,3 +638,442 @@ model BillingAuditLog {
   @@index([billingRunId, createdAt])
   @@index([entityType, entityId])
 }
+
+// ─── WhatsApp Enums ────────────────────────────────────────────────────────────
+
+enum DeviceStatus {
+  ACTIVE
+  NON_ACTIVE
+}
+
+enum ContactGroupStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ContactGroupType {
+  STATIC
+  DYNAMIC
+}
+
+enum ContactStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TemplateSyncStatus {
+  SYNCED
+  NOT_SYNCED
+  NOT_IN_META
+}
+
+enum TemplateMetaStatus {
+  APPROVED
+  PENDING
+  REJECTED
+}
+
+enum BroadcastStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+}
+
+enum BroadcastRecipientStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum MessageDirection {
+  INBOX
+  OUTBOX
+}
+
+enum MessageDeliveryStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum BillingCategory {
+  MARKETING
+  UTILITY
+  AUTHENTICATION
+  SERVICE
+}
+
+enum BillingStatus {
+  CHARGED_PENDING_VERIFY
+  CONFIRMED
+  REVERTED_FAILED
+}
+
+enum LogType {
+  INFO
+  ERROR
+  INBOX
+  AUDIT
+}
+
+enum ApiKeyEnvironment {
+  SANDBOX
+  LIVE
+}
+
+// ─── WhatsApp Models ──────────────────────────────────────────────────────────
+
+model Device {
+  id                         String       @id @default(cuid())
+  organizationId             String
+  phoneNumber                String       @unique
+  balance                    Decimal      @default(0) @db.Decimal(12, 2)
+  quotaBase                  Decimal      @default(1000) @db.Decimal(12, 2)
+  quotaBaseIn               Int          @default(0)
+  quotaBaseOut               Int          @default(0)
+  dailyLimitMessage         Int          @default(0)
+  rates                      String?
+  status                     DeviceStatus @default(ACTIVE)
+  token                      String
+  s3Path                     String?
+  whatsappBusinessAccountId  String?
+  whatsappPhoneId            String?
+  whatsappApplicationId      String?
+  whatsappVersion            String       @default("v24.0")
+  whatsappProfile            Json?
+  features                   Json?
+  callbackUrl                String?
+  callbackHeaderName         String?
+  callbackHeaderValue        String?
+  expiredAt                  DateTime?
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
+
+  contacts               Contact[]
+  contactGroups          ContactGroup[]
+  templates              MessageTemplate[]
+  broadcastCampaigns     BroadcastCampaign[]
+  messageConversations   MessageConversation[]
+  dailyCounts            DailyCount[]
+  monthlyCounts          MonthlyCount[]
+  quotaSessions          QuotaSession[]
+  billingLedgers         BillingLedger[]
+  logs                   Log[]
+  attachments            Attachment[]
+  broadcastRateStates     BroadcastRateState[]
+
+  @@index([organizationId])
+  @@index([whatsappBusinessAccountId])
+}
+
+model ContactGroup {
+  id                  String             @id @default(cuid())
+  organizationId     String
+  name                String             @db.VarChar(100)
+  description        String             @db.VarChar(500)
+  type                ContactGroupType   @default(STATIC)
+  status              ContactGroupStatus @default(ACTIVE)
+  throttleMaxMessages Int?
+  throttlePerMinutes  Int?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  contacts            Contact[]
+  broadcasts          BroadcastCampaign[]
+  broadcastRateState BroadcastRateState?
+
+  @@index([organizationId, status])
+}
+
+model Contact {
+  id              String        @id @default(cuid())
+  organizationId  String
+  phoneNumber     String        @db.VarChar(20)
+  name            String        @db.VarChar(100)
+  email           String        @db.VarChar(255)
+  status          ContactStatus @default(ACTIVE)
+  lastContactedAt DateTime?
+  waId            String?
+  isWhatsapp      Boolean       @default(false)
+  lastCheckedAt   DateTime?
+  dynamicValues   Json?
+  dynamicRaw      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  contactGroup   ContactGroup @relation(fields: [contactGroupId], references: [id], onDelete: Restrict)
+  contactGroupId String
+
+  @@unique([organizationId, phoneNumber])
+  @@index([organizationId, contactGroupId, status])
+  @@index([organizationId, createdAt])
+}
+
+model MessageTemplate {
+  id           String              @id @default(cuid())
+  organizationId String
+  slug         String
+  name         String
+  description  String?
+  syncStatus   TemplateSyncStatus  @default(NOT_SYNCED)
+  metaStatus   TemplateMetaStatus?
+  lastSyncedAt DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  languages MessageTemplateLanguage[]
+
+  @@index([organizationId, metaStatus])
+}
+
+model MessageTemplateLanguage {
+  id           String              @id @default(cuid())
+  templateId   String
+  template     MessageTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  lang         String
+  headerType   String?
+  headerUrl    String?
+  headerText   String?
+  body         String?
+  parameters   Json?
+  footer       String?
+  buttons      Json?
+  authConfig   Json?
+  isApproved   Boolean             @default(false)
+  metaStatus   TemplateMetaStatus?
+  rejectReason String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([templateId, lang])
+}
+
+model BroadcastCampaign {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  templateName        String
+  templateLanguage    String
+  templateParams      Json?
+  throttleMaxMessages Int?
+  throttlePerMinutes  Int?
+  status              BroadcastStatus @default(QUEUED)
+  total               Int             @default(0)
+  queued              Int             @default(0)
+  sent                Int             @default(0)
+  failed              Int             @default(0)
+  startedAt           DateTime?
+  endedAt             DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  recipients BroadcastRecipient[]
+
+  @@index([organizationId, status])
+}
+
+model BroadcastRecipient {
+  id            String                   @id @default(cuid())
+  broadcastId   String
+  broadcast     BroadcastCampaign        @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  phoneNumber   String
+  name          String?
+  dynamicValues Json?
+  status        BroadcastRecipientStatus @default(QUEUED)
+  attempts      Int                      @default(0)
+  waMessageId   String?
+  lastError     String?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@unique([broadcastId, phoneNumber])
+  @@index([broadcastId, status])
+}
+
+model MessageConversation {
+  id            String            @id @default(cuid())
+  organizationId String
+  contactPhone  String
+  lastMessageAt DateTime?
+  lastDirection MessageDirection?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  messages Message[]
+
+  @@unique([organizationId, contactPhone])
+  @@index([organizationId, lastMessageAt])
+}
+
+model Message {
+  id             String              @id @default(cuid())
+  conversationId String
+  conversation   MessageConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      MessageDirection
+  fromPhone      String
+  contactName    String?
+  contactWaId    String?
+  content        Json
+  waMessageId    String?
+  timestamp      DateTime
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  statusHistory MessageStatusHistory[]
+
+  @@index([conversationId, timestamp])
+  @@index([waMessageId])
+}
+
+model MessageStatusHistory {
+  id              String                @id @default(cuid())
+  messageId       String
+  message         Message               @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  status          MessageDeliveryStatus
+  errorCode       String?
+  errorTitle      String?
+  errorMessage    String?
+  pricingBillable Boolean?
+  pricingCategory String?
+  timestamp       DateTime
+  createdAt       DateTime              @default(now())
+
+  @@index([messageId, status])
+}
+
+model DailyCount {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  date               DateTime @db.Date
+  sessionCount       Int      @default(0)
+  messageInboxCount  Int      @default(0)
+  messageOutboxCount Int      @default(0)
+  messageFailedCount Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([organizationId, date])
+}
+
+model MonthlyCount {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  year               Int
+  month              Int
+  sessionCount       Int      @default(0)
+  messageInboxCount  Int      @default(0)
+  messageOutboxCount Int      @default(0)
+  messageFailedCount Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([organizationId, year, month])
+}
+
+model QuotaSession {
+  id           String   @id @default(cuid())
+  organizationId String
+  phoneNumber   String
+  category      String
+  expiredAt     DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([organizationId, phoneNumber, category])
+  @@index([expiredAt])
+}
+
+model BillingLedger {
+  id              String          @id @default(cuid())
+  organizationId  String
+  waMessageId     String
+  phoneNumber     String
+  category        BillingCategory
+  quotaKey        String
+  quotaValue      Decimal         @db.Decimal(12, 2)
+  status          BillingStatus   @default(CHARGED_PENDING_VERIFY)
+  isReverted      Boolean         @default(false)
+  revertReason    String?
+  revertedAt      DateTime?
+  lastStatus      String?
+  pricingBillable Boolean?
+  pricingCategory String?
+  errorCode       String?
+  errorTitle      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([organizationId, waMessageId])
+  @@index([organizationId, status])
+  @@index([organizationId, phoneNumber])
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  organizationId String
+  source    String
+  type      LogType
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, type, createdAt])
+  @@index([organizationId, source, createdAt])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  organizationId String
+  fullPath     String
+  originalName String
+  newFileName  String
+  mimeType     String
+  createdAt    DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+}
+
+model PricingPackage {
+  id                String   @id @default(cuid())
+  countryCode       String   @unique
+  internationalCode String?
+  marketing         Decimal  @db.Decimal(10, 4)
+  authentication    Decimal  @db.Decimal(10, 4)
+  utility           Decimal  @db.Decimal(10, 4)
+  service           Decimal  @db.Decimal(10, 4)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model BroadcastRateState {
+  id             String   @id @default(cuid())
+  organizationId String
+  policy         String   @default("TOKEN_BUCKET")
+  lastUpdatedAt  DateTime
+  stateData      Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model ApiKey {
+  id          String            @id @default(cuid())
+  name        String
+  keyHash     String            @unique
+  environment ApiKeyEnvironment
+  scopes      String[]
+  active      Boolean           @default(true)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  lastUsedIp  String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([environment, active])
+}
+
+// ─── WorkOS-tenant relationship ──────────────────────────────────────────────
+// organizationId fields above are denormalized WorkOS org IDs.
+// No local Organization table — canonical record lives in WorkOS.
+// All WhatsApp models scoped by organizationId for multi-tenancy.

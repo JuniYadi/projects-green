@@ -2,18 +2,21 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, act } from "@testing-library/react"
 
 const mockReplace = mock(() => {})
-const mockFetch = mock(async () => ({
-  ok: true,
-  status: 200,
-  json: async () => ({
-    path: "/console",
-    title: "Test Doc",
-    purpose: "Test purpose",
-    howTo: ["Step 1", "Step 2"],
-    notes: ["Note 1", "Note 2"],
-    updatedAt: "2024-01-01",
-  }),
-}) as unknown as Response)
+const mockFetch = mock(
+  async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        path: "/console",
+        title: "Test Doc",
+        purpose: "Test purpose",
+        howTo: ["Step 1", "Step 2"],
+        notes: ["Note 1", "Note 2"],
+        updatedAt: "2024-01-01",
+      }),
+    }) as unknown as Response
+)
 const originalFetch = globalThis.fetch
 
 describe("ThunderAiHelpDrawer", () => {
@@ -64,16 +67,22 @@ describe("ThunderAiHelpDrawer", () => {
     it("renders drawer when doc=1 is set", async () => {
       const view = await renderDrawer("doc=1")
 
-      expect(view.getByRole("heading", { name: "Thunder AI Help" })).toBeTruthy()
+      expect(
+        view.getByRole("heading", { name: "Thunder AI Help" })
+      ).toBeTruthy()
       expect(view.getByText("Page Guides")).toBeTruthy()
     })
 
     it("renders chat tab when kb=1 is set", async () => {
       const view = await renderDrawer("kb=1")
 
-      expect(view.getByRole("heading", { name: "Thunder AI Help" })).toBeTruthy()
+      expect(
+        view.getByRole("heading", { name: "Thunder AI Help" })
+      ).toBeTruthy()
       expect(view.getByText("Thunder AI Assistant")).toBeTruthy()
-      expect(view.getByPlaceholderText("Ask about this page or system workflows...")).toBeTruthy()
+      expect(
+        view.getByPlaceholderText("Ask about this page or system workflows...")
+      ).toBeTruthy()
     })
   })
 
@@ -96,7 +105,9 @@ describe("ThunderAiHelpDrawer", () => {
       const view = await renderDrawer("doc=1")
 
       const chatTab = view.getByText("Thunder AI Chat")
-      await act(async () => { chatTab.click() })
+      await act(async () => {
+        chatTab.click()
+      })
 
       expect(mockReplace).toHaveBeenCalled()
     })
@@ -105,7 +116,9 @@ describe("ThunderAiHelpDrawer", () => {
       const view = await renderDrawer("kb=1")
 
       const docsTab = view.getByText("Page Guides")
-      await act(async () => { docsTab.click() })
+      await act(async () => {
+        docsTab.click()
+      })
 
       expect(mockReplace).toHaveBeenCalled()
     })
@@ -116,7 +129,9 @@ describe("ThunderAiHelpDrawer", () => {
       const view = await renderDrawer("")
 
       const button = view.getByText("AI Help")
-      await act(async () => { button.click() })
+      await act(async () => {
+        button.click()
+      })
 
       expect(mockReplace).toHaveBeenCalled()
       expect(mockReplace).toHaveBeenCalledWith(
@@ -137,14 +152,20 @@ describe("ThunderAiHelpDrawer", () => {
       const view = await renderDrawer("kb=1")
 
       expect(view.getByText(/Tell me about/)).toBeTruthy()
-      expect(view.getByText("What are some common tasks I can do here?")).toBeTruthy()
-      expect(view.getByText("How does deployment work in this cluster?")).toBeTruthy()
+      expect(
+        view.getByText("What are some common tasks I can do here?")
+      ).toBeTruthy()
+      expect(
+        view.getByText("How does deployment work in this cluster?")
+      ).toBeTruthy()
     })
 
     it("renders input field", async () => {
       const view = await renderDrawer("kb=1")
 
-      expect(view.getByPlaceholderText("Ask about this page or system workflows...")).toBeTruthy()
+      expect(
+        view.getByPlaceholderText("Ask about this page or system workflows...")
+      ).toBeTruthy()
     })
 
     it("renders send button", async () => {
@@ -173,7 +194,9 @@ describe("ThunderAiHelpDrawer", () => {
     it("does not render sheet when no params are set", async () => {
       const view = await renderDrawer("")
 
-      expect(view.queryByRole("heading", { name: "Thunder AI Help" })).toBeNull()
+      expect(
+        view.queryByRole("heading", { name: "Thunder AI Help" })
+      ).toBeNull()
     })
   })
 
@@ -196,7 +219,9 @@ describe("ThunderAiHelpDrawer", () => {
       const view = await renderDrawer("kb=1")
 
       const prompt = view.getByText(/Tell me about/)
-      await act(async () => { prompt.click() })
+      await act(async () => {
+        prompt.click()
+      })
 
       expect(mockReplace).toHaveBeenCalled()
     })
