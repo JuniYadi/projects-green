@@ -526,7 +526,7 @@ model Invoice {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  billingAccount BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  billingAccount BillingAccount?      @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   subscription   BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   billingRun     BillingRun?          @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
   lines          InvoiceLine[]
@@ -618,10 +618,6 @@ model BillingRun {
   @@unique([billingAccountId, runType, periodStart, periodEnd])
   @@index([billingAccountId, runType, startedAt(sort: Desc)])
 }
-
-// ─── WhatsApp Enums ────────────────────────────────────────────────────────────
-
-// ─── Billing Audit (from main) ─────────────────────────────────────────────────
 
 model BillingAuditLog {
   id               String             @id @default(cuid())
@@ -786,7 +782,7 @@ model WhatsappContactGroup {
 
   contacts                     WhatsappContact[]
   whatsappBroadcasts           WhatsappBroadcastCampaign[]
-  broadcastRateState           WhatsappBroadcastRateState? @relation(fields: [whatsappBroadcastRateStateId], references: [id])
+  broadcastRateState           WhatsappBroadcastRateState?
   whatsappDevice               WhatsappDevice?             @relation(fields: [whatsappDeviceId], references: [id])
   whatsappDeviceId             String?
   whatsappBroadcastRateStateId String?
@@ -902,7 +898,6 @@ model WhatsappBroadcastRecipient {
   createdAt     DateTime                         @default(now())
   updatedAt     DateTime                         @updatedAt
 
-  @@unique([broadcastId, phoneNumber])
   @@index([broadcastId, status])
 }
 
@@ -928,19 +923,17 @@ model WhatsappMessage {
   conversationId String
   conversation   WhatsappConversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   direction      WhatsappMessageDirection
-  fromPhone      String
-  contactName    String?
-  contactWaId    String?
-  content        Json
-  waMessageId    String?
-  timestamp      DateTime
+  messageType    String
+  body           String?
+  mediaUrl       String?
+  waMessageId    String?                  @unique
+  metadata       Json?
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
 
   statusHistory WhatsappMessageStatus[]
 
-  @@index([conversationId, timestamp])
-  @@index([waMessageId])
+  @@index([conversationId, createdAt])
 }
 
 model WhatsappMessageStatus {
@@ -948,15 +941,11 @@ model WhatsappMessageStatus {
   messageId       String
   message         WhatsappMessage               @relation(fields: [messageId], references: [id], onDelete: Cascade)
   status          WhatsappMessageDeliveryStatus
-  errorCode       String?
-  errorTitle      String?
-  errorMessage    String?
-  pricingBillable Boolean?
-  pricingCategory String?
-  timestamp       DateTime
+  timestamp       DateTime?
+  error           String?
   createdAt       DateTime                      @default(now())
 
-  @@index([messageId, status])
+  @@index([messageId, createdAt])
 }
 
 model WhatsappDailyCount {
@@ -972,7 +961,7 @@ model WhatsappDailyCount {
   whatsappDevice     WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
   whatsappDeviceId   String?
 
-  @@unique([organizationId, date])
+  @@unique([organizationId, date, whatsappDeviceId])
 }
 
 model WhatsappMonthlyCount {
@@ -989,7 +978,7 @@ model WhatsappMonthlyCount {
   whatsappDevice     WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
   whatsappDeviceId   String?
 
-  @@unique([organizationId, year, month])
+  @@unique([organizationId, year, month, whatsappDeviceId])
 }
 
 model WhatsappQuotaSession {
@@ -1002,41 +991,38 @@ model WhatsappQuotaSession {
   whatsappDevice   WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
   whatsappDeviceId String?
 
-  @@index([organizationId, phoneNumber, category])
-  @@index([expiredAt])
+  @@unique([organizationId, phoneNumber, category])
 }
 
 model WhatsappBillingLedger {
-  id               String                  @id @default(cuid())
-  organizationId   String
-  waMessageId      String
-  phoneNumber      String
-  category         WhatsappBillingCategory
-  quotaKey         String
-  quotaValue       Decimal                 @db.Decimal(12, 2)
-  status           WhatsappBillingStatus   @default(CHARGED_PENDING_VERIFY)
-  isReverted       Boolean                 @default(false)
-  revertReason     String?
-  revertedAt       DateTime?
-  lastStatus       String?
-  pricingBillable  Boolean?
-  pricingCategory  String?
-  errorCode        String?
-  errorTitle       String?
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
-  whatsappDevice   WhatsappDevice?         @relation(fields: [whatsappDeviceId], references: [id])
+  id              String                @id @default(cuid())
+  organizationId  String
+  waMessageId     String
+  phoneNumber     String
+  category        WhatsappBillingCategory
+  quotaKey        String
+  quotaValue      Decimal               @db.Decimal(12, 2)
+  status          WhatsappBillingStatus @default(CHARGED_PENDING_VERIFY)
+  isReverted      Boolean               @default(false)
+  revertReason    String?
+  revertedAt      DateTime?
+  lastStatus      String?
+  pricingBillable Boolean?
+  pricingCategory String?
+  errorCode       String?
+  errorTitle      String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  whatsappDevice  WhatsappDevice?       @relation(fields: [whatsappDeviceId], references: [id])
   whatsappDeviceId String?
 
-  @@unique([organizationId, waMessageId])
-  @@index([organizationId, status])
-  @@index([organizationId, phoneNumber])
+  @@index([organizationId, createdAt])
+  @@index([waMessageId])
 }
 
 model WhatsappLog {
   id               String          @id @default(cuid())
   organizationId   String
-  source           String
   type             WhatsappLogType
   message          String
   metadata         Json?
@@ -1045,16 +1031,16 @@ model WhatsappLog {
   whatsappDeviceId String?
 
   @@index([organizationId, type, createdAt])
-  @@index([organizationId, source, createdAt])
 }
 
 model WhatsappAttachment {
   id               String          @id @default(cuid())
   organizationId   String
-  fullPath         String
-  originalName     String
-  newFileName      String
+  fileName         String
   mimeType         String
+  size             Int
+  s3Path           String
+  publicUrl        String?
   createdAt        DateTime        @default(now())
   whatsappDevice   WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
   whatsappDeviceId String?
@@ -1062,50 +1048,32 @@ model WhatsappAttachment {
   @@index([organizationId, createdAt])
 }
 
-model PricingPackage {
-  id                String   @id @default(cuid())
-  countryCode       String   @unique
-  internationalCode String?
-  marketing         Decimal  @db.Decimal(10, 4)
-  authentication    Decimal  @db.Decimal(10, 4)
-  utility           Decimal  @db.Decimal(10, 4)
-  service           Decimal  @db.Decimal(10, 4)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
 model WhatsappBroadcastRateState {
-  id                    String                 @id @default(cuid())
-  organizationId        String
-  policy                String                 @default("TOKEN_BUCKET")
-  lastUpdatedAt         DateTime
-  stateData             Json?
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
-  whatsappDevice        WhatsappDevice?        @relation(fields: [whatsappDeviceId], references: [id])
-  whatsappDeviceId      String?
-  whatsappContactGroups WhatsappContactGroup[]
+  id                  String                 @id @default(cuid())
+  organizationId      String
+  whatsappContactGroupId String                 @unique
+  whatsappContactGroup WhatsappContactGroup    @relation(fields: [whatsappContactGroupId], references: [id], onDelete: Cascade)
+  lastMessageSentAt   DateTime?
+  messagesSentInWindow Int                    @default(0)
+  windowStartAt       DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  whatsappDevice      WhatsappDevice?        @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId    String?
 
   @@index([organizationId])
 }
 
 model WhatsappApiKey {
-  id          String                    @id @default(cuid())
-  name        String
-  keyHash     String                    @unique
-  environment WhatsappApiKeyEnvironment
-  scopes      String[]
-  active      Boolean                   @default(true)
-  expiresAt   DateTime?
-  lastUsedAt  DateTime?
-  lastUsedIp  String?
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
+  id               String                   @id @default(cuid())
+  organizationId   String
+  name             String
+  key              String                   @unique
+  environment      WhatsappApiKeyEnvironment @default(SANDBOX)
+  isActive         Boolean                  @default(true)
+  lastUsedAt       DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
 
-  @@index([environment, active])
+  @@index([organizationId, key])
 }
-
-// ─── WorkOS-tenant relationship ──────────────────────────────────────────────
-// organizationId fields above are denormalized WorkOS org IDs.
-// No local Organization table — canonical record lives in WorkOS.
-// All WhatsApp models scoped by organizationId for multi-tenancy.
