@@ -6,7 +6,7 @@ CREATE TABLE "KnowledgeDocument" (
   "title" TEXT NOT NULL,
   "purpose" TEXT NOT NULL,
   "howTo" TEXT[] NOT NULL,
-  "notes" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  "notes" TEXT[] NOT NULL,
   "searchText" TEXT NOT NULL,
   "updatedByWorkosUserId" TEXT NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

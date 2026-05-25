@@ -57,7 +57,6 @@ declare module "elysia" {
     whatsappAuth: WhatsAppAuthContext
   }
 }
-
 export const isPlatformScope = (ctx: WhatsAppAuthContext): ctx is PlatformScope =>
   ctx.type === "platform"
 

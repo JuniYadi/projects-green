@@ -63,11 +63,12 @@ const normalizeDependencies = (
   }
 }
 
-const withGithubFeatureFlag = <TContext extends { set: RouteSet }>(
+const withGithubFeatureFlag = (
   service: GithubService,
-  handler: (context: TContext) => unknown
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (context: any) => unknown
 ) => {
-  return (context: TContext) => {
+  return (context: { set: RouteSet }) => {
     try {
       service.assertEnabled()
       return handler(context)

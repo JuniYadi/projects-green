@@ -10,22 +10,13 @@ import {
   Lightning,
   Pulse,
   HardDrive,
-  CheckCircle,
-  Warning,
-  ShieldWarning,
   ArrowClockwise,
   Question,
   Gear,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+
 
 import type {
   K8sEnvironmentId,
@@ -106,6 +97,8 @@ export default function ManagePage() {
 
   // Simulation controls
   const [diagnosticMode, setDiagnosticMode] = useState<string>("healthy")
+  const [cloudflareEnabled, setCloudflareEnabled] = useState<boolean>(true)
+  const [dbConnected, setDbConnected] = useState<boolean>(true)
 
   // Data state
   const [domains, setDomains] =
@@ -282,7 +275,15 @@ export default function ManagePage() {
         {/* Tab Panels */}
         <div className="space-y-4 min-h-[400px]">
           {activeTab === "overview" && (
-            <TabOverview diagnosticMode={diagnosticMode} replicas={replicas} />
+            <TabOverview
+              diagnosticMode={diagnosticMode}
+              replicas={replicas}
+              cloudflareEnabled={cloudflareEnabled}
+              dbConnected={dbConnected}
+              setCloudflareEnabled={setCloudflareEnabled}
+              setDbConnected={setDbConnected}
+              domains={domains[selectedEnv]}
+            />
           )}
 
           {activeTab === "domains" && (
@@ -392,6 +393,66 @@ export default function ManagePage() {
                           {opt.label}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Cloudflare Proxying
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCloudflareEnabled(true)}
+                        className={`flex-1 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                          cloudflareEnabled
+                            ? "bg-primary/10 border-primary text-white"
+                            : "bg-white/[0.01] border-white/5 text-muted-foreground hover:text-white"
+                        }`}
+                      >
+                        Active
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCloudflareEnabled(false)}
+                        className={`flex-1 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                          !cloudflareEnabled
+                            ? "bg-primary/10 border-primary text-white"
+                            : "bg-white/[0.01] border-white/5 text-muted-foreground hover:text-white"
+                        }`}
+                      >
+                        Bypassed
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Database Connection
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDbConnected(true)}
+                        className={`flex-1 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                          dbConnected
+                            ? "bg-primary/10 border-primary text-white"
+                            : "bg-white/[0.01] border-white/5 text-muted-foreground hover:text-white"
+                        }`}
+                      >
+                        Connected
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDbConnected(false)}
+                        className={`flex-1 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                          !dbConnected
+                            ? "bg-primary/10 border-primary text-white"
+                            : "bg-white/[0.01] border-white/5 text-muted-foreground hover:text-white"
+                        }`}
+                      >
+                        Offline
+                      </button>
                     </div>
                   </div>
                 </div>
