@@ -9,9 +9,14 @@ export type InvoiceActorRoleContext = {
 export const canManageInvoiceCancellation = (
   actor: InvoiceActorRoleContext
 ) => {
+  return actor.platformRole === "super_admin"
+}
+
+export const canManageInvoiceNotifications = (
+  actor: InvoiceActorRoleContext
+) => {
   if (actor.platformRole === "super_admin") {
     return true
   }
-
   return actor.tenantRole === "owner" || actor.tenantRole === "admin"
 }
