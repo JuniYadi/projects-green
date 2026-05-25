@@ -16,7 +16,7 @@ const deviceBodySchema = t.Object({
 
 const deviceUpdateSchema = t.Partial(deviceBodySchema)
 
-export const devicesRoutes = new Elysia({ prefix: "/whatsapp/devices" })
+export const devicesRoutes = new Elysia({ prefix: "/devices" })
   .use(whatsappAuthPlugin)
   .get("/", guardTenantAdmin(async ({ whatsappAuth, set }: { whatsappAuth: any, set: any }) => {
     const devices = await prisma.whatsappDevice.findMany({
