@@ -525,6 +525,24 @@ export function SupportTicketDetailScreen({ ticketId }: SupportTicketDetailScree
             </div>
           </dl>
 
+          {ticket.organizationMetadata && Object.keys(ticket.organizationMetadata).length > 0 && (
+            <div className="rounded-lg bg-muted/30 p-4 text-sm border border-border/50 space-y-1.5">
+              <p className="font-semibold text-foreground">Organization Billing/Support Details</p>
+              <p className="text-xs font-medium text-foreground">
+                Full Name: {ticket.organizationMetadata.billing_full_name || "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Address: {ticket.organizationMetadata.billing_address || "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                City, State: {[ticket.organizationMetadata.billing_city, ticket.organizationMetadata.billing_state].filter(Boolean).join(", ") || "—"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Country, Post Code: {[ticket.organizationMetadata.billing_country, ticket.organizationMetadata.billing_post_code].filter(Boolean).join(" ") || "—"}
+              </p>
+            </div>
+          )}
+
           {ticket.description ? (
             <div className="rounded-lg bg-muted/30 p-4 text-sm border border-border/50">
               <p className="font-semibold text-foreground">Message</p>

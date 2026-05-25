@@ -67,6 +67,7 @@ const createApp = (input: {
     roles?: string[] | null
   }>
   platformRole?: "none" | "super_admin"
+  getOrganizationIdByBillingAccount?: (billingAccountId: string) => Promise<string | null>
 }) => {
   const service = input.service ?? createService()
 
@@ -90,6 +91,7 @@ const createApp = (input: {
       getPlatformRole: async () => input.platformRole ?? "none",
       service,
       emailService: mockEmailService,
+      getOrganizationIdByBillingAccount: input.getOrganizationIdByBillingAccount ?? (async () => "org_1"),
     })
   )
 }
@@ -241,7 +243,7 @@ describe("invoices routes", () => {
     service.cancelInvoice = mock(async () => {
       throw new InvoiceCancelNotAllowedError("inv_1", "paid")
     })
-    const app = createApp({ service })
+    const app = createApp({ service, platformRole: "super_admin" })
 
     const response = await app.handle(
       new Request("http://localhost/invoices/inv_1/cancel", {
@@ -268,6 +270,14 @@ describe("invoices routes", () => {
           throw new Error("role provider unavailable")
         },
         service: createService(),
+        emailService: {
+          sendInvoiceCreated: mock(async () => {}),
+          sendPaymentReminder: mock(async () => {}),
+          sendInvoicePaid: mock(async () => {}),
+          sendInvoiceOverdue: mock(async () => {}),
+          sendInvoiceCancelled: mock(async () => {}),
+        },
+        getOrganizationIdByBillingAccount: async () => "org_1",
       })
     )
 
