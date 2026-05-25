@@ -37,7 +37,7 @@ model KnowledgeDocument {
   howTo                 String[]
   notes                 String[]
   searchText            String
-  embedding             Float[]                @default([])
+  embedding             Float[]  @default([])
   updatedByWorkosUserId String
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -48,13 +48,13 @@ model KnowledgeDocument {
 }
 
 model GithubInstallStateNonce {
-  id             String   @id @default(cuid())
-  nonceHash      String   @unique
+  id             String    @id @default(cuid())
+  nonceHash      String    @unique
   workosUserId   String
   organizationId String?
   expiresAt      DateTime
   consumedAt     DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   @@index([expiresAt])
   @@index([workosUserId])
@@ -84,7 +84,7 @@ model GithubInstallation {
 }
 
 model GithubRepositoryConnection {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   githubRepositoryId BigInt
   installationId     String
   fullName           String
@@ -92,13 +92,13 @@ model GithubRepositoryConnection {
   repoName           String
   defaultBranch      String?
   isPrivate          Boolean
-  enabled            Boolean  @default(true)
-  branchFilters      String[] @default(["main"])
-  rootDirectory      String   @default("/")
+  enabled            Boolean   @default(true)
+  branchFilters      String[]  @default(["main"])
+  rootDirectory      String    @default("/")
   buildConfigJson    Json?
   lastSyncedAt       DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   installation GithubInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
 
@@ -108,8 +108,8 @@ model GithubRepositoryConnection {
 }
 
 model GithubWebhookEvent {
-  id                   String   @id @default(cuid())
-  deliveryId           String   @unique
+  id                   String    @id @default(cuid())
+  deliveryId           String    @unique
   eventName            String
   action               String?
   githubInstallationId BigInt?
@@ -117,10 +117,10 @@ model GithubWebhookEvent {
   payloadJson          Json
   payloadSha256        String
   signatureValid       Boolean
-  enqueueStatus        String   @default("queued")
-  processStatus        String   @default("pending")
+  enqueueStatus        String    @default("queued")
+  processStatus        String    @default("pending")
   processError         String?
-  receivedAt           DateTime @default(now())
+  receivedAt           DateTime  @default(now())
   processedAt          DateTime?
 
   @@index([eventName])
@@ -288,7 +288,7 @@ model SupportTicketReply {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  ticket                 SupportTicket                        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket                 SupportTicket                          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   consumedUploadSessions SupportTicketAttachmentUploadSession[] @relation("SupportTicketReplyConsumedSessions")
 
   @@index([ticketId, createdAt])
@@ -297,26 +297,26 @@ model SupportTicketReply {
 }
 
 model SupportTicketAttachmentUploadSession {
-  id                 String                              @id
-  organizationId     String
+  id                   String                              @id
+  organizationId       String
   uploaderWorkosUserId String
-  target             SupportTicketAttachmentUploadTarget
-  ticketId           String?
-  fileName           String
-  mimeType           String
-  sizeBytes          Int
-  checksumSha256     String?
-  storageKey         String
-  storageBucket      String
-  expiresAt          DateTime
-  registeredAt       DateTime?
-  consumedAt         DateTime?
-  consumedTicketId   String?
-  consumedReplyId    String?
-  createdAt          DateTime                            @default(now())
-  updatedAt          DateTime                            @updatedAt
-  consumedTicket     SupportTicket?                      @relation("SupportTicketConsumedSessions", fields: [consumedTicketId], references: [id], onDelete: SetNull)
-  consumedReply      SupportTicketReply?                 @relation("SupportTicketReplyConsumedSessions", fields: [consumedReplyId], references: [id], onDelete: SetNull)
+  target               SupportTicketAttachmentUploadTarget
+  ticketId             String?
+  fileName             String
+  mimeType             String
+  sizeBytes            Int
+  checksumSha256       String?
+  storageKey           String
+  storageBucket        String
+  expiresAt            DateTime
+  registeredAt         DateTime?
+  consumedAt           DateTime?
+  consumedTicketId     String?
+  consumedReplyId      String?
+  createdAt            DateTime                            @default(now())
+  updatedAt            DateTime                            @updatedAt
+  consumedTicket       SupportTicket?                      @relation("SupportTicketConsumedSessions", fields: [consumedTicketId], references: [id], onDelete: SetNull)
+  consumedReply        SupportTicketReply?                 @relation("SupportTicketReplyConsumedSessions", fields: [consumedReplyId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, uploaderWorkosUserId])
   @@index([target, ticketId])
@@ -334,13 +334,13 @@ model BillingAccount {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  subscriptions   BillingSubscription[]
-  usageEvents     UsageEvent[]
-  ratedUsage      RatedUsage[]
-  invoices        Invoice[]
-  adjustments     BillingAdjustment[]
-  runs            BillingRun[]
-  auditLogs       BillingAuditLog[]
+  subscriptions BillingSubscription[]
+  usageEvents   UsageEvent[]
+  ratedUsage    RatedUsage[]
+  invoices      Invoice[]
+  adjustments   BillingAdjustment[]
+  runs          BillingRun[]
+  auditLogs     BillingAuditLog[]
 }
 
 model BillingSubscription {
@@ -355,7 +355,7 @@ model BillingSubscription {
   createdAt        DateTime                  @default(now())
   updatedAt        DateTime                  @updatedAt
 
-  billingAccount BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  billingAccount BillingAccount        @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   versions       SubscriptionVersion[]
   usageEvents    UsageEvent[]
   invoices       Invoice[]
@@ -365,16 +365,16 @@ model BillingSubscription {
 }
 
 model SubscriptionVersion {
-  id              String   @id @default(cuid())
-  subscriptionId  String
-  planVersionId   String
-  version         Int
-  effectiveFrom   DateTime
-  effectiveTo     DateTime?
-  quantity        Decimal  @default(1) @db.Decimal(18, 6)
-  metadataJson    Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String    @id @default(cuid())
+  subscriptionId String
+  planVersionId  String
+  version        Int
+  effectiveFrom  DateTime
+  effectiveTo    DateTime?
+  quantity       Decimal   @default(1) @db.Decimal(18, 6)
+  metadataJson   Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   subscription BillingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   planVersion  PlanVersion         @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
@@ -386,14 +386,14 @@ model SubscriptionVersion {
 }
 
 model Plan {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  name        String
-  description String?
-  isActive    Boolean  @default(true)
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  description  String?
+  isActive     Boolean  @default(true)
   metadataJson Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   versions PlanVersion[]
 }
@@ -436,20 +436,20 @@ model Meter {
 }
 
 model MeterPrice {
-  id            String   @id @default(cuid())
-  meterId        String
-  planVersionId  String
-  currency       String   @default("USD")
-  unitPrice      Decimal  @db.Decimal(18, 6)
-  includedUnits  Decimal  @default(0) @db.Decimal(18, 6)
-  effectiveFrom  DateTime
-  effectiveTo    DateTime?
-  metadataJson   Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String    @id @default(cuid())
+  meterId       String
+  planVersionId String
+  currency      String    @default("USD")
+  unitPrice     Decimal   @db.Decimal(18, 6)
+  includedUnits Decimal   @default(0) @db.Decimal(18, 6)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  metadataJson  Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  meter       Meter       @relation(fields: [meterId], references: [id], onDelete: Cascade)
-  planVersion PlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  meter       Meter        @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  planVersion PlanVersion  @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
   ratedUsage  RatedUsage[]
 
   @@unique([meterId, planVersionId, effectiveFrom])
@@ -457,21 +457,21 @@ model MeterPrice {
 }
 
 model UsageEvent {
-  id             String   @id @default(cuid())
+  id               String   @id @default(cuid())
   billingAccountId String
-  subscriptionId String?
-  meterId        String
-  eventTimestamp DateTime
-  quantity       Decimal  @db.Decimal(18, 6)
-  idempotencyKey String
-  source         String?
-  externalEventId String?
-  payloadJson    Json?
-  createdAt      DateTime @default(now())
+  subscriptionId   String?
+  meterId          String
+  eventTimestamp   DateTime
+  quantity         Decimal  @db.Decimal(18, 6)
+  idempotencyKey   String
+  source           String?
+  externalEventId  String?
+  payloadJson      Json?
+  createdAt        DateTime @default(now())
 
-  billingAccount BillingAccount        @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  subscription   BillingSubscription?  @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  meter          Meter                 @relation(fields: [meterId], references: [id], onDelete: Restrict)
+  billingAccount BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  subscription   BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  meter          Meter                @relation(fields: [meterId], references: [id], onDelete: Restrict)
   ratedUsage     RatedUsage?
 
   @@unique([billingAccountId, idempotencyKey])
@@ -494,11 +494,11 @@ model RatedUsage {
   ratedAt               DateTime @default(now())
   createdAt             DateTime @default(now())
 
-  usageEvent          UsageEvent            @relation(fields: [usageEventId], references: [id], onDelete: Cascade)
-  billingAccount      BillingAccount        @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  subscriptionVersion SubscriptionVersion?  @relation(fields: [subscriptionVersionId], references: [id], onDelete: SetNull)
-  meterPrice          MeterPrice?           @relation(fields: [meterPriceId], references: [id], onDelete: SetNull)
-  invoiceLine         InvoiceLine?          @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
+  usageEvent          UsageEvent           @relation(fields: [usageEventId], references: [id], onDelete: Cascade)
+  billingAccount      BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  subscriptionVersion SubscriptionVersion? @relation(fields: [subscriptionVersionId], references: [id], onDelete: SetNull)
+  meterPrice          MeterPrice?          @relation(fields: [meterPriceId], references: [id], onDelete: SetNull)
+  invoiceLine         InvoiceLine?         @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
 
   @@index([billingAccountId, ratedAt])
   @@index([invoiceLineId])
@@ -506,27 +506,27 @@ model RatedUsage {
 }
 
 model Invoice {
-  id              String        @id @default(cuid())
+  id               String        @id @default(cuid())
   billingAccountId String
-  subscriptionId  String?
-  billingRunId    String?
-  invoiceNumber   String        @unique
-  periodStart     DateTime
-  periodEnd       DateTime
-  currency        String
-  status          InvoiceStatus @default(DRAFT)
-  subtotalAmount  Decimal       @default(0) @db.Decimal(18, 6)
-  taxAmount       Decimal       @default(0) @db.Decimal(18, 6)
-  discountAmount  Decimal       @default(0) @db.Decimal(18, 6)
-  totalAmount     Decimal       @default(0) @db.Decimal(18, 6)
-  issuedAt        DateTime?
-  dueAt           DateTime?
-  paidAt          DateTime?
-  metadataJson    Json?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  subscriptionId   String?
+  billingRunId     String?
+  invoiceNumber    String        @unique
+  periodStart      DateTime
+  periodEnd        DateTime
+  currency         String
+  status           InvoiceStatus @default(DRAFT)
+  subtotalAmount   Decimal       @default(0) @db.Decimal(18, 6)
+  taxAmount        Decimal       @default(0) @db.Decimal(18, 6)
+  discountAmount   Decimal       @default(0) @db.Decimal(18, 6)
+  totalAmount      Decimal       @default(0) @db.Decimal(18, 6)
+  issuedAt         DateTime?
+  dueAt            DateTime?
+  paidAt           DateTime?
+  metadataJson     Json?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  billingAccount BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  billingAccount BillingAccount?      @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   subscription   BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   billingRun     BillingRun?          @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
   lines          InvoiceLine[]
@@ -539,36 +539,36 @@ model Invoice {
 }
 
 model InvoiceLine {
-  id            String          @id @default(cuid())
-  invoiceId      String
-  lineType       InvoiceLineType
-  description    String
-  quantity       Decimal         @db.Decimal(18, 6)
-  unitPrice      Decimal         @db.Decimal(18, 6)
-  amount         Decimal         @db.Decimal(18, 6)
-  currency       String
-  periodStart    DateTime?
-  periodEnd      DateTime?
-  metadataJson   Json?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id           String          @id @default(cuid())
+  invoiceId    String
+  lineType     InvoiceLineType
+  description  String
+  quantity     Decimal         @db.Decimal(18, 6)
+  unitPrice    Decimal         @db.Decimal(18, 6)
+  amount       Decimal         @db.Decimal(18, 6)
+  currency     String
+  periodStart  DateTime?
+  periodEnd    DateTime?
+  metadataJson Json?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
-  invoice     Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  sources     InvoiceLineSource[]
-  ratedUsage  RatedUsage[]
+  invoice    Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  sources    InvoiceLineSource[]
+  ratedUsage RatedUsage[]
 
   @@index([invoiceId])
   @@index([lineType])
 }
 
 model InvoiceLineSource {
-  id             String                @id @default(cuid())
-  invoiceLineId  String
-  sourceType     InvoiceLineSourceType
-  sourceId       String
-  amount         Decimal               @db.Decimal(18, 6)
-  metadataJson   Json?
-  createdAt      DateTime              @default(now())
+  id            String                @id @default(cuid())
+  invoiceLineId String
+  sourceType    InvoiceLineSourceType
+  sourceId      String
+  amount        Decimal               @db.Decimal(18, 6)
+  metadataJson  Json?
+  createdAt     DateTime              @default(now())
 
   invoiceLine InvoiceLine @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
 
@@ -577,18 +577,18 @@ model InvoiceLineSource {
 }
 
 model BillingAdjustment {
-  id                  String               @id @default(cuid())
-  billingAccountId    String
-  invoiceId           String?
-  adjustmentType      BillingAdjustmentType
-  amount              Decimal              @db.Decimal(18, 6)
-  currency            String
-  reason              String?
+  id                    String                @id @default(cuid())
+  billingAccountId      String
+  invoiceId             String?
+  adjustmentType        BillingAdjustmentType
+  amount                Decimal               @db.Decimal(18, 6)
+  currency              String
+  reason                String?
   createdByWorkosUserId String?
-  appliedAt           DateTime?
-  metadataJson        Json?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  appliedAt             DateTime?
+  metadataJson          Json?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
 
   billingAccount BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   invoice        Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
@@ -611,7 +611,7 @@ model BillingRun {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  billingAccount BillingAccount? @relation(fields: [billingAccountId], references: [id], onDelete: SetNull)
+  billingAccount BillingAccount?   @relation(fields: [billingAccountId], references: [id], onDelete: SetNull)
   invoices       Invoice[]
   auditLogs      BillingAuditLog[]
 
@@ -620,7 +620,7 @@ model BillingRun {
 }
 
 model BillingAuditLog {
-  id               String            @id @default(cuid())
+  id               String             @id @default(cuid())
   billingAccountId String?
   billingRunId     String?
   entityType       String
@@ -629,7 +629,7 @@ model BillingAuditLog {
   actorType        BillingActorType
   actorId          String?
   contextJson      Json?
-  createdAt        DateTime          @default(now())
+  createdAt        DateTime           @default(now())
 
   billingAccount BillingAccount? @relation(fields: [billingAccountId], references: [id], onDelete: SetNull)
   billingRun     BillingRun?     @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
@@ -641,197 +641,204 @@ model BillingAuditLog {
 
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────
 
-enum DeviceStatus {
+enum WhatsappDeviceStatus {
   ACTIVE
   NON_ACTIVE
 }
 
-enum ContactGroupStatus {
+enum WhatsappContactGroupStatus {
   ACTIVE
   INACTIVE
 }
 
-enum ContactGroupType {
+enum WhatsappContactGroupType {
   STATIC
   DYNAMIC
 }
 
-enum ContactStatus {
+enum WhatsappContactStatus {
   ACTIVE
   INACTIVE
 }
 
-enum TemplateSyncStatus {
+enum WhatsappTemplateSyncStatus {
   SYNCED
   NOT_SYNCED
   NOT_IN_META
 }
 
-enum TemplateMetaStatus {
+enum WhatsappTemplateMetaStatus {
   APPROVED
   PENDING
   REJECTED
 }
 
-enum BroadcastStatus {
+enum WhatsappBroadcastStatus {
   QUEUED
   PROCESSING
   COMPLETED
   COMPLETED_WITH_ERRORS
 }
 
-enum BroadcastRecipientStatus {
+enum WhatsappBroadcastRecipientStatus {
   QUEUED
   SENT
   FAILED
 }
 
-enum MessageDirection {
+enum WhatsappMessageDirection {
   INBOX
   OUTBOX
 }
 
-enum MessageDeliveryStatus {
+enum WhatsappMessageDeliveryStatus {
   SENT
   DELIVERED
   READ
   FAILED
 }
 
-enum BillingCategory {
+enum WhatsappBillingCategory {
   MARKETING
   UTILITY
   AUTHENTICATION
   SERVICE
 }
 
-enum BillingStatus {
+enum WhatsappBillingStatus {
   CHARGED_PENDING_VERIFY
   CONFIRMED
   REVERTED_FAILED
 }
 
-enum LogType {
+enum WhatsappLogType {
   INFO
   ERROR
   INBOX
   AUDIT
 }
 
-enum ApiKeyEnvironment {
+enum WhatsappApiKeyEnvironment {
   SANDBOX
   LIVE
 }
 
 // ─── WhatsApp Models ──────────────────────────────────────────────────────────
 
-model Device {
-  id                         String       @id @default(cuid())
-  organizationId             String
-  phoneNumber                String       @unique
-  balance                    Decimal      @default(0) @db.Decimal(12, 2)
-  quotaBase                  Decimal      @default(1000) @db.Decimal(12, 2)
-  quotaBaseIn               Int          @default(0)
-  quotaBaseOut               Int          @default(0)
-  dailyLimitMessage         Int          @default(0)
-  rates                      String?
-  status                     DeviceStatus @default(ACTIVE)
-  token                      String
-  s3Path                     String?
-  whatsappBusinessAccountId  String?
-  whatsappPhoneId            String?
-  whatsappApplicationId      String?
-  whatsappVersion            String       @default("v24.0")
-  whatsappProfile            Json?
-  features                   Json?
-  callbackUrl                String?
-  callbackHeaderName         String?
-  callbackHeaderValue        String?
-  expiredAt                  DateTime?
-  createdAt                  DateTime     @default(now())
-  updatedAt                  DateTime     @updatedAt
+model WhatsappDevice {
+  id                        String               @id @default(cuid())
+  organizationId            String
+  phoneNumber               String               @unique
+  balance                   Decimal              @default(0) @db.Decimal(12, 2)
+  quotaBase                 Decimal              @default(1000) @db.Decimal(12, 2)
+  quotaBaseIn               Int                  @default(0)
+  quotaBaseOut              Int                  @default(0)
+  dailyLimitMessage         Int                  @default(0)
+  rates                     String?
+  status                    WhatsappDeviceStatus @default(ACTIVE)
+  token                     String
+  s3Path                    String?
+  whatsappBusinessAccountId String?
+  whatsappPhoneId           String?
+  whatsappApplicationId     String?
+  whatsappVersion           String               @default("v24.0")
+  whatsappProfile           Json?
+  features                  Json?
+  callbackUrl               String?
+  callbackHeaderName        String?
+  callbackHeaderValue       String?
+  expiredAt                 DateTime?
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
 
-  contacts               Contact[]
-  contactGroups          ContactGroup[]
-  templates              MessageTemplate[]
-  broadcastCampaigns     BroadcastCampaign[]
-  messageConversations   MessageConversation[]
-  dailyCounts            DailyCount[]
-  monthlyCounts          MonthlyCount[]
-  quotaSessions          QuotaSession[]
-  billingLedgers         BillingLedger[]
-  logs                   Log[]
-  attachments            Attachment[]
-  broadcastRateStates     BroadcastRateState[]
+  contacts             WhatsappContact[]
+  contactGroups        WhatsappContactGroup[]
+  templates            WhatsappTemplate[]
+  broadcastCampaigns   WhatsappBroadcastCampaign[]
+  messageConversations WhatsappConversation[]
+  dailyCounts          WhatsappDailyCount[]
+  monthlyCounts        WhatsappMonthlyCount[]
+  quotaSessions        WhatsappQuotaSession[]
+  billingLedgers       WhatsappBillingLedger[]
+  logs                 WhatsappLog[]
+  attachments          WhatsappAttachment[]
+  broadcastRateStates  WhatsappBroadcastRateState[]
 
   @@index([organizationId])
   @@index([whatsappBusinessAccountId])
 }
 
-model ContactGroup {
-  id                  String             @id @default(cuid())
-  organizationId     String
-  name                String             @db.VarChar(100)
-  description        String             @db.VarChar(500)
-  type                ContactGroupType   @default(STATIC)
-  status              ContactGroupStatus @default(ACTIVE)
+model WhatsappContactGroup {
+  id                  String                     @id @default(cuid())
+  organizationId      String
+  name                String                     @db.VarChar(100)
+  description         String                     @db.VarChar(500)
+  type                WhatsappContactGroupType   @default(STATIC)
+  status              WhatsappContactGroupStatus @default(ACTIVE)
   throttleMaxMessages Int?
   throttlePerMinutes  Int?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
 
-  contacts            Contact[]
-  broadcasts          BroadcastCampaign[]
-  broadcastRateState BroadcastRateState?
+  contacts                     WhatsappContact[]
+  whatsappBroadcasts           WhatsappBroadcastCampaign[]
+  broadcastRateState           WhatsappBroadcastRateState?
+  whatsappDevice               WhatsappDevice?             @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId             String?
+  whatsappBroadcastRateStateId String?
 
   @@index([organizationId, status])
 }
 
-model Contact {
-  id              String        @id @default(cuid())
+model WhatsappContact {
+  id              String                @id @default(cuid())
   organizationId  String
-  phoneNumber     String        @db.VarChar(20)
-  name            String        @db.VarChar(100)
-  email           String        @db.VarChar(255)
-  status          ContactStatus @default(ACTIVE)
+  phoneNumber     String                @db.VarChar(20)
+  name            String                @db.VarChar(100)
+  email           String                @db.VarChar(255)
+  status          WhatsappContactStatus @default(ACTIVE)
   lastContactedAt DateTime?
   waId            String?
-  isWhatsapp      Boolean       @default(false)
+  isWhatsapp      Boolean               @default(false)
   lastCheckedAt   DateTime?
   dynamicValues   Json?
   dynamicRaw      String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
-  contactGroup   ContactGroup @relation(fields: [contactGroupId], references: [id], onDelete: Restrict)
-  contactGroupId String
+  contactGroup     WhatsappContactGroup @relation(fields: [contactGroupId], references: [id], onDelete: Restrict)
+  contactGroupId   String
+  whatsappDevice   WhatsappDevice?      @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId String?
 
   @@unique([organizationId, phoneNumber])
   @@index([organizationId, contactGroupId, status])
   @@index([organizationId, createdAt])
 }
 
-model MessageTemplate {
-  id           String              @id @default(cuid())
+model WhatsappTemplate {
+  id             String                      @id @default(cuid())
   organizationId String
-  slug         String
-  name         String
-  description  String?
-  syncStatus   TemplateSyncStatus  @default(NOT_SYNCED)
-  metaStatus   TemplateMetaStatus?
-  lastSyncedAt DateTime?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  slug           String
+  name           String
+  description    String?
+  syncStatus     WhatsappTemplateSyncStatus  @default(NOT_SYNCED)
+  metaStatus     WhatsappTemplateMetaStatus?
+  lastSyncedAt   DateTime?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
 
-  languages MessageTemplateLanguage[]
+  languages        WhatsappTemplateLanguage[]
+  whatsappDevice   WhatsappDevice?            @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId String?
 
   @@index([organizationId, metaStatus])
 }
 
-model MessageTemplateLanguage {
-  id           String              @id @default(cuid())
+model WhatsappTemplateLanguage {
+  id           String                      @id @default(cuid())
   templateId   String
-  template     MessageTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  template     WhatsappTemplate            @relation(fields: [templateId], references: [id], onDelete: Cascade)
   lang         String
   headerType   String?
   headerUrl    String?
@@ -841,158 +848,162 @@ model MessageTemplateLanguage {
   footer       String?
   buttons      Json?
   authConfig   Json?
-  isApproved   Boolean             @default(false)
-  metaStatus   TemplateMetaStatus?
+  isApproved   Boolean                     @default(false)
+  metaStatus   WhatsappTemplateMetaStatus?
   rejectReason String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
 
   @@unique([templateId, lang])
 }
 
-model BroadcastCampaign {
-  id                  String          @id @default(cuid())
+model WhatsappBroadcastCampaign {
+  id                  String                  @id @default(cuid())
   organizationId      String
   templateName        String
   templateLanguage    String
   templateParams      Json?
   throttleMaxMessages Int?
   throttlePerMinutes  Int?
-  status              BroadcastStatus @default(QUEUED)
-  total               Int             @default(0)
-  queued              Int             @default(0)
-  sent                Int             @default(0)
-  failed              Int             @default(0)
+  status              WhatsappBroadcastStatus @default(QUEUED)
+  total               Int                     @default(0)
+  queued              Int                     @default(0)
+  sent                Int                     @default(0)
+  failed              Int                     @default(0)
   startedAt           DateTime?
   endedAt             DateTime?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
-  recipients BroadcastRecipient[]
+  recipients             WhatsappBroadcastRecipient[]
+  whatsappDevice         WhatsappDevice?              @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId       String?
+  whatsappContactGroup   WhatsappContactGroup?        @relation(fields: [whatsappContactGroupId], references: [id])
+  whatsappContactGroupId String?
 
   @@index([organizationId, status])
 }
 
-model BroadcastRecipient {
-  id            String                   @id @default(cuid())
+model WhatsappBroadcastRecipient {
+  id            String                           @id @default(cuid())
   broadcastId   String
-  broadcast     BroadcastCampaign        @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  broadcast     WhatsappBroadcastCampaign        @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
   phoneNumber   String
   name          String?
   dynamicValues Json?
-  status        BroadcastRecipientStatus @default(QUEUED)
-  attempts      Int                      @default(0)
+  status        WhatsappBroadcastRecipientStatus @default(QUEUED)
+  attempts      Int                              @default(0)
   waMessageId   String?
   lastError     String?
-  createdAt     DateTime                 @default(now())
-  updatedAt     DateTime                 @updatedAt
+  createdAt     DateTime                         @default(now())
+  updatedAt     DateTime                         @updatedAt
 
-  @@unique([broadcastId, phoneNumber])
   @@index([broadcastId, status])
 }
 
-model MessageConversation {
-  id            String            @id @default(cuid())
+model WhatsappConversation {
+  id             String                    @id @default(cuid())
   organizationId String
-  contactPhone  String
-  lastMessageAt DateTime?
-  lastDirection MessageDirection?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  contactPhone   String
+  lastMessageAt  DateTime?
+  lastDirection  WhatsappMessageDirection?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
 
-  messages Message[]
+  whatsappMessages WhatsappMessage[]
+  whatsappDevice   WhatsappDevice?   @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId String?
 
   @@unique([organizationId, contactPhone])
   @@index([organizationId, lastMessageAt])
 }
 
-model Message {
-  id             String              @id @default(cuid())
+model WhatsappMessage {
+  id             String                   @id @default(cuid())
   conversationId String
-  conversation   MessageConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  direction      MessageDirection
-  fromPhone      String
-  contactName    String?
-  contactWaId    String?
-  content        Json
-  waMessageId    String?
-  timestamp      DateTime
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  conversation   WhatsappConversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      WhatsappMessageDirection
+  messageType    String
+  body           String?
+  mediaUrl       String?
+  waMessageId    String?                  @unique
+  metadata       Json?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
 
-  statusHistory MessageStatusHistory[]
+  statusHistory WhatsappMessageStatus[]
 
-  @@index([conversationId, timestamp])
-  @@index([waMessageId])
+  @@index([conversationId, createdAt])
 }
 
-model MessageStatusHistory {
-  id              String                @id @default(cuid())
+model WhatsappMessageStatus {
+  id              String                        @id @default(cuid())
   messageId       String
-  message         Message               @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  status          MessageDeliveryStatus
-  errorCode       String?
-  errorTitle      String?
-  errorMessage    String?
-  pricingBillable Boolean?
-  pricingCategory String?
-  timestamp       DateTime
-  createdAt       DateTime              @default(now())
+  message         WhatsappMessage               @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  status          WhatsappMessageDeliveryStatus
+  timestamp       DateTime?
+  error           String?
+  createdAt       DateTime                      @default(now())
 
-  @@index([messageId, status])
+  @@index([messageId, createdAt])
 }
 
-model DailyCount {
-  id                 String   @id @default(cuid())
+model WhatsappDailyCount {
+  id                 String          @id @default(cuid())
   organizationId     String
-  date               DateTime @db.Date
-  sessionCount       Int      @default(0)
-  messageInboxCount  Int      @default(0)
-  messageOutboxCount Int      @default(0)
-  messageFailedCount Int      @default(0)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  date               DateTime        @db.Date
+  sessionCount       Int             @default(0)
+  messageInboxCount  Int             @default(0)
+  messageOutboxCount Int             @default(0)
+  messageFailedCount Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  whatsappDevice     WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId   String?
 
-  @@unique([organizationId, date])
+  @@unique([organizationId, date, whatsappDeviceId])
 }
 
-model MonthlyCount {
-  id                 String   @id @default(cuid())
+model WhatsappMonthlyCount {
+  id                 String          @id @default(cuid())
   organizationId     String
   year               Int
   month              Int
-  sessionCount       Int      @default(0)
-  messageInboxCount  Int      @default(0)
-  messageOutboxCount Int      @default(0)
-  messageFailedCount Int      @default(0)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  sessionCount       Int             @default(0)
+  messageInboxCount  Int             @default(0)
+  messageOutboxCount Int             @default(0)
+  messageFailedCount Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  whatsappDevice     WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId   String?
 
-  @@unique([organizationId, year, month])
+  @@unique([organizationId, year, month, whatsappDeviceId])
 }
 
-model QuotaSession {
-  id           String   @id @default(cuid())
-  organizationId String
-  phoneNumber   String
-  category      String
-  expiredAt     DateTime
-  createdAt    DateTime @default(now())
+model WhatsappQuotaSession {
+  id               String          @id @default(cuid())
+  organizationId   String
+  phoneNumber      String
+  category         String
+  expiredAt        DateTime
+  createdAt        DateTime        @default(now())
+  whatsappDevice   WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId String?
 
-  @@index([organizationId, phoneNumber, category])
-  @@index([expiredAt])
+  @@unique([organizationId, phoneNumber, category])
 }
 
-model BillingLedger {
-  id              String          @id @default(cuid())
+model WhatsappBillingLedger {
+  id              String                @id @default(cuid())
   organizationId  String
   waMessageId     String
   phoneNumber     String
-  category        BillingCategory
+  category        WhatsappBillingCategory
   quotaKey        String
-  quotaValue      Decimal         @db.Decimal(12, 2)
-  status          BillingStatus   @default(CHARGED_PENDING_VERIFY)
-  isReverted      Boolean         @default(false)
+  quotaValue      Decimal               @db.Decimal(12, 2)
+  status          WhatsappBillingStatus @default(CHARGED_PENDING_VERIFY)
+  isReverted      Boolean               @default(false)
   revertReason    String?
   revertedAt      DateTime?
   lastStatus      String?
@@ -1000,80 +1011,69 @@ model BillingLedger {
   pricingCategory String?
   errorCode       String?
   errorTitle      String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  whatsappDevice  WhatsappDevice?       @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId String?
 
-  @@unique([organizationId, waMessageId])
-  @@index([organizationId, status])
-  @@index([organizationId, phoneNumber])
+  @@index([organizationId, createdAt])
+  @@index([waMessageId])
 }
 
-model Log {
-  id        String   @id @default(cuid())
-  organizationId String
-  source    String
-  type      LogType
-  message   String
-  metadata  Json?
-  createdAt DateTime @default(now())
+model WhatsappLog {
+  id               String          @id @default(cuid())
+  organizationId   String
+  type             WhatsappLogType
+  message          String
+  metadata         Json?
+  createdAt        DateTime        @default(now())
+  whatsappDevice   WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId String?
 
   @@index([organizationId, type, createdAt])
-  @@index([organizationId, source, createdAt])
 }
 
-model Attachment {
-  id           String   @id @default(cuid())
-  organizationId String
-  fullPath     String
-  originalName String
-  newFileName  String
-  mimeType     String
-  createdAt    DateTime @default(now())
+model WhatsappAttachment {
+  id               String          @id @default(cuid())
+  organizationId   String
+  fileName         String
+  mimeType         String
+  size             Int
+  s3Path           String
+  publicUrl        String?
+  createdAt        DateTime        @default(now())
+  whatsappDevice   WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId String?
 
   @@index([organizationId, createdAt])
 }
 
-model PricingPackage {
-  id                String   @id @default(cuid())
-  countryCode       String   @unique
-  internationalCode String?
-  marketing         Decimal  @db.Decimal(10, 4)
-  authentication    Decimal  @db.Decimal(10, 4)
-  utility           Decimal  @db.Decimal(10, 4)
-  service           Decimal  @db.Decimal(10, 4)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
-model BroadcastRateState {
-  id             String   @id @default(cuid())
-  organizationId String
-  policy         String   @default("TOKEN_BUCKET")
-  lastUpdatedAt  DateTime
-  stateData      Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+model WhatsappBroadcastRateState {
+  id                  String                 @id @default(cuid())
+  organizationId      String
+  whatsappContactGroupId String                 @unique
+  whatsappContactGroup WhatsappContactGroup    @relation(fields: [whatsappContactGroupId], references: [id], onDelete: Cascade)
+  lastMessageSentAt   DateTime?
+  messagesSentInWindow Int                    @default(0)
+  windowStartAt       DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  whatsappDevice      WhatsappDevice?        @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId    String?
 
   @@index([organizationId])
 }
 
-model ApiKey {
-  id          String            @id @default(cuid())
-  name        String
-  keyHash     String            @unique
-  environment ApiKeyEnvironment
-  scopes      String[]
-  active      Boolean           @default(true)
-  expiresAt   DateTime?
-  lastUsedAt  DateTime?
-  lastUsedIp  String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+model WhatsappApiKey {
+  id               String                   @id @default(cuid())
+  organizationId   String
+  name             String
+  key              String                   @unique
+  environment      WhatsappApiKeyEnvironment @default(SANDBOX)
+  isActive         Boolean                  @default(true)
+  lastUsedAt       DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
 
-  @@index([environment, active])
+  @@index([organizationId, key])
 }
-
-// ─── WorkOS-tenant relationship ──────────────────────────────────────────────
-// organizationId fields above are denormalized WorkOS org IDs.
-// No local Organization table — canonical record lives in WorkOS.
-// All WhatsApp models scoped by organizationId for multi-tenancy.
