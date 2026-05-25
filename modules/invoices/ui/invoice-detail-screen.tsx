@@ -54,6 +54,15 @@ type InvoiceDetailRequestState =
       status: "success"
       invoice: InvoiceDetail
       canMarkCanceled: boolean
+      organization: {
+        name: string
+        billingFullName?: string | null
+        billingAddress?: string | null
+        billingCity?: string | null
+        billingState?: string | null
+        billingCountry?: string | null
+        billingPostCode?: string | null
+      } | null
     }
   | {
       status: "error"
@@ -109,6 +118,7 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           status: "success",
           invoice: payload.invoice,
           canMarkCanceled: payload.canMarkCanceled,
+          organization: payload.organization ?? null,
         })
       } catch (error) {
         if (signal?.aborted) {
@@ -163,10 +173,13 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
         return
       }
 
-      setState({
-        status: "success",
-        invoice: payload.invoice,
-        canMarkCanceled: false,
+      setState((prev) => {
+        if (prev.status !== "success") return prev
+        return {
+          ...prev,
+          invoice: payload.invoice,
+          canMarkCanceled: false,
+        }
       })
       setIsCancelSheetOpen(false)
       router.refresh()
@@ -271,6 +284,48 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           </div>
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {locale === "id" ? "Di Tagih Kepada" : "Billed To"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5 text-sm">
+            <p className="font-semibold text-foreground">
+              {state.organization?.billingFullName || state.organization?.name || "—"}
+            </p>
+            <p className="text-muted-foreground">
+              {state.organization?.billingAddress || "—"}
+            </p>
+            <p className="text-muted-foreground">
+              {[state.organization?.billingCity, state.organization?.billingState]
+                .filter(Boolean)
+                .join(", ") || "—"}
+            </p>
+            <p className="text-muted-foreground">
+              {[state.organization?.billingCountry, state.organization?.billingPostCode]
+                .filter(Boolean)
+                .join(" ") || "—"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {locale === "id" ? "Di Bayar Kepada" : "Paid To"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5 text-sm">
+            <p className="font-semibold text-foreground">PFNApp Technologies Inc.</p>
+            <p className="text-muted-foreground">Sudirman Central Business District (SCBD)</p>
+            <p className="text-muted-foreground">Jakarta, DKI Jakarta</p>
+            <p className="text-muted-foreground">Indonesia, 12190</p>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader className="pb-3">
