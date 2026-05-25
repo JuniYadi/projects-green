@@ -13,6 +13,7 @@ import { supportTicketAttachmentRoutes } from "@/modules/support-tickets/api/sup
 import { supportTicketRoutes } from "@/modules/support-tickets/api/support-tickets.route"
 import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
 import { usersRoutes } from "@/modules/users/api/users.route"
+import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.module"
 
 const parseErrorPath = (
   value: string | Array<string | number> | undefined
@@ -81,6 +82,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(tenantsRoutes)
   .use(authRoutes)
   .use(usersRoutes)
+  .use(whatsappRoutes)
   .onError(({ code, error, set }) => {
     if (code !== "VALIDATION") {
       return

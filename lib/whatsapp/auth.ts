@@ -48,6 +48,16 @@ export type WorkOSScope = {
 
 export type WhatsAppAuthContext = PlatformScope | WorkOSScope
 
+// ─── Elysia type augmentation ─────────────────────────────────────────────────
+// Extend Elysia's local context so that route handlers typed with guard/wrapper
+// functions can infer `whatsappAuth` without explicit annotation.
+
+declare module "elysia" {
+  interface Context {
+    whatsappAuth: WhatsAppAuthContext
+  }
+}
+
 export const isPlatformScope = (ctx: WhatsAppAuthContext): ctx is PlatformScope =>
   ctx.type === "platform"
 
