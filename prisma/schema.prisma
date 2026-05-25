@@ -340,7 +340,7 @@ model BillingAccount {
   invoices        Invoice[]
   adjustments     BillingAdjustment[]
   runs            BillingRun[]
-  auditLogs       BillingAuditLog[]
+  auditLogs       BillingAuditWhatsappLog[]
 }
 
 model BillingSubscription {
@@ -613,7 +613,7 @@ model BillingRun {
 
   billingAccount BillingAccount? @relation(fields: [billingAccountId], references: [id], onDelete: SetNull)
   invoices       Invoice[]
-  auditLogs      BillingAuditLog[]
+  auditLogs      BillingAuditWhatsappLog[]
 
   @@unique([billingAccountId, runType, periodStart, periodEnd])
   @@index([billingAccountId, runType, startedAt(sort: Desc)])
@@ -621,91 +621,91 @@ model BillingRun {
 
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────
 
-enum DeviceStatus {
+enum WhatsappDeviceStatus {
   ACTIVE
   NON_ACTIVE
 }
 
-enum ContactGroupStatus {
+enum WhatsappContactGroupStatus {
   ACTIVE
   INACTIVE
 }
 
-enum ContactGroupType {
+enum WhatsappContactGroupType {
   STATIC
   DYNAMIC
 }
 
-enum ContactStatus {
+enum WhatsappContactStatus {
   ACTIVE
   INACTIVE
 }
 
-enum TemplateSyncStatus {
+enum WhatsappTemplateSyncStatus {
   SYNCED
   NOT_SYNCED
   NOT_IN_META
 }
 
-enum TemplateMetaStatus {
+enum WhatsappTemplateMetaStatus {
   APPROVED
   PENDING
   REJECTED
 }
 
-enum BroadcastStatus {
+enum WhatsappBroadcastStatus {
   QUEUED
   PROCESSING
   COMPLETED
   COMPLETED_WITH_ERRORS
 }
 
-enum BroadcastRecipientStatus {
+enum WhatsappBroadcastRecipientStatus {
   QUEUED
   SENT
   FAILED
 }
 
-enum MessageDirection {
+enum WhatsappMessageDirection {
   INBOX
   OUTBOX
 }
 
-enum MessageDeliveryStatus {
+enum WhatsappMessageDeliveryStatus {
   SENT
   DELIVERED
   READ
   FAILED
 }
 
-enum BillingCategory {
+enum WhatsappBillingCategory {
   MARKETING
   UTILITY
   AUTHENTICATION
   SERVICE
 }
 
-enum BillingStatus {
+enum WhatsappBillingStatus {
   CHARGED_PENDING_VERIFY
   CONFIRMED
   REVERTED_FAILED
 }
 
-enum LogType {
+enum WhatsappLogType {
   INFO
   ERROR
   INBOX
   AUDIT
 }
 
-enum ApiKeyEnvironment {
+enum WhatsappApiKeyEnvironment {
   SANDBOX
   LIVE
 }
 
 // ─── WhatsApp Models ──────────────────────────────────────────────────────────
 
-model Device {
+model WhatsappDevice {
   id                         String       @id @default(cuid())
   organizationId             String
   phoneNumber                String       @unique
@@ -715,7 +715,7 @@ model Device {
   quotaBaseOut               Int          @default(0)
   dailyLimitMessage         Int          @default(0)
   rates                      String?
-  status                     DeviceStatus @default(ACTIVE)
+  status                     WhatsappDeviceStatus @default(ACTIVE)
   token                      String
   s3Path                     String?
   whatsappBusinessAccountId  String?
@@ -731,49 +731,49 @@ model Device {
   createdAt                  DateTime     @default(now())
   updatedAt                  DateTime     @updatedAt
 
-  contacts               Contact[]
+  contacts               WhatsappContact[]
   contactGroups          ContactGroup[]
   templates              MessageTemplate[]
   broadcastCampaigns     BroadcastCampaign[]
   messageConversations   MessageConversation[]
-  dailyCounts            DailyCount[]
-  monthlyCounts          MonthlyCount[]
-  quotaSessions          QuotaSession[]
-  billingLedgers         BillingLedger[]
-  logs                   Log[]
-  attachments            Attachment[]
-  broadcastRateStates     BroadcastRateState[]
+  dailyCounts            WhatsappDailyCount[]
+  monthlyCounts          WhatsappMonthlyCount[]
+  quotaSessions          WhatsappQuotaSession[]
+  billingLedgers         WhatsappBillingLedger[]
+  logs                   WhatsappLog[]
+  attachments            WhatsappAttachment[]
+  broadcastRateStates     WhatsappBroadcastRateState[]
 
   @@index([organizationId])
   @@index([whatsappBusinessAccountId])
 }
 
-model ContactGroup {
+model WhatsappContactGroup {
   id                  String             @id @default(cuid())
   organizationId     String
   name                String             @db.VarChar(100)
   description        String             @db.VarChar(500)
-  type                ContactGroupType   @default(STATIC)
-  status              ContactGroupStatus @default(ACTIVE)
+  type                WhatsappContactGroupType   @default(STATIC)
+  status              WhatsappContactGroupStatus @default(ACTIVE)
   throttleMaxMessages Int?
   throttlePerMinutes  Int?
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
-  contacts            Contact[]
-  broadcasts          BroadcastCampaign[]
+  contacts            WhatsappContact[]
+  whatsappBroadcasts        BroadcastCampaign[]
   broadcastRateState BroadcastRateState?
 
   @@index([organizationId, status])
 }
 
-model Contact {
+model WhatsappContact {
   id              String        @id @default(cuid())
   organizationId  String
   phoneNumber     String        @db.VarChar(20)
   name            String        @db.VarChar(100)
   email           String        @db.VarChar(255)
-  status          ContactStatus @default(ACTIVE)
+  status          WhatsappContactStatus @default(ACTIVE)
   lastContactedAt DateTime?
   waId            String?
   isWhatsapp      Boolean       @default(false)
@@ -783,7 +783,7 @@ model Contact {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  contactGroup   ContactGroup @relation(fields: [contactGroupId], references: [id], onDelete: Restrict)
+  contactGroup   WhatsappContactGroup @relation(fields: [contactGroupId], references: [id], onDelete: Restrict)
   contactGroupId String
 
   @@unique([organizationId, phoneNumber])
@@ -791,27 +791,27 @@ model Contact {
   @@index([organizationId, createdAt])
 }
 
-model MessageTemplate {
+model WhatsappTemplate {
   id           String              @id @default(cuid())
   organizationId String
   slug         String
   name         String
   description  String?
-  syncStatus   TemplateSyncStatus  @default(NOT_SYNCED)
-  metaStatus   TemplateMetaStatus?
+  syncStatus   WhatsappTemplateSyncStatus  @default(NOT_SYNCED)
+  metaStatus   WhatsappTemplateMetaStatus?
   lastSyncedAt DateTime?
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
-  languages MessageTemplateLanguage[]
+  languages WhatsappTemplateLanguage[]
 
   @@index([organizationId, metaStatus])
 }
 
-model MessageTemplateLanguage {
+model WhatsappTemplateLanguage {
   id           String              @id @default(cuid())
   templateId   String
-  template     MessageTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  template     WhatsappTemplate     @relation(fields: [templateId], references: [id], onDelete: Cascade)
   lang         String
   headerType   String?
   headerUrl    String?
@@ -822,7 +822,7 @@ model MessageTemplateLanguage {
   buttons      Json?
   authConfig   Json?
   isApproved   Boolean             @default(false)
-  metaStatus   TemplateMetaStatus?
+  metaStatus   WhatsappTemplateMetaStatus?
   rejectReason String?
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -830,7 +830,7 @@ model MessageTemplateLanguage {
   @@unique([templateId, lang])
 }
 
-model BroadcastCampaign {
+model WhatsappBroadcastCampaign {
   id                  String          @id @default(cuid())
   organizationId      String
   templateName        String
@@ -838,7 +838,7 @@ model BroadcastCampaign {
   templateParams      Json?
   throttleMaxMessages Int?
   throttlePerMinutes  Int?
-  status              BroadcastStatus @default(QUEUED)
+  status              WhatsappBroadcastStatus @default(QUEUED)
   total               Int             @default(0)
   queued              Int             @default(0)
   sent                Int             @default(0)
@@ -848,19 +848,19 @@ model BroadcastCampaign {
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
-  recipients BroadcastRecipient[]
+  recipients WhatsappBroadcastRecipient[]
 
   @@index([organizationId, status])
 }
 
-model BroadcastRecipient {
+model WhatsappBroadcastRecipient {
   id            String                   @id @default(cuid())
   broadcastId   String
-  broadcast     BroadcastCampaign        @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  broadcast     WhatsappBroadcastCampaign        @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
   phoneNumber   String
   name          String?
   dynamicValues Json?
-  status        BroadcastRecipientStatus @default(QUEUED)
+  status        WhatsappBroadcastRecipientStatus @default(QUEUED)
   attempts      Int                      @default(0)
   waMessageId   String?
   lastError     String?
@@ -871,26 +871,26 @@ model BroadcastRecipient {
   @@index([broadcastId, status])
 }
 
-model MessageConversation {
+model WhatsappConversation {
   id            String            @id @default(cuid())
   organizationId String
   contactPhone  String
   lastMessageAt DateTime?
-  lastDirection MessageDirection?
+  lastDirection WhatsappMessageDirection?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  messages Message[]
+  messages WhatsappMessage[]
 
   @@unique([organizationId, contactPhone])
   @@index([organizationId, lastMessageAt])
 }
 
-model Message {
+model WhatsappMessage {
   id             String              @id @default(cuid())
   conversationId String
-  conversation   MessageConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  direction      MessageDirection
+  conversation   WhatsappConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      WhatsappMessageDirection
   fromPhone      String
   contactName    String?
   contactWaId    String?
@@ -900,17 +900,17 @@ model Message {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
-  statusHistory MessageStatusHistory[]
+  statusHistory WhatsappMessageStatus[]
 
   @@index([conversationId, timestamp])
   @@index([waMessageId])
 }
 
-model MessageStatusHistory {
+model WhatsappMessageStatus {
   id              String                @id @default(cuid())
   messageId       String
-  message         Message               @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  status          MessageDeliveryStatus
+  message         WhatsappMessage               @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  status          WhatsappMessageDeliveryStatus
   errorCode       String?
   errorTitle      String?
   errorMessage    String?
@@ -922,7 +922,7 @@ model MessageStatusHistory {
   @@index([messageId, status])
 }
 
-model DailyCount {
+model WhatsappDailyCount {
   id                 String   @id @default(cuid())
   organizationId     String
   date               DateTime @db.Date
@@ -936,7 +936,7 @@ model DailyCount {
   @@unique([organizationId, date])
 }
 
-model MonthlyCount {
+model WhatsappMonthlyCount {
   id                 String   @id @default(cuid())
   organizationId     String
   year               Int
@@ -951,7 +951,7 @@ model MonthlyCount {
   @@unique([organizationId, year, month])
 }
 
-model QuotaSession {
+model WhatsappQuotaSession {
   id           String   @id @default(cuid())
   organizationId String
   phoneNumber   String
@@ -963,15 +963,15 @@ model QuotaSession {
   @@index([expiredAt])
 }
 
-model BillingLedger {
+model WhatsappBillingLedger {
   id              String          @id @default(cuid())
   organizationId  String
   waMessageId     String
   phoneNumber     String
-  category        BillingCategory
+  category        WhatsappBillingCategory
   quotaKey        String
   quotaValue      Decimal         @db.Decimal(12, 2)
-  status          BillingStatus   @default(CHARGED_PENDING_VERIFY)
+  status          WhatsappBillingStatus   @default(CHARGED_PENDING_VERIFY)
   isReverted      Boolean         @default(false)
   revertReason    String?
   revertedAt      DateTime?
@@ -988,11 +988,11 @@ model BillingLedger {
   @@index([organizationId, phoneNumber])
 }
 
-model Log {
+model WhatsappLog {
   id        String   @id @default(cuid())
   organizationId String
   source    String
-  type      LogType
+  type      WhatsappLogType
   message   String
   metadata  Json?
   createdAt DateTime @default(now())
@@ -1001,7 +1001,7 @@ model Log {
   @@index([organizationId, source, createdAt])
 }
 
-model Attachment {
+model WhatsappAttachment {
   id           String   @id @default(cuid())
   organizationId String
   fullPath     String
@@ -1025,7 +1025,7 @@ model PricingPackage {
   updatedAt         DateTime @updatedAt
 }
 
-model BroadcastRateState {
+model WhatsappBroadcastRateState {
   id             String   @id @default(cuid())
   organizationId String
   policy         String   @default("TOKEN_BUCKET")
@@ -1037,11 +1037,11 @@ model BroadcastRateState {
   @@index([organizationId])
 }
 
-model ApiKey {
+model WhatsappApiKey {
   id          String            @id @default(cuid())
   name        String
   keyHash     String            @unique
-  environment ApiKeyEnvironment
+  environment WhatsappApiKeyEnvironment
   scopes      String[]
   active      Boolean           @default(true)
   expiresAt   DateTime?
