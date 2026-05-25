@@ -101,4 +101,24 @@ describe("TrafficFlowCanvas", () => {
     expect(view.getByText("301 LOOP DETECTED")).toBeInTheDocument()
     view.unmount()
   })
+
+  it("triggers SSL HANDSHAKE FAIL when the active domain has an expired TLS status", () => {
+    const expiredProps = {
+      ...defaultProps,
+      diagnosticMode: "healthy",
+      domains: [
+        {
+          id: "dom-1",
+          domain: "laravel-shop.com",
+          isPrimary: true,
+          tlsStatus: "expired" as const,
+          dnsStatus: "verified" as const,
+          expiresAt: "2026-05-18",
+        }
+      ]
+    }
+    const view = render(<TrafficFlowCanvas {...expiredProps} />)
+    expect(view.getByText("SSL HANDSHAKE FAIL")).toBeInTheDocument()
+    view.unmount()
+  })
 })
