@@ -3,9 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import {
   ArrowClockwise,
-  CheckCircle,
-  Warning,
-  ShieldWarning,
   GithubLogo,
   GitBranch,
 } from "@phosphor-icons/react"
@@ -19,14 +16,29 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-import type { AppStatusType } from "@/modules/deploy/operate.types"
+
+import type { CustomDomain } from "@/modules/deploy/operate.types"
+import { TrafficFlowCanvas } from "./traffic-flow-canvas"
 
 type TabOverviewProps = {
   diagnosticMode: string
   replicas: number
+  cloudflareEnabled: boolean
+  dbConnected: boolean
+  setCloudflareEnabled: (val: boolean) => void
+  setDbConnected: (val: boolean) => void
+  domains: CustomDomain[]
 }
 
-export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
+export function TabOverview({
+  diagnosticMode,
+  replicas,
+  cloudflareEnabled,
+  dbConnected,
+  setCloudflareEnabled,
+  setDbConnected,
+  domains,
+}: TabOverviewProps) {
   const [rebuildState, setRebuildState] = useState<
     "idle" | "fetching" | "building" | "restarting" | "success"
   >("idle")
@@ -45,15 +57,6 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
       clearRebuildTimers()
     }
   }, [])
-
-  const healthStatus: AppStatusType =
-    diagnosticMode === "healthy"
-      ? "healthy"
-      : diagnosticMode === "error_502"
-        ? "degraded"
-        : diagnosticMode === "ssl_expired"
-          ? "inaccessible"
-          : "degraded"
 
   const handleRebuild = () => {
     clearRebuildTimers()
@@ -103,7 +106,18 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div className="space-y-6">
+      <TrafficFlowCanvas
+        diagnosticMode={diagnosticMode}
+        replicas={replicas}
+        cloudflareEnabled={cloudflareEnabled}
+        dbConnected={dbConnected}
+        setCloudflareEnabled={setCloudflareEnabled}
+        setDbConnected={setDbConnected}
+        domains={domains}
+      />
+
+      <div className="grid gap-6 md:grid-cols-3">
       {/* Git Integration Details */}
       <Card size="sm" className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -324,6 +338,7 @@ export function TabOverview({ diagnosticMode, replicas }: TabOverviewProps) {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }
