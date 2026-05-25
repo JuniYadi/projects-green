@@ -46,7 +46,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: bun run prisma:generate
+        run: bun run db:generate
 
       - name: Run tests with coverage
         run: bun run test:coverage --timeout=30000 --max-concurrency=1
