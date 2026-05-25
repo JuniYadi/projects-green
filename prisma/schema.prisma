@@ -619,6 +619,26 @@ model BillingRun {
   @@index([billingAccountId, runType, startedAt(sort: Desc)])
 }
 
+model BillingAuditLog {
+  id               String            @id @default(cuid())
+  billingAccountId String?
+  billingRunId     String?
+  entityType       String
+  entityId         String
+  action           BillingAuditAction
+  actorType        BillingActorType
+  actorId          String?
+  contextJson      Json?
+  createdAt        DateTime          @default(now())
+
+  billingAccount BillingAccount? @relation(fields: [billingAccountId], references: [id], onDelete: SetNull)
+  billingRun     BillingRun?     @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
+
+  @@index([billingAccountId, createdAt(sort: Desc)])
+  @@index([billingRunId, createdAt])
+  @@index([entityType, entityId])
+}
+
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────
 
 enum DeviceStatus {
