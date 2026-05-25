@@ -43,6 +43,13 @@ export const idMessages: AppMessages = {
       en: "Inggris",
       id: "Indonesia",
     },
+    themeLabel: "Tema",
+    themeMenuLabel: "Pilih tema",
+    themes: {
+      light: "Terang",
+      dark: "Gelap",
+      system: "Sistem",
+    },
     menu: {
       organizationMembers: "Anggota organisasi",
       organizationSettings: "Pengaturan organisasi",
