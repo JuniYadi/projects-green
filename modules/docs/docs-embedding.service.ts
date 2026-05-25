@@ -1,4 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai"
+import { embed } from "ai"
 
 const EMBEDDING_DIMENSIONS = 1536
 
@@ -24,12 +25,13 @@ export async function generateEmbedding(
 
   const provider = createOpenAI({ apiKey })
 
-  const result = await provider.textEmbeddingModel(modelName).embed({
-    text,
+  const { embedding } = await embed({
+    model: provider.textEmbeddingModel(modelName),
+    value: text,
   })
 
   return {
-    embedding: result.embedding as number[],
+    embedding: embedding as number[],
   }
 }
 

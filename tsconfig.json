@@ -14,7 +14,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "types": ["bun", "node"],
+    "types": ["bun", "node", "./test/matchers.d.ts"],
     "plugins": [
       {
         "name": "next"
