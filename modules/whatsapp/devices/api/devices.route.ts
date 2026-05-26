@@ -9,14 +9,14 @@ import {
 const deviceBodySchema = t.Object({
   name: t.String(),
   phoneNumber: t.String(),
-  businessId: t.Optional(t.String()),
+  businessId: t.String(),
   accessToken: t.String(),
   environment: t.Enum({ SANDBOX: "SANDBOX", LIVE: "LIVE" }),
 })
 
 const deviceUpdateSchema = t.Partial(deviceBodySchema)
 
-export const devicesRoutes = new Elysia({ prefix: "/devices" })
+export const devicesRoutes = new Elysia()
   .use(whatsappAuthPlugin)
   .get("/", guardTenantAdmin(async ({ whatsappAuth, set }: { whatsappAuth: any, set: any }) => {
     const devices = await prisma.whatsappDevice.findMany({
@@ -44,7 +44,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
 
     return { ok: true, device }
   }))
-  .post("/", guardTenantAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
+  .post("/", guardSuperAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
     if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
@@ -60,7 +60,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
 
     return { ok: true, device }
   }), {
-    body: deviceBodySchema
+    body: deviceBodySchema,
   })
   .patch("/:id", guardTenantAdmin(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
     const device = await prisma.whatsappDevice.findUnique({
