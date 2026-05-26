@@ -14,7 +14,7 @@
  *  • requireTenantMember    — rejects callers without at least tenant membership
  */
 
-import { getWorkOS } from "@workos-inc/node"
+import { createWorkOS } from "@workos-inc/node"
 import type { User } from "@workos-inc/node"
 import { unsealData } from "iron-session"
 import { Elysia, t, type RouteResolver } from "elysia"
@@ -128,7 +128,7 @@ export const resolveTenantRole = async (
   organizationId: string
 ): Promise<TenantRole | null> => {
   try {
-    const workos = getWorkOS()
+    const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
     const memberships = await workos.userManagement
       .listOrganizationMemberships({
         userId,
