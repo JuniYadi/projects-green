@@ -40,6 +40,8 @@ const createInitialDeployWizardState = (): DeployWizardState => {
     environment: {
       ...DEFAULT_ENVIRONMENT_STATE,
       envVars: [],
+      cpu: 100,
+      memory: 256,
     },
     monitor: { ...DEFAULT_MONITOR_STATE },
   }

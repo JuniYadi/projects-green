@@ -6,6 +6,8 @@ import type { StepSourceProps } from "@/modules/deploy/ui/step-source"
 
 const createProps = () => {
   return {
+    sourceType: "github" as StepSourceProps["sourceType"],
+    templateId: undefined as StepSourceProps["templateId"],
     githubConnectionStatus: "idle" as StepSourceProps["githubConnectionStatus"],
     isConnectingGithub: false,
     ownerOptionsLoading: false,
@@ -41,6 +43,8 @@ const createProps = () => {
     selectedRepositoryId: "",
     selectedBranchName: "",
     rootDirectory: "/",
+    onSourceTypeChange: mock(() => {}),
+    onTemplateSelect: mock(() => {}),
     onOwnerSearchChange: mock(() => {}),
     onRepositorySearchChange: mock(() => {}),
     onOwnerSelect: mock(() => {}),

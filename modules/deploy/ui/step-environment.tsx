@@ -19,6 +19,8 @@ type StepEnvironmentProps = {
   environmentId: string
   envVars: EnvVar[]
   resourcePlanId: ResourcePlanId
+  cpu?: number
+  memory?: number
   hasMissingCustomDomain: boolean
   hasInvalidCustomDomain: boolean
   validationMessages: string[]
@@ -29,6 +31,8 @@ type StepEnvironmentProps = {
   onCustomDomainChange: (value: string) => void
   onEnvVarsChange: (envVars: EnvVar[]) => void
   onResourcePlanChange: (value: ResourcePlanId) => void
+  onCpuChange: (value: number) => void
+  onMemoryChange: (value: number) => void
 }
 
 export function StepEnvironment({
@@ -38,6 +42,8 @@ export function StepEnvironment({
   environmentId,
   envVars,
   resourcePlanId,
+  cpu,
+  memory,
   hasMissingCustomDomain,
   hasInvalidCustomDomain,
   validationMessages,
@@ -48,6 +54,8 @@ export function StepEnvironment({
   onCustomDomainChange,
   onEnvVarsChange,
   onResourcePlanChange,
+  onCpuChange,
+  onMemoryChange,
 }: StepEnvironmentProps) {
   const targetDomain = useGeneratedSubdomain
     ? generatedSubdomain
@@ -161,12 +169,18 @@ export function StepEnvironment({
           <p className="text-sm font-medium">Resource plan</p>
           <ResourcePlanSelector
             selectedPlanId={resourcePlanId}
+            cpu={cpu}
+            memory={memory}
             onChange={onResourcePlanChange}
+            onCpuChange={onCpuChange}
+            onMemoryChange={onMemoryChange}
           />
           <p className="text-xs text-muted-foreground">
-            {resourcePlanId === "starter"
-              ? "Starter plan selected: suitable for demos and low traffic."
-              : "Pro plan selected: suitable for production workloads."}
+            {resourcePlanId === "payg"
+              ? "Pay As You Go: scale resources as you need."
+              : resourcePlanId === "starter"
+                ? "Starter plan selected: suitable for demos and low traffic."
+                : "Pro plan selected: suitable for production workloads."}
           </p>
         </div>
 

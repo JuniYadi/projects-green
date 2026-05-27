@@ -131,6 +131,11 @@ export const RESOURCE_PLANS: ResourcePlan[] = [
     name: "Pro",
     description: "Good for production apps with steady traffic.",
   },
+  {
+    id: "payg",
+    name: "Pay As You Go",
+    description: "Scale CPU and Memory independently.",
+  },
 ]
 
 export const DEPLOY_TIMELINE: DeployTimelineItem[] = [

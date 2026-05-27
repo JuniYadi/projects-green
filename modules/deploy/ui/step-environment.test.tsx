@@ -11,6 +11,8 @@ const createProps = () => {
     environmentId: "staging",
     envVars: [],
     resourcePlanId: "starter" as const,
+    cpu: 100,
+    memory: 256,
     hasMissingCustomDomain: false,
     hasInvalidCustomDomain: false,
     validationMessages: [],
@@ -21,6 +23,8 @@ const createProps = () => {
     onCustomDomainChange: mock(() => {}),
     onEnvVarsChange: mock(() => {}),
     onResourcePlanChange: mock(() => {}),
+    onCpuChange: mock(() => {}),
+    onMemoryChange: mock(() => {}),
   }
 }
 

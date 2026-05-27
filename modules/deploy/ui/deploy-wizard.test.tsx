@@ -170,7 +170,7 @@ describe("DeployWizard", () => {
     const view = await renderWizard("step=invalid")
 
     await waitFor(() => {
-      expect(view.getByText("Source Code")).toBeTruthy()
+      expect(view.getByText("Choose how you want to deploy your application.")).toBeTruthy()
     })
   })
 
@@ -484,6 +484,7 @@ describe("DeployWizard", () => {
     const view = await renderWizard("step=environment", {
       step: "environment",
       source: {
+        sourceType: "github",
         ownerId: "owner-pfn",
         repositoryId: "repo-console-next",
         branchName: "main",
@@ -511,6 +512,8 @@ describe("DeployWizard", () => {
           { id: "env-2", key: "api_key", value: "secret-2" },
         ],
         resourcePlanId: "starter",
+        cpu: 100,
+        memory: 256,
       },
       monitor: {
         status: "idle",

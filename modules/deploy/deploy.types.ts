@@ -1,5 +1,16 @@
 export type DeployStep = "source" | "build" | "environment" | "monitor"
 
+export type DeploySourceType = "github" | "template"
+
+export type DeployTemplateId = "wordpress" | "n8n" | "openclaw"
+
+export type DeployTemplate = {
+  id: DeployTemplateId
+  name: string
+  description: string
+  icon?: string
+}
+
 export type PaginatedResponse<T> = {
   data: T[]
   hasNextPage: boolean
@@ -48,7 +59,7 @@ export type EnvVar = {
   masked?: boolean
 }
 
-export type ResourcePlanId = "starter" | "pro"
+export type ResourcePlanId = "starter" | "pro" | "payg"
 
 export type ResourcePlan = {
   id: ResourcePlanId
@@ -80,6 +91,8 @@ export type DeployTimelineItem = {
 }
 
 export type DeploySourceState = {
+  sourceType: DeploySourceType
+  templateId?: DeployTemplateId
   ownerId: string
   repositoryId: string
   branchName: string
@@ -98,6 +111,8 @@ export type DeployEnvironmentState = {
   customDomain: string
   envVars: EnvVar[]
   resourcePlanId: ResourcePlanId
+  cpu?: number
+  memory?: number
 }
 
 export type DeployMonitorState = {

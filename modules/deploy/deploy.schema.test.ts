@@ -10,8 +10,58 @@ import {
   validateBuildStep,
   validateEnvironmentStep,
   validateEnvVarKeysUnique,
+  validateSourceStep,
 } from "@/modules/deploy/deploy.schema"
 import type { DetectionResult } from "@/modules/deploy/deploy.types"
+
+describe("source step validation", () => {
+  it("validates github source", () => {
+    expect(
+      validateSourceStep({
+        sourceType: "github",
+        ownerId: "owner",
+        repositoryId: "repo",
+        branchName: "main",
+        rootDirectory: "/",
+      })
+    ).toBe(true)
+
+    expect(
+      validateSourceStep({
+        sourceType: "github",
+        ownerId: "",
+        repositoryId: "repo",
+        branchName: "main",
+        rootDirectory: "/",
+      })
+    ).toBe(false)
+  })
+
+  it("validates template source", () => {
+    expect(
+      validateSourceStep({
+        sourceType: "template",
+        templateId: "wordpress",
+        ownerId: "",
+        repositoryId: "",
+        branchName: "",
+        rootDirectory: "/",
+      })
+    ).toBe(true)
+
+    expect(
+      validateSourceStep({
+        sourceType: "template",
+        // @ts-expect-error - invalid template id
+        templateId: "invalid",
+        ownerId: "",
+        repositoryId: "",
+        branchName: "",
+        rootDirectory: "/",
+      })
+    ).toBe(false)
+  })
+})
 
 describe("validateBuildStep", () => {
   const successDetection: DetectionResult = {
