@@ -159,7 +159,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
               </label>
               <Textarea
                 ref={mountContentInputRef}
-                placeholder="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0..."
+                placeholder={"-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0..."}
                 rows={6}
                 className="w-full rounded-xl border border-white/[0.08] bg-black/50 p-3 font-mono text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-primary/50 leading-relaxed"
               />

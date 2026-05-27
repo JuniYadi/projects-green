@@ -62,7 +62,7 @@ const TABS: Array<{
   { id: "mounts", label: "Storages", icon: <Key size={16} /> },
   {
     id: "scaling",
-    label: "Autoscaling",
+    label: "Pods & Scaling",
     icon: <Cpu size={16} />,
   },
   {
