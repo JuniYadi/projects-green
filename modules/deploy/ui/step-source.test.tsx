@@ -2,15 +2,16 @@ import { describe, expect, it, mock } from "bun:test"
 import { fireEvent, render } from "@testing-library/react"
 
 import { StepSource } from "@/modules/deploy/ui/step-source"
+import type { StepSourceProps } from "@/modules/deploy/ui/step-source"
 
 const createProps = () => {
   return {
-    githubConnectionStatus: "idle" as const,
+    githubConnectionStatus: "idle" as StepSourceProps["githubConnectionStatus"],
     isConnectingGithub: false,
     ownerOptionsLoading: false,
-    ownerOptionsError: null,
+    ownerOptionsError: null as StepSourceProps["ownerOptionsError"],
     repositoryOptionsLoading: false,
-    repositoryOptionsError: null,
+    repositoryOptionsError: null as StepSourceProps["repositoryOptionsError"],
     ownerSearch: "",
     repositorySearch: "",
     owners: [
