@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { InsufficientQuotaError } from "./quota.service"
+import { InsufficientQuotaError } from "@/modules/whatsapp/messages/quota.service"
 
 // Mock prisma before importing quotaService
 const mockTx = {
@@ -30,7 +30,7 @@ mock.module("@/lib/prisma", () => ({
 }))
 
 // Import after mock
-const { quotaService } = await import("./quota.service")
+const { quotaService } = await import("@/modules/whatsapp/messages/quota.service")
 
 describe("quotaService", () => {
   beforeEach(() => {
