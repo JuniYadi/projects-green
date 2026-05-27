@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "bun:test"
-import { createEnvironmentVariablesClient } from "./environment-variables.client"
+import { createEnvironmentVariablesClient } from "@/modules/deploy/api/environment-variables.client"
 
 describe("environment-variables.client", () => {
   let client: ReturnType<typeof createEnvironmentVariablesClient>
@@ -7,6 +7,16 @@ describe("environment-variables.client", () => {
   beforeEach(() => {
     client = createEnvironmentVariablesClient()
   })
+
+  async function setupTestVariable(key: string, value: string) {
+    const create = await client.create({
+      environmentId: "test-env",
+      key,
+      value,
+    })
+    if (!create.ok) throw new Error("Setup failed")
+    return create.item!
+  }
 
   describe("list", () => {
     it("falls back to stub when not in browser", async () => {
@@ -99,17 +109,11 @@ describe("environment-variables.client", () => {
     })
 
     it("updates existing variable", async () => {
-      const create = await client.create({
-        environmentId: "test-env",
-        key: "UPDATE_TEST",
-        value: "original",
-      })
-
-      if (!create.ok) throw new Error("Setup failed")
+      const item = await setupTestVariable("UPDATE_TEST", "original")
 
       const result = await client.update({
         environmentId: "test-env",
-        variableId: create.item!.id,
+        variableId: item.id,
         key: "UPDATE_TEST",
         value: "updated",
       })
@@ -121,17 +125,11 @@ describe("environment-variables.client", () => {
     })
 
     it("returns validation error for invalid key", async () => {
-      const create = await client.create({
-        environmentId: "test-env",
-        key: "VALID_KEY",
-        value: "test",
-      })
-
-      if (!create.ok) throw new Error("Setup failed")
+      const item = await setupTestVariable("VALID_KEY", "test")
 
       const result = await client.update({
         environmentId: "test-env",
-        variableId: create.item!.id,
+        variableId: item.id,
         key: "invalid-key",
       })
 
@@ -144,22 +142,16 @@ describe("environment-variables.client", () => {
 
   describe("remove", () => {
     it("deletes existing variable", async () => {
-      const create = await client.create({
-        environmentId: "test-env",
-        key: "DELETE_ME",
-        value: "test",
-      })
-
-      if (!create.ok) throw new Error("Setup failed")
+      const item = await setupTestVariable("DELETE_ME", "test")
 
       const result = await client.remove({
         environmentId: "test-env",
-        variableId: create.item!.id,
+        variableId: item.id,
       })
 
       expect(result.ok).toBe(true)
       if (result.ok) {
-        expect(result.deletedId).toBe(create.item!.id)
+        expect(result.deletedId).toBe(item.id)
       }
     })
 

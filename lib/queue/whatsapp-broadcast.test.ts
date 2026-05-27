@@ -1,8 +1,14 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import type { JobsOptions } from "bullmq"
+import type { WhatsAppBroadcastJobData } from "@/lib/queue/whatsapp-broadcast"
 
-const queueAddMock = mock(async () => ({ id: "job_1" }))
+const queueAddMock = mock(
+  async (
+    _name: string,
+    _data: WhatsAppBroadcastJobData,
+    _opts?: JobsOptions
+  ) => ({ id: "job_1" })
+)
 const queueCloseMock = mock(async () => undefined)
 const queueConstructorMock = mock((...args: unknown[]) => {
   void args
@@ -13,11 +19,7 @@ class QueueMock {
     queueConstructorMock(name, options)
   }
 
-  async add(
-    name: string,
-    data: Record<string, unknown>,
-    opts?: Record<string, unknown>
-  ) {
+  async add(name: string, data: WhatsAppBroadcastJobData, opts?: JobsOptions) {
     return queueAddMock(name, data, opts)
   }
 

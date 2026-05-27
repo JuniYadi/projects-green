@@ -8,7 +8,7 @@ import {
   decryptWhatsAppToken,
   assertAppKeyCryptoConfigured,
   AppKeyCryptoError,
-} from "./crypto"
+} from "@/lib/whatsapp/crypto"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
