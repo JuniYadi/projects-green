@@ -80,7 +80,7 @@ describe("syncGithubInstallation", () => {
     }
 
     await syncGithubInstallation({
-      installationId: 123n,
+      installationId: BigInt(123),
       workosUserId: "user_123",
       organizationId: "org_123",
       installation: {
@@ -129,7 +129,7 @@ describe("syncGithubInstallation", () => {
 
     expect(installationUpserts[0]).toMatchObject({
       where: {
-        githubInstallationId: 123n,
+        githubInstallationId: BigInt(123),
       },
       create: {
         workosUserId: "user_123",
@@ -141,7 +141,7 @@ describe("syncGithubInstallation", () => {
     expect(repositoryUpserts[0]).toMatchObject({
       where: {
         githubRepositoryId_installationId: {
-          githubRepositoryId: 111n,
+          githubRepositoryId: BigInt(111),
           installationId: "install_rec_1",
         },
       },
@@ -158,7 +158,7 @@ describe("syncGithubInstallation", () => {
       where: {
         installationId: "install_rec_1",
         githubRepositoryId: {
-          notIn: [111n, 222n],
+          notIn: [BigInt(111), BigInt(222)],
         },
       },
     })
