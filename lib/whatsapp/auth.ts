@@ -409,6 +409,22 @@ export const guardTenantAdmin = (
     return route(ctx)
   }
 
+/**
+ * Guard route: caller MUST have at least tenant membership.
+ */
+export const guardTenantMember = (
+  route: GuardedRoute,
+  guardName = "requireTenantMember"
+): GuardedRoute =>
+  async (ctx) => {
+    const auth = ctx.whatsappAuth
+    if (!auth || !requireTenantMember(auth)) {
+      ctx.set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: `${guardName} failed — tenant member role required.` }
+    }
+    return route(ctx)
+  }
+
 // ─── API Key management ────────────────────────────────────────────────────────
 
 /**

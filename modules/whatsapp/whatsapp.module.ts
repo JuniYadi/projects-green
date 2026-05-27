@@ -1,7 +1,7 @@
 /**
  * WhatsApp module assembly.
  *
- * Composes all 9 WhatsApp sub-feature routes into a single Elysia instance
+ * Composes all 10 WhatsApp sub-feature routes into a single Elysia instance
  * with the shared whatsappAuthPlugin, then exports the aggregate as
  * `whatsappRoutes` for mounting in lib/api.ts.
  */
@@ -17,6 +17,7 @@ import { broadcastsRoutes } from "@/modules/whatsapp/broadcasts/api/broadcasts.r
 import { conversationsRoutes } from "@/modules/whatsapp/conversations/api/conversations.route"
 import { messagesRoutes } from "@/modules/whatsapp/messages/api/messages.route"
 import { webhooksRoutes } from "@/modules/whatsapp/webhooks/api/webhooks.route"
+import { usersRoutes } from "@/modules/whatsapp/users/api/users.route"
 
 /**
  * Top-level await is required here because whatsappAuthPlugin internally
@@ -36,3 +37,4 @@ export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(conversationsRoutes)
   .use(messagesRoutes)
   .use(webhooksRoutes)
+  .use(usersRoutes)

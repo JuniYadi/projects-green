@@ -21,6 +21,18 @@ All commands use **bun** (never npm/yarn — prevents lockfile conflicts):
 
 Run a single test file: `bun test path/to/file.test.ts`
 
+## Validation Requirements (4 Pillars)
+
+**HARD REQUIREMENT:** Before committing or opening a PR, ALL 4 must pass:
+
+1. `bun run lint` — 0 errors
+2. `bun run typecheck` — 0 errors
+3. `bun run test` — all tests pass
+4. `bun run test:coverage` — line coverage acceptable (no regression)
+5. `bun run build` — production build succeeds
+
+**Never commit or open PR if any pillar fails.**
+
 ## Architecture
 
 **Next.js 16 App Router** (React 19, TypeScript strict, Turbopack) multi-tenant SaaS platform.
@@ -100,3 +112,4 @@ Env-var based with `FEATURE_*` prefix, checked via `isFeatureEnabled()` from `li
 
 - **DRY**: extract shared helpers instead of copy-pasting (especially in tests)
 - **KISS**: prefer straightforward implementations; avoid over-engineering
+- **4 Pillars**: lint, typecheck, test, coverage, and build MUST pass before any commit/PR

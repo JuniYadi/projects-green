@@ -62,7 +62,7 @@ export async function migrateAllTokens(): Promise<{ migrated: number, skipped: n
 
   let migrated = 0
   let skipped = 0
-  let errors: string[] = []
+  const errors: string[] = []
 
   for (const device of devices) {
     try {
