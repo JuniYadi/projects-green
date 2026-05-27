@@ -6,6 +6,11 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ApiKeyEnvironment {
+  SANDBOX
+  LIVE
+}
+
 enum PlatformRole {
   NONE
   SUPER_ADMIN
@@ -26,6 +31,21 @@ model PlatformUserRole {
   role         PlatformRole @default(NONE)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+}
+
+model ApiKey {
+  id          String         @id @default(cuid())
+  name        String
+  keyHash     String
+  environment ApiKeyEnvironment @default(SANDBOX)
+  scopes      String[]
+  active      Boolean        @default(true)
+  expiresAt   DateTime?
+  createdBy   String?
+  lastUsedAt  DateTime?
+  lastUsedIp  String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
 model KnowledgeDocument {
@@ -765,6 +785,7 @@ model WhatsappDevice {
   logs                 WhatsappLog[]
   attachments          WhatsappAttachment[]
   broadcastRateStates  WhatsappBroadcastRateState[]
+  webhooks             WhatsappWebhook[]
 
   @@index([organizationId])
   @@index([whatsappBusinessAccountId])
@@ -1078,4 +1099,19 @@ model WhatsappApiKey {
   updatedAt        DateTime                 @updatedAt
 
   @@index([organizationId, key])
+}
+
+model WhatsappWebhook {
+  id                 String          @id @default(cuid())
+  organizationId     String
+  whatsappDeviceId   String
+  webhookUrl         String
+  verifyToken        String
+  active             Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  whatsappDevice     WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
+
+  @@index([organizationId])
+  @@index([whatsappDeviceId])
 }
