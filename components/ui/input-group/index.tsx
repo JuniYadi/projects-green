@@ -13,10 +13,12 @@ function InputGroup({
 }: React.InputHTMLAttributes<HTMLInputElement> & {
   label: string
 }) {
+  const generatedId = React.useId()
+
   return (
     <div className={cn("flex flex-col gap-1", className)} data-slot="input-group">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} {...props} />
+      <Label htmlFor={id ?? generatedId}>{label}</Label>
+      <Input id={id ?? generatedId} {...props} />
     </div>
   )
 }
