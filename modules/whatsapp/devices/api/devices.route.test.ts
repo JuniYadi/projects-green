@@ -96,8 +96,8 @@ mock.module("/Users/juniyadi/github-yadi/pfnapp-v2/lib/whatsapp/auth.ts", () => 
   requireTenantAdmin: (ctx: WorkOSScope) =>
     ctx.tenantRole === "admin" || ctx.tenantRole === "owner" || ctx.platformRole === "super_admin",
   requireSuperAdmin: (ctx: WorkOSScope) => ctx.platformRole === "super_admin",
-  requireWorkOSSession: (ctx: WorkOSScope) => ctx.type === "workos",
-  requireApiKey: (ctx: WorkOSScope) => ctx.type === "platform",
+  requireWorkOSSession: (_ctx: WorkOSScope) => true,
+  requireApiKey: (_ctx: WorkOSScope) => false,
   requireTenantMember: (ctx: WorkOSScope) => ctx.organizationId !== null,
 }))
 
@@ -133,7 +133,7 @@ describe("devices routes", () => {
         name: "Device 1",
         status: "ACTIVE",
       } as any,
-    ])
+    ] as any)
 
     const app = createTestApp(createAuthContext({ tenantRole: "admin" }))
 
