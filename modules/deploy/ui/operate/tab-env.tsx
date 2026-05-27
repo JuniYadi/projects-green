@@ -366,7 +366,7 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
             <Textarea
               value={bulkEnvText}
               onChange={(e) => setBulkEnvText(e.target.value)}
-              placeholder="APP_KEY=base64:...\nDB_DATABASE=shop\nCACHE_DRIVER=redis"
+              placeholder={"APP_KEY=base64:...\nDB_DATABASE=shop\nCACHE_DRIVER=redis"}
               rows={8}
               className="w-full bg-black/50 p-3 font-mono text-xs border-white/[0.08] focus:border-primary/50 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/50"
             />
