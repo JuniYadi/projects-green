@@ -26,12 +26,6 @@ export default async function ApplicationsPage({
         "Control runtime settings, environment, domains, and scaling behavior.",
       href: localizePathname({ pathname: "/console/app/manage", locale }),
     },
-    {
-      title: "Monitoring",
-      description:
-        "Review health signals, resource usage, and deployment rollout events.",
-      href: localizePathname({ pathname: "/console/app/monitoring", locale }),
-    },
   ]
 
   return (
