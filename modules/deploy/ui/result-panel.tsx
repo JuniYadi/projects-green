@@ -19,7 +19,7 @@ export function ResultPanel({
   if (status === "idle") {
     return (
       <div className="border border-border p-4 text-xs text-muted-foreground">
-        Deploy to start monitoring results.
+        Deploy to see runtime results.
       </div>
     )
   }

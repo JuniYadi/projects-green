@@ -187,7 +187,7 @@ describe("searchKnowledgeDocs", () => {
       buildRecord({
         id: "route_doc",
         path: "/console/app/deploy",
-        searchText: "applications deployment manage monitoring",
+        searchText: "applications deployment manage events",
       }),
       buildRecord({
         id: "lexical_doc",

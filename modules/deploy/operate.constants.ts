@@ -8,6 +8,7 @@ export const OPERATE_TAB_IDS = [
   "scaling",
   "metrics",
   "logs",
+  "events",
 ] as const
 
 export type OperateTabId = (typeof OPERATE_TAB_IDS)[number]

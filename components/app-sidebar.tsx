@@ -99,12 +99,6 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         icon: <GaugeIcon />,
         isActive: startsWithRoute(path, "/console/app/manage"),
       },
-      {
-        title: "Monitoring",
-        url: localizePathname({ pathname: "/console/app/monitoring", locale }),
-        icon: <BookOpenIcon />,
-        isActive: startsWithRoute(path, "/console/app/monitoring"),
-      },
     ],
   },
 ]
