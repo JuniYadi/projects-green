@@ -44,7 +44,6 @@ import { StepSource } from "@/modules/deploy/ui/step-source"
 import type {
   Branch,
   DeployEnvironmentState,
-  DeploySourceType,
   DeployStep,
   DeployTemplateId,
   Owner,
@@ -522,7 +521,7 @@ function DeployWizardInner() {
   }
 
   const handleBuildNext = () => {
-    const nextStep = getNextStep("build")
+    const nextStep = getNextStep("build", state)
     if (!nextStep) {
       return
     }
@@ -531,13 +530,11 @@ function DeployWizardInner() {
   }
 
   const handleSourceNext = () => {
-    const nextStep = getNextStep("source")
+    const nextStep = getNextStep("source", state)
     if (!nextStep) {
       return
     }
 
-    // If template, we might want to skip build or just pre-fill it.
-    // For now we just go to build, but it will be pre-filled.
     navigateStep(nextStep)
   }
 
@@ -627,7 +624,7 @@ function DeployWizardInner() {
           manualOverrideRequired={manualOverrideRequired}
           canProceed={buildValid}
           onBack={() => {
-            const previous = getPreviousStep("build")
+            const previous = getPreviousStep("build", state)
             if (!previous) {
               return
             }
@@ -659,8 +656,11 @@ function DeployWizardInner() {
           hasInvalidCustomDomain={hasInvalidCustomDomain}
           validationMessages={environmentValidationMessages}
           canDeploy={environmentValid}
+          sourceType={state.source.sourceType}
+          buildState={state.build}
+          onEditBuildSettings={() => dispatch({ type: "set-step", payload: "build" })}
           onBack={() => {
-            const previous = getPreviousStep("environment")
+            const previous = getPreviousStep("environment", state)
             if (!previous) {
               return
             }
@@ -729,6 +729,7 @@ function DeployWizardInner() {
           <DeployStepper
             currentStep={state.step}
             maxUnlockedStep={maxUnlockedStep}
+            sourceType={state.source.sourceType}
             onStepChange={navigateStep}
           />
         </CardContent>
