@@ -6,6 +6,10 @@ import {
 } from "@workos-inc/node"
 
 import { createTenantsOrganizationRoutes } from "@/modules/tenants/api/routes/tenants-organization.route"
+import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
+import type { TenantApiError } from "@/modules/tenants/contracts/tenant-api.contract"
+import type { RouteSet } from "@/modules/tenants/api/tenants.errors"
+import type { ActorRoleContext } from "@/modules/tenants/tenant-policy"
 
 type MockOrganization = {
   id: string
@@ -27,16 +31,22 @@ const createOrganization = (): MockOrganization => ({
   updatedAt: "2026-01-02T00:00:00.000Z",
 })
 
-const mockRequireTenantActor = mock(async () => ({
+const mockRequireTenantActor = mock(async (_set: unknown) => ({
   userId: "user_1",
   organizationId: "org_1",
   platformRole: "none" as const,
   tenantRole: "owner" as const,
 }))
 
-const mockEnsureTenantContextAccess = mock(() => true)
-const mockCanManageTenant = mock(() => true)
-const mockCanTransferOwnership = mock(() => true)
+const mockEnsureTenantContextAccess = mock(
+  (_orgId: string, _actor: unknown, _set: unknown): true => true
+)
+const mockCanManageTenant = mock(
+  (_actor: ActorRoleContext): boolean => true
+)
+const mockCanTransferOwnership = mock(
+  (_actor: ActorRoleContext): boolean => true
+)
 
 const mockGetTenantOrganizationById = mock(
   async (): Promise<MockOrganization | null> => createOrganization()
@@ -85,15 +95,25 @@ describe("tenantsOrganizationRoutes", () => {
     mockUpdateTenantOrganization.mockClear()
     mockDeleteTenantOrganization.mockClear()
 
-    mockRequireTenantActor.mockImplementation(async () => ({
+    mockRequireTenantActor.mockImplementation(async (_set: unknown) => ({
       userId: "user_1",
       organizationId: "org_1",
       platformRole: "none",
       tenantRole: "owner",
     }))
-    mockEnsureTenantContextAccess.mockImplementation(() => true)
-    mockCanManageTenant.mockImplementation(() => true)
-    mockCanTransferOwnership.mockImplementation(() => true)
+    mockEnsureTenantContextAccess.mockImplementation(
+      (
+        _orgId: string,
+        _actor: unknown,
+        _set: unknown
+      ): true => true
+    )
+    mockCanManageTenant.mockImplementation(
+      (_actor: ActorRoleContext): boolean => true
+    )
+    mockCanTransferOwnership.mockImplementation(
+      (_actor: ActorRoleContext): boolean => true
+    )
     mockGetTenantOrganizationById.mockImplementation(async () =>
       createOrganization()
     )
@@ -136,20 +156,35 @@ describe("tenantsOrganizationRoutes", () => {
   })
 
   it("returns unauthorized error when actor cannot be resolved", async () => {
-    mockRequireTenantActor.mockImplementation(async (set) => {
-      set.status = 401
-      return {
-        ok: false,
-        error: "UNAUTHORIZED",
-        message: "You must be signed in to manage tenants.",
+    // Create a custom mock for this test that returns an error and sets status
+    const unauthorizedMock = mock(
+      async (
+        set: { status?: number | string }
+      ): Promise<TenantActorContext> => {
+        set.status = 401
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "You must be signed in to manage tenants.",
+        } as unknown as TenantActorContext
       }
-    })
+    )
 
-    const app = await createApp()
+    const app = new Elysia().use(
+      createTenantsOrganizationRoutes({
+        requireTenantActor: unauthorizedMock,
+        ensureTenantContextAccess: mockEnsureTenantContextAccess,
+        getTenantOrganizationById: mockGetTenantOrganizationById,
+        updateTenantOrganization: mockUpdateTenantOrganization,
+        deleteTenantOrganization: mockDeleteTenantOrganization,
+        canManageTenant: mockCanManageTenant,
+        canTransferOwnership: mockCanTransferOwnership,
+      })
+    )
     const response = await app.handle(
       new Request("http://localhost/tenants/org_1/organization")
     )
-    const body = (await response.json()) as { ok: boolean; error: string }
+    const body = await response.json()
 
     expect(response.status).toBe(401)
     expect(body.ok).toBe(false)
@@ -157,8 +192,21 @@ describe("tenantsOrganizationRoutes", () => {
   })
 
   it("returns context mismatch policy error when tenant context access fails", async () => {
-    mockEnsureTenantContextAccess.mockImplementation(
-      (_orgId, _actor, set) => {
+    // Create a custom mock that returns a policy error and sets status
+    const authenticatedMock = mock(
+      async (_set: { status?: number | string }): Promise<TenantActorContext> => ({
+        userId: "user_1",
+        organizationId: "org_1",
+        platformRole: "none" as const,
+        tenantRole: "owner" as const,
+      })
+    )
+    const contextAccessMock = mock(
+      (
+        _orgId: string,
+        _actor: unknown,
+        set: { status?: number | string }
+      ) => {
         set.status = 403
         return {
           ok: false,
@@ -166,11 +214,21 @@ describe("tenantsOrganizationRoutes", () => {
           policyCode: "ORGANIZATION_CONTEXT_MISMATCH",
           message:
             "Organization context mismatch. Switch organization and try again.",
-        }
+        } as unknown as true
       }
     )
 
-    const app = await createApp()
+    const app = new Elysia().use(
+      createTenantsOrganizationRoutes({
+        requireTenantActor: authenticatedMock,
+        ensureTenantContextAccess: contextAccessMock,
+        getTenantOrganizationById: mockGetTenantOrganizationById,
+        updateTenantOrganization: mockUpdateTenantOrganization,
+        deleteTenantOrganization: mockDeleteTenantOrganization,
+        canManageTenant: mockCanManageTenant,
+        canTransferOwnership: mockCanTransferOwnership,
+      })
+    )
     const response = await app.handle(
       new Request("http://localhost/tenants/org_1/organization")
     )
@@ -206,7 +264,9 @@ describe("tenantsOrganizationRoutes", () => {
   })
 
   it("returns 403 when actor cannot manage organization settings", async () => {
-    mockCanManageTenant.mockImplementation(() => false)
+    mockCanManageTenant.mockImplementation(
+      (_actor: ActorRoleContext): boolean => false
+    )
 
     const app = await createApp()
 
@@ -318,6 +378,7 @@ describe("tenantsOrganizationRoutes", () => {
         message: "organization not found",
         code: "not_found",
         requestID: "req_update_404",
+        path: "/tenants/organization",
       })
     })
 
@@ -371,7 +432,10 @@ describe("tenantsOrganizationRoutes", () => {
   })
 
   it("blocks delete endpoint for non-owner and non-super-admin actors", async () => {
-    mockCanTransferOwnership.mockImplementation(() => false)
+    mockCanTransferOwnership.mockImplementation(
+      (_actor: { platformRole: string; tenantRole: string | null }): boolean =>
+        false
+    )
 
     const app = await createApp()
 
@@ -522,6 +586,7 @@ describe("tenantsOrganizationRoutes", () => {
         message: "not found",
         code: "not_found",
         requestID: "req_delete_404",
+        path: "/tenants/organization/delete",
       })
     })
 
