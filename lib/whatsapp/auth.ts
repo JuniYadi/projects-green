@@ -17,7 +17,8 @@
 import { createWorkOS } from "@workos-inc/node"
 import type { User } from "@workos-inc/node"
 import { unsealData } from "iron-session"
-import { Elysia, t, type RouteResolver } from "elysia"
+import { Elysia, t } from "elysia"
+import type { ApiKeyEnvironment } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
@@ -26,6 +27,7 @@ import { hashApiKey } from "./crypto"
 
 // Re-export for testing
 export { hashApiKey }
+export type { ApiKeyEnvironment }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,7 +55,7 @@ export type WhatsAppAuthContext = PlatformScope | WorkOSScope
 // functions can infer `whatsappAuth` without explicit annotation.
 
 declare module "elysia" {
-  interface Context {
+  interface LocalContext {
     whatsappAuth: WhatsAppAuthContext
   }
 }
@@ -85,9 +87,9 @@ export const getWorkOSSession = async (
       try {
         const cookiePassword = process.env.WORKOS_COOKIE_PASSWORD?.trim()
         if (!cookiePassword) return null
-        const sessionPayload = await unsealData(bearerToken, cookiePassword)
-        if (sessionPayload?.user) {
-          return sessionPayload.user as User
+        const sessionPayload = await unsealData(bearerToken, { password: cookiePassword })
+        if (sessionPayload && typeof sessionPayload === 'object' && 'user' in sessionPayload) {
+          return (sessionPayload as { user: User }).user
         }
       } catch {
         // invalid/expired session token
@@ -112,8 +114,11 @@ export const getWorkOSSession = async (
   try {
     const cookiePassword = process.env.WORKOS_COOKIE_PASSWORD?.trim()
     if (!cookiePassword) return null
-    const sessionPayload = await unsealData(sealedSession, cookiePassword)
-    return (sessionPayload?.user as User) ?? null
+    const sessionPayload = await unsealData(sealedSession, { password: cookiePassword })
+    if (sessionPayload && typeof sessionPayload === 'object' && 'user' in sessionPayload) {
+      return (sessionPayload as { user: User }).user ?? null
+    }
+    return null
   } catch {
     return null
   }
@@ -159,8 +164,6 @@ const API_KEY_PREFIXES = {
   SANDBOX: "test_",
   LIVE: "live_",
 } as const
-
-type ApiKeyEnvironment = "SANDBOX" | "LIVE"
 
 /**
  * Validate a raw API key against the stored keyHash in the ApiKey table.
@@ -334,16 +337,22 @@ export const whatsappAuthPlugin = new Elysia({ name: "whatsapp.auth" })
 
 // ─── Guard decorators ─────────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GuardHandler = (ctx: any) => Promise<unknown>
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GuardedRoute = (ctx: any) => Promise<unknown>
+
 /**
  * Guard route: caller MUST have an authenticated WorkOS session.
  * Use on routes that should only be accessible via browser UI (not API keys).
  */
 export const guardWorkOSSession = (
-  route: RouteResolver,
+  route: GuardedRoute,
   guardName = "requireWorkOSSession"
-): RouteResolver =>
+): GuardedRoute =>
   async (ctx) => {
-    const auth = (ctx as { whatsappAuth?: WhatsAppAuthContext }).whatsappAuth
+    const auth = ctx.whatsappAuth
     if (!auth || !requireWorkOSSession(auth)) {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN", message: `${guardName} failed — WorkOS session required.` }
@@ -356,11 +365,11 @@ export const guardWorkOSSession = (
  * Use on routes that should only be accessible programmatically.
  */
 export const guardApiKey = (
-  route: RouteResolver,
+  route: GuardedRoute,
   guardName = "requireApiKey"
-): RouteResolver =>
+): GuardedRoute =>
   async (ctx) => {
-    const auth = (ctx as { whatsappAuth?: WhatsAppAuthContext }).whatsappAuth
+    const auth = ctx.whatsappAuth
     if (!auth || !requireApiKey(auth)) {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN", message: `${guardName} failed — API key required.` }
@@ -372,11 +381,11 @@ export const guardApiKey = (
  * Guard route: caller MUST have super_admin platform role.
  */
 export const guardSuperAdmin = (
-  route: RouteResolver,
+  route: GuardedRoute,
   guardName = "requireSuperAdmin"
-): RouteResolver =>
+): GuardedRoute =>
   async (ctx) => {
-    const auth = (ctx as { whatsappAuth?: WhatsAppAuthContext }).whatsappAuth
+    const auth = ctx.whatsappAuth
     if (!auth || !requireSuperAdmin(auth)) {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN", message: `${guardName} failed — super_admin role required.` }
@@ -388,11 +397,11 @@ export const guardSuperAdmin = (
  * Guard route: caller MUST have at least admin tenant role or super_admin.
  */
 export const guardTenantAdmin = (
-  route: RouteResolver,
+  route: GuardedRoute,
   guardName = "requireTenantAdmin"
-): RouteResolver =>
+): GuardedRoute =>
   async (ctx) => {
-    const auth = (ctx as { whatsappAuth?: WhatsAppAuthContext }).whatsappAuth
+    const auth = ctx.whatsappAuth
     if (!auth || !requireTenantAdmin(auth)) {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN", message: `${guardName} failed — tenant admin role required.` }
@@ -408,7 +417,7 @@ export const guardTenantAdmin = (
  */
 export async function createApiKey(input: {
   name: string
-  environment: "SANDBOX" | "LIVE"
+  environment: ApiKeyEnvironment
   scopes: string[]
   expiresAt?: Date
   createdBy: string
@@ -417,11 +426,9 @@ export async function createApiKey(input: {
   const rawBytes = new Uint8Array(32)
   crypto.getRandomValues(rawBytes)
   const prefix = input.environment === "SANDBOX" ? "test_" : "live_"
-  const rawKey = prefix + rawBytes.map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 48)
-  // Actually use base64url encoding for a cleaner key
-  const rawKeyClean = prefix + Buffer.from(rawBytes).toString("base64url")
+  const rawKey = prefix + Buffer.from(rawBytes).toString("base64url")
 
-  const keyHash = await hashApiKey(rawKeyClean.slice(prefix.length), API_KEY_HASH_SALT())
+  const keyHash = await hashApiKey(rawKey.slice(prefix.length), API_KEY_HASH_SALT())
 
   const apiKey = await prisma.apiKey.create({
     data: {
@@ -437,7 +444,7 @@ export async function createApiKey(input: {
     },
   })
 
-  return { rawKey: rawKeyClean, keyHash }
+  return { rawKey, keyHash }
 }
 
 /**
