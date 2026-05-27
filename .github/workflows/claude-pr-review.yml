@@ -18,8 +18,10 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+          API_TIMEOUT_MS: "3000000" # High headroom for long tool-use loops
         with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: true # ✨ Enables tracking comments
           prompt: |
             REPO: ${{ github.repository }}
@@ -34,4 +36,4 @@ jobs:
             Provide detailed feedback using inline comments for specific issues.
 
           claude_args: |
-            --model ${{ secrets.ANTHROPIC_MODEL }} --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --model ${{ secrets.ANTHROPIC_MODEL }} --max-turns 50 --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
