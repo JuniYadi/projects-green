@@ -112,7 +112,10 @@ function encodeBase64Url(buffer: Buffer): string {
 }
 
 function toArrayBuffer(buffer: Buffer): ArrayBuffer {
-  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+  return buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength
+  ) as ArrayBuffer
 }
 
 export function assertAppKeyCryptoConfigured(): void {
