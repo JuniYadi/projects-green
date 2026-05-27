@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import type { Transporter } from "nodemailer"
 
+// Mock console.error to suppress error logging in tests
+const mockConsoleError = mock((...args: unknown[]) => {})
+console.error = mockConsoleError
+
 const mockSendMail = mock(async () => ({ messageId: "test-123" }))
 const mockTransporter = {
   sendMail: mockSendMail,
@@ -46,7 +50,7 @@ const mockInvoice = {
 
 describe("invoiceEmailService", () => {
   let emailService: import("./email.service").InvoiceEmailService
-  let originalEnv: Record<string, string | undefined>
+  let originalEnv: NodeJS.ProcessEnv
 
   beforeEach(async () => {
     mockSendMail.mockClear()
@@ -105,6 +109,10 @@ describe("invoiceEmailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("Reminder"),
+        }),
+      )
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         }),
       )
@@ -131,6 +139,10 @@ describe("invoiceEmailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("Payment Received"),
+        }),
+      )
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         }),
       )
@@ -145,6 +157,10 @@ describe("invoiceEmailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("OVERDUE"),
+        }),
+      )
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         }),
       )
@@ -164,6 +180,10 @@ describe("invoiceEmailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("Cancelled"),
+        }),
+      )
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         }),
       )
