@@ -52,12 +52,19 @@ const makeMembership = (
 })
 
 const mockListTenantMemberships = mock(async () => [makeMembership()])
-const mockGetTenantMembershipById = mock(async () => makeMembership())
+const mockGetTenantMembershipById = mock(
+  async (): Promise<TenantMembershipSummary | null> => makeMembership()
+)
 const mockUpdateTenantMembershipRole = mock(async () => makeMembership())
-const mockDemoteTenantMembershipSafely = mock(async () => ({
-  success: true as const,
-  membership: makeMembership({ role: "member", roleSlug: "user_member" }),
-}))
+const mockDemoteTenantMembershipSafely = mock(
+  async (): Promise<
+    | { success: true; membership: TenantMembershipSummary }
+    | { success: false; reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED" }
+  > => ({
+    success: true as const,
+    membership: makeMembership({ role: "member", roleSlug: "user_member" }),
+  })
+)
 const mockDeleteTenantMembershipSafely = mock(
   async (): Promise<MockDeleteResult> => ({
     success: true as const,
@@ -65,7 +72,7 @@ const mockDeleteTenantMembershipSafely = mock(
 )
 
 const mockRequireTenantActor = mock(
-  async (): Promise<MockActor> => ({ ...defaultActor })
+  async (): Promise<MockActor | TenantApiError> => ({ ...defaultActor })
 )
 const mockEnsureTenantContextAccess = mock(
   (
@@ -116,7 +123,9 @@ const resetAllMocks = () => {
   mockDeleteTenantMembershipSafely.mockReset()
 
   mockRequireTenantActor.mockImplementation(
-    async (): Promise<MockActor> => ({ ...defaultActor })
+    async (): Promise<MockActor | TenantApiError> => ({
+      ...defaultActor,
+    })
   )
   mockEnsureTenantContextAccess.mockImplementation(
     (
@@ -126,14 +135,21 @@ const resetAllMocks = () => {
     ): true | TenantApiError => true
   )
   mockListTenantMemberships.mockImplementation(async () => [makeMembership()])
-  mockGetTenantMembershipById.mockImplementation(async () => makeMembership())
+  mockGetTenantMembershipById.mockImplementation(
+    async (): Promise<TenantMembershipSummary | null> => makeMembership()
+  )
   mockUpdateTenantMembershipRole.mockImplementation(async () =>
     makeMembership()
   )
-  mockDemoteTenantMembershipSafely.mockImplementation(async () => ({
-    success: true as const,
-    membership: makeMembership({ role: "member", roleSlug: "user_member" }),
-  }))
+  mockDemoteTenantMembershipSafely.mockImplementation(
+    async (): Promise<
+      | { success: true; membership: TenantMembershipSummary }
+      | { success: false; reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED" }
+    > => ({
+      success: true as const,
+      membership: makeMembership({ role: "member", roleSlug: "user_member" }),
+    })
+  )
   mockDeleteTenantMembershipSafely.mockImplementation(
     async (): Promise<MockDeleteResult> => ({
       success: true as const,
