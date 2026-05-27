@@ -1,6 +1,11 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 
+import {
+  whatsappAuthMock,
+  setMockAuthContext,
+} from "@/lib/whatsapp/__tests__/auth-mock"
+
 // Mock InsufficientQuotaError
 class InsufficientQuotaError extends Error {
   constructor(message: string) {
@@ -49,32 +54,21 @@ mock.module("../quota.service", () => ({
   InsufficientQuotaError,
 }))
 
-mock.module("@/lib/whatsapp/auth", () => {
-  const mockAuth = {
-    type: "workos" as const,
-    userId: "user-1",
-    email: "admin@example.com",
-    organizationId: "org-1",
-    tenantRole: "admin" as const,
-    platformRole: "none" as const,
-  }
-
-  const plugin = new Elysia({ name: "whatsapp.auth" }).derive(() => ({
-    whatsappAuth: mockAuth,
-  }))
-
-  const guard = (route: Function) => async (ctx: any) => {
-    ctx.whatsappAuth = mockAuth
-    return route(ctx)
-  }
-
-  return { whatsappAuthPlugin: plugin, guardTenantAdmin: guard }
-})
+mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
 const { messagesRoutes } = await import("./messages.route")
 
 describe("messagesRoutes", () => {
   beforeEach(() => {
+    setMockAuthContext({
+      type: "workos",
+      userId: "user-1",
+      email: "admin@example.com",
+      organizationId: "org-1",
+      tenantRole: "admin",
+      platformRole: "none",
+    })
+
     mockPrisma.whatsappMessage.findMany.mockReset()
     mockPrisma.whatsappMessage.findFirst.mockReset()
     mockPrisma.whatsappMessage.create.mockReset()
@@ -147,7 +141,7 @@ describe("messagesRoutes", () => {
     })
 
     it("returns 404 when message not found", async () => {
-      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null)
+      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as any)
 
       const app = new Elysia().use(messagesRoutes).compile()
       const res = await app.handle(
@@ -183,7 +177,7 @@ describe("messagesRoutes", () => {
     })
 
     it("returns 404 when message not found", async () => {
-      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null)
+      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as any)
 
       const app = new Elysia().use(messagesRoutes).compile()
       const res = await app.handle(
@@ -247,7 +241,7 @@ describe("messagesRoutes", () => {
     })
 
     it("returns 404 when message not found", async () => {
-      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null)
+      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as any)
 
       const app = new Elysia().use(messagesRoutes).compile()
       const res = await app.handle(
