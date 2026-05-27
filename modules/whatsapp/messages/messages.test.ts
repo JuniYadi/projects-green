@@ -19,14 +19,6 @@ const mockConversation = {
   contactPhone: "+1234567890",
 }
 
-const mockMessage = {
-  id: "msg-1",
-  conversationId: "conv-1",
-  direction: "OUTBOX" as const,
-  messageType: "text",
-  body: "Hello",
-}
-
 const mockMonthlyCount = {
   organizationId: "org-1",
   year: 2026,
