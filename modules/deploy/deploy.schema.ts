@@ -39,12 +39,23 @@ export const isValidEnvVarKey = (value: string) => {
   return ENV_VAR_KEY_PATTERN.test(value.trim())
 }
 
-export const sourceStepSchema = z.object({
-  ownerId: z.string().trim().min(1, "Owner is required."),
-  repositoryId: z.string().trim().min(1, "Repository is required."),
-  branchName: z.string().trim().min(1, "Branch is required."),
-  rootDirectory: z.string().trim().min(1, "Root directory is required."),
-})
+export const sourceStepSchema = z.discriminatedUnion("sourceType", [
+  z.object({
+    sourceType: z.literal("github"),
+    ownerId: z.string().trim().min(1, "Owner is required."),
+    repositoryId: z.string().trim().min(1, "Repository is required."),
+    branchName: z.string().trim().min(1, "Branch is required."),
+    rootDirectory: z.string().trim().min(1, "Root directory is required."),
+  }),
+  z.object({
+    sourceType: z.literal("template"),
+    templateId: z.enum(["wordpress", "n8n", "openclaw"]),
+    ownerId: z.string().optional(),
+    repositoryId: z.string().optional(),
+    branchName: z.string().optional(),
+    rootDirectory: z.string().optional(),
+  }),
+])
 
 const envVarSchema = z.object({
   id: z.string().trim().min(1),
@@ -65,7 +76,9 @@ export const environmentStepSchema = z
     useGeneratedSubdomain: z.boolean(),
     customDomain: z.string().trim(),
     envVars: z.array(envVarSchema),
-    resourcePlanId: z.enum(["starter", "pro"]),
+    resourcePlanId: z.enum(["starter", "pro", "payg"]),
+    cpu: z.number().min(100).max(2000).optional(),
+    memory: z.number().min(256).max(4096).optional(),
   })
   .superRefine((value, ctx) => {
     const normalizedDomain = value.customDomain.trim()
