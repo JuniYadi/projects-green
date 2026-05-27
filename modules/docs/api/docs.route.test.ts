@@ -133,7 +133,7 @@ describe("docsRoutes", () => {
   })
 
   it("returns 403 when posting docs without super admin role", async () => {
-    mockGetPlatformRole.mockResolvedValueOnce("none" as "none")
+    mockGetPlatformRole.mockResolvedValueOnce("none" as const)
 
     const response = await createApp().handle(
       new Request("http://localhost/docs", {
