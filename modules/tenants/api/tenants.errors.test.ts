@@ -127,6 +127,7 @@ describe("tenants.errors", () => {
         message: "not found",
         code: "not_found",
         requestID: "req_1",
+        path: "/tenants",
       })
       const result = toWorkosApiError(set, error)
 
