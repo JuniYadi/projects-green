@@ -103,10 +103,10 @@ export const whatsappClient = {
         method: "POST",
         body: JSON.stringify(input),
       }),
-    update: (id: string, input: Record<string, unknown>) =>
+    update: (id: string, input: z.infer<typeof updateDeviceSchema>) =>
       serverFetch<{ ok: boolean; device: DeviceDetail }>(`/api/whatsapp/devices/${id}`, {
         method: "PATCH",
-        body: JSON.stringify(input),
+        body: JSON.stringify(updateDeviceSchema.parse(input)),
       }),
     delete: (id: string) =>
       serverFetch<{ ok: boolean }>(`/api/whatsapp/devices/${id}`, { method: "DELETE" }),
