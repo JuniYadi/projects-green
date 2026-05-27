@@ -26,12 +26,15 @@ export class SupportTicketAttachmentUploadValidationError extends Error {
 const DEFAULT_PREFIX = "support-ticket-attachments"
 const DEFAULT_PRESIGN_TTL_SECONDS = 300
 
-const sanitizeSegment = (value: string) => {
+export const sanitizeSegment = (value: string) => {
   return value.trim().replace(/[^a-zA-Z0-9_-]/g, "_")
 }
 
-const getRequiredEnv = (name: string) => {
-  const value = process.env[name]?.trim()
+export const getRequiredEnv = (
+  name: string,
+  env: Record<string, string | undefined> = process.env
+) => {
+  const value = env[name]?.trim()
 
   if (!value) {
     throw new SupportTicketAttachmentStorageConfigurationError(
@@ -42,15 +45,15 @@ const getRequiredEnv = (name: string) => {
   return value
 }
 
-const getStoragePrefix = () => {
-  const value = process.env.S3_PREFIX?.trim()
+export const getStoragePrefix = (s3Prefix = process.env.S3_PREFIX) => {
+  const value = s3Prefix?.trim()
 
   return value ? value.replace(/^\/+|\/+$/g, "") : DEFAULT_PREFIX
 }
 
-const getPresignTtlSeconds = () => {
-  const rawValue = process.env.S3_PRESIGN_TTL_SECONDS
-
+export const getPresignTtlSeconds = (
+  rawValue = process.env.S3_PRESIGN_TTL_SECONDS
+) => {
   if (!rawValue?.trim()) {
     return DEFAULT_PRESIGN_TTL_SECONDS
   }
@@ -76,15 +79,17 @@ type AttachmentStorageConfig = {
   virtualHostedStyle?: boolean
 }
 
-const getOptionalEnv = (name: string) => {
-  const value = process.env[name]?.trim()
+export const getOptionalEnv = (
+  name: string,
+  env: Record<string, string | undefined> = process.env
+) => {
+  const value = env[name]?.trim()
 
   return value || undefined
 }
 
 const loadStorageConfig = (): AttachmentStorageConfig => {
-  const virtualHostedStyle =
-    process.env.S3_VIRTUAL_HOSTED_STYLE?.trim()
+  const virtualHostedStyle = process.env.S3_VIRTUAL_HOSTED_STYLE?.trim()
 
   return {
     accessKeyId: getOptionalEnv("S3_ACCESS_KEY_ID"),
@@ -93,9 +98,7 @@ const loadStorageConfig = (): AttachmentStorageConfig => {
     region: getRequiredEnv("S3_REGION"),
     prefix: getStoragePrefix(),
     presignTtlSeconds: getPresignTtlSeconds(),
-    secretAccessKey: getOptionalEnv(
-      "S3_SECRET_ACCESS_KEY"
-    ),
+    secretAccessKey: getOptionalEnv("S3_SECRET_ACCESS_KEY"),
     sessionToken: getOptionalEnv("S3_SESSION_TOKEN"),
     virtualHostedStyle:
       virtualHostedStyle === undefined
