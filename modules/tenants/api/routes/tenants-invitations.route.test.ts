@@ -5,6 +5,7 @@ import type {
   TenantApiError,
   TenantInvitationSummary,
 } from "@/modules/tenants/contracts/tenant-api.contract"
+import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
 import { createTenantsInvitationRoutes } from "@/modules/tenants/api/routes/tenants-invitations.route"
 import { TenantWorkOSOperationUnsupportedError } from "@/modules/tenants/services/tenant-workos.errors"
 
@@ -42,7 +43,9 @@ const makeInvitation = (
 })
 
 const mockRequireTenantActor = mock(
-  async (): Promise<MockActor> => ({ ...defaultActor })
+  async (): Promise<TenantActorContext | TenantApiError> => ({
+    ...defaultActor,
+  })
 )
 const mockEnsureTenantContextAccess = mock(
   (
@@ -111,7 +114,9 @@ const resetAllMocks = () => {
   mockResendTenantInvitation.mockReset()
 
   mockRequireTenantActor.mockImplementation(
-    async (): Promise<MockActor> => ({ ...defaultActor })
+    async (): Promise<TenantActorContext | TenantApiError> => ({
+      ...defaultActor,
+    })
   )
   mockEnsureTenantContextAccess.mockImplementation(
     (
@@ -161,8 +166,9 @@ describe("tenants-invitations routes", () => {
 
     it("returns unauthorized when actor is not signed in", async () => {
       const app = await getApp()
-      mockRequireTenantActor.mockImplementation(async () =>
-        toUnauthorizedError()
+      mockRequireTenantActor.mockImplementation(
+        async (): Promise<TenantActorContext | TenantApiError> =>
+          toUnauthorizedError()
       )
 
       const response = await app.handle(
@@ -196,7 +202,7 @@ describe("tenants-invitations routes", () => {
     it("returns forbidden for member role", async () => {
       const app = await getApp()
       mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
+        async (): Promise<TenantActorContext | TenantApiError> => ({
           ...defaultActor,
           tenantRole: "member",
         })
@@ -254,7 +260,7 @@ describe("tenants-invitations routes", () => {
     it("rejects admin inviting as owner", async () => {
       const app = await getApp()
       mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
+        async (): Promise<TenantActorContext | TenantApiError> => ({
           ...defaultActor,
           tenantRole: "admin",
         })
@@ -370,7 +376,7 @@ describe("tenants-invitations routes", () => {
     it("returns forbidden when admin revokes owner invitation", async () => {
       const app = await getApp()
       mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
+        async (): Promise<TenantActorContext | TenantApiError> => ({
           ...defaultActor,
           tenantRole: "admin",
         })
@@ -393,7 +399,7 @@ describe("tenants-invitations routes", () => {
     it("returns forbidden for member role", async () => {
       const app = await getApp()
       mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
+        async (): Promise<TenantActorContext | TenantApiError> => ({
           ...defaultActor,
           tenantRole: "member",
         })
@@ -499,7 +505,7 @@ describe("tenants-invitations routes", () => {
     it("returns forbidden when admin cancels owner invitation", async () => {
       const app = await getApp()
       mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
+        async (): Promise<TenantActorContext | TenantApiError> => ({
           ...defaultActor,
           tenantRole: "admin",
         })
@@ -522,7 +528,7 @@ describe("tenants-invitations routes", () => {
     it("returns forbidden for member role", async () => {
       const app = await getApp()
       mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
+        async (): Promise<TenantActorContext | TenantApiError> => ({
           ...defaultActor,
           tenantRole: "member",
         })
@@ -627,7 +633,7 @@ describe("tenants-invitations routes", () => {
     it("returns forbidden when admin resends owner invitation", async () => {
       const app = await getApp()
       mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
+        async (): Promise<TenantActorContext | TenantApiError> => ({
           ...defaultActor,
           tenantRole: "admin",
         })
@@ -650,7 +656,7 @@ describe("tenants-invitations routes", () => {
     it("returns forbidden for member role", async () => {
       const app = await getApp()
       mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
+        async (): Promise<TenantActorContext | TenantApiError> => ({
           ...defaultActor,
           tenantRole: "member",
         })
