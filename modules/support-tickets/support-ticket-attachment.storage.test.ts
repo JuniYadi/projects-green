@@ -1,15 +1,18 @@
 import { describe, expect, it } from "bun:test"
+import {
+  getOptionalEnv,
+  getPresignTtlSeconds,
+  getRequiredEnv,
+  getStoragePrefix,
+  sanitizeSegment,
+  SupportTicketAttachmentStorageConfigurationError,
+} from "./support-ticket-attachment.storage"
 
 // Test pure functions from storage module without S3 integration
 // S3Client is a built-in Bun global that cannot be easily mocked
 
 describe("SupportTicketAttachmentStorage - Pure Functions", () => {
   describe("sanitizeSegment", () => {
-    // Inline the sanitize logic for testing since it's not exported
-    const sanitizeSegment = (value: string) => {
-      return value.trim().replace(/[^a-zA-Z0-9_-]/g, "_")
-    }
-
     it("replaces special characters with underscores", () => {
       expect(sanitizeSegment("user@email.com")).toBe("user_email_com")
       expect(sanitizeSegment("path/with/slashes")).toBe("path_with_slashes")
@@ -32,10 +35,12 @@ describe("SupportTicketAttachmentStorage - Pure Functions", () => {
       ticketId: string | null,
       uploaderWorkosUserId: string
     ) => {
-      const sanitize = (v: string) => v.trim().replace(/[^a-zA-Z0-9_-]/g, "_")
-      const ticketScope = ticketId ? sanitize(ticketId) : "pending"
+      const ticketScope = ticketId ? sanitizeSegment(ticketId) : "pending"
+      const org = sanitizeSegment(organizationId)
+      const tgt = sanitizeSegment(target)
+      const uploader = sanitizeSegment(uploaderWorkosUserId)
 
-      return [prefix, sanitize(organizationId), sanitize(target), ticketScope, sanitize(uploaderWorkosUserId)].join("/")
+      return [prefix, org, tgt, ticketScope, uploader].join("/")
     }
 
     it("builds correct prefix structure with ticket id", () => {
@@ -92,22 +97,6 @@ describe("SupportTicketAttachmentStorage - Pure Functions", () => {
   })
 
   describe("presign TTL parsing", () => {
-    const getPresignTtlSeconds = (rawValue?: string) => {
-      const DEFAULT_PRESIGN_TTL_SECONDS = 300
-
-      if (!rawValue?.trim()) {
-        return DEFAULT_PRESIGN_TTL_SECONDS
-      }
-
-      const parsed = Number(rawValue)
-
-      if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 900) {
-        return DEFAULT_PRESIGN_TTL_SECONDS
-      }
-
-      return parsed
-    }
-
     it("returns default when env is not set", () => {
       expect(getPresignTtlSeconds(undefined)).toBe(300)
       expect(getPresignTtlSeconds("")).toBe(300)
@@ -128,12 +117,6 @@ describe("SupportTicketAttachmentStorage - Pure Functions", () => {
   })
 
   describe("storage prefix from env", () => {
-    const getStoragePrefix = (s3Prefix?: string) => {
-      const DEFAULT_PREFIX = "support-ticket-attachments"
-      const value = s3Prefix?.trim()
-      return value ? value.replace(/^\/+|\/+$/g, "") : DEFAULT_PREFIX
-    }
-
     it("returns default when env is not set", () => {
       expect(getStoragePrefix(undefined)).toBe("support-ticket-attachments")
       expect(getStoragePrefix("")).toBe("support-ticket-attachments")
@@ -146,25 +129,6 @@ describe("SupportTicketAttachmentStorage - Pure Functions", () => {
   })
 
   describe("getRequiredEnv", () => {
-    class SupportTicketAttachmentStorageConfigurationError extends Error {
-      constructor(message: string) {
-        super(message)
-        this.name = "SupportTicketAttachmentStorageConfigurationError"
-      }
-    }
-
-    const getRequiredEnv = (name: string, env: Record<string, string | undefined>) => {
-      const value = env[name]?.trim()
-
-      if (!value) {
-        throw new SupportTicketAttachmentStorageConfigurationError(
-          `Missing ${name} environment variable`
-        )
-      }
-
-      return value
-    }
-
     it("returns value when present", () => {
       const value = getRequiredEnv("S3_BUCKET", { S3_BUCKET: "my-bucket" })
       expect(value).toBe("my-bucket")
@@ -184,13 +148,9 @@ describe("SupportTicketAttachmentStorage - Pure Functions", () => {
   })
 
   describe("getOptionalEnv", () => {
-    const getOptionalEnv = (name: string, env: Record<string, string | undefined>) => {
-      const value = env[name]?.trim()
-      return value || undefined
-    }
-
     it("returns value when present", () => {
-      expect(getOptionalEnv("S3_ENDPOINT", { S3_ENDPOINT: "https://example.com" })).toBe("https://example.com")
+      const env = { S3_ENDPOINT: "https://example.com" }
+      expect(getOptionalEnv("S3_ENDPOINT", env)).toBe("https://example.com")
     })
 
     it("returns undefined when not present", () => {
@@ -205,14 +165,9 @@ describe("SupportTicketAttachmentStorage - Pure Functions", () => {
 
 describe("SupportTicketAttachmentStorage - Error Classes", () => {
   it("SupportTicketAttachmentStorageConfigurationError has correct name", () => {
-    class SupportTicketAttachmentStorageConfigurationError extends Error {
-      constructor(message: string) {
-        super(message)
-        this.name = "SupportTicketAttachmentStorageConfigurationError"
-      }
-    }
-
-    const error = new SupportTicketAttachmentStorageConfigurationError("test message")
+    const error = new SupportTicketAttachmentStorageConfigurationError(
+      "test message"
+    )
     expect(error.name).toBe("SupportTicketAttachmentStorageConfigurationError")
     expect(error.message).toBe("test message")
   })
