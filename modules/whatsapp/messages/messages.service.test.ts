@@ -35,7 +35,7 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-mock.module("./quota.service", () => ({
+mock.module("@/modules/whatsapp/messages/quota.service", () => ({
   quotaService: mockQuotaService,
   InsufficientQuotaError: class InsufficientQuotaError extends Error {
     constructor(message: string) {
@@ -57,6 +57,15 @@ mock.module("@/lib/queue/whatsapp-broadcast", () => ({
 
 // Import after mocks
 const { messageService } = await import("./messages.service")
+
+const sendMessageTestHelper = async (overrides: Record<string, any> = {}) => {
+  return messageService.sendMessage({
+    organizationId: "org-1",
+    phoneNumber: "+1234567890",
+    message: "Test message",
+    ...overrides,
+  })
+}
 
 describe("messageService", () => {
   beforeEach(() => {
@@ -91,11 +100,7 @@ describe("messageService", () => {
 
   describe("sendMessage", () => {
     it("sends message and returns result with waMessageId", async () => {
-      const result = await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Hello world",
-      })
+      const result = await sendMessageTestHelper({ message: "Hello world" })
 
       expect(result).toHaveProperty("jobId")
       expect(result).toHaveProperty("messageId")
@@ -104,11 +109,7 @@ describe("messageService", () => {
     })
 
     it("checks quota before sending", async () => {
-      await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-      })
+      await sendMessageTestHelper({ organizationId: "org-1" })
 
       expect(mockQuotaService.checkQuota).toHaveBeenCalledWith("org-1", undefined)
     })
@@ -117,11 +118,7 @@ describe("messageService", () => {
       mockQuotaService.checkQuota.mockResolvedValue({ hasQuota: false, remaining: 0 })
 
       await expect(
-        messageService.sendMessage({
-          organizationId: "org-1",
-          phoneNumber: "+1234567890",
-          message: "Test",
-        })
+        sendMessageTestHelper()
       ).rejects.toThrow("Insufficient quota")
     })
 
@@ -129,31 +126,18 @@ describe("messageService", () => {
       mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
 
       await expect(
-        messageService.sendMessage({
-          organizationId: "org-1",
-          phoneNumber: "+1234567890",
-          message: "Test",
-        })
+        sendMessageTestHelper()
       ).rejects.toThrow("WhatsApp device not found")
     })
 
     it("deducts quota after sending", async () => {
-      await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-        deviceId: "device-1",
-      })
+      await sendMessageTestHelper({ organizationId: "org-1", deviceId: "device-1" })
 
       expect(mockQuotaService.deductQuota).toHaveBeenCalledWith("org-1", "device-1")
     })
 
     it("creates message record in database", async () => {
-      await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Hello",
-      })
+      await sendMessageTestHelper({ message: "Hello" })
 
       expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -167,21 +151,13 @@ describe("messageService", () => {
     })
 
     it("creates broadcast campaign", async () => {
-      await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-      })
+      await sendMessageTestHelper()
 
       expect(mockPrisma.whatsappBroadcastCampaign.create).toHaveBeenCalled()
     })
 
     it("creates broadcast recipient", async () => {
-      await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-      })
+      await sendMessageTestHelper({ phoneNumber: "+1234567890" })
 
       expect(mockPrisma.whatsappBroadcastRecipient.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -193,11 +169,7 @@ describe("messageService", () => {
     })
 
     it("enqueues broadcast job", async () => {
-      await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-      })
+      await sendMessageTestHelper()
 
       expect(mockEnqueue).toHaveBeenCalledWith("camp-1", "", "dispatch")
     })
@@ -205,11 +177,7 @@ describe("messageService", () => {
     it("sets status to queued when Meta API fails", async () => {
       mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
 
-      const result = await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-      })
+      const result = await sendMessageTestHelper()
 
       expect(result.status).toBe("queued")
       expect(result.waMessageId).toBeUndefined()
@@ -218,11 +186,7 @@ describe("messageService", () => {
     it("creates conversation if not exists", async () => {
       mockPrisma.whatsappConversation.findFirst.mockResolvedValue(null)
 
-      await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-      })
+      await sendMessageTestHelper()
 
       expect(mockPrisma.whatsappConversation.create).toHaveBeenCalled()
     })
@@ -232,22 +196,13 @@ describe("messageService", () => {
         id: "existing-conv",
       } as any)
 
-      await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-      })
+      await sendMessageTestHelper()
 
       expect(mockPrisma.whatsappConversation.create).not.toHaveBeenCalled()
     })
 
     it("uses specific device when deviceId provided", async () => {
-      await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-        deviceId: "my-device",
-      })
+      await sendMessageTestHelper({ organizationId: "org-1", deviceId: "my-device" })
 
       expect(mockPrisma.whatsappDevice.findFirst).toHaveBeenCalledWith({
         where: { id: "my-device", organizationId: "org-1" },
@@ -258,26 +213,18 @@ describe("messageService", () => {
       mockQuotaService.deductQuota.mockRejectedValue(new Error("DB error"))
 
       // Should not throw, message should still be sent
-      const result = await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        message: "Test",
-      })
+      const result = await sendMessageTestHelper()
 
       expect(result).toHaveProperty("jobId")
     })
 
     it("throws when quota deduction fails with InsufficientQuotaError", async () => {
       mockQuotaService.deductQuota.mockRejectedValue(
-        new (await import("./quota.service")).InsufficientQuotaError("quota exceeded")
+        new (await import("@/modules/whatsapp/messages/quota.service")).InsufficientQuotaError("quota exceeded")
       )
 
       await expect(
-        messageService.sendMessage({
-          organizationId: "org-1",
-          phoneNumber: "+1234567890",
-          message: "Test",
-        })
+        sendMessageTestHelper()
       ).rejects.toThrow("quota exceeded")
     })
   })
