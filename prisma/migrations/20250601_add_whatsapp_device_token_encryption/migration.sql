@@ -1,5 +1,0 @@
--- AlterTable
-ALTER TABLE IF EXISTS "WhatsappDevice"
-ADD COLUMN IF NOT EXISTS "tokenEncrypted" TEXT,
-ADD COLUMN IF NOT EXISTS "tokenIv" TEXT,
-ALTER COLUMN "token" DROP NOT NULL;
