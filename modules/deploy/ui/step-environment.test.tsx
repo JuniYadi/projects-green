@@ -34,14 +34,14 @@ describe("StepEnvironment", () => {
 
     const view = render(<StepEnvironment {...props} />)
 
-    expect(view.getByText("Domain mode")).toBeTruthy()
+    expect(view.getByText("Domain Mode", { exact: true })).toBeTruthy()
     expect(view.getByText("Managed subdomain")).toBeTruthy()
     expect(view.getAllByText("Custom domain").length).toBeGreaterThan(0)
     expect(
       view.getByText("Preview domain: console-next-app.pfn.app")
     ).toBeTruthy()
-    expect(view.getByText("Ready: deploy to", { exact: false })).toBeTruthy()
-    expect(view.getByRole("button", { name: "Deploy" })).toBeEnabled()
+    expect(view.getByText("Ready to deploy to", { exact: false })).toBeTruthy()
+    expect(view.getByRole("button", { name: /Deploy/i })).toBeEnabled()
   })
 
   it("shows validation errors and disables deploy", () => {
@@ -66,7 +66,7 @@ describe("StepEnvironment", () => {
     expect(
       view.getAllByText("Environment variable keys must be unique.").length
     ).toBeGreaterThan(0)
-    expect(view.getByRole("button", { name: "Deploy" })).toBeDisabled()
+    expect(view.getByRole("button", { name: /Deploy/i })).toBeDisabled()
   })
 
   it("calls handlers for domain, plan, and deploy", () => {
@@ -80,7 +80,7 @@ describe("StepEnvironment", () => {
     fireEvent.click(view.getByRole("radio", { name: /Pro/i }))
     expect(props.onResourcePlanChange).toHaveBeenCalledWith("pro")
 
-    fireEvent.click(view.getByRole("button", { name: "Deploy" }))
+    fireEvent.click(view.getByRole("button", { name: /Deploy/i }))
     expect(props.onDeploy).toHaveBeenCalledTimes(1)
   })
 })
