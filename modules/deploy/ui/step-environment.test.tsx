@@ -49,7 +49,7 @@ describe("StepEnvironment", () => {
     props.validationMessages = [
       "Enter a valid domain such as app.example.com.",
       "Environment variable keys must be unique.",
-    ]
+    ] as never[]
     props.canDeploy = false
 
     const view = render(<StepEnvironment {...props} />)
