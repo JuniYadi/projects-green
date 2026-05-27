@@ -4,8 +4,6 @@ import {
   whatsappAuthPlugin,
   guardTenantAdmin,
 } from "@/lib/whatsapp/auth"
-import { messageService } from "../messages.service"
-import { InsufficientQuotaError } from "../quota.service"
 
 const messageBodySchema = t.Object({
   conversationId: t.String(),
@@ -29,7 +27,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
   .use(whatsappAuthPlugin)
   .get("/", guardTenantAdmin(async ({ whatsappAuth, query }: { whatsappAuth: any, query: any }) => {
     const { conversationId, direction, messageType } = query as any
-
+    
     const where: any = {
       conversation: {
         organizationId: whatsappAuth.organizationId,
@@ -51,7 +49,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
   }))
   .get("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const message = await prisma.whatsappMessage.findFirst({
-      where: {
+      where: { 
         id,
         conversation: {
           organizationId: whatsappAuth.organizationId
@@ -95,7 +93,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
   })
   .patch("/:id", guardTenantAdmin(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
     const message = await prisma.whatsappMessage.findFirst({
-      where: {
+      where: { 
         id,
         conversation: {
           organizationId: whatsappAuth.organizationId
@@ -119,7 +117,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
   })
   .delete("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const message = await prisma.whatsappMessage.findFirst({
-      where: {
+      where: { 
         id,
         conversation: {
           organizationId: whatsappAuth.organizationId
@@ -137,80 +135,12 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     })
     return { ok: true, message: "Message deleted." }
   }))
-  .post("/send", guardTenantAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
-    const { phoneNumber, message, deviceId } = body
-
-    try {
-      const result = await messageService.sendMessage({
-        organizationId: whatsappAuth.organizationId,
-        phoneNumber,
-        message,
-        deviceId,
-      })
-
-      return {
-        ok: true,
-        jobId: result.jobId,
-        messageId: result.messageId,
-        waMessageId: result.waMessageId,
-        status: result.status,
-      }
-    } catch (error) {
-      if (error instanceof InsufficientQuotaError) {
-        set.status = 422
-        return { ok: false, error: "INSUFFICIENT_QUOTA", message: error.message }
-      }
-
-      console.error("[messages] send error:", error)
-      set.status = 500
-      return { ok: false, error: "INTERNAL_ERROR", message: "Failed to send message" }
+  .post("/send", guardTenantAdmin(async () => {
+    // Stub endpoint for sending message
+    return { 
+      messageId: `stub_${Date.now()}`, 
+      status: "queued" 
     }
   }), {
     body: sendSchema
   })
-  .get("/:id/media", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
-    // Find message with media
-    const message = await prisma.whatsappMessage.findFirst({
-      where: {
-        id,
-        conversation: {
-          organizationId: whatsappAuth.organizationId
-        }
-      },
-      include: {
-        conversation: {
-          include: {
-            whatsappDevice: true
-          }
-        }
-      }
-    })
-
-    if (!message || !message.mediaUrl) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Media not found" }
-    }
-
-    // If media is a Meta media ID, return download URL
-    if (message.mediaUrl.startsWith("__media:")) {
-      const mediaId = message.mediaUrl.replace("__media:", "")
-      const device = message.conversation.whatsappDevice
-
-      if (!device?.tokenEncrypted) {
-        set.status = 500
-        return { ok: false, error: "NO_DEVICE_TOKEN", message: "Device not configured" }
-      }
-
-      return {
-        ok: true,
-        mediaId,
-        downloadUrl: `/api/whatsapp/media/${mediaId}?deviceId=${device.id}`
-      }
-    }
-
-    // Return existing public URL
-    return {
-      ok: true,
-      mediaUrl: message.mediaUrl
-    }
-  }))
