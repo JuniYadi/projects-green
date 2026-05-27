@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test"
 import {
   fireEvent,
   render,
@@ -68,6 +68,12 @@ mock.module("next/navigation", () => {
         updateQueryFromUrl(url)
       },
     }),
+    redirect: (url: string) => {
+      throw new Error(`REDIRECT:${url}`)
+    },
+    notFound: () => {
+      throw new Error("NOT_FOUND")
+    },
   }
 })
 
@@ -79,7 +85,7 @@ const createPersistedState = (state: DeployWizardState) => {
 }
 
 const renderWizard = async (
-  query = "",
+  query = "github=connected",
   persistedState: DeployWizardState | null = null
 ) => {
   currentQuery = query
@@ -104,23 +110,23 @@ const renderWizard = async (
 
 const selectSourceRepository = async (view: RenderResult) => {
   await waitFor(() => {
-    expect(view.getByRole("option", { name: "owner-pfn" })).toBeTruthy()
+    expect(view.getByRole("button", { name: /owner-pfn/i })).toBeTruthy()
   })
 
-  fireEvent.change(view.getByLabelText("Owner selector"), {
-    target: { value: "owner-pfn" },
-  })
+  fireEvent.click(view.getByRole("button", { name: /owner-pfn/i }))
 
   await waitFor(() => {
-    expect(view.getByRole("option", { name: "console-next-app" })).toBeTruthy()
+    expect(view.getByRole("button", { name: /console-next-app/i })).toBeTruthy()
   })
 
-  fireEvent.change(view.getByLabelText("Repository selector"), {
-    target: { value: "repo-console-next" },
-  })
+  fireEvent.click(view.getByRole("button", { name: /console-next-app/i }))
 }
 
 describe("DeployWizard", () => {
+  afterAll(() => {
+    mock.restore()
+  })
+
   beforeEach(() => {
     window.sessionStorage.clear()
     currentQuery = ""
@@ -170,7 +176,7 @@ describe("DeployWizard", () => {
     const view = await renderWizard("step=invalid")
 
     await waitFor(() => {
-      expect(view.getByText("Choose how you want to deploy your application.")).toBeTruthy()
+      expect(view.getByText("Choose a pre-configured template to deploy instantly, or connect your GitHub account.")).toBeTruthy()
     })
   })
 
@@ -178,35 +184,27 @@ describe("DeployWizard", () => {
     const view = await renderWizard()
 
     await waitFor(() => {
-      expect(view.getByText("Pick an owner first.")).toBeTruthy()
+      expect(view.queryByText(/Select Repository/i)).toBeNull()
     })
 
-    fireEvent.change(view.getByLabelText("Owner selector"), {
-      target: { value: "owner-pfn" },
-    })
+    fireEvent.click(view.getByRole("button", { name: /owner-pfn/i }))
 
     await waitFor(() => {
-      expect(view.getByText("Owner selected: owner-pfn")).toBeTruthy()
-    })
-    expect(view.getByText("Select a repository to continue.")).toBeTruthy()
-
-    await waitFor(() => {
-      expect(
-        view.getByRole("option", { name: "console-next-app" })
-      ).toBeTruthy()
-    })
-
-    fireEvent.change(view.getByLabelText("Repository selector"), {
-      target: { value: "repo-console-next" },
+      expect(view.getByText(/Select Repository/i)).toBeTruthy()
     })
 
     await waitFor(() => {
       expect(
-        view.getByText("Repository selected: console-next-app")
+        view.getByRole("button", { name: /console-next-app/i })
       ).toBeTruthy()
     })
-    expect(view.getByText("Branch selected: main")).toBeTruthy()
-    expect(view.getByRole("button", { name: "Next" })).toBeEnabled()
+
+    fireEvent.click(view.getByRole("button", { name: /console-next-app/i }))
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: /^main$/ })).toBeTruthy()
+    })
+    expect(view.getByRole("button", { name: "Next Step" })).toBeEnabled()
 
     fireEvent.change(view.getByLabelText("Root directory"), {
       target: { value: "/apps/web" },
@@ -222,23 +220,16 @@ describe("DeployWizard", () => {
 
     await selectSourceRepository(view)
 
-    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    fireEvent.click(view.getByRole("button", { name: "Next Step" }))
 
+    // High confidence skips the Build step and goes directly to Environment!
     await waitFor(() => {
-      expect(view.getByText("Manual override")).toBeTruthy()
+      expect(view.getByText("Environment Settings")).toBeTruthy()
     })
-    expect(view.getByText("Detected language")).toBeTruthy()
-    expect(view.getByText("Detected framework")).toBeTruthy()
-    expect(view.getByText("Detected build command")).toBeTruthy()
-    expect(view.getByText("Ready: build settings are complete.")).toBeTruthy()
+    expect(view.getByText("Build Configuration")).toBeTruthy()
+    expect(view.getByText("Next.js")).toBeTruthy()
 
-    fireEvent.click(view.getByRole("button", { name: "Next" }))
-
-    await waitFor(() => {
-      expect(view.getByText("Attached resources")).toBeTruthy()
-    })
-
-    fireEvent.click(view.getByRole("button", { name: "Deploy" }))
+    fireEvent.click(view.getByRole("button", { name: "Deploy Application" }))
 
     await waitFor(() => {
       expect(view.getByText("Status timeline")).toBeTruthy()
@@ -274,23 +265,20 @@ describe("DeployWizard", () => {
     const view = await renderWizard()
 
     await waitFor(() => {
-      expect(view.getByRole("option", { name: "owner-acme" })).toBeTruthy()
+      expect(view.getByRole("button", { name: /owner-acme/i })).toBeTruthy()
     })
 
-    fireEvent.change(view.getByLabelText("Owner selector"), {
-      target: { value: "owner-acme" },
-    })
+    fireEvent.click(view.getByRole("button", { name: /owner-acme/i }))
 
     await waitFor(() => {
-      expect(view.getByRole("option", { name: "legacy-worker" })).toBeTruthy()
+      expect(view.getByRole("button", { name: /legacy-worker/i })).toBeTruthy()
     })
 
-    fireEvent.change(view.getByLabelText("Repository selector"), {
-      target: { value: "repo-failing-build" },
-    })
+    fireEvent.click(view.getByRole("button", { name: /legacy-worker/i }))
 
-    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    fireEvent.click(view.getByRole("button", { name: "Next Step" }))
 
+    // Fails auto-detection, so goes to Build step!
     await waitFor(() => {
       expect(view.getByText("Manual override")).toBeTruthy()
     })
@@ -318,10 +306,10 @@ describe("DeployWizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
-      expect(view.getByText("Attached resources")).toBeTruthy()
+      expect(view.getByText(/Attached Resources/i)).toBeTruthy()
     })
 
-    fireEvent.click(view.getByRole("button", { name: "Deploy" }))
+    fireEvent.click(view.getByRole("button", { name: "Deploy Application" }))
 
     await waitFor(
       () => {
@@ -342,7 +330,7 @@ describe("DeployWizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Edit Settings" }))
 
     await waitFor(() => {
-      expect(view.getByText("Attached resources")).toBeTruthy()
+      expect(view.getByText(/Attached Resources/i)).toBeTruthy()
     })
   }, 15_000)
 
@@ -350,22 +338,18 @@ describe("DeployWizard", () => {
     const view = await renderWizard()
 
     await waitFor(() => {
-      expect(view.getByRole("option", { name: "owner-acme" })).toBeTruthy()
+      expect(view.getByRole("button", { name: /owner-acme/i })).toBeTruthy()
     })
 
-    fireEvent.change(view.getByLabelText("Owner selector"), {
-      target: { value: "owner-acme" },
-    })
+    fireEvent.click(view.getByRole("button", { name: /owner-acme/i }))
 
     await waitFor(() => {
-      expect(view.getByRole("option", { name: "legacy-worker" })).toBeTruthy()
+      expect(view.getByRole("button", { name: /legacy-worker/i })).toBeTruthy()
     })
 
-    fireEvent.change(view.getByLabelText("Repository selector"), {
-      target: { value: "repo-failing-build" },
-    })
+    fireEvent.click(view.getByRole("button", { name: /legacy-worker/i }))
 
-    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    fireEvent.click(view.getByRole("button", { name: "Next Step" }))
 
     await waitFor(() => {
       expect(view.getByText("Manual override")).toBeTruthy()
@@ -379,10 +363,10 @@ describe("DeployWizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
-      expect(view.getByText("Attached resources")).toBeTruthy()
+      expect(view.getByText(/Attached Resources/i)).toBeTruthy()
     })
 
-    fireEvent.click(view.getByRole("button", { name: "Deploy" }))
+    fireEvent.click(view.getByRole("button", { name: "Deploy Application" }))
 
     await waitFor(
       () => {
@@ -413,7 +397,15 @@ describe("DeployWizard", () => {
     const view = await renderWizard()
 
     await selectSourceRepository(view)
-    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    fireEvent.click(view.getByRole("button", { name: "Next Step" }))
+
+    // High confidence goes to Environment first
+    await waitFor(() => {
+      expect(view.getByText("Environment Settings")).toBeTruthy()
+    })
+
+    // Click back goes to Build step (allowing editing auto-detected settings)
+    fireEvent.click(view.getByRole("button", { name: "Back" }))
 
     await waitFor(() => {
       expect(view.getByText("Manual override")).toBeTruthy()
@@ -422,7 +414,7 @@ describe("DeployWizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
-      expect(view.getByText("Attached resources")).toBeTruthy()
+      expect(view.getByText(/Attached Resources/i)).toBeTruthy()
     })
 
     fireEvent.click(view.getByRole("radio", { name: /Pro/i }))
@@ -450,22 +442,16 @@ describe("DeployWizard", () => {
     const view = await renderWizard()
 
     await selectSourceRepository(view)
-    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    fireEvent.click(view.getByRole("button", { name: "Next Step" }))
 
     await waitFor(() => {
-      expect(view.getByText("Manual override")).toBeTruthy()
-    })
-
-    fireEvent.click(view.getByRole("button", { name: "Next" }))
-
-    await waitFor(() => {
-      expect(view.getByText("Domain mode")).toBeTruthy()
+      expect(view.getByText("Environment Settings")).toBeTruthy()
     })
 
     fireEvent.click(view.getByRole("radio", { name: /Custom domain/i }))
 
     await waitFor(() => {
-      expect(view.getByRole("button", { name: "Deploy" })).toBeDisabled()
+      expect(view.getByRole("button", { name: "Deploy Application" })).toBeDisabled()
       expect(
         view.getAllByText(
           "Custom domain is required when generated subdomain is off."
@@ -476,12 +462,12 @@ describe("DeployWizard", () => {
     fireEvent.click(view.getByRole("radio", { name: /Managed subdomain/i }))
 
     await waitFor(() => {
-      expect(view.getByRole("button", { name: "Deploy" })).toBeEnabled()
+      expect(view.getByRole("button", { name: "Deploy Application" })).toBeEnabled()
     })
   })
 
   it("shows duplicate env var key warning", async () => {
-    const view = await renderWizard("step=environment", {
+    const view = await renderWizard("step=environment&github=connected", {
       step: "environment",
       source: {
         sourceType: "github",
@@ -527,7 +513,7 @@ describe("DeployWizard", () => {
     })
 
     await waitFor(() => {
-      expect(view.getByText("Attached resources")).toBeTruthy()
+      expect(view.getByText(/Attached Resources/i)).toBeTruthy()
     })
 
     expect(
