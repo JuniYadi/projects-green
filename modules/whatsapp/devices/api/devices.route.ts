@@ -111,7 +111,7 @@ export const devicesRoutes = new Elysia()
     // For now, just updating status as a placeholder
     const updated = await prisma.whatsappDevice.update({
       where: { id },
-      data: { status: "CONNECTED", lastVerifiedAt: new Date() },
+      data: { status: "ACTIVE" },
     })
 
     return { ok: true, device: updated }
@@ -134,7 +134,7 @@ export const devicesRoutes = new Elysia()
     // Logic to reconnect device would go here
     const updated = await prisma.whatsappDevice.update({
       where: { id },
-      data: { status: "CONNECTED" },
+      data: { status: "ACTIVE" },
     })
 
     return { ok: true, device: updated }
