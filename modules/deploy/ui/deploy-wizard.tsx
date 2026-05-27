@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   DEPLOY_STEP_QUERY_KEY,
+  DEPLOY_TEMPLATES,
   MONITOR_POLL_INTERVAL_MS,
   parseStepQueryValue,
 } from "@/modules/deploy/deploy.constants"
@@ -42,7 +43,10 @@ import { StepMonitor } from "@/modules/deploy/ui/step-monitor"
 import { StepSource } from "@/modules/deploy/ui/step-source"
 import type {
   Branch,
+  DeployEnvironmentState,
+  DeploySourceType,
   DeployStep,
+  DeployTemplateId,
   Owner,
   Repository,
 } from "@/modules/deploy/deploy.types"
@@ -423,9 +427,11 @@ function DeployWizardInner() {
     dispatch({
       type: "set-source",
       payload: {
+        sourceType: "github",
         ownerId,
         repositoryId: "",
         branchName: "",
+        templateId: undefined,
       },
     })
 
@@ -442,8 +448,10 @@ function DeployWizardInner() {
     dispatch({
       type: "set-source",
       payload: {
+        sourceType: "github",
         repositoryId,
         branchName,
+        templateId: undefined,
       },
     })
 
@@ -452,6 +460,48 @@ function DeployWizardInner() {
     dispatch({
       type: "set-build",
       payload: buildInitialBuildState(repositoryId),
+    })
+  }
+
+  const handleTemplateSelect = (templateId: DeployTemplateId) => {
+    const template = DEPLOY_TEMPLATES.find((t) => t.id === templateId)
+    if (!template) return
+
+    dispatch({
+      type: "set-source",
+      payload: {
+        sourceType: "template",
+        templateId,
+        ownerId: "",
+        repositoryId: "",
+        branchName: "",
+      },
+    })
+
+    dispatch({
+      type: "set-detection",
+      payload: {
+        language: template.build.language,
+        framework: template.build.framework,
+        dockerfileDetected: template.build.useDockerfile,
+        buildCommand: template.build.buildCommand,
+        confidence: 100,
+        status: "success",
+      },
+    })
+
+    dispatch({
+      type: "set-build",
+      payload: template.build,
+    })
+
+    dispatch({
+      type: "set-environment",
+      payload: {
+        resourcePlanId: "payg",
+        cpu: template.defaultCpu,
+        memory: template.defaultMemory,
+      },
     })
   }
 
@@ -486,6 +536,8 @@ function DeployWizardInner() {
       return
     }
 
+    // If template, we might want to skip build or just pre-fill it.
+    // For now we just go to build, but it will be pre-filled.
     navigateStep(nextStep)
   }
 
@@ -513,6 +565,8 @@ function DeployWizardInner() {
 
       return (
         <StepSource
+          sourceType={state.source.sourceType}
+          templateId={state.source.templateId}
           githubConnectionStatus={githubConnectionStatus}
           isConnectingGithub={isConnectingGithub}
           ownerOptionsLoading={ownerOptionsLoading}
@@ -533,6 +587,10 @@ function DeployWizardInner() {
           selectedBranchName={state.source.branchName}
           rootDirectory={state.source.rootDirectory}
           canProceed={sourceValid}
+          onSourceTypeChange={(sourceType) => {
+            dispatch({ type: "set-source", payload: { sourceType } })
+          }}
+          onTemplateSelect={handleTemplateSelect}
           onOwnerSearchChange={setOwnerSearch}
           onRepositorySearchChange={setRepositorySearch}
           onOwnerSelect={handleOwnerSelect}
@@ -587,12 +645,16 @@ function DeployWizardInner() {
     if (state.step === "environment") {
       return (
         <StepEnvironment
-          generatedSubdomain={toGeneratedSubdomain(selectedRepository?.name)}
+          generatedSubdomain={toGeneratedSubdomain(
+            selectedRepository?.name || state.source.templateId
+          )}
           useGeneratedSubdomain={state.environment.useGeneratedSubdomain}
           customDomain={state.environment.customDomain}
           environmentId="staging"
           envVars={state.environment.envVars}
           resourcePlanId={state.environment.resourcePlanId}
+          cpu={state.environment.cpu}
+          memory={state.environment.memory}
           hasMissingCustomDomain={hasMissingCustomDomain}
           hasInvalidCustomDomain={hasInvalidCustomDomain}
           validationMessages={environmentValidationMessages}
@@ -624,7 +686,18 @@ function DeployWizardInner() {
             })
           }}
           onResourcePlanChange={(resourcePlanId) => {
-            dispatch({ type: "set-environment", payload: { resourcePlanId } })
+            const updates: Partial<DeployEnvironmentState> = { resourcePlanId }
+            if (resourcePlanId === "payg") {
+              updates.cpu = updates.cpu ?? 100
+              updates.memory = updates.memory ?? 256
+            }
+            dispatch({ type: "set-environment", payload: updates })
+          }}
+          onCpuChange={(cpu) => {
+            dispatch({ type: "set-environment", payload: { cpu } })
+          }}
+          onMemoryChange={(memory) => {
+            dispatch({ type: "set-environment", payload: { memory } })
           }}
         />
       )
