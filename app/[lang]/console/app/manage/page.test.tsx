@@ -50,7 +50,7 @@ describe("ManagePage", () => {
     expect(view.getByText("Domains & SSL")).toBeInTheDocument()
     expect(view.getByText("Environment")).toBeInTheDocument()
     expect(view.getByText("Storages")).toBeInTheDocument()
-    expect(view.getByText("Autoscaling")).toBeInTheDocument()
+    expect(view.getByText("Pods & Scaling")).toBeInTheDocument()
     expect(view.getByText("Metrics")).toBeInTheDocument()
     expect(view.getByText("Logs")).toBeInTheDocument()
   })
@@ -231,15 +231,16 @@ describe("ManagePage", () => {
       )
       fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
 
-      fireEvent.click(view.getByText("Autoscaling"))
+      fireEvent.click(view.getByText("Pods & Scaling"))
       expect(
         view.getByText("Autoscaling Policies (HPA / VPA)")
       ).toBeInTheDocument()
 
       fireEvent.click(view.getByRole("button", { name: "+" }))
-      expect(view.getByText("3")).toBeInTheDocument()
+      const replicaSpan = view.container.querySelector("span.w-6")
+      expect(replicaSpan?.textContent).toBe("3")
       fireEvent.click(view.getByRole("button", { name: "-" }))
-      expect(view.getByText("2")).toBeInTheDocument()
+      expect(replicaSpan?.textContent).toBe("2")
 
       const scalingToggles = view.getAllByRole("button", {
         name: "Disabled",
