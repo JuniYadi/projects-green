@@ -46,17 +46,30 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-mock.module("../messages.service", () => ({
+mock.module("@/modules/whatsapp/messages/messages.service", () => ({
   messageService: mockMessageService,
 }))
 
-mock.module("../quota.service", () => ({
+mock.module("@/modules/whatsapp/messages/quota.service", () => ({
   InsufficientQuotaError,
 }))
 
 mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
 const { messagesRoutes } = await import("./messages.route")
+
+const createTestApp = () => new Elysia().use(messagesRoutes).compile()
+
+const authRequest = (path: string, options: RequestInit = {}) => {
+  const url = path.startsWith("http") ? path : `http://localhost${path}`
+  return new Request(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Authorization: "Bearer test",
+    },
+  })
+}
 
 describe("messagesRoutes", () => {
   beforeEach(() => {
@@ -93,12 +106,8 @@ describe("messagesRoutes", () => {
 
   describe("GET /messages", () => {
     it("returns 200 with messages array", async () => {
-      const app = new Elysia().use(messagesRoutes).compile()
-      const res = await app.handle(
-        new Request("http://localhost/messages", {
-          headers: { Authorization: "Bearer test" },
-        })
-      )
+      const app = createTestApp()
+      const res = await app.handle(authRequest("/messages"))
 
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -106,11 +115,9 @@ describe("messagesRoutes", () => {
     })
 
     it("returns 200 with filtered messages", async () => {
-      const app = new Elysia().use(messagesRoutes).compile()
+      const app = createTestApp()
       const res = await app.handle(
-        new Request("http://localhost/messages?conversationId=conv-1&direction=OUTBOX", {
-          headers: { Authorization: "Bearer test" },
-        })
+        authRequest("/messages?conversationId=conv-1&direction=OUTBOX")
       )
 
       expect(res.status).toBe(200)
@@ -127,12 +134,8 @@ describe("messagesRoutes", () => {
         conversation: { organizationId: "org-1" },
       } as any)
 
-      const app = new Elysia().use(messagesRoutes).compile()
-      const res = await app.handle(
-        new Request("http://localhost/messages/msg-1", {
-          headers: { Authorization: "Bearer test" },
-        })
-      )
+      const app = createTestApp()
+      const res = await app.handle(authRequest("/messages/msg-1"))
 
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -143,12 +146,8 @@ describe("messagesRoutes", () => {
     it("returns 404 when message not found", async () => {
       mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as any)
 
-      const app = new Elysia().use(messagesRoutes).compile()
-      const res = await app.handle(
-        new Request("http://localhost/messages/not-found", {
-          headers: { Authorization: "Bearer test" },
-        })
-      )
+      const app = createTestApp()
+      const res = await app.handle(authRequest("/messages/not-found"))
 
       expect(res.status).toBe(404)
       const body = await res.json()
@@ -163,11 +162,10 @@ describe("messagesRoutes", () => {
         conversation: { organizationId: "org-1" },
       } as any)
 
-      const app = new Elysia().use(messagesRoutes).compile()
+      const app = createTestApp()
       const res = await app.handle(
-        new Request("http://localhost/messages/msg-1", {
+        authRequest("/messages/msg-1", {
           method: "DELETE",
-          headers: { Authorization: "Bearer test" },
         })
       )
 
@@ -179,11 +177,10 @@ describe("messagesRoutes", () => {
     it("returns 404 when message not found", async () => {
       mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as any)
 
-      const app = new Elysia().use(messagesRoutes).compile()
+      const app = createTestApp()
       const res = await app.handle(
-        new Request("http://localhost/messages/not-found", {
+        authRequest("/messages/not-found", {
           method: "DELETE",
-          headers: { Authorization: "Bearer test" },
         })
       )
 
@@ -202,12 +199,8 @@ describe("messagesRoutes", () => {
         },
       } as any)
 
-      const app = new Elysia().use(messagesRoutes).compile()
-      const res = await app.handle(
-        new Request("http://localhost/messages/msg-1/media", {
-          headers: { Authorization: "Bearer test" },
-        })
-      )
+      const app = createTestApp()
+      const res = await app.handle(authRequest("/messages/msg-1/media"))
 
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -227,12 +220,8 @@ describe("messagesRoutes", () => {
         },
       } as any)
 
-      const app = new Elysia().use(messagesRoutes).compile()
-      const res = await app.handle(
-        new Request("http://localhost/messages/msg-1/media", {
-          headers: { Authorization: "Bearer test" },
-        })
-      )
+      const app = createTestApp()
+      const res = await app.handle(authRequest("/messages/msg-1/media"))
 
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -243,12 +232,8 @@ describe("messagesRoutes", () => {
     it("returns 404 when message not found", async () => {
       mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as any)
 
-      const app = new Elysia().use(messagesRoutes).compile()
-      const res = await app.handle(
-        new Request("http://localhost/messages/not-found/media", {
-          headers: { Authorization: "Bearer test" },
-        })
-      )
+      const app = createTestApp()
+      const res = await app.handle(authRequest("/messages/not-found/media"))
 
       expect(res.status).toBe(404)
     })
