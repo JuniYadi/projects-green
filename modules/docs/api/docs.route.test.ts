@@ -3,14 +3,14 @@ import { Elysia } from "elysia"
 
 import { createDocsRoutes } from "@/modules/docs/api/docs.route"
 
-const mockAuthenticate = mock(async () => ({
+const mockAuthenticate = mock(async (): Promise<import("@/modules/docs/api/docs.route").DocsAuthContext> => ({
   organizationId: "org_1",
   user: {
     id: "user_1",
     email: "admin@example.com",
   },
 }))
-const mockGetPlatformRole = mock(async () => "super_admin" as const)
+const mockGetPlatformRole = mock(async (): Promise<"none" | "super_admin"> => "super_admin" as const)
 const mockGetDocByPath = mock(async () => ({
   path: "/console",
   title: "Console Overview",
@@ -18,7 +18,7 @@ const mockGetDocByPath = mock(async () => ({
   howTo: ["Open console"],
   notes: ["Initial note"],
   updatedAt: "2026-05-22",
-}))
+}) as import("@/modules/docs/docs.types").UiDocEntry | null)
 const mockUpsertDocByPath = mock(async () => ({
   path: "/console",
   title: "Console Overview",
@@ -44,14 +44,14 @@ beforeEach(() => {
   mockGetDocByPath.mockReset()
   mockUpsertDocByPath.mockReset()
 
-  mockAuthenticate.mockImplementation(async () => ({
+  mockAuthenticate.mockImplementation(async (): Promise<import("@/modules/docs/api/docs.route").DocsAuthContext> => ({
     organizationId: "org_1",
     user: {
       id: "user_1",
       email: "admin@example.com",
     },
   }))
-  mockGetPlatformRole.mockImplementation(async () => "super_admin")
+  mockGetPlatformRole.mockImplementation(async (): Promise<"none" | "super_admin"> => "super_admin")
   mockGetDocByPath.mockImplementation(async () => ({
     path: "/console",
     title: "Console Overview",
@@ -59,7 +59,7 @@ beforeEach(() => {
     howTo: ["Open console"],
     notes: ["Initial note"],
     updatedAt: "2026-05-22",
-  }))
+  } as import("@/modules/docs/docs.types").UiDocEntry | null))
   mockUpsertDocByPath.mockImplementation(async () => ({
     path: "/console",
     title: "Console Overview",
@@ -72,7 +72,7 @@ beforeEach(() => {
 
 describe("docsRoutes", () => {
   it("returns 401 when reading docs without auth user", async () => {
-    mockAuthenticate.mockImplementationOnce(async () => ({
+    mockAuthenticate.mockImplementationOnce(async (): Promise<import("@/modules/docs/api/docs.route").DocsAuthContext> => ({
       organizationId: "org_1",
       user: null,
     }))
@@ -133,7 +133,7 @@ describe("docsRoutes", () => {
   })
 
   it("returns 403 when posting docs without super admin role", async () => {
-    mockGetPlatformRole.mockResolvedValueOnce("none")
+    mockGetPlatformRole.mockResolvedValueOnce("none" as "none")
 
     const response = await createApp().handle(
       new Request("http://localhost/docs", {
