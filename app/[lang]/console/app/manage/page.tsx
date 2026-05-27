@@ -13,6 +13,7 @@ import {
   ArrowClockwise,
   Question,
   Gear,
+  Calendar,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -48,6 +49,7 @@ import { TabMounts } from "@/modules/deploy/ui/operate/tab-mounts"
 import { TabScaling } from "@/modules/deploy/ui/operate/tab-scaling"
 import { TabMetrics } from "@/modules/deploy/ui/operate/tab-metrics"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
+import { TabEvents } from "@/modules/deploy/ui/operate/tab-events"
 import { OperateTroubleshooter } from "@/modules/deploy/ui/operate/operate-troubleshooter"
 import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
 
@@ -74,6 +76,11 @@ const TABS: Array<{
     id: "logs",
     label: "Logs",
     icon: <TerminalIcon size={16} />,
+  },
+  {
+    id: "events",
+    label: "Events",
+    icon: <Calendar size={16} />,
   },
 ]
 
@@ -325,6 +332,8 @@ export default function ManagePage() {
               diagnosticMode={diagnosticMode}
             />
           )}
+
+          {activeTab === "events" && <TabEvents />}
         </div>
 
         {/* Floating DevTools Simulator Toggle */}
