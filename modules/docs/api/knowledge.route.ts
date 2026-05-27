@@ -36,7 +36,7 @@ const STRICT_KB_FALLBACK_MESSAGE =
   "I don't know from the current knowledgebase."
 const MIN_CONTEXT_SCORE = 12
 
-type KnowledgeAuthContext = {
+export type KnowledgeAuthContext = {
   organizationId?: string | null
   user: {
     email?: string | null

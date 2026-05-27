@@ -23,7 +23,7 @@ const docsBodySchema = z.object({
   organizationId: z.string().min(1).nullable().optional(),
 })
 
-type DocsAuthContext = {
+export type DocsAuthContext = {
   organizationId?: string | null
   user: {
     email?: string | null

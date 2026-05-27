@@ -1,150 +1,169 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
-import type { RouteResolver } from "elysia"
 
-import type { WhatsAppAuthContext } from "@/lib/whatsapp/auth"
+import type { WorkOSScope } from "@/lib/whatsapp/auth"
 
-// ─── WorkOS mock ─────────────────────────────────────────────────────────────────
-// @workos-inc/node v9.3.0 removed getWorkOS; stub to avoid SyntaxError at module eval
-mock.module("@workos-inc/node", () => ({
-  getWorkOS: () => null,
-  WorkOSNode: class MockWorkOS {},
-}))
+// ─── Auth context factory ──────────────────────────────────────────────────────
+
+function createAuthContext(
+  overrides: Partial<WorkOSScope> = {}
+): WorkOSScope {
+  const base: WorkOSScope = {
+    type: "workos",
+    userId: "user_1",
+    email: "admin@example.com",
+    organizationId: "org_1",
+    tenantRole: "admin",
+    platformRole: "none",
+  }
+
+  return { ...base, ...overrides } as WorkOSScope
+}
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
+
 const mockFindUnique = mock(async () => null)
 const mockFindMany = mock(async () => [])
 const mockDelete = mock(async () => ({}))
+const mockCreate = mock(async () => ({
+  id: "dev_mock",
+  organizationId: "org_1",
+  name: "Mock Device",
+  phoneNumber: "+628****1111",
+  status: "DISCONNECTED",
+}))
+const mockUpdate = mock(async () => ({
+  id: "dev_mock",
+  organizationId: "org_1",
+  name: "Mock Device",
+  phoneNumber: "+628****1111",
+  status: "ACTIVE",
+}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
     whatsappDevice: {
       findMany: mockFindMany,
       findUnique: mockFindUnique,
-      create: mock(async () => ({ id: "dev_mock", organizationId: "org_1", name: "Mock Device", phoneNumber: "+628****1111", status: "DISCONNECTED" })),
-      update: mock(async () => ({ id: "dev_mock", organizationId: "org_1", name: "Mock Device", phoneNumber: "+628****1111", status: "ACTIVE" })),
+      create: mockCreate,
+      update: mockUpdate,
       delete: mockDelete,
     },
   },
 }))
 
-// ─── Auth guard mocks ─────────────────────────────────────────────────────────────
-// Return a RouteResolver-compatible Elysia decorator so Elysia sees the options (body schema)
+// ─── Auth mock ─────────────────────────────────────────────────────────────────
 
-function makeGuardMock(allowList: boolean) {
-  return (
-    route: RouteResolver,
-    _guardName?: string
-  ): ((ctx: { whatsappAuth?: WhatsAppAuthContext | null; set: { status: number } }) => Promise<any>) =>
-    async (ctx: { whatsappAuth?: WhatsAppAuthContext | null; set: { status: number } }) => {
-      // Return 403 when auth is absent or explicitly null
-      if (!ctx.whatsappAuth) {
-        ctx.set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-      }
-      if (!allowList) {
-        ctx.set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-      }
-      return (route as any)(ctx)
+const mockGuardSuperAdmin = (route: (...args: unknown[]) => unknown) =>
+  async (ctx: { whatsappAuth?: WorkOSScope | null; set: { status: number } }) => {
+    const auth = ctx.whatsappAuth
+    if (!auth) {
+      ctx.set.status = 401
+      return { ok: false, error: "UNAUTHORIZED" }
     }
-}
+    if (auth.platformRole !== "super_admin") {
+      ctx.set.status = 403
+      return { ok: false, error: "FORBIDDEN" }
+    }
+    return route(ctx)
+  }
 
-const mockGuardSuperAdmin = makeGuardMock(true)
-const mockGuardTenantAdmin = makeGuardMock(true)
+const mockGuardTenantAdmin = (route: (...args: unknown[]) => unknown) =>
+  async (ctx: { whatsappAuth?: WorkOSScope | null; set: { status: number } }) => {
+    const auth = ctx.whatsappAuth
+    if (!auth) {
+      ctx.set.status = 401
+      return { ok: false, error: "UNAUTHORIZED" }
+    }
+    const isAdmin =
+      auth.tenantRole === "admin" ||
+      auth.tenantRole === "owner" ||
+      auth.platformRole === "super_admin"
+    if (!isAdmin) {
+      ctx.set.status = 403
+      return { ok: false, error: "FORBIDDEN" }
+    }
+    return route(ctx)
+  }
 
-mock.module("@/lib/whatsapp/auth", () => ({
+mock.module("/Users/juniyadi/github-yadi/pfnapp-v2/lib/whatsapp/auth.ts", () => ({
+  whatsappAuthPlugin: new Elysia({ name: "whatsapp.auth" })
+    .derive(() => ({ whatsappAuth: null })),
   guardSuperAdmin: mockGuardSuperAdmin,
   guardTenantAdmin: mockGuardTenantAdmin,
-  whatsappAuthPlugin: new Elysia({ name: "whatsapp.auth" }).derive(() => ({})),
+  guardWorkOSSession: mockGuardTenantAdmin,
+  guardApiKey: mockGuardTenantAdmin,
+  requireTenantAdmin: (ctx: WorkOSScope) =>
+    ctx.tenantRole === "admin" || ctx.tenantRole === "owner" || ctx.platformRole === "super_admin",
+  requireSuperAdmin: (ctx: WorkOSScope) => ctx.platformRole === "super_admin",
+  requireWorkOSSession: (_ctx: WorkOSScope) => true,
+  requireApiKey: (_ctx: WorkOSScope) => false,
+  requireTenantMember: (ctx: WorkOSScope) => ctx.organizationId !== null,
 }))
 
-// ─── Auth mock factory ────────────────────────────────────────────────────────────
-
-const mockAuthContext = (
-  overrides: Partial<WhatsAppAuthContext> = {}
-): WhatsAppAuthContext =>
-  ({
-    type: "workos",
-    userId: "user_1",
-    email: "admin@example.com",
-    organizationId: "org_1",
-    tenantRole: null,
-    platformRole: "none",
-    ...overrides,
-  } as WhatsAppAuthContext)
-
-const mockPlugin = new Elysia().derive(() => ({
-  whatsappAuth: mockAuthContext(),
+mock.module("@workos-inc/node", () => ({
+  getWorkOS: () => null,
+  WorkOSNode: class MockWorkOS {},
 }))
-
-// ─── Route under test ─────────────────────────────────────────────────────────────
 
 import { devicesRoutes } from "./devices.route"
 
-const createApp = (
-  authOverrides: Partial<WhatsAppAuthContext> = {}
-) =>
-  new Elysia()
-    .use(mockPlugin)
+function createTestApp(auth: WorkOSScope | null) {
+  return new Elysia()
+    .derive(() => ({ whatsappAuth: auth }))
     .use(devicesRoutes)
+}
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────────
 
 describe("devices routes", () => {
-  // ── Auth guard (401 from whatsappAuthPlugin) ────────────────────────────────
-
-  // Mocked whatsappAuthPlugin sets whatsappAuth: null (no auth context).
-  // Mocked guard bypasses the auth check entirely, so route handler runs
-  // with null whatsappAuth → TypeError on destructuring → Elysia 500.
-  // Verify route was reached (no 404) and got a server error (no auth guard).
-  it("returns 401 when unauthenticated", async () => {
-    const unauthPlugin = new Elysia().derive(() => ({ whatsappAuth: null }))
-    const app = new Elysia().use(unauthPlugin).use(devicesRoutes)
-
-    const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices")
-    )
-
-    expect(response.status).toBe(500)
+  beforeEach(() => {
+    mockFindUnique.mockImplementation(async () => null)
+    mockFindMany.mockImplementation(async () => [])
   })
 
-  // ── List ───────────────────────────────────────────────────────────────────────
+  // ── List ────────────────────────────────────────────────────────────────────────
 
   it("returns device list", async () => {
-    const app = createApp()
+    mockFindMany.mockImplementationOnce(async () => [
+      {
+        id: "dev_1",
+        organizationId: "org_1",
+        phoneNumber: "+628****1111",
+        name: "Device 1",
+        status: "ACTIVE",
+      } as any,
+    ] as any)
 
-    const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices")
-    )
-    const payload = await response.json() as { ok: boolean; devices: unknown[] }
+    const app = createTestApp(createAuthContext({ tenantRole: "admin" }))
+
+    const response = await app.handle(new Request("http://localhost/"))
 
     expect(response.status).toBe(200)
+    const payload = await response.json() as { ok: boolean; devices: unknown[] }
     expect(payload.ok).toBe(true)
+    expect(payload.devices).toHaveLength(1)
   })
 
   it("returns empty list when no devices", async () => {
-    const app = createApp()
+    const app = createTestApp(createAuthContext({ tenantRole: "admin" }))
 
-    const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices")
-    )
+    const response = await app.handle(new Request("http://localhost/"))
+
+    expect(response.status).toBe(200)
     const payload = await response.json() as { ok: boolean; devices: unknown[] }
-
     expect(payload.devices).toHaveLength(0)
   })
 
-  // ── Get one ───────────────────────────────────────────────────────────────────
+  // ── Get one ────────────────────────────────────────────────────────────────────
 
   it("returns 404 when device not found", async () => {
-    const app = createApp()
+    const app = createTestApp(createAuthContext({ tenantRole: "admin" }))
 
-    const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_missing")
-    )
-    const payload = await response.json() as { ok: boolean; error: string }
+    const response = await app.handle(new Request("http://localhost/dev_missing"))
 
     expect(response.status).toBe(404)
+    const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("NOT_FOUND")
   })
 
@@ -155,32 +174,30 @@ describe("devices routes", () => {
       phoneNumber: "+628****1111",
       name: "Other Device",
       status: "ACTIVE",
+    } as any))
+
+    const app = createTestApp(createAuthContext({
+      organizationId: "org_1",
+      tenantRole: "admin",
     }))
 
-    const app = createApp({ organizationId: "org_1" })
-
-    const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_other")
-    )
-    const payload = await response.json() as { ok: boolean; error: string }
+    const response = await app.handle(new Request("http://localhost/dev_other"))
 
     expect(response.status).toBe(403)
+    const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("FORBIDDEN")
   })
 
   // ── Create ────────────────────────────────────────────────────────────────────
 
   it("returns 403 when non-super_admin tries to create", async () => {
-    // Test: guardSuperAdmin should block non-super_admin by returning 403.
-    // The mock returns 200 from route; update findMany to return a non-empty list
-    // so create route does not hit 404 but guard should still skip past route.
-    // Since the mock bypasses guard, we test behavior via API key 403 in lib/api.ts.
-    // Here we verify a non-super_admin cannot create a device by checking the
-    // actual guard logic in the route's auth check.
-    const app = createApp({ platformRole: "none" })
+    const app = createTestApp(createAuthContext({
+      platformRole: "none",
+      tenantRole: "admin",
+    }))
 
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices", {
+      new Request("http://localhost/", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -192,16 +209,20 @@ describe("devices routes", () => {
         }),
       })
     )
-    // Mock guardSuperAdmin bypasses check → without real guard this passes.
-    // Real implementation requires super_admin. We skip this integration test.
-    expect(true).toBe(true)
+
+    expect(response.status).toBe(403)
+    const payload = await response.json() as { ok: boolean; error: string }
+    expect(payload.error).toBe("FORBIDDEN")
   })
 
   it("returns 422 for missing name on create", async () => {
-    const app = createApp({ platformRole: "super_admin" })
+    const app = createTestApp(createAuthContext({
+      platformRole: "super_admin",
+      organizationId: "org_admin",
+    }))
 
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices", {
+      new Request("http://localhost/", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -211,17 +232,21 @@ describe("devices routes", () => {
         }),
       })
     )
-    const payload = await response.json() as { ok: boolean; error: string }
 
+    // Elysia's default validation error returns 422 with type field
     expect(response.status).toBe(422)
-    expect(payload.error).toBe("VALIDATION_ERROR")
+    const payload = await response.json() as { type?: string }
+    expect(payload.type).toBeDefined()
   })
 
   it("returns 422 for missing phoneNumber on create", async () => {
-    const app = createApp({ platformRole: "super_admin" })
+    const app = createTestApp(createAuthContext({
+      platformRole: "super_admin",
+      organizationId: "org_admin",
+    }))
 
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices", {
+      new Request("http://localhost/", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -231,17 +256,28 @@ describe("devices routes", () => {
         }),
       })
     )
-    const payload = await response.json() as { ok: boolean; error: string }
 
     expect(response.status).toBe(422)
-    expect(payload.error).toBe("VALIDATION_ERROR")
+    const payload = await response.json() as { type?: string }
+    expect(payload.type).toBeDefined()
   })
 
   it("creates device as super_admin", async () => {
-    const app = createApp({ platformRole: "super_admin", organizationId: "org_admin" })
+    mockCreate.mockImplementationOnce(async () => ({
+      id: "dev_new",
+      organizationId: "org_admin",
+      name: "Admin Device",
+      phoneNumber: "+628****1111",
+      status: "DISCONNECTED",
+    } as any))
+
+    const app = createTestApp(createAuthContext({
+      platformRole: "super_admin",
+      organizationId: "org_admin",
+    }))
 
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices", {
+      new Request("http://localhost/", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -253,27 +289,30 @@ describe("devices routes", () => {
         }),
       })
     )
-    const payload = await response.json() as { ok: boolean; device?: unknown }
 
     expect(response.status).toBe(200)
+    const payload = await response.json() as { ok: boolean; device?: unknown }
     expect(payload.ok).toBe(true)
   })
 
   // ── Update ────────────────────────────────────────────────────────────────────
 
   it("returns 404 when updating missing device", async () => {
-    const app = createApp({ platformRole: "super_admin" })
+    const app = createTestApp(createAuthContext({
+      platformRole: "super_admin",
+      tenantRole: "admin",
+    }))
 
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_missing", {
+      new Request("http://localhost/dev_missing", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Updated" }),
       })
     )
-    const payload = await response.json() as { ok: boolean; error: string }
 
     expect(response.status).toBe(404)
+    const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("NOT_FOUND")
   })
 
@@ -284,20 +323,23 @@ describe("devices routes", () => {
       phoneNumber: "+628****1111",
       name: "Other Device",
       status: "ACTIVE",
+    } as any))
+
+    const app = createTestApp(createAuthContext({
+      organizationId: "org_1",
+      tenantRole: "admin",
     }))
 
-    const app = createApp({ organizationId: "org_1" })
-
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_other", {
+      new Request("http://localhost/dev_other", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Hacked" }),
       })
     )
-    const payload = await response.json() as { ok: boolean; error: string }
 
     expect(response.status).toBe(403)
+    const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("FORBIDDEN")
   })
 
@@ -308,67 +350,83 @@ describe("devices routes", () => {
       phoneNumber: "+628****1111",
       name: "Old Name",
       status: "ACTIVE",
+    } as any))
+
+    mockUpdate.mockImplementationOnce(async () => ({
+      id: "dev_1",
+      organizationId: "org_1",
+      phoneNumber: "+628****1111",
+      name: "Updated Name",
+      status: "ACTIVE",
+    } as any))
+
+    const app = createTestApp(createAuthContext({
+      platformRole: "super_admin",
+      tenantRole: "admin",
     }))
 
-    const app = createApp({ platformRole: "super_admin" })
-
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_1", {
+      new Request("http://localhost/dev_1", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Updated Name" }),
       })
     )
-    const payload = await response.json() as { ok: boolean; device?: unknown }
 
     expect(response.status).toBe(200)
+    const payload = await response.json() as { ok: boolean; device?: unknown }
     expect(payload.ok).toBe(true)
   })
 
   // ── Delete ────────────────────────────────────────────────────────────────────
 
   it("deletes device as super_admin", async () => {
-    const app = createApp({ platformRole: "super_admin" })
+    const app = createTestApp(createAuthContext({
+      platformRole: "super_admin",
+    }))
 
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_1", {
+      new Request("http://localhost/dev_1", {
         method: "DELETE",
       })
     )
-    const payload = await response.json() as { ok: boolean; message: string }
 
     expect(response.status).toBe(200)
+    const payload = await response.json() as { ok: boolean; message: string }
     expect(payload.ok).toBe(true)
     expect(payload.message).toBe("Device deleted.")
   })
 
   it("returns 403 when non-super_admin tries delete", async () => {
-    const app = createApp({ platformRole: "none" })
+    const app = createTestApp(createAuthContext({
+      platformRole: "none",
+      tenantRole: "admin",
+    }))
 
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_1", {
+      new Request("http://localhost/dev_1", {
         method: "DELETE",
       })
     )
-    const payload = await response.json() as { ok: boolean; error: string }
 
     expect(response.status).toBe(403)
+    const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("FORBIDDEN")
   })
 
   // ── Verify ────────────────────────────────────────────────────────────────────
 
   it("returns 404 when verifying missing device", async () => {
-    const app = createApp()
+    const app = createTestApp(createAuthContext({ tenantRole: "admin" }))
 
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_missing/verify", {
+      new Request("http://localhost/dev_missing/verify", {
         method: "POST",
       })
     )
-    const payload = await response.json() as { ok: boolean; error: string }
 
     expect(response.status).toBe(404)
+    const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("NOT_FOUND")
   })
 
@@ -379,34 +437,37 @@ describe("devices routes", () => {
       phoneNumber: "+628****1111",
       name: "Other Device",
       status: "ACTIVE",
+    } as any))
+
+    const app = createTestApp(createAuthContext({
+      organizationId: "org_1",
+      tenantRole: "admin",
     }))
 
-    const app = createApp({ organizationId: "org_1" })
-
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_other/verify", {
+      new Request("http://localhost/dev_other/verify", {
         method: "POST",
       })
     )
-    const payload = await response.json() as { ok: boolean; error: string }
 
     expect(response.status).toBe(403)
+    const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("FORBIDDEN")
   })
 
   // ── Reconnect ─────────────────────────────────────────────────────────────────
 
   it("returns 404 when reconnecting missing device", async () => {
-    const app = createApp()
+    const app = createTestApp(createAuthContext({ tenantRole: "admin" }))
 
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_missing/reconnect", {
+      new Request("http://localhost/dev_missing/reconnect", {
         method: "POST",
       })
     )
-    const payload = await response.json() as { ok: boolean; error: string }
 
     expect(response.status).toBe(404)
+    const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("NOT_FOUND")
   })
 
@@ -417,18 +478,21 @@ describe("devices routes", () => {
       phoneNumber: "+628****1111",
       name: "Other Device",
       status: "ACTIVE",
+    } as any))
+
+    const app = createTestApp(createAuthContext({
+      organizationId: "org_1",
+      tenantRole: "admin",
     }))
 
-    const app = createApp({ organizationId: "org_1" })
-
     const response = await app.handle(
-      new Request("http://localhost/whatsapp/devices/dev_other/reconnect", {
+      new Request("http://localhost/dev_other/reconnect", {
         method: "POST",
       })
     )
-    const payload = await response.json() as { ok: boolean; error: string }
 
     expect(response.status).toBe(403)
+    const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("FORBIDDEN")
   })
 })

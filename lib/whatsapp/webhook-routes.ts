@@ -12,7 +12,7 @@ import { Elysia } from "elysia"
 import { verifySignature } from "./webhook"
 import { verifyWebhookUseCase } from "./verify-webhook"
 
-export const whatsappWebhookRoutes = new Elysia({ tag: "WhatsApp Webhook" })
+export const whatsappWebhookRoutes = new Elysia({ tags: ["WhatsApp Webhook"] })
   // Meta sends GET to verify webhook ownership
   .get("/whatsapp/webhook", ({ query }) => {
     const result = verifyWebhookUseCase({

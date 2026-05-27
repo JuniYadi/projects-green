@@ -53,7 +53,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
     guardTenantAdmin(async ({ body, whatsappAuth, set }: any) => {
       const webhook = await prisma.whatsappWebhook.create({
         data: {
-          deviceId: body.deviceId,
+          whatsappDeviceId: body.deviceId,
           organizationId: body.organizationId,
           webhookUrl: body.webhookUrl,
           verifyToken: body.verifyToken,
@@ -136,7 +136,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
             whatsappDeviceId: id,
             type: "INBOX",
             message: "Incoming Webhook Event",
-            metadata: body as Record<string, unknown>,
+            metadata: body as any,
           },
         })
       } catch (e) {

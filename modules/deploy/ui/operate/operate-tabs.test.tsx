@@ -41,24 +41,60 @@ describe("Operate tabs coverage", () => {
       if (typeof handler === "function") {
         handler()
       }
-      return 0 as ReturnType<typeof setTimeout>
-    }) as typeof setTimeout
+      return 0 as unknown as ReturnType<typeof setTimeout>
+    }) as unknown as typeof setTimeout
     globalThis.setTimeout = immediateTimeout
 
     try {
       const view = render(
-        <TabOverview diagnosticMode="healthy" replicas={2} />
+        <TabOverview
+          diagnosticMode="healthy"
+          replicas={2}
+          cloudflareEnabled={false}
+          dbConnected={true}
+          setCloudflareEnabled={mock(() => {})}
+          setDbConnected={mock(() => {})}
+          domains={[]}
+        />
       )
       expect(view.getByText("HTTP 200 OK")).toBeTruthy()
 
-      view.rerender(<TabOverview diagnosticMode="error_502" replicas={2} />)
+      view.rerender(
+        <TabOverview
+          diagnosticMode="error_502"
+          replicas={2}
+          cloudflareEnabled={false}
+          dbConnected={true}
+          setCloudflareEnabled={mock(() => {})}
+          setDbConnected={mock(() => {})}
+          domains={[]}
+        />
+      )
       expect(view.getByText("HTTP 502 Bad Gateway")).toBeTruthy()
 
-      view.rerender(<TabOverview diagnosticMode="ssl_expired" replicas={2} />)
+      view.rerender(
+        <TabOverview
+          diagnosticMode="ssl_expired"
+          replicas={2}
+          cloudflareEnabled={false}
+          dbConnected={true}
+          setCloudflareEnabled={mock(() => {})}
+          setDbConnected={mock(() => {})}
+          domains={[]}
+        />
+      )
       expect(view.getByText("SSL Certificate Expired")).toBeTruthy()
 
       view.rerender(
-        <TabOverview diagnosticMode="redirect_loop" replicas={3} />
+        <TabOverview
+          diagnosticMode="redirect_loop"
+          replicas={3}
+          cloudflareEnabled={false}
+          dbConnected={true}
+          setCloudflareEnabled={mock(() => {})}
+          setDbConnected={mock(() => {})}
+          domains={[]}
+        />
       )
       expect(view.getByText("HTTP 301 Redirection Loop")).toBeTruthy()
       expect(view.getByText("3 active")).toBeTruthy()
@@ -133,9 +169,9 @@ describe("Operate tabs coverage", () => {
         if (typeof handler === "function") {
           handler()
         }
-        return 0 as ReturnType<typeof setInterval>
+        return 0 as unknown as ReturnType<typeof setInterval>
       }
-    ) as typeof setInterval
+    ) as unknown as typeof setInterval
 
     globalThis.setInterval = immediateInterval
     globalThis.clearInterval = (() => undefined) as typeof clearInterval

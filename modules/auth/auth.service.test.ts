@@ -132,6 +132,7 @@ describe("authService", () => {
         throw new NotFoundException({
           message: "not found",
           code: "not_found",
+          path: "/path/to/resource",
           requestID: "req_1",
         })
       })
@@ -250,7 +251,7 @@ describe("authService", () => {
     it("throws when sealed session is null", async () => {
       mockAuthenticateWithMagicAuth.mockImplementation(async () => ({
         sealedSession: null,
-      }))
+      }) as unknown as { sealedSession: string })
 
       await expect(
         authService.verifyMagicCode({
@@ -280,6 +281,7 @@ describe("authService", () => {
         throw new NotFoundException({
           message: "not found",
           code: "not_found",
+          path: "/path/to/resource",
           requestID: "req_1",
         })
       })

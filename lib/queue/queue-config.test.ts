@@ -27,7 +27,11 @@ afterEach(() => {
       continue
     }
 
-    process.env[key] = value
+    Object.defineProperty(process.env, key, {
+      value,
+      writable: true,
+      configurable: true,
+    })
   }
 })
 
@@ -36,8 +40,10 @@ describe("getQueueRuntimeConfig", () => {
     delete process.env.REDIS_URL
     delete process.env.QUEUE_PREFIX
     delete process.env.GITHUB_EVENTS_QUEUE_NAME
-    Object.assign(process.env, {
-      NODE_ENV: "test",
+    Object.defineProperty(process.env, "NODE_ENV", {
+      value: "test",
+      writable: true,
+      configurable: true,
     })
 
     const config = getQueueRuntimeConfig()
@@ -48,8 +54,12 @@ describe("getQueueRuntimeConfig", () => {
   })
 
   test("reads queue config from environment", () => {
+    Object.defineProperty(process.env, "NODE_ENV", {
+      value: "production",
+      writable: true,
+      configurable: true,
+    })
     Object.assign(process.env, {
-      NODE_ENV: "production",
       REDIS_URL: "rediss://:s3cr3t@example-redis:6380/4",
       QUEUE_PREFIX: "platform",
       GITHUB_EVENTS_QUEUE_NAME: "github-webhooks",
@@ -64,8 +74,10 @@ describe("getQueueRuntimeConfig", () => {
 
   test("throws when REDIS_URL is missing in production", () => {
     delete process.env.REDIS_URL
-    Object.assign(process.env, {
-      NODE_ENV: "production",
+    Object.defineProperty(process.env, "NODE_ENV", {
+      value: "production",
+      writable: true,
+      configurable: true,
     })
 
     expect(() => getQueueRuntimeConfig()).toThrow(
@@ -74,8 +86,12 @@ describe("getQueueRuntimeConfig", () => {
   })
 
   test("throws on invalid Redis protocol", () => {
+    Object.defineProperty(process.env, "NODE_ENV", {
+      value: "production",
+      writable: true,
+      configurable: true,
+    })
     Object.assign(process.env, {
-      NODE_ENV: "production",
       REDIS_URL: "https://example.com",
     })
 

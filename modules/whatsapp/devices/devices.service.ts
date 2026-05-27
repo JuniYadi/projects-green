@@ -16,19 +16,18 @@ import {
   type CreateDeviceInput,
   type UpdateDeviceInput,
   type DeviceStatus,
-  type DeviceEnvironment,
   DeviceNotFoundError,
   DeviceNotOwnedError,
 } from "./devices.schemas"
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
-const toDeviceListItem = (d: {
+// NOTE: Use unknown for Prisma Decimal fields, convert with Number() in mapper
+type PrismaDeviceFields = {
   id: string
   organizationId: string
   phoneNumber: string
-  name: string
-  status: DeviceStatus
+  status: import("@prisma/client").WhatsappDeviceStatus
   balance: unknown
   quotaBase: unknown
   dailyLimitMessage: number
@@ -36,14 +35,19 @@ const toDeviceListItem = (d: {
   whatsappPhoneId: string | null
   createdAt: Date
   updatedAt: Date
-  environment?: string
-}): DeviceListItem => ({
+  callbackUrl: string | null
+  expiredAt: Date | null
+  whatsappProfile: Record<string, unknown> | null
+  features: Record<string, unknown> | null
+}
+
+const toDeviceListItem = (d: PrismaDeviceFields): DeviceListItem => ({
   id: d.id,
   organizationId: d.organizationId,
   phoneNumber: d.phoneNumber,
-  name: d.name,
-  status: d.status,
-  environment: (d.environment as DeviceEnvironment) ?? "LIVE",
+  name: d.phoneNumber, // Schema does not have name, use phoneNumber
+  status: d.status as DeviceStatus,
+  environment: "LIVE",
   balance: Number(d.balance),
   quotaBase: Number(d.quotaBase),
   dailyLimitMessage: d.dailyLimitMessage,
@@ -53,32 +57,13 @@ const toDeviceListItem = (d: {
   updatedAt: d.updatedAt.toISOString(),
 })
 
-const _toDeviceDetail = (d: {
-  id: string
-  organizationId: string
-  phoneNumber: string
-  name: string
-  status: DeviceStatus
-  balance: unknown
-  quotaBase: unknown
-  dailyLimitMessage: number
-  whatsappBusinessAccountId: string | null
-  whatsappPhoneId: string | null
-  createdAt: Date
-  updatedAt: Date
-  environment?: string
-  businessId?: string | null
-  callbackUrl?: string | null
-  expiredAt?: Date | null
-  whatsappProfile?: Record<string, unknown> | null
-  features?: Record<string, unknown> | null
-}): DeviceDetail => ({
+const _toDeviceDetail = (d: PrismaDeviceFields): DeviceDetail => ({
   ...toDeviceListItem(d),
-  businessId: d.businessId ?? null,
-  callbackUrl: d.callbackUrl ?? null,
+  businessId: null,
+  callbackUrl: d.callbackUrl,
   expiredAt: d.expiredAt?.toISOString() ?? null,
-  whatsappProfile: d.whatsappProfile ?? null,
-  features: d.features ?? null,
+  whatsappProfile: d.whatsappProfile,
+  features: d.features,
 })
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -92,7 +77,7 @@ export const createDeviceService = (options: { prisma?: typeof prisma } = {}): D
         where: organizationId ? { organizationId } : {},
         orderBy: { createdAt: "desc" },
       })
-      return devices.map(toDeviceListItem)
+      return devices.map((d) => toDeviceListItem(d as PrismaDeviceFields))
     },
 
     async findById(id, organizationId) {
@@ -101,20 +86,20 @@ export const createDeviceService = (options: { prisma?: typeof prisma } = {}): D
       if (organizationId && device.organizationId !== organizationId) {
         throw new DeviceNotOwnedError()
       }
-      return _toDeviceDetail(device)
+      return _toDeviceDetail(device as PrismaDeviceFields)
     },
 
     async create(input) {
+      // NOTE: Schema does not have 'name' field - phoneNumber is used as name
       const device = await db.whatsappDevice.create({
         data: {
           organizationId: input.organizationId ?? "",
-          name: input.name,
           phoneNumber: input.phoneNumber,
           status: "ACTIVE",
           // environment: not yet persisted; add column in follow-up
         },
       })
-      return _toDeviceDetail(device)
+      return _toDeviceDetail(device as PrismaDeviceFields)
     },
 
     async update(id, input, _organizationId) {
@@ -124,16 +109,15 @@ export const createDeviceService = (options: { prisma?: typeof prisma } = {}): D
       const updated = await db.whatsappDevice.update({
         where: { id },
         data: {
-          ...(input.name !== undefined ? { name: input.name } : {}),
-          ...(input.phoneNumber !== undefined ? { phoneNumber: input.phoneNumber } : {}),
-          ...(input.status !== undefined ? { status: input.status } : {}),
-          ...(input.token !== undefined ? { token: input.token } : {}),
-          ...(input.quotaBase !== undefined ? { quotaBase: input.quotaBase } : {}),
-          ...(input.dailyLimitMessage !== undefined ? { dailyLimitMessage: input.dailyLimitMessage } : {}),
-          ...(input.callbackUrl !== undefined ? { callbackUrl: input.callbackUrl || null } : {}),
+          phoneNumber: input.phoneNumber ?? undefined,
+          status: input.status ?? undefined,
+          token: input.token ?? undefined,
+          quotaBase: input.quotaBase ?? undefined,
+          dailyLimitMessage: input.dailyLimitMessage ?? undefined,
+          callbackUrl: input.callbackUrl || undefined,
         },
       })
-      return _toDeviceDetail(updated)
+      return _toDeviceDetail(updated as PrismaDeviceFields)
     },
 
     async delete(id) {
@@ -154,7 +138,7 @@ export const createDeviceService = (options: { prisma?: typeof prisma } = {}): D
           // lastVerifiedAt: add column in follow-up
         },
       })
-      return _toDeviceDetail(updated)
+      return _toDeviceDetail(updated as PrismaDeviceFields)
     },
 
     async reconnect(id, organizationId) {
@@ -168,7 +152,7 @@ export const createDeviceService = (options: { prisma?: typeof prisma } = {}): D
         where: { id },
         data: { status: "ACTIVE" },
       })
-      return _toDeviceDetail(updated)
+      return _toDeviceDetail(updated as PrismaDeviceFields)
     },
   }
 }

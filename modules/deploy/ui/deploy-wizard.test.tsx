@@ -163,7 +163,7 @@ describe("DeployWizard", () => {
           headers: { "content-type": "application/json" },
         })
       )
-    }) as typeof fetch
+    }) as unknown as typeof fetch
   })
 
   it("falls back to source step for invalid query", async () => {

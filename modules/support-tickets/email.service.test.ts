@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import type { Transporter } from "nodemailer"
 
+// Mock console.error to suppress error logging in tests
+const mockConsoleError = mock((...args: unknown[]) => {})
+console.error = mockConsoleError
+
 // Mock nodemailer at module level
 const mockSendMail = mock(async () => ({ messageId: "test-123" }))
 const mockTransporter = {
@@ -65,7 +69,7 @@ const mockReply = {
 
 describe("emailService", () => {
   let emailService: import("./email.service").EmailService
-  let originalEnv: Record<string, string | undefined>
+  let originalEnv: NodeJS.ProcessEnv
 
   beforeEach(async () => {
     mockSendMail.mockClear()

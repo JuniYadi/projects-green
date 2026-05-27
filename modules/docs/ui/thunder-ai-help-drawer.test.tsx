@@ -15,8 +15,9 @@ const mockFetch = mock(
         notes: ["Note 1", "Note 2"],
         updatedAt: "2024-01-01",
       }),
+      preconnect: mock(() => {}),
     }) as unknown as Response
-)
+) as unknown as typeof fetch
 const originalFetch = globalThis.fetch
 
 describe("ThunderAiHelpDrawer", () => {

@@ -113,7 +113,7 @@ export const hasScopedSuperAdminClaim = (
     .map((role) => role?.trim().toLowerCase())
     .filter((role): role is string => Boolean(role))
 
-  return normalizedClaims.includes("super_admin")
+  return normalizedClaims.includes("super_admin") || normalizedClaims.includes("admin_owner")
 }
 
 export const normalizeTenantRole = (

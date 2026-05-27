@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { Branch, Owner, Repository } from "@/modules/deploy/deploy.types"
 
-type StepSourceProps = {
+export type StepSourceProps = {
   githubConnectionStatus: "idle" | "connected" | "error"
   isConnectingGithub: boolean
   ownerOptionsLoading: boolean

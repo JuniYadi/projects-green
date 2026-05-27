@@ -3,14 +3,14 @@ import { Elysia } from "elysia"
 
 import { createKnowledgeRoutes } from "@/modules/docs/api/knowledge.route"
 
-const mockAuthenticate = mock(async () => ({
+const mockAuthenticate = mock(async (): Promise<import("@/modules/docs/api/knowledge.route").KnowledgeAuthContext> => ({
   organizationId: "org_1",
   user: {
     id: "user_1",
     email: "member@example.com",
   },
 }))
-const mockSearchKnowledgeDocs = mock(async () => [])
+const mockSearchKnowledgeDocs = mock(async () => [] as import("@/modules/docs/docs.service").KnowledgeDocMatch[])
 const mockStreamKnowledgeAnswer = mock(async function* () {
   yield "Hello "
   yield "from KB"
@@ -30,7 +30,7 @@ beforeEach(() => {
   mockSearchKnowledgeDocs.mockReset()
   mockStreamKnowledgeAnswer.mockReset()
 
-  mockAuthenticate.mockImplementation(async () => ({
+  mockAuthenticate.mockImplementation(async (): Promise<import("@/modules/docs/api/knowledge.route").KnowledgeAuthContext> => ({
     organizationId: "org_1",
     user: {
       id: "user_1",
@@ -41,7 +41,7 @@ beforeEach(() => {
   mockSearchKnowledgeDocs.mockImplementation(async () => [
     {
       id: "doc_1",
-      organizationId: "org_1",
+      organizationId: "org_1" as const,
       path: "/console",
       title: "Console Overview",
       purpose: "Manage console",
@@ -50,7 +50,7 @@ beforeEach(() => {
       updatedAt: "2026-05-22",
       score: 50,
     },
-  ])
+  ] as import("@/modules/docs/docs.service").KnowledgeDocMatch[])
 
   mockStreamKnowledgeAnswer.mockImplementation(async function* () {
     yield "Hello "
@@ -60,7 +60,7 @@ beforeEach(() => {
 
 describe("knowledgeRoutes", () => {
   it("returns 401 when user is not signed in", async () => {
-    mockAuthenticate.mockImplementationOnce(async () => ({
+    mockAuthenticate.mockImplementationOnce(async (): Promise<import("@/modules/docs/api/knowledge.route").KnowledgeAuthContext> => ({
       organizationId: "org_1",
       user: null,
     }))
@@ -117,7 +117,7 @@ describe("knowledgeRoutes", () => {
   })
 
   it("returns strict fallback when no relevant knowledge context", async () => {
-    mockSearchKnowledgeDocs.mockResolvedValueOnce([])
+    mockSearchKnowledgeDocs.mockResolvedValueOnce([] as import("@/modules/docs/docs.service").KnowledgeDocMatch[])
 
     const response = await createApp().handle(
       new Request("http://localhost/knowledge/chat", {

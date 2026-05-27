@@ -158,7 +158,8 @@ describe("SupportTicketDetailScreen", () => {
   it("renders support ticket detail and thread state", async () => {
     const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
 
-    expect(view.getByText("Loading ticket...")).toBeInTheDocument()
+    // Component shows skeleton while loading
+    expect(view.container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument()
     await waitFor(() =>
       expect(view.getByRole("heading", { name: "TCK-1001" })).toBeInTheDocument()
     )
