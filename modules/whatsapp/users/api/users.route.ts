@@ -4,7 +4,6 @@ import {
   whatsappAuthPlugin,
   guardTenantAdmin,
   guardTenantMember,
-  type WhatsAppAuthContext,
 } from "@/lib/whatsapp/auth"
 import {
   listWhatsAppUsers,
@@ -61,8 +60,9 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .get(
     "/",
-    guardTenantMember(async ({ whatsappAuth, set }: { whatsappAuth: any, set: any }) => {
-      if (!whatsappAuth.organizationId) {
+    guardTenantMember(async ({ whatsappAuth, set }) => {
+      const auth = whatsappAuth as any
+      if (!auth.organizationId) {
         set.status = 400
         return {
           ok: false as const,
@@ -71,7 +71,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         }
       }
 
-      const users = await listWhatsAppUsers(whatsappAuth.organizationId)
+      const users = await listWhatsAppUsers(auth.organizationId)
       return { ok: true as const, users } satisfies ListUsersResponse
     })
   )
@@ -82,16 +82,9 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .post(
     "/",
-    guardTenantAdmin(async ({
-      body,
-      whatsappAuth,
-      set,
-    }: {
-      body: any
-      whatsappAuth: any
-      set: any
-    }) => {
-      if (!whatsappAuth.organizationId) {
+    guardTenantAdmin(async ({ body, whatsappAuth, set })=> {
+      const auth = whatsappAuth as any
+      if (!auth.organizationId) {
         set.status = 400
         return {
           ok: false as const,
@@ -101,10 +94,10 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
       }
 
       const invitation = await inviteWhatsAppUser({
-        organizationId: whatsappAuth.organizationId,
-        email: body.email,
-        role: body.role,
-        inviterUserId: whatsappAuth.userId,
+        organizationId: auth.organizationId,
+        email: (body as any).email,
+        role: (body as any).role,
+        inviterUserId: auth.userId,
       })
 
       return {
@@ -121,15 +114,8 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .get(
     "/:id",
-    guardTenantMember(async ({
-      params: { id },
-      whatsappAuth,
-      set,
-    }: {
-      params: { id: string }
-      whatsappAuth: any
-      set: any
-    }) => {
+    guardTenantMember(async ({ params: { id }, whatsappAuth, set })=> {
+      const auth = whatsappAuth as any
       const user = await getWhatsAppUser(id)
 
       if (!user) {
@@ -141,10 +127,9 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         }
       }
 
-      // Ensure user belongs to the caller's organization
       if (
-        whatsappAuth.organizationId &&
-        user.organizationId !== whatsappAuth.organizationId
+        auth.organizationId &&
+        user.organizationId !== auth.organizationId
       ) {
         set.status = 403
         return {
@@ -164,18 +149,8 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .patch(
     "/:id",
-    guardTenantAdmin(async ({
-      params: { id },
-      body,
-      whatsappAuth,
-      set,
-    }: {
-      params: { id: string }
-      body: any
-      whatsappAuth: any
-      set: any
-    }) => {
-      // Verify user belongs to caller's organization
+    guardTenantAdmin(async ({ params: { id }, body, whatsappAuth, set })=> {
+      const auth = whatsappAuth as any
       const user = await getWhatsAppUser(id)
 
       if (!user) {
@@ -188,8 +163,8 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
       }
 
       if (
-        whatsappAuth.organizationId &&
-        user.organizationId !== whatsappAuth.organizationId
+        auth.organizationId &&
+        user.organizationId !== auth.organizationId
       ) {
         set.status = 403
         return {
@@ -199,7 +174,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         }
       }
 
-      const updated = await updateWhatsAppUserRole(id, body.role)
+      const updated = await updateWhatsAppUserRole(id, (body as any).role)
 
       return { ok: true as const, user: updated } satisfies UpdateUserResponse
     }),
@@ -212,16 +187,8 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .delete(
     "/:id",
-    guardTenantAdmin(async ({
-      params: { id },
-      whatsappAuth,
-      set,
-    }: {
-      params: { id: string }
-      whatsappAuth: any
-      set: any
-    }) => {
-      // Verify user membership exists
+    guardTenantAdmin(async ({ params: { id }, whatsappAuth, set })=> {
+      const auth = whatsappAuth as any
       const user = await getWhatsAppUser(id)
 
       if (!user) {
@@ -234,8 +201,8 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
       }
 
       if (
-        whatsappAuth.organizationId &&
-        user.organizationId !== whatsappAuth.organizationId
+        auth.organizationId &&
+        user.organizationId !== auth.organizationId
       ) {
         set.status = 403
         return {
