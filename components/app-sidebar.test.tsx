@@ -18,7 +18,6 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Deploy",
       "Manage",
-      "Monitoring",
     ])
     expect(navMain.find((item) => item.title === "Manage")?.isActive).toBe(true)
 
@@ -26,32 +25,16 @@ describe("resolveSidebarMenu", () => {
     expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
   })
 
-  it("marks manage and monitoring active for their routes", () => {
+  it("marks manage active for its routes", () => {
     const manageMenu = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/app/manage/build-logs",
       locale: "en",
     })
 
-    const monitoringMenu = resolveSidebarMenu({
-      surface: "console",
-      pathname: "/console/app/monitoring/metrics",
-      locale: "en",
-    })
-
     expect(
       manageMenu.navMain.find((item) => item.title === "Manage")?.isActive
     ).toBe(true)
-    expect(
-      manageMenu.navMain.find((item) => item.title === "Monitoring")?.isActive
-    ).toBe(false)
-
-    expect(
-      monitoringMenu.navMain.find((item) => item.title === "Monitoring")?.isActive
-    ).toBe(true)
-    expect(
-      monitoringMenu.navMain.find((item) => item.title === "Manage")?.isActive
-    ).toBe(false)
   })
 
   it("marks items active for console utility routes in their context", () => {
