@@ -1,24 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import type { WorkOSScope } from "@/lib/whatsapp/auth"
-
-// ─── Auth context factory ──────────────────────────────────────────────────────
-
-function createAuthContext(
-  overrides: Partial<WorkOSScope> = {}
-): WorkOSScope {
-  const base: WorkOSScope = {
-    type: "workos",
-    userId: "user_1",
-    email: "admin@example.com",
-    organizationId: "org_1",
-    tenantRole: "admin",
-    platformRole: "none",
-  }
-
-  return { ...base, ...overrides } as WorkOSScope
-}
+import { whatsappAuthMock, setMockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
+import { workosNodeMock } from "./workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
 
@@ -29,7 +13,7 @@ const mockFindMany = mock(async () => [] as any)
 const mockDelete = mock(async () => ({}))
 const mockCreate = mock(async () => ({
   id: "dev_new",
-  organizationId: "org_1",
+  organizationId: "org-1",
   name: "New Device",
   phoneNumber: "+6281111111111",
   status: "ACTIVE",
@@ -39,7 +23,7 @@ const mockCreate = mock(async () => ({
 } as any))
 const mockUpdate = mock(async () => ({
   id: "dev_1",
-  organizationId: "org_1",
+  organizationId: "org-1",
   name: "Updated Device",
   phoneNumber: "+6281111111111",
   status: "ACTIVE",
@@ -59,66 +43,15 @@ mock.module("@/lib/prisma", () => ({
 
 // ─── Auth mock ─────────────────────────────────────────────────────────────────
 
-const mockGuardSuperAdmin = (route: (...args: unknown[]) => unknown) =>
-  async (ctx: { whatsappAuth?: WorkOSScope | null; set: { status: number } }) => {
-    const auth = ctx.whatsappAuth
-    if (!auth) {
-      ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED" }
-    }
-    if (auth.platformRole !== "super_admin") {
-      ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN" }
-    }
-    return route(ctx)
-  }
+mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
-const mockGuardTenantAdmin = (route: (...args: unknown[]) => unknown) =>
-  async (ctx: { whatsappAuth?: WorkOSScope | null; set: { status: number } }) => {
-    const auth = ctx.whatsappAuth
-    if (!auth) {
-      ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED" }
-    }
-    const isAdmin =
-      auth.tenantRole === "admin" ||
-      auth.tenantRole === "owner" ||
-      auth.platformRole === "super_admin"
-    if (!isAdmin) {
-      ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN" }
-    }
-    return route(ctx)
-  }
+mock.module("@workos-inc/node", () => workosNodeMock)
 
-mock.module("/Users/juniyadi/github-yadi/pfnapp-v2/lib/whatsapp/auth.ts", () => ({
-  whatsappAuthPlugin: new Elysia({ name: "whatsapp.auth" })
-    .derive(() => ({ whatsappAuth: null })),
-  guardSuperAdmin: mockGuardSuperAdmin,
-  guardTenantAdmin: mockGuardTenantAdmin,
-  guardCheckIsWhatsAppAdmin: mockGuardTenantAdmin,
-  guardWorkOSSession: mockGuardTenantAdmin,
-  guardApiKey: mockGuardTenantAdmin,
-  guardWhatsAppAdmin: mockGuardTenantAdmin,
-  guardWhatsAppMember: mockGuardTenantAdmin,
-  requireTenantAdmin: (ctx: WorkOSScope) =>
-    ctx.tenantRole === "admin" || ctx.tenantRole === "owner" || ctx.platformRole === "super_admin",
-  requireSuperAdmin: (ctx: WorkOSScope) => ctx.platformRole === "super_admin",
-  requireWorkOSSession: (_ctx: WorkOSScope) => true,
-  requireApiKey: (_ctx: WorkOSScope) => false,
-  requireTenantMember: (ctx: WorkOSScope) => ctx.organizationId !== null,
-}))
+const { devicesRoutes } = await import("@/modules/whatsapp/devices/api/devices.route")
 
-mock.module("@workos-inc/node", () => ({
-  getWorkOS: () => null,
-  WorkOSNode: class MockWorkOS {},
-}))
-
-import { devicesRoutes } from "@/modules/whatsapp/devices/api/devices.route"
-
-function createTestApp(auth: WorkOSScope | null) {
+function createTestApp() {
   return new Elysia()
-    .derive(() => ({ whatsappAuth: auth }))
+    .use(whatsappAuthMock.whatsappAuthPlugin)
     .use(devicesRoutes)
 }
 
@@ -130,6 +63,16 @@ describe("WhatsApp Devices E2E", () => {
     mockFindUnique.mockImplementation(async () => null as any)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockFindMany.mockImplementation(async () => [] as any)
+
+    // Reset auth to default admin
+    setMockAuthContext({
+      type: "workos",
+      userId: "user-1",
+      email: "admin@example.com",
+      organizationId: "org-1",
+      tenantRole: "admin",
+      platformRole: "none",
+    })
   })
 
   // ── Create Device ─────────────────────────────────────────────────────────────
@@ -138,7 +81,7 @@ describe("WhatsApp Devices E2E", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const createdDevice = {
       id: "dev_new",
-      organizationId: "org_1",
+      organizationId: "org-1",
       name: "Test Device",
       phoneNumber: "+6281111111111",
       status: "ACTIVE",
@@ -149,10 +92,12 @@ describe("WhatsApp Devices E2E", () => {
     mockCreate.mockImplementationOnce(async () => createdDevice)
     mockFindMany.mockImplementationOnce(async () => [createdDevice])
 
-    const app = createTestApp(createAuthContext({
+    setMockAuthContext({
       platformRole: "super_admin",
-      organizationId: "org_1",
-    }))
+      organizationId: "org-1",
+    })
+
+    const app = createTestApp()
 
     const createResponse = await app.handle(
       new Request("http://localhost/", {
@@ -188,7 +133,7 @@ describe("WhatsApp Devices E2E", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const deviceData = {
       id: "dev_get",
-      organizationId: "org_1",
+      organizationId: "org-1",
       name: "Get Test Device",
       phoneNumber: "+6282222222222",
       status: "ACTIVE",
@@ -196,10 +141,12 @@ describe("WhatsApp Devices E2E", () => {
 
     mockFindUnique.mockImplementationOnce(async () => deviceData)
 
-    const app = createTestApp(createAuthContext({
+    setMockAuthContext({
       tenantRole: "admin",
-      organizationId: "org_1",
-    }))
+      organizationId: "org-1",
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/dev_get"))
     expect(response.status).toBe(200)
@@ -210,10 +157,12 @@ describe("WhatsApp Devices E2E", () => {
   })
 
   it("returns 404 for non-existent device", async () => {
-    const app = createTestApp(createAuthContext({
+    setMockAuthContext({
       tenantRole: "admin",
-      organizationId: "org_1",
-    }))
+      organizationId: "org-1",
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/dev_missing"))
     expect(response.status).toBe(404)
@@ -227,7 +176,7 @@ describe("WhatsApp Devices E2E", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const originalDevice = {
       id: "dev_patch",
-      organizationId: "org_1",
+      organizationId: "org-1",
       name: "Original Name",
       phoneNumber: "+6283333333333",
       status: "ACTIVE",
@@ -241,10 +190,12 @@ describe("WhatsApp Devices E2E", () => {
     mockFindUnique.mockImplementationOnce(async () => originalDevice)
     mockUpdate.mockImplementationOnce(async () => updatedDevice)
 
-    const app = createTestApp(createAuthContext({
+    setMockAuthContext({
       tenantRole: "admin",
-      organizationId: "org_1",
-    }))
+      organizationId: "org-1",
+    })
+
+    const app = createTestApp()
 
     // Update the device
     const patchResponse = await app.handle(
@@ -275,7 +226,7 @@ describe("WhatsApp Devices E2E", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const deviceToDelete = {
       id: "dev_del",
-      organizationId: "org_1",
+      organizationId: "org-1",
       name: "Device To Delete",
       phoneNumber: "+6284444444444",
       status: "ACTIVE",
@@ -284,9 +235,11 @@ describe("WhatsApp Devices E2E", () => {
     mockFindMany.mockImplementationOnce(async () => [deviceToDelete])
     mockDelete.mockImplementationOnce(async () => ({}))
 
-    const app = createTestApp(createAuthContext({
+    setMockAuthContext({
       platformRole: "super_admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     // Verify device exists in list
     const listBeforeResponse = await app.handle(new Request("http://localhost/"))
@@ -318,10 +271,12 @@ describe("WhatsApp Devices E2E", () => {
   // ── Authorization ────────────────────────────────────────────────────────────
 
   it("returns 403 when non-admin tries to create device", async () => {
-    const app = createTestApp(createAuthContext({
+    setMockAuthContext({
       platformRole: "none",
       tenantRole: "member",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/", {
@@ -343,16 +298,18 @@ describe("WhatsApp Devices E2E", () => {
   it("returns 403 when updating device from different organization", async () => {
     mockFindUnique.mockImplementationOnce(async () => ({
       id: "dev_other_org",
-      organizationId: "org_other",
+      organizationId: "org-other",
       name: "Other Org Device",
       phoneNumber: "+6286666666666",
       status: "ACTIVE",
     }))
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/dev_other_org", {
@@ -365,3 +322,4 @@ describe("WhatsApp Devices E2E", () => {
     expect(response.status).toBe(403)
   })
 })
+

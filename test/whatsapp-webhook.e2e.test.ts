@@ -1,24 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import type { WorkOSScope, WhatsAppAuthContext } from "@/lib/whatsapp/auth"
-
-// ─── Auth context factory ──────────────────────────────────────────────────────
-
-function createAuthContext(
-  overrides: Partial<WorkOSScope> = {}
-): WorkOSScope {
-  const base: WorkOSScope = {
-    type: "workos",
-    userId: "user_1",
-    email: "admin@example.com",
-    organizationId: "org_1",
-    tenantRole: "admin",
-    platformRole: "none",
-  }
-
-  return { ...base, ...overrides } as WorkOSScope
-}
+import { whatsappAuthMock, setMockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
+import { workosNodeMock } from "./workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
 
@@ -55,64 +39,16 @@ mock.module("@/lib/prisma", () => ({
 
 // ─── Auth mock ─────────────────────────────────────────────────────────────────
 
-const mockGuardSuperAdmin = (route: (...args: unknown[]) => unknown) =>
-  async (ctx: { whatsappAuth?: WorkOSScope | null; set: { status: number } }) => {
-    const auth = ctx.whatsappAuth
-    if (!auth) {
-      ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED" }
-    }
-    if (auth.platformRole !== "super_admin") {
-      ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN" }
-    }
-    return route(ctx)
-  }
+mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
-const mockGuardTenantAdmin = (route: (...args: unknown[]) => unknown) =>
-  async (ctx: { whatsappAuth?: WorkOSScope | null; set: { status: number } }) => {
-    const auth = ctx.whatsappAuth
-    if (!auth) {
-      ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED" }
-    }
-    const isAdmin =
-      auth.tenantRole === "admin" ||
-      auth.tenantRole === "owner" ||
-      auth.platformRole === "super_admin"
-    if (!isAdmin) {
-      ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN" }
-    }
-    return route(ctx)
-  }
+mock.module("@workos-inc/node", () => workosNodeMock)
 
-mock.module("/Users/juniyadi/github-yadi/pfnapp-v2/lib/whatsapp/auth.ts", () => ({
-  whatsappAuthPlugin: new Elysia({ name: "whatsapp.auth" })
-    .derive(() => ({ whatsappAuth: null })),
-  guardSuperAdmin: mockGuardSuperAdmin,
-  guardTenantAdmin: mockGuardTenantAdmin,
-  guardWorkOSSession: mockGuardTenantAdmin,
-  guardApiKey: mockGuardTenantAdmin,
-  requireTenantAdmin: (ctx: WorkOSScope) =>
-    ctx.tenantRole === "admin" || ctx.tenantRole === "owner" || ctx.platformRole === "super_admin",
-  requireSuperAdmin: (ctx: WorkOSScope) => ctx.platformRole === "super_admin",
-  requireWorkOSSession: (_ctx: WorkOSScope) => true,
-  requireApiKey: (_ctx: WorkOSScope) => false,
-  requireTenantMember: (ctx: WorkOSScope) => ctx.organizationId !== null,
-}))
+const { webhooksRoutes } = await import("@/modules/whatsapp/webhooks/api/webhooks.route")
 
-mock.module("@workos-inc/node", () => ({
-  getWorkOS: () => null,
-  WorkOSNode: class MockWorkOS {},
-}))
-
-import { webhooksRoutes } from "@/modules/whatsapp/webhooks/api/webhooks.route"
-
-function createTestApp(auth: WorkOSScope | null, withAuth = true) {
+function createTestApp(withAuth = true) {
   const app = new Elysia()
   if (withAuth) {
-    app.derive(() => ({ whatsappAuth: auth }))
+    app.use(whatsappAuthMock.whatsappAuthPlugin)
   }
   return app.use(webhooksRoutes)
 }
@@ -125,6 +61,16 @@ describe("WhatsApp Webhooks E2E", () => {
     mockFindUnique.mockImplementation(async () => null as any)
     mockCreate.mockImplementation(async () => null as any)
     mockCount.mockImplementation(async () => 0)
+
+    // Reset auth to default admin
+    setMockAuthContext({
+      type: "workos",
+      userId: "user-1",
+      email: "admin@example.com",
+      organizationId: "org-1",
+      tenantRole: "admin",
+      platformRole: "none",
+    })
   })
 
   // ── POST /webhook — incoming event ──────────────────────────────────────────
@@ -171,10 +117,7 @@ describe("WhatsApp Webhooks E2E", () => {
       metadata: webhookEvent,
     }))
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
-      tenantRole: "admin",
-    }), false)
+    const app = createTestApp(false)
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_webhook", {
@@ -190,7 +133,7 @@ describe("WhatsApp Webhooks E2E", () => {
   })
 
   it("immediately returns 200 for webhook endpoint", async () => {
-    const app = createTestApp(null, false)
+    const app = createTestApp(false)
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_123", {
@@ -206,7 +149,7 @@ describe("WhatsApp Webhooks E2E", () => {
   // ── GET /webhook/:id/verify — Meta verification ─────────────────────────────
 
   it("returns challenge for Meta webhook verification", async () => {
-    const app = createTestApp(null, false)
+    const app = createTestApp(false)
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_verify/verify?hub.mode=subscribe&hub.verify_token=test_token&hub.challenge=challenge_code")
@@ -218,7 +161,7 @@ describe("WhatsApp Webhooks E2E", () => {
   })
 
   it("returns 403 for invalid verify mode", async () => {
-    const app = createTestApp(null, false)
+    const app = createTestApp(false)
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_verify/verify?hub.mode=invalid&hub.verify_token=test&hub.challenge=code")
@@ -232,7 +175,7 @@ describe("WhatsApp Webhooks E2E", () => {
   it("creates a webhook config", async () => {
     const webhookConfig = {
       id: "wh_new",
-      organizationId: "org_1",
+      organizationId: "org-1",
       whatsappDeviceId: "dev_1",
       webhookUrl: "https://example.com/webhook",
       verifyToken: "token123",
@@ -241,17 +184,19 @@ describe("WhatsApp Webhooks E2E", () => {
 
     mockCreate.mockImplementationOnce(async () => webhookConfig as any)
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          organizationId: "org_1",
+          organizationId: "org-1",
           deviceId: "dev_1",
           webhookUrl: "https://example.com/webhook",
           verifyToken: "token123",
@@ -269,7 +214,7 @@ describe("WhatsApp Webhooks E2E", () => {
     const webhookConfigs = [
       {
         id: "wh_1",
-        organizationId: "org_1",
+        organizationId: "org-1",
         whatsappDeviceId: "dev_1",
         webhookUrl: "https://example.com/webhook1",
         verifyToken: "token1",
@@ -277,7 +222,7 @@ describe("WhatsApp Webhooks E2E", () => {
       },
       {
         id: "wh_2",
-        organizationId: "org_1",
+        organizationId: "org-1",
         whatsappDeviceId: "dev_2",
         webhookUrl: "https://example.com/webhook2",
         verifyToken: "token2",
@@ -289,10 +234,12 @@ describe("WhatsApp Webhooks E2E", () => {
     mockFindMany.mockImplementation(async () => webhookConfigs)
     mockCount.mockImplementation(async () => 2)
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/webhooks/"))
     expect(response.status).toBe(200)
@@ -304,7 +251,7 @@ describe("WhatsApp Webhooks E2E", () => {
   it("gets a single webhook config", async () => {
     const webhookConfig = {
       id: "wh_get",
-      organizationId: "org_1",
+      organizationId: "org-1",
       whatsappDeviceId: "dev_1",
       webhookUrl: "https://example.com/webhook",
       verifyToken: "token123",
@@ -313,10 +260,12 @@ describe("WhatsApp Webhooks E2E", () => {
 
     mockFindUnique.mockImplementationOnce(async () => webhookConfig as any)
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/webhooks/wh_get"))
     expect(response.status).toBe(200)
@@ -327,7 +276,7 @@ describe("WhatsApp Webhooks E2E", () => {
   it("updates a webhook config", async () => {
     const updatedConfig = {
       id: "wh_patch",
-      organizationId: "org_1",
+      organizationId: "org-1",
       whatsappDeviceId: "dev_1",
       webhookUrl: "https://example.com/new-webhook",
       verifyToken: "new_token",
@@ -336,10 +285,12 @@ describe("WhatsApp Webhooks E2E", () => {
 
     mockUpdate.mockImplementationOnce(async () => updatedConfig as any)
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/wh_patch", {
@@ -361,10 +312,12 @@ describe("WhatsApp Webhooks E2E", () => {
   it("deletes a webhook config as super_admin", async () => {
     mockDelete.mockImplementationOnce(async () => ({}))
 
-    const app = createTestApp(createAuthContext({
+    setMockAuthContext({
       platformRole: "super_admin",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/wh_delete", {
@@ -382,7 +335,7 @@ describe("WhatsApp Webhooks E2E", () => {
   it("handles webhook with signature in headers", async () => {
     // The actual signature verification would require Meta's secret key
     // This test verifies the webhook endpoint accepts requests with common headers
-    const app = createTestApp(null, false)
+    const app = createTestApp(false)
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_signature", {
@@ -401,3 +354,4 @@ describe("WhatsApp Webhooks E2E", () => {
     expect(response.status).toBe(200)
   })
 })
+

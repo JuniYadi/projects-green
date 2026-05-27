@@ -1,24 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import type { WorkOSScope } from "@/lib/whatsapp/auth"
-
-// ─── Auth context factory ──────────────────────────────────────────────────────
-
-function createAuthContext(
-  overrides: Partial<WorkOSScope> = {}
-): WorkOSScope {
-  const base: WorkOSScope = {
-    type: "workos",
-    userId: "user_1",
-    email: "admin@example.com",
-    organizationId: "org_1",
-    tenantRole: "admin",
-    platformRole: "none",
-  }
-
-  return { ...base, ...overrides } as WorkOSScope
-}
+import { whatsappAuthMock, setMockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
+import { workosNodeMock } from "./workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
 
@@ -56,63 +40,15 @@ mock.module("@/lib/prisma", () => ({
 
 // ─── Auth mock ─────────────────────────────────────────────────────────────────
 
-const mockGuardSuperAdmin = (route: (...args: unknown[]) => unknown) =>
-  async (ctx: { whatsappAuth?: WorkOSScope | null; set: { status: number } }) => {
-    const auth = ctx.whatsappAuth
-    if (!auth) {
-      ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED" }
-    }
-    if (auth.platformRole !== "super_admin") {
-      ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN" }
-    }
-    return route(ctx)
-  }
+mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
-const mockGuardTenantAdmin = (route: (...args: unknown[]) => unknown) =>
-  async (ctx: { whatsappAuth?: WorkOSScope | null; set: { status: number } }) => {
-    const auth = ctx.whatsappAuth
-    if (!auth) {
-      ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED" }
-    }
-    const isAdmin =
-      auth.tenantRole === "admin" ||
-      auth.tenantRole === "owner" ||
-      auth.platformRole === "super_admin"
-    if (!isAdmin) {
-      ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN" }
-    }
-    return route(ctx)
-  }
+mock.module("@workos-inc/node", () => workosNodeMock)
 
-mock.module("/Users/juniyadi/github-yadi/pfnapp-v2/lib/whatsapp/auth.ts", () => ({
-  whatsappAuthPlugin: new Elysia({ name: "whatsapp.auth" })
-    .derive(() => ({ whatsappAuth: null })),
-  guardSuperAdmin: mockGuardSuperAdmin,
-  guardTenantAdmin: mockGuardTenantAdmin,
-  guardWorkOSSession: mockGuardTenantAdmin,
-  guardApiKey: mockGuardTenantAdmin,
-  requireTenantAdmin: (ctx: WorkOSScope) =>
-    ctx.tenantRole === "admin" || ctx.tenantRole === "owner" || ctx.platformRole === "super_admin",
-  requireSuperAdmin: (ctx: WorkOSScope) => ctx.platformRole === "super_admin",
-  requireWorkOSSession: (_ctx: WorkOSScope) => true,
-  requireApiKey: (_ctx: WorkOSScope) => false,
-  requireTenantMember: (ctx: WorkOSScope) => ctx.organizationId !== null,
-}))
+const { messagesRoutes } = await import("@/modules/whatsapp/messages/api/messages.route")
 
-mock.module("@workos-inc/node", () => ({
-  getWorkOS: () => null,
-  WorkOSNode: class MockWorkOS {},
-}))
-
-import { messagesRoutes } from "@/modules/whatsapp/messages/api/messages.route"
-
-function createTestApp(auth: WorkOSScope | null) {
+function createTestApp() {
   return new Elysia()
-    .derive(() => ({ whatsappAuth: auth }))
+    .use(whatsappAuthMock.whatsappAuthPlugin)
     .use(messagesRoutes)
 }
 
@@ -124,6 +60,16 @@ describe("WhatsApp Messages E2E", () => {
     mockFindMany.mockImplementation(async () => [] as any)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockFindFirst.mockImplementation(async () => null as any)
+
+    // Reset auth to default admin
+    setMockAuthContext({
+      type: "workos",
+      userId: "user-1",
+      email: "admin@example.com",
+      organizationId: "org-1",
+      tenantRole: "admin",
+      platformRole: "none",
+    })
   })
 
   // ── POST /send ──────────────────────────────────────────────────────────────
@@ -133,10 +79,12 @@ describe("WhatsApp Messages E2E", () => {
   // use integration tests with a real database.
 
   it.skip("returns queued job when sending a message", async () => {
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/messages/send", {
@@ -156,10 +104,12 @@ describe("WhatsApp Messages E2E", () => {
   })
 
   it.skip("returns queued job with deviceId when sending a message", async () => {
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/messages/send", {
@@ -201,10 +151,12 @@ describe("WhatsApp Messages E2E", () => {
 
     mockFindMany.mockImplementationOnce(async () => messages as any)
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/messages/"))
     expect(response.status).toBe(200)
@@ -216,10 +168,12 @@ describe("WhatsApp Messages E2E", () => {
   })
 
   it("returns empty list when no messages", async () => {
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/messages/"))
     expect(response.status).toBe(200)
@@ -240,10 +194,12 @@ describe("WhatsApp Messages E2E", () => {
 
     mockFindMany.mockImplementationOnce(async () => conversationMessages as any)
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/messages/?conversationId=conv_filtered")
@@ -267,10 +223,12 @@ describe("WhatsApp Messages E2E", () => {
 
     mockFindFirst.mockImplementationOnce(async () => message as any)
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/messages/msg_get"))
     expect(response.status).toBe(200)
@@ -280,10 +238,12 @@ describe("WhatsApp Messages E2E", () => {
   })
 
   it("returns 404 for non-existent message", async () => {
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/messages/msg_missing"))
     expect(response.status).toBe(404)
@@ -295,10 +255,12 @@ describe("WhatsApp Messages E2E", () => {
     // Mock conversation from different org
     mockFindFirst.mockImplementationOnce(async () => null as any)
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/messages/", {
@@ -319,18 +281,23 @@ describe("WhatsApp Messages E2E", () => {
   // ── Authorization ────────────────────────────────────────────────────────────
 
   it("returns 403 for non-admin user", async () => {
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "member",
       platformRole: "none",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/messages/"))
     expect(response.status).toBe(403)
   })
 
   it("returns authentication error for unauthenticated user", async () => {
-    const app = createTestApp(null)
+    // Simulate no auth context
+    setMockAuthContext(null)
+
+    const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/messages/"))
     // The exact status code depends on the auth plugin - could be 401 or 403
@@ -342,7 +309,7 @@ describe("WhatsApp Messages E2E", () => {
   it("creates a message in valid conversation", async () => {
     const conversation = {
       id: "conv_valid",
-      organizationId: "org_1",
+      organizationId: "org-1",
       contactPhone: "+6281111111111",
     }
 
@@ -357,10 +324,12 @@ describe("WhatsApp Messages E2E", () => {
     mockFindFirst.mockImplementationOnce(async () => conversation as any)
     mockCreate.mockImplementationOnce(async () => createdMessage as any)
 
-    const app = createTestApp(createAuthContext({
-      organizationId: "org_1",
+    setMockAuthContext({
+      organizationId: "org-1",
       tenantRole: "admin",
-    }))
+    })
+
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/messages/", {
@@ -380,3 +349,4 @@ describe("WhatsApp Messages E2E", () => {
     expect(payload.ok).toBe(true)
   })
 })
+
