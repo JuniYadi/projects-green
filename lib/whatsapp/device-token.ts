@@ -7,7 +7,7 @@ import { encryptWhatsAppToken, decryptWhatsAppToken } from "./crypto"
 export async function encryptDeviceToken(deviceId: string, plainToken: string): Promise<void> {
   const encrypted = await encryptWhatsAppToken(plainToken)
   const parts = encrypted.split(".")
-  
+
   // Format: v1.iv.ciphertext
   const [version, iv, ciphertext] = parts
 
@@ -16,7 +16,7 @@ export async function encryptDeviceToken(deviceId: string, plainToken: string): 
     data: {
       tokenEncrypted: `${version}.${ciphertext}`,
       tokenIv: iv,
-      token: null, // Clear the plain token
+      token: "",
     },
   })
 }
@@ -27,7 +27,10 @@ export async function encryptDeviceToken(deviceId: string, plainToken: string): 
 export async function decryptDeviceToken(deviceId: string): Promise<string | null> {
   const device = await prisma.whatsappDevice.findUnique({
     where: { id: deviceId },
-    select: { tokenEncrypted: true, tokenIv: true },
+    select: {
+      tokenEncrypted: true,
+      tokenIv: true,
+    },
   })
 
   if (!device || !device.tokenEncrypted || !device.tokenIv) {
@@ -53,13 +56,13 @@ export async function migrateAllTokens(): Promise<{ migrated: number, skipped: n
   const devices = await prisma.whatsappDevice.findMany({
     where: {
       token: { not: null },
-      tokenEncrypted: null,
+      tokenEncrypted: { equals: null },
     },
   })
 
   let migrated = 0
   let skipped = 0
-  const errors: string[] = []
+  let errors: string[] = []
 
   for (const device of devices) {
     try {
