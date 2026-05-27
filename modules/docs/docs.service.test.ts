@@ -19,6 +19,9 @@ const mockCreate = mock(async () => null as unknown as KnowledgeDocRecord)
 const mockUpdate = mock(async () => null as unknown as KnowledgeDocRecord)
 const mockFindMany = mock(async () => [] as KnowledgeDocRecord[])
 
+// Mock embedDocument to return a zero-filled embedding
+const mockEmbedDocument = mock(async () => new Float32Array(1536).fill(0))
+
 mock.module("@/lib/prisma", () => ({
   prisma: {
     knowledgeDocument: {
@@ -28,6 +31,11 @@ mock.module("@/lib/prisma", () => ({
       findMany: mockFindMany,
     },
   },
+}))
+
+mock.module("@/modules/docs/docs-embedding.service", () => ({
+  embedDocument: mockEmbedDocument,
+  EMBEDDING_DIMENSIONS: 1536,
 }))
 
 const loadService = () => import("@/modules/docs/docs.service")
@@ -53,6 +61,7 @@ beforeEach(() => {
   mockCreate.mockReset()
   mockUpdate.mockReset()
   mockFindMany.mockReset()
+  mockEmbedDocument.mockReset()
 })
 
 describe("normalizeDocPath", () => {
