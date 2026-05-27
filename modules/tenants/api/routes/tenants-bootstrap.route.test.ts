@@ -360,6 +360,7 @@ describe("tenants-bootstrap routes", () => {
         message: "missing dependency",
         code: "not_found",
         requestID: "req_404",
+        path: "/tenants/bootstrap",
       })
     })
 
