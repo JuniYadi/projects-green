@@ -23,6 +23,7 @@ const mockPrisma = {
 const mockQuotaService = {
   checkQuota: mock(async () => ({ hasQuota: true, remaining: 10 })),
   deductQuota: mock(async () => {}),
+  getMonthlyStats: mock(async () => ({ inCount: 0, outCount: 0 })),
 }
 
 const mockDeviceClient = {
