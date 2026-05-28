@@ -2,6 +2,7 @@ import { mock } from "bun:test"
 
 const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})
+const mockConfirm = mock(() => true)
 
 mock.module("next/navigation", () => {
   return {
@@ -169,7 +170,9 @@ const makeMember = (overrides: Partial<MockMember> = {}): MockMember => {
 beforeEach(() => {
   mockRouterReplace.mockClear()
   mockRouterRefresh.mockClear()
-  window.confirm = () => true
+  mockConfirm.mockClear()
+  mockConfirm.mockImplementation(() => true)
+  window.confirm = mockConfirm
 })
 
 afterEach(() => {
@@ -234,8 +237,7 @@ describe("OrganizationAdminSurface", () => {
       invitations: [],
     })
 
-    const confirmMock = mock(() => false)
-    window.confirm = confirmMock
+    mockConfirm.mockImplementationOnce(() => false)
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
@@ -245,7 +247,7 @@ describe("OrganizationAdminSurface", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Transfer Ownership" }))
 
-    expect(confirmMock).toHaveBeenCalledTimes(1)
+    expect(mockConfirm).toHaveBeenCalledTimes(1)
     expect(
       requests.some(
         (request) =>
@@ -467,3 +469,4 @@ describe("OrganizationAdminSurface", () => {
     }
   })
 })
+
