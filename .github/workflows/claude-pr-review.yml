@@ -46,7 +46,12 @@ jobs:
                - Provide emoji-based approval status.
 
             INLINE ACTIONS:
-            Use your inline comment tool (`mcp__github_inline_comment__create_inline_comment`) for new issues. If an issue was previously commented on but is now fixed, reply to that thread stating it's resolved.
+            Use your inline comment tool (`mcp__github_inline_comment__create_inline_comment`) for new issues.
+
+            RESOLVING THREADS:
+            For every existing review thread:
+            1. If the issue is fixed or the comment is "outdated" (code changed), use `gh api graphql` with `resolveReviewThread` to mark it as resolved.
+            2. Before resolving, post a final reply in the thread (e.g., "✅ Fixed in latest commit").
 
             FINAL COMPREHENSIVE SUMMARY COMMENT REQUIREMENT:
             Post or update a top-level PR summary comment.
