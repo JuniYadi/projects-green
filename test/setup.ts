@@ -5,14 +5,25 @@ import { cleanup } from "@testing-library/react"
 import * as matchers from "@testing-library/jest-dom/matchers"
 
 mock.module("react-icons/si", () => {
-  return {
-    SiWordpress: (props: any) =>
-      React.createElement("div", { ...props, "data-testid": "si-wordpress" }, "WordPress Icon"),
-    SiN8N: (props: any) =>
-      React.createElement("div", { ...props, "data-testid": "si-n8n" }, "n8n Icon"),
-    SiDocker: (props: any) =>
-      React.createElement("div", { ...props, "data-testid": "si-docker" }, "Docker Icon"),
-  }
+  const React = require("react")
+  const icons = [
+    "SiWordpress",
+    "SiN8N",
+    "SiDocker",
+    "SiGhost",
+    "SiStrapi",
+    "SiDirectus",
+    "SiPayloadcms",
+    "SiPocketbase",
+    "SiUmami",
+    "SiPlausibleanalytics",
+  ]
+  const mockIcons: any = {}
+  icons.forEach((icon) => {
+    mockIcons[icon] = (props: any) =>
+      React.createElement("div", { ...props, "data-testid": `si-${icon.toLowerCase()}` }, `${icon} Icon`)
+  })
+  return mockIcons
 })
 
 expect.extend(matchers)
