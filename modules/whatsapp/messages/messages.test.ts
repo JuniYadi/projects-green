@@ -57,18 +57,19 @@ vi.mock("@/lib/queue/whatsapp-broadcast", () => ({
   enqueueWhatsAppBroadcast: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Mock Date to a fixed point in time
+const FIXED_DATE = new Date("2026-05-15T00:00:00Z")
+const OriginalDate = global.Date
+// @ts-ignore
+global.Date = class extends OriginalDate {
+  constructor(arg: any) {
+    if (arg) return new OriginalDate(arg)
+    return FIXED_DATE
+  }
+} as any
+
 describe("quotaService", () => {
   beforeEach(() => {
-    // Mock Date to a fixed point in time
-    const mockDate = new Date("2026-05-15T00:00:00Z")
-    vi.mock("global", () => ({
-      Date: class extends Date {
-        constructor() {
-          super()
-          return mockDate
-        }
-      },
-    }))
     vi.clearAllMocks()
   })
 
@@ -136,16 +137,6 @@ describe("quotaService", () => {
 
 describe("messageService", () => {
   beforeEach(() => {
-    // Mock Date to a fixed point in time
-    const mockDate = new Date("2026-05-15T00:00:00Z")
-    vi.mock("global", () => ({
-      Date: class extends Date {
-        constructor() {
-          super()
-          return mockDate
-        }
-      },
-    }))
     vi.clearAllMocks()
   })
 
