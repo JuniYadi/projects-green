@@ -34,6 +34,17 @@ const { quotaService } = await import("@/modules/whatsapp/messages/quota.service
 
 describe("quotaService", () => {
   beforeEach(() => {
+    // Mock Date to a fixed point in time
+    const mockDate = new Date("2026-05-15T00:00:00Z")
+    mock.module("global", () => ({
+      Date: class extends Date {
+        constructor() {
+          super()
+          return mockDate
+        }
+      },
+    }))
+
     mockPrisma.whatsappDevice.findFirst.mockReset()
     mockPrisma.whatsappMonthlyCount.findFirst.mockReset()
     mockPrisma.whatsappMonthlyCount.create.mockReset()
