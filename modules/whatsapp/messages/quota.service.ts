@@ -48,10 +48,13 @@ export const quotaService: QuotaService = {
     })
 
     const currentCount = monthlyCount?.messageOutboxCount ?? 0
-    const remaining = Math.max(0, monthlyLimit - currentCount)
+    const isUnlimited = monthlyLimit === 0 && !!device
+    const remaining = isUnlimited
+      ? 999999
+      : Math.max(0, monthlyLimit - currentCount)
 
     return {
-      hasQuota: remaining > 0,
+      hasQuota: isUnlimited || remaining > 0,
       currentCount,
       monthlyLimit,
       remaining,
