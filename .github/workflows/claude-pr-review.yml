@@ -32,8 +32,9 @@ jobs:
             - Potential bugs or issues
             - Security implications
             - Performance considerations
+            - Give Emoji feedback for approval (Green check for approve, Red X for request changes, etc.)
 
-            Provide detailed feedback using inline comments for specific issues.
+            Provide detailed feedback using inline comments for specific issues and gives a full prompt suggested changes summary at the end. If you identify issues, suggest specific code changes to address them. Write with collapsible sections in single inline comments when appropriate to keep the PR review tidy. If the PR looks good, please say so in the summary comment.
 
           claude_args: |
             --model ${{ secrets.ANTHROPIC_MODEL }} --max-turns 50 --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
