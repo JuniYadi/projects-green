@@ -113,7 +113,10 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(navMain.map((item) => item.title)).toEqual(["Documentation"])
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Documentation",
+      "Settings",
+    ])
     expect(navMain[0]?.items?.map((item) => item.title)).toEqual(["Registry"])
     expect(navMain[0]?.isActive).toBe(true)
 
