@@ -29,46 +29,53 @@ jobs:
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
             --max-turns 50
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh api *)"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request focusing on:
-            - Code quality, bugs, performance, and security.
-            - Provide emoji-based approval status in your final summary text.
+            INSTRUCTIONS:
+            1. Scan all existing comments on this PR. Find the latest summary comment posted by @github-actions[bot] or yourself.
+            2. For every issue identified in previous runs:
+               - Check if it still exists in the current diff.
+               - If fixed, mark it as "✅ FIXED" in your new summary.
+               - If still present, mark it as "❌ PERSISTENT".
+            3. Update the top-level PR summary comment instead of creating a new one if possible (use `gh api` to find and patch).
+            4. Focus your review on:
+               - Code quality, bugs, performance, and security.
+               - Provide emoji-based approval status.
 
             INLINE ACTIONS:
-            Use your inline comment tool (`mcp__github_inline_comment__create_inline_comment`) to leave tidy comments on the specific lines that need attention.
+            Use your inline comment tool (`mcp__github_inline_comment__create_inline_comment`) for new issues. If an issue was previously commented on but is now fixed, reply to that thread stating it's resolved.
 
             FINAL COMPREHENSIVE SUMMARY COMMENT REQUIREMENT:
-            At the absolute end of your execution, post a top-level PR summary comment via the GitHub CLI. Inside this summary comment, provide a dedicated section containing a complete, standalone, unparsed markdown prompt block. 
-            
-            To prevent GitHub from parsing the internal snippets, wrap the entire instructions payload in a 4-backtick raw markdown text block.
+            Post or update a top-level PR summary comment.
+            Keep a "History" section or ensure the "Local Refactoring Prompt" contains ALL current issues (both persistent and new).
 
-            Format that specific section exactly like this:
+            Format the refactoring section exactly like this:
 
             ### 💻 Local Refactoring Prompt
             <details>
             <summary>📦 Click to expand and copy full prompt for Local AI Assistant</summary>
 
             ````markdown
-            You are a senior software engineer executing a local PR review remediation sweep. 
+            You are a senior software engineer executing a local PR review remediation sweep.
             Please refactor and fix the following specific code locations according to these instructions:
 
             ---
             #### File: [Insert File Path]
+            **Status:** [❌ PERSISTENT | 🆕 NEW]
             **Target Line Range:** [e.g., lines 45-52]
             **Issue:** [Briefly state what is wrong]
-            **Requested Fix:** 
+            **Requested Fix:**
 
             ```[language]
             // Exact code patch or snippet to implement
             ```
             ---
-            
-            [Repeat the file blocks above for every single issue identified during review]
+
+            [Include all active issues here. Do not include ✅ FIXED items in this raw prompt block to keep it actionable.]
             </details>
 
-            CRITICAL: Make sure you use four backticks (````markdown) for the outer wrapper container so that the inner triple backticks (```) are treated as plain text by GitHub and do not break the layout.
+            CRITICAL: Use `gh api` to retrieve existing comments and `gh api -X PATCH` to update the summary comment to avoid noise.
 
