@@ -58,6 +58,48 @@ Before committing or opening a PR, ALL MUST PASS:
 - Keep tests close to source files (examples: `modules/docs/docs.service.test.ts`, `components/nav-main.test.tsx`).
 - Add or update tests for new behavior in API routes, tenant policy logic, and rendered UI states.
 
+### Bun `mock.module` — Module Cache Rules (CRITICAL)
+
+Bun runs test files in **parallel isolated workers** locally but in a **single shared process** under `--coverage` (used by CI). This means `mock.module()` calls are **permanent within a CI run** — a module replaced in one file remains replaced for every file that runs after it.
+
+**The golden rule: never call `mock.module()` on a module that another test file tests directly.**
+
+#### Correct mock layering strategy
+
+Mock at the **lowest shared dependency** (infrastructure), not at intermediate service boundaries:
+
+```
+❌ WRONG — messages.service.test.ts mocks quota.service
+   → quota.service.test.ts then receives the mock, not the real implementation
+
+✅ CORRECT — messages.service.test.ts mocks @/lib/prisma
+   → both test files share the same prisma mock layer
+   → quota.service.test.ts still gets the real quota service
+```
+
+#### Concrete rules
+
+1. **Mock leaf dependencies only** — mock external infrastructure (`@/lib/prisma`, `@/lib/queue/*`, `@/lib/whatsapp/*`, third-party SDKs). Never mock a sibling service module that has its own `*.test.ts` file.
+
+2. **One test file owns each module** — the file named `foo.service.test.ts` is the sole owner of `foo.service`'s behaviour. All other test files must treat `foo.service` as a black box controlled via shared infrastructure mocks (e.g., prisma).
+
+3. **`mock.module` calls go at the very top** — place all `mock.module()` calls before any `import` or `await import()` statements so Bun registers them before module evaluation. Pattern:
+   ```ts
+   import { mock } from "bun:test"
+   // 1. define mock objects
+   const mockPrisma = { ... }
+   // 2. register module mocks
+   mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
+   // 3. only then import the thing under test
+   const { myService } = await import("./my.service")
+   ```
+
+4. **Use `mockClear()` in `beforeEach`, not `mockReset()`** — `mockReset()` removes the implementation; re-set defaults explicitly in `beforeEach` using `mockResolvedValue` / `mockImplementation` to avoid undefined leaking between tests.
+
+5. **No duplicate test blocks across files** — if `quota.service.test.ts` already covers `checkQuota`, do not add a `describe("quotaService")` block in `messages.test.ts`. Duplicate coverage causes ordering-sensitive failures and inflates the test count.
+
+6. **Validate with `bun run test:coverage` before every PR** — coverage runs in a single process (same as CI), so it will surface cross-file pollution that `bun test` misses locally.
+
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commit style seen in history: `feat: ...`, `fix: ...`, `test: ...`, `chore: ...`, `docs: ...`.
 - Use imperative, scoped summaries (example: `feat: add onboarding flow page`).
