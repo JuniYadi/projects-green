@@ -3,25 +3,25 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock 
 // Mock prisma before any imports
 const mockTx = {
   whatsappDevice: {
-    findFirst: mock(() => Promise.resolve(null)),
+    findFirst: mock(async () => null),
   },
   whatsappMonthlyCount: {
-    findFirst: mock(() => Promise.resolve(null)),
-    create: mock(() => Promise.resolve({ id: "count-1", messageOutboxCount: 1 })),
-    update: mock(() => Promise.resolve({ id: "count-1", messageOutboxCount: 1 })),
+    findFirst: mock(async () => null),
+    create: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
+    update: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
   },
 }
 
 const mockPrisma = {
   whatsappDevice: {
-    findFirst: mock(() => Promise.resolve(null)),
+    findFirst: mock(async () => null),
   },
   whatsappMonthlyCount: {
-    findFirst: mock(() => Promise.resolve(null)),
-    create: mock(() => Promise.resolve({ id: "count-1", messageOutboxCount: 1 })),
-    update: mock(() => Promise.resolve({ id: "count-1", messageOutboxCount: 1 })),
+    findFirst: mock(async () => null),
+    create: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
+    update: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
   },
-  $transaction: mock((fn: any) => fn(mockTx)),
+  $transaction: mock(async (fn: any) => fn(mockTx)),
 }
 
 mock.module("@/lib/prisma", () => ({
@@ -50,15 +50,15 @@ describe("quotaService", () => {
   })
 
   beforeEach(() => {
-    mockPrisma.whatsappDevice.findFirst.mockReset()
-    mockPrisma.whatsappMonthlyCount.findFirst.mockReset()
-    mockPrisma.whatsappMonthlyCount.create.mockReset()
-    mockPrisma.whatsappMonthlyCount.update.mockReset()
-    mockPrisma.$transaction.mockReset()
-    mockTx.whatsappDevice.findFirst.mockReset()
-    mockTx.whatsappMonthlyCount.findFirst.mockReset()
-    mockTx.whatsappMonthlyCount.create.mockReset()
-    mockTx.whatsappMonthlyCount.update.mockReset()
+    mockPrisma.whatsappDevice.findFirst.mockClear()
+    mockPrisma.whatsappMonthlyCount.findFirst.mockClear()
+    mockPrisma.whatsappMonthlyCount.create.mockClear()
+    mockPrisma.whatsappMonthlyCount.update.mockClear()
+    mockPrisma.$transaction.mockClear()
+    mockTx.whatsappDevice.findFirst.mockClear()
+    mockTx.whatsappMonthlyCount.findFirst.mockClear()
+    mockTx.whatsappMonthlyCount.create.mockClear()
+    mockTx.whatsappMonthlyCount.update.mockClear()
 
     mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockTx))
 

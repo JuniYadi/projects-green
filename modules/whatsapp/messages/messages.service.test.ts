@@ -70,16 +70,16 @@ const sendMessageTestHelper = async (overrides: Record<string, any> = {}) => {
 
 describe("messageService", () => {
   beforeEach(() => {
-    mockPrisma.whatsappDevice.findFirst.mockReset()
-    mockPrisma.whatsappConversation.findFirst.mockReset()
-    mockPrisma.whatsappConversation.create.mockReset()
-    mockPrisma.whatsappMessage.create.mockReset()
-    mockPrisma.whatsappBroadcastCampaign.create.mockReset()
-    mockPrisma.whatsappBroadcastRecipient.create.mockReset()
-    mockQuotaService.checkQuota.mockReset()
-    mockQuotaService.deductQuota.mockReset()
-    mockDeviceClient.sendMessage.mockReset()
-    mockEnqueue.mockReset()
+    mockPrisma.whatsappDevice.findFirst.mockClear()
+    mockPrisma.whatsappConversation.findFirst.mockClear()
+    mockPrisma.whatsappConversation.create.mockClear()
+    mockPrisma.whatsappMessage.create.mockClear()
+    mockPrisma.whatsappBroadcastCampaign.create.mockClear()
+    mockPrisma.whatsappBroadcastRecipient.create.mockClear()
+    mockQuotaService.checkQuota.mockClear()
+    mockQuotaService.deductQuota.mockClear()
+    mockDeviceClient.sendMessage.mockClear()
+    mockEnqueue.mockClear()
 
     // Default mock implementations
     mockQuotaService.checkQuota.mockResolvedValue({ hasQuota: true, remaining: 10 })

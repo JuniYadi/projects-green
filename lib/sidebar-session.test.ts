@@ -47,8 +47,8 @@ const makeUser = (overrides: Partial<User> = {}): User => {
 
 describe("sidebar session helpers", () => {
   beforeEach(() => {
-    mockGetUser.mockReset()
-    mockGetOrganization.mockReset()
+    mockGetUser.mockClear()
+    mockGetOrganization.mockClear()
 
     mockGetUser.mockImplementation(async () => ({
       id: "user_1",

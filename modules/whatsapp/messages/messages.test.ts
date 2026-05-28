@@ -81,8 +81,8 @@ describe("quotaService", () => {
   })
 
   beforeEach(() => {
-    mockPrisma.whatsappDevice.findFirst.mockReset()
-    mockPrisma.whatsappMonthlyCount.findFirst.mockReset()
+    mockPrisma.whatsappDevice.findFirst.mockClear()
+    mockPrisma.whatsappMonthlyCount.findFirst.mockClear()
 
     // Default implementations to avoid undefined
     mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
@@ -150,10 +150,10 @@ describe("quotaService", () => {
 
 describe("messageService", () => {
   beforeEach(() => {
-    mockPrisma.whatsappConversation.findFirst.mockReset()
-    mockPrisma.whatsappConversation.create.mockReset()
-    mockPrisma.whatsappDevice.findFirst.mockReset()
-    mockPrisma.whatsappMonthlyCount.findFirst.mockReset()
+    mockPrisma.whatsappConversation.findFirst.mockClear()
+    mockPrisma.whatsappConversation.create.mockClear()
+    mockPrisma.whatsappDevice.findFirst.mockClear()
+    mockPrisma.whatsappMonthlyCount.findFirst.mockClear()
 
     // Default implementations to avoid undefined
     mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)

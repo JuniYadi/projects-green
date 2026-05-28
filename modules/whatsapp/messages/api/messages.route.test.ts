@@ -75,13 +75,13 @@ describe("messagesRoutes", () => {
       platformRole: "none",
     })
 
-    mockPrisma.whatsappMessage.findMany.mockReset()
-    mockPrisma.whatsappMessage.findFirst.mockReset()
-    mockPrisma.whatsappMessage.create.mockReset()
-    mockPrisma.whatsappMessage.update.mockReset()
-    mockPrisma.whatsappMessage.delete.mockReset()
-    mockPrisma.whatsappConversation.findFirst.mockReset()
-    mockMessageService.sendMessage.mockReset()
+    mockPrisma.whatsappMessage.findMany.mockClear()
+    mockPrisma.whatsappMessage.findFirst.mockClear()
+    mockPrisma.whatsappMessage.create.mockClear()
+    mockPrisma.whatsappMessage.update.mockClear()
+    mockPrisma.whatsappMessage.delete.mockClear()
+    mockPrisma.whatsappConversation.findFirst.mockClear()
+    mockMessageService.sendMessage.mockClear()
 
     mockPrisma.whatsappMessage.findMany.mockResolvedValue([{ id: "msg-1" }] as any)
     mockPrisma.whatsappMessage.findFirst.mockResolvedValue({
