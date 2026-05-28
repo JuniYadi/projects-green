@@ -243,7 +243,7 @@ describe("StepSource", () => {
     // Find and click the "Next" button
     const nextBtn = view.getByRole("button", { name: /^Next$/i })
     expect(nextBtn).toBeTruthy()
-    
+
     act(() => {
       fireEvent.click(nextBtn)
     })
