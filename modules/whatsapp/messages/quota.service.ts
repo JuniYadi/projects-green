@@ -20,12 +20,12 @@ export type QuotaService = {
   getMonthlyStats(organizationId: string, deviceId?: string): Promise<{ inCount: number; outCount: number }>
 }
 
-const now = new Date()
-const currentYear = now.getFullYear()
-const currentMonth = now.getMonth() + 1
-
 export const quotaService: QuotaService = {
   async checkQuota(organizationId: string, deviceId?: string) {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1
+
     const device = deviceId
       ? await prisma.whatsappDevice.findFirst({
           where: { id: deviceId, organizationId },
@@ -59,6 +59,10 @@ export const quotaService: QuotaService = {
   },
 
   async deductQuota(organizationId: string, deviceId?: string) {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1
+
     await prisma.$transaction(async (tx) => {
       const device = deviceId
         ? await tx.whatsappDevice.findFirst({
@@ -113,6 +117,10 @@ export const quotaService: QuotaService = {
   },
 
   async getMonthlyStats(organizationId: string, deviceId?: string) {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1
+
     const monthlyCount = await prisma.whatsappMonthlyCount.findFirst({
       where: {
         organizationId,
