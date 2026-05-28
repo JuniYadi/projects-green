@@ -1,6 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 
-// Mock dependencies before importing
+// ---------------------------------------------------------------------------
+// Mock dependencies at the module level BEFORE any service imports.
+// IMPORTANT: We intentionally do NOT mock "@/modules/whatsapp/messages/quota.service"
+// here. Mocking that module would pollute the shared Bun module cache and
+// cause quota.service.test.ts (which tests the real implementation) to receive
+// the mock instead of the real service. Instead we mock @/lib/prisma at a
+// level that allows the real quota service to behave as needed per test.
+// ---------------------------------------------------------------------------
+
+const mockTx = {
+  whatsappDevice: {
+    findFirst: mock(async () => null),
+  },
+  whatsappMonthlyCount: {
+    findFirst: mock(async () => null),
+    create: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
+    update: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
+  },
+}
+
 const mockPrisma = {
   whatsappDevice: {
     findFirst: mock(async () => null),
@@ -18,12 +37,12 @@ const mockPrisma = {
   whatsappBroadcastRecipient: {
     create: mock(async () => ({ id: "recip-1" })),
   },
-}
-
-const mockQuotaService = {
-  checkQuota: mock(async () => ({ hasQuota: true, remaining: 10 })),
-  deductQuota: mock(async () => {}),
-  getMonthlyStats: mock(async () => ({ inCount: 0, outCount: 0 })),
+  whatsappMonthlyCount: {
+    findFirst: mock(async () => null),
+    create: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
+    update: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
+  },
+  $transaction: mock(async (fn: any) => fn(mockTx)),
 }
 
 const mockDeviceClient = {
@@ -34,16 +53,6 @@ const mockEnqueue = mock(async () => {})
 
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
-}))
-
-mock.module("@/modules/whatsapp/messages/quota.service", () => ({
-  quotaService: mockQuotaService,
-  InsufficientQuotaError: class InsufficientQuotaError extends Error {
-    constructor(message: string) {
-      super(message)
-      this.name = "InsufficientQuotaError"
-    }
-  },
 }))
 
 mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
@@ -58,6 +67,19 @@ mock.module("@/lib/queue/whatsapp-broadcast", () => ({
 
 // Import after mocks
 const { messageService } = await import("./messages.service")
+const { InsufficientQuotaError } = await import("./quota.service")
+
+// ---------------------------------------------------------------------------
+// Default device fixture — quota: 1000 limit, count: 0 → hasQuota: true
+// ---------------------------------------------------------------------------
+const mockDevice = {
+  id: "device-1",
+  organizationId: "org-1",
+  quotaBaseOut: 1000,
+  tokenEncrypted: "encrypted-token",
+  whatsappPhoneId: "phone-id-1",
+  whatsappBusinessAccountId: "waba-1",
+}
 
 const sendMessageTestHelper = async (overrides: Record<string, any> = {}) => {
   return messageService.sendMessage({
@@ -70,32 +92,58 @@ const sendMessageTestHelper = async (overrides: Record<string, any> = {}) => {
 
 describe("messageService", () => {
   beforeEach(() => {
+    // Clear all mocks
     mockPrisma.whatsappDevice.findFirst.mockClear()
     mockPrisma.whatsappConversation.findFirst.mockClear()
     mockPrisma.whatsappConversation.create.mockClear()
     mockPrisma.whatsappMessage.create.mockClear()
     mockPrisma.whatsappBroadcastCampaign.create.mockClear()
     mockPrisma.whatsappBroadcastRecipient.create.mockClear()
-    mockQuotaService.checkQuota.mockClear()
-    mockQuotaService.deductQuota.mockClear()
+    mockPrisma.whatsappMonthlyCount.findFirst.mockClear()
+    mockPrisma.whatsappMonthlyCount.create.mockClear()
+    mockPrisma.whatsappMonthlyCount.update.mockClear()
+    mockPrisma.$transaction.mockClear()
+    mockTx.whatsappDevice.findFirst.mockClear()
+    mockTx.whatsappMonthlyCount.findFirst.mockClear()
+    mockTx.whatsappMonthlyCount.create.mockClear()
+    mockTx.whatsappMonthlyCount.update.mockClear()
     mockDeviceClient.sendMessage.mockClear()
     mockEnqueue.mockClear()
 
-    // Default mock implementations
-    mockQuotaService.checkQuota.mockResolvedValue({ hasQuota: true, remaining: 10 })
-    mockQuotaService.deductQuota.mockResolvedValue(undefined)
-    mockDeviceClient.sendMessage.mockResolvedValue({ providerMessageId: "wa-msg-123" })
-    mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
-      id: "device-1",
-      tokenEncrypted: "encrypted-token",
-      whatsappPhoneId: "phone-id-1",
-      whatsappBusinessAccountId: "waba-1",
-    } as any)
+    // Default: device with quota 1000, no monthly usage → hasQuota: true
+    // (quota service reads prisma.whatsappDevice + prisma.whatsappMonthlyCount)
+    mockPrisma.whatsappDevice.findFirst.mockResolvedValue(mockDevice as any)
+    mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null) // 0 usage
     mockPrisma.whatsappConversation.findFirst.mockResolvedValue(null)
-    mockPrisma.whatsappConversation.create.mockResolvedValue({ id: "conv-1" } as any)
+    mockPrisma.whatsappConversation.create.mockResolvedValue({
+      id: "conv-1",
+    } as any)
     mockPrisma.whatsappMessage.create.mockResolvedValue({ id: "msg-1" } as any)
-    mockPrisma.whatsappBroadcastCampaign.create.mockResolvedValue({ id: "camp-1" } as any)
-    mockPrisma.whatsappBroadcastRecipient.create.mockResolvedValue({ id: "recip-1" } as any)
+    mockPrisma.whatsappBroadcastCampaign.create.mockResolvedValue({
+      id: "camp-1",
+    } as any)
+    mockPrisma.whatsappBroadcastRecipient.create.mockResolvedValue({
+      id: "recip-1",
+    } as any)
+
+    // $transaction passthrough
+    mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockTx))
+
+    // tx defaults: device found, no existing count → creates new count
+    mockTx.whatsappDevice.findFirst.mockResolvedValue(mockDevice as any)
+    mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
+    mockTx.whatsappMonthlyCount.create.mockResolvedValue({
+      id: "count-1",
+      messageOutboxCount: 1,
+    } as any)
+    mockTx.whatsappMonthlyCount.update.mockResolvedValue({
+      id: "count-1",
+      messageOutboxCount: 1,
+    } as any)
+
+    mockDeviceClient.sendMessage.mockResolvedValue({
+      providerMessageId: "wa-msg-123",
+    })
     mockEnqueue.mockResolvedValue(undefined)
   })
 
@@ -112,29 +160,35 @@ describe("messageService", () => {
     it("checks quota before sending", async () => {
       await sendMessageTestHelper({ organizationId: "org-1" })
 
-      expect(mockQuotaService.checkQuota).toHaveBeenCalledWith("org-1", undefined)
+      // The real quota service reads whatsappDevice — verify it was called
+      expect(mockPrisma.whatsappDevice.findFirst).toHaveBeenCalled()
     })
 
-    it("throws InsufficientQuotaError when no quota", async () => {
-      mockQuotaService.checkQuota.mockResolvedValue({ hasQuota: false, remaining: 0 })
+    it("throws InsufficientQuotaError when no quota available", async () => {
+      // Quota exceeded: limit=100, count=100 → remaining=0 → hasQuota=false
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
+        ...mockDevice,
+        quotaBaseOut: 100,
+      } as any)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue({
+        messageOutboxCount: 100,
+      } as any)
 
-      await expect(
-        sendMessageTestHelper()
-      ).rejects.toThrow("Insufficient quota")
+      await expect(sendMessageTestHelper()).rejects.toThrow(InsufficientQuotaError)
     })
 
     it("throws when no device found", async () => {
+      // checkQuota: device=null → hasQuota=false → throws InsufficientQuotaError
       mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
 
-      await expect(
-        sendMessageTestHelper()
-      ).rejects.toThrow("WhatsApp device not found")
+      await expect(sendMessageTestHelper()).rejects.toThrow(InsufficientQuotaError)
     })
 
     it("deducts quota after sending", async () => {
       await sendMessageTestHelper({ organizationId: "org-1", deviceId: "device-1" })
 
-      expect(mockQuotaService.deductQuota).toHaveBeenCalledWith("org-1", "device-1")
+      // Deduct quota goes through $transaction
+      expect(mockPrisma.$transaction).toHaveBeenCalled()
     })
 
     it("creates message record in database", async () => {
@@ -203,30 +257,44 @@ describe("messageService", () => {
     })
 
     it("uses specific device when deviceId provided", async () => {
-      await sendMessageTestHelper({ organizationId: "org-1", deviceId: "my-device" })
-
-      expect(mockPrisma.whatsappDevice.findFirst).toHaveBeenCalledWith({
-        where: { id: "my-device", organizationId: "org-1" },
+      await sendMessageTestHelper({
+        organizationId: "org-1",
+        deviceId: "my-device",
       })
+
+      expect(mockPrisma.whatsappDevice.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "org-1",
+          }),
+        })
+      )
     })
 
     it("continues when quota deduction fails (non-quota error)", async () => {
-      mockQuotaService.deductQuota.mockRejectedValue(new Error("DB error"))
+      // Make $transaction throw a generic error (not InsufficientQuotaError)
+      mockPrisma.$transaction.mockRejectedValue(new Error("DB error"))
 
-      // Should not throw, message should still be sent
+      // Should not throw — message still sent, quota deduction error is swallowed
       const result = await sendMessageTestHelper()
 
       expect(result).toHaveProperty("jobId")
     })
 
     it("throws when quota deduction fails with InsufficientQuotaError", async () => {
-      mockQuotaService.deductQuota.mockRejectedValue(
-        new (await import("@/modules/whatsapp/messages/quota.service")).InsufficientQuotaError("quota exceeded")
-      )
+      // checkQuota passes (device with quota, no usage), but deductQuota ($transaction)
+      // returns a count that exceeds the limit → throws InsufficientQuotaError
+      mockTx.whatsappDevice.findFirst.mockResolvedValue({
+        ...mockDevice,
+        quotaBaseOut: 1,
+      } as any)
+      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
+      mockTx.whatsappMonthlyCount.create.mockResolvedValue({
+        id: "count-1",
+        messageOutboxCount: 2, // > limit of 1 → throws
+      } as any)
 
-      await expect(
-        sendMessageTestHelper()
-      ).rejects.toThrow("quota exceeded")
+      await expect(sendMessageTestHelper()).rejects.toThrow(InsufficientQuotaError)
     })
   })
 

@@ -41,8 +41,11 @@ describe("quotaService", () => {
   beforeAll(() => {
     global.Date = class extends OriginalDate {
       constructor(...args: any[]) {
-        if (args.length === 0) return new OriginalDate(FIXED_DATE)
-        return new OriginalDate(args[0])
+        if (args.length === 0) {
+          super(FIXED_DATE)
+        } else {
+          super(args[0])
+        }
       }
     } as any
   })
