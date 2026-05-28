@@ -141,8 +141,8 @@ describe("decryptWithAppKey errors", () => {
     // First encrypt a known value, then tamper with the ciphertext
     const original = await encryptWithAppKey("test")
     const parts = original.split(".")
-    // Corrupt the last part
-    const tampered = `${parts[0]}.${parts[1]}.${parts[2].slice(0, -1)}Z`
+    // Corrupt the last part significantly to ensure decryption failure
+    const tampered = `${parts[0]}.${parts[1]}.${parts[2].substring(0, parts[2].length - 10)}modifiedtext`
     await expect(decryptWithAppKey(tampered)).rejects.toThrow(AppKeyCryptoError)
   })
 

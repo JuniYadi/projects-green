@@ -103,7 +103,7 @@ export function StepEnvironment({
                 <p className="text-xs text-muted-foreground">
                   {isTemplate
                     ? "Pre-configured template deployment settings."
-                    : "Automatically detected configuration (Build step skipped)."}
+                    : "Current build configuration for this deployment."}
                 </p>
               </div>
               {!isTemplate && onEditBuildSettings && (

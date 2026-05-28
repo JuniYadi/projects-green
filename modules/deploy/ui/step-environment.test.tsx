@@ -32,9 +32,20 @@ describe("StepEnvironment", () => {
   it("renders domain mode and ready summary", () => {
     const props = createProps()
 
-    const view = render(<StepEnvironment {...props} />)
+    const view = render(
+      <StepEnvironment
+        {...props}
+        sourceType="github"
+        buildState={{ language: "Node.js", framework: "Next.js" }}
+      />
+    )
 
-    expect(view.getByText("Domain Mode", { exact: true })).toBeTruthy()
+    expect(view.getByText("Build Configuration")).toBeTruthy()
+    expect(
+      view.getByText("Current build configuration for this deployment.")
+    ).toBeTruthy()
+    expect(view.getByText("Node.js")).toBeTruthy()
+    expect(view.getByText("Next.js")).toBeTruthy()
     expect(view.getByText("Managed subdomain")).toBeTruthy()
     expect(view.getAllByText("Custom domain").length).toBeGreaterThan(0)
     expect(
