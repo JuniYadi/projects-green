@@ -77,6 +77,14 @@ mock.module("next/navigation", () => {
   }
 })
 
+mock.module("react-icons/si", () => {
+  return {
+    SiWordpress: () => <div data-testid="si-wordpress">WordPress Icon</div>,
+    SiN8N: () => <div data-testid="si-n8n">n8n Icon</div>,
+    SiDocker: () => <div data-testid="si-docker">Docker Icon</div>,
+  }
+})
+
 const createPersistedState = (state: DeployWizardState) => {
   return JSON.stringify({
     version: DEPLOY_WIZARD_STORAGE_VERSION,
@@ -123,10 +131,6 @@ const selectSourceRepository = async (view: RenderResult) => {
 }
 
 describe("DeployWizard", () => {
-  afterAll(() => {
-    mock.restore()
-  })
-
   beforeEach(() => {
     window.sessionStorage.clear()
     currentQuery = ""

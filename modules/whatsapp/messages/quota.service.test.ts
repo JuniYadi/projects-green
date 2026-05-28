@@ -35,11 +35,13 @@ const { quotaService } = await import("@/modules/whatsapp/messages/quota.service
 // Mock Date to a fixed point in time
 const FIXED_DATE = new Date("2026-05-15T00:00:00Z")
 const OriginalDate = global.Date
-// @ts-ignore
 global.Date = class extends OriginalDate {
-  constructor(arg: any) {
-    if (arg) return new OriginalDate(arg)
-    return FIXED_DATE
+  constructor(...args: any[]) {
+    if (args.length === 0) {
+      super(FIXED_DATE)
+    } else {
+      super(args[0])
+    }
   }
 } as any
 

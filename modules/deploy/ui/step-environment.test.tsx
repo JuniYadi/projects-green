@@ -36,7 +36,7 @@ describe("StepEnvironment", () => {
       <StepEnvironment
         {...props}
         sourceType="github"
-        buildState={{ language: "Node.js", framework: "Next.js" }}
+        buildState={{ language: "Node.js", framework: "Next.js", buildCommand: "", useDockerfile: false }}
       />
     )
 
