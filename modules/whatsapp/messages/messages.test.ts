@@ -144,6 +144,9 @@ describe("messageService", () => {
     mockPrisma.whatsappMonthlyCount.findFirst.mockReset()
 
     // Default implementations to avoid undefined
+    mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue(null)
     mockPrisma.whatsappConversation.create.mockResolvedValue({ id: "conv-1" } as any)
     mockPrisma.whatsappMessage.create.mockResolvedValue({ id: "msg-1" } as any)
     mockPrisma.whatsappBroadcastCampaign.create.mockResolvedValue({ id: "campaign-1" } as any)
