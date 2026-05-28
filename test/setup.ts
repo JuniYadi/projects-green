@@ -6,24 +6,25 @@ import * as matchers from "@testing-library/jest-dom/matchers"
 
 mock.module("react-icons/si", () => {
   const React = require("react")
-  const icons = [
-    "SiWordpress",
-    "SiN8N",
-    "SiDocker",
-    "SiGhost",
-    "SiStrapi",
-    "SiDirectus",
-    "SiPayloadcms",
-    "SiPocketbase",
-    "SiUmami",
-    "SiPlausibleanalytics",
-  ]
-  const mockIcons: any = {}
-  icons.forEach((icon) => {
-    mockIcons[icon] = (props: any) =>
-      React.createElement("div", { ...props, "data-testid": `si-${icon.toLowerCase()}` }, `${icon} Icon`)
-  })
-  return mockIcons
+  const createMock = (name: string) => (props: any) =>
+    React.createElement(
+      "div",
+      { ...props, "data-testid": `si-${name.toLowerCase()}` },
+      `${name} Icon`
+    )
+
+  return {
+    SiWordpress: createMock("SiWordpress"),
+    SiN8N: createMock("SiN8N"),
+    SiDocker: createMock("SiDocker"),
+    SiGhost: createMock("SiGhost"),
+    SiStrapi: createMock("SiStrapi"),
+    SiDirectus: createMock("SiDirectus"),
+    SiPayloadcms: createMock("SiPayloadcms"),
+    SiPocketbase: createMock("SiPocketbase"),
+    SiUmami: createMock("SiUmami"),
+    SiPlausibleanalytics: createMock("SiPlausibleanalytics"),
+  }
 })
 
 expect.extend(matchers)
