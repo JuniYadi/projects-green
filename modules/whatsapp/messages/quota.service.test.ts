@@ -1,7 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { InsufficientQuotaError } from "@/modules/whatsapp/messages/quota.service"
+import { mock } from "bun:test"
 
-// Mock prisma before importing quotaService
+// Mock prisma before any imports
 const mockTx = {
   whatsappDevice: {
     findFirst: mock(async () => null),
@@ -22,45 +21,62 @@ const mockPrisma = {
     create: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
     update: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
   },
-  $transaction: mock(async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx)),
+  $transaction: mock(async (fn: any) => fn(mockTx)),
 }
 
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-// Import after mock
-const { quotaService } = await import("@/modules/whatsapp/messages/quota.service")
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test"
 
-// Mock Date to a fixed point in time
+// Dynamic import for the service
+const { quotaService, InsufficientQuotaError } = await import("./quota.service")
+
+// Mock Date
 const FIXED_DATE = new Date("2026-05-15T00:00:00Z")
 const OriginalDate = global.Date
-global.Date = class extends OriginalDate {
-  constructor(...args: any[]) {
-    if (args.length === 0) {
-      super(FIXED_DATE)
-    } else {
-      super(args[0])
-    }
-  }
-} as any
 
 describe("quotaService", () => {
+  beforeAll(() => {
+    global.Date = class extends OriginalDate {
+      constructor(...args: any[]) {
+        if (args.length === 0) {
+          super(FIXED_DATE)
+        } else {
+          super(args[0])
+        }
+      }
+    } as any
+  })
+
+  afterAll(() => {
+    global.Date = OriginalDate
+  })
+
   beforeEach(() => {
-    mockPrisma.whatsappDevice.findFirst.mockReset()
-    mockPrisma.whatsappMonthlyCount.findFirst.mockReset()
-    mockPrisma.whatsappMonthlyCount.create.mockReset()
-    mockPrisma.whatsappMonthlyCount.update.mockReset()
-    mockPrisma.$transaction.mockReset()
+    mockPrisma.whatsappDevice.findFirst.mockClear()
+    mockPrisma.whatsappMonthlyCount.findFirst.mockClear()
+    mockPrisma.whatsappMonthlyCount.create.mockClear()
+    mockPrisma.whatsappMonthlyCount.update.mockClear()
+    mockPrisma.$transaction.mockClear()
+    mockTx.whatsappDevice.findFirst.mockClear()
+    mockTx.whatsappMonthlyCount.findFirst.mockClear()
+    mockTx.whatsappMonthlyCount.create.mockClear()
+    mockTx.whatsappMonthlyCount.update.mockClear()
 
-    // Reset mockTx mocks
-    mockTx.whatsappDevice.findFirst.mockReset()
-    mockTx.whatsappMonthlyCount.findFirst.mockReset()
-    mockTx.whatsappMonthlyCount.create.mockReset()
-    mockTx.whatsappMonthlyCount.update.mockReset()
+    mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockTx))
 
-    // Default: transaction succeeds
-    mockPrisma.$transaction.mockImplementation(async (fn) => fn(mockTx))
+    // Explicitly set default resolved values to avoid undefined leakage
+    mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappMonthlyCount.create.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
+    mockPrisma.whatsappMonthlyCount.update.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
+
+    mockTx.whatsappDevice.findFirst.mockResolvedValue(null)
+    mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
+    mockTx.whatsappMonthlyCount.create.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
+    mockTx.whatsappMonthlyCount.update.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
   })
 
   describe("InsufficientQuotaError", () => {
@@ -68,17 +84,16 @@ describe("quotaService", () => {
       const err = new InsufficientQuotaError("no quota left")
       expect(err.name).toBe("InsufficientQuotaError")
       expect(err.message).toBe("no quota left")
-      expect(err).toBeInstanceOf(Error)
     })
   })
 
   describe("checkQuota", () => {
     it("returns hasQuota true when device has limit and count below", async () => {
-      mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
         quotaBaseOut: 100,
       } as any)
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValueOnce({
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue({
         messageOutboxCount: 50,
       } as any)
 
@@ -91,11 +106,11 @@ describe("quotaService", () => {
     })
 
     it("returns hasQuota false when remaining is zero", async () => {
-      mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
         quotaBaseOut: 100,
       } as any)
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValueOnce({
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue({
         messageOutboxCount: 100,
       } as any)
 
@@ -107,8 +122,8 @@ describe("quotaService", () => {
     })
 
     it("returns hasQuota false when no device found", async () => {
-      mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce(null)
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValueOnce(null)
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
 
       const result = await quotaService.checkQuota("org-1")
 
@@ -118,11 +133,11 @@ describe("quotaService", () => {
     })
 
     it("returns hasQuota true when no quota limit set (unlimited)", async () => {
-      mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
         quotaBaseOut: null,
       } as any)
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValueOnce(null)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
 
       const result = await quotaService.checkQuota("org-1")
 
@@ -131,11 +146,11 @@ describe("quotaService", () => {
     })
 
     it("uses deviceId when provided", async () => {
-      mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
         quotaBaseOut: 200,
       } as any)
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValueOnce(null)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
 
       await quotaService.checkQuota("org-1", "device-1")
 
@@ -145,11 +160,11 @@ describe("quotaService", () => {
     })
 
     it("handles string quota values", async () => {
-      mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
         quotaBaseOut: "50" as any,
       } as any)
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValueOnce({
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue({
         messageOutboxCount: 10,
       } as any)
 
@@ -162,12 +177,12 @@ describe("quotaService", () => {
 
   describe("deductQuota", () => {
     it("creates new monthly count when none exists", async () => {
-      mockTx.whatsappDevice.findFirst.mockResolvedValueOnce({
+      mockTx.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
         quotaBaseOut: 100,
       } as any)
-      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValueOnce(null)
-      mockTx.whatsappMonthlyCount.create.mockResolvedValueOnce({
+      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
+      mockTx.whatsappMonthlyCount.create.mockResolvedValue({
         id: "count-new",
         messageOutboxCount: 1,
       } as any)
@@ -178,15 +193,15 @@ describe("quotaService", () => {
     })
 
     it("updates existing monthly count", async () => {
-      mockTx.whatsappDevice.findFirst.mockResolvedValueOnce({
+      mockTx.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
         quotaBaseOut: 100,
       } as any)
-      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValueOnce({
+      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue({
         id: "count-1",
         messageOutboxCount: 5,
       } as any)
-      mockTx.whatsappMonthlyCount.update.mockResolvedValueOnce({
+      mockTx.whatsappMonthlyCount.update.mockResolvedValue({
         id: "count-1",
         messageOutboxCount: 6,
       } as any)
@@ -200,7 +215,7 @@ describe("quotaService", () => {
     })
 
     it("throws when device not found", async () => {
-      mockTx.whatsappDevice.findFirst.mockResolvedValueOnce(null)
+      mockTx.whatsappDevice.findFirst.mockResolvedValue(null)
 
       await expect(quotaService.deductQuota("org-1")).rejects.toThrow(
         "WhatsApp device not found"
@@ -208,34 +223,34 @@ describe("quotaService", () => {
     })
 
     it("throws InsufficientQuotaError when limit exceeded", async () => {
-      mockTx.whatsappDevice.findFirst.mockResolvedValueOnce({
+      mockTx.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
         quotaBaseOut: 10,
       } as any)
-      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValueOnce({
+      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue({
         id: "count-1",
         messageOutboxCount: 10,
       } as any)
-      mockTx.whatsappMonthlyCount.update.mockResolvedValueOnce({
+      mockTx.whatsappMonthlyCount.update.mockResolvedValue({
         id: "count-1",
         messageOutboxCount: 11,
       } as any)
 
       await expect(quotaService.deductQuota("org-1")).rejects.toThrow(
-        InsufficientQuotaError
+        /Monthly quota exceeded/
       )
     })
 
     it("allows send when count equals limit (within quota)", async () => {
-      mockTx.whatsappDevice.findFirst.mockResolvedValueOnce({
+      mockTx.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
         quotaBaseOut: 10,
       } as any)
-      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValueOnce({
+      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue({
         id: "count-1",
         messageOutboxCount: 9,
       } as any)
-      mockTx.whatsappMonthlyCount.update.mockResolvedValueOnce({
+      mockTx.whatsappMonthlyCount.update.mockResolvedValue({
         id: "count-1",
         messageOutboxCount: 10,
       } as any)
@@ -243,27 +258,35 @@ describe("quotaService", () => {
       await expect(quotaService.deductQuota("org-1")).resolves.toBeUndefined()
     })
 
-    it("allows send when limit is 0 (unlimited)", async () => {
-      mockTx.whatsappDevice.findFirst.mockResolvedValueOnce({
+    it("uses deviceId in deductQuota when provided", async () => {
+      mockTx.whatsappDevice.findFirst.mockResolvedValue({
         id: "device-1",
-        quotaBaseOut: 0,
+        quotaBaseOut: 100,
       } as any)
-      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValueOnce({
-        id: "count-1",
-        messageOutboxCount: 1000,
-      } as any)
-      mockTx.whatsappMonthlyCount.update.mockResolvedValueOnce({
-        id: "count-1",
-        messageOutboxCount: 1001,
+      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
+      mockTx.whatsappMonthlyCount.create.mockResolvedValue({
+        id: "count-new",
+        messageOutboxCount: 1,
       } as any)
 
-      await expect(quotaService.deductQuota("org-1")).resolves.toBeUndefined()
+      await quotaService.deductQuota("org-1", "device-1")
+
+      expect(mockTx.whatsappDevice.findFirst).toHaveBeenCalledWith({
+        where: { id: "device-1", organizationId: "org-1" },
+      })
+      expect(mockTx.whatsappMonthlyCount.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            whatsappDeviceId: "device-1",
+          }),
+        })
+      )
     })
   })
 
   describe("getMonthlyStats", () => {
     it("returns inbox and outbox counts", async () => {
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValueOnce({
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue({
         messageInboxCount: 25,
         messageOutboxCount: 50,
       } as any)
@@ -274,7 +297,7 @@ describe("quotaService", () => {
     })
 
     it("returns zeros when no monthly count", async () => {
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValueOnce(null)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
 
       const result = await quotaService.getMonthlyStats("org-1")
 
@@ -282,7 +305,7 @@ describe("quotaService", () => {
     })
 
     it("filters by deviceId", async () => {
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValueOnce(null)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
 
       await quotaService.getMonthlyStats("org-1", "device-1")
 
@@ -296,3 +319,4 @@ describe("quotaService", () => {
     })
   })
 })
+

@@ -57,11 +57,11 @@ const buildRecord = (
 })
 
 beforeEach(() => {
-  mockFindFirst.mockReset()
-  mockCreate.mockReset()
-  mockUpdate.mockReset()
-  mockFindMany.mockReset()
-  mockEmbedDocument.mockReset()
+  mockFindFirst.mockClear()
+  mockCreate.mockClear()
+  mockUpdate.mockClear()
+  mockFindMany.mockClear()
+  mockEmbedDocument.mockClear()
 })
 
 describe("normalizeDocPath", () => {

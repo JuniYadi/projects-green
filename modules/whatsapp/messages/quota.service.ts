@@ -54,7 +54,7 @@ export const quotaService: QuotaService = {
       : Math.max(0, monthlyLimit - currentCount)
 
     return {
-      hasQuota: isUnlimited || remaining > 0,
+      hasQuota: isUnlimited || (monthlyLimit > 0 && remaining > 0),
       currentCount,
       monthlyLimit,
       remaining,

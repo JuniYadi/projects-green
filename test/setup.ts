@@ -5,13 +5,25 @@ import { cleanup } from "@testing-library/react"
 import * as matchers from "@testing-library/jest-dom/matchers"
 
 mock.module("react-icons/si", () => {
+  const React = require("react")
+  const createMock = (name: string) => (props: any) =>
+    React.createElement(
+      "div",
+      { ...props, "data-testid": `si-${name.toLowerCase()}` },
+      `${name} Icon`
+    )
+
   return {
-    SiWordpress: (props: any) =>
-      React.createElement("div", { ...props, "data-testid": "si-wordpress" }, "WordPress Icon"),
-    SiN8N: (props: any) =>
-      React.createElement("div", { ...props, "data-testid": "si-n8n" }, "n8n Icon"),
-    SiDocker: (props: any) =>
-      React.createElement("div", { ...props, "data-testid": "si-docker" }, "Docker Icon"),
+    SiWordpress: createMock("SiWordpress"),
+    SiN8N: createMock("SiN8N"),
+    SiDocker: createMock("SiDocker"),
+    SiGhost: createMock("SiGhost"),
+    SiStrapi: createMock("SiStrapi"),
+    SiDirectus: createMock("SiDirectus"),
+    SiPayloadcms: createMock("SiPayloadcms"),
+    SiPocketbase: createMock("SiPocketbase"),
+    SiUmami: createMock("SiUmami"),
+    SiPlausibleanalytics: createMock("SiPlausibleanalytics"),
   }
 })
 

@@ -20,7 +20,7 @@ import { getPlatformRoleForUser } from "@/lib/platform-role"
 
 describe("platform-role", () => {
   beforeEach(() => {
-    findFirstMock.mockReset()
+    findFirstMock.mockClear()
     findFirstMock.mockResolvedValue(null)
   })
 

@@ -61,11 +61,11 @@ describe("authService", () => {
     process.env.WORKOS_COOKIE_SAMESITE = "lax"
     process.env.WORKOS_COOKIE_MAX_AGE = ""
 
-    mockCreateMagicAuth.mockReset()
-    mockAuthenticateWithMagicAuth.mockReset()
-    mockAuthenticateWithEmailVerification.mockReset()
-    mockCreateUser.mockReset()
-    mockAuthenticateWithPassword.mockReset()
+    mockCreateMagicAuth.mockClear()
+    mockAuthenticateWithMagicAuth.mockClear()
+    mockAuthenticateWithEmailVerification.mockClear()
+    mockCreateUser.mockClear()
+    mockAuthenticateWithPassword.mockClear()
 
     mockCreateMagicAuth.mockImplementation(async () => ({}))
     mockAuthenticateWithMagicAuth.mockImplementation(async () => ({

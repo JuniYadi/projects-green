@@ -1,18 +1,4 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { Elysia } from "elysia"
-
-import {
-  whatsappAuthMock,
-  setMockAuthContext,
-} from "@/lib/whatsapp/__tests__/auth-mock"
-
-// Mock InsufficientQuotaError
-class InsufficientQuotaError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = "InsufficientQuotaError"
-  }
-}
+import { mock } from "bun:test"
 
 // Mock prisma
 const mockPrisma = {
@@ -50,6 +36,14 @@ mock.module("@/modules/whatsapp/messages/messages.service", () => ({
   messageService: mockMessageService,
 }))
 
+import { describe, expect, it, beforeEach } from "bun:test"
+import { Elysia } from "elysia"
+import {
+  whatsappAuthMock,
+  setMockAuthContext,
+} from "@/lib/whatsapp/__tests__/auth-mock"
+import { InsufficientQuotaError } from "../quota.service"
+
 mock.module("@/modules/whatsapp/messages/quota.service", () => ({
   InsufficientQuotaError,
 }))
@@ -82,13 +76,13 @@ describe("messagesRoutes", () => {
       platformRole: "none",
     })
 
-    mockPrisma.whatsappMessage.findMany.mockReset()
-    mockPrisma.whatsappMessage.findFirst.mockReset()
-    mockPrisma.whatsappMessage.create.mockReset()
-    mockPrisma.whatsappMessage.update.mockReset()
-    mockPrisma.whatsappMessage.delete.mockReset()
-    mockPrisma.whatsappConversation.findFirst.mockReset()
-    mockMessageService.sendMessage.mockReset()
+    mockPrisma.whatsappMessage.findMany.mockClear()
+    mockPrisma.whatsappMessage.findFirst.mockClear()
+    mockPrisma.whatsappMessage.create.mockClear()
+    mockPrisma.whatsappMessage.update.mockClear()
+    mockPrisma.whatsappMessage.delete.mockClear()
+    mockPrisma.whatsappConversation.findFirst.mockClear()
+    mockMessageService.sendMessage.mockClear()
 
     mockPrisma.whatsappMessage.findMany.mockResolvedValue([{ id: "msg-1" }] as any)
     mockPrisma.whatsappMessage.findFirst.mockResolvedValue({
@@ -96,6 +90,10 @@ describe("messagesRoutes", () => {
       body: "Test message",
       conversation: { organizationId: "org-1" },
     } as any)
+    mockPrisma.whatsappMessage.create.mockResolvedValue({ id: "msg-new" } as any)
+    mockPrisma.whatsappMessage.update.mockResolvedValue({ id: "msg-1", body: "Updated body" } as any)
+    mockPrisma.whatsappMessage.delete.mockResolvedValue({ id: "msg-1" } as any)
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue({ id: "conv-1", organizationId: "org-1" } as any)
     mockMessageService.sendMessage.mockResolvedValue({
       jobId: "job-1",
       messageId: "msg-1",
