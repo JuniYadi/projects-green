@@ -64,7 +64,7 @@ describe("quotaService", () => {
 
     mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockTx))
 
-    // Default implementations to avoid returning undefined (returning null is safer for findFirst)
+    // Explicitly set default resolved values to avoid undefined leakage
     mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
     mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
     mockPrisma.whatsappMonthlyCount.create.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
@@ -316,3 +316,4 @@ describe("quotaService", () => {
     })
   })
 })
+
