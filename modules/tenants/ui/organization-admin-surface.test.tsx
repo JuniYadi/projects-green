@@ -1,8 +1,11 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 
 const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})
+
+const originalFetch = globalThis.fetch
+const originalConfirm = window.confirm
 
 mock.module("next/navigation", () => {
   return {
@@ -164,6 +167,11 @@ beforeEach(() => {
   mockRouterReplace.mockClear()
   mockRouterRefresh.mockClear()
   window.confirm = () => true
+})
+
+afterEach(() => {
+  globalThis.fetch = originalFetch
+  window.confirm = originalConfirm
 })
 
 describe("OrganizationAdminSurface", () => {

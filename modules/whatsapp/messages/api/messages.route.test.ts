@@ -5,14 +5,7 @@ import {
   whatsappAuthMock,
   setMockAuthContext,
 } from "@/lib/whatsapp/__tests__/auth-mock"
-
-// Mock InsufficientQuotaError
-class InsufficientQuotaError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = "InsufficientQuotaError"
-  }
-}
+import { InsufficientQuotaError } from "../quota.service"
 
 // Mock prisma
 const mockPrisma = {
@@ -96,6 +89,10 @@ describe("messagesRoutes", () => {
       body: "Test message",
       conversation: { organizationId: "org-1" },
     } as any)
+    mockPrisma.whatsappMessage.create.mockResolvedValue({ id: "msg-new" } as any)
+    mockPrisma.whatsappMessage.update.mockResolvedValue({ id: "msg-1", body: "Updated body" } as any)
+    mockPrisma.whatsappMessage.delete.mockResolvedValue({ id: "msg-1" } as any)
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue({ id: "conv-1", organizationId: "org-1" } as any)
     mockMessageService.sendMessage.mockResolvedValue({
       jobId: "job-1",
       messageId: "msg-1",

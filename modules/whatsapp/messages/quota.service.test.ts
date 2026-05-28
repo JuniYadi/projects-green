@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from "bun:test"
 
 // Mock prisma before any imports
 const mockTx = {
@@ -34,14 +34,21 @@ const { quotaService, InsufficientQuotaError } = await import("./quota.service")
 // Mock Date
 const FIXED_DATE = new Date("2026-05-15T00:00:00Z")
 const OriginalDate = global.Date
-global.Date = class extends OriginalDate {
-  constructor(...args: any[]) {
-    if (args.length === 0) return new OriginalDate(FIXED_DATE)
-    return new OriginalDate(args[0])
-  }
-} as any
 
 describe("quotaService", () => {
+  beforeAll(() => {
+    global.Date = class extends OriginalDate {
+      constructor(...args: any[]) {
+        if (args.length === 0) return new OriginalDate(FIXED_DATE)
+        return new OriginalDate(args[0])
+      }
+    } as any
+  })
+
+  afterAll(() => {
+    global.Date = OriginalDate
+  })
+
   beforeEach(() => {
     mockPrisma.whatsappDevice.findFirst.mockReset()
     mockPrisma.whatsappMonthlyCount.findFirst.mockReset()

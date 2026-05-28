@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach, mock, beforeAll, afterAll } from "bun:test"
 
 const mockPrisma = {
   whatsappDevice: {
@@ -62,20 +62,32 @@ const mockMonthlyCount = {
 // Mock Date to a fixed point in time
 const FIXED_DATE = new Date("2026-05-15T00:00:00Z")
 const OriginalDate = global.Date
-global.Date = class extends OriginalDate {
-  constructor(...args: any[]) {
-    if (args.length === 0) {
-      super(FIXED_DATE)
-    } else {
-      super(args[0])
-    }
-  }
-} as any
 
 describe("quotaService", () => {
+  beforeAll(() => {
+    global.Date = class extends OriginalDate {
+      constructor(...args: any[]) {
+        if (args.length === 0) {
+          super(FIXED_DATE)
+        } else {
+          super(args[0])
+        }
+      }
+    } as any
+  })
+
+  afterAll(() => {
+    global.Date = OriginalDate
+  })
+
   beforeEach(() => {
     mockPrisma.whatsappDevice.findFirst.mockReset()
     mockPrisma.whatsappMonthlyCount.findFirst.mockReset()
+
+    // Default implementations to avoid undefined
+    mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappMonthlyCount.upsert.mockResolvedValue({ id: "count-1" } as any)
   })
 
   describe("checkQuota", () => {
