@@ -1,8 +1,40 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "bun:test"
-import { messageService } from "./messages.service"
-import { quotaService, InsufficientQuotaError } from "./quota.service"
-import { prisma } from "@/lib/prisma"
-import type { Prisma } from "@prisma/client"
+import { describe, it, expect, beforeEach, mock } from "bun:test"
+
+const mockPrisma = {
+  whatsappDevice: {
+    findFirst: mock(async () => null),
+  },
+  whatsappConversation: {
+    findFirst: mock(async () => null),
+    create: mock(async () => ({ id: "conv-1" })),
+  },
+  whatsappMessage: {
+    create: mock(async () => ({ id: "msg-1" })),
+  },
+  whatsappBroadcastCampaign: {
+    create: mock(async () => ({ id: "campaign-1" })),
+  },
+  whatsappBroadcastRecipient: {
+    create: mock(async () => ({ id: "recipient-1" })),
+  },
+  whatsappMonthlyCount: {
+    findFirst: mock(async () => null),
+    upsert: mock(async () => ({ id: "count-1" })),
+  },
+  $transaction: mock(async (fn: any) => fn(mockPrisma)),
+}
+
+mock.module("@/lib/prisma", () => ({
+  prisma: mockPrisma,
+}))
+
+mock.module("@/lib/queue/whatsapp-broadcast", () => ({
+  enqueueWhatsAppBroadcast: mock(async () => undefined),
+}))
+
+// Import after mock
+const { messageService } = await import("./messages.service")
+const { quotaService, InsufficientQuotaError } = await import("./quota.service")
 
 const mockDevice = {
   id: "device-1",
@@ -27,36 +59,6 @@ const mockMonthlyCount = {
   messageInboxCount: 100,
 }
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    whatsappDevice: {
-      findFirst: vi.fn(),
-    },
-    whatsappConversation: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-    },
-    whatsappMessage: {
-      create: vi.fn(),
-    },
-    whatsappBroadcastCampaign: {
-      create: vi.fn().mockResolvedValue({ id: "campaign-1" }),
-    },
-    whatsappBroadcastRecipient: {
-      create: vi.fn().mockResolvedValue({ id: "recipient-1" }),
-    },
-    whatsappMonthlyCount: {
-      findFirst: vi.fn(),
-      upsert: vi.fn(),
-    },
-    $transaction: vi.fn(),
-  },
-}))
-
-vi.mock("@/lib/queue/whatsapp-broadcast", () => ({
-  enqueueWhatsAppBroadcast: vi.fn().mockResolvedValue(undefined),
-}))
-
 // Mock Date to a fixed point in time
 const FIXED_DATE = new Date("2026-05-15T00:00:00Z")
 const OriginalDate = global.Date
@@ -72,15 +74,14 @@ global.Date = class extends OriginalDate {
 
 describe("quotaService", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockPrisma.whatsappDevice.findFirst.mockReset()
+    mockPrisma.whatsappMonthlyCount.findFirst.mockReset()
   })
 
   describe("checkQuota", () => {
     it("should return quota info when device exists", async () => {
-      const mockDeviceVal = mockDevice as Prisma.WhatsappDeviceGetPayload<Record<string, never>>
-      const mockMonthlyCountVal = mockMonthlyCount as Prisma.WhatsappMonthlyCountGetPayload<Record<string, never>>
-      ;(prisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(mockDeviceVal)
-      ;(prisma.whatsappMonthlyCount.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(mockMonthlyCountVal)
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue(mockDevice as any)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(mockMonthlyCount as any)
 
       const result = await quotaService.checkQuota("org-1", "device-1")
 
@@ -92,10 +93,9 @@ describe("quotaService", () => {
 
     it("should return hasQuota false when quota exceeded", async () => {
       const exceededCount = { ...mockMonthlyCount, messageOutboxCount: 101 }
-      const deviceWithLimit = { ...mockDevice, quotaBaseOut: 100 } as Prisma.WhatsappDeviceGetPayload<Record<string, never>>
-      const exceededCountVal = exceededCount as Prisma.WhatsappMonthlyCountGetPayload<Record<string, never>>
-      ;(prisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(deviceWithLimit)
-      ;(prisma.whatsappMonthlyCount.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(exceededCountVal)
+      const deviceWithLimit = { ...mockDevice, quotaBaseOut: 100 }
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue(deviceWithLimit as any)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(exceededCount as any)
 
       const result = await quotaService.checkQuota("org-1", "device-1")
 
@@ -104,8 +104,8 @@ describe("quotaService", () => {
     })
 
     it("should return zero limit when no device found", async () => {
-      ;(prisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null)
-      ;(prisma.whatsappMonthlyCount.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
 
       const result = await quotaService.checkQuota("org-1")
 
@@ -117,8 +117,7 @@ describe("quotaService", () => {
 
   describe("getMonthlyStats", () => {
     it("should return monthly stats", async () => {
-      const mockMonthlyCountVal = mockMonthlyCount as Prisma.WhatsappMonthlyCountGetPayload<Record<string, never>>
-      ;(prisma.whatsappMonthlyCount.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(mockMonthlyCountVal)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(mockMonthlyCount as any)
 
       const result = await quotaService.getMonthlyStats("org-1")
 
@@ -127,7 +126,7 @@ describe("quotaService", () => {
     })
 
     it("should return zeros when no monthly count exists", async () => {
-      ;(prisma.whatsappMonthlyCount.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
 
       const result = await quotaService.getMonthlyStats("org-1")
 
@@ -139,30 +138,31 @@ describe("quotaService", () => {
 
 describe("messageService", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockPrisma.whatsappConversation.findFirst.mockReset()
+    mockPrisma.whatsappConversation.create.mockReset()
+    mockPrisma.whatsappDevice.findFirst.mockReset()
+    mockPrisma.whatsappMonthlyCount.findFirst.mockReset()
   })
 
   describe("getOrCreateConversation", () => {
     it("should return existing conversation", async () => {
-      const mockConvVal = mockConversation as Prisma.WhatsappConversationGetPayload<Record<string, never>>
-      ;(prisma.whatsappConversation.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(mockConvVal)
+      mockPrisma.whatsappConversation.findFirst.mockResolvedValue(mockConversation as any)
 
       const result = await messageService.getOrCreateConversation("org-1", "+1234567890")
 
       expect(result).toBe("conv-1")
-      expect(prisma.whatsappConversation.create).not.toHaveBeenCalled()
+      expect(mockPrisma.whatsappConversation.create).not.toHaveBeenCalled()
     })
 
     it("should create new conversation when not exists", async () => {
       const newConv = { ...mockConversation, id: "conv-new" }
-      const newConvVal = newConv as Prisma.WhatsappConversationGetPayload<Record<string, never>>
-      ;(prisma.whatsappConversation.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null)
-      ;(prisma.whatsappConversation.create as ReturnType<typeof vi.fn>).mockResolvedValue(newConvVal)
+      mockPrisma.whatsappConversation.findFirst.mockResolvedValue(null)
+      mockPrisma.whatsappConversation.create.mockResolvedValue(newConv as any)
 
       const result = await messageService.getOrCreateConversation("org-1", "+1234567890")
 
       expect(result).toBe("conv-new")
-      expect(prisma.whatsappConversation.create).toHaveBeenCalledWith({
+      expect(mockPrisma.whatsappConversation.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           organizationId: "org-1",
           contactPhone: "+1234567890",
@@ -173,10 +173,10 @@ describe("messageService", () => {
 
   describe("sendMessage", () => {
     it("should throw InsufficientQuotaError when no quota available", async () => {
-      const deviceWithLimit = { ...mockDevice, quotaBaseOut: 100 } as Prisma.WhatsappDeviceGetPayload<Record<string, never>>
-      const monthlyVal = { messageOutboxCount: 100 } as Prisma.WhatsappMonthlyCountGetPayload<Record<string, never>>
-      ;(prisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(deviceWithLimit)
-      ;(prisma.whatsappMonthlyCount.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(monthlyVal)
+      const deviceWithLimit = { ...mockDevice, quotaBaseOut: 100 }
+      const monthlyVal = { messageOutboxCount: 100 }
+      mockPrisma.whatsappDevice.findFirst.mockResolvedValue(deviceWithLimit as any)
+      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(monthlyVal as any)
 
       await expect(
         messageService.sendMessage({
