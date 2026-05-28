@@ -35,7 +35,18 @@ import {
   CaretLeft,
   CaretRight,
 } from "@phosphor-icons/react"
-import { SiN8N, SiDocker } from "react-icons/si"
+import {
+  SiN8N,
+  SiDocker,
+  SiWordpress,
+  SiGhost,
+  SiStrapi,
+  SiDirectus,
+  SiPayloadcms,
+  SiPocketbase,
+  SiUmami,
+  SiPlausibleanalytics,
+} from "react-icons/si"
 
 export type StepSourceProps = {
   sourceType: DeploySourceType
@@ -71,25 +82,24 @@ export type StepSourceProps = {
 
 // Beautiful Custom SVG Logos for templates
 const TemplateIcon = ({ id, size = "md" }: { id: DeployTemplateId; size?: "sm" | "md" }) => {
-  const sizeClasses = size === "sm" ? "h-6 w-6" : "h-10 w-10"
+  const sizeClasses = size === "sm" ? "h-6 w-6" : "h-8 w-8"
   switch (id) {
     case "wordpress":
-      return (
-        <div className={cn("relative flex items-center justify-center shrink-0", sizeClasses)}>
-          <svg
-            viewBox="0 0 24 24"
-            className="h-full w-full relative z-10 shrink-0"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle cx="12" cy="12" r="12" fill="#21759b" />
-            <path
-              d="M21.469 6.825c.84 1.537 1.318 3.3 1.318 5.175 0 3.979-2.156 7.456-5.363 9.325l3.295-9.527c.615-1.54.82-2.771.82-3.864 0-.405-.026-.78-.07-1.11m-7.981.105c.647-.03 1.232-.105 1.232-.105.582-.075.514-.93-.067-.899 0 0-1.755.135-2.88.135-1.064 0-2.85-.15-2.85-.15-.585-.03-.661.855-.075.885 0 0 .54.061 1.125.09l1.68 4.605-2.37 7.08L5.354 6.9c.649-.03 1.234-.1(1.234-.1).585-.075.516-.93-.065-.896 0 0-1.746.138-2.874.138-.2 0-.438-.008-.69-.015C4.911 3.15 8.235 1.215 12 1.215c2.809 0 5.365 1.072 7.286 2.833-.046-.003-.091-.009-.141-.009-1.06 0-1.812.923-1.812 1.914 0 .89.513 1.643 1.06 2.531.411.72.89 1.643.89 2.977 0 .915-.354 1.994-.821 3.479l-1.075 3.585-3.9-11.61.001.014zM12 22.784c-1.059 0-2.081-.153-3.048-.437l3.237-9.406 3.315 9.087c.024.053.05.101.078.149-1.12.393-2.325.609-3.582.609M1.211 12c0-1.564.336-3.05.935-4.39L7.29 21.709C3.694 19.96 1.212 16.271 1.211 12"
-              fill="#ffffff"
-            />
-          </svg>
-        </div>
-      )
+      return <SiWordpress className={cn("text-[#21759b] shrink-0", sizeClasses)} />
+    case "ghost":
+      return <SiGhost className={cn("text-[#000000] dark:text-white shrink-0", sizeClasses)} />
+    case "strapi":
+      return <SiStrapi className={cn("text-[#4945ff] shrink-0", sizeClasses)} />
+    case "directus":
+      return <SiDirectus className={cn("text-[#64f5cb] shrink-0", sizeClasses)} />
+    case "payload":
+      return <SiPayloadcms className={cn("text-[#000000] dark:text-white shrink-0", sizeClasses)} />
+    case "pocketbase":
+      return <SiPocketbase className={cn("text-[#b8dcfc] shrink-0", sizeClasses)} />
+    case "umami":
+      return <SiUmami className={cn("text-[#2970ff] shrink-0", sizeClasses)} />
+    case "plausible":
+      return <SiPlausibleanalytics className={cn("text-[#ee5137] shrink-0", sizeClasses)} />
     case "n8n":
       return <SiN8N className={cn("text-[#ff6d5a] shrink-0", sizeClasses)} />
     case "openclaw":
@@ -99,16 +109,23 @@ const TemplateIcon = ({ id, size = "md" }: { id: DeployTemplateId; size?: "sm" |
   }
 }
 
-const CATEGORIES = ["All", "Websites", "Automation", "Developer Tools"]
+const CATEGORIES = ["All", "CMS", "Analytics", "Automation", "Developer Tools"]
 
 const getTemplateCategory = (id: DeployTemplateId): string => {
   switch (id) {
     case "wordpress":
-      return "Websites"
+    case "ghost":
+    case "strapi":
+    case "directus":
+    case "payload":
+    case "pocketbase":
+      return "CMS"
+    case "umami":
+    case "plausible":
+      return "Analytics"
     case "n8n":
       return "Automation"
     case "openclaw":
-      return "Developer Tools"
     default:
       return "Developer Tools"
   }
@@ -150,7 +167,7 @@ export function StepSource({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [currentPage, setCurrentPage] = useState(1)
-  const ITEMS_PER_PAGE = 6
+  const ITEMS_PER_PAGE = 18
 
   const filteredTemplates = useMemo(() => {
     const res = DEPLOY_TEMPLATES.filter((template) => {
@@ -535,12 +552,12 @@ export function StepSource({
               <div className="space-y-4">
                 <div className="max-h-[380px] overflow-y-auto pr-1.5 scrollbar-thin">
                   {viewMode === "grid" ? (
-                    <div className="grid gap-3.5 sm:grid-cols-3 pb-2">
+                    <div className="grid gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 pb-2">
                       {paginatedTemplates.map((template) => {
                         const isSelected = templateId === template.id
                         const cpuDisplay = `${(template.defaultCpu / 1000).toFixed(1)} vCPU`
-                        const memDisplay = template.defaultMemory >= 1024 
-                          ? `${(template.defaultMemory / 1024).toFixed(0)} GB` 
+                        const memDisplay = template.defaultMemory >= 1024
+                          ? `${(template.defaultMemory / 1024).toFixed(0)} GB`
                           : `${template.defaultMemory} MB`
                         const stackText = template.build.useDockerfile ? "Docker" : `${template.build.language} (${template.build.framework})`
 
@@ -549,7 +566,7 @@ export function StepSource({
                             key={template.id}
                             type="button"
                             className={cn(
-                              "group flex flex-col justify-between items-start text-left rounded-xl border p-4 transition-all duration-300 relative bg-background shadow-sm hover:shadow-md cursor-pointer",
+                              "group flex flex-col justify-between items-center text-center rounded-xl border p-2.5 transition-all duration-300 relative bg-background shadow-sm hover:shadow-md cursor-pointer",
                               isSelected
                                 ? "border-primary bg-primary/[0.02] ring-2 ring-primary/20 scale-[1.02]"
                                 : "border-border hover:border-border/80 hover:bg-muted/[0.05]"
@@ -557,44 +574,41 @@ export function StepSource({
                             onClick={() => onTemplateSelect(template.id)}
                           >
                             {/* Top Section */}
-                            <div className="w-full space-y-2.5">
-                              <div className="flex justify-between items-start w-full">
-                                <div className="p-2 rounded-xl bg-muted/40 border border-border group-hover:bg-background transition-colors">
-                                  <TemplateIcon id={template.id} />
+                            <div className="w-full space-y-2 flex flex-col items-center">
+                              <div className="relative flex justify-center w-full">
+                                <div className="p-1.5 rounded-lg bg-muted/40 border border-border group-hover:bg-background transition-colors">
+                                  <TemplateIcon id={template.id} size="sm" />
                                 </div>
                                 {isSelected && (
-                                  <span className="p-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                                    <Check className="w-3.5 h-3.5" />
+                                  <span className="absolute -top-1 -right-1 p-0.5 rounded-full bg-emerald-500 text-white shadow-sm z-20">
+                                    <Check className="w-2.5 h-2.5" />
                                   </span>
                                 )}
                               </div>
 
-                              <div>
-                                <h4 className="font-bold text-foreground group-hover:text-primary transition-colors text-sm">
+                              <div className="flex flex-col items-center">
+                                <h4 className="font-bold text-foreground group-hover:text-primary transition-colors text-[12px] line-clamp-1">
                                   {template.name}
                                 </h4>
-                                <span className="inline-flex text-[9px] font-semibold tracking-wider text-muted-foreground uppercase bg-muted/60 px-1.5 py-0.5 rounded mt-1">
+                                <span className="inline-flex text-[7px] font-bold tracking-tighter text-muted-foreground uppercase bg-muted/60 px-1 py-0 rounded mt-0.5">
                                   {stackText}
                                 </span>
-                                <p className="text-xs text-muted-foreground mt-2 line-clamp-2 leading-relaxed">
+                                <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 leading-tight">
                                   {template.description}
                                 </p>
                               </div>
                             </div>
 
-                            {/* Specs Section */}
-                            <div className="w-full mt-4 border-t border-border/80 pt-3 space-y-1.5">
-                              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
-                                Min Requirements
-                              </span>
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <Cpu className="w-3.5 h-3.5 shrink-0 text-muted-foreground/75" />
-                                  <span className="font-medium text-foreground text-[11px]">{cpuDisplay}</span>
+                            {/* Specs Section - Vertical Stack */}
+                            <div className="w-full mt-2.5 border-t border-border/80 pt-2">
+                              <div className="flex flex-col items-center gap-0.5">
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Cpu className="w-2.5 h-2.5 shrink-0 text-muted-foreground/75" />
+                                  <span className="font-medium text-foreground text-[9px]">{cpuDisplay}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <HardDrive className="w-3.5 h-3.5 shrink-0 text-muted-foreground/75" />
-                                  <span className="font-medium text-foreground text-[11px]">{memDisplay}</span>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <HardDrive className="w-2.5 h-2.5 shrink-0 text-muted-foreground/75" />
+                                  <span className="font-medium text-foreground text-[9px]">{memDisplay}</span>
                                 </div>
                               </div>
                             </div>
