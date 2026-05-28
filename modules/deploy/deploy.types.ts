@@ -2,7 +2,17 @@ export type DeployStep = "source" | "build" | "environment" | "monitor"
 
 export type DeploySourceType = "github" | "template"
 
-export type DeployTemplateId = "wordpress" | "n8n" | "openclaw"
+export type DeployTemplateId =
+  | "wordpress"
+  | "n8n"
+  | "openclaw"
+  | "ghost"
+  | "strapi"
+  | "directus"
+  | "payload"
+  | "pocketbase"
+  | "umami"
+  | "plausible"
 
 export type DeployTemplate = {
   id: DeployTemplateId
