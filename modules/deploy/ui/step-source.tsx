@@ -167,7 +167,7 @@ export function StepSource({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [currentPage, setCurrentPage] = useState(1)
-  const ITEMS_PER_PAGE = 18
+  const ITEMS_PER_PAGE = 6
 
   const filteredTemplates = useMemo(() => {
     const res = DEPLOY_TEMPLATES.filter((template) => {
