@@ -54,6 +54,12 @@ describe("quotaService", () => {
     mockTx.whatsappMonthlyCount.update.mockReset()
 
     mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockTx))
+
+    // Default implementations to avoid returning undefined
+    mockPrisma.whatsappMonthlyCount.create.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
+    mockPrisma.whatsappMonthlyCount.update.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
+    mockTx.whatsappMonthlyCount.create.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
+    mockTx.whatsappMonthlyCount.update.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
   })
 
   describe("InsufficientQuotaError", () => {
