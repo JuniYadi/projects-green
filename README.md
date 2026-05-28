@@ -215,3 +215,13 @@ All routes are under `/api`:
 ## Integration Guides
 
 - [GitHub App Integration Specification](docs/github-app-integration.md)
+- [Billing and Payment Architecture](BILLING-and-PAYMENT.md)
+
+## Billing
+
+The platform implements a hybrid billing model including PAYG (Pay-As-You-Go) for compute resources, monthly flat rates for services, and usage-based quotas for messaging. For technical details on the ingestion, rating, and invoicing lifecycle, see the [Billing and Payment Architecture](BILLING-and-PAYMENT.md).
+- [Billing and Payment Architecture](BILLING-and-PAYMENT.md)
+
+## Billing
+
+The platform implements a hybrid billing model including PAYG (Pay-As-You-Go) for compute resources, monthly flat rates for services, and usage-based quotas for messaging. For technical details on the ingestion, rating, and invoicing lifecycle, see the [Billing and Payment Architecture](BILLING-and-PAYMENT.md).
