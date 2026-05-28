@@ -47,7 +47,7 @@ export const quotaService: QuotaService = {
       },
     })
 
-    const currentCount = monthlyCount?.messageOutboxCount ?? 0
+    const currentCount = monthlyCount ? monthlyCount.messageOutboxCount : 0
     const isUnlimited = monthlyLimit === 0 && !!device
     const remaining = isUnlimited
       ? 999999
@@ -134,8 +134,8 @@ export const quotaService: QuotaService = {
     })
 
     return {
-      inCount: monthlyCount?.messageInboxCount ?? 0,
-      outCount: monthlyCount?.messageOutboxCount ?? 0,
+      inCount: monthlyCount ? monthlyCount.messageInboxCount : 0,
+      outCount: monthlyCount ? monthlyCount.messageOutboxCount : 0,
     }
   },
 }
