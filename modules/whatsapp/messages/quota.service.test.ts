@@ -243,6 +243,31 @@ describe("quotaService", () => {
       await expect(quotaService.deductQuota("org-1")).resolves.toBeUndefined()
     })
 
+    it("uses deviceId in deductQuota when provided", async () => {
+      mockTx.whatsappDevice.findFirst.mockResolvedValueOnce({
+        id: "device-1",
+        quotaBaseOut: 100,
+      } as any)
+      mockTx.whatsappMonthlyCount.findFirst.mockResolvedValueOnce(null)
+      mockTx.whatsappMonthlyCount.create.mockResolvedValueOnce({
+        id: "count-new",
+        messageOutboxCount: 1,
+      } as any)
+
+      await quotaService.deductQuota("org-1", "device-1")
+
+      expect(mockTx.whatsappDevice.findFirst).toHaveBeenCalledWith({
+        where: { id: "device-1", organizationId: "org-1" },
+      })
+      expect(mockTx.whatsappMonthlyCount.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            whatsappDeviceId: "device-1",
+          }),
+        })
+      )
+    })
+
     it("allows send when limit is 0 (unlimited)", async () => {
       mockTx.whatsappDevice.findFirst.mockResolvedValueOnce({
         id: "device-1",
