@@ -1,27 +1,35 @@
 import { cn } from "@/lib/utils"
 import { DEPLOY_STEPS } from "@/modules/deploy/deploy.constants"
-import type { DeployStep } from "@/modules/deploy/deploy.types"
+import type { DeploySourceType, DeployStep } from "@/modules/deploy/deploy.types"
 
 type DeployStepperProps = {
   currentStep: DeployStep
   maxUnlockedStep: DeployStep
+  sourceType: DeploySourceType
   onStepChange: (step: DeployStep) => void
-}
-
-const getStepIndex = (step: DeployStep) => {
-  return DEPLOY_STEPS.findIndex((item) => item.id === step)
 }
 
 export function DeployStepper({
   currentStep,
   maxUnlockedStep,
+  sourceType,
   onStepChange,
 }: DeployStepperProps) {
-  const maxIndex = getStepIndex(maxUnlockedStep)
+  const steps = DEPLOY_STEPS.filter(
+    (step) => !(sourceType === "template" && step.id === "build")
+  )
+
+  const maxIndex = steps.findIndex((item) => item.id === maxUnlockedStep)
 
   return (
-    <ol className="grid gap-2 sm:grid-cols-4" aria-label="Deploy wizard steps">
-      {DEPLOY_STEPS.map((step, index) => {
+    <ol
+      className={cn(
+        "grid gap-3",
+        steps.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4"
+      )}
+      aria-label="Deploy wizard steps"
+    >
+      {steps.map((step, index) => {
         const isActive = step.id === currentStep
         const isUnlocked = index <= maxIndex
 
@@ -32,15 +40,21 @@ export function DeployStepper({
               disabled={!isUnlocked}
               onClick={() => onStepChange(step.id)}
               className={cn(
-                "w-full rounded-md border px-4 py-3 text-left text-sm",
+                "w-full rounded-lg border p-4 text-left text-sm transition-all duration-200",
                 isActive
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-background",
-                !isUnlocked && "cursor-not-allowed opacity-50"
+                  ? "border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/30"
+                  : isUnlocked
+                    ? "border-border bg-background hover:bg-muted/50 cursor-pointer"
+                    : "border-border bg-muted/10 opacity-50 cursor-not-allowed"
               )}
             >
-              <p className="font-medium">{step.label}</p>
-              <p className="text-muted-foreground">{step.description}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Step {index + 1}
+              </p>
+              <p className="font-semibold text-foreground text-sm">{step.label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                {step.description}
+              </p>
             </button>
           </li>
         )

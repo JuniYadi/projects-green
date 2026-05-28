@@ -32,16 +32,27 @@ describe("StepEnvironment", () => {
   it("renders domain mode and ready summary", () => {
     const props = createProps()
 
-    const view = render(<StepEnvironment {...props} />)
+    const view = render(
+      <StepEnvironment
+        {...props}
+        sourceType="github"
+        buildState={{ language: "Node.js", framework: "Next.js" }}
+      />
+    )
 
-    expect(view.getByText("Domain mode")).toBeTruthy()
+    expect(view.getByText("Build Configuration")).toBeTruthy()
+    expect(
+      view.getByText("Current build configuration for this deployment.")
+    ).toBeTruthy()
+    expect(view.getByText("Node.js")).toBeTruthy()
+    expect(view.getByText("Next.js")).toBeTruthy()
     expect(view.getByText("Managed subdomain")).toBeTruthy()
     expect(view.getAllByText("Custom domain").length).toBeGreaterThan(0)
     expect(
       view.getByText("Preview domain: console-next-app.pfn.app")
     ).toBeTruthy()
-    expect(view.getByText("Ready: deploy to", { exact: false })).toBeTruthy()
-    expect(view.getByRole("button", { name: "Deploy" })).toBeEnabled()
+    expect(view.getByText("Ready to deploy to", { exact: false })).toBeTruthy()
+    expect(view.getByRole("button", { name: /Deploy/i })).toBeEnabled()
   })
 
   it("shows validation errors and disables deploy", () => {
@@ -66,7 +77,7 @@ describe("StepEnvironment", () => {
     expect(
       view.getAllByText("Environment variable keys must be unique.").length
     ).toBeGreaterThan(0)
-    expect(view.getByRole("button", { name: "Deploy" })).toBeDisabled()
+    expect(view.getByRole("button", { name: /Deploy/i })).toBeDisabled()
   })
 
   it("calls handlers for domain, plan, and deploy", () => {
@@ -80,7 +91,7 @@ describe("StepEnvironment", () => {
     fireEvent.click(view.getByRole("radio", { name: /Pro/i }))
     expect(props.onResourcePlanChange).toHaveBeenCalledWith("pro")
 
-    fireEvent.click(view.getByRole("button", { name: "Deploy" }))
+    fireEvent.click(view.getByRole("button", { name: /Deploy/i }))
     expect(props.onDeploy).toHaveBeenCalledTimes(1)
   })
 })

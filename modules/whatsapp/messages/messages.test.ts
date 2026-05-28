@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "bun:test"
+import { describe, it, expect, beforeEach, afterEach, vi } from "bun:test"
 import { messageService } from "./messages.service"
 import { quotaService, InsufficientQuotaError } from "./quota.service"
 import { prisma } from "@/lib/prisma"
@@ -40,10 +40,10 @@ vi.mock("@/lib/prisma", () => ({
       create: vi.fn(),
     },
     whatsappBroadcastCampaign: {
-      create: vi.fn(),
+      create: vi.fn().mockResolvedValue({ id: "campaign-1" }),
     },
     whatsappBroadcastRecipient: {
-      create: vi.fn(),
+      create: vi.fn().mockResolvedValue({ id: "recipient-1" }),
     },
     whatsappMonthlyCount: {
       findFirst: vi.fn(),
@@ -56,6 +56,17 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/queue/whatsapp-broadcast", () => ({
   enqueueWhatsAppBroadcast: vi.fn().mockResolvedValue(undefined),
 }))
+
+// Mock Date to a fixed point in time
+const FIXED_DATE = new Date("2026-05-15T00:00:00Z")
+const OriginalDate = global.Date
+// @ts-ignore
+global.Date = class extends OriginalDate {
+  constructor(arg: any) {
+    if (arg) return new OriginalDate(arg)
+    return FIXED_DATE
+  }
+} as any
 
 describe("quotaService", () => {
   beforeEach(() => {

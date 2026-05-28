@@ -11,15 +11,14 @@ describe("DeployStepper", () => {
       <DeployStepper
         currentStep="build"
         maxUnlockedStep="build"
+        sourceType="github"
         onStepChange={onStepChange}
       />
     )
 
-    const source = view.getByRole("button", { name: "Source Where is your code?" })
-    const build = view.getByRole("button", { name: "Build How do we build it?" })
-    const environment = view.getByRole("button", {
-      name: "Environment Where does it run?",
-    })
+    const source = view.getByRole("button", { name: /Source/i })
+    const build = view.getByRole("button", { name: /Build/i })
+    const environment = view.getByRole("button", { name: /Environment/i })
 
     expect(source).not.toBeDisabled()
     expect(build).not.toBeDisabled()

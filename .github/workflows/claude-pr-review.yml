@@ -11,29 +11,63 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - uses: anthropics/claude-code-action@v1
+      - name: Claude Code Review Loop
+        uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
-          API_TIMEOUT_MS: "3000000" # High headroom for long tool-use loops
+          API_TIMEOUT_MS: "3000000"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
-          track_progress: true # ✨ Enables tracking comments
+          track_progress: true 
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request with a focus on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Security implications
-            - Performance considerations
+            Please review this pull request focusing on:
+            - Code quality, bugs, performance, and security.
+            - Provide emoji-based approval status in your final summary text.
 
-            Provide detailed feedback using inline comments for specific issues.
+            INLINE ACTIONS:
+            Use your inline comment tool (`mcp__github_inline_comment__create_inline_comment`) to leave tidy comments on the specific lines that need attention. Use collapsible details tags inside these inline comments if the explanations are lengthy.
 
-          claude_args: |
-            --model ${{ secrets.ANTHROPIC_MODEL }} --max-turns 50 --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+            FINAL COMPREHENSIVE SUMMARY REQUIREMENT:
+            At the absolute end of your execution, you MUST post a top-level PR summary comment. Inside this summary comment, include a distinct, dedicated section containing a complete, standalone LLM prompt block. A developer must be able to copy this entire block, feed it directly to a local AI assistant, and have that assistant execute all requested modifications locally.
+
+            Format that specific section exactly like this:
+
+            ### 💻 Local Refactoring Prompt
+            <details>
+            <summary>📦 Click to expand full prompt for Local AI Assistant</summary>
+
+            `` `text
+            You are a senior engineer executing a PR review sweep locally on the codebase. 
+            Please refactor and fix the following specific code locations according to these instructions:
+
+            ---
+            #### File: [Insert File Path]
+            **Target Line Range:** [e.g., lines 45-52]
+            **Issue:** [Briefly state what is wrong]
+            **Requested Fix:** 
+            
+            ```[language]
+            // Exact code patch or snippet to implement
+            ```
+            ---
+            
+            [Repeat the file blocks above for every single issue identified during review]
+            `` `
+            </details>
+
+            Make sure the snippet blocks inside the local prompt block are clearly formatted with correct language syntax markers so they render perfectly when copied.
+
+          claude_args: >-
+            --model ${{ secrets.ANTHROPIC_MODEL }}
+            --max-turns 50
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"

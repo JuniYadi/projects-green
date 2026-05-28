@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import { fireEvent, render } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 
 import { StepSource } from "@/modules/deploy/ui/step-source"
 import type { StepSourceProps } from "@/modules/deploy/ui/step-source"
@@ -8,7 +8,7 @@ const createProps = () => {
   return {
     sourceType: "github" as StepSourceProps["sourceType"],
     templateId: undefined as StepSourceProps["templateId"],
-    githubConnectionStatus: "idle" as StepSourceProps["githubConnectionStatus"],
+    githubConnectionStatus: "connected" as StepSourceProps["githubConnectionStatus"],
     isConnectingGithub: false,
     ownerOptionsLoading: false,
     ownerOptionsError: null as StepSourceProps["ownerOptionsError"],
@@ -59,24 +59,17 @@ const createProps = () => {
 }
 
 describe("StepSource", () => {
-  it("renders source field guidance before selections", () => {
+  it("renders source fields and organization choices", () => {
     const props = createProps()
 
     const view = render(<StepSource {...props} />)
 
-    expect(
-      view.getByText("Select an owner to unlock repository options.")
-    ).toBeTruthy()
-    expect(view.getByText("Pick an owner first.")).toBeTruthy()
-    expect(view.getByText("Select a repository to load branches.")).toBeTruthy()
-    expect(
-      view.getByText(
-        "Using repository root. Example nested app paths: /apps/web or /packages/site."
-      )
-    ).toBeTruthy()
+    expect(view.getByText("Select Account / Organization")).toBeTruthy()
+    expect(view.getByRole("button", { name: /owner-pfn/i })).toBeTruthy()
+    expect(view.queryByText("Select Repository")).toBeNull()
   })
 
-  it("renders selected source state and custom root directory guidance", () => {
+  it("renders selected source state and custom root directory", () => {
     const props = createProps()
     props.selectedOwnerId = "owner-pfn"
     props.selectedRepositoryId = "repo-console-next"
@@ -85,28 +78,30 @@ describe("StepSource", () => {
 
     const view = render(<StepSource {...props} />)
 
-    expect(view.getByText("Owner selected: owner-pfn")).toBeTruthy()
-    expect(view.getByText("Repository selected: console-next-app")).toBeTruthy()
-    expect(view.getByText("Branch selected: main")).toBeTruthy()
-    expect(
-      view.getByText(
-        "Deploy from /apps/web. Ensure build files exist in this path."
-      )
-    ).toBeTruthy()
+    expect(view.getByRole("button", { name: /owner-pfn/i })).toBeTruthy()
+    expect(view.getByText("console-next-app")).toBeTruthy()
+    expect(view.getByRole("button", { name: /^main$/ })).toBeTruthy()
+    expect(view.getByDisplayValue("/apps/web")).toBeTruthy()
   })
 
   it("shows empty search states for owners and repositories", () => {
     const props = createProps()
-    props.ownerSearch = "unknown-owner"
     props.owners = []
-    props.selectedOwnerId = "owner-pfn"
-    props.repositorySearch = "missing-repo"
-    props.repositories = []
 
     const view = render(<StepSource {...props} />)
+    expect(
+      view.getByText("No accounts found. Please make sure the GitHub App is installed.")
+    ).toBeTruthy()
 
-    expect(view.getByText("No owners match your search yet.")).toBeTruthy()
-    expect(view.getByText("No repositories match your search.")).toBeTruthy()
+    // Select owner to show repos
+    const propsWithOwner = createProps()
+    propsWithOwner.selectedOwnerId = "owner-pfn"
+    propsWithOwner.repositories = []
+    
+    const viewWithRepos = render(<StepSource {...propsWithOwner} />)
+    expect(
+      viewWithRepos.getByText("No repositories found for this account.")
+    ).toBeTruthy()
   })
 
   it("shows connected notice and starts GitHub connect action", () => {
@@ -116,18 +111,27 @@ describe("StepSource", () => {
     const view = render(<StepSource {...props} />)
 
     expect(
-      view.getByText(
-        "GitHub connected. Select an owner and repository to continue."
-      )
+      view.getByText("Successfully connected to your GitHub account.")
     ).toBeTruthy()
 
-    fireEvent.click(view.getByRole("button", { name: "Connect GitHub" }))
+    fireEvent.click(view.getByRole("button", { name: "Reconnect GitHub" }))
     expect(props.onConnectGithub).toHaveBeenCalledTimes(1)
   })
 
-  it("shows callback and repository loading errors", () => {
+  it("shows connection failure error banner", () => {
     const props = createProps()
     props.githubConnectionStatus = "error"
+
+    const view = render(<StepSource {...props} />)
+
+    expect(
+      view.getByText("GitHub connection failed. Please try connecting again.")
+    ).toBeTruthy()
+  })
+
+  it("shows owner and repository loading errors", () => {
+    const props = createProps()
+    props.githubConnectionStatus = "connected"
     props.selectedOwnerId = "owner-pfn"
     props.ownerOptionsError = "Unable to load owners."
     props.repositoryOptionsError = "Unable to load repositories."
@@ -135,31 +139,26 @@ describe("StepSource", () => {
     const view = render(<StepSource {...props} />)
 
     expect(
-      view.getByText("GitHub connection failed. Please try connecting again.")
+      view.getByText("Unable to load owners.")
     ).toBeTruthy()
     expect(
-      view.getByText(
-        "We could not load owners. Try searching again or reconnect GitHub."
-      )
-    ).toBeTruthy()
-    expect(
-      view.getByText("We could not load repositories for this owner.")
+      view.getByText("Unable to load repositories.")
     ).toBeTruthy()
   })
 
-  it("disables selectors while owners and repositories are loading", () => {
+  it("shows loading indicators while owners and repositories are loading", () => {
     const props = createProps()
     props.ownerOptionsLoading = true
-    props.repositoryOptionsLoading = true
     props.selectedOwnerId = "owner-pfn"
+    props.repositoryOptionsLoading = true
 
     const view = render(<StepSource {...props} />)
 
-    expect(view.getByLabelText("Owner selector")).toBeDisabled()
-    expect(view.getByLabelText("Repository selector")).toBeDisabled()
     expect(
-      view.getByText("Loading owners from your GitHub installations.")
+      view.getByText("Loading installations...")
     ).toBeTruthy()
-    expect(view.getByText("Loading repositories.")).toBeTruthy()
+    expect(
+      view.getByText("Loading repositories...")
+    ).toBeTruthy()
   })
 })
