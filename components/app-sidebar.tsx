@@ -24,6 +24,7 @@ import {
   PaperPlaneTiltIcon,
   ReceiptIcon,
   RocketLaunchIcon,
+  GearSixIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
@@ -148,6 +149,35 @@ const buildPortalNavMain = (
         title: "Registry",
         url: localizePathname({ pathname: "/portal/documentations", locale }),
         isActive: startsWithRoute(pathname, "/portal/documentations"),
+      },
+    ],
+  },
+  {
+    title: "Settings",
+    url: localizePathname({ pathname: "/portal/settings/members", locale }),
+    icon: <GearSixIcon />,
+    isActive: startsWithRoute(pathname, "/portal/settings"),
+    items: [
+      {
+        title: "Members",
+        url: localizePathname({ pathname: "/portal/settings/members", locale }),
+        isActive: startsWithRoute(pathname, "/portal/settings/members"),
+      },
+      {
+        title: "Invitations",
+        url: localizePathname({
+          pathname: "/portal/settings/invitations",
+          locale,
+        }),
+        isActive: startsWithRoute(pathname, "/portal/settings/invitations"),
+      },
+      {
+        title: "Ownership",
+        url: localizePathname({
+          pathname: "/portal/settings/ownership",
+          locale,
+        }),
+        isActive: startsWithRoute(pathname, "/portal/settings/ownership"),
       },
     ],
   },
