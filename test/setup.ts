@@ -1,7 +1,19 @@
 import "@/test/register"
-import { afterEach, expect } from "bun:test"
+import React from "react"
+import { afterEach, expect, mock } from "bun:test"
 import { cleanup } from "@testing-library/react"
 import * as matchers from "@testing-library/jest-dom/matchers"
+
+mock.module("react-icons/si", () => {
+  return {
+    SiWordpress: (props: any) =>
+      React.createElement("div", { ...props, "data-testid": "si-wordpress" }, "WordPress Icon"),
+    SiN8N: (props: any) =>
+      React.createElement("div", { ...props, "data-testid": "si-n8n" }, "n8n Icon"),
+    SiDocker: (props: any) =>
+      React.createElement("div", { ...props, "data-testid": "si-docker" }, "Docker Icon"),
+  }
+})
 
 expect.extend(matchers)
 
