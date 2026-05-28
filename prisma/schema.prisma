@@ -268,6 +268,36 @@ enum BillingActorType {
   WORKER
 }
 
+// ─── Billing Enums ────────────────────────────────────────────────────────────
+enum ServiceType {
+  APP_HOSTING
+  VPN
+  WHATSAPP
+}
+
+enum SubscriptionType {
+  PAYG
+  BUNDLE
+  CUSTOM
+}
+
+enum BillingMode {
+  PACKAGE
+  PAYG
+  CUSTOM
+}
+
+enum BillingSubscriptionStatus2 {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum AdjustmentType {
+  CREDIT
+  DEBIT
+}
+
 model SupportTicket {
   id                        String                  @id @default(cuid())
   ticketNumber              String                  @unique
@@ -657,6 +687,133 @@ model BillingAuditLog {
   @@index([billingAccountId, createdAt(sort: Desc)])
   @@index([billingRunId, createdAt])
   @@index([entityType, entityId])
+}
+
+// ─── Billing Models ──────────────────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+  usageLedgers  UsageLedger[]
+}
+
+model Region {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  country   String
+  flag      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pricings  Pricing[]
+
+  @@index([isActive])
+}
+
+model Package {
+  id          String       @id @default(cuid())
+  code        ServiceType @unique
+  name        String
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  plans          ServicePlan[]
+  subscriptions Subscription[]
+
+  @@index([code])
+}
+
+model ServicePlan {
+  id        String   @id @default(cuid())
+  packageId String
+  code      String
+  name      String
+  resources Json
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  package       Package        @relation(fields: [packageId], references: [id])
+  pricings      Pricing[]
+  subscriptions Subscription[]
+
+  @@unique([packageId, code])
+  @@index([packageId])
+}
+
+model Pricing {
+  id              String           @id @default(cuid())
+  planId          String
+  regionId        String
+  type            SubscriptionType
+  billingMode     BillingMode
+  basePriceIdr    Decimal          @db.Decimal(12, 2)
+  monthlyCapIdr   Decimal?        @db.Decimal(12, 2)
+  unitRateCpu     Decimal?        @db.Decimal(12, 4)
+  unitRateMem     Decimal?        @db.Decimal(12, 4)
+  unitRateMessage Decimal?        @db.Decimal(12, 4)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  servicePlan ServicePlan  @relation(fields: [planId], references: [id])
+  region        Region          @relation(fields: [regionId], references: [id])
+  subscriptions Subscription[]
+
+  @@unique([planId, regionId, type, billingMode])
+  @@index([planId])
+  @@index([regionId])
+}
+
+model Subscription {
+  id                  String                   @id @default(cuid())
+  tenantId            String
+  packageId           String
+  planId              String
+  pricingId           String
+  type                SubscriptionType
+  billingMode         BillingMode
+  status              BillingSubscriptionStatus2 @default(ACTIVE)
+  currentPeriodStart  DateTime
+  currentPeriodEnd    DateTime
+  metadata            Json?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  package      Package      @relation(fields: [packageId], references: [id])
+  plan         ServicePlan  @relation(fields: [planId], references: [id])
+  pricing      Pricing      @relation(fields: [pricingId], references: [id])
+  usageLedgers UsageLedger[]
+
+  @@unique([tenantId, packageId])
+  @@index([tenantId, status])
+  @@index([packageId])
+}
+
+model UsageLedger {
+  id             String   @id @default(cuid())
+  tenantId       String
+  subscriptionId String
+  period         String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  tenant       Tenant      @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, period])
+  @@index([subscriptionId])
 }
 
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────
