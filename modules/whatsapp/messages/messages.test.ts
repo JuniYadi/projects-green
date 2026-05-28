@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock, beforeAll, afterAll } from "bun:test"
+import { mock } from "bun:test"
 
 const mockPrisma = {
   whatsappDevice: {
@@ -31,6 +31,8 @@ mock.module("@/lib/prisma", () => ({
 mock.module("@/lib/queue/whatsapp-broadcast", () => ({
   enqueueWhatsAppBroadcast: mock(async () => undefined),
 }))
+
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from "bun:test"
 
 // Import after mock
 const { messageService } = await import("./messages.service")

@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock } from "bun:test"
+import { mock } from "bun:test"
 
 // Mock prisma before any imports
 const mockTx = {
@@ -27,6 +27,8 @@ const mockPrisma = {
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
+
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test"
 
 // Dynamic import for the service
 const { quotaService, InsufficientQuotaError } = await import("./quota.service")

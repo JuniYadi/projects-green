@@ -1,11 +1,4 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { Elysia } from "elysia"
-
-import {
-  whatsappAuthMock,
-  setMockAuthContext,
-} from "@/lib/whatsapp/__tests__/auth-mock"
-import { InsufficientQuotaError } from "../quota.service"
+import { mock } from "bun:test"
 
 // Mock prisma
 const mockPrisma = {
@@ -42,6 +35,14 @@ mock.module("@/lib/prisma", () => ({
 mock.module("@/modules/whatsapp/messages/messages.service", () => ({
   messageService: mockMessageService,
 }))
+
+import { describe, expect, it, beforeEach } from "bun:test"
+import { Elysia } from "elysia"
+import {
+  whatsappAuthMock,
+  setMockAuthContext,
+} from "@/lib/whatsapp/__tests__/auth-mock"
+import { InsufficientQuotaError } from "../quota.service"
 
 mock.module("@/modules/whatsapp/messages/quota.service", () => ({
   InsufficientQuotaError,

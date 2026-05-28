@@ -1,11 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { mock } from "bun:test"
 
 const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})
-
-const originalFetch = globalThis.fetch
-const originalConfirm = window.confirm
 
 mock.module("next/navigation", () => {
   return {
@@ -17,6 +13,13 @@ mock.module("next/navigation", () => {
     useSearchParams: () => new URLSearchParams(),
   }
 })
+
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { fireEvent, render, waitFor } from "@testing-library/react"
+
+const originalFetch = globalThis.fetch
+const originalConfirm = window.confirm
+
 
 const loadOrganizationAdminSurface = async () => {
   const surfaceModule =
