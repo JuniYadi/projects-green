@@ -117,7 +117,7 @@ describe("quotaService", () => {
       expect(result.remaining).toBe(0)
     })
 
-    it("returns hasQuota false when no quota limit set", async () => {
+    it("returns hasQuota true when no quota limit set (unlimited)", async () => {
       mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
         id: "device-1",
         quotaBaseOut: null,
@@ -126,7 +126,7 @@ describe("quotaService", () => {
 
       const result = await quotaService.checkQuota("org-1")
 
-      expect(result.hasQuota).toBe(false)
+      expect(result.hasQuota).toBe(true)
       expect(result.monthlyLimit).toBe(0)
     })
 
