@@ -153,7 +153,6 @@ export function StepSource({
   const ITEMS_PER_PAGE = 6
 
   const filteredTemplates = useMemo(() => {
-    console.log("DEBUG: templateFilter =", JSON.stringify(templateFilter))
     const res = DEPLOY_TEMPLATES.filter((template) => {
       const matchesSearch =
         template.name.toLowerCase().includes(templateFilter.toLowerCase()) ||
@@ -163,7 +162,6 @@ export function StepSource({
         getTemplateCategory(template.id) === selectedCategory
       return matchesSearch && matchesCategory
     })
-    console.log("DEBUG: filtered count =", res.length)
     return res
   }, [templateFilter, selectedCategory])
 
@@ -463,7 +461,6 @@ export function StepSource({
                   type="text"
                   placeholder="Search templates..."
                   onChange={(e) => {
-                    console.log("DEBUG: onChange called with:", JSON.stringify(e.target.value))
                     setTemplateFilter(e.target.value)
                     setCurrentPage(1)
                   }}
