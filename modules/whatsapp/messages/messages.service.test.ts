@@ -42,6 +42,20 @@ const mockPrisma = {
     create: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
     update: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
   },
+  billingAccount: {
+    findUnique: mock(async () => ({
+      id: "ba-1",
+      tenantId: "tenant-1",
+      balance: { toString: () => "100000" },
+    })),
+  },
+  subscription: {
+    findFirst: mock(async () => null),
+    findUnique: mock(async () => null),
+  },
+  usageLedger: {
+    create: mock(async () => ({ id: "ledger-1" })),
+  },
   $transaction: mock(async (fn: any) => fn(mockTx)),
 }
 
@@ -102,6 +116,9 @@ describe("messageService", () => {
     mockPrisma.whatsappMonthlyCount.findFirst.mockClear()
     mockPrisma.whatsappMonthlyCount.create.mockClear()
     mockPrisma.whatsappMonthlyCount.update.mockClear()
+    mockPrisma.billingAccount.findUnique.mockClear()
+    mockPrisma.subscription.findFirst.mockClear()
+    mockPrisma.usageLedger.create.mockClear()
     mockPrisma.$transaction.mockClear()
     mockTx.whatsappDevice.findFirst.mockClear()
     mockTx.whatsappMonthlyCount.findFirst.mockClear()
@@ -125,6 +142,15 @@ describe("messageService", () => {
     mockPrisma.whatsappBroadcastRecipient.create.mockResolvedValue({
       id: "recip-1",
     } as any)
+
+    // Billing mocks - default with positive balance
+    mockPrisma.billingAccount.findUnique.mockResolvedValue({
+      id: "ba-1",
+      tenantId: "tenant-1",
+      balance: { toFixed: () => "100000", gte: () => true, gt: () => true },
+    } as any)
+    mockPrisma.subscription.findFirst.mockResolvedValue(null) // No subscription = no quota gate enforcement
+    mockPrisma.usageLedger.create.mockResolvedValue({ id: "ledger-1" } as any)
 
     // $transaction passthrough
     mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockTx))
@@ -164,24 +190,25 @@ describe("messageService", () => {
       expect(mockPrisma.whatsappDevice.findFirst).toHaveBeenCalled()
     })
 
-    it("throws InsufficientQuotaError when no quota available", async () => {
-      // Quota exceeded: limit=100, count=100 → remaining=0 → hasQuota=false
-      mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
-        ...mockDevice,
-        quotaBaseOut: 100,
+    it("throws InsufficientBalanceError when balance is zero or negative", async () => {
+      // With billing integration: if balance is 0, throws InsufficientBalanceError
+      // Even with legacy quota available, balance check should fail first
+      mockPrisma.billingAccount.findUnique.mockResolvedValue({
+        id: "ba-1",
+        tenantId: "tenant-1",
+        balance: { toFixed: () => "0.00", gte: () => false, gt: () => false },
       } as any)
-      mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue({
-        messageOutboxCount: 100,
-      } as any)
+      // Reset subscription mock so we don't trigger quota gate
+      mockPrisma.subscription.findFirst.mockResolvedValue(null)
 
-      await expect(sendMessageTestHelper()).rejects.toThrow(InsufficientQuotaError)
+      await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
     })
 
     it("throws when no device found", async () => {
-      // checkQuota: device=null → hasQuota=false → throws InsufficientQuotaError
+      // New flow: device check happens first, throws "WhatsApp device not found"
       mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
 
-      await expect(sendMessageTestHelper()).rejects.toThrow(InsufficientQuotaError)
+      await expect(sendMessageTestHelper()).rejects.toThrow("WhatsApp device not found")
     })
 
     it("deducts quota after sending", async () => {
