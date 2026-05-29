@@ -376,14 +376,17 @@ model SupportTicketAttachmentUploadSession {
 
 model BillingAccount {
   id             String               @id @default(cuid())
+  tenantId       String               @unique
   organizationId String               @unique
   currency       String               @default("USD")
   timezone       String               @default("UTC")
   status         BillingAccountStatus @default(ACTIVE)
+  balance        Decimal              @default(0) @db.Decimal(12, 2)
   metadataJson   Json?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
+  tenant        Tenant?               @relation(fields: [tenantId], references: [id])
   subscriptions BillingSubscription[]
   usageEvents   UsageEvent[]
   ratedUsage    RatedUsage[]
@@ -703,9 +706,10 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  subscriptions Subscription[]
-  usageLedgers  UsageLedger[]
-  invoices      Invoice[]
+  subscriptions   Subscription[]
+  usageLedgers    UsageLedger[]
+  invoices        Invoice[]
+  billingAccounts BillingAccount[]
 }
 
 model Region {

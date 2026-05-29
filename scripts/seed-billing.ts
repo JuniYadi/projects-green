@@ -320,12 +320,19 @@ async function seedBillingAccounts() {
   let updated = 0
 
   for (const tenant of tenants) {
-    const existing = await prisma.billingAccount.findUnique({ where: { organizationId: tenant.code } })
+    const existing = await prisma.billingAccount.findFirst({ where: { tenantId: tenant.id } })
     if (existing) {
+      await prisma.billingAccount.update({
+        where: { id: existing.id },
+        data: {
+          organizationId: tenant.code,
+        },
+      })
       updated++
     } else {
       await prisma.billingAccount.create({
         data: {
+          tenantId: tenant.id,
           organizationId: tenant.code,
         },
       })
