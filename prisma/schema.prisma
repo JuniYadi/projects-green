@@ -376,14 +376,17 @@ model SupportTicketAttachmentUploadSession {
 
 model BillingAccount {
   id             String               @id @default(cuid())
+  tenantId       String               @unique
   organizationId String               @unique
   currency       String               @default("USD")
   timezone       String               @default("UTC")
   status         BillingAccountStatus @default(ACTIVE)
+  balance        Decimal              @default(0) @db.Decimal(12, 2)
   metadataJson   Json?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
+  tenant        Tenant?               @relation(fields: [tenantId], references: [id])
   subscriptions BillingSubscription[]
   usageEvents   UsageEvent[]
   ratedUsage    RatedUsage[]
@@ -558,6 +561,7 @@ model RatedUsage {
 model Invoice {
   id               String        @id @default(cuid())
   billingAccountId String
+  tenantId         String?
   subscriptionId   String?
   billingRunId     String?
   invoiceNumber    String        @unique
@@ -577,6 +581,7 @@ model Invoice {
   updatedAt        DateTime      @updatedAt
 
   billingAccount BillingAccount?      @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  tenant         Tenant?              @relation(fields: [tenantId], references: [id], onDelete: SetNull)
   subscription   BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   billingRun     BillingRun?          @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
   lines          InvoiceLine[]
@@ -586,6 +591,8 @@ model Invoice {
   @@index([billingAccountId, status])
   @@index([subscriptionId, periodStart])
   @@index([billingRunId])
+  @@index([tenantId, status])
+  @@index([tenantId, periodStart])
 }
 
 model InvoiceLine {
@@ -699,8 +706,10 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  subscriptions Subscription[]
-  usageLedgers  UsageLedger[]
+  subscriptions   Subscription[]
+  usageLedgers    UsageLedger[]
+  invoices        Invoice[]
+  billingAccounts BillingAccount[]
 }
 
 model Region {
@@ -786,6 +795,7 @@ model Subscription {
   status              BillingSubscriptionStatus2 @default(ACTIVE)
   currentPeriodStart  DateTime
   currentPeriodEnd    DateTime
+  allocatedConfig     Json?
   metadata            Json?
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
@@ -796,7 +806,7 @@ model Subscription {
   pricing      Pricing      @relation(fields: [pricingId], references: [id])
   usageLedgers UsageLedger[]
 
-  @@unique([tenantId, packageId])
+  @@unique([tenantId, packageId, planId])
   @@index([tenantId, status])
   @@index([packageId])
 }
