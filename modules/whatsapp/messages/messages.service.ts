@@ -3,6 +3,17 @@ import { prisma } from "@/lib/prisma"
 import { quotaService, InsufficientQuotaError } from "./quota.service"
 import { enqueueWhatsAppBroadcast } from "@/lib/queue/whatsapp-broadcast"
 import { randomUUID } from "crypto"
+import { Prisma } from "@prisma/client"
+import Decimal = Prisma.Decimal
+import { BalanceGateService } from "@/modules/billing/balance-gate.service"
+import { QuotaGateService } from "@/modules/billing/quota-gate.service"
+import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
+import { USAGE_CATEGORY_WHATSAPP_OUT } from "@/modules/billing/constants"
+import {
+  InsufficientBalanceError,
+  QuotaExceededError,
+  DailyLimitExceededError,
+} from "@/modules/billing/types"
 
 export type SendMessageResult = {
   jobId: string
@@ -28,14 +39,7 @@ export const messageService: MessageService = {
   async sendMessage({ organizationId, phoneNumber, message, deviceId }) {
     const jobId = `wa-job-${randomUUID()}`
 
-    // Check quota before sending
-    const quotaCheck = await quotaService.checkQuota(organizationId, deviceId)
-
-    if (!quotaCheck.hasQuota) {
-      throw new InsufficientQuotaError(`Insufficient quota. Remaining: ${quotaCheck.remaining}`)
-    }
-
-    // Get or create device
+    // Get or create device first (needed for quota gate checks)
     const device = deviceId
       ? await prisma.whatsappDevice.findFirst({
           where: { id: deviceId, organizationId },
@@ -47,6 +51,64 @@ export const messageService: MessageService = {
     if (!device) {
       throw new Error("WhatsApp device not found")
     }
+
+    // Initialize billing services
+    const balanceGate = new BalanceGateService(prisma)
+    const quotaGate = new QuotaGateService(prisma)
+    const usageLedger = new UsageLedgerService(prisma)
+
+    // Get billing account to find tenantId
+    const billingAccount = await prisma.billingAccount.findUnique({
+      where: { organizationId },
+    })
+
+    if (!billingAccount) {
+      throw new Error("No billing account found for organization")
+    }
+
+    const tenantId = billingAccount.tenantId
+
+    // 1. Check balance (BalanceGateService)
+    const balanceOk = await balanceGate.isBalancePositive(tenantId)
+    if (!balanceOk) {
+      throw new InsufficientBalanceError(
+        new Decimal(1),
+        billingAccount.balance
+      )
+    }
+
+    // 2. Check quota (QuotaGateService) — for outbound messages
+    let quotaCheckResult
+    try {
+      quotaCheckResult = await quotaGate.checkMessageQuota(
+        organizationId,
+        device.id,
+        "OUT"
+      )
+    } catch (error) {
+      // DeviceNotFoundError or OrganizationNotMappedError — allow send
+      // These errors indicate no subscription so no quota limits apply
+      quotaCheckResult = null
+    }
+
+    if (quotaCheckResult && !quotaCheckResult.allowed) {
+      throw new QuotaExceededError(
+        organizationId,
+        device.id,
+        "OUT",
+        quotaCheckResult.monthlyLimit ?? 0,
+        quotaCheckResult.monthlyUsed
+      )
+    }
+
+    // 3. Find active WhatsApp subscription for usage recording
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        tenantId,
+        package: { code: "WHATSAPP" },
+        status: "ACTIVE",
+      },
+    })
 
     // Create device client
     const client = await WhatsAppDeviceClient.fromDevice({
@@ -69,15 +131,62 @@ export const messageService: MessageService = {
       // Continue to enqueue for retry
     }
 
-    // Deduct quota (atomic transaction)
+    // 4. Deduct quota (QuotaGateService) — atomic check-then-increment
+    if (subscription) {
+      try {
+        await quotaGate.deductMessageQuota(organizationId, device.id, "OUT")
+      } catch (error) {
+        // QuotaExceededError or DailyLimitExceededError
+        // Log but don't fail the send since message was already sent
+        console.error("[messageService] Failed to deduct quota:", error)
+      }
+
+      // 5. Record usage in ledger
+      if (waMessageId) {
+        // Find PAYG pricing for message rate
+        let messageRateIdr = new Decimal(0)
+        try {
+          const pricing = await balanceGate.findPricing({
+            planId: subscription.planId,
+            regionId: "GLOBAL",
+            type: "PAYG",
+            billingMode: "PAYG",
+          })
+          messageRateIdr = pricing.unitRateMessage ?? new Decimal(0)
+        } catch {
+          // No PAYG pricing found — rate is 0
+        }
+
+        const now = new Date()
+        const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
+
+        await usageLedger.recordUsage({
+          tenantId,
+          subscriptionId: subscription.id,
+          period,
+          entry: {
+            category: USAGE_CATEGORY_WHATSAPP_OUT,
+            amountIdr: messageRateIdr,
+            metadata: {
+              messageId: jobId,
+              direction: "OUT",
+              organizationId,
+              deviceId: device.id,
+            },
+          },
+        })
+      }
+    }
+
+    // Legacy quota service — deduct from old quota table
+    // Keep for backward compatibility with devices using old quota system
     try {
       await quotaService.deductQuota(organizationId, deviceId)
     } catch (err) {
       if (err instanceof InsufficientQuotaError) {
         throw err
       }
-      // Log but don't fail the send
-      console.error("[messageService] Failed to deduct quota:", err)
+      console.error("[messageService] Failed to deduct legacy quota:", err)
     }
 
     // Get or create conversation
