@@ -70,28 +70,33 @@ jobs:
             - Be direct and professional. "This code is confusing and misses the X edge case" is better than "Consider refactoring if you have time".
 
             INSTRUCTIONS:
-            1. Scan all existing comments on this PR to understand previous issues.
-            2. For every issue identified in previous runs:
-              - Check if it still exists in the current diff.
-              - If fixed, mark it as "✅ FIXED".
-              - If still present, mark it as "❌ PERSISTENT".
+            1. Scan all existing comments and review threads on this PR.
+            2. For every issue found:
+              - If it's a PREVIOUS issue that is now fixed:
+                - Post a reply "✅ Fixed in latest commit" to the thread.
+                - Resolve the thread using `gh api graphql` (`resolveReviewThread`).
+              - If it's a PREVIOUS issue that is STILL present:
+                - Post a reply "❌ PERSISTENT: This issue still exists in the latest changes." to the thread.
+                - Do NOT resolve it.
+              - If it's a NEW issue:
+                - Use `mcp__github_inline_comment__create_inline_comment` to post the finding directly on the line.
+                - Start the comment with "🆕 NEW ISSUE:".
 
-            INLINE ACTIONS:
-            Use your inline comment tool (`mcp__github_inline_comment__create_inline_comment`) for specific code feedback.
-
-            RESOLVING THREADS:
-            If an issue in an existing review thread is fixed, reply with "✅ Fixed in latest commit" and use `gh api graphql` with `resolveReviewThread` to mark it resolved.
+            CRITICAL: Every single finding MUST have an inline comment. This allows us to track resolution state per-line.
 
             REVIEW SUBMISSION LOGIC:
-            You MUST submit your final review using `gh pr review`.
+            You MUST submit your final review summary using `gh pr review`.
 
-            If there are NO unresolved issues (only "✅ FIXED" items):
-              Execute: `gh pr review --approve --body "LGTM! All previous issues have been addressed."`
+            If there are NO unresolved issues (all threads resolved/fixed and no new issues):
+              Execute: `gh pr review --approve --body "LGTM! All issues have been addressed."`
 
-            If there are ANY "🆕 NEW" or "❌ PERSISTENT" issues (regardless of severity):
-              STEP 1: Use the `Bash` tool to write a file named `review_body.md` to disk containing the exact following template, filled out with your findings. Do NOT try to pass this complex markdown via a string argument to `gh api` or `gh pr review --body` as shell escaping will fail.
-              
+            If there are ANY "🆕 NEW" or "❌ PERSISTENT" issues:
+              STEP 1: Create a summary file `review_body.md`.
+
               --- START OF review_body.md TEMPLATE ---
+              ## PR Review Summary
+              I have identified issues that require attention. See inline comments for details.
+
               ### 💻 Local Refactoring Prompt
               <details>
               <summary>📦 Click to expand and copy full prompt for Local AI Assistant</summary>
