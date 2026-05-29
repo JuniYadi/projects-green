@@ -215,11 +215,11 @@ export class QuotaGateService {
           ? dailyCount?.messageInboxCount ?? 0
           : dailyCount?.messageOutboxCount ?? 0
 
+      // Monthly counts should NOT fall back to daily counts.
       const monthlyUsed =
         direction === "IN"
           ? monthlyCount?.messageInboxCount ?? 0
-          : monthlyCount?.messageOutboxCount ?? dailyCount?.messageOutboxCount ??
-            0
+          : monthlyCount?.messageOutboxCount ?? 0
 
       const monthlyLimit =
         direction === "IN" ? resources.quotaIn : resources.quotaOut
@@ -271,8 +271,8 @@ export class QuotaGateService {
   }
 
   /**
-   * Upsert daily message count within a transaction.
-   * Handles case where no rows exist yet.
+   * Upsert daily message count within a transaction using Prisma upsert.
+   * Atomically creates or increments the count without race conditions.
    */
   private async upsertDailyCount(
     tx: Prisma.TransactionClient,
@@ -281,70 +281,34 @@ export class QuotaGateService {
     date: Date,
     direction: "IN" | "OUT",
   ): Promise<void> {
-    const fieldToIncrement =
-      direction === "IN" ? "messageInboxCount" : "messageOutboxCount"
+    const inboxCount = direction === "IN" ? 1 : 0
+    const outboxCount = direction === "OUT" ? 1 : 0
 
-    try {
-      const updated = await tx.whatsappDailyCount.updateMany({
-        where: {
+    await tx.whatsappDailyCount.upsert({
+      where: {
+        organizationId_date_whatsappDeviceId: {
           organizationId,
           date,
           whatsappDeviceId: deviceId,
         },
-        data: {
-          [fieldToIncrement]: { increment: 1 },
-        },
-      })
-
-      if (updated.count === 0) {
-        // No existing record, create new one
-        await tx.whatsappDailyCount.create({
-          data: {
-            organizationId,
-            date,
-            whatsappDeviceId: deviceId,
-            messageInboxCount: direction === "IN" ? 1 : 0,
-            messageOutboxCount: direction === "OUT" ? 1 : 0,
-          },
-        })
-      }
-    } catch (error) {
-      // Handle race condition where another request created the record
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2025"
-      ) {
-        const updated = await tx.whatsappDailyCount.updateMany({
-          where: {
-            organizationId,
-            date,
-            whatsappDeviceId: deviceId,
-          },
-          data: {
-            [fieldToIncrement]: { increment: 1 },
-          },
-        })
-
-        if (updated.count === 0) {
-          await tx.whatsappDailyCount.create({
-            data: {
-              organizationId,
-              date,
-              whatsappDeviceId: deviceId,
-              messageInboxCount: direction === "IN" ? 1 : 0,
-              messageOutboxCount: direction === "OUT" ? 1 : 0,
-            },
-          })
-        }
-      } else {
-        throw error
-      }
-    }
+      },
+      create: {
+        organizationId,
+        date,
+        whatsappDeviceId: deviceId,
+        messageInboxCount: inboxCount,
+        messageOutboxCount: outboxCount,
+      },
+      update: {
+        messageInboxCount: { increment: inboxCount },
+        messageOutboxCount: { increment: outboxCount },
+      },
+    })
   }
 
   /**
-   * Upsert monthly message count within a transaction.
-   * Handles case where no rows exist yet.
+   * Upsert monthly message count within a transaction using Prisma upsert.
+   * Atomically creates or increments the count without race conditions.
    */
   private async upsertMonthlyCount(
     tx: Prisma.TransactionClient,
@@ -354,80 +318,43 @@ export class QuotaGateService {
     month: number,
     direction: "IN" | "OUT",
   ): Promise<void> {
-    const fieldToIncrement =
-      direction === "IN" ? "messageInboxCount" : "messageOutboxCount"
+    const inboxCount = direction === "IN" ? 1 : 0
+    const outboxCount = direction === "OUT" ? 1 : 0
 
-    try {
-      const updated = await tx.whatsappMonthlyCount.updateMany({
-        where: {
+    await tx.whatsappMonthlyCount.upsert({
+      where: {
+        organizationId_year_month_whatsappDeviceId: {
           organizationId,
           year,
           month,
           whatsappDeviceId: deviceId,
         },
-        data: {
-          [fieldToIncrement]: { increment: 1 },
-        },
-      })
-
-      if (updated.count === 0) {
-        // No existing record, create new one
-        await tx.whatsappMonthlyCount.create({
-          data: {
-            organizationId,
-            year,
-            month,
-            whatsappDeviceId: deviceId,
-            messageInboxCount: direction === "IN" ? 1 : 0,
-            messageOutboxCount: direction === "OUT" ? 1 : 0,
-          },
-        })
-      }
-    } catch (error) {
-      // Handle race condition where another request created the record
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2025"
-      ) {
-        const updated = await tx.whatsappMonthlyCount.updateMany({
-          where: {
-            organizationId,
-            year,
-            month,
-            whatsappDeviceId: deviceId,
-          },
-          data: {
-            [fieldToIncrement]: { increment: 1 },
-          },
-        })
-
-        if (updated.count === 0) {
-          await tx.whatsappMonthlyCount.create({
-            data: {
-              organizationId,
-              year,
-              month,
-              whatsappDeviceId: deviceId,
-              messageInboxCount: direction === "IN" ? 1 : 0,
-              messageOutboxCount: direction === "OUT" ? 1 : 0,
-            },
-          })
-        }
-      } else {
-        throw error
-      }
-    }
+      },
+      create: {
+        organizationId,
+        year,
+        month,
+        whatsappDeviceId: deviceId,
+        messageInboxCount: inboxCount,
+        messageOutboxCount: outboxCount,
+      },
+      update: {
+        messageInboxCount: { increment: inboxCount },
+        messageOutboxCount: { increment: outboxCount },
+      },
+    })
   }
 
   /**
    * Get quota status for all devices or a specific device in an organization.
+   * Batch-fetches all daily and monthly counts to avoid N+1 queries.
    */
   async getQuotaStatus(
     organizationId: string,
     deviceId?: string,
   ): Promise<QuotaCheckResult[]> {
-    // Validate subscription exists
-    await this.getWhatsAppSubscription(organizationId)
+    const { servicePlan } = await this.getWhatsAppSubscription(organizationId)
+    const resources = servicePlan.resources
 
     const devices = await this.prisma.whatsappDevice.findMany({
       where: {
@@ -441,25 +368,69 @@ export class QuotaGateService {
       throw new DeviceNotFoundError(organizationId, deviceId)
     }
 
-    // Return status for both IN and OUT directions for each device
+    const now = new Date()
+    const year = now.getUTCFullYear()
+    const month = now.getUTCMonth() + 1
+    const dateStr = now.toISOString().split("T")[0]
+
+    // Batch fetch all daily counts
+    const dailyCounts = await this.prisma.whatsappDailyCount.findMany({
+      where: {
+        organizationId,
+        date: new Date(dateStr),
+        whatsappDeviceId: { in: devices.map((d) => d.id) },
+      },
+    })
+
+    // Batch fetch all monthly counts
+    const monthlyCounts = await this.prisma.whatsappMonthlyCount.findMany({
+      where: {
+        organizationId,
+        year,
+        month,
+        whatsappDeviceId: { in: devices.map((d) => d.id) },
+      },
+    })
+
+    const dailyMap = new Map(dailyCounts.map((d) => [d.whatsappDeviceId, d]))
+    const monthlyMap = new Map(monthlyCounts.map((m) => [m.whatsappDeviceId, m]))
+
     const results: QuotaCheckResult[] = []
 
     for (const device of devices) {
-      // Check IN direction
-      const inResult = await this.checkMessageQuota(
-        organizationId,
-        device.id,
-        "IN",
-      )
-      results.push(inResult)
+      const daily = dailyMap.get(device.id)
+      const monthly = monthlyMap.get(device.id)
 
-      // Check OUT direction
-      const outResult = await this.checkMessageQuota(
-        organizationId,
-        device.id,
-        "OUT",
-      )
-      results.push(outResult)
+      for (const direction of ["IN", "OUT"] as const) {
+        const dailyUsed =
+          direction === "IN"
+            ? daily?.messageInboxCount ?? 0
+            : daily?.messageOutboxCount ?? 0
+        const monthlyUsed =
+          direction === "IN"
+            ? monthly?.messageInboxCount ?? 0
+            : monthly?.messageOutboxCount ?? 0
+
+        const monthlyLimit =
+          direction === "IN" ? resources.quotaIn : resources.quotaOut
+        const dailyLimit = resources.dailyPerDevice
+
+        const allowed = !(
+          (dailyLimit !== null && dailyLimit !== 0 && dailyUsed >= dailyLimit) ||
+          (monthlyLimit !== null && monthlyLimit !== 0 && monthlyUsed >= monthlyLimit)
+        )
+
+        results.push({
+          allowed,
+          direction,
+          monthlyLimit,
+          monthlyUsed,
+          dailyLimit,
+          dailyUsed,
+          planCode: servicePlan.code,
+          planResources: resources,
+        })
+      }
     }
 
     return results
