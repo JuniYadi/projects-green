@@ -1,0 +1,208 @@
+import { Worker, type Job } from "bullmq"
+
+import { prisma } from "@/lib/prisma"
+import {
+  BILLING_DAILY_RESET_JOB,
+  BILLING_MONTHLY_RESET_JOB,
+  BILLING_DAILY_RESET_QUEUE,
+  BILLING_MONTHLY_RESET_QUEUE,
+  getBillingRedisConnection,
+  type BillingCronJobData,
+} from "@/lib/queue/billing-cron"
+
+const redisConnection = getBillingRedisConnection()
+
+/**
+ * Daily reset: cleanup old WhatsAppDailyCount rows (> 90 days old).
+ */
+async function processDailyReset(): Promise<number> {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 90)
+
+  const result = await prisma.whatsappDailyCount.deleteMany({
+    where: {
+      date: { lt: cutoff },
+    },
+  })
+
+  return result.count
+}
+
+/**
+ * Monthly reset: cleanup old WhatsAppMonthlyCount rows (> 13 months old).
+ */
+async function processMonthlyReset(): Promise<number> {
+  const now = new Date()
+  const cutoffYear = now.getUTCFullYear()
+  const cutoffMonth = now.getUTCMonth() + 1
+
+  // Calculate 13 months ago
+  const yearsToSubtract = Math.floor((cutoffMonth - 1) / 12)
+  const monthsToSubtract = (cutoffMonth - 1) % 12
+  const targetYear = cutoffYear - yearsToSubtract - 1
+  const targetMonth = monthsToSubtract + 1
+
+  const result = await prisma.whatsappMonthlyCount.deleteMany({
+    where: {
+      OR: [
+        { year: { lt: targetYear } },
+        {
+          year: targetYear,
+          month: { lt: targetMonth },
+        },
+      ],
+    },
+  })
+
+  return result.count
+}
+
+const worker = new Worker<BillingCronJobData>(
+  BILLING_DAILY_RESET_QUEUE,
+  async (job: Job<BillingCronJobData>) => {
+    if (job.name === BILLING_DAILY_RESET_JOB) {
+      const deleted = await processDailyReset()
+      console.info(
+        `[billing-cron] daily reset: deleted ${deleted} old daily count rows`
+      )
+    } else if (job.name === BILLING_MONTHLY_RESET_JOB) {
+      const deleted = await processMonthlyReset()
+      console.info(
+        `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`
+      )
+    }
+  },
+  {
+    connection: redisConnection,
+    concurrency: 1,
+  }
+)
+
+// Also listen on the monthly queue
+const monthlyWorker = new Worker<BillingCronJobData>(
+  BILLING_MONTHLY_RESET_QUEUE,
+  async (job: Job<BillingCronJobData>) => {
+    if (job.name === BILLING_MONTHLY_RESET_JOB) {
+      const deleted = await processMonthlyReset()
+      console.info(
+        `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`
+      )
+    }
+  },
+  {
+    connection: redisConnection,
+    concurrency: 1,
+  }
+)
+
+worker.on("active", (job) => {
+  console.info(
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
+})
+
+worker.on("completed", (job) => {
+  console.info(
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
+})
+
+worker.on("failed", (job, error) => {
+  if (!job) {
+    console.error("[billing-cron] failed job missing payload", error)
+    return
+  }
+
+  console.error(
+    `[billing-cron] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
+    error
+  )
+})
+
+monthlyWorker.on("active", (job) => {
+  console.info(
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
+})
+
+monthlyWorker.on("completed", (job) => {
+  console.info(
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
+})
+
+monthlyWorker.on("failed", (job, error) => {
+  if (!job) {
+    console.error("[billing-cron] monthly failed job missing payload", error)
+    return
+  }
+
+  console.error(
+    `[billing-cron] monthly failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
+    error
+  )
+})
+
+// Register repeatable jobs on startup
+async function registerRepeatableJobs() {
+  const { Queue } = await import("bullmq")
+
+  // Daily: every day at 00:00 UTC
+  const dailyQueue = new Queue(BILLING_DAILY_RESET_QUEUE, {
+    connection: redisConnection,
+  })
+  await dailyQueue.add(BILLING_DAILY_RESET_JOB, {}, {
+    repeat: { pattern: "0 0 * * *" },
+    jobId: "billing-daily-reset",
+  })
+
+  // Monthly: 1st of each month at 00:00 UTC
+  const monthlyQueue = new Queue(BILLING_MONTHLY_RESET_QUEUE, {
+    connection: redisConnection,
+  })
+  await monthlyQueue.add(BILLING_MONTHLY_RESET_JOB, {}, {
+    repeat: { pattern: "0 0 1 * *" },
+    jobId: "billing-monthly-reset",
+  })
+
+  await dailyQueue.close()
+  await monthlyQueue.close()
+
+  console.info("[billing-cron] repeatable jobs registered")
+}
+
+let shuttingDown = false
+
+const shutdown = async (signal: string) => {
+  if (shuttingDown) {
+    return
+  }
+
+  shuttingDown = true
+  console.info(`[billing-cron] received ${signal}, shutting down`)
+
+  try {
+    await worker.close()
+    await monthlyWorker.close()
+    await prisma.$disconnect()
+    process.exit(0)
+  } catch (error) {
+    console.error("[billing-cron] shutdown failed", error)
+    process.exit(1)
+  }
+}
+
+process.on("SIGTERM", () => {
+  void shutdown("SIGTERM")
+})
+
+process.on("SIGINT", () => {
+  void shutdown("SIGINT")
+})
+
+// Register repeatable jobs then print ready message
+void registerRepeatableJobs().then(() => {
+  console.info(
+    `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE}`
+  )
+})
