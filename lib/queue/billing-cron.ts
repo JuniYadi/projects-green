@@ -30,7 +30,7 @@ const parseRedisDb = (pathname: string) => {
 
   if (!/^\d+$/.test(trimmed)) {
     throw new Error(
-      `Invalid REDIS_URL database path: "${pathname}". Expected empty path or numeric DB index.`
+      `Invalid REDIS_URL database path: "${pathname}". Expected empty path or numeric DB index.`,
     )
   }
 
@@ -38,7 +38,7 @@ const parseRedisDb = (pathname: string) => {
 
   if (Number.isNaN(value) || value < 0) {
     throw new Error(
-      `Invalid REDIS_URL database path: "${pathname}". Expected empty path or non-negative DB index.`
+      `Invalid REDIS_URL database path: "${pathname}". Expected empty path or non-negative DB index.`,
     )
   }
 
@@ -71,17 +71,29 @@ export const getBillingRedisConnection = (): RedisOptions => {
 }
 
 export const createBillingCronQueues = (): BillingCronQueue => {
+  const queues: Queue<BillingCronJobData>[] = []
+
   // Daily queue
-  new Queue(BILLING_DAILY_RESET_QUEUE, {
-    connection: getBillingRedisConnection(),
-    defaultJobOptions: DEFAULT_JOB_OPTIONS,
-  })
+  queues.push(
+    new Queue(BILLING_DAILY_RESET_QUEUE, {
+      connection: getBillingRedisConnection(),
+      defaultJobOptions: DEFAULT_JOB_OPTIONS,
+    }),
+  )
+
   // Monthly queue
-  new Queue(BILLING_MONTHLY_RESET_QUEUE, {
-    connection: getBillingRedisConnection(),
-    defaultJobOptions: DEFAULT_JOB_OPTIONS,
-  })
-  return { close: async () => {} }
+  queues.push(
+    new Queue(BILLING_MONTHLY_RESET_QUEUE, {
+      connection: getBillingRedisConnection(),
+      defaultJobOptions: DEFAULT_JOB_OPTIONS,
+    }),
+  )
+
+  return {
+    close: async () => {
+      await Promise.all(queues.map((q) => q.close()))
+    },
+  }
 }
 
 export const __testing = {
