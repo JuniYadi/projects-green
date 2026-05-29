@@ -311,6 +311,31 @@ async function seedTenantAccounts() {
   console.log(`  ✅ Tenant accounts: ${created} created, ${updated} updated`)
 }
 
+async function seedBillingAccounts() {
+  console.log("\n🏢 Seeding billing accounts for existing tenants...")
+
+  const tenants = await prisma.tenant.findMany()
+
+  let created = 0
+  let updated = 0
+
+  for (const tenant of tenants) {
+    const existing = await prisma.billingAccount.findUnique({ where: { organizationId: tenant.code } })
+    if (existing) {
+      updated++
+    } else {
+      await prisma.billingAccount.create({
+        data: {
+          organizationId: tenant.code,
+        },
+      })
+      created++
+    }
+  }
+
+  console.log(`  ✅ Billing accounts: ${created} created, ${updated} updated`)
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -322,6 +347,7 @@ async function main() {
     await seedPlans()
     await seedPricings()
     await seedTenantAccounts()
+    await seedBillingAccounts()
 
     console.log("\n✅ Billing seed completed successfully!")
   } catch (error) {
