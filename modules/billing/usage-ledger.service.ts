@@ -1,12 +1,7 @@
 import { PrismaClient } from "@prisma/client"
 import { Prisma } from "@prisma/client"
 import Decimal = Prisma.Decimal
-
-export interface UsageLedgerEntry {
-  category: string
-  amountIdr: Prisma.Decimal
-  metadata?: object
-}
+import { UsageLedgerEntry } from "./types"
 
 export interface RatedUsage {
   subscriptionId: string
@@ -17,6 +12,19 @@ export interface RatedUsage {
   meterValue: number
 }
 
+/**
+ * TODO: Integrate with QuotaGateService.deductMessageQuota
+ * After incrementing counters, record the billable event:
+ *   await usageLedgerService.recordUsage({
+ *     tenantId: subscription.tenantId,
+ *     subscriptionId: subscription.id,
+ *     period: "YYYY-MM",
+ *     entry: { category: "WHATSAPP_MESSAGE_OUT", amountIdr: ..., metadata: ... }
+ *   })
+ *
+ * This is intentionally left as a separate call so callers can batch or skip
+ * ledger recording without blocking the quota check/deduct flow.
+ */
 export class UsageLedgerService {
   constructor(private prisma: PrismaClient) {}
 
