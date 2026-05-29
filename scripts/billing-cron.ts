@@ -36,13 +36,9 @@ async function processMonthlyReset(): Promise<number> {
   const cutoffYear = now.getUTCFullYear()
   const cutoffMonth = now.getUTCMonth() + 1
 
-  // Calculate 13 months ago
-  let targetYear = cutoffYear
-  let targetMonth = cutoffMonth - 1
-  if (targetMonth < 1) {
-    targetMonth = 12
-    targetYear -= 1
-  }
+  // Calculate 13 months ago: keep rows from the same month one year ago onwards
+  const targetYear = cutoffYear - 1
+  const targetMonth = cutoffMonth
 
   const result = await prisma.whatsappMonthlyCount.deleteMany({
     where: {
