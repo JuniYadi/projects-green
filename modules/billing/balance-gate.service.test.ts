@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "bun:test";
+import { describe, expect, it, vi, beforeEach, Mock } from "bun:test";
 import { PrismaClient } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import Decimal = Prisma.Decimal;
@@ -27,6 +27,7 @@ const mockPrisma = {
   },
   $transaction: vi.fn(),
 } as unknown as PrismaClient;
+const mockedPrisma = mockPrisma as any;
 
 describe("BalanceGateService", () => {
   let service: BalanceGateService;
@@ -34,55 +35,61 @@ describe("BalanceGateService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service = new BalanceGateService(mockPrisma);
+    mockedPrisma.$transaction.mockImplementation(async (callback: any) => {
+      if (typeof callback === 'function') {
+        return callback(mockedPrisma);
+      }
+      return callback; // Fallback for the old array tuple style used in addCredit
+    });
   });
 
   describe("Balance queries", () => {
     it("getBalance returns DB value", async () => {
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         tenantId: "tenant-1",
         balance: new Decimal(50_000),
-      } as never);
+      } as any);
 
       const balance = await service.getBalance("tenant-1");
       expect(balance.toNumber()).toBe(50_000);
-      expect(mockPrisma.billingAccount.findUnique).toHaveBeenCalledWith({
+      expect(mockedPrisma.billingAccount.findUnique).toHaveBeenCalledWith({
         where: { tenantId: "tenant-1" },
         select: { balance: true },
       });
     });
 
     it("isBalancePositive true when balance=1", async () => {
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(1),
-      } as never);
+      } as any);
 
       const result = await service.isBalancePositive("tenant-1");
       expect(result).toBe(true);
     });
 
     it("isBalancePositive false when balance=0", async () => {
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(0),
-      } as never);
+      } as any);
 
       const result = await service.isBalancePositive("tenant-1");
       expect(result).toBe(false);
     });
 
     it("isBalanceAboveWarn true when balance=50_000", async () => {
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(50_000),
-      } as never);
+      } as any);
 
       const result = await service.isBalanceAboveWarn("tenant-1");
       expect(result).toBe(true);
     });
 
     it("isBalanceAboveWarn false when balance=5_000", async () => {
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(5_000),
-      } as never);
+      } as any);
 
       const result = await service.isBalanceAboveWarn("tenant-1");
       expect(result).toBe(false);
@@ -91,12 +98,12 @@ describe("BalanceGateService", () => {
 
   describe("Balance mutations", () => {
     it("addCredit increases balance", async () => {
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(10_000),
-      } as never);
+      } as any);
 
-      (mockPrisma.$transaction as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      mockedPrisma.$transaction.mockResolvedValueOnce([
         { balance: new Decimal(15_000) },
         { id: "adj-1" },
       ]);
@@ -112,14 +119,14 @@ describe("BalanceGateService", () => {
       expect(result.charged.toNumber()).toBe(5_000);
       expect(result.adjustmentId).toBe("adj-1");
 
-      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(mockedPrisma.$transaction).toHaveBeenCalledTimes(1);
     });
 
     it("deductBalance below zero throws NegativeBalanceError", async () => {
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(10_000),
-      } as never);
+      } as any);
 
       await expect(
         service.deductBalance("tenant-1", new Decimal(15_000), "Test deduct"),
@@ -166,29 +173,22 @@ describe("BalanceGateService", () => {
 
     it("chargePayg deducts computed cost", async () => {
       // Setup mock subscription
-      (mockPrisma.subscription.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockPaygSubscription as never,
+      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+        mockPaygSubscription as any,
       );
 
       // Setup mock balance (50_000 available)
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(50_000),
-      } as never); // for getBalance
-
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "acc-1",
-        balance: new Decimal(50_000),
-      } as never); // for deductCore
+      } as any); // for getBalance
 
       // 150mCPU -> round up to 200 -> 200 * 10 = 2000
       // 200MB -> round up to 256 -> 256 * 5 = 1280
       // Total = 3280
 
-      (mockPrisma.$transaction as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-        { balance: new Decimal(50_000 - 3280) },
-        { id: "adj-1" },
-      ]);
+      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000 - 3280) } as any);
+      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
 
       const result = await service.chargePayg("tenant-1", "sub-1");
 
@@ -214,14 +214,14 @@ describe("BalanceGateService", () => {
     });
 
     it("chargePayg insufficient balance", async () => {
-      (mockPrisma.subscription.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockPaygSubscription as never,
+      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+        mockPaygSubscription as any,
       );
 
       // Balance = 1000, needed = 3280
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(1000),
-      } as never);
+      } as any);
 
       await expect(service.chargePayg("tenant-1", "sub-1")).rejects.toThrow(
         InsufficientBalanceError,
@@ -229,25 +229,18 @@ describe("BalanceGateService", () => {
     });
 
     it("chargePayg exact balance allowed", async () => {
-      (mockPrisma.subscription.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockPaygSubscription as never,
+      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+        mockPaygSubscription as any,
       );
 
       // Balance = 3280, needed = 3280
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(3280),
-      } as never);
+      } as any);
 
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "acc-1",
-        balance: new Decimal(3280),
-      } as never);
-
-      (mockPrisma.$transaction as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-        { balance: new Decimal(0) },
-        { id: "adj-1" },
-      ]);
+      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(0) } as any);
+      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
 
       const result = await service.chargePayg("tenant-1", "sub-1");
       expect(result.charged.toNumber()).toBe(3280);
@@ -280,24 +273,17 @@ describe("BalanceGateService", () => {
     };
 
     it("chargePackage deducts basePriceIdr", async () => {
-      (mockPrisma.subscription.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockPackageSubscription as never,
+      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+        mockPackageSubscription as any,
       );
 
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(150_000),
-      } as never);
+      } as any);
 
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "acc-1",
-        balance: new Decimal(150_000),
-      } as never);
-
-      (mockPrisma.$transaction as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-        { balance: new Decimal(50_000) },
-        { id: "adj-1" },
-      ]);
+      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000) } as any);
+      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
 
       const result = await service.chargePackage("tenant-1", "sub-pkg");
 
@@ -305,13 +291,13 @@ describe("BalanceGateService", () => {
     });
 
     it("chargePackage insufficient", async () => {
-      (mockPrisma.subscription.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockPackageSubscription as never,
+      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+        mockPackageSubscription as any,
       );
 
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(50_000),
-      } as never);
+      } as any);
 
       await expect(service.chargePackage("tenant-1", "sub-pkg")).rejects.toThrow(
         InsufficientBalanceError,
@@ -319,24 +305,17 @@ describe("BalanceGateService", () => {
     });
 
     it("chargeFlatMonthly delegates to chargePackage", async () => {
-      (mockPrisma.subscription.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockPackageSubscription as never,
+      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+        mockPackageSubscription as any,
       );
 
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(150_000),
-      } as never);
+      } as any);
 
-      (mockPrisma.billingAccount.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "acc-1",
-        balance: new Decimal(150_000),
-      } as never);
-
-      (mockPrisma.$transaction as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-        { balance: new Decimal(50_000) },
-        { id: "adj-1" },
-      ]);
+      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000) } as any);
+      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
 
       const result = await service.chargeFlatMonthly("tenant-1", "sub-pkg");
 
@@ -346,7 +325,7 @@ describe("BalanceGateService", () => {
 
   describe("findPricing", () => {
     it("returns mapped PricingLookup", async () => {
-      (mockPrisma.pricing.findFirst as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mockedPrisma.pricing.findFirst.mockResolvedValueOnce({
         id: "price-1",
         planId: "plan-1",
         regionId: "reg-1",
@@ -359,7 +338,7 @@ describe("BalanceGateService", () => {
         unitRateMessage: null,
         servicePlan: { code: "STANDARD", packageId: "pkg-1", resources: {} },
         region: { code: "INDONESIA" },
-      } as never);
+      } as any);
 
       const pricing = await service.findPricing({
         planId: "plan-1",
@@ -375,7 +354,7 @@ describe("BalanceGateService", () => {
     });
 
     it("throws PricingNotFoundError when not found", async () => {
-      (mockPrisma.pricing.findFirst as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      mockedPrisma.pricing.findFirst.mockResolvedValueOnce(null);
 
       await expect(
         service.findPricing({

@@ -12,6 +12,11 @@ import {
   PricingNotFoundError,
   ChargeResult,
   PricingLookup,
+  SubscriptionNotFoundError,
+  InvalidSubscriptionBillingModeError,
+  SubscriptionInactiveError,
+  CalcPaygOnNonPaygError,
+  BillingAccountNotFoundError,
 } from "./types";
 
 export class BalanceGateService {
@@ -25,7 +30,7 @@ export class BalanceGateService {
       select: { balance: true },
     });
     if (!account) {
-      throw new Error(`BillingAccount not found for tenant=${tenantId}`);
+      throw new BillingAccountNotFoundError(tenantId);
     }
     return account.balance;
   }
@@ -95,7 +100,7 @@ export class BalanceGateService {
    */
   calcPaygCost(pricing: PricingLookup, mcpu: number, memMb: number): Decimal {
     if (pricing.billingMode !== "PAYG") {
-      throw new Error("calcPaygCost called on non-PAYG pricing");
+      throw new CalcPaygOnNonPaygError();
     }
 
     let total = new Decimal(0);
@@ -133,7 +138,7 @@ export class BalanceGateService {
       where: { tenantId },
     });
     if (!account) {
-      throw new Error(`BillingAccount not found for tenant=${tenantId}`);
+      throw new BillingAccountNotFoundError(tenantId);
     }
 
     const balanceBefore = account.balance;
@@ -212,13 +217,29 @@ export class BalanceGateService {
     });
 
     if (!sub) {
-      throw new Error(`Subscription not found: ${subscriptionId}`);
+      throw new SubscriptionNotFoundError(subscriptionId);
     }
     if (sub.billingMode !== "PAYG") {
-      throw new Error(`Subscription ${subscriptionId} is not PAYG`);
+      throw new InvalidSubscriptionBillingModeError(
+        subscriptionId,
+        "PAYG",
+        sub.billingMode,
+      );
     }
     if (sub.status !== "ACTIVE") {
-      throw new Error(`Subscription ${subscriptionId} is not ACTIVE`);
+      throw new SubscriptionInactiveError(subscriptionId);
+    }
+
+    // Validate allocatedConfig structure before using
+    const rawConfig = sub.allocatedConfig;
+    if (rawConfig !== null && typeof rawConfig === "object") {
+      const keys = Object.keys(rawConfig);
+      const hasValidKeys = keys.some((k) => k === "cpu" || k === "mem");
+      if (!hasValidKeys && Object.keys(rawConfig).length > 0) {
+        throw new Error(
+          `allocatedConfig has unexpected keys: ${keys.join(", ")}`,
+        );
+      }
     }
 
     // 2. Calculate cost from DB-stored rates
@@ -243,25 +264,51 @@ export class BalanceGateService {
 
     const amount = this.calcPaygCost(pricing, mcpu, memMb);
 
-    // 3. Check balance before deducting
-    const balance = await this.getBalance(tenantId);
-    if (balance.lt(amount)) {
-      throw new InsufficientBalanceError(amount, balance);
-    }
+    // Use a SINGLE transaction for balance check + deduction to prevent race
+    return this.prisma.$transaction(async (tx) => {
+      const account = await tx.billingAccount.findUnique({
+        where: { tenantId },
+      });
+      if (!account) {
+        throw new BillingAccountNotFoundError(tenantId);
+      }
 
-    // 4. Deduct
-    return this.deductBalance(
-      tenantId,
-      amount,
-      `PAYG charge: ${sub.pricing.servicePlan.code} (${mcpu}mCPU / ${memMb}MB)`,
-      {
-        subscriptionId,
-        pricingId: sub.pricingId,
-        cpu: mcpu,
-        mem: memMb,
-        computedCost: amount.toString(),
-      },
-    );
+      if (account.balance.lt(amount)) {
+        throw new InsufficientBalanceError(amount, account.balance);
+      }
+
+      const balanceAfter = account.balance.minus(amount);
+
+      const [updated, adjustment] = await Promise.all([
+        tx.billingAccount.update({
+          where: { id: account.id },
+          data: { balance: balanceAfter },
+        }),
+        tx.billingAdjustment.create({
+          data: {
+            billingAccountId: account.id,
+            adjustmentType: "DEBIT",
+            amount,
+            currency: "IDR",
+            reason: `PAYG charge: ${sub.pricing.servicePlan.code} (${mcpu}mCPU / ${memMb}MB)`,
+            metadataJson: {
+              subscriptionId,
+              pricingId: sub.pricingId,
+              cpu: mcpu,
+              mem: memMb,
+              computedCost: amount.toString(),
+            },
+          },
+        }),
+      ]);
+
+      return {
+        balanceBefore: account.balance,
+        balanceAfter: updated.balance,
+        charged: amount,
+        adjustmentId: adjustment.id,
+      };
+    });
   }
 
   /**
@@ -284,32 +331,63 @@ export class BalanceGateService {
     });
 
     if (!sub) {
-      throw new Error(`Subscription not found: ${subscriptionId}`);
+      throw new SubscriptionNotFoundError(subscriptionId);
     }
     if (sub.billingMode !== "PACKAGE") {
-      throw new Error(`Subscription ${subscriptionId} is not PACKAGE`);
+      throw new InvalidSubscriptionBillingModeError(
+        subscriptionId,
+        "PACKAGE",
+        sub.billingMode,
+      );
     }
     if (sub.status !== "ACTIVE") {
-      throw new Error(`Subscription ${subscriptionId} is not ACTIVE`);
+      throw new SubscriptionInactiveError(subscriptionId);
     }
 
     const amount = sub.pricing.basePriceIdr;
-    const balance = await this.getBalance(tenantId);
 
-    if (balance.lt(amount)) {
-      throw new InsufficientBalanceError(amount, balance);
-    }
+    return this.prisma.$transaction(async (tx) => {
+      const account = await tx.billingAccount.findUnique({
+        where: { tenantId },
+      });
+      if (!account) {
+        throw new BillingAccountNotFoundError(tenantId);
+      }
 
-    return this.deductBalance(
-      tenantId,
-      amount,
-      `Package charge: ${sub.pricing.servicePlan.code} (${sub.pricing.region.code})`,
-      {
-        subscriptionId,
-        pricingId: sub.pricingId,
-        planCode: sub.pricing.servicePlan.code,
-      },
-    );
+      if (account.balance.lt(amount)) {
+        throw new InsufficientBalanceError(amount, account.balance);
+      }
+
+      const balanceAfter = account.balance.minus(amount);
+
+      const [updated, adjustment] = await Promise.all([
+        tx.billingAccount.update({
+          where: { id: account.id },
+          data: { balance: balanceAfter },
+        }),
+        tx.billingAdjustment.create({
+          data: {
+            billingAccountId: account.id,
+            adjustmentType: "DEBIT",
+            amount,
+            currency: "IDR",
+            reason: `Package charge: ${sub.pricing.servicePlan.code} (${sub.pricing.region.code})`,
+            metadataJson: {
+              subscriptionId,
+              pricingId: sub.pricingId,
+              planCode: sub.pricing.servicePlan.code,
+            },
+          },
+        }),
+      ]);
+
+      return {
+        balanceBefore: account.balance,
+        balanceAfter: updated.balance,
+        charged: amount,
+        adjustmentId: adjustment.id,
+      };
+    });
   }
 
   /**

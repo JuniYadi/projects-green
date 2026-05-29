@@ -33,6 +33,41 @@ export class PricingNotFoundError extends Error {
   }
 }
 
+export class BillingAccountNotFoundError extends Error {
+  constructor(tenantId: string) {
+    super(`BillingAccount not found for tenant=${tenantId}`);
+    this.name = "BillingAccountNotFoundError";
+  }
+}
+
+export class SubscriptionNotFoundError extends Error {
+  constructor(subscriptionId: string) {
+    super(`Subscription not found: ${subscriptionId}`);
+    this.name = "SubscriptionNotFoundError";
+  }
+}
+
+export class InvalidSubscriptionBillingModeError extends Error {
+  constructor(subscriptionId: string, expected: string, actual: string) {
+    super(`Subscription ${subscriptionId} is ${actual}, expected ${expected}`);
+    this.name = "InvalidSubscriptionBillingModeError";
+  }
+}
+
+export class SubscriptionInactiveError extends Error {
+  constructor(subscriptionId: string) {
+    super(`Subscription ${subscriptionId} is not ACTIVE`);
+    this.name = "SubscriptionInactiveError";
+  }
+}
+
+export class CalcPaygOnNonPaygError extends Error {
+  constructor() {
+    super("calcPaygCost called on non-PAYG pricing");
+    this.name = "CalcPaygOnNonPaygError";
+  }
+}
+
 export interface ChargeResult {
   balanceBefore: Prisma.Decimal;
   balanceAfter: Prisma.Decimal;
