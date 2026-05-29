@@ -89,3 +89,102 @@ export interface PricingLookup {
   unitRateMem: Prisma.Decimal | null;
   unitRateMessage: Prisma.Decimal | null;
 }
+
+// ─── Quota Gate Errors ─────────────────────────────────────────────────────────
+
+export class QuotaExceededError extends Error {
+  readonly organizationId: string;
+  readonly deviceId: string;
+  readonly direction: "IN" | "OUT";
+  readonly monthlyLimit: number;
+  readonly monthlyUsed: number;
+
+  constructor(
+    organizationId: string,
+    deviceId: string,
+    direction: "IN" | "OUT",
+    monthlyLimit: number,
+    monthlyUsed: number,
+  ) {
+    super(
+      `Monthly ${direction === "IN" ? "inbound" : "outbound"} quota exceeded for org=${organizationId} device=${deviceId}: limit=${monthlyLimit} used=${monthlyUsed}`,
+    );
+    this.organizationId = organizationId;
+    this.deviceId = deviceId;
+    this.direction = direction;
+    this.monthlyLimit = monthlyLimit;
+    this.monthlyUsed = monthlyUsed;
+    this.name = "QuotaExceededError";
+  }
+}
+
+export class DailyLimitExceededError extends Error {
+  readonly organizationId: string;
+  readonly deviceId: string;
+  readonly dailyLimit: number;
+  readonly dailyUsed: number;
+
+  constructor(
+    organizationId: string,
+    deviceId: string,
+    dailyLimit: number,
+    dailyUsed: number,
+  ) {
+    super(
+      `Daily limit exceeded for org=${organizationId} device=${deviceId}: limit=${dailyLimit} used=${dailyUsed}`,
+    );
+    this.organizationId = organizationId;
+    this.deviceId = deviceId;
+    this.dailyLimit = dailyLimit;
+    this.dailyUsed = dailyUsed;
+    this.name = "DailyLimitExceededError";
+  }
+}
+
+export class DeviceNotFoundError extends Error {
+  readonly organizationId: string;
+  readonly deviceId: string;
+
+  constructor(organizationId: string, deviceId: string) {
+    super(`WhatsApp device not found for org=${organizationId} device=${deviceId}`);
+    this.organizationId = organizationId;
+    this.deviceId = deviceId;
+    this.name = "DeviceNotFoundError";
+  }
+}
+
+export class OrganizationNotMappedError extends Error {
+  readonly organizationId: string;
+
+  constructor(organizationId: string) {
+    super(`No billing account found for organization=${organizationId}`);
+    this.organizationId = organizationId;
+    this.name = "OrganizationNotMappedError";
+  }
+}
+
+// ─── Quota Gate Interfaces ────────────────────────────────────────────────────
+
+export interface WhatsAppPlanResources {
+  quotaIn: number | null;
+  quotaOut: number | null;
+  dailyPerDevice: number | null;
+  devices: number | null;
+}
+
+export interface QuotaCheckResult {
+  allowed: boolean;
+  direction: "IN" | "OUT";
+  monthlyLimit: number | null; // null = unlimited
+  monthlyUsed: number;
+  dailyLimit: number | null; // null = unlimited
+  dailyUsed: number;
+  planCode: string;
+  planResources: WhatsAppPlanResources;
+}
+
+export interface UsageLedgerEntry {
+  category: string;
+  amountIdr: Prisma.Decimal;
+  metadata?: object;
+}

@@ -812,17 +812,20 @@ model Subscription {
 }
 
 model UsageLedger {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   tenantId       String
   subscriptionId String
   period         String
+  category       String?
+  amountIdr      Decimal?  @db.Decimal(12, 2)
   metadata       Json?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id])
   tenant       Tenant      @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, period])
+  @@index([tenantId, category])
   @@index([subscriptionId])
 }
 

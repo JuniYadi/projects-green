@@ -163,7 +163,7 @@ export class BalanceGateService {
           amount: amount,
           currency: "IDR",
           reason: description,
-          metadataJson: metadata ?? null,
+          metadataJson: metadata ?? undefined,
         },
       }),
     ]);

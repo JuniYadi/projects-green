@@ -19,3 +19,23 @@ export function roundCpu(mcpu: number): number {
 export function roundMem(memMb: number): number {
   return Math.max(Math.ceil(memMb / MEM_STEP_MB) * MEM_STEP_MB, MIN_MEM_MB);
 }
+
+// ─── Usage Ledger Categories ──────────────────────────────────────────────────
+
+export const USAGE_CATEGORY_WHATSAPP_IN = "WHATSAPP_MESSAGE_IN";
+export const USAGE_CATEGORY_WHATSAPP_OUT = "WHATSAPP_MESSAGE_OUT";
+export const USAGE_CATEGORY_APP_HOSTING_CPU = "APP_HOSTING_CPU";
+export const USAGE_CATEGORY_APP_HOSTING_MEM = "APP_HOSTING_MEM";
+export const USAGE_CATEGORY_VPN_BANDWIDTH = "VPN_BANDWIDTH";
+export const USAGE_CATEGORY_BALANCE_TOPUP = "BALANCE_TOPUP";
+
+export const USAGE_CATEGORIES = [
+  USAGE_CATEGORY_WHATSAPP_IN,
+  USAGE_CATEGORY_WHATSAPP_OUT,
+  USAGE_CATEGORY_APP_HOSTING_CPU,
+  USAGE_CATEGORY_APP_HOSTING_MEM,
+  USAGE_CATEGORY_VPN_BANDWIDTH,
+  USAGE_CATEGORY_BALANCE_TOPUP,
+] as const;
+
+export type UsageCategory = (typeof USAGE_CATEGORIES)[number];
