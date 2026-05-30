@@ -6,6 +6,7 @@ import { createBillingSubscriptionsRoutes } from "./subscriptions.route"
 import { createBillingInvoicesRoutes } from "./invoices.route"
 import { createAdminBillingRoutes } from "./admin/adjust.route"
 import { createAdminSubscriptionRoutes } from "./admin/subscriptions.route"
+import { createAdminMembersRoutes } from "./admin/members.route"
 
 export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createBillingAccountRoutes())
@@ -14,3 +15,4 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createBillingInvoicesRoutes())
   .use(createAdminBillingRoutes())
   .use(createAdminSubscriptionRoutes())
+  .use(createAdminMembersRoutes())
