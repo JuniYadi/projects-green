@@ -16,6 +16,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Skip if not changes requested
         if: github.event_name == 'pull_request_review' && github.event.review.state != 'CHANGES_REQUESTED'
