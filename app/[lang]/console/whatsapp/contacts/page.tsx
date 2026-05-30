@@ -157,10 +157,8 @@ export default function WhatsAppContactsPage() {
   }, [])
 
   React.useEffect(() => {
-    queueMicrotask(() => {
-      void loadContacts()
-      void loadGroups()
-    })
+    void loadContacts()
+    void loadGroups()
   }, [loadContacts, loadGroups])
 
   // ── Filtered contacts (client-side search) ──────────────────────────────
