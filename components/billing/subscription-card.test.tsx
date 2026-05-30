@@ -1,6 +1,6 @@
 import "@/test/register"
 import { describe, expect, it } from "bun:test"
-import { render, screen } from "@testing-library/react"
+import { render } from "@testing-library/react"
 
 import { SubscriptionCard } from "./subscription-card"
 
@@ -48,61 +48,61 @@ describe("SubscriptionCard", () => {
   }
 
   it("renders WhatsApp subscription with WhatsApp icon", () => {
-    render(<SubscriptionCard subscription={whatsappSubscription} />)
-    expect(screen.getByText("WhatsApp")).toBeInTheDocument()
-    expect(screen.getByText("WhatsApp Business messaging")).toBeInTheDocument()
-    expect(screen.getByText("WHATSAPP_STANDARD")).toBeInTheDocument()
+    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    expect(view.getByText("WhatsApp")).toBeInTheDocument()
+    expect(view.getByText("WhatsApp Business messaging")).toBeInTheDocument()
+    expect(view.getByText("WHATSAPP_STANDARD")).toBeInTheDocument()
   })
 
   it("renders VPN subscription with GlobeIcon", () => {
-    render(<SubscriptionCard subscription={vpnSubscription} />)
-    expect(screen.getByText("VPN")).toBeInTheDocument()
-    expect(screen.getByText("VPN_PREMIUM")).toBeInTheDocument()
+    const view = render(<SubscriptionCard subscription={vpnSubscription} />)
+    expect(view.getByText("VPN")).toBeInTheDocument()
+    expect(view.getByText("VPN_PREMIUM")).toBeInTheDocument()
   })
 
   it("renders App Hosting subscription with RocketLaunchIcon", () => {
-    render(<SubscriptionCard subscription={appHostingSubscription} />)
-    expect(screen.getByText("App Hosting")).toBeInTheDocument()
-    expect(screen.getByText("APP_STARTER")).toBeInTheDocument()
+    const view = render(<SubscriptionCard subscription={appHostingSubscription} />)
+    expect(view.getByText("App Hosting")).toBeInTheDocument()
+    expect(view.getByText("APP_STARTER")).toBeInTheDocument()
   })
 
   it("displays ACTIVE status text", () => {
-    render(<SubscriptionCard subscription={whatsappSubscription} />)
-    expect(screen.getByText("ACTIVE")).toBeInTheDocument()
+    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    expect(view.getByText("ACTIVE")).toBeInTheDocument()
   })
 
   it("displays SUSPENDED status text", () => {
-    render(<SubscriptionCard subscription={appHostingSubscription} />)
-    expect(screen.getByText("SUSPENDED")).toBeInTheDocument()
+    const view = render(<SubscriptionCard subscription={appHostingSubscription} />)
+    expect(view.getByText("SUSPENDED")).toBeInTheDocument()
   })
 
   it("displays CANCELLED status text", () => {
-    render(
+    const view = render(
       <SubscriptionCard
         subscription={{ ...whatsappSubscription, status: "CANCELLED" }}
       />
     )
-    expect(screen.getByText("CANCELLED")).toBeInTheDocument()
+    expect(view.getByText("CANCELLED")).toBeInTheDocument()
   })
 
   it("displays WhatsApp quota information", () => {
-    render(<SubscriptionCard subscription={whatsappSubscription} />)
-    expect(screen.getByText("Quota In")).toBeInTheDocument()
-    expect(screen.getByText("1,000")).toBeInTheDocument()
-    expect(screen.getByText("Quota Out")).toBeInTheDocument()
-    expect(screen.getByText("500")).toBeInTheDocument()
+    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    expect(view.getByText("Quota In")).toBeInTheDocument()
+    expect(view.getByText("1.000")).toBeInTheDocument()
+    expect(view.getByText("Quota Out")).toBeInTheDocument()
+    expect(view.getByText("500")).toBeInTheDocument()
   })
 
   it("displays monthly rate formatted as IDR", () => {
-    render(<SubscriptionCard subscription={whatsappSubscription} />)
-    expect(screen.getByText("Monthly Rate")).toBeInTheDocument()
-    expect(screen.getByText(/Rp\s*299\.?000/)).toBeInTheDocument()
+    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    expect(view.getByText("Monthly Rate")).toBeInTheDocument()
+    expect(view.getByText(/Rp\s*299\.?000/)).toBeInTheDocument()
   })
 
   it("displays next billing date formatted", () => {
-    render(<SubscriptionCard subscription={whatsappSubscription} />)
-    expect(screen.getByText("Next Billing")).toBeInTheDocument()
-    expect(screen.getByText("28 Jun 2026")).toBeInTheDocument()
+    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    expect(view.getByText("Next Billing")).toBeInTheDocument()
+    expect(view.getByText("28 Jun 2026")).toBeInTheDocument()
   })
 
   it("applies custom className", () => {
