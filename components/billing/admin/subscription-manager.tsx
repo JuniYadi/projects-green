@@ -87,8 +87,18 @@ function SubscriptionCard({
 
   const subscriptionType = getSubscriptionType(subscription.type)
   const isAppHosting = subscriptionType === "APP_HOSTING"
+  const isVpn = subscriptionType === "VPN"
+  const isWhatsApp = subscriptionType === "WHATSAPP"
   const showResourceSliders =
     isAppHosting && (planCode === "CUSTOM" || billingMode === "PAYG")
+
+  // VPN state
+  const [vpnRegion, setVpnRegion] = useState(subscription.regionCode || "ID")
+  const [vpnStatus, setVpnStatus] = useState(subscription.status)
+
+  // WhatsApp state
+  const [waPlan, setWaPlan] = useState(subscription.planCode || "LITE")
+  const [waStatus, setWaStatus] = useState(subscription.status)
 
   async function handleUpdate() {
     setUpdateState("submitting")
@@ -123,6 +133,50 @@ function SubscriptionCard({
     (showResourceSliders &&
       (cpu !== (subscription.allocatedConfig?.cpu as number) ||
         memory !== (subscription.allocatedConfig?.memory as number)))
+
+  const vpnHasChanges =
+    isVpn &&
+    (vpnRegion !== subscription.regionCode || vpnStatus !== subscription.status)
+
+  const waHasChanges =
+    isWhatsApp &&
+    (waPlan !== subscription.planCode || waStatus !== subscription.status)
+
+  async function handleVpnUpdate() {
+    setUpdateState("submitting")
+    try {
+      await onUpdate(subscription.id, {
+        regionCode: vpnRegion,
+        status: vpnStatus,
+      })
+      toast.success("VPN subscription updated successfully")
+      router.refresh()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update VPN subscription"
+      toast.error(message)
+    } finally {
+      setUpdateState("idle")
+    }
+  }
+
+  async function handleWaUpdate() {
+    setUpdateState("submitting")
+    try {
+      await onUpdate(subscription.id, {
+        planCode: waPlan,
+        status: waStatus,
+      })
+      toast.success("WhatsApp subscription updated successfully")
+      router.refresh()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update WhatsApp subscription"
+      toast.error(message)
+    } finally {
+      setUpdateState("idle")
+    }
+  }
 
   return (
     <Card>
@@ -211,6 +265,107 @@ function SubscriptionCard({
                 className="w-full"
               >
                 {updateState === "submitting" ? "Updating..." : "Update Subscription"}
+              </Button>
+            )}
+          </>
+        ) : isVpn ? (
+          <>
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Region</label>
+                  <Select value={vpnRegion} onValueChange={setVpnRegion}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ID">🇮🇩 Indonesia</SelectItem>
+                      <SelectItem value="SG">🇸🇬 Singapore</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select value={vpnStatus} onValueChange={setVpnStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Status changes take effect immediately.
+              </p>
+            </div>
+
+            {vpnHasChanges && (
+              <Button
+                onClick={handleVpnUpdate}
+                disabled={updateState === "submitting"}
+                className="w-full"
+              >
+                {updateState === "submitting" ? "Updating..." : "Update VPN Subscription"}
+              </Button>
+            )}
+          </>
+        ) : isWhatsApp ? (
+          <>
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Plan</label>
+                  <Select value={waPlan} onValueChange={setWaPlan}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LITE">Lite</SelectItem>
+                      <SelectItem value="STANDARD">Standard</SelectItem>
+                      <SelectItem value="PROFESSIONAL">Professional</SelectItem>
+                      <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select value={waStatus} onValueChange={setWaStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="NON_ACTIVE">Non-Active</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {subscription.quotaIn && subscription.quotaOut && (
+                <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                  <p>
+                    Quota: {subscription.quotaIn} in / {subscription.quotaOut} out
+                    per month
+                  </p>
+                  {subscription.dailyPerDevice && (
+                    <p>Daily per device: {subscription.dailyPerDevice}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {waHasChanges && (
+              <Button
+                onClick={handleWaUpdate}
+                disabled={updateState === "submitting"}
+                className="w-full"
+              >
+                {updateState === "submitting"
+                  ? "Updating..."
+                  : "Update WhatsApp Subscription"}
               </Button>
             )}
           </>
