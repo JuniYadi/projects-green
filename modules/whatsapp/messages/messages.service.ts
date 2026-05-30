@@ -2,6 +2,7 @@ import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { prisma } from "@/lib/prisma"
 import { quotaService, InsufficientQuotaError } from "./quota.service"
 import { enqueueWhatsAppBroadcast } from "@/lib/queue/whatsapp-broadcast"
+import { enqueueQuotaReconciliation } from "@/lib/queue/quota-reconciliation"
 import { randomUUID } from "crypto"
 import { Prisma } from "@prisma/client"
 import Decimal = Prisma.Decimal
@@ -139,9 +140,20 @@ export const messageService: MessageService = {
         await quotaGate.deductMessageQuota(organizationId, device.id, "OUT")
       } catch (error) {
         // QuotaExceededError or DailyLimitExceededError
-        // Message already sent, mark as pending for async reconciliation
+        // Message already sent, enqueue reconciliation job for async repair
         quotaPending = true
-        console.error("[messageService] Quota deduction failed, marked pending:", error)
+        console.error("[messageService] Quota deduction failed, enqueuing reconciliation:", error)
+
+        // Fire-and-forget: enqueue reconciliation job
+        enqueueQuotaReconciliation(
+          organizationId,
+          device.id,
+          "OUT",
+          jobId,
+          new Date()
+        ).catch((err) => {
+          console.error("[messageService] Failed to enqueue quota reconciliation:", err)
+        })
       }
 
       // 5. Record usage in ledger
