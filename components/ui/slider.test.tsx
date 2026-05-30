@@ -24,7 +24,7 @@ describe("Slider", () => {
   it("renders with multiple thumbs for range", () => {
     const view = render(<Slider defaultValue={[20, 80]} />)
     const thumbs = view.container.querySelectorAll('[data-slot="slider-thumb"]')
-    expect(thumbs!.length).toBe(2)
+    expect(thumbs.length).toBe(2)
   })
 
   it("renders as disabled", () => {
