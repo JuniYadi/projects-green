@@ -43,6 +43,8 @@ jobs:
 
       - name: Get review body
         id: review-body
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ steps.pr-info.outputs.PR_NUMBER }}"
           # Always fetch review body via API to avoid code injection

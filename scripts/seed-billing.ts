@@ -187,12 +187,12 @@ async function seedPlans() {
       where: { packageId: pkg.id, code: plan.code },
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const data: any = {
       packageId: pkg.id,
       code: plan.code,
       name: plan.name,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       resources: plan.resources as any,
     }
 
@@ -252,7 +252,7 @@ async function seedPricings() {
       },
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
 const data: any = {
       planId: foundPlan.id,
       regionId: region.id,

@@ -337,10 +337,10 @@ export const whatsappAuthPlugin = new Elysia({ name: "whatsapp.auth" })
 
 // ─── Guard decorators ─────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type GuardHandler = (ctx: any) => Promise<unknown>
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type GuardedRoute = (ctx: any) => Promise<unknown>
 
 /**

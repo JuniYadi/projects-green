@@ -79,7 +79,7 @@ export function MembersList({ organizationId }: MembersListProps) {
       }).then(r => r.json())
 
       if (res.ok) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         void loadData()
       } else {
         setError(res.message || "Action failed")
