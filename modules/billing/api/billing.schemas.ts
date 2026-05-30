@@ -5,7 +5,7 @@ import { z } from "zod"
 export const topupSchema = z.object({
   amount: z.number().int().min(1).max(1_000_000),
   paymentMethod: z.enum(["manual_bank_transfer"]),
-  referenceId: z.string().optional(),
+  referenceId: z.string().min(1).max(100).regex(/^[A-Z0-9-_]+$/i).optional(),
 })
 
 export type TopupInput = z.infer<typeof topupSchema>
