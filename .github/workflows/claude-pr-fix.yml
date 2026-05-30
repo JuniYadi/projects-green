@@ -11,7 +11,7 @@ on:
         type: number
 
 concurrency:
-  group: pr-fix-${{ github.event.pull_request.number || inputs.pr_number }}
+  group: pr-fix-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.event.review.state }}
   cancel-in-progress: true
 
 jobs:
@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Determine PR number
         id: pr-info
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             PR_NUM="${{ inputs.pr_number }}"
