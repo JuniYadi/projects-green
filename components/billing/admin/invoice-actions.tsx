@@ -87,10 +87,10 @@ export function InvoiceActions({
     setShowVoidDialog(false)
 
     try {
-      const response = await fetch(`/api/billing/admin/invoices/${invoiceId}`, {
+      const response = await fetch("/api/billing/admin/invoice-void", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "void" }),
+        body: JSON.stringify({ invoiceId }),
       })
 
       const data = await response.json()
