@@ -1,0 +1,24 @@
+# Billing Cron Worker Dockerfile
+# Standalone container for running the billing cron worker process.
+# Build with: docker build -f scripts/Dockerfile.billing -t billing-worker .
+
+FROM oven/bun:1 AS base
+WORKDIR /app
+
+# ── Install dependencies ────────────────────────────────────────────────────
+FROM base AS deps
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+# ── Build ───────────────────────────────────────────────────────────────────
+FROM base AS runner
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Prisma generate
+RUN bun run prisma:generate
+
+# Run billing cron worker
+CMD ["bun", "run", "scripts/billing-cron.ts"]

@@ -4,11 +4,14 @@ import { prisma } from "@/lib/prisma"
 import {
   BILLING_DAILY_RESET_JOB,
   BILLING_MONTHLY_RESET_JOB,
+  BILLING_MONTHLY_BILLING_JOB,
   BILLING_DAILY_RESET_QUEUE,
   BILLING_MONTHLY_RESET_QUEUE,
   getBillingRedisConnection,
   type BillingCronJobData,
 } from "@/lib/queue/billing-cron"
+import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
+import { BillingCycleService } from "@/modules/billing/billing-cycle.service"
 
 const redisConnection = getBillingRedisConnection()
 
@@ -55,6 +58,21 @@ async function processMonthlyReset(): Promise<number> {
   return result.count
 }
 
+/**
+ * Monthly billing: run billing cycle orchestrator for all active subscriptions.
+ */
+async function processMonthlyBilling(): Promise<{ processed: number; skipped: number }> {
+  const usageLedger = new UsageLedgerService(prisma)
+  const billingCycle = new BillingCycleService(prisma, usageLedger)
+  const result = await billingCycle.processMonthlyBilling()
+
+  console.info(
+    `[billing-cron] monthly billing: processed=${result.processed} skipped=${result.skipped} invoices=${result.invoices.length}`,
+  )
+
+  return { processed: result.processed, skipped: result.skipped }
+}
+
 const worker = new Worker<BillingCronJobData>(
   BILLING_DAILY_RESET_QUEUE,
   async (job: Job<BillingCronJobData>) => {
@@ -84,6 +102,11 @@ const monthlyWorker = new Worker<BillingCronJobData>(
       const deleted = await processMonthlyReset()
       console.info(
         `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`
+      )
+    } else if (job.name === BILLING_MONTHLY_BILLING_JOB) {
+      const result = await processMonthlyBilling()
+      console.info(
+        `[billing-cron] monthly billing: ${result.processed} processed`,
       )
     }
   },
@@ -154,13 +177,19 @@ async function registerRepeatableJobs() {
     jobId: "billing-daily-reset",
   })
 
-  // Monthly: 1st of each month at 00:00 UTC
+  // Monthly: 1st of each month at 02:00 UTC (after reset cleanup)
   const monthlyQueue = new Queue(BILLING_MONTHLY_RESET_QUEUE, {
     connection: redisConnection,
   })
   await monthlyQueue.add(BILLING_MONTHLY_RESET_JOB, {}, {
     repeat: { pattern: "0 0 1 * *" },
     jobId: "billing-monthly-reset",
+  })
+
+  // Monthly billing: 1st of each month at 03:00 UTC
+  await monthlyQueue.add(BILLING_MONTHLY_BILLING_JOB, {}, {
+    repeat: { pattern: "0 3 1 * *" },
+    jobId: "billing-monthly-billing",
   })
 
   await dailyQueue.close()
