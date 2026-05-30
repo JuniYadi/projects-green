@@ -11,6 +11,21 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
+      - name: Skip fix PRs
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+
+          if [ "$AUTHOR" == "github-actions[bot]" ]; then
+            echo "Skipping: Fix PR created by bot"
+            exit 0
+          fi
+
+          if [[ "$BRANCH" == fix/pr-* ]]; then
+            echo "Skipping: Fix PR branch"
+            exit 0
+          fi
+
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
@@ -93,6 +108,7 @@ jobs:
             If there are ANY "🆕 NEW" or "❌ PERSISTENT" issues:
               STEP 1: Create a summary file `review_body.md`.
 
+              <!-- FIX_PROMPT_START -->
               --- START OF review_body.md TEMPLATE ---
               ## PR Review Summary
               I have identified issues that require attention. See inline comments for details.
@@ -120,6 +136,7 @@ jobs:
               ````
               </details>
               --- END OF review_body.md TEMPLATE ---
+              <!-- FIX_PROMPT_END -->
 
               STEP 2: Execute the review using the file you just created:
               `gh pr review --request-changes -F review_body.md`
