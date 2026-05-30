@@ -134,46 +134,54 @@ export class BalanceGateService {
     type: "CREDIT" | "DEBIT",
     metadata?: object,
   ): Promise<ChargeResult> {
-    const account = await this.prisma.billingAccount.findUnique({
-      where: { tenantId },
+    const MAX_BALANCE = new Decimal("999999999.99");
+
+    return this.prisma.$transaction(async (tx) => {
+      const account = await tx.billingAccount.findUnique({
+        where: { tenantId },
+      });
+      if (!account) {
+        throw new BillingAccountNotFoundError(tenantId);
+      }
+
+      const balanceBefore = account.balance;
+      const balanceAfter =
+        type === "CREDIT"
+          ? balanceBefore.plus(amount)
+          : balanceBefore.minus(amount);
+
+      if (balanceAfter.lt(0)) {
+        throw new NegativeBalanceError();
+      }
+
+      if (balanceAfter.gt(MAX_BALANCE)) {
+        throw new Error("BALANCE_LIMIT_EXCEEDED");
+      }
+
+      const [updated, adjustment] = await Promise.all([
+        tx.billingAccount.update({
+          where: { id: account.id },
+          data: { balance: balanceAfter },
+        }),
+        tx.billingAdjustment.create({
+          data: {
+            billingAccountId: account.id,
+            adjustmentType: type,
+            amount: amount,
+            currency: "IDR",
+            reason: description,
+            metadataJson: metadata ?? undefined,
+          },
+        }),
+      ]);
+
+      return {
+        balanceBefore,
+        balanceAfter: updated.balance,
+        charged: amount,
+        adjustmentId: adjustment.id,
+      };
     });
-    if (!account) {
-      throw new BillingAccountNotFoundError(tenantId);
-    }
-
-    const balanceBefore = account.balance;
-    const balanceAfter =
-      type === "CREDIT"
-        ? balanceBefore.plus(amount)
-        : balanceBefore.minus(amount);
-
-    if (balanceAfter.lt(0)) {
-      throw new NegativeBalanceError();
-    }
-
-    const [updated, adjustment] = await this.prisma.$transaction([
-      this.prisma.billingAccount.update({
-        where: { id: account.id },
-        data: { balance: balanceAfter },
-      }),
-      this.prisma.billingAdjustment.create({
-        data: {
-          billingAccountId: account.id,
-          adjustmentType: type,
-          amount: amount,
-          currency: "IDR",
-          reason: description,
-          metadataJson: metadata ?? undefined,
-        },
-      }),
-    ]);
-
-    return {
-      balanceBefore,
-      balanceAfter: updated.balance,
-      charged: amount,
-      adjustmentId: adjustment.id,
-    };
   }
 
   async addCredit(
