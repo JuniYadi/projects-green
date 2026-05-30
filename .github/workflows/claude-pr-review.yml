@@ -11,6 +11,21 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
+      - name: Skip fix PRs
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+
+          if [ "$AUTHOR" == "github-actions[bot]" ]; then
+            echo "Skipping: Fix PR created by bot"
+            exit 0
+          fi
+
+          if [[ "$BRANCH" == fix/pr-* ]]; then
+            echo "Skipping: Fix PR branch"
+            exit 0
+          fi
+
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
@@ -70,8 +85,36 @@ jobs:
             - Be direct and professional. "This code is confusing and misses the X edge case" is better than "Consider refactoring if you have time".
 
             INSTRUCTIONS:
-            1. Scan all existing comments and review threads on this PR.
-            2. For every issue found:
+            1. Scan all existing comments and review threads on this PR using `gh api graphql`:
+               ```
+               gh api graphql -f query='
+               {
+                 repository(owner: "JuniYadi", name: "projects-green") {
+                   pullRequest(number: <PR_NUMBER>) {
+                     reviewThreads(first: 50) {
+                       nodes {
+                         id
+                         isResolved
+                         outdated
+                         path
+                         originalLine
+                         comments(first: 10) {
+                           nodes {
+                             id
+                             body
+                             outdated
+                           }
+                         }
+                       }
+                     }
+                   }
+                 }
+               }'
+               ```
+            2. For every review thread found:
+              - If thread is OUTDATED (code changed, thread no longer applies):
+                - Post a reply "🔄 Thread outdated: code has changed" to the thread.
+                - Resolve the thread using: `gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<THREAD_ID>"}) { thread { id isResolved } } }'`
               - If it's a PREVIOUS issue that is now fixed:
                 - Post a reply "✅ Fixed in latest commit" to the thread.
                 - Resolve the thread using `gh api graphql` (`resolveReviewThread`).
@@ -84,6 +127,8 @@ jobs:
 
             CRITICAL: Every single finding MUST have an inline comment. This allows us to track resolution state per-line.
 
+            IMPORTANT: After resolving all outdated threads, re-scan the code for NEW issues. An outdated thread may mean the code was rewritten and a NEW issue now exists at that location.
+
             REVIEW SUBMISSION LOGIC:
             You MUST submit your final review summary using `gh pr review`.
 
@@ -93,6 +138,7 @@ jobs:
             If there are ANY "🆕 NEW" or "❌ PERSISTENT" issues:
               STEP 1: Create a summary file `review_body.md`.
 
+              <!-- FIX_PROMPT_START -->
               --- START OF review_body.md TEMPLATE ---
               ## PR Review Summary
               I have identified issues that require attention. See inline comments for details.
@@ -120,6 +166,7 @@ jobs:
               ````
               </details>
               --- END OF review_body.md TEMPLATE ---
+              <!-- FIX_PROMPT_END -->
 
               STEP 2: Execute the review using the file you just created:
               `gh pr review --request-changes -F review_body.md`
