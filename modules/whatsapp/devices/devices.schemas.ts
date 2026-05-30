@@ -61,6 +61,12 @@ export type DeviceDetail = DeviceListItem & {
   features: Record<string, unknown> | null
 }
 
+export const topUpInputSchema = z.object({
+  amount: z.number().int().min(1, "Amount must be at least 1").max(1_000_000_000),
+  reason: z.string().trim().min(1, "Reason is required").max(500),
+})
+export type TopUpInput = z.infer<typeof topUpInputSchema>
+
 // ─── Domain errors ────────────────────────────────────────────────────────────
 
 export class DeviceNotFoundError extends Error {
