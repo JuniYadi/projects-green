@@ -8,6 +8,7 @@ import { SubscriptionCard } from "@/components/billing/subscription-card"
 import { InvoiceTable } from "@/components/billing/invoice-table"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getAccount, getSubscriptions, getInvoices } from "@/lib/billing-client"
 import type { BillingAccount, BillingSubscriptions, BillingInvoices } from "@/lib/billing-client"
 import { PlusIcon } from "@phosphor-icons/react"
 
@@ -32,25 +33,25 @@ export function BillingDashboard() {
       setErrors({})
 
       const results = await Promise.allSettled([
-        fetch("/api/billing/account").then((r) => r.json()),
-        fetch("/api/billing/subscriptions").then((r) => r.json()),
-        fetch("/api/billing/invoices").then((r) => r.json()),
+        getAccount(),
+        getSubscriptions(),
+        getInvoices(),
       ])
 
       setData({
-        account: results[0].status === "fulfilled" && results[0].value.ok ? results[0].value : null,
-        subscriptions: results[1].status === "fulfilled" && results[1].value.ok ? results[1].value : null,
-        invoices: results[2].status === "fulfilled" && results[2].value.ok ? results[2].value : null,
+        account: results[0].status === "fulfilled" ? results[0].value : null,
+        subscriptions: results[1].status === "fulfilled" ? results[1].value : null,
+        invoices: results[2].status === "fulfilled" ? results[2].value : null,
       })
 
       const newErrors: typeof errors = {}
-      if (results[0].status === "rejected" || (results[0].status === "fulfilled" && !results[0].value.ok)) {
+      if (results[0].status === "rejected") {
         newErrors.account = "Failed to load balance"
       }
-      if (results[1].status === "rejected" || (results[1].status === "fulfilled" && !results[1].value.ok)) {
+      if (results[1].status === "rejected") {
         newErrors.subscriptions = "Failed to load subscriptions"
       }
-      if (results[2].status === "rejected" || (results[2].status === "fulfilled" && !results[2].value.ok)) {
+      if (results[2].status === "rejected") {
         newErrors.invoices = "Failed to load invoices"
       }
       setErrors(newErrors)
@@ -77,7 +78,7 @@ export function BillingDashboard() {
     <div className="space-y-6">
       {/* Balance and Actions Row */}
       <div className="grid gap-4 md:grid-cols-3">
-        {data.account?.ok ? (
+        {data.account ? (
           <BalanceCard
             balanceIdr={data.account.balanceIdr}
             formattedBalance={data.account.formattedBalance}
@@ -127,7 +128,7 @@ export function BillingDashboard() {
           </Button>
         </div>
 
-        {data.subscriptions?.ok && data.subscriptions.subscriptions.length > 0 ? (
+        {data.subscriptions?.subscriptions.length ? (
           <div className="grid gap-4 md:grid-cols-3">
             {data.subscriptions.subscriptions.map((sub) => (
               <SubscriptionCard key={sub.id} subscription={sub} />
@@ -149,7 +150,7 @@ export function BillingDashboard() {
           </Button>
         </div>
 
-        {data.invoices?.ok && data.invoices.invoices.length > 0 ? (
+        {data.invoices?.invoices.length ? (
           <InvoiceTable
             invoices={data.invoices.invoices.slice(0, 5)}
             lang="en"
