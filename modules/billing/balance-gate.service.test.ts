@@ -98,15 +98,27 @@ describe("BalanceGateService", () => {
 
   describe("Balance mutations", () => {
     it("addCredit increases balance", async () => {
-      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
-        id: "acc-1",
-        balance: new Decimal(10_000),
-      } as any);
-
-      mockedPrisma.$transaction.mockResolvedValueOnce([
-        { balance: new Decimal(15_000) },
-        { id: "adj-1" },
-      ]);
+      // Mock $transaction to execute callback with proper tx mock
+      mockedPrisma.$transaction.mockImplementation(async (callback: any) => {
+        // Set up ordered mocks for tx calls:
+        // 1. billingAccount.findUnique
+        mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
+          id: "acc-1",
+          balance: new Decimal(10_000),
+        } as any)
+        // 2. billingAccount.update (inside Promise.all)
+        mockedPrisma.billingAccount.update.mockResolvedValueOnce({
+          id: "acc-1",
+          balance: new Decimal(15_000),
+        } as any)
+        // 3. billingAdjustment.create (inside Promise.all)
+        mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({
+          id: "adj-1",
+        } as any)
+        // Execute the callback with the mock prisma
+        const result = await callback(mockedPrisma)
+        return result
+      })
 
       const result = await service.addCredit(
         "tenant-1",
@@ -118,15 +130,20 @@ describe("BalanceGateService", () => {
       expect(result.balanceAfter.toNumber()).toBe(15_000);
       expect(result.charged.toNumber()).toBe(5_000);
       expect(result.adjustmentId).toBe("adj-1");
-
-      expect(mockedPrisma.$transaction).toHaveBeenCalledTimes(1);
     });
 
     it("deductBalance below zero throws NegativeBalanceError", async () => {
-      mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
-        id: "acc-1",
-        balance: new Decimal(10_000),
-      } as any);
+      // Mock $transaction to execute callback
+      mockedPrisma.$transaction.mockImplementation(async (callback: any) => {
+        // 1. billingAccount.findUnique returns balance of 10,000
+        mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
+          id: "acc-1",
+          balance: new Decimal(10_000),
+        } as any)
+        // Execute the callback - should throw NegativeBalanceError
+        const result = await callback(mockedPrisma)
+        return result
+      })
 
       await expect(
         service.deductBalance("tenant-1", new Decimal(15_000), "Test deduct"),

@@ -6,6 +6,11 @@ import {
 } from "@/lib/whatsapp/auth"
 import { messageService } from "../messages.service"
 import { InsufficientQuotaError } from "../quota.service"
+import {
+  InsufficientBalanceError,
+  QuotaExceededError,
+  DailyLimitExceededError,
+} from "@/modules/billing/types"
 
 const messageBodySchema = t.Object({
   conversationId: t.String(),
@@ -156,6 +161,44 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         status: result.status,
       }
     } catch (error) {
+      // Handle billing-related errors with appropriate HTTP status codes
+      if (error instanceof InsufficientBalanceError) {
+        set.status = 402
+        return {
+          ok: false,
+          error: "INSUFFICIENT_BALANCE",
+          message: "Insufficient balance for WhatsApp messaging. Please top up your balance.",
+        }
+      }
+
+      if (error instanceof QuotaExceededError) {
+        set.status = 429
+        return {
+          ok: false,
+          error: "QUOTA_EXCEEDED",
+          message: `Monthly outbound quota exceeded. Limit: ${error.monthlyLimit}, Used: ${error.monthlyUsed}`,
+        }
+      }
+
+      if (error instanceof DailyLimitExceededError) {
+        set.status = 429
+        return {
+          ok: false,
+          error: "DAILY_LIMIT_EXCEEDED",
+          message: `Daily limit exceeded. Limit: ${error.dailyLimit}, Used: ${error.dailyUsed}`,
+        }
+      }
+
+      // Handle "NO_BILLING_ACCOUNT" error - org has no billing setup
+      if (error instanceof Error && error.message === "NO_BILLING_ACCOUNT") {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BILLING_NOT_CONFIGURED",
+          message: "No billing account configured for this organization.",
+        }
+      }
+
       if (error instanceof InsufficientQuotaError) {
         set.status = 422
         return { ok: false, error: "INSUFFICIENT_QUOTA", message: error.message }
