@@ -11,7 +11,7 @@ on:
         type: number
 
 concurrency:
-  group: pr-fix-${{ github.event.pull_request.number || inputs.pr_number }}
+  group: pr-fix-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.event.review.state }}
   cancel-in-progress: true
 
 jobs:
@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Determine PR number
         id: pr-info
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             PR_NUM="${{ inputs.pr_number }}"
@@ -93,6 +95,11 @@ jobs:
               sys.exit(1)
 
           data = json.loads(result.stdout)
+
+          if "errors" in data:
+              print(f"GraphQL errors: {data['errors']}", file=sys.stderr)
+              sys.exit(1)
+
           threads = data["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
 
           unresolved = [t for t in threads if not t["isResolved"]]
