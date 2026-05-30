@@ -185,8 +185,8 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
-            --max-turns 30
-            --allowedTools "Bash(git *),Bash(bun *)"
+            --max-turns 75
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(git *),Bash(bun *),Bash(cat *),Bash(head *),Bash(tail *),Bash(grep *),Bash(find *),Bash(wc *)"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ steps.pr-info.outputs.PR_NUMBER }}
