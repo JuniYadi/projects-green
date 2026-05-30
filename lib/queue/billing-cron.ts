@@ -4,6 +4,7 @@ export const BILLING_DAILY_RESET_QUEUE = "billing-daily-reset"
 export const BILLING_MONTHLY_RESET_QUEUE = "billing-monthly-reset"
 export const BILLING_DAILY_RESET_JOB = "billing-daily-reset-job"
 export const BILLING_MONTHLY_RESET_JOB = "billing-monthly-reset-job"
+export const BILLING_MONTHLY_BILLING_JOB = "billing-monthly-billing-job"
 
 export type BillingCronJobData = Record<string, never>
 
