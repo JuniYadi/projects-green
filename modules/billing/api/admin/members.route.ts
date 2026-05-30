@@ -89,6 +89,7 @@ export interface MemberBillingSummary {
   tenantId: string | null
   tenantName: string | null
   subscriptionCount: number
+  activeSubscriptionCount: number
   monthlySpendIdr: string
   balanceIdr: string
 }
@@ -136,7 +137,13 @@ export const createAdminMembersRoutes = (
 
       try {
         // Get all tenants with their billing accounts
+        // Super_admin sees all; admins see only their org via billing account
+        const tenantWhere = actor.platformRole !== "super_admin" && auth.organizationId
+          ? { billingAccounts: { some: { organizationId: auth.organizationId } } }
+          : undefined
+
         const tenantsWithBilling = await prisma.tenant.findMany({
+          where: tenantWhere,
           include: {
             billingAccounts: {
               select: {
@@ -194,6 +201,11 @@ export const createAdminMembersRoutes = (
           // In real implementation, this would come from WorkOS organization memberships
           const firstSubscription = tenantSubscriptions[0]
 
+          // Calculate active subscription count
+          const activeSubscriptionCount = tenantSubscriptions.filter(
+            (s) => s.status === "ACTIVE"
+          ).length
+
           // Build member summary
           const memberEntry: MemberBillingSummary = {
             userId: tenant.id, // Using tenant id as proxy - in real impl would be workos user id
@@ -202,6 +214,7 @@ export const createAdminMembersRoutes = (
             tenantId: tenant.id,
             tenantName: tenant.name,
             subscriptionCount: tenantSubscriptions.length,
+            activeSubscriptionCount,
             monthlySpendIdr: monthlySpend.toFixed(2),
             balanceIdr: tenant.billingAccounts[0]?.balance.toFixed(2) ?? "0.00",
           }
@@ -210,6 +223,7 @@ export const createAdminMembersRoutes = (
           const existing = membersMap.get(memberEntry.userId)
           if (existing) {
             existing.subscriptionCount += memberEntry.subscriptionCount
+            existing.activeSubscriptionCount += memberEntry.activeSubscriptionCount
             existing.monthlySpendIdr = (
               parseFloat(existing.monthlySpendIdr) + parseFloat(memberEntry.monthlySpendIdr)
             ).toFixed(2)
@@ -307,6 +321,11 @@ export const createAdminMembersRoutes = (
           0
         )
 
+        // Calculate active subscription count
+        const activeSubscriptionCount = subscriptions.filter(
+          (s) => s.status === "ACTIVE"
+        ).length
+
         const memberDetail: MemberBillingDetail = {
           userId: tenant.id,
           email: null, // Would come from WorkOS
@@ -314,6 +333,7 @@ export const createAdminMembersRoutes = (
           tenantId: tenant.id,
           tenantName: tenant.name,
           subscriptionCount: subscriptions.length,
+          activeSubscriptionCount,
           monthlySpendIdr: monthlySpend.toFixed(2),
           balanceIdr: tenant.billingAccounts[0]?.balance.toFixed(2) ?? "0.00",
           subscriptions: subscriptions.map((s) => ({
