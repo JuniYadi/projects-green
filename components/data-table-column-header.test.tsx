@@ -24,7 +24,9 @@ describe("DataTableColumnHeader", () => {
     const view = render(<DataTableColumnHeader column={column} title="Email" />)
     const name = view.getByText("Email")
     expect(name).toBeInTheDocument()
-    expect(name.closest("button")).toBeInTheDocument()
+    const button = name.closest("button")
+    expect(button).toBeInTheDocument()
+    expect(button?.querySelector("svg")).toBeInTheDocument()
   })
 
   it("renders ascending sort icon when sorted asc", () => {
@@ -35,7 +37,9 @@ describe("DataTableColumnHeader", () => {
     } as unknown as Parameters<typeof DataTableColumnHeader>[0]["column"]
 
     const view = render(<DataTableColumnHeader column={column} title="Role" />)
-    expect(view.getByText("Role")).toBeInTheDocument()
+    const ascButton = view.getByText("Role").closest("button")
+    expect(ascButton).toBeInTheDocument()
+    expect(ascButton?.querySelector("svg")).toBeInTheDocument()
   })
 
   it("renders descending sort icon when sorted desc", () => {
@@ -46,7 +50,9 @@ describe("DataTableColumnHeader", () => {
     } as unknown as Parameters<typeof DataTableColumnHeader>[0]["column"]
 
     const view = render(<DataTableColumnHeader column={column} title="Date" />)
-    expect(view.getByText("Date")).toBeInTheDocument()
+    const descButton = view.getByText("Date").closest("button")
+    expect(descButton).toBeInTheDocument()
+    expect(descButton?.querySelector("svg")).toBeInTheDocument()
   })
 
   it("toggles sorting on click", () => {
