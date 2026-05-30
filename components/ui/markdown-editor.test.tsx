@@ -74,7 +74,7 @@ describe("MarkdownEditor", () => {
     expect(textarea.defaultValue).toBe("**hi**")
   })
 
-  it("shows Write tab as active by default with textarea visible", () => {
+  it("renders Write and Preview tab labels", () => {
     const view = render(<MarkdownEditor />)
     expect(view.getByText("Write")).toBeInTheDocument()
     expect(view.getByText("Preview")).toBeInTheDocument()
