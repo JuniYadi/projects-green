@@ -56,7 +56,7 @@ export const GET = async (request: NextRequest) => {
   // Forward PKCE verifier cookies set by getSignInUrl onto the redirect response
   const cookieStore = await cookies()
   for (const cookie of cookieStore.getAll()) {
-    if (cookie.name.startsWith("wos-auth-verifier")) {
+    if (cookie.name.startsWith("wos-auth-verifier") && cookie.value) {
       response.cookies.set(cookie.name, cookie.value, {
         httpOnly: true,
         path: "/",

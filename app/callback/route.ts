@@ -3,27 +3,6 @@ import { OauthException } from "@workos-inc/node"
 import { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
-// Suppress verbose WorkOS internal logs with cleaner messages
-const suppressWorkosLogs = () => {
-  const originalError = console.error
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  console.error = (...args: any[]) => {
-    const firstArg = args[0]
-    if (
-      typeof firstArg === "string" &&
-      firstArg.includes("[AuthKit callback error]")
-    ) {
-      const error = args[1]
-      if (error instanceof Error) {
-        // Log simplified message
-        originalError.call(console, "[Auth]", error.message)
-        return
-      }
-    }
-    originalError.apply(console, args)
-  }
-}
-
 const authHandler = handleAuth({
   onError: async ({ error, request }) => {
     const hasErrorObject =
@@ -58,11 +37,23 @@ const authHandler = handleAuth({
     if (error instanceof Error) {
       // Check for OAuth errors from WorkOS
       if (error instanceof OauthException) {
-        // OAuth errors have meaningful descriptions from WorkOS
-        errorMessage =
-          error.errorDescription ||
-          error.error ||
-          "Authentication failed. Please try again."
+        // Map OAuth error codes to user-friendly messages
+        const errorCode = error.error?.toLowerCase() ?? ""
+        const errorDesc = error.errorDescription
+
+        if (errorCode === "access_denied" || errorDesc?.includes("cancelled")) {
+          errorMessage = "Sign in was cancelled. Please try again."
+        } else if (
+          errorCode === "invalid_request" ||
+          errorCode === "server_error"
+        ) {
+          errorMessage = "Sign in failed. Please try again."
+        } else if (errorDesc) {
+          // Use description if available, but only if it's user-friendly
+          errorMessage = errorDesc.length < 100 ? errorDesc : "Sign in failed. Please try again."
+        } else {
+          errorMessage = "Authentication failed. Please try again."
+        }
       } else if (
         error.message.includes("Auth cookie missing") ||
         error.message.includes("OAuth state")
@@ -82,6 +73,5 @@ const authHandler = handleAuth({
 })
 
 export async function GET(request: NextRequest) {
-  suppressWorkosLogs()
   return authHandler(request)
 }
