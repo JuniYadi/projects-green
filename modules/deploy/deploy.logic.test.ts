@@ -147,8 +147,6 @@ describe("wizard step gating", () => {
     expect(getMaxUnlockedStep(state)).toBe("environment")
     expect(clampStepToUnlocked("monitor", state)).toBe("environment")
 
-    expect(getMaxUnlockedStep(state)).toBe("environment")
-
     state.environment.customDomain = "app.example.com"
 
     expect(getMaxUnlockedStep(state)).toBe("monitor")
