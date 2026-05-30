@@ -189,6 +189,16 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         }
       }
 
+      // Handle "NO_BILLING_ACCOUNT" error - org has no billing setup
+      if (error instanceof Error && error.message === "NO_BILLING_ACCOUNT") {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BILLING_NOT_CONFIGURED",
+          message: "No billing account configured for this organization.",
+        }
+      }
+
       if (error instanceof InsufficientQuotaError) {
         set.status = 422
         return { ok: false, error: "INSUFFICIENT_QUOTA", message: error.message }
