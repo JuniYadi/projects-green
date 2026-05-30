@@ -30,7 +30,6 @@ jobs:
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
             echo "TARGET_BRANCH=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
             echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}" >> $GITHUB_OUTPUT
-            echo "REVIEW_BODY_FILE=${{ github.event.review.body }}" >> $GITHUB_OUTPUT
           else
             echo "PR_NUMBER=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
             TARGET=$(gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }} --jq '.base.ref')
@@ -47,14 +46,8 @@ jobs:
       - name: Get review body
         id: review-body
         run: |
-          if [ "${{ github.event_name }}" == "pull_request_review" ]; then
-            # Write review body using heredoc to prevent code injection
-            cat > /tmp/review_body.md << 'GITHUB_BODY'
-            ${{ github.event.review.body }}
-            GITHUB_BODY
-          else
-            gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}/reviews --jq '.[-1].body' > /tmp/review_body.md
-          fi
+          # Always fetch review body via API to avoid code injection
+          gh api repos/${{ github.repository }}/pulls/${{ steps.pr-info.outputs.PR_NUMBER }}/reviews --jq '.[-1].body' > /tmp/review_body.md
 
       - name: Extract fix prompt
         id: fix-prompt
