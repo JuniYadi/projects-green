@@ -42,6 +42,19 @@ describe("ResultPanel", () => {
     expect(view.getByText("Deployment in progress")).toBeInTheDocument()
   })
 
+  it("shows in-progress message for deploying status", () => {
+    const view = render(
+      <ResultPanel
+        status="deploying"
+        failureReason={null}
+        attempt={3}
+        onRetry={mock()}
+        onEditSettings={mock()}
+      />
+    )
+    expect(view.getByText("Deployment in progress")).toBeInTheDocument()
+  })
+
   it("shows live status for running status", () => {
     const view = render(
       <ResultPanel
