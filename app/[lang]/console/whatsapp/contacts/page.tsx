@@ -157,13 +157,10 @@ export default function WhatsAppContactsPage() {
   }, [])
 
   React.useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
+    queueMicrotask(() => {
       void loadContacts()
       void loadGroups()
-    }, 0)
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
+    })
   }, [loadContacts, loadGroups])
 
   // ── Filtered contacts (client-side search) ──────────────────────────────
@@ -184,6 +181,11 @@ export default function WhatsAppContactsPage() {
   const handleAdd = async () => {
     if (!formData.phoneNumber.trim()) {
       toast.error("Phone number is required.")
+      return
+    }
+
+    if (!formData.contactGroupId) {
+      toast.error("Group is required.")
       return
     }
 
@@ -213,6 +215,11 @@ export default function WhatsAppContactsPage() {
     if (!editingContact) return
     if (!formData.phoneNumber.trim()) {
       toast.error("Phone number is required.")
+      return
+    }
+
+    if (!formData.contactGroupId) {
+      toast.error("Group is required.")
       return
     }
 
@@ -586,7 +593,13 @@ export default function WhatsAppContactsPage() {
       </Dialog>
 
       {/* ── Edit Contact Dialog ─────────────────────────────────────────── */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setEditingContact(null)
+          setEditDialogOpen(open)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Contact</DialogTitle>
