@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getSubscriptions } from "@/lib/billing-client"
 import type { BillingSubscriptions } from "@/lib/billing-client"
 import { GlobeIcon, RocketLaunchIcon } from "@phosphor-icons/react"
 
@@ -15,13 +16,8 @@ export default function SubscriptionPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const response = await fetch("/api/billing/subscriptions")
-        const json = await response.json()
-        if (json.ok) {
-          setData(json)
-        } else {
-          setError(json.message || "Failed to load subscriptions")
-        }
+        const result = await getSubscriptions()
+        setData(result)
       } catch {
         setError("Failed to load subscriptions")
       } finally {
