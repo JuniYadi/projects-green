@@ -36,10 +36,10 @@ type AdminAdjustmentsRouteDeps = {
 const defaultDeps: AdminAdjustmentsRouteDeps = {
   authenticate: () => withAuth(),
   getPlatformRole: getPlatformRoleForUser,
-  isAdmin: (actor) => {
-    if (actor.platformRole === "super_admin") return true
-    return actor.tenantRole === "admin" || actor.tenantRole === "owner"
-  },
+  isAdmin: (actor) =>
+    actor.platformRole === "super_admin" ||
+    actor.tenantRole === "admin" ||
+    actor.tenantRole === "owner",
 }
 
 const toUnauthorized = (set: RouteSet) => {
