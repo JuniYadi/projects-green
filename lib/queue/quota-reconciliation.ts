@@ -157,6 +157,7 @@ export const enqueueQuotaReconciliation = async (
 }
 
 export const __testing = {
+  parseRedisDb,
   async resetQueueCache() {
     if (!sharedQueue) {
       return

@@ -1,137 +1,77 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test"
-import { Prisma } from "@prisma/client"
-import Decimal = Prisma.Decimal
+import { describe, expect, it, mock } from "bun:test"
 
-// Mock Redis connection
-const mockQueueAdd = mock()
+import { createQuotaReconciliationQueue, __testing } from "./quota-reconciliation"
 
-const mockQueue = {
-  add: mockQueueAdd,
-}
+const { parseRedisDb } = __testing
 
-mock.module("@/lib/queue/quota-reconciliation", () => {
-  // Return minimal mock that doesn't recursively import itself
-  return {
-    QUOTA_RECONCILIATION_QUEUE: "quota-reconciliation",
-    QUOTA_RECONCILIATION_JOB: "quota-reconciliation-job",
-    getSharedQueue: () => mockQueue,
-    __testing: {
-      resetQueueCache: mock(),
-    },
-  }
+describe("parseRedisDb", () => {
+  it("returns 0 for empty path", () => {
+    expect(parseRedisDb("")).toBe(0)
+  })
+
+  it("returns 0 for root path", () => {
+    expect(parseRedisDb("/")).toBe(0)
+  })
+
+  it("parses numeric db index", () => {
+    expect(parseRedisDb("/5")).toBe(5)
+    expect(parseRedisDb("/0")).toBe(0)
+    expect(parseRedisDb("/15")).toBe(15)
+  })
+
+  it("throws for non-numeric path", () => {
+    expect(() => parseRedisDb("/abc")).toThrow(
+      'Expected empty path or numeric DB index.'
+    )
+  })
+
+  it("throws for negative number (dash fails numeric regex)", () => {
+    expect(() => parseRedisDb("/-1")).toThrow(
+      'Expected empty path or numeric DB index.'
+    )
+  })
 })
 
-// Import after mocks
-import {
-  QUOTA_RECONCILIATION_QUEUE,
-  QUOTA_RECONCILIATION_JOB,
-  QuotaReconciliationJobData,
-  createQuotaReconciliationQueue,
-} from "@/lib/queue/quota-reconciliation"
-
-describe("QuotaReconciliationQueue", () => {
-  beforeEach(() => {
-    mock.clearAllMocks()
-  })
-
-  describe("constants", () => {
-    it("defines correct queue name", () => {
-      expect(QUOTA_RECONCILIATION_QUEUE).toBe("quota-reconciliation")
+describe("createQuotaReconciliationQueue", () => {
+  it("creates a queue with injected add function", async () => {
+    const add = mock().mockResolvedValue(undefined)
+    const queue = createQuotaReconciliationQueue({
+      queue: { add },
     })
 
-    it("defines correct job name", () => {
-      expect(QUOTA_RECONCILIATION_JOB).toBe("quota-reconciliation-job")
-    })
-  })
+    expect(queue).toHaveProperty("enqueue")
+    expect(queue).toHaveProperty("close")
 
-  describe("createQuotaReconciliationQueue", () => {
-    it("creates queue with custom queue name", () => {
-      const queue = createQuotaReconciliationQueue({
-        queueName: "custom-queue",
-        queue: mockQueue as any,
-      })
-
-      expect(queue).toBeDefined()
-      expect(typeof queue.enqueue).toBe("function")
-      expect(typeof queue.close).toBe("function")
+    await queue.enqueue({
+      organizationId: "org-1",
+      deviceId: "dev-1",
+      direction: "IN",
+      messageId: "msg-1",
+      timestamp: "2025-01-01T00:00:00.000Z",
     })
 
-    it("enqueue adds job with correct data", async () => {
-      const queue = createQuotaReconciliationQueue({
-        queue: {
-          add: mockQueueAdd,
-        } as any,
-      })
-
-      const jobData: QuotaReconciliationJobData = {
+    expect(add).toHaveBeenCalledTimes(1)
+    expect(add).toHaveBeenCalledWith(
+      "quota-reconciliation-job",
+      {
         organizationId: "org-1",
-        deviceId: "device-1",
-        direction: "OUT",
-        messageId: "msg-1",
-        timestamp: new Date().toISOString(),
-      }
-
-      await queue.enqueue(jobData)
-
-      expect(mockQueueAdd).toHaveBeenCalledWith(
-        QUOTA_RECONCILIATION_JOB,
-        jobData,
-        expect.objectContaining({
-          jobId: expect.stringContaining("quota-recon:"),
-        })
-      )
-    })
-
-    it("enqueue uses custom job options", async () => {
-      const customOptions = { attempts: 5 }
-
-      const queue = createQuotaReconciliationQueue({
-        queue: {
-          add: mockQueueAdd,
-        } as any,
-      })
-
-      const jobData: QuotaReconciliationJobData = {
-        organizationId: "org-1",
-        deviceId: "device-1",
-        direction: "OUT",
-        messageId: "msg-1",
-        timestamp: new Date().toISOString(),
-      }
-
-      await queue.enqueue(jobData, customOptions)
-
-      expect(mockQueueAdd).toHaveBeenCalledWith(
-        QUOTA_RECONCILIATION_JOB,
-        jobData,
-        expect.objectContaining(customOptions)
-      )
-    })
-  })
-
-  describe("QuotaReconciliationJobData type", () => {
-    it("validates IN direction", () => {
-      const jobData: QuotaReconciliationJobData = {
-        organizationId: "org-1",
-        deviceId: "device-1",
+        deviceId: "dev-1",
         direction: "IN",
         messageId: "msg-1",
-        timestamp: new Date().toISOString(),
-      }
+        timestamp: "2025-01-01T00:00:00.000Z",
+      },
+      expect.objectContaining({
+        jobId: "quota-recon:org-1:dev-1:msg-1",
+      })
+    )
+  })
 
-      expect(jobData.direction).toBe("IN")
+  it("close is a no-op when queue is injected", async () => {
+    const add = mock().mockResolvedValue(undefined)
+    const queue = createQuotaReconciliationQueue({
+      queue: { add },
     })
 
-    it("validates OUT direction", () => {
-      const jobData: QuotaReconciliationJobData = {
-        organizationId: "org-1",
-        deviceId: "device-1",
-        direction: "OUT",
-        messageId: "msg-1",
-        timestamp: new Date().toISOString(),
-      }
-
-      expect(jobData.direction).toBe("OUT")
-    })
+    await expect(queue.close()).resolves.toBeUndefined()
   })
 })

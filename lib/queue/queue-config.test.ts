@@ -99,4 +99,34 @@ describe("getQueueRuntimeConfig", () => {
       "REDIS_URL must use redis:// or rediss:// protocol"
     )
   })
+
+  test("throws on invalid Redis DB index (non-numeric)", () => {
+    Object.defineProperty(process.env, "NODE_ENV", {
+      value: "production",
+      writable: true,
+      configurable: true,
+    })
+    Object.assign(process.env, {
+      REDIS_URL: "redis://localhost:6379/abc",
+    })
+
+    expect(() => getQueueRuntimeConfig()).toThrow(
+      /non-negative database index/
+    )
+  })
+
+  test("throws on invalid Redis URL format", () => {
+    Object.defineProperty(process.env, "NODE_ENV", {
+      value: "production",
+      writable: true,
+      configurable: true,
+    })
+    Object.assign(process.env, {
+      REDIS_URL: "not a url:::://",
+    })
+
+    expect(() => getQueueRuntimeConfig()).toThrow(
+      "REDIS_URL must be a valid URL"
+    )
+  })
 })

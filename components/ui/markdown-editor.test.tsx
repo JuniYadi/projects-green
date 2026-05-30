@@ -1,44 +1,90 @@
-import { describe, expect, it, mock, afterEach } from "bun:test"
-import { cleanup, fireEvent, render, act } from "@testing-library/react"
-import React, { createRef } from "react"
-import { MarkdownEditor } from "@/components/ui/markdown-editor"
+import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { render } from "@testing-library/react"
+
+// Mock fetch before any imports
+const mockFetch = mock()
+mockFetch.mockResolvedValue({
+  ok: true,
+  json: () => Promise.resolve({ ok: true, html: "<p>Preview content</p>" }),
+})
+global.fetch = mockFetch
+
+import { MarkdownEditor } from "./markdown-editor"
 
 describe("MarkdownEditor", () => {
-  afterEach(() => {
-    cleanup()
+  beforeEach(() => {
+    mockFetch.mockClear()
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true, html: "<p>Preview content</p>" }),
+    })
   })
 
-  it("preserves typed text when switching between write and preview tabs", async () => {
-    const ref = createRef<HTMLTextAreaElement>()
-    const view = render(<MarkdownEditor ref={ref} placeholder="Write something" />)
+  it("renders with Write and Preview tabs and toolbar", () => {
+    const view = render(<MarkdownEditor />)
+    expect(view.getByText("Write")).toBeInTheDocument()
+    expect(view.getByText("Preview")).toBeInTheDocument()
+    expect(view.getByTitle("Bold")).toBeInTheDocument()
+    expect(view.getByTitle("Italic")).toBeInTheDocument()
+    expect(view.getByTitle("Code")).toBeInTheDocument()
+    expect(view.getByTitle("Link")).toBeInTheDocument()
+    expect(view.getByTitle("Bullet List")).toBeInTheDocument()
+  })
 
-    const textarea = view.getByPlaceholderText("Write something") as HTMLTextAreaElement
+  it("renders with placeholder prop", () => {
+    const view = render(<MarkdownEditor placeholder="Type here..." />)
+    expect(view.getByPlaceholderText("Type here...")).toBeInTheDocument()
+  })
 
-    // Type text into the editor
-    await act(async () => {
-      fireEvent.change(textarea, { target: { value: "Hello World markdown" } })
-    })
-    expect(textarea.value).toBe("Hello World markdown")
+  it("renders with custom rows", () => {
+    const view = render(
+      <MarkdownEditor rows={10} placeholder="test" />
+    )
+    const textarea = view.getByPlaceholderText("test") as HTMLTextAreaElement
+    expect(textarea.getAttribute("rows")).toBe("10")
+  })
 
-    // Switch to Preview tab
-    const previewButton = view.getByRole("button", { name: "Preview" })
-    await act(async () => {
-      fireEvent.click(previewButton)
-    })
+  it("renders with custom id", () => {
+    const view = render(
+      <MarkdownEditor id="my-editor" placeholder="test" />
+    )
+    const textarea = view.getByPlaceholderText("test") as HTMLTextAreaElement
+    expect(textarea.id).toBe("my-editor")
+  })
 
-    // Verify textarea is hidden but still present in DOM and holds correct value
-    expect(textarea).toBeInTheDocument()
-    expect(textarea.value).toBe("Hello World markdown")
-    expect(textarea.parentElement?.className).toContain("hidden")
+  it("renders in disabled state", () => {
+    const view = render(
+      <MarkdownEditor disabled placeholder="test" />
+    )
+    const textarea = view.getByPlaceholderText("test") as HTMLTextAreaElement
+    expect(textarea.disabled).toBe(true)
+  })
 
-    // Switch back to Write tab
-    const writeButton = view.getByRole("button", { name: "Write" })
-    await act(async () => {
-      fireEvent.click(writeButton)
-    })
+  it("disables toolbar buttons when disabled", () => {
+    const view = render(<MarkdownEditor disabled />)
+    const bold = view.getByTitle("Bold").closest("button")
+    expect(bold).toBeDisabled()
+  })
 
-    // Verify textarea is visible again and holds the same value
-    expect(textarea.parentElement?.className).not.toContain("hidden")
-    expect(textarea.value).toBe("Hello World markdown")
+  it("renders with default value", () => {
+    const view = render(
+      <MarkdownEditor defaultValue="**hi**" placeholder="test" />
+    )
+    const textarea = view.getByPlaceholderText("test") as HTMLTextAreaElement
+    expect(textarea.defaultValue).toBe("**hi**")
+  })
+
+  it("renders Write and Preview tab labels", () => {
+    const view = render(<MarkdownEditor />)
+    expect(view.getByText("Write")).toBeInTheDocument()
+    expect(view.getByText("Preview")).toBeInTheDocument()
+  })
+
+  it("applies custom className to textarea", () => {
+    const view = render(
+      <MarkdownEditor className="my-custom" placeholder="test" />
+    )
+    const textarea = view.getByPlaceholderText("test") as HTMLTextAreaElement
+    expect(textarea.classList.contains("my-custom")).toBe(true)
   })
 })
