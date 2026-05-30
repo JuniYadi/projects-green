@@ -53,6 +53,7 @@ jobs:
           PR_NUM="${{ steps.pr-info.outputs.PR_NUMBER }}"
           OWNER=$(echo "$REPO" | cut -d'/' -f1)
           REPO_NAME=$(echo "$REPO" | cut -d'/' -f2)
+          export PR_NUM OWNER REPO_NAME
 
           python3 << 'PYTHON_SCRIPT'
           import json, subprocess, sys, os
