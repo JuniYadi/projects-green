@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { InvoiceTable } from "@/components/billing/invoice-table"
+import { getInvoices } from "@/lib/billing-client"
 import type { BillingInvoices } from "@/lib/billing-client"
 
 export default function InvoicesPage() {
@@ -15,13 +16,8 @@ export default function InvoicesPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const response = await fetch("/api/billing/invoices")
-        const json = await response.json()
-        if (json.ok) {
-          setData(json)
-        } else {
-          setError(json.message || "Failed to load invoices")
-        }
+        const result = await getInvoices()
+        setData(result)
       } catch {
         setError("Failed to load invoices")
       } finally {
@@ -68,7 +64,7 @@ export default function InvoicesPage() {
           <CardTitle className="text-base">Billing History</CardTitle>
         </CardHeader>
         <CardContent>
-          {data?.ok && data.invoices.length > 0 ? (
+          {data?.invoices.length ? (
             <InvoiceTable invoices={data.invoices} lang="en" />
           ) : (
             <div className="py-12 text-center">
