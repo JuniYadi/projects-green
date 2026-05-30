@@ -169,6 +169,22 @@ export const whatsappClient = {
       }),
   },
 
+  conversations: {
+    list: (params?: { contactPhone?: string }) =>
+      serverFetch<{ ok: boolean; conversations: any[] }>("/api/whatsapp/conversations", {
+        params,
+      }),
+    get: (id: string) =>
+      serverFetch<{ ok: boolean; conversation: any }>(`/api/whatsapp/conversations/${id}`),
+    create: (input: { contactPhone: string; whatsappDeviceId?: string | null }) =>
+      serverFetch<{ ok: boolean; conversation: any }>("/api/whatsapp/conversations", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    delete: (id: string) =>
+      serverFetch<{ ok: boolean }>(`/api/whatsapp/conversations/${id}`, { method: "DELETE" }),
+  },
+
   contacts: {
     list: (params?: { contactGroupId?: string; status?: string; phoneNumber?: string }) =>
       serverFetch<{ ok: boolean; contacts: WhatsAppContact[] }>("/api/whatsapp/contacts", {

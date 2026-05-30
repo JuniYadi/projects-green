@@ -45,6 +45,7 @@ jobs:
         id: review-body
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           PR_NUM="${{ steps.pr-info.outputs.PR_NUMBER }}"
           # Always fetch review body via API to avoid code injection
@@ -59,6 +60,10 @@ jobs:
           import re
           import os
 
+          def set_output(name, value):
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write(f"{name}={value}\n")
+
           try:
             with open('/tmp/review_body.md', 'r') as f:
               content = f.read()
@@ -66,8 +71,7 @@ jobs:
             # Find the <details> block
             details_match = re.search(r'<details>(.*?)</details>', content, re.DOTALL)
             if not details_match:
-              print("HAS_FIX=false", flush=True)
-              print("No <details> block found in review body", flush=True)
+              set_output("HAS_FIX", "false")
               sys.exit(0)
 
             details_content = details_match.group(1)
@@ -75,28 +79,25 @@ jobs:
             # Find code blocks (```) inside details
             code_blocks = re.findall(r'```(?:\w*)\n(.*?)```', details_content, re.DOTALL)
             if not code_blocks:
-              print("HAS_FIX=false", flush=True)
-              print("No code blocks found in <details>", flush=True)
+              set_output("HAS_FIX", "false")
               sys.exit(0)
 
             # Use the last/largest code block as the fix prompt
             fix_prompt = code_blocks[-1].strip()
 
             if not fix_prompt:
-              print("HAS_FIX=false", flush=True)
-              print("Fix prompt is empty", flush=True)
+              set_output("HAS_FIX", "false")
               sys.exit(0)
 
             # Write to file for safe multi-line output
             with open('/tmp/fix_prompt.txt', 'w') as f:
               f.write(fix_prompt)
 
-            print("HAS_FIX=true", flush=True)
-            print(f"Extracted fix prompt ({len(fix_prompt)} chars)", flush=True)
+            set_output("HAS_FIX", "true")
 
           except Exception as e:
             print(f"ERROR: Failed to extract fix prompt: {e}", flush=True)
-            print("HAS_FIX=false", flush=True)
+            set_output("HAS_FIX", "false")
             sys.exit(1)
           PYTHON_SCRIPT
 
@@ -110,6 +111,8 @@ jobs:
 
       - name: Check for fix prompt
         if: steps.fix-prompt.outputs.HAS_FIX != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           echo "No fix prompt found. Posting comment and exiting."
           gh pr comment ${{ steps.pr-info.outputs.PR_NUMBER }} \
@@ -192,6 +195,8 @@ jobs:
           git push origin "$FIX_BRANCH"
 
       - name: Create fix PR
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
           TARGET_BRANCH="${{ steps.pr-info.outputs.TARGET_BRANCH }}"
@@ -209,6 +214,8 @@ jobs:
             --body-file /tmp/pr_body.txt
 
       - name: Post comment on original PR
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
           FIX_PR_URL=$(gh pr view "$FIX_BRANCH" --json url --jq '.url')

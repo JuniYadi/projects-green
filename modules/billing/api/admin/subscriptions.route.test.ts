@@ -45,6 +45,48 @@ describe("AdminSubscriptionRoute", () => {
   const mockPlatformRole = async () => "super_admin" as PlatformAccessRole
   const mockIsAdmin = () => true
 
+  describe("defaultDeps.isAdmin", () => {
+    const isAdmin = (actor: {
+      platformRole: PlatformAccessRole
+      tenantRole: string | null | undefined
+    }) => {
+      if (actor.platformRole === "super_admin") return true
+      return actor.tenantRole === "admin" || actor.tenantRole === "owner"
+    }
+
+    it("returns true for super_admin with null tenant role (the bug scenario)", () => {
+      expect(isAdmin({ platformRole: "super_admin", tenantRole: null })).toBe(true)
+    })
+
+    it("returns true for super_admin with undefined tenant role", () => {
+      expect(isAdmin({ platformRole: "super_admin", tenantRole: undefined })).toBe(true)
+    })
+
+    it("returns true for super_admin with admin tenant role", () => {
+      expect(isAdmin({ platformRole: "super_admin", tenantRole: "admin" })).toBe(true)
+    })
+
+    it("returns true for non-super_admin with admin tenant role", () => {
+      expect(isAdmin({ platformRole: "none", tenantRole: "admin" })).toBe(true)
+    })
+
+    it("returns true for non-super_admin with owner tenant role", () => {
+      expect(isAdmin({ platformRole: "none", tenantRole: "owner" })).toBe(true)
+    })
+
+    it("returns false for non-super_admin with member tenant role", () => {
+      expect(isAdmin({ platformRole: "none", tenantRole: "member" })).toBe(false)
+    })
+
+    it("returns false for non-super_admin with null tenant role", () => {
+      expect(isAdmin({ platformRole: "none", tenantRole: null })).toBe(false)
+    })
+
+    it("returns false for non-super_admin with undefined tenant role", () => {
+      expect(isAdmin({ platformRole: "none", tenantRole: undefined })).toBe(false)
+    })
+  })
+
   describe("PATCH /admin/subscriptions/:id", () => {
     it("returns 401 when no auth", async () => {
       const app = new Elysia()

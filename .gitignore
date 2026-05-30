@@ -42,3 +42,6 @@ next-env.d.ts
 temp/
 goal/
 goals/
+
+# Claude gitignore
+.claude/worktrees/
