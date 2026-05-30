@@ -1,11 +1,16 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import { Prisma } from "@prisma/client"
+import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 import { adminAdjustSchema } from "../billing.schemas"
+import { NegativeBalanceError } from "../../types"
+
+const MAX_BALANCE = new Decimal("999999999.99")
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -116,28 +121,64 @@ export const createAdminBillingRoutes = (
       }
 
       try {
-        // Find billing account for tenant
-        const account = await prisma.billingAccount.findUnique({
-          where: { tenantId },
+        // Perform adjustment in transaction to prevent race conditions
+        const result = await prisma.$transaction(async (tx) => {
+          const account = await tx.billingAccount.findUnique({
+            where: { tenantId },
+          })
+
+          if (!account) {
+            throw new Error("NOT_FOUND")
+          }
+
+          const balanceBefore = account.balance
+          const balanceAfter =
+            type === "CREDIT"
+              ? balanceBefore.plus(amount)
+              : balanceBefore.minus(amount)
+
+          if (balanceAfter.lt(0)) {
+            throw new NegativeBalanceError()
+          }
+
+          if (balanceAfter.gt(MAX_BALANCE)) {
+            throw new Error("BALANCE_LIMIT_EXCEEDED")
+          }
+
+          const userId = auth.user?.id ?? "unknown"
+
+          const [updatedAccount, adjustment] = await Promise.all([
+            tx.billingAccount.update({
+              where: { id: account.id },
+              data: { balance: balanceAfter },
+            }),
+            tx.billingAdjustment.create({
+              data: {
+                billingAccountId: account.id,
+                adjustmentType: type,
+                amount,
+                currency: "IDR",
+                reason,
+                metadataJson: {
+                  performedBy: userId,
+                  actorRole: actor.platformRole === "super_admin" ? "super_admin" : actor.tenantRole,
+                },
+              },
+            }),
+          ])
+
+          return { updatedAccount, adjustment }
         })
 
-        if (!account) {
-          set.status = 404
-          return {
-            ok: false as const,
-            error: "NOT_FOUND" as const,
-            message: "Billing account not found for the specified tenant.",
-          }
+        return {
+          ok: true as const,
+          adjustmentId: result.adjustment.id,
+          newBalanceIdr: result.updatedAccount.balance.toFixed(2),
+          type,
+          amountIdr: amount.toString(),
         }
-
-        // Perform adjustment
-        const balanceBefore = account.balance
-        const balanceAfter =
-          type === "CREDIT"
-            ? balanceBefore.plus(amount)
-            : balanceBefore.minus(amount)
-
-        if (balanceAfter.lt(0)) {
+      } catch (error) {
+        if (error instanceof NegativeBalanceError) {
           set.status = 400
           return {
             ok: false as const,
@@ -146,34 +187,24 @@ export const createAdminBillingRoutes = (
           }
         }
 
-        const [updatedAccount, adjustment] = await prisma.$transaction([
-          prisma.billingAccount.update({
-            where: { id: account.id },
-            data: { balance: balanceAfter },
-          }),
-          prisma.billingAdjustment.create({
-            data: {
-              billingAccountId: account.id,
-              adjustmentType: type,
-              amount,
-              currency: "IDR",
-              reason,
-              metadataJson: {
-                performedBy: auth.user.id,
-                actorRole: actor.platformRole === "super_admin" ? "super_admin" : actor.tenantRole,
-              },
-            },
-          }),
-        ])
-
-        return {
-          ok: true as const,
-          adjustmentId: adjustment.id,
-          newBalanceIdr: updatedAccount.balance.toFixed(2),
-          type,
-          amountIdr: amount.toString(),
+        if (error instanceof Error && error.message === "BALANCE_LIMIT_EXCEEDED") {
+          set.status = 400
+          return {
+            ok: false as const,
+            error: "BALANCE_LIMIT_EXCEEDED" as const,
+            message: "Adjustment would exceed maximum balance.",
+          }
         }
-      } catch (error) {
+
+        if (error instanceof Error && error.message === "NOT_FOUND") {
+          set.status = 404
+          return {
+            ok: false as const,
+            error: "NOT_FOUND" as const,
+            message: "Billing account not found for the specified tenant.",
+          }
+        }
+
         console.error("[AdminAdjust] Error:", error)
         return toServerError(set, "Unable to perform balance adjustment.")
       }
