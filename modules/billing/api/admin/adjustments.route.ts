@@ -178,7 +178,7 @@ export const createAdminAdjustmentsRoutes = (
               id: adj.id,
               billingAccountId: adj.billingAccountId,
               organizationId: adj.billingAccount.organizationId,
-              adjustmentType: adj.adjustmentType,
+              type: adj.adjustmentType,
               amount: adj.amount.toFixed(2),
               currency: adj.currency,
               reason: adj.reason,
