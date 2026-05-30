@@ -58,12 +58,13 @@ export const messageService: MessageService = {
     const usageLedger = new UsageLedgerService(prisma)
 
     // Get billing account to find tenantId
+    // STRICT MODE: Org without billing account cannot send messages
     const billingAccount = await prisma.billingAccount.findUnique({
       where: { organizationId },
     })
 
     if (!billingAccount) {
-      throw new Error("No billing account found for organization")
+      throw new Error("NO_BILLING_ACCOUNT")
     }
 
     const tenantId = billingAccount.tenantId
