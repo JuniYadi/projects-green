@@ -160,7 +160,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
-          track_progress: true
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
             --max-turns 30
