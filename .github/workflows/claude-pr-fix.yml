@@ -6,38 +6,34 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'PR number to fix'
-        required: true
+        description: 'PR number to fix (required for manual trigger)'
+        required: false
         type: number
+
+concurrency:
+  group: pr-fix-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
 
 jobs:
   fix:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.review.state == 'CHANGES_REQUESTED'
     permissions:
       contents: write
       pull-requests: write
-    env:
-      GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Skip if not changes requested
-        if: github.event_name == 'pull_request_review' && github.event.review.state != 'CHANGES_REQUESTED'
-        run: |
-          echo "Review did not request changes. Skipping fix workflow."
-          exit 0
-
       - name: Determine PR number
         id: pr-info
         run: |
-          if [ "${{ github.event_name }}" == "pull_request_review" ]; then
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-            echo "TARGET_BRANCH=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
-            echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            PR_NUM="${{ inputs.pr_number }}"
+            TARGET=$(gh api repos/${{ github.repository }}/pulls/$PR_NUM --jq '.base.ref')
           else
-            echo "PR_NUMBER=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
-            TARGET=$(gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }} --jq '.base.ref')
-            echo "TARGET_BRANCH=$TARGET" >> $GITHUB_OUTPUT
-            echo "PR_AUTHOR=$(gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }} --jq '.user.login')" >> $GITHUB_OUTPUT
+            PR_NUM="${{ github.event.pull_request.number }}"
+            TARGET="${{ github.event.pull_request.base.ref }}"
           fi
+          echo "PR_NUMBER=$PR_NUM" >> $GITHUB_OUTPUT
+          echo "TARGET_BRANCH=$TARGET" >> $GITHUB_OUTPUT
 
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -48,28 +44,67 @@ jobs:
       - name: Get review body
         id: review-body
         run: |
+          PR_NUM="${{ steps.pr-info.outputs.PR_NUMBER }}"
           # Always fetch review body via API to avoid code injection
-          gh api repos/${{ github.repository }}/pulls/${{ steps.pr-info.outputs.PR_NUMBER }}/reviews --jq '.[-1].body' > /tmp/review_body.md
+          gh api repos/${{ github.repository }}/pulls/$PR_NUM/reviews --jq '.[-1].body' > /tmp/review_body.md
 
       - name: Extract fix prompt
         id: fix-prompt
         run: |
-          # Extract content between the markdown code blocks in the fix prompt section
-          # Look for the raw prompt block between ``` markers
-          FIX_PROMPT=$(sed -n '/<details>/,/<\/details>/p' /tmp/review_body.md | sed -n '/```/,/```/p' | sed '1d;$d')
+          # Use Python for robust markdown extraction with explicit error handling
+          python3 << 'PYTHON_SCRIPT'
+          import sys
+          import re
+          import os
 
-          if [ -z "$FIX_PROMPT" ]; then
-            echo "FIX_PROMPT=" >> $GITHUB_OUTPUT
-            echo "No fix prompt found in review body"
-            echo "HAS_FIX=false" >> $GITHUB_OUTPUT
-          else
-            # Remove leading/trailing whitespace
-            FIX_PROMPT=$(echo "$FIX_PROMPT" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            echo "FIX_PROMPT<<EOF" >> $GITHUB_OUTPUT
-            echo "$FIX_PROMPT" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            echo "HAS_FIX=true" >> $GITHUB_OUTPUT
-          fi
+          try:
+            with open('/tmp/review_body.md', 'r') as f:
+              content = f.read()
+
+            # Find the <details> block
+            details_match = re.search(r'<details>(.*?)</details>', content, re.DOTALL)
+            if not details_match:
+              print("HAS_FIX=false", flush=True)
+              print("No <details> block found in review body", flush=True)
+              sys.exit(0)
+
+            details_content = details_match.group(1)
+
+            # Find code blocks (```) inside details
+            code_blocks = re.findall(r'```(?:\w*)\n(.*?)```', details_content, re.DOTALL)
+            if not code_blocks:
+              print("HAS_FIX=false", flush=True)
+              print("No code blocks found in <details>", flush=True)
+              sys.exit(0)
+
+            # Use the last/largest code block as the fix prompt
+            fix_prompt = code_blocks[-1].strip()
+
+            if not fix_prompt:
+              print("HAS_FIX=false", flush=True)
+              print("Fix prompt is empty", flush=True)
+              sys.exit(0)
+
+            # Write to file for safe multi-line output
+            with open('/tmp/fix_prompt.txt', 'w') as f:
+              f.write(fix_prompt)
+
+            print("HAS_FIX=true", flush=True)
+            print(f"Extracted fix prompt ({len(fix_prompt)} chars)", flush=True)
+
+          except Exception as e:
+            print(f"ERROR: Failed to extract fix prompt: {e}", flush=True)
+            print("HAS_FIX=false", flush=True)
+            sys.exit(1)
+          PYTHON_SCRIPT
+
+      - name: Set fix prompt output
+        if: steps.fix-prompt.outputs.HAS_FIX == 'true'
+        run: |
+          FIX_PROMPT=$(cat /tmp/fix_prompt.txt)
+          echo "FIX_PROMPT<<EOF" >> $GITHUB_OUTPUT
+          echo "$FIX_PROMPT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Check for fix prompt
         if: steps.fix-prompt.outputs.HAS_FIX != 'true'
@@ -100,11 +135,15 @@ jobs:
         run: bun run db:generate
 
       - name: Create fix branch
+        id: create-branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          FIX_BRANCH="fix/pr-${{ steps.pr-info.outputs.PR_NUMBER }}-review-fixes"
+          # Use timestamp to prevent branch conflicts on retry
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          FIX_BRANCH="fix/pr-${{ steps.pr-info.outputs.PR_NUMBER }}-review-fixes-${TIMESTAMP}"
+          echo "FIX_BRANCH=$FIX_BRANCH" >> $GITHUB_OUTPUT
           git checkout -b "$FIX_BRANCH"
 
       - name: Run Claude Code Fix
@@ -147,13 +186,13 @@ jobs:
 
       - name: Push fix branch
         run: |
-          FIX_BRANCH="fix/pr-${{ steps.pr-info.outputs.PR_NUMBER }}-review-fixes"
+          FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
           git push origin "$FIX_BRANCH"
 
       - name: Create fix PR
         run: |
-          FIX_BRANCH="fix/pr-${{ steps.pr-info.outputs.PR_NUMBER }}-review-fixes"
-          TARGET_BRANCH="${{ steps.pr-info.outputs.PR_TARGET_BRANCH }}"
+          FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
+          TARGET_BRANCH="${{ steps.pr-info.outputs.TARGET_BRANCH }}"
 
           printf '%s\n%s\n%s\n' \
             "🤖 Auto-generated fix for PR #${{ steps.pr-info.outputs.PR_NUMBER }}" \
@@ -169,8 +208,16 @@ jobs:
 
       - name: Post comment on original PR
         run: |
-          FIX_BRANCH="fix/pr-${{ steps.pr-info.outputs.PR_NUMBER }}-review-fixes"
+          FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
           FIX_PR_URL=$(gh pr view "$FIX_BRANCH" --json url --jq '.url')
           PR_NUM="${{ steps.pr-info.outputs.PR_NUMBER }}"
           printf '%s\n%s\n' "🤖 Auto-fix PR created: $FIX_PR_URL" "Please review the fix PR and merge it before merging this PR." > /tmp/comment.txt
           gh pr comment "$PR_NUM" --body-file /tmp/comment.txt
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          echo "Workflow failed. Cleaning up fix branch..."
+          FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
+          git push origin --delete "$FIX_BRANCH" 2>/dev/null || true
+          echo "Cleanup complete. The original author can manually trigger again if needed."
