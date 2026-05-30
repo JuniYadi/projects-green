@@ -117,18 +117,32 @@ export default function WhatsAppDevicesPage() {
   }
 
   React.useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadDevices()
-    }, 0)
-
-    return () => {
-      window.clearTimeout(timeoutId)
+    const initDevices = async () => {
+      try {
+        const { devices: items } = await whatsappClient.devices.list()
+        setDevices(items)
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to load WhatsApp devices."
+        )
+      } finally {
+        setIsLoading(false)
+      }
     }
+
+    initDevices()
   }, [])
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   const handleAddDevice = async () => {
+    if (!addForm.name.trim() || !addForm.phoneNumber.trim()) {
+      toast.error("Name and phone number are required.")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -153,6 +167,11 @@ export default function WhatsAppDevicesPage() {
 
   const handleEditDevice = async () => {
     if (!editingDevice) return
+
+    if (!editForm.name.trim() || !editForm.phoneNumber.trim()) {
+      toast.error("Name and phone number are required.")
+      return
+    }
 
     setIsSubmitting(true)
 
@@ -204,7 +223,7 @@ export default function WhatsAppDevicesPage() {
     setEditForm({
       name: device.name,
       phoneNumber: device.phoneNumber,
-      environment: device.environment ?? "LIVE",
+      environment: device.environment,
     })
     setEditDialogOpen(true)
   }
@@ -410,6 +429,8 @@ export default function WhatsAppDevicesPage() {
                   setAddForm({ ...addForm, name: e.target.value })
                 }
                 placeholder="My WhatsApp Device"
+                required
+                aria-required="true"
               />
             </div>
             <div className="grid gap-2">
@@ -421,6 +442,10 @@ export default function WhatsAppDevicesPage() {
                   setAddForm({ ...addForm, phoneNumber: e.target.value })
                 }
                 placeholder="+1234567890"
+                inputMode="tel"
+                autoComplete="tel"
+                required
+                aria-required="true"
               />
             </div>
             <div className="grid gap-2">
@@ -484,6 +509,8 @@ export default function WhatsAppDevicesPage() {
                   setEditForm({ ...editForm, name: e.target.value })
                 }
                 placeholder="My WhatsApp Device"
+                required
+                aria-required="true"
               />
             </div>
             <div className="grid gap-2">
@@ -495,6 +522,10 @@ export default function WhatsAppDevicesPage() {
                   setEditForm({ ...editForm, phoneNumber: e.target.value })
                 }
                 placeholder="+1234567890"
+                inputMode="tel"
+                autoComplete="tel"
+                required
+                aria-required="true"
               />
             </div>
             <div className="grid gap-2">
