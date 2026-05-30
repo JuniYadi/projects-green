@@ -215,7 +215,7 @@ export function LoginForm({
         <FieldGroup>
           {errorMessage ? (
             <Alert variant="destructive">
-              <XCircleIcon className="size-4" />
+              <XCircleIcon className="size-4 shrink-0" />
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           ) : null}
