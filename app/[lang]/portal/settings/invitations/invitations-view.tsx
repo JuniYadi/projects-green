@@ -86,7 +86,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
 
       if (res.ok) {
         setEmail("")
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         void loadData()
       } else {
         setError(res.message || "Failed to send invitation")
@@ -103,7 +103,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     try {
       const res = await fetch(path, { method: "POST" }).then(r => r.json())
       if (res.ok) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         void loadData()
       } else {
         setError(res.message || "Action failed")

@@ -176,7 +176,7 @@ describe("AdminAdjustmentsRoute", () => {
     const body = await response.json()
     expect(body.ok).toBe(true)
     expect(body.adjustments).toHaveLength(1)
-    expect(body.adjustments[0].adjustmentType).toBe("CREDIT")
+    expect(body.adjustments[0].type).toBe("CREDIT")
   })
 
   it("handles pagination", async () => {

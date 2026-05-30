@@ -52,7 +52,7 @@ export const whatsappAuthMock = {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },
@@ -66,7 +66,7 @@ export const whatsappAuthMock = {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },
@@ -76,7 +76,7 @@ export const whatsappAuthMock = {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },
@@ -86,7 +86,7 @@ export const whatsappAuthMock = {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },
@@ -96,7 +96,7 @@ export const whatsappAuthMock = {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },

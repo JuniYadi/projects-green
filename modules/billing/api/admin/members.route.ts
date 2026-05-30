@@ -197,10 +197,6 @@ export const createAdminMembersRoutes = (
             0
           )
 
-          // Get user info from subscriptions (assuming each tenant has one user context)
-          // In real implementation, this would come from WorkOS organization memberships
-          const firstSubscription = tenantSubscriptions[0]
-
           // Calculate active subscription count
           const activeSubscriptionCount = tenantSubscriptions.filter(
             (s) => s.status === "ACTIVE"

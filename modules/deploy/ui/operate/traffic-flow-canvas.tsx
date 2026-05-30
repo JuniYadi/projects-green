@@ -59,7 +59,7 @@ export function TrafficFlowCanvas({
     if (containerRef.current) {
       setOffset(computeCenterOffset())
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [isMounted])
   
   // Simulation speed & flow toggle
