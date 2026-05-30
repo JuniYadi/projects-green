@@ -216,12 +216,12 @@ describe("AdminMembersRoute", () => {
       expect(body.ok).toBe(true)
       expect(body.members).toHaveLength(2)
 
-      const tenant1Member = body.members.find((m: any) => m.tenantId === "tenant-1")
+      const tenant1Member = body.members.find((m: { tenantId: string }) => m.tenantId === "tenant-1")
       expect(tenant1Member.subscriptionCount).toBe(2)
       expect(tenant1Member.monthlySpendIdr).toBe("25000.00")
       expect(tenant1Member.balanceIdr).toBe("150000.00")
 
-      const tenant2Member = body.members.find((m: any) => m.tenantId === "tenant-2")
+      const tenant2Member = body.members.find((m: { tenantId: string }) => m.tenantId === "tenant-2")
       expect(tenant2Member.subscriptionCount).toBe(1)
       expect(tenant2Member.monthlySpendIdr).toBe("15000.00")
       expect(tenant2Member.balanceIdr).toBe("75000.50")
