@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { XCircleIcon } from "@phosphor-icons/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,10 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert"
 
 type ApiErrorPayload = {
   ok?: false
@@ -59,15 +63,6 @@ export function LoginForm({
   const [serverFieldErrors, setServerFieldErrors] = useState<
     Record<string, string[]>
   >({})
-
-  // Show error as toast on mount if errorMessage is present
-  useEffect(() => {
-    if (errorMessage) {
-      toast.error(errorMessage, {
-        duration: 6000,
-      })
-    }
-  }, [errorMessage])
 
   const clearServerFieldError = (fieldName: "email" | "code") => {
     setServerFieldErrors((previous) => {
@@ -218,6 +213,12 @@ export function LoginForm({
         }}
       >
         <FieldGroup>
+          {errorMessage ? (
+            <Alert variant="destructive">
+              <XCircleIcon className="size-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          ) : null}
           {submitError ? (
             <p className="text-xs text-destructive" role="alert">
               {submitError}
