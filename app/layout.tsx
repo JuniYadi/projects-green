@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { localeCookieName } from "@/lib/i18n/config"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 
 const fontSans = Geist({
@@ -39,6 +40,7 @@ export default async function RootLayout({
             <TooltipProvider>{children}</TooltipProvider>
           </ThemeProvider>
         </AuthKitProvider>
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   )

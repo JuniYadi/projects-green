@@ -3,6 +3,27 @@ import { OauthException } from "@workos-inc/node"
 import { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
+// Suppress verbose WorkOS internal logs with cleaner messages
+const suppressWorkosLogs = () => {
+  const originalError = console.error
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  console.error = (...args: any[]) => {
+    const firstArg = args[0]
+    if (
+      typeof firstArg === "string" &&
+      firstArg.includes("[AuthKit callback error]")
+    ) {
+      const error = args[1]
+      if (error instanceof Error) {
+        // Log simplified message
+        originalError.call(console, "[Auth]", error.message)
+        return
+      }
+    }
+    originalError.apply(console, args)
+  }
+}
+
 const authHandler = handleAuth({
   onError: async ({ error, request }) => {
     const hasErrorObject =
@@ -61,5 +82,6 @@ const authHandler = handleAuth({
 })
 
 export async function GET(request: NextRequest) {
+  suppressWorkosLogs()
   return authHandler(request)
 }

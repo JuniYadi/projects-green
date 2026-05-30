@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -53,11 +54,20 @@ export function LoginForm({
   const [isCodeStep, setIsCodeStep] = useState(false)
   const [isRequestingCode, setIsRequestingCode] = useState(false)
   const [isVerifyingCode, setIsVerifyingCode] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(errorMessage ?? null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   const [serverFieldErrors, setServerFieldErrors] = useState<
     Record<string, string[]>
   >({})
+
+  // Show error as toast on mount if errorMessage is present
+  useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage, {
+        duration: 6000,
+      })
+    }
+  }, [errorMessage])
 
   const clearServerFieldError = (fieldName: "email" | "code") => {
     setServerFieldErrors((previous) => {

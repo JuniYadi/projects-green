@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect } from "bun:test"
 
 describe("callback route error handling", () => {
   it("should transform 'Auth cookie missing' to user-friendly message", () => {
