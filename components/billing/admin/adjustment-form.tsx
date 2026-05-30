@@ -70,6 +70,9 @@ export function AdjustmentForm({
     if (!amount || amount < 1) {
       setAmountError("Minimum amount is 1")
       hasError = true
+    } else if (amount > 999999999) {
+      setAmountError("Maximum amount is 999,999,999")
+      hasError = true
     } else {
       setAmountError(null)
     }
@@ -154,6 +157,7 @@ export function AdjustmentForm({
               name="amount"
               type="number"
               min={1}
+              max={999999999}
               step={1}
               value={amount || ""}
               onChange={(e) => {
