@@ -1,9 +1,13 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import { Prisma } from "@prisma/client"
+import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { topupSchema } from "./billing.schemas"
+
+const MAX_BALANCE = new Decimal("999999999.99")
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -83,12 +87,58 @@ export const createBillingTopupRoutes = (
       const { amount, paymentMethod, referenceId } = parsed.data
 
       try {
-        // Get tenantId from BillingAccount by organizationId
-        const account = await prisma.billingAccount.findUnique({
-          where: { organizationId: auth.organizationId },
+        // Simulated topup - in Phase 2 this will integrate with real payment gateway
+        // Wrap in transaction with max balance check to prevent overflow
+        const orgId = auth.organizationId as string
+
+        const result = await prisma.$transaction(async (tx) => {
+          const account = await tx.billingAccount.findUnique({
+            where: { organizationId: orgId },
+          })
+
+          if (!account) {
+            throw new Error("NOT_FOUND")
+          }
+
+          const balanceAfter = account.balance.plus(amount)
+
+          if (balanceAfter.gt(MAX_BALANCE)) {
+            throw new Error("BALANCE_LIMIT_EXCEEDED")
+          }
+
+          const [updatedAccount, adjustment] = await Promise.all([
+            tx.billingAccount.update({
+              where: { id: account.id },
+              data: { balance: balanceAfter },
+            }),
+            tx.billingAdjustment.create({
+              data: {
+                billingAccountId: account.id,
+                adjustmentType: "CREDIT",
+                amount,
+                currency: "IDR",
+                reason: `Topup via ${paymentMethod}${referenceId ? ` (ref: ${referenceId})` : ""}`,
+                metadataJson: {
+                  paymentMethod,
+                  referenceId,
+                  phase: "simulated",
+                },
+              },
+            }),
+          ])
+
+          return { updatedAccount, adjustment }
         })
 
-        if (!account) {
+        return {
+          ok: true as const,
+          adjustmentId: result.adjustment.id,
+          newBalanceIdr: result.updatedAccount.balance.toFixed(2),
+          amountIdr: amount.toString(),
+          type: "CREDIT" as const,
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message === "NOT_FOUND") {
           set.status = 404
           return {
             ok: false as const,
@@ -97,39 +147,15 @@ export const createBillingTopupRoutes = (
           }
         }
 
-        // Simulated topup - in Phase 2 this will integrate with real payment gateway
-        // For now, we immediately credit the account
-        const [updatedAccount, adjustment] = await prisma.$transaction([
-          prisma.billingAccount.update({
-            where: { id: account.id },
-            data: {
-              balance: { increment: amount },
-            },
-          }),
-          prisma.billingAdjustment.create({
-            data: {
-              billingAccountId: account.id,
-              adjustmentType: "CREDIT",
-              amount,
-              currency: "IDR",
-              reason: `Topup via ${paymentMethod}${referenceId ? ` (ref: ${referenceId})` : ""}`,
-              metadataJson: {
-                paymentMethod,
-                referenceId,
-                phase: "simulated",
-              },
-            },
-          }),
-        ])
-
-        return {
-          ok: true as const,
-          adjustmentId: adjustment.id,
-          newBalanceIdr: updatedAccount.balance.toFixed(2),
-          amountIdr: amount.toString(),
-          type: "CREDIT" as const,
+        if (error instanceof Error && error.message === "BALANCE_LIMIT_EXCEEDED") {
+          set.status = 400
+          return {
+            ok: false as const,
+            error: "BALANCE_LIMIT_EXCEEDED" as const,
+            message: "Topup would exceed maximum balance.",
+          }
         }
-      } catch (error) {
+
         console.error("[BillingTopup] Error:", error)
         return toServerError(set, "Unable to process topup right now.")
       }
