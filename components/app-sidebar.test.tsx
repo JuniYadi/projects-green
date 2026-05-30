@@ -38,9 +38,9 @@ describe("resolveSidebarMenu", () => {
   })
 
   it("marks items active for console utility routes in their context", () => {
-    const invoicesMenu = resolveSidebarMenu({
+    const billingMenu = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/invoices",
+      pathname: "/console/billing",
       locale: "en",
     })
     const supportMenu = resolveSidebarMenu({
@@ -50,11 +50,11 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(
-      invoicesMenu.projects.find((project) => project.name === "Invoices")?.isActive
+      billingMenu.projects.find((project) => project.name === "Billing")?.isActive
     ).toBe(true)
     expect(
-      invoicesMenu.projects.map((project) => project.name)
-    ).toEqual(["Overview", "Invoices", "Support Tickets"])
+      billingMenu.projects.map((project) => project.name)
+    ).toEqual(["Overview", "Billing", "Support Tickets"])
 
     expect(
       supportMenu.projects.find((project) => project.name === "Support Tickets")
@@ -62,7 +62,7 @@ describe("resolveSidebarMenu", () => {
     ).toBe(true)
     expect(
       supportMenu.projects.map((project) => project.name)
-    ).toEqual(["Overview", "Invoices", "Support Tickets"])
+    ).toEqual(["Overview", "Billing", "Support Tickets"])
   })
 
   it("returns hub context when on /console page", () => {
@@ -75,7 +75,7 @@ describe("resolveSidebarMenu", () => {
     // Hub context shows overview items under projects and top-level link under navMain
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
-      "Invoices",
+      "Billing",
       "Support Tickets",
     ])
     expect(projects.find((project) => project.name === "Overview")?.isActive).toBe(true)
@@ -98,7 +98,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual(["Applications"])
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
-      "Invoices",
+      "Billing",
       "Support Tickets",
     ])
     expect(

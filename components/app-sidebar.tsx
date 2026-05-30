@@ -25,6 +25,7 @@ import {
   ReceiptIcon,
   RocketLaunchIcon,
   GearSixIcon,
+  WalletIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
@@ -113,10 +114,10 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       isActive: path === "/console",
     },
     {
-      name: "Invoices",
-      url: localizePathname({ pathname: "/console/invoices", locale }),
-      icon: <ReceiptIcon />,
-      isActive: startsWithRoute(path, "/console/invoices"),
+      name: "Billing",
+      url: localizePathname({ pathname: "/console/billing", locale }),
+      icon: <WalletIcon />,
+      isActive: startsWithRoute(path, "/console/billing"),
     },
     {
       name: "Support Tickets",
