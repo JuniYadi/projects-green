@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
+import { getInvoice } from "@/lib/billing-client"
 import type { InvoiceDetail } from "@/lib/billing-client"
 import { ArrowLeftIcon, DownloadIcon } from "@phosphor-icons/react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -23,13 +24,8 @@ export default function InvoiceDetailPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const response = await fetch(`/api/billing/invoices/${invoiceId}`)
-        const json = await response.json()
-        if (json.ok) {
-          setData(json)
-        } else {
-          setError(json.message || "Failed to load invoice")
-        }
+        const result = await getInvoice(invoiceId)
+        setData(result)
       } catch {
         setError("Failed to load invoice")
       } finally {
