@@ -69,10 +69,26 @@ function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
 
 // ─── Empty form state ───────────────────────────────────────────────────────
 
+type EditFormState = {
+  name: string
+  phoneNumber: string
+  environment: DeviceEnvironment
+  quotaBase: number
+  dailyLimitMessage: number
+}
+
 const emptyFormState = {
   name: "",
   phoneNumber: "",
   environment: "LIVE" as DeviceEnvironment,
+}
+
+const emptyEditFormState: EditFormState = {
+  name: "",
+  phoneNumber: "",
+  environment: "LIVE",
+  quotaBase: 1000,
+  dailyLimitMessage: 500,
 }
 
 // ─── Page component ─────────────────────────────────────────────────────────
@@ -93,7 +109,7 @@ export default function WhatsAppDevicesPage() {
 
   // Form states
   const [addForm, setAddForm] = React.useState(emptyFormState)
-  const [editForm, setEditForm] = React.useState(emptyFormState)
+  const [editForm, setEditForm] = React.useState(emptyEditFormState)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   // ── Data fetching ─────────────────────────────────────────────────────────
@@ -180,6 +196,8 @@ export default function WhatsAppDevicesPage() {
         name: editForm.name,
         phoneNumber: editForm.phoneNumber,
         environment: editForm.environment,
+        quotaBase: editForm.quotaBase,
+        dailyLimitMessage: editForm.dailyLimitMessage,
       })
 
       toast.success("Device updated successfully.")
@@ -224,6 +242,8 @@ export default function WhatsAppDevicesPage() {
       name: device.name,
       phoneNumber: device.phoneNumber,
       environment: device.environment,
+      quotaBase: device.quotaBase,
+      dailyLimitMessage: device.dailyLimitMessage,
     })
     setEditDialogOpen(true)
   }
@@ -547,6 +567,53 @@ export default function WhatsAppDevicesPage() {
                   <SelectItem value="SANDBOX">Sandbox</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-balance">Balance</Label>
+              <Input
+                id="edit-balance"
+                value={
+                  editingDevice
+                    ? new Intl.NumberFormat("id-ID", {
+                        style: "currency",
+                        currency: "IDR",
+                        minimumFractionDigits: 0,
+                      }).format(editingDevice.balance)
+                    : ""
+                }
+                disabled
+                readOnly
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-quota-base">Quota Base (messages)</Label>
+              <Input
+                id="edit-quota-base"
+                type="number"
+                min={0}
+                value={editForm.quotaBase}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    quotaBase: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-daily-limit">Daily Limit (messages)</Label>
+              <Input
+                id="edit-daily-limit"
+                type="number"
+                min={0}
+                value={editForm.dailyLimitMessage}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    dailyLimitMessage: Number(e.target.value),
+                  })
+                }
+              />
             </div>
           </div>
           <DialogFooter>
