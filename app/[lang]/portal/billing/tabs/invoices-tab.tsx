@@ -5,8 +5,10 @@ import Link from "next/link"
 import { type ColumnDef } from "@tanstack/react-table"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
 import { DataTable } from "@/components/data-table"
 import { getInvoices } from "@/lib/billing-client"
@@ -59,6 +61,8 @@ export function InvoicesTab({ lang }: InvoicesTabProps) {
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState("ALL")
+  const [periodFilter, setPeriodFilter] = useState("")
 
   useEffect(() => {
     async function loadInvoices() {
@@ -93,6 +97,16 @@ export function InvoicesTab({ lang }: InvoicesTabProps) {
       </Card>
     )
   }
+
+  const filteredInvoices = invoices.filter((invoice) => {
+    if (statusFilter !== "ALL" && invoice.status !== statusFilter) {
+      return false
+    }
+    if (periodFilter && invoice.issuedAt && !invoice.issuedAt.startsWith(periodFilter)) {
+      return false
+    }
+    return true
+  })
 
   const columns: ColumnDef<InvoiceListItem, unknown>[] = [
     {
@@ -152,9 +166,26 @@ export function InvoicesTab({ lang }: InvoicesTabProps) {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap gap-4 items-center">
+        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+          <TabsList>
+            <TabsTrigger value="ALL">All</TabsTrigger>
+            <TabsTrigger value="DRAFT">Draft</TabsTrigger>
+            <TabsTrigger value="OPEN">Open</TabsTrigger>
+            <TabsTrigger value="PAID">Paid</TabsTrigger>
+            <TabsTrigger value="VOID">Void</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Input
+          type="month"
+          value={periodFilter}
+          onChange={(e) => setPeriodFilter(e.target.value)}
+          className="w-auto"
+        />
+      </div>
       <DataTable
         columns={columns}
-        data={invoices}
+        data={filteredInvoices}
         searchableColumns={["invoiceNumber"]}
         searchPlaceholder="Search invoices..."
         emptyMessage="No invoices found."
