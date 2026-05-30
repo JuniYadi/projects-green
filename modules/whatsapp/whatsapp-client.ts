@@ -353,16 +353,24 @@ const toErrorMessage = (payload: unknown, fallback: string) => {
 const requestJson = async <T>(
   path: string,
   init?: RequestInit,
-  fallbackErrorMessage = "Request failed"
+  fallbackErrorMessage = "Request failed",
+  timeout = 15_000
 ): Promise<T> => {
-  const response = await fetch(path, init)
-  const payload = await parseJsonSafely(response)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-  if (!response.ok) {
-    throw new Error(toErrorMessage(payload, fallbackErrorMessage))
+  try {
+    const response = await fetch(path, { ...init, signal: controller.signal })
+    const payload = await parseJsonSafely(response)
+
+    if (!response.ok) {
+      throw new Error(toErrorMessage(payload, fallbackErrorMessage))
+    }
+
+    return payload as T
+  } finally {
+    clearTimeout(timeoutId)
   }
-
-  return payload as T
 }
 
 const API_BASE = "/api/whatsapp"
@@ -422,7 +430,7 @@ export const createWhatsAppClient = () => {
     },
 
     async deleteDevice(id: string) {
-      await requestJson<ApiSuccess<{}>>(
+      await requestJson<ApiSuccess<object>>(
         `${API_BASE}/devices/${id}`,
         { method: "DELETE" },
         "Unable to delete WhatsApp device."
@@ -434,7 +442,7 @@ export const createWhatsAppClient = () => {
         ApiSuccess<{ device: Device }>
       >(
         `${API_BASE}/devices/${id}/verify`,
-        { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+        { method: "POST" },
         "Unable to verify WhatsApp device."
       )
       return payload.device
@@ -445,7 +453,7 @@ export const createWhatsAppClient = () => {
         ApiSuccess<{ device: Device }>
       >(
         `${API_BASE}/devices/${id}/reconnect`,
-        { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+        { method: "POST" },
         "Unable to reconnect WhatsApp device."
       )
       return payload.device
@@ -502,7 +510,7 @@ export const createWhatsAppClient = () => {
     },
 
     async deleteTemplate(id: string) {
-      await requestJson<ApiSuccess<{}>>(
+      await requestJson<ApiSuccess<object>>(
         `${API_BASE}/templates/${id}`,
         { method: "DELETE" },
         "Unable to delete WhatsApp template."
@@ -514,7 +522,7 @@ export const createWhatsAppClient = () => {
         ApiSuccess<{ message: string }>
       >(
         `${API_BASE}/templates/${id}/sync`,
-        { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+        { method: "POST" },
         "Unable to sync WhatsApp template."
       )
       return payload.message
@@ -585,7 +593,7 @@ export const createWhatsAppClient = () => {
     },
 
     async deleteContact(id: string) {
-      await requestJson<ApiSuccess<{}>>(
+      await requestJson<ApiSuccess<object>>(
         `${API_BASE}/contacts/${id}`,
         { method: "DELETE" },
         "Unable to delete WhatsApp contact."
@@ -735,7 +743,7 @@ export const createWhatsAppClient = () => {
     },
 
     async deleteGroup(id: string) {
-      await requestJson<ApiSuccess<{}>>(
+      await requestJson<ApiSuccess<object>>(
         `${API_BASE}/groups/${id}`,
         { method: "DELETE" },
         "Unable to delete WhatsApp group."
@@ -793,7 +801,7 @@ export const createWhatsAppClient = () => {
     },
 
     async deleteBroadcast(id: string) {
-      await requestJson<ApiSuccess<{}>>(
+      await requestJson<ApiSuccess<object>>(
         `${API_BASE}/broadcasts/${id}`,
         { method: "DELETE" },
         "Unable to delete WhatsApp broadcast."
@@ -805,7 +813,7 @@ export const createWhatsAppClient = () => {
         ApiSuccess<{ message: string }>
       >(
         `${API_BASE}/broadcasts/${id}/send`,
-        { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+        { method: "POST" },
         "Unable to send WhatsApp broadcast."
       )
       return payload.message
@@ -862,7 +870,7 @@ export const createWhatsAppClient = () => {
     },
 
     async deleteWebhook(id: string) {
-      await requestJson<ApiSuccess<{}>>(
+      await requestJson<ApiSuccess<object>>(
         `${API_BASE}/webhooks/${id}`,
         { method: "DELETE" },
         "Unable to delete WhatsApp webhook."
@@ -920,7 +928,7 @@ export const createWhatsAppClient = () => {
     },
 
     async deleteWhatsAppUser(id: string) {
-      await requestJson<ApiSuccess<{}>>(
+      await requestJson<ApiSuccess<object>>(
         `${API_BASE}/users/${id}`,
         { method: "DELETE" },
         "Unable to remove WhatsApp user."
