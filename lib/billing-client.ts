@@ -133,3 +133,99 @@ export async function topup(
     body: JSON.stringify(input),
   })
 }
+
+// Admin billing types
+
+export type AdminMember = {
+  userId: string
+  name: string
+  email: string
+  role: string
+  subscriptionCount: number
+  activeSubscriptionCount: number
+  monthlySpendIdr: string
+}
+
+export type AdminMemberDetail = {
+  userId: string
+  name: string
+  email: string
+  role: string
+  subscriptions: Array<{
+    id: string
+    packageCode: string
+    packageName: string
+    planCode: string
+    planName: string
+    status: string
+  }>
+  adjustments: Array<{
+    id: string
+    type: string
+    amountIdr: string
+    reason: string | null
+    createdAt: string
+  }>
+}
+
+export type AdminAdjustment = {
+  id: string
+  type: string
+  amountIdr: string
+  currency: string
+  reason: string | null
+  createdByWorkosUserId: string | null
+  createdAt: string
+}
+
+export type AdjustmentsResponse = {
+  ok: true
+  adjustments: AdminAdjustment[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+// Admin billing functions
+
+export async function getAdminMembers(): Promise<{
+  ok: true
+  members: AdminMember[]
+}> {
+  return fetchBilling<{ ok: true; members: AdminMember[] }>(
+    "/api/billing/admin/members"
+  )
+}
+
+export async function getAdminMember(
+  userId: string
+): Promise<AdminMemberDetail> {
+  return fetchBilling<AdminMemberDetail>(
+    `/api/billing/admin/members/${userId}`
+  )
+}
+
+export async function getAdminAdjustments(params?: {
+  type?: string
+  startDate?: string
+  endDate?: string
+  page?: number
+  limit?: number
+}): Promise<AdjustmentsResponse> {
+  const searchParams = new URLSearchParams()
+  if (params?.type) searchParams.set("type", params.type)
+  if (params?.startDate) searchParams.set("startDate", params.startDate)
+  if (params?.endDate) searchParams.set("endDate", params.endDate)
+  if (params?.page !== undefined) searchParams.set("page", String(params.page))
+  if (params?.limit !== undefined)
+    searchParams.set("limit", String(params.limit))
+
+  const endpoint = searchParams.toString()
+    ? `/api/billing/admin/adjustments?${searchParams.toString()}`
+    : "/api/billing/admin/adjustments"
+
+  return fetchBilling<AdjustmentsResponse>(endpoint)
+}
