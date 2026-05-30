@@ -144,26 +144,33 @@ jobs:
               I have identified issues that require attention. See inline comments for details.
 
               ### 💻 Local Refactoring Prompt
+
               <details>
-              <summary>📦 Click to expand and copy full prompt for Local AI Assistant</summary>
+                <summary>📦 Click to expand and copy full prompt for Local AI Assistant</summary>
 
-              ````markdown
-              You are a senior software engineer executing a local PR review remediation sweep.
-              Please refactor and fix the following specific code locations according to these instructions:
+                <<-- start prompt must wrap with markdown -->>
+                ````markdown
+                You are a senior software engineer executing a local PR review remediation sweep.
+                Please refactor and fix the following specific code locations according to these instructions:
+                
+                <<-- each issue must follow this exact format and be included in the prompt if applicable -->>
+                #### File: [Insert File Path]
+                - **Status:** [❌ PERSISTENT | 🆕 NEW]
+                - **Target Line Range:** [e.g., lines 45-52]
+                - **Issue:** [Briefly state what is wrong]
+                - **Requested Fix:**
 
-              ---
-              #### File: [Insert File Path]
-              **Status:** [❌ PERSISTENT | 🆕 NEW]
-              **Target Line Range:** [e.g., lines 45-52]
-              **Issue:** [Briefly state what is wrong]
-              **Requested Fix:**
+                ```[language]
+                // Exact code patch or snippet to implement
+                ```
+                <<-- end of issue format, can be repeated for more than 1 issue -->>
+                
+                [Include ALL active issues here. Do not include ✅ FIXED items in this raw prompt block.]
 
-              ```[language]
-              // Exact code patch or snippet to implement
-              ```
-              ---
-              [Include ALL active issues here. Do not include ✅ FIXED items in this raw prompt block.]
-              ````
+                // ANY NOTES OR GUIDANCE IN LAST PARAGRAPH
+                ````
+                <<-- end prompt must wrap with markdown -->>
+
               </details>
               --- END OF review_body.md TEMPLATE ---
               <!-- FIX_PROMPT_END -->
