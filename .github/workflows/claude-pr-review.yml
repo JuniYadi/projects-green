@@ -85,8 +85,36 @@ jobs:
             - Be direct and professional. "This code is confusing and misses the X edge case" is better than "Consider refactoring if you have time".
 
             INSTRUCTIONS:
-            1. Scan all existing comments and review threads on this PR.
-            2. For every issue found:
+            1. Scan all existing comments and review threads on this PR using `gh api graphql`:
+               ```
+               gh api graphql -f query='
+               {
+                 repository(owner: "JuniYadi", name: "projects-green") {
+                   pullRequest(number: <PR_NUMBER>) {
+                     reviewThreads(first: 50) {
+                       nodes {
+                         id
+                         isResolved
+                         outdated
+                         path
+                         originalLine
+                         comments(first: 10) {
+                           nodes {
+                             id
+                             body
+                             outdated
+                           }
+                         }
+                       }
+                     }
+                   }
+                 }
+               }'
+               ```
+            2. For every review thread found:
+              - If thread is OUTDATED (code changed, thread no longer applies):
+                - Post a reply "🔄 Thread outdated: code has changed" to the thread.
+                - Resolve the thread using: `gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<THREAD_ID>"}) { thread { id isResolved } } }'`
               - If it's a PREVIOUS issue that is now fixed:
                 - Post a reply "✅ Fixed in latest commit" to the thread.
                 - Resolve the thread using `gh api graphql` (`resolveReviewThread`).
@@ -98,6 +126,8 @@ jobs:
                 - Start the comment with "🆕 NEW ISSUE:".
 
             CRITICAL: Every single finding MUST have an inline comment. This allows us to track resolution state per-line.
+
+            IMPORTANT: After resolving all outdated threads, re-scan the code for NEW issues. An outdated thread may mean the code was rewritten and a NEW issue now exists at that location.
 
             REVIEW SUBMISSION LOGIC:
             You MUST submit your final review summary using `gh pr review`.
