@@ -133,13 +133,15 @@ export const messageService: MessageService = {
     }
 
     // 4. Deduct quota (QuotaGateService) — atomic check-then-increment
+    let quotaPending = false
     if (subscription) {
       try {
         await quotaGate.deductMessageQuota(organizationId, device.id, "OUT")
       } catch (error) {
         // QuotaExceededError or DailyLimitExceededError
-        // Log but don't fail the send since message was already sent
-        console.error("[messageService] Failed to deduct quota:", error)
+        // Message already sent, mark as pending for async reconciliation
+        quotaPending = true
+        console.error("[messageService] Quota deduction failed, marked pending:", error)
       }
 
       // 5. Record usage in ledger
@@ -205,7 +207,7 @@ export const messageService: MessageService = {
         messageType: "text",
         body: message,
         waMessageId,
-        metadata: { jobId },
+        metadata: { jobId, quotaPending },
       },
     })
 
