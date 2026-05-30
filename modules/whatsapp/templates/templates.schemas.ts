@@ -31,7 +31,7 @@ const quickReplyButtonSchema = z.object({
 
 const urlButtonSchema = z.object({
   type: z.literal("URL"),
-  text: z.string().trim().min(1).max(20),
+  text: z.string().trim().min(1).max(25), // Meta allows 25 chars for URL CTA buttons
   url: z.string().url(),
 })
 
@@ -64,8 +64,8 @@ export const templateLanguageSchema = z.object({
   parameters: z
     .array(
       z.object({
-        type: z.string(),
-        text: z.string(),
+        type: z.enum(["BODY", "HEADER", "FOOTER", "MEDIA"]),
+        text: z.string().trim().min(1),
       })
     )
     .optional(),
