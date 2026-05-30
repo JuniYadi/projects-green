@@ -42,6 +42,6 @@ describe("PayAsYouGoSelector", () => {
     )
 
     const sliders = view.container.querySelectorAll('[data-slot="slider"]')
-    expect(sliders!.length).toBe(2)
+    expect(sliders.length).toBe(2)
   })
 })
