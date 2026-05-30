@@ -146,6 +146,22 @@ export const createAdminSubscriptionRoutes = (
           return toNotFound(set, "Subscription not found.")
         }
 
+        // Validate pricing belongs to plan if both are being updated
+        if (updateData.pricingId && updateData.planId) {
+          const pricing = await prisma.pricing.findUnique({
+            where: { id: updateData.pricingId },
+            select: { planId: true },
+          })
+          if (!pricing || pricing.planId !== updateData.planId) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VALIDATION_ERROR",
+              message: "Pricing does not belong to the specified plan.",
+            }
+          }
+        }
+
         // Build update payload - only include fields that are provided
         const dataToUpdate: Record<string, unknown> = {}
 
