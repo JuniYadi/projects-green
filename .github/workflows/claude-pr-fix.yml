@@ -3,41 +3,24 @@ name: Claude Auto-Fix from Review
 on:
   pull_request_review:
     types: [submitted]
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: 'PR number to fix'
-        required: true
-        type: number
+
+concurrency:
+  group: pr-fix-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
   fix:
     runs-on: ubuntu-latest
+    if: github.event.review.state == 'CHANGES_REQUESTED'
     permissions:
       contents: write
       pull-requests: write
-    env:
-      GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Skip if not changes requested
-        if: github.event_name == 'pull_request_review' && github.event.review.state != 'CHANGES_REQUESTED'
-        run: |
-          echo "Review did not request changes. Skipping fix workflow."
-          exit 0
-
       - name: Determine PR number
         id: pr-info
         run: |
-          if [ "${{ github.event_name }}" == "pull_request_review" ]; then
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-            echo "TARGET_BRANCH=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
-            echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}" >> $GITHUB_OUTPUT
-          else
-            echo "PR_NUMBER=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
-            TARGET=$(gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }} --jq '.base.ref')
-            echo "TARGET_BRANCH=$TARGET" >> $GITHUB_OUTPUT
-            echo "PR_AUTHOR=$(gh api repos/${{ github.repository }}/pulls/${{ inputs.pr_number }} --jq '.user.login')" >> $GITHUB_OUTPUT
-          fi
+          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          echo "TARGET_BRANCH=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
 
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -153,7 +136,7 @@ jobs:
       - name: Create fix PR
         run: |
           FIX_BRANCH="fix/pr-${{ steps.pr-info.outputs.PR_NUMBER }}-review-fixes"
-          TARGET_BRANCH="${{ steps.pr-info.outputs.PR_TARGET_BRANCH }}"
+          TARGET_BRANCH="${{ steps.pr-info.outputs.TARGET_BRANCH }}"
 
           printf '%s\n%s\n%s\n' \
             "🤖 Auto-generated fix for PR #${{ steps.pr-info.outputs.PR_NUMBER }}" \
