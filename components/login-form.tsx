@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
+import { XCircleIcon } from "@phosphor-icons/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,10 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert"
 
 type ApiErrorPayload = {
   ok?: false
@@ -53,7 +58,7 @@ export function LoginForm({
   const [isCodeStep, setIsCodeStep] = useState(false)
   const [isRequestingCode, setIsRequestingCode] = useState(false)
   const [isVerifyingCode, setIsVerifyingCode] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(errorMessage ?? null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   const [serverFieldErrors, setServerFieldErrors] = useState<
     Record<string, string[]>
@@ -208,6 +213,12 @@ export function LoginForm({
         }}
       >
         <FieldGroup>
+          {errorMessage ? (
+            <Alert variant="destructive">
+              <XCircleIcon className="size-4 shrink-0" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          ) : null}
           {submitError ? (
             <p className="text-xs text-destructive" role="alert">
               {submitError}

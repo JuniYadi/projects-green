@@ -1,4 +1,5 @@
 import { getSignInUrl } from "@workos-inc/authkit-nextjs"
+import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 
 const providerMap = {
@@ -32,18 +33,39 @@ export const GET = async (request: NextRequest) => {
     process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI?.trim() ||
     process.env.WORKOS_REDIRECT_URI?.trim() ||
     undefined
+
+  // getSignInUrl calls setPKCECookie internally via cookies() from next/headers.
+  // Route Handlers return a fresh NextResponse that does NOT inherit those
+  // queued cookies automatically — we must copy them onto the response manually.
   const signInUrl = await getSignInUrl({ returnTo: next, redirectUri })
   const oauthProvider = getOauthProvider(
     request.nextUrl.searchParams.get("provider")
   )
 
-  if (!oauthProvider) {
-    return NextResponse.redirect(signInUrl)
+  const targetUrl = oauthProvider
+    ? (() => {
+        const url = new URL(signInUrl)
+        url.searchParams.set("provider", oauthProvider)
+        url.searchParams.delete("screen_hint")
+        return url.toString()
+      })()
+    : signInUrl
+
+  const response = NextResponse.redirect(targetUrl)
+
+  // Forward PKCE verifier cookies set by getSignInUrl onto the redirect response
+  const cookieStore = await cookies()
+  for (const cookie of cookieStore.getAll()) {
+    if (cookie.name.startsWith("wos-auth-verifier") && cookie.value) {
+      response.cookies.set(cookie.name, cookie.value, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+        secure: redirectUri?.startsWith("https") ?? false,
+        maxAge: 600, // 10 minutes — matches PKCE_COOKIE_MAX_AGE
+      })
+    }
   }
 
-  const directProviderUrl = new URL(signInUrl)
-  directProviderUrl.searchParams.set("provider", oauthProvider)
-  directProviderUrl.searchParams.delete("screen_hint")
-
-  return NextResponse.redirect(directProviderUrl.toString())
+  return response
 }

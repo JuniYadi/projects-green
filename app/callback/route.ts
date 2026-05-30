@@ -1,37 +1,71 @@
 import { handleAuth } from "@workos-inc/authkit-nextjs"
+import { OauthException } from "@workos-inc/node"
 import { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 const authHandler = handleAuth({
   onError: async ({ error, request }) => {
-    const authError = error as {
-      code?: string
-      pendingAuthenticationToken?: string
-      rawData?: { email?: string }
-    }
+    const hasErrorObject =
+      error && typeof error === "object" && !Array.isArray(error)
+    const code =
+      hasErrorObject && "code" in error ? (error.code as string) : undefined
     const pendingAuthenticationToken =
-      authError.pendingAuthenticationToken?.trim() || ""
+      hasErrorObject && "pendingAuthenticationToken" in error
+        ? (error.pendingAuthenticationToken as string | undefined)?.trim() || ""
+        : ""
 
-    if (
-      authError.code === "email_verification_required" &&
-      pendingAuthenticationToken
-    ) {
+    if (code === "email_verification_required" && pendingAuthenticationToken) {
       const verifyUrl = new URL("/auth/verify-email", request.url)
       verifyUrl.searchParams.set(
         "pendingAuthenticationToken",
         pendingAuthenticationToken
       )
 
-      if (authError.rawData?.email) {
-        verifyUrl.searchParams.set("email", authError.rawData.email)
+      const rawData =
+        hasErrorObject && "rawData" in error && error.rawData
+          ? (error.rawData as { email?: string })
+          : undefined
+      if (rawData?.email) {
+        verifyUrl.searchParams.set("email", rawData.email)
       }
 
       return NextResponse.redirect(verifyUrl)
     }
 
-    // Redirect to login with error message instead of JSON response
-    const errorMessage =
-      error instanceof Error ? error.message : "Authentication failed"
+    // Extract user-friendly error message from WorkOS OauthException
+    let errorMessage = "Authentication failed"
+    if (error instanceof Error) {
+      // Check for OAuth errors from WorkOS
+      if (error instanceof OauthException) {
+        // Map OAuth error codes to user-friendly messages
+        const errorCode = error.error?.toLowerCase() ?? ""
+        const errorDesc = error.errorDescription
+
+        if (errorCode === "access_denied" || errorDesc?.includes("cancelled")) {
+          errorMessage = "Sign in was cancelled. Please try again."
+        } else if (
+          errorCode === "invalid_request" ||
+          errorCode === "server_error"
+        ) {
+          errorMessage = "Sign in failed. Please try again."
+        } else if (errorDesc) {
+          // Use description if available, but only if it's user-friendly
+          errorMessage = errorDesc.length < 100 ? errorDesc : "Sign in failed. Please try again."
+        } else {
+          errorMessage = "Authentication failed. Please try again."
+        }
+      } else if (
+        error.message.includes("Auth cookie missing") ||
+        error.message.includes("OAuth state")
+      ) {
+        // Cookie/state errors - session expired
+        errorMessage = "Session expired. Please sign in again."
+      } else {
+        // Generic error
+        errorMessage = "Sign in failed. Please try again."
+      }
+    }
+
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("error", errorMessage)
     return NextResponse.redirect(loginUrl)
