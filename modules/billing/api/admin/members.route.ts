@@ -25,10 +25,12 @@ type AdminMembersRouteDeps = {
 const defaultDeps: AdminMembersRouteDeps = {
   authenticate: () => withAuth(),
   getPlatformRole: getPlatformRoleForUser,
-  isAdmin: (actor) =>
-    actor.platformRole === "super_admin" ||
-    actor.tenantRole === "admin" ||
-    actor.tenantRole === "owner",
+  isAdmin: (actor) => {
+    // super_admin from PlatformUserRole table bypasses auth.role entirely
+    if (actor.platformRole === "super_admin") return true
+    // tenant-level admin/owner check requires auth.role to be present
+    return actor.tenantRole === "admin" || actor.tenantRole === "owner"
+  },
 }
 
 const toUnauthorized = (set: RouteSet) => {
