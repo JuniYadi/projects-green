@@ -4,7 +4,7 @@ FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 
 # Install dependencies (including dev for build)
 RUN bun install --frozen-lockfile
@@ -24,7 +24,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install only production dependencies
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 
 # Install with --production flag
 RUN npm install --production
