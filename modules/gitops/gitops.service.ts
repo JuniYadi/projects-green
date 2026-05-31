@@ -1,4 +1,4 @@
-import type { AppManifest, KubernetesResource } from "./gitops.types"
+import type { AppManifest } from "./gitops.types"
 import * as jsYaml from "js-yaml"
 
 const GITOPS_REPO_PAT = process.env.GITOPS_REPO_PAT

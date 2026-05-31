@@ -1,4 +1,4 @@
-import type { JenkinsServer } from "./jenkins.types"
+import type { JenkinsServer } from "./jenkins.types" // eslint-disable-line @typescript-eslint/no-unused-vars
 
 // ─── Timeout wrapper ──────────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ export async function jenkinsApiFetch(
     }
 
     if (!response.ok) {
-      const text = await response.text()
+      await response.text() // consume body to allow connection reuse
       throw new Error(`Jenkins API error: ${response.statusText}`)
     }
 
