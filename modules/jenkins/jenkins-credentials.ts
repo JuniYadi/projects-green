@@ -320,16 +320,6 @@ export async function syncGitHubCredentialToJenkins(
 
     // Create GitHub token credential in Jenkins system store
     const configXml = buildGitHubCredentialXml(credentialId, githubToken, githubUsername)
-    const res = await fetch(`${jenkinsClient["baseUrl"]()}/credentials/store/system/domain/_/createItem`, {
-      method: "POST",
-      headers: {
-        Authorization: getBasicAuthHeader(jenkinsClient["config"].username, jenkinsClient["config"].apiToken),
-        "Content-Type": "application/xml",
-      },
-      body: new URLSearchParams({ name: credentialId, ...Object.fromEntries(configXml.split("\n").map((l) => l.split("="))) }),
-    })
-
-    // Fallback: use API directly
     const createRes = await fetch(`${jenkinsClient["baseUrl"]()}/credentials/store/system/domain/_/credential/${credentialId}/config.xml`, {
       method: "POST",
       headers: {
@@ -349,12 +339,16 @@ export async function syncGitHubCredentialToJenkins(
   }
 }
 
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+}
+
 function buildGitHubCredentialXml(id: string, token: string, username: string): string {
   return `<com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl>
- <id>${id}</id>
-  <username>${username}</username>
-  <password>${token}</password>
-  <description>GitHub Token for ${username}</description>
+ <id>${escapeXml(id)}</id>
+  <username>${escapeXml(username)}</username>
+  <password>${escapeXml(token)}</password>
+  <description>GitHub Token for ${escapeXml(username)}</description>
 </com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl>`
 }
 
