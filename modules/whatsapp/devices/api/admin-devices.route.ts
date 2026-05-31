@@ -242,7 +242,6 @@ export const createAdminDevicesRoutes = (
                 metadataJson: {
                   deviceId: id,
                   performedBy: currentUser!.id,
-                  phase: "simulated",
                 },
               },
             }),
