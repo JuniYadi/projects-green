@@ -46,8 +46,8 @@ export default function InvoiceDetailPage() {
     async function loadData() {
       try {
         const [invoiceResult, accountResult] = await Promise.all([
-          getInvoice(invoiceId),
-          getAccount(),
+          getInvoice(invoiceId, { signal: controller.signal }),
+          getAccount({ signal: controller.signal }),
         ])
         if (!cancelled) {
           setData(invoiceResult)
