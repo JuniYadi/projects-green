@@ -576,16 +576,24 @@ model Invoice {
   issuedAt         DateTime?
   dueAt            DateTime?
   paidAt           DateTime?
-  metadataJson     Json?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  // Payment module fields
+  type            String?  // "TOP_UP", "SERVICE", "RECURRING"
+  paymentMethod   String?  // "VA", "QRIS", "MANUAL_BANK"
+  gatewayId       String?
+  dueDate         DateTime?
+  metadata        Json?    // { duitkuReference, vaNumber, paymentUrl }
+  metadataJson    Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  billingAccount BillingAccount?      @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  tenant         Tenant?              @relation(fields: [tenantId], references: [id], onDelete: SetNull)
-  subscription   BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  billingRun     BillingRun?          @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
-  lines          InvoiceLine[]
-  adjustments    BillingAdjustment[]
+  billingAccount       BillingAccount?          @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  tenant               Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  subscription         BillingSubscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  billingRun           BillingRun?              @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
+  gateway              PaymentGateway?          @relation(fields: [gatewayId], references: [id])
+  lines                InvoiceLine[]
+  adjustments          BillingAdjustment[]
+  paymentConfirmations PaymentConfirmation[]
 
   @@unique([billingAccountId, periodStart, periodEnd])
   @@index([billingAccountId, status])
@@ -1284,4 +1292,84 @@ model WhatsappWebhook {
 
   @@index([organizationId])
   @@index([whatsappDeviceId])
+}
+
+// ─── Payment Models ───────────────────────────────────────────────────────────
+
+model PaymentGateway {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // "GATEWAY" or "BANK_TRANSFER"
+  config    Json     // Encrypted JSON: { merchantCode, apiKey, sandboxUrl, productionUrl }
+  isActive  Boolean  @default(false)
+  isDefault Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bankAccounts BankAccount[]
+  invoices     Invoice[]
+
+  @@index([type, isActive])
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  gatewayId     String?
+  bankCode      String   // "BCA", "MANDIRI", "BRI", "BNI"
+  bankName      String   // "Bank Central Asia"
+  accountName   String   // AES-256 encrypted
+  accountNumber String   // AES-256 encrypted
+  isActive      Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  gateway             PaymentGateway?          @relation(fields: [gatewayId], references: [id])
+  paymentConfirmations PaymentConfirmation[]
+
+  @@index([gatewayId, isActive])
+  @@index([bankCode])
+}
+
+model PaymentConfirmation {
+  id              String    @id @default(cuid())
+  invoiceId       String
+  bankAccountId   String
+  amount          Decimal @db.Decimal(18, 2)
+  paymentDateTime DateTime
+  senderBankName  String?
+  senderName      String?
+  senderAccount   String?
+  screenshotUrl   String?
+  notes           String?
+  status          String   @default("PENDING")  // PENDING, APPROVED, REJECTED
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  rejectReason    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id])
+  bankAccount BankAccount  @relation(fields: [bankAccountId], references: [id])
+
+  @@index([invoiceId])
+  @@index([bankAccountId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PaymentAuditLog {
+  id         String   @id @default(cuid())
+  action     String   // "PAYMENT_CREATED", "PAYMENT_CONFIRMED", etc.
+  entityType String   // "Invoice", "PaymentGateway", etc.
+  entityId   String
+  actorId    String?
+  details    Json
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
 }

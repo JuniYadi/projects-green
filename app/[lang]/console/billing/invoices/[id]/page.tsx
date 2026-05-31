@@ -8,32 +8,68 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
-import { getInvoice } from "@/lib/billing-client"
-import type { InvoiceDetail } from "@/lib/billing-client"
-import { ArrowLeftIcon, DownloadIcon } from "@phosphor-icons/react"
+import { getInvoice, getAccount, payWithBalance, topupAndPay } from "@/lib/billing-client"
+import type { InvoiceDetail, BillingAccount } from "@/lib/billing-client"
+import { ArrowLeftIcon, DownloadIcon, WalletIcon, PlusIcon, CheckCircleIcon } from "@phosphor-icons/react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function InvoiceDetailPage() {
   const params = useParams()
   const invoiceId = params.id as string
 
   const [data, setData] = useState<InvoiceDetail | null>(null)
+  const [account, setAccount] = useState<BillingAccount | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [showTopupDialog, setShowTopupDialog] = useState(false)
+  const [topupResult, setTopupResult] = useState<{
+    topupRequired: boolean
+    gapAmount?: number
+    topupInvoiceId?: string
+    topupInvoiceNumber?: string
+  } | null>(null)
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+
     async function loadData() {
       try {
-        const result = await getInvoice(invoiceId)
-        setData(result)
+        const [invoiceResult, accountResult] = await Promise.all([
+          getInvoice(invoiceId, { signal: controller.signal }),
+          getAccount({ signal: controller.signal }),
+        ])
+        if (!cancelled) {
+          setData(invoiceResult)
+          setAccount(accountResult)
+        }
       } catch {
-        setError("Failed to load invoice")
+        if (!cancelled) {
+          setError("Failed to load invoice")
+        }
       } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
 
     void loadData()
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
   }, [invoiceId])
 
   function formatCurrency(amountIdr: string, currency: string): string {
@@ -52,6 +88,47 @@ export default function InvoiceDetailPage() {
       month: "long",
       year: "numeric",
     }).format(new Date(dateStr))
+  }
+
+  async function handlePayWithBalance() {
+    setIsProcessing(true)
+    setError(null)
+    try {
+      await payWithBalance(invoiceId)
+      setPaymentSuccess(true)
+      // Refresh data
+      const result = await getInvoice(invoiceId)
+      setData(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Payment failed")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  async function handleTopupAndPay() {
+    setIsProcessing(true)
+    setError(null)
+    try {
+      const result = await topupAndPay(invoiceId)
+      if (result.topupRequired) {
+        setTopupResult({
+          topupRequired: true,
+          gapAmount: result.gapAmount,
+          topupInvoiceId: result.topupInvoiceId,
+          topupInvoiceNumber: result.topupInvoiceNumber,
+        })
+        setShowTopupDialog(true)
+      } else {
+        setPaymentSuccess(true)
+        const invoiceResult = await getInvoice(invoiceId)
+        setData(invoiceResult)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Top-up failed")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   if (isLoading) {
@@ -185,8 +262,91 @@ export default function InvoiceDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Payment Actions - only for OPEN invoices */}
+          {invoice.status === "OPEN" && account && (
+            <div className="border-t pt-4">
+              <h3 className="mb-4 font-medium">Payment Options</h3>
+              {error && (
+                <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3">
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                </div>
+              )}
+              {paymentSuccess ? (
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <CheckCircleIcon className="h-5 w-5" />
+                  <span className="font-medium">Payment successful!</span>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={handlePayWithBalance}
+                    disabled={isProcessing}
+                    variant="default"
+                  >
+                    <WalletIcon className="mr-2 h-4 w-4" />
+                    {isProcessing ? "Processing..." : "Pay with Balance"}
+                  </Button>
+                  <Button
+                    onClick={handleTopupAndPay}
+                    disabled={isProcessing}
+                    variant="outline"
+                  >
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    {isProcessing ? "Processing..." : "Top Up + Pay"}
+                  </Button>
+                </div>
+              )}
+              {account && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Your current balance: {account.formattedBalance}
+                </p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Top-up Required Dialog */}
+      <Dialog open={showTopupDialog} onOpenChange={setShowTopupDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Top-Up Required</DialogTitle>
+            <DialogDescription>
+              You need additional balance to pay this invoice. A top-up invoice
+              has been created for the gap amount.
+            </DialogDescription>
+          </DialogHeader>
+          {topupResult && (
+            <div className="space-y-3">
+              <div className="rounded-lg border p-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Gap Amount</span>
+                  <span className="font-medium">
+                    {formatCurrency(String(topupResult.gapAmount), "IDR")}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Top-up Invoice</span>
+                  <span className="font-medium">
+                    {topupResult.topupInvoiceNumber}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Please complete the top-up payment first. After the payment is
+                confirmed, the invoice will be automatically paid using your
+                balance.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" asChild>
+              <Link href="/console/billing/topup">Go to Top-Up</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

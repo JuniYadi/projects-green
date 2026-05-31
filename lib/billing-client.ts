@@ -73,6 +73,23 @@ export type TopupSuccessResponse = {
   type: "CREDIT"
 }
 
+export type PayWithBalanceResponse = {
+  ok: true
+  message: string
+}
+
+export type TopupAndPayResponse = {
+  ok: true
+  message: string
+  topupRequired: boolean
+  gapAmount?: number
+  topupInvoiceId?: string
+  topupInvoiceNumber?: string
+  totalDue?: number
+  currentBalance?: number
+  shortfall?: number
+}
+
 export type ApiErrorResponse = {
   ok: false
   error: string
@@ -104,8 +121,10 @@ async function fetchBilling<T>(
   return data as T
 }
 
-export async function getAccount(): Promise<BillingAccount> {
-  return fetchBilling<BillingAccount>("/api/billing/account")
+export async function getAccount(
+  options?: RequestInit
+): Promise<BillingAccount> {
+  return fetchBilling<BillingAccount>("/api/billing/account", options)
 }
 
 export async function getSubscriptions(): Promise<BillingSubscriptions> {
@@ -121,8 +140,14 @@ export async function getInvoices(
   return fetchBilling<BillingInvoices>(endpoint)
 }
 
-export async function getInvoice(id: string): Promise<InvoiceDetail> {
-  return fetchBilling<InvoiceDetail>(`/api/billing/invoices/${id}`)
+export async function getInvoice(
+  id: string,
+  options?: RequestInit
+): Promise<InvoiceDetail> {
+  return fetchBilling<InvoiceDetail>(
+    `/api/billing/invoices/${id}`,
+    options
+  )
 }
 
 export async function topup(
@@ -132,6 +157,30 @@ export async function topup(
     method: "POST",
     body: JSON.stringify(input),
   })
+}
+
+export async function payWithBalance(
+  invoiceId: string
+): Promise<PayWithBalanceResponse> {
+  return fetchBilling<PayWithBalanceResponse>(
+    "/api/payments/invoice/pay-with-balance",
+    {
+      method: "POST",
+      body: JSON.stringify({ invoiceId }),
+    }
+  )
+}
+
+export async function topupAndPay(
+  invoiceId: string
+): Promise<TopupAndPayResponse> {
+  return fetchBilling<TopupAndPayResponse>(
+    "/api/payments/invoice/topup-and-pay",
+    {
+      method: "POST",
+      body: JSON.stringify({ invoiceId }),
+    }
+  )
 }
 
 // Admin billing types
