@@ -32,7 +32,7 @@ import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 const startsWithRoute = (pathname: string, route: string) =>
   pathname === route || pathname.startsWith(`${route}/`)
 
-export type AppSidebarSurface = "console" | "portal"
+export type AppSidebarSurface = "console" | "portal" | "admin"
 
 export type AppSidebarUser = {
   name: string
