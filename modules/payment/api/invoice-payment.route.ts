@@ -131,7 +131,7 @@ export const createInvoicePaymentRoutes = () =>
       try {
         // Get invoice details
         const invoice = await prisma.invoice.findFirst({
-          where: { id: invoiceId, status: "OPEN" },
+          where: { id: invoiceId, status: "OPEN", tenantId },
         })
 
         if (!invoice) {
