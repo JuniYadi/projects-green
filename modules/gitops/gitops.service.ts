@@ -34,7 +34,12 @@ export class GitOpsRepositoryService {
     const baseSha = baseRef.object.sha
 
     // 2. Create blobs for new/updated files
-    const treeItems = await Promise.all(
+    const treeItems: Array<{
+      path: string
+      mode: "100644" | "100755" | "040000" | "160000" | "120000"
+      type: "blob" | "tree" | "commit"
+      sha: string | null
+    }> = await Promise.all(
       files.map(async (file) => {
         const blob = await this.createBlob(repo, file.content, token)
         return {
@@ -68,79 +73,117 @@ export class GitOpsRepositoryService {
     return { sha: commit.sha }
   }
 
+  /**
+   * Wrapped fetch with GitHub API rate limit handling.
+   * Detects 403 with X-RateLimit-Remaining: 0, waits for reset, retries once.
+   */
+  private async githubFetch(url: string, options: RequestInit, retried = false): Promise<Response> {
+    const res = await fetch(url, options)
+
+    if (res.status === 403) {
+      const remaining = res.headers.get("X-RateLimit-Remaining")
+      if (remaining === "0" && !retried) {
+        const resetEpoch = res.headers.get("X-RateLimit-Reset")
+        if (resetEpoch) {
+          const waitMs = Math.max(0, parseInt(resetEpoch, 10) * 1000 - Date.now()) + 1000
+          console.warn(`[GitOps] Rate limited. Waiting ${Math.ceil(waitMs / 1000)}s...`)
+          await new Promise((resolve) => setTimeout(resolve, waitMs))
+          return this.githubFetch(url, options, true)
+        }
+      }
+    }
+
+    return res
+  }
+
   private async getRef(repo: string, ref: string, token: string) {
-    const res = await fetch(`${this.repoBaseUrl}/repos/${repo}/git/refs/heads/${ref}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-      },
-    })
+    const res = await this.githubFetch(
+      `${this.repoBaseUrl}/repos/${repo}/git/refs/heads/${ref}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      }
+    )
     if (!res.ok) throw new Error(`Failed to get ref: ${await res.text()}`)
     return res.json() as Promise<{ object: { sha: string } }>
   }
 
   private async createBlob(repo: string, content: string, token: string) {
-    const res = await fetch(`${this.repoBaseUrl}/repos/${repo}/git/blobs`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        content,
-        encoding: "utf-8",
-      }),
-    })
+    const res = await this.githubFetch(
+      `${this.repoBaseUrl}/repos/${repo}/git/blobs`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          encoding: "utf-8",
+        }),
+      }
+    )
     if (!res.ok) throw new Error(`Failed to create blob: ${await res.text()}`)
     return res.json() as Promise<{ sha: string }>
   }
 
   private async createTree(repo: string, tree: { path: string, mode: "100644" | "100755" | "040000" | "160000" | "120000", type: "blob" | "tree" | "commit", sha: string | null }[], baseTree: string, token: string) {
-    const res = await fetch(`${this.repoBaseUrl}/repos/${repo}/git/trees`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        base_tree: baseTree,
-        tree,
-      }),
-    })
+    const res = await this.githubFetch(
+      `${this.repoBaseUrl}/repos/${repo}/git/trees`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          base_tree: baseTree,
+          tree,
+        }),
+      }
+    )
     if (!res.ok) throw new Error(`Failed to create tree: ${await res.text()}`)
     return res.json() as Promise<{ sha: string }>
   }
 
   private async createCommit(repo: string, message: string, tree: string, parents: string[], token: string) {
-    const res = await fetch(`${this.repoBaseUrl}/repos/${repo}/git/commits`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message,
-        tree,
-        parents,
-      }),
-    })
+    const res = await this.githubFetch(
+      `${this.repoBaseUrl}/repos/${repo}/git/commits`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message,
+          tree,
+          parents,
+        }),
+      }
+    )
     if (!res.ok) throw new Error(`Failed to create commit: ${await res.text()}`)
     return res.json() as Promise<{ sha: string }>
   }
 
   private async updateRef(repo: string, ref: string, sha: string, token: string) {
-    const res = await fetch(`${this.repoBaseUrl}/repos/${repo}/git/refs/heads/${ref}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ sha, force: false }),
-    })
+    const res = await this.githubFetch(
+      `${this.repoBaseUrl}/repos/${repo}/git/refs/heads/${ref}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sha, force: false }),
+      }
+    )
     if (!res.ok) throw new Error(`Failed to update ref: ${await res.text()}`)
     return res.json()
   }
@@ -182,7 +225,9 @@ export class GitOpsRepositoryService {
     const privateKeyPem = Buffer.from(privateKeyBase64, "base64").toString("utf8")
     
     const issuedAt = Math.floor(Date.now() / 1000)
-    const expiresAt = issuedAt + 9 * 60
+    // 8.5 min (9 min max minus 30s clock-skew buffer). GitHub allows up to 10 min
+    // but our infra (NTP-synced) stays within ±2s of GPS time, so 30s is ample.
+    const expiresAt = issuedAt + 9 * 60 - 30
     const header = { alg: "RS256", typ: "JWT" }
     const payload = { iat: issuedAt, exp: expiresAt, iss: appId }
 
