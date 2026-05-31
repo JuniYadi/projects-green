@@ -27,6 +27,22 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
+      - name: Skip fix PRs
+        if: github.event_name == 'pull_request_review'
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+
+          if [ "$AUTHOR" == "github-actions[bot]" ]; then
+            echo "Skipping: Fix PR created by bot"
+            exit 0
+          fi
+
+          if [[ "$BRANCH" == fix/pr-* ]]; then
+            echo "Skipping: Fix PR branch"
+            exit 0
+          fi
+
       - name: Determine PR number
         id: pr-info
         env:
