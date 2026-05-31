@@ -32,14 +32,6 @@ const formatDate = (date: string | null) => {
   }).format(new Date(date))
 }
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(amount)
-}
-
 function StatusBadge({ status }: { status: string }) {
   const isActive = status === "ACTIVE"
 

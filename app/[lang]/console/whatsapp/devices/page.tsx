@@ -133,7 +133,9 @@ export default function WhatsAppDevicesPage() {
   }
 
   React.useEffect(() => {
-    void loadDevices()
+    ;(async () => {
+      await loadDevices()
+    })()
   }, [])
 
   // ── Mutations ─────────────────────────────────────────────────────────────

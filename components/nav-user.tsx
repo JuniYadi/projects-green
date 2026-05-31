@@ -136,7 +136,10 @@ export function NavUser({
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
+    ;(async () => {
+      // Sync theme state on mount
+      setMounted(true)
+    })()
   }, [])
 
   const { signOut } = useAuth()

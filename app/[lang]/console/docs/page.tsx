@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
-import { Search } from "lucide-react"
+import { MagnifyingGlass } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
 import { Input } from "@/components/ui/input"
@@ -55,7 +55,7 @@ export default function DocsPage() {
       </div>
 
       <div className="relative max-w-md">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <MagnifyingGlass className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search documentation..."
           className="pl-8"

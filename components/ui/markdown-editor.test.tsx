@@ -1,23 +1,25 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { describe, expect, it, beforeEach } from "bun:test"
 import { render } from "@testing-library/react"
 
 // Mock fetch before any imports
-const mockFetch = mock()
-mockFetch.mockResolvedValue({
-  ok: true,
-  json: () => Promise.resolve({ ok: true, html: "<p>Preview content</p>" }),
-})
-global.fetch = mockFetch
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(global as any).fetch = (() => {
+  let jsonResponse = { ok: true, html: "<p>Preview content</p>" }
+  return {
+    ok: true,
+    json: () => Promise.resolve(jsonResponse),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setJson: (data: any) => { jsonResponse = data },
+  }
+})()
 
 import { MarkdownEditor } from "./markdown-editor"
 
 describe("MarkdownEditor", () => {
   beforeEach(() => {
-    mockFetch.mockClear()
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ok: true, html: "<p>Preview content</p>" }),
-    })
+    // Reset mock behavior
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(global as any).fetch.setJson({ ok: true, html: "<p>Preview content</p>" })
   })
 
   it("renders with Write and Preview tabs and toolbar", () => {
