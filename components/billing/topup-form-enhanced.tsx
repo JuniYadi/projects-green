@@ -40,11 +40,13 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
   const [selectedBankAccount, setSelectedBankAccount] = useState<string>("")
 
   useEffect(() => {
+    let cancelled = false
+
     async function fetchBankAccounts() {
       try {
         const response = await fetch("/api/payments/topup/bank-accounts")
         const data = await response.json()
-        if (data.ok) {
+        if (data.ok && !cancelled) {
           setBankAccounts(data.data || [])
           const defaultAccount = data.data?.find((b: BankAccount) => b.isDefault)
           if (defaultAccount) {
@@ -56,11 +58,17 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
       } catch {
         // Silently fail, will show manual account info
       } finally {
-        setIsLoadingAccounts(false)
+        if (!cancelled) {
+          setIsLoadingAccounts(false)
+        }
       }
     }
 
     void fetchBankAccounts()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const isValid = amount >= 10000 && amount <= 100000000
