@@ -27,6 +27,10 @@ app.post("/push", async (c) => {
     }
   })
 
+  if (payload.deleted) {
+    return c.json({ message: "Branch deleted, skipping" }, 200)
+  }
+
   if (stacks.length === 0) {
     return c.json({ message: "No stacks found for this repository" }, 200)
   }
