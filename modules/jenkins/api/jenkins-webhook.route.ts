@@ -31,15 +31,15 @@ function isDuplicate(payloadHash: string): boolean {
 }
 
 function computePayloadHash(appStack: string, ver: string): string {
-  // Simple hash for idempotency key
-  let hash = 0
   const str = `${appStack}:${ver}`
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash |= 0 // Convert to 32-bit integer
+  const hashBytes = new TextEncoder().encode(str)
+  // Simple FNV-1a hash — fast, no crypto dependency needed for idempotency
+  let hash = 0x811c9dc5
+  for (const byte of hashBytes) {
+    hash ^= byte
+    hash = Math.imul(hash, 0x01000193)
   }
-  return `jenkins:webhook:${hash}`
+  return `jenkins:webhook:${(hash >>> 0).toString(36)}`
 }
 
 export const jenkinsWebhookRoutes = new Elysia({ prefix: "/webhooks/jenkins" })
