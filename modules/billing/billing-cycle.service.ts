@@ -241,10 +241,11 @@ export class BillingCycleService {
             invoiceId: invoice.id,
             lineType: "METERED",
             description: usage.category ?? "Usage",
-            quantity: usage.meterValue,
-            unitPrice: usage.cappedAmountIdr.toNumber(),
+            quantity: new Decimal(usage.meterValue),
+            unitPrice: usage.cappedAmountIdr,
             amount: usage.cappedAmountIdr,
-          } as any,
+            currency: IDR_CURRENCY,
+          },
         })
       }
 
