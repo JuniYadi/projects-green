@@ -27,6 +27,10 @@ export class ConfirmationService {
       throw new Error("Invoice not found or not open")
     }
 
+    if (invoice.tenantId && invoice.tenantId !== tenantId) {
+      throw new Error("Invoice does not belong to this tenant")
+    }
+
     const confirmation = await prisma.paymentConfirmation.create({
       data: {
         invoiceId,
