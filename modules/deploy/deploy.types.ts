@@ -126,6 +126,7 @@ export type DeployEnvironmentState = {
 }
 
 export type DeployMonitorState = {
+  deployId?: string
   status: DeployStatus
   logScope: DeployLogScope
   attempt: number
