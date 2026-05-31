@@ -133,22 +133,7 @@ export default function WhatsAppDevicesPage() {
   }
 
   React.useEffect(() => {
-    const initDevices = async () => {
-      try {
-        const { devices: items } = await whatsappClient.devices.list()
-        setDevices(items)
-      } catch (error) {
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Unable to load WhatsApp devices."
-        )
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    initDevices()
+    void loadDevices()
   }, [])
 
   // ── Mutations ─────────────────────────────────────────────────────────────
@@ -582,7 +567,6 @@ export default function WhatsAppDevicesPage() {
                     : ""
                 }
                 disabled
-                readOnly
               />
             </div>
             <div className="grid gap-2">

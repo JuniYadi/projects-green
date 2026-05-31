@@ -60,7 +60,7 @@ export default async function AdminLayout({
   return (
     <SidebarProvider>
       <AppSidebar
-        surface="portal"
+        surface="admin"
         user={sidebarUser}
         organization={sidebarOrganization}
       />

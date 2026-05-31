@@ -102,9 +102,11 @@ export default function ConsoleTemplateDetailPage() {
                 slug: template.slug,
                 description: template.description,
                 languages: template.languages.map((l) => ({
+                  id: l.id,
                   lang: l.lang,
                   headerType: l.headerType ?? "NONE",
                   headerText: l.headerText ?? "",
+                  headerUrl: l.headerUrl ?? "",
                   body: l.body ?? "",
                   footer: l.footer ?? "",
                 })),

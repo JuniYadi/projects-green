@@ -223,7 +223,7 @@ export class BillingCycleService {
           tenantId,
           subscriptionId: subscription.id,
           billingRunId,
-          invoiceNumber: `INV-${period}-${subscription.id.slice(0, 8)}-${Date.now().toString(36)}`,
+          invoiceNumber: `INV-${period}-${subscription.id.slice(0, 8)}-${billingRunId.slice(0, 8)}`,
           periodStart: this.getPeriodStart(new Date()),
           periodEnd: this.getPeriodEnd(new Date()),
           currency: IDR_CURRENCY,
@@ -239,12 +239,13 @@ export class BillingCycleService {
         await tx.invoiceLine.create({
           data: {
             invoiceId: invoice.id,
-            lineType: "METERED",
+            lineType: "METERED" as const,
             description: usage.category ?? "Usage",
-            quantity: usage.meterValue,
-            unitPrice: usage.cappedAmountIdr.toNumber(),
+            quantity: new Decimal(usage.meterValue),
+            unitPrice: new Decimal(usage.cappedAmountIdr.toString()),
             amount: usage.cappedAmountIdr,
-          } as any,
+            currency: IDR_CURRENCY,
+          },
         })
       }
 

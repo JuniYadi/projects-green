@@ -24,9 +24,11 @@ import {
 } from "@/components/ui/select"
 
 export type LanguageVariant = {
+  id: string
   lang: string
   headerType: string
   headerText: string
+  headerUrl: string
   body: string
   footer: string
 }
@@ -43,14 +45,16 @@ type TemplateFormProps = {
     name: string
     slug: string
     description?: string
-    languages: LanguageVariant[]
+    languages: Omit<LanguageVariant, "id">[]
   }) => Promise<void>
 }
 
 const emptyVariant = (): LanguageVariant => ({
+  id: crypto.randomUUID(),
   lang: "en",
   headerType: "NONE",
   headerText: "",
+  headerUrl: "",
   body: "",
   footer: "",
 })
@@ -66,7 +70,13 @@ export function TemplateForm({
     initialData?.description ?? "",
   )
   const [variants, setVariants] = React.useState<LanguageVariant[]>(
-    initialData?.languages?.length ? initialData.languages : [emptyVariant()],
+    initialData?.languages?.length
+      ? initialData.languages.map((v) => ({
+          ...v,
+          id: v.id ?? crypto.randomUUID(),
+          headerUrl: v.headerUrl ?? "",
+        }))
+      : [emptyVariant()],
   )
   const [errors, setErrors] = React.useState<
     Record<string, string | undefined>
@@ -82,9 +92,9 @@ export function TemplateForm({
 
     for (let i = 0; i < variants.length; i++) {
       if (!variants[i].lang.trim())
-        newErrors[`variant_${i}_lang`] = "Language code is required."
+        newErrors[`variant_${variants[i].id}_lang`] = "Language code is required."
       if (!variants[i].body.trim())
-        newErrors[`variant_${i}_body`] = "Body is required."
+        newErrors[`variant_${variants[i].id}_body`] = "Body is required."
     }
 
     setErrors(newErrors)
@@ -103,10 +113,16 @@ export function TemplateForm({
       name: name.trim(),
       slug: slug.trim(),
       description: description.trim() || undefined,
-      languages: variants.map((v) => ({
-        ...v,
-        headerText: v.headerType === "NONE" ? "" : v.headerText,
-      })),
+      languages: variants.map((v) => {
+        return {
+          lang: v.lang,
+          headerType: v.headerType,
+          headerText: v.headerType === "NONE" ? "" : v.headerText,
+          headerUrl: ["IMAGE", "VIDEO", "DOCUMENT"].includes(v.headerType) ? v.headerUrl : "",
+          body: v.body,
+          footer: v.footer,
+        }
+      }),
     })
   }
 
@@ -114,21 +130,22 @@ export function TemplateForm({
     setVariants([...variants, emptyVariant()])
   }
 
-  const removeVariant = (index: number) => {
+  const removeVariant = (id: string) => {
     if (variants.length <= 1) return
-    setVariants(variants.filter((_, i) => i !== index))
+    setVariants(variants.filter((v) => v.id !== id))
   }
 
   const updateVariant = (
-    index: number,
+    id: string,
     field: keyof LanguageVariant,
     value: string,
   ) => {
     setVariants(
-      variants.map((v, i) => (i === index ? { ...v, [field]: value } : v)),
+      variants.map((v) => (v.id === id ? { ...v, [field]: value } : v)),
     )
   }
 
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* ── Core fields ─────────────────────────────────────────────────── */}
@@ -195,122 +212,142 @@ export function TemplateForm({
           <p className="text-xs text-destructive">{errors.variants}</p>
         )}
 
-        {variants.map((variant, i) => (
-          <div key={i} className="space-y-3 rounded-lg border p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">
-                Variant {i + 1}
-              </span>
-              {variants.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  onClick={() => removeVariant(i)}
-                >
-                  <X className="size-3" />
-                </Button>
-              )}
-            </div>
+        {variants.map((variant, i) => {
+          const idx = i + 1
+          return (
+            <div key={variant.id} className="space-y-3 rounded-lg border p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">
+                  Variant {idx}
+                </span>
+                {variants.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-6"
+                    onClick={() => removeVariant(variant.id)}
+                  >
+                    <X className="size-3" />
+                  </Button>
+                )}
+              </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor={`variant-${variant.id}-lang`}>Language</Label>
+                  <Select
+                    value={variant.lang}
+                    onValueChange={(v) => updateVariant(variant.id, "lang", v)}
+                  >
+                    <SelectTrigger id={`variant-${variant.id}-lang`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="id">Indonesian</SelectItem>
+                      <SelectItem value="ms">Malay</SelectItem>
+                      <SelectItem value="zh">Chinese</SelectItem>
+                      <SelectItem value="ar">Arabic</SelectItem>
+                      <SelectItem value="ja">Japanese</SelectItem>
+                      <SelectItem value="ko">Korean</SelectItem>
+                      <SelectItem value="th">Thai</SelectItem>
+                      <SelectItem value="vi">Vietnamese</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors[`variant_${variant.id}_lang`] && (
+                    <p className="text-xs text-destructive">
+                      {errors[`variant_${variant.id}_lang`]}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor={`variant-${variant.id}-header`}>Header Type</Label>
+                  <Select
+                    value={variant.headerType}
+                    onValueChange={(v) => updateVariant(variant.id, "headerType", v)}
+                  >
+                    <SelectTrigger id={`variant-${variant.id}-header`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">None</SelectItem>
+                      <SelectItem value="TEXT">Text</SelectItem>
+                      <SelectItem value="IMAGE">Image</SelectItem>
+                      <SelectItem value="VIDEO">Video</SelectItem>
+                      <SelectItem value="DOCUMENT">Document</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {variant.headerType === "TEXT" && (
+                <div className="grid gap-2">
+                  <Label htmlFor={`variant-${variant.id}-header-text`}>
+                    Header Text
+                  </Label>
+                  <Input
+                    id={`variant-${variant.id}-header-text`}
+                    value={variant.headerText}
+                    onChange={(e) =>
+                      updateVariant(variant.id, "headerText", e.target.value)
+                    }
+                    placeholder="Header text (max 60 chars)"
+                    maxLength={60}
+                  />
+                </div>
+              )}
+
+              {["IMAGE", "VIDEO", "DOCUMENT"].includes(variant.headerType) && (
+                <div className="grid gap-2">
+                  <Label htmlFor={`variant-${variant.id}-header-url`}>
+                    Header {variant.headerType.charAt(0) + variant.headerType.slice(1).toLowerCase()} URL
+                  </Label>
+                  <Input
+                    id={`variant-${variant.id}-header-url`}
+                    value={variant.headerUrl}
+                    onChange={(e) =>
+                      updateVariant(variant.id, "headerUrl", e.target.value)
+                    }
+                    placeholder="https://example.com/media.jpg"
+                    type="url"
+                  />
+                </div>
+              )}
+
               <div className="grid gap-2">
-                <Label htmlFor={`variant-${i}-lang`}>Language</Label>
-                <Select
-                  value={variant.lang}
-                  onValueChange={(v) => updateVariant(i, "lang", v)}
-                >
-                  <SelectTrigger id={`variant-${i}-lang`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="id">Indonesian</SelectItem>
-                    <SelectItem value="ms">Malay</SelectItem>
-                    <SelectItem value="zh">Chinese</SelectItem>
-                    <SelectItem value="ar">Arabic</SelectItem>
-                    <SelectItem value="ja">Japanese</SelectItem>
-                    <SelectItem value="ko">Korean</SelectItem>
-                    <SelectItem value="th">Thai</SelectItem>
-                    <SelectItem value="vi">Vietnamese</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors[`variant_${i}_lang`] && (
+                <Label htmlFor={`variant-${variant.id}-body`}>
+                  Body <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id={`variant-${variant.id}-body`}
+                  value={variant.body}
+                  onChange={(e) => updateVariant(variant.id, "body", e.target.value)}
+                  placeholder="Template body text (max 1024 chars)"
+                  rows={3}
+                  maxLength={1024}
+                />
+                {errors[`variant_${variant.id}_body`] && (
                   <p className="text-xs text-destructive">
-                    {errors[`variant_${i}_lang`]}
+                    {errors[`variant_${variant.id}_body`]}
                   </p>
                 )}
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor={`variant-${i}-header`}>Header Type</Label>
-                <Select
-                  value={variant.headerType}
-                  onValueChange={(v) => updateVariant(i, "headerType", v)}
-                >
-                  <SelectTrigger id={`variant-${i}-header`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NONE">None</SelectItem>
-                    <SelectItem value="TEXT">Text</SelectItem>
-                    <SelectItem value="IMAGE">Image</SelectItem>
-                    <SelectItem value="VIDEO">Video</SelectItem>
-                    <SelectItem value="DOCUMENT">Document</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {variant.headerType === "TEXT" && (
-              <div className="grid gap-2">
-                <Label htmlFor={`variant-${i}-header-text`}>
-                  Header Text
-                </Label>
+                <Label htmlFor={`variant-${variant.id}-footer`}>Footer</Label>
                 <Input
-                  id={`variant-${i}-header-text`}
-                  value={variant.headerText}
-                  onChange={(e) =>
-                    updateVariant(i, "headerText", e.target.value)
-                  }
-                  placeholder="Header text (max 60 chars)"
+                  id={`variant-${variant.id}-footer`}
+                  value={variant.footer}
+                  onChange={(e) => updateVariant(variant.id, "footer", e.target.value)}
+                  placeholder="Footer text (max 60 chars)"
                   maxLength={60}
                 />
               </div>
-            )}
-
-            <div className="grid gap-2">
-              <Label htmlFor={`variant-${i}-body`}>
-                Body <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id={`variant-${i}-body`}
-                value={variant.body}
-                onChange={(e) => updateVariant(i, "body", e.target.value)}
-                placeholder="Template body text (max 1024 chars)"
-                rows={3}
-                maxLength={1024}
-              />
-              {errors[`variant_${i}_body`] && (
-                <p className="text-xs text-destructive">
-                  {errors[`variant_${i}_body`]}
-                </p>
-              )}
             </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor={`variant-${i}-footer`}>Footer</Label>
-              <Input
-                id={`variant-${i}-footer`}
-                value={variant.footer}
-                onChange={(e) => updateVariant(i, "footer", e.target.value)}
-                placeholder="Footer text (max 60 chars)"
-                maxLength={60}
-              />
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* ── Submit ──────────────────────────────────────────────────────── */}

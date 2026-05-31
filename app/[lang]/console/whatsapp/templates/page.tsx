@@ -22,7 +22,7 @@ export default function ConsoleTemplatesPage() {
 
   const handleSyncAll = async () => {
     const unsynced = templates.filter(
-      (t) => (t as any).syncStatus === "NOT_SYNCED" || t.id,
+      (t) => t.syncStatus === "NOT_SYNCED",
     )
 
     if (unsynced.length === 0) {
@@ -47,10 +47,10 @@ export default function ConsoleTemplatesPage() {
   }
 
   const syncedCount = templates.filter(
-    (t) => (t as any).syncStatus === "SYNCED",
+    (t) => t.syncStatus === "SYNCED",
   ).length
   const notSyncedCount = templates.filter(
-    (t) => (t as any).syncStatus === "NOT_SYNCED",
+    (t) => t.syncStatus === "NOT_SYNCED",
   ).length
 
   return (

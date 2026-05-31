@@ -23,4 +23,3 @@ export type SubscriptionBillingResult = {
 }
 
 export const GRACE_PERIOD_DAYS = 7
-export const MAX_SUSPENSION_DAYS = 30

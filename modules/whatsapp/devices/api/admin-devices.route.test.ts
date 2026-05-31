@@ -8,6 +8,7 @@ import { Elysia } from "elysia"
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockFindMany = mock<(...args: any[]) => any>(async () => [])
+const mockCount = mock<(...args: any[]) => any>(async () => 0)
 const mockFindUnique = mock<(...args: any[]) => any>(async () => null)
 const mockUpdate = mock<(...args: any[]) => any>(async () => ({}))
 const mockBillingFindUnique = mock<(...args: any[]) => any>(async () => null)
@@ -16,6 +17,8 @@ const mockAdjustmentCreate = mock<(...args: any[]) => any>(async () => ({ id: "a
 const mockTransaction = mock<(...args: any[]) => any>(async (fn: (tx: any) => any) =>
   fn({
     whatsappDevice: {
+      findMany: mockFindMany,
+      count: mockCount,
       findUnique: mockFindUnique,
       update: mockUpdate,
     },
@@ -33,6 +36,7 @@ mock.module("@/lib/prisma", () => ({
   prisma: {
     whatsappDevice: {
       findMany: mockFindMany,
+      count: mockCount,
       findUnique: mockFindUnique,
       update: mockUpdate,
     },
@@ -76,6 +80,7 @@ const BASE = "http://localhost/admin/devices"
 describe("Admin Devices Routes", () => {
   beforeEach(() => {
     mockFindMany.mockImplementation(async () => [])
+    mockCount.mockImplementation(async () => 0)
     mockFindUnique.mockImplementation(async () => null)
     mockUpdate.mockImplementation(async () => ({}))
     mockBillingFindUnique.mockImplementation(async () => null)
@@ -285,10 +290,10 @@ describe("Admin Devices Routes", () => {
         value: 50000,
         plus: function (n: number) {
           this.value += n
-          return { gt: () => false, toNumber: () => this.value }
+          return { gt: () => false, toString: () => String(this.value) }
         },
-        toNumber: () => 150000,
-        valueOf: () => 150000,
+        toString: () => "50000",
+        valueOf: () => 50000,
       }
       const fakeDevice = {
         id: "dev-1",
@@ -302,7 +307,7 @@ describe("Admin Devices Routes", () => {
       }))
       mockUpdate.mockImplementation(async () => ({
         ...fakeDevice,
-        balance: { toNumber: () => 150000, valueOf: () => 150000 },
+        balance: { toString: () => "150000", valueOf: () => 150000 },
       }))
 
       const app = createTestApp()
