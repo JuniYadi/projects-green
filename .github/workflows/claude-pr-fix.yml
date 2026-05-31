@@ -9,6 +9,10 @@ on:
         description: 'PR number to fix (required for manual trigger)'
         required: false
         type: number
+      branch:
+        description: 'Existing fix branch to resume from (optional, creates new if empty)'
+        required: false
+        type: string
 
 concurrency:
   group: pr-fix-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.event.review.state }}
@@ -162,17 +166,28 @@ jobs:
       - name: Generate Prisma client
         run: bun run db:generate
 
-      - name: Create fix branch
+      - name: Create or resume fix branch
         id: create-branch
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
 
-          # Use timestamp to prevent branch conflicts on retry
-          TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          FIX_BRANCH="fix/pr-${{ steps.pr-info.outputs.PR_NUMBER }}-review-fixes-${TIMESTAMP}"
-          echo "FIX_BRANCH=$FIX_BRANCH" >> $GITHUB_OUTPUT
-          git checkout -b "$FIX_BRANCH"
+          EXISTING_BRANCH="${{ inputs.branch }}"
+
+          if [ -n "$EXISTING_BRANCH" ]; then
+            echo "Resuming from existing branch: $EXISTING_BRANCH"
+            git checkout "$EXISTING_BRANCH"
+            echo "FIX_BRANCH=$EXISTING_BRANCH" >> $GITHUB_OUTPUT
+          else
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            FIX_BRANCH="fix/pr-${{ steps.pr-info.outputs.PR_NUMBER }}-review-fixes-${TIMESTAMP}"
+            echo "Creating new branch: $FIX_BRANCH"
+            echo "FIX_BRANCH=$FIX_BRANCH" >> $GITHUB_OUTPUT
+            git checkout -b "$FIX_BRANCH"
+          fi
 
       - name: Run Claude Code Fix
         uses: anthropics/claude-code-action@v1
@@ -186,7 +201,7 @@ jobs:
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
             --max-turns 75
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(git *),Bash(bun *)"
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(git *),Bash(bun *),Bash(git push *)"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ steps.pr-info.outputs.PR_NUMBER }}
@@ -195,34 +210,25 @@ jobs:
 
             First, read the unresolved review threads from `/tmp/review_threads.md`. This file contains ALL unresolved inline review comments from the PR with file paths, line numbers, and detailed issue descriptions.
 
+            WORKFLOW — commit and push after EACH fix:
             For each issue in the review threads:
             1. Read the file and line range mentioned
             2. Understand the issue described
             3. Apply the minimal fix
-            4. Do NOT resolve the review thread (that happens automatically when the fix PR merges)
+            4. Run `bun run lint` and `bun run typecheck` to verify
+            5. git add the changed file(s)
+            6. git commit with message: `fix: <brief description of fix>`
+            7. git push origin HEAD — push immediately so work is preserved
 
-            IMPORTANT:
-            1. Make the minimal changes necessary to fix each issue
-            2. Run `bun run lint` and `bun run typecheck` after your changes
-            3. If tests exist for modified code, run them
-            4. Commit your changes with a conventional commit message: `fix: address review comments for PR #<${{ steps.pr-info.outputs.PR_NUMBER }}>`
-            5. DO NOT push changes - I will handle that separately
-            6. DO NOT resolve review threads - leave them for the maintainer to resolve after merge
+            After ALL issues are fixed:
+            - Run `bun run test` if tests exist for modified code
+            - If tests pass, commit and push one final time if needed
 
-      - name: Check for changes
-        run: |
-          if git diff-index --quiet HEAD --; then
-            echo "No changes made. Exiting."
-            exit 0
-          fi
-
-      - name: Push fix branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
-          gh auth setup-git
-          git push origin "$FIX_BRANCH"
+            RULES:
+            1. Commit and push after EACH individual fix — do NOT batch fixes
+            2. Use descriptive commit messages per fix (e.g. `fix: remove as any cast on invoice line creation`)
+            3. DO NOT resolve review threads — leave them for the maintainer to resolve after merge
+            4. If a fix fails lint/typecheck, fix it before committing
 
       - name: Create fix PR
         env:
