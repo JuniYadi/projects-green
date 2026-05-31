@@ -107,8 +107,11 @@ export class GithubPushEventHandler {
     }
 
     if (stack.branchFilter) {
-      const filters = stack.branchFilter.split(",").map(f => f.trim())
-      return filters.includes(branch)
+      const filters = stack.branchFilter
+        .split(",")
+        .map((f) => f.trim().toLowerCase())
+        .filter((f) => f.length > 0)
+      return filters.includes(branch.toLowerCase())
     }
 
     return true
@@ -165,11 +168,16 @@ export class GithubPushDispatcher {
 export function verifyGitHubSignature(payload: string, signature: string, secret: string): boolean {
   const hmac = createHmac("sha256", secret)
   const digest = "sha256=" + hmac.update(payload).digest("hex")
-  
-  return timingSafeEqual(
-    Buffer.from(digest),
-    Buffer.from(signature)
-  )
+
+  const expected = Buffer.from(digest)
+  const received = Buffer.from(signature)
+
+  // timingSafeEqual throws on length mismatch — guard against malformed headers
+  if (expected.length !== received.length) {
+    return false
+  }
+
+  return timingSafeEqual(expected, received)
 }
 
 /**
