@@ -15,6 +15,7 @@ export interface WhatsAppTemplate {
   description?: string | null
   whatsappDeviceId?: string | null
   organizationId: string
+  syncStatus?: "NOT_SYNCED" | "SYNCING" | "SYNCED" | "FAILED"
   languages: WhatsAppTemplateLanguage[]
   createdAt: string
   updatedAt: string

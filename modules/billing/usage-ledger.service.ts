@@ -13,16 +13,10 @@ export interface RatedUsage {
 }
 
 /**
- * TODO: Integrate with QuotaGateService.deductMessageQuota
- * After incrementing counters, record the billable event:
- *   await usageLedgerService.recordUsage({
- *     tenantId: subscription.tenantId,
- *     subscriptionId: subscription.id,
- *     period: "YYYY-MM",
- *     entry: { category: "WHATSAPP_MESSAGE_OUT", amountIdr: ..., metadata: ... }
- *   })
+ * Usage Ledger Service
  *
- * This is intentionally left as a separate call so callers can batch or skip
+ * Callers: invoke recordUsage after deductMessageQuota to record the billable
+ * event. This is intentionally a separate call so callers can batch or skip
  * ledger recording without blocking the quota check/deduct flow.
  */
 export class UsageLedgerService {

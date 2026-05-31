@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card"
 import { CheckCircle, XCircle } from "@phosphor-icons/react"
 import { DeviceActions } from "./device-actions"
+import { QuotaBalanceCard } from "./quota-balance-card"
 
 type DeviceDetailPageProps = {
   params: Promise<{
@@ -173,34 +174,12 @@ export default async function PortalWhatsAppDeviceDetailPage({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Quota & Balance</CardTitle>
-            <CardDescription>
-              Usage limits and current balance
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-3">
-              <InfoRow
-                label="Current Balance"
-                value={
-                  <span className="text-lg font-bold">
-                    {formatCurrency(device.balance)}
-                  </span>
-                }
-              />
-              <InfoRow
-                label="Quota Base"
-                value={device.quotaBase.toLocaleString()}
-              />
-              <InfoRow
-                label="Daily Limit (Messages)"
-                value={device.dailyLimitMessage.toLocaleString()}
-              />
-            </dl>
-          </CardContent>
-        </Card>
+        <QuotaBalanceCard
+          deviceId={device.id}
+          initialBalance={device.balance}
+          initialQuotaBase={device.quotaBase}
+          initialDailyLimitMessage={device.dailyLimitMessage}
+        />
 
         <Card>
           <CardHeader>
