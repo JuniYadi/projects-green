@@ -61,11 +61,13 @@ function ConfirmationPageContent() {
   const [initialPaymentDateTime] = useState(getDefaultPaymentDateTime)
 
   useEffect(() => {
+    let cancelled = false
+
     async function fetchBankAccounts() {
       try {
         const response = await fetch("/api/payments/topup/bank-accounts")
         const data = await response.json()
-        if (data.ok) {
+        if (data.ok && !cancelled) {
           setBankAccounts(data.data || [])
           if (data.data?.length > 0) {
             // If invoice has a preselected bank account, use it
@@ -82,11 +84,17 @@ function ConfirmationPageContent() {
       } catch {
         // Silently fail
       } finally {
-        setIsLoadingAccounts(false)
+        if (!cancelled) {
+          setIsLoadingAccounts(false)
+        }
       }
     }
 
     void fetchBankAccounts()
+
+    return () => {
+      cancelled = true
+    }
   }, [searchParams])
 
   const isValid = bankAccountId && initialPaymentDateTime && amount > 0
