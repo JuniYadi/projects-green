@@ -11,7 +11,7 @@ export const createWebhookRoutes = () =>
     .post("/duitku/callback", async ({ body, set }) => {
       const params = body as Record<string, string>
 
-      const isValid = duitkuService.verifyCallback({
+      const isValid = await duitkuService.verifyCallback({
         merchantCode: params.merchantCode,
         amount: params.amount,
         merchantOrderId: params.merchantOrderId,
@@ -50,8 +50,19 @@ export const createWebhookRoutes = () =>
 
       if (resultCode === "00") {
         try {
+          // Look up invoice to get correct tenantId before crediting
+          const invoice = await prisma.invoice.findUnique({
+            where: { id: merchantOrderId },
+          })
+
+          if (!invoice?.tenantId) {
+            console.error(`Invoice ${merchantOrderId} not found or missing tenantId`)
+            // Return 200 to prevent Duitku retries for invalid orders
+            return { ok: true }
+          }
+
           await paymentService.creditBalance(
-            merchantOrderId,
+            invoice.tenantId,
             parseInt(amount),
             `DUITKU_${reference}`
           )
