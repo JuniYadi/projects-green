@@ -121,8 +121,10 @@ async function fetchBilling<T>(
   return data as T
 }
 
-export async function getAccount(): Promise<BillingAccount> {
-  return fetchBilling<BillingAccount>("/api/billing/account")
+export async function getAccount(
+  options?: RequestInit
+): Promise<BillingAccount> {
+  return fetchBilling<BillingAccount>("/api/billing/account", options)
 }
 
 export async function getSubscriptions(): Promise<BillingSubscriptions> {
@@ -138,8 +140,14 @@ export async function getInvoices(
   return fetchBilling<BillingInvoices>(endpoint)
 }
 
-export async function getInvoice(id: string): Promise<InvoiceDetail> {
-  return fetchBilling<InvoiceDetail>(`/api/billing/invoices/${id}`)
+export async function getInvoice(
+  id: string,
+  options?: RequestInit
+): Promise<InvoiceDetail> {
+  return fetchBilling<InvoiceDetail>(
+    `/api/billing/invoices/${id}`,
+    options
+  )
 }
 
 export async function topup(
