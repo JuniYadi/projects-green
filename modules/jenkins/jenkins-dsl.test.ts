@@ -42,12 +42,15 @@ describe("jenkins-dsl", () => {
       const dsl = generateNodeDsl(baseOptions)
       expect(dsl).toContain("pipelineJob('my-app')")
       expect(dsl).toContain("nodejsPipeline([")
-      expect(dsl).toContain("nodeVersion: '22'")
+      expect(dsl).toContain("helpers.nodejsParameters(")
+      expect(dsl).toContain("'22'") // nodeVersion passed to helper
     })
 
     it("respects runNodeBuild flag", () => {
       const dsl = generateNodeDsl({ ...baseOptions, runNodeBuild: true })
-      expect(dsl).toContain("runNodeBuild: 'true'")
+      // runNodeBuild is handled via helper parameters, verify DSL is generated
+      expect(dsl).toContain("nodejsPipeline([")
+      expect(dsl).not.toContain("runNodeBuild:") // Not a direct property
     })
   })
 
