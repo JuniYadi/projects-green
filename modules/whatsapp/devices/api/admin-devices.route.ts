@@ -78,7 +78,7 @@ export const createAdminDevicesRoutes = (
   const { authenticate, getRole } = { ...defaultDeps, ...deps }
 
   return new Elysia({ prefix: "/admin/devices" })
-    .get("/", async ({ set }) => {
+    .get("/", async ({ query, set }) => {
       const auth = await authenticate()
 
       if (!auth.user) {
@@ -91,9 +91,17 @@ export const createAdminDevicesRoutes = (
         return toForbidden(set, "Only super admins can list all devices.")
       }
 
-      const devices = await prisma.whatsappDevice.findMany({
-        orderBy: { createdAt: "desc" },
-      })
+      const take = Math.min(Number(query.take) || 50, 100)
+      const skip = Number(query.skip) || 0
+
+      const [devices, total] = await Promise.all([
+        prisma.whatsappDevice.findMany({
+          orderBy: { createdAt: "desc" },
+          take,
+          skip,
+        }),
+        prisma.whatsappDevice.count(),
+      ])
 
       return {
         ok: true as const,
@@ -102,12 +110,15 @@ export const createAdminDevicesRoutes = (
           organizationId: d.organizationId,
           phoneNumber: d.phoneNumber,
           status: d.status,
-          balance: Number(d.balance),
-          quotaBase: Number(d.quotaBase),
+          balance: Number(d.balance.toString()),
+          quotaBase: Number(d.quotaBase.toString()),
           dailyLimitMessage: d.dailyLimitMessage,
           createdAt: d.createdAt.toISOString(),
           updatedAt: d.updatedAt.toISOString(),
         })),
+        total,
+        take,
+        skip,
       }
     })
     .get("/:id", async ({ params: { id }, set }) => {
