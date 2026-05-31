@@ -1,4 +1,107 @@
-import { describe, it, expect, mock } from "bun:test"
+import { describe, it, expect, beforeEach, vi } from "bun:test"
+import { Prisma } from "@prisma/client"
+
+import { createBillingAccountRoutes } from "./account.route"
+
+describe("GET /account - JIT upsert", () => {
+  const mockEnsureBillingAccountForOrg = vi.fn()
+  const mockGetOrganizationAction = vi.fn()
+
+  const mockAuth = {
+    user: { id: "user-1", email: "test@example.com" },
+    organizationId: "org_123",
+  }
+
+  const createRoute = () =>
+    createBillingAccountRoutes({
+      authenticate: async () => mockAuth as any,
+      ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg as any,
+      getOrganizationAction: mockGetOrganizationAction as any,
+    })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("calls ensureBillingAccountForOrg when accessing account", async () => {
+    const mockAccount = {
+      id: "acc-1",
+      tenantId: "tenant-1",
+      organizationId: "org_123",
+      balance: new Prisma.Decimal(100_000),
+      currency: "USD",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.ok).toBe(true)
+    expect(mockEnsureBillingAccountForOrg).toHaveBeenCalledWith({
+      organizationId: "org_123",
+      getOrganizationAction: mockGetOrganizationAction,
+    })
+  })
+
+  it("returns account balance info from upserted account", async () => {
+    const mockAccount = {
+      id: "acc-1",
+      tenantId: "tenant-1",
+      organizationId: "org_123",
+      balance: new Prisma.Decimal(500000),
+      currency: "USD",
+      createdAt: new Date("2026-05-01"),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.ok).toBe(true)
+
+    const data = await response.json()
+    expect(data.ok).toBe(true)
+    expect(data.tenantId).toBe("tenant-1")
+    expect(data.balanceIdr).toBe("500000.00")
+    expect(data.isPositive).toBe(true)
+  })
+
+  it("returns 401 when user is not authenticated", async () => {
+    const createRouteUnauthorized = () =>
+      createBillingAccountRoutes({
+        authenticate: async () => ({ user: null, organizationId: null }) as any,
+        ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg as any,
+        getOrganizationAction: mockGetOrganizationAction as any,
+      })
+
+    const app = createRouteUnauthorized()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(401)
+  })
+
+  it("returns 403 when no active organization", async () => {
+    const createRouteForbidden = () =>
+      createBillingAccountRoutes({
+        authenticate: async () => ({
+          user: { id: "user-1", email: "test@example.com" },
+          organizationId: null,
+        }) as any,
+        ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg as any,
+        getOrganizationAction: mockGetOrganizationAction as any,
+      })
+
+    const app = createRouteForbidden()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(403)
+  })
+})
 
 // Test schema validation
 describe("billingSchemas", () => {
