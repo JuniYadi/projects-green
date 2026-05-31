@@ -12,6 +12,7 @@ import { deployRoutes } from "@/modules/deploy/api/deploy.route"
 import { frameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
 import { githubRoutes } from "@/modules/github/api/github.route"
 import { invoicesRoutes } from "@/modules/invoices/api/invoices.route"
+import { paymentRoutes, userPaymentRoutes } from "@/modules/payment/api"
 import { supportTicketAttachmentRoutes } from "@/modules/support-tickets/api/support-ticket-attachments.route"
 import { supportTicketRoutes } from "@/modules/support-tickets/api/support-tickets.route"
 import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
@@ -86,6 +87,8 @@ export const app = new Elysia({ prefix: "/api" })
   .use(tenantsRoutes)
   .use(authRoutes)
   .use(billingRoutes)
+  .use(paymentRoutes)
+  .use(userPaymentRoutes)
   .use(adminRoutes)
   .use(usersRoutes)
   .use(whatsappRoutes)
