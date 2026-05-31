@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "bun:test"
 import { Prisma } from "@prisma/client"
+import type { Organization } from "@workos-inc/node"
 
 import { createBillingAccountRoutes } from "./account.route"
 
@@ -14,9 +15,9 @@ describe("GET /account - JIT upsert", () => {
 
   const createRoute = () =>
     createBillingAccountRoutes({
-      authenticate: async () => mockAuth as any,
-      ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg as any,
-      getOrganizationAction: mockGetOrganizationAction as any,
+      authenticate: async () => mockAuth,
+      ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg,
+      getOrganizationAction: mockGetOrganizationAction as (orgId: string) => Promise<Organization>,
     })
 
   beforeEach(() => {

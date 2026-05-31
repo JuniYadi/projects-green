@@ -17,7 +17,6 @@ type MemberBillingTableProps = {
 export function MemberBillingTable({
   members,
   lang,
-  isLoading,
 }: MemberBillingTableProps) {
   const columns: ColumnDef<AdminMember, unknown>[] = [
     {

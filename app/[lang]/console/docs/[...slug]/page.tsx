@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useParams } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, ChevronLeft } from "lucide-react"
+import { Warning, ArrowLeft } from "@phosphor-icons/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
@@ -29,15 +29,8 @@ export default function DocDetailPage() {
   const path = `/${slug}`
 
   const { data, isLoading } = useQuery<DocResponse>({
-    queryKey: () => {
-      const s = Array.isArray(params.slug) ? params.slug.join("/") : params.slug
-      return ["docs", "detail", "/" + s]
-    },
-    queryFn: () => {
-      const s = Array.isArray(params.slug) ? params.slug.join("/") : params.slug
-      const p = "/" + s
-      return fetch(`/api/docs?path=${encodeURIComponent(p)}`).then((res) => res.json())
-    },
+    queryKey: ["docs", "detail", path],
+    queryFn: () => fetch(`/api/docs?path=${encodeURIComponent(path)}`).then((res) => res.json()),
     enabled: !!params.slug,
   })
 
@@ -55,7 +48,7 @@ export default function DocDetailPage() {
     return (
       <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+          <Warning className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {data.message || "Could not load documentation."}
@@ -63,7 +56,7 @@ export default function DocDetailPage() {
         </Alert>
         <Button asChild variant="outline" className="w-fit">
           <Link href="/console/docs">
-            <ChevronLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Docs
           </Link>
         </Button>
@@ -76,7 +69,7 @@ export default function DocDetailPage() {
       <div className="flex items-center gap-4">
         <Button asChild variant="ghost" size="icon">
           <Link href="/console/docs">
-            <ChevronLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div className="flex flex-col">
