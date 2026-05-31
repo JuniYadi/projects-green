@@ -160,7 +160,7 @@ export function TemplateList({
             </div>
           </div>
           <TemplateStatusBadge
-            status={(template as any).syncStatus ?? "NOT_SYNCED"}
+            status={template.syncStatus ?? "NOT_SYNCED"}
           />
         </div>
       ))}
