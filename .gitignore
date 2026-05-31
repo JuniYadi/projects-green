@@ -45,3 +45,4 @@ goals/
 
 # Claude gitignore
 .claude/worktrees/
+.claude/*.lock
