@@ -87,7 +87,8 @@ describe("GitOpsRepositoryService", () => {
     )
 
     expect(result.sha).toBe("commit-sha")
-    
+    expect(mockFetch).toHaveBeenCalledTimes(4) // getRef + createTree + createCommit + updateRef
+
     // Check createTree call body for deletion
     const treeCall = mockFetch.mock.calls.find(call => call[0].endsWith("/git/trees"))
     const body = JSON.parse(treeCall[1].body)
