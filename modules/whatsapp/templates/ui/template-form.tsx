@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select"
 
 export type LanguageVariant = {
+  id?: string
   lang: string
   headerType: string
   headerText: string
@@ -48,6 +49,7 @@ type TemplateFormProps = {
 }
 
 const emptyVariant = (): LanguageVariant => ({
+  id: crypto.randomUUID(),
   lang: "en",
   headerType: "NONE",
   headerText: "",
@@ -66,7 +68,12 @@ export function TemplateForm({
     initialData?.description ?? "",
   )
   const [variants, setVariants] = React.useState<LanguageVariant[]>(
-    initialData?.languages?.length ? initialData.languages : [emptyVariant()],
+    initialData?.languages?.length
+      ? initialData.languages.map((v) => ({
+          ...v,
+          id: v.id ?? crypto.randomUUID(),
+        }))
+      : [emptyVariant()],
   )
   const [errors, setErrors] = React.useState<
     Record<string, string | undefined>
@@ -103,9 +110,12 @@ export function TemplateForm({
       name: name.trim(),
       slug: slug.trim(),
       description: description.trim() || undefined,
-      languages: variants.map((v) => ({
-        ...v,
-        headerText: v.headerType === "NONE" ? "" : v.headerText,
+      languages: variants.map(({
+        id: _id,
+        ...rest
+      }) => ({
+        ...rest,
+        headerText: rest.headerType === "NONE" ? "" : rest.headerText,
       })),
     })
   }
@@ -196,7 +206,7 @@ export function TemplateForm({
         )}
 
         {variants.map((variant, i) => (
-          <div key={i} className="space-y-3 rounded-lg border p-4">
+          <div key={variant.id ?? i} className="space-y-3 rounded-lg border p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
                 Variant {i + 1}
