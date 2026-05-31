@@ -223,7 +223,7 @@ export class BillingCycleService {
           tenantId,
           subscriptionId: subscription.id,
           billingRunId,
-          invoiceNumber: `INV-${period}-${subscription.id.slice(0, 8)}-${Date.now().toString(36)}`,
+          invoiceNumber: `INV-${period}-${subscription.id.slice(0, 8)}-${billingRunId.slice(0, 8)}`,
           periodStart: this.getPeriodStart(new Date()),
           periodEnd: this.getPeriodEnd(new Date()),
           currency: IDR_CURRENCY,
