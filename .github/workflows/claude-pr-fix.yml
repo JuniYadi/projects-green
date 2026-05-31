@@ -33,12 +33,12 @@ jobs:
           AUTHOR="${{ github.event.pull_request.user.login }}"
           BRANCH="${{ github.event.pull_request.head.ref }}"
 
-          if [ "$AUTHOR" == "github-actions[bot]" ]; then
+          if [ "$AUTHOR" = "github-actions[bot]" ]; then
             echo "Skipping: Fix PR created by bot"
             exit 0
           fi
 
-          if [[ "$BRANCH" == fix/pr-* ]]; then
+          if [[ "$BRANCH" == "fix/pr-"* ]]; then
             echo "Skipping: Fix PR branch"
             exit 0
           fi
