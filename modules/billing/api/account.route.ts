@@ -1,5 +1,6 @@
 import { Elysia } from "elysia"
-import { withAuth } from "@workos-inc/authkit-nextjs"
+import { withAuth, getWorkOS } from "@workos-inc/authkit-nextjs"
+import type { Organization } from "@workos-inc/node"
 import { Prisma } from "@prisma/client"
 
 import { MINIMUM_BALANCE_WARN_IDR } from "../constants"
@@ -12,28 +13,21 @@ type BillingAuthContext = {
   user: { id: string; email?: string | null } | null
 }
 
-type WorkOSOrganization = {
-  id: string
-  name: string
+type BillingAccountRouteDeps = {
+  authenticate: () => Promise<BillingAuthContext>
+  ensureBillingAccountForOrg: typeof ensureBillingAccountForOrg
+  getOrganizationAction: (orgId: string) => Promise<Organization>
 }
 
 type RouteSet = {
   status?: number | string
 }
 
-type BillingAccountRouteDeps = {
-  authenticate: () => Promise<BillingAuthContext>
-  ensureBillingAccountForOrg: typeof ensureBillingAccountForOrg
-  getOrganizationAction: (orgId: string) => Promise<WorkOSOrganization>
-}
-
 const defaultDeps: BillingAccountRouteDeps = {
   authenticate: () => withAuth(),
   ensureBillingAccountForOrg,
-  getOrganizationAction: async () => {
-    // This will be overridden in tests
-    throw new Error("getOrganizationAction not configured")
-  },
+  getOrganizationAction: async (orgId: string) =>
+    getWorkOS().organizations.getOrganization(orgId),
 }
 
 const toUnauthorized = (set: RouteSet) => {
