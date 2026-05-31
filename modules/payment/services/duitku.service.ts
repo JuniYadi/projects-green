@@ -69,7 +69,6 @@ export class DuitkuService {
     }
   }
 
-  // CodeQL[js/insecure-hashing] — MD5 required by Duitku API spec for request signing
   async verifyCallback(params: {
     merchantCode: string
     amount: string
@@ -81,24 +80,25 @@ export class DuitkuService {
       throw new Error("Duitku gateway not configured")
     }
 
+    const stringToSign = params.merchantCode + params.merchantOrderId + params.amount
     const expectedSignature = crypto
-      .createHash("md5")
-      .update(params.merchantCode + params.amount + params.merchantOrderId + config.apiKey)
+      .createHmac("sha256", config.apiKey)
+      .update(stringToSign)
       .digest("hex")
 
     return params.signature === expectedSignature
   }
 
-  // CodeQL[js/insecure-hashing] — MD5 required by Duitku API spec for request signing
   private generateSignature(
     merchantCode: string,
     merchantOrderId: string,
     paymentAmount: number,
     apiKey: string
   ): string {
+    const stringToSign = merchantCode + merchantOrderId + paymentAmount
     return crypto
-      .createHash("md5")
-      .update(merchantCode + merchantOrderId + paymentAmount + apiKey)
+      .createHmac("sha256", apiKey)
+      .update(stringToSign)
       .digest("hex")
   }
 
