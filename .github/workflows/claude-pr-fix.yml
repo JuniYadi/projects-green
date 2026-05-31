@@ -217,8 +217,11 @@ jobs:
           fi
 
       - name: Push fix branch
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
+          gh auth setup-git
           git push origin "$FIX_BRANCH"
 
       - name: Create fix PR
