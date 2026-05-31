@@ -252,6 +252,7 @@ jobs:
             --body-file /tmp/pr_body.txt
 
       - name: Post comment on original PR
+        if: steps.create-branch.outputs.FIX_BRANCH != inputs.branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
