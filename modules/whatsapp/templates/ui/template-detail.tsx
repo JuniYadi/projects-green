@@ -161,7 +161,7 @@ export function TemplateDetailView({
                 label="Status"
                 value={
                   <Badge variant="outline">
-                    {(template as any).syncStatus ?? "NOT_SYNCED"}
+                    {template.syncStatus ?? "NOT_SYNCED"}
                   </Badge>
                 }
               />
