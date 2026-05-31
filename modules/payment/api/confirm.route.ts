@@ -1,6 +1,7 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
+import { prisma } from "@/lib/prisma"
 import { ConfirmationService } from "../services/confirmation.service"
 import { ConfirmPaymentSchema } from "../types/payment.types"
 
@@ -28,8 +29,17 @@ export const createConfirmRoutes = () =>
 
       const { bankAccountId, amount, paymentDateTime, senderBankName, senderName, senderAccount, screenshotUrl, notes } = parseResult.data
 
-      // Get tenantId from session or use organizationId
-      const tenantId = (auth as unknown as Record<string, string>).tenantId || auth.organizationId
+      // Look up invoice to determine correct tenantId
+      const invoice = await prisma.invoice.findFirst({
+        where: { id: params.id, status: "OPEN" },
+      })
+
+      if (!invoice) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Invoice not found or not open" }
+      }
+
+      const tenantId = invoice.tenantId || auth.organizationId
 
       try {
         const confirmation = await confirmationService.create({
