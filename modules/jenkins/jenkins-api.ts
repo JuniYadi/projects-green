@@ -1,5 +1,19 @@
 import type { JenkinsServer } from "./jenkins.types"
 
+// ─── Timeout wrapper ──────────────────────────────────────────────────────────
+
+async function withTimeout<T>(fn: () => Promise<T>, ms = 30000): Promise<T> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  try {
+    return await fn()
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
 const JENKINS_URL = process.env.JENKINS_URL ?? ""
 const JENKINS_USERNAME = process.env.JENKINS_USERNAME ?? ""
 const JENKINS_API_TOKEN = process.env.JENKINS_API_TOKEN ?? ""
@@ -26,7 +40,9 @@ export async function jenkinsApiFetch(
   headers.set("Authorization", authHeader)
 
   try {
-    const response = await fetch(url, { ...options, headers })
+    const response = await withTimeout(async () =>
+      fetch(url, { ...options, headers })
+    )
 
     if (response.status === 401 || response.status === 403) {
       throw new Error(`Jenkins authentication failed: ${response.statusText}`)
@@ -43,6 +59,9 @@ export async function jenkinsApiFetch(
     }
     return await response.text()
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Jenkins API timed out after 30s: ${path}`)
+    }
     if (error instanceof Error && error.message.startsWith("Jenkins")) {
       throw error
     }

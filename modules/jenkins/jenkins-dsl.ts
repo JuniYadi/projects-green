@@ -1,5 +1,17 @@
 import { JenkinsJobConfig } from "./jenkins.types"
 
+// ─── Groovy String Escaping ──────────────────────────────────────────────────
+
+/**
+ * Escape a value for safe interpolation inside single-quoted Groovy strings.
+ * Replaces literal single quotes per Groovy escaping rules: ' → '\''
+ */
+function escapeGroovy(value: string): string {
+  return String(value).replace(/'/g, "'\\''")
+}
+
+// ─── DSL Generators ──────────────────────────────────────────────────────────
+
 export interface JenkinsDslOptions {
   appStackSlug: string
   gitRepoUrl: string
@@ -35,22 +47,22 @@ export function generatePhpDsl(options: JenkinsDslOptions): string {
   return `// PHP Application Pipeline Job DSL
 def helpers = evaluate(readFileFromWorkspace('jobs/common/parameterHelpers.groovy'))
 
-pipelineJob('${appStackSlug}') {
-    description('Jenkins builder for Repository ${gitRepoUrl}')
+pipelineJob('${escapeGroovy(appStackSlug)}') {
+    description('Jenkins builder for Repository ${escapeGroovy(gitRepoUrl)}')
 
     properties {
         githubProjectProperty {
-            projectUrlStr('${gitRepoUrl}')
+            projectUrlStr('${escapeGroovy(gitRepoUrl)}')
         }
     }
 
     parameters helpers.laravelParameters(
-        '${gitRepoUrl}',
-        '${gitRepoBranch}',
-        '${phpVersion}',
-        '${nodeVersion}',
+        '${escapeGroovy(gitRepoUrl)}',
+        '${escapeGroovy(gitRepoBranch)}',
+        '${escapeGroovy(phpVersion)}',
+        '${escapeGroovy(nodeVersion)}',
         '${runNodeBuild}',
-        '${tagVersion}',
+        '${escapeGroovy(tagVersion)}',
         ${useAlpine}
     )
 
@@ -60,12 +72,12 @@ pipelineJob('${appStackSlug}') {
 @Library('shared-library') _
 
 laravelPipeline([
-    codeRepo: '${gitRepoUrl}',
-    codeGitCredentialsId: '${gitCredentialId}',
-    codeBranch: '${gitRepoBranch}',
-    dockerRepo: '${appStackSlug}',
-    codeDeployPath: '${appStackSlug}',
-    webhookEnv: '${env}',
+    codeRepo: '${escapeGroovy(gitRepoUrl)}',
+    codeGitCredentialsId: '${escapeGroovy(gitCredentialId)}',
+    codeBranch: '${escapeGroovy(gitRepoBranch)}',
+    dockerRepo: '${escapeGroovy(appStackSlug)}',
+    codeDeployPath: '${escapeGroovy(appStackSlug)}',
+    webhookEnv: '${escapeGroovy(env)}',
 ])
             """)
             sandbox()
@@ -91,21 +103,21 @@ export function generateNodeDsl(options: JenkinsDslOptions): string {
   return `// Node.js Application Pipeline Job DSL
 def helpers = evaluate(readFileFromWorkspace('jobs/common/parameterHelpers.groovy'))
 
-pipelineJob('${appStackSlug}') {
-    description('Jenkins builder for Repository ${gitRepoUrl}')
+pipelineJob('${escapeGroovy(appStackSlug)}') {
+    description('Jenkins builder for Repository ${escapeGroovy(gitRepoUrl)}')
 
     properties {
         githubProjectProperty {
-            projectUrlStr('${gitRepoUrl}')
+            projectUrlStr('${escapeGroovy(gitRepoUrl)}')
         }
     }
 
     parameters helpers.nodejsParameters(
-        '${gitRepoUrl}',
-        '${gitRepoBranch}',
-        '${nodeVersion}',
+        '${escapeGroovy(gitRepoUrl)}',
+        '${escapeGroovy(gitRepoBranch)}',
+        '${escapeGroovy(nodeVersion)}',
         'nodejs',
-        '${tagVersion}',
+        '${escapeGroovy(tagVersion)}',
         ${useAlpine}
     )
 
@@ -115,12 +127,12 @@ pipelineJob('${appStackSlug}') {
 @Library('shared-library') _
 
 nodejsPipeline([
-    codeRepo: '${gitRepoUrl}',
-    codeGitCredentialsId: '${gitCredentialId}',
-    codeBranch: '${gitRepoBranch}',
-    dockerRepo: '${appStackSlug}',
-    codeDeployPath: '${appStackSlug}',
-    webhookEnv: '${env}',
+    codeRepo: '${escapeGroovy(gitRepoUrl)}',
+    codeGitCredentialsId: '${escapeGroovy(gitCredentialId)}',
+    codeBranch: '${escapeGroovy(gitRepoBranch)}',
+    dockerRepo: '${escapeGroovy(appStackSlug)}',
+    codeDeployPath: '${escapeGroovy(appStackSlug)}',
+    webhookEnv: '${escapeGroovy(env)}',
 ])
             """)
             sandbox()
@@ -144,20 +156,20 @@ export function generateDockerDsl(options: JenkinsDslOptions): string {
   } = options
 
   const envVarsString = Object.entries(environmentVariables)
-    .map(([key, value]) => `        '${key}': '${value}'`)
+    .map(([key, value]) => `        '${escapeGroovy(key)}': '${escapeGroovy(value)}'`)
     .join(",\n")
 
   return `// Docker Image Pipeline Job DSL
 def helpers = evaluate(readFileFromWorkspace('jobs/common/parameterHelpers.groovy'))
 
-pipelineJob('${appStackSlug}') {
-    description('Jenkins builder for Docker Image ${dockerImage}')
+pipelineJob('${escapeGroovy(appStackSlug)}') {
+    description('Jenkins builder for Docker Image ${escapeGroovy(dockerImage)}')
 
     parameters helpers.dockerParameters(
-        '${dockerImage}',
-        '${dockerRegistryUrl}',
-        '${dockerRegistryCredentialId}',
-        '${tagVersion}'
+        '${escapeGroovy(dockerImage)}',
+        '${escapeGroovy(dockerRegistryUrl)}',
+        '${escapeGroovy(dockerRegistryCredentialId)}',
+        '${escapeGroovy(tagVersion)}'
     )
 
     definition {
@@ -166,17 +178,17 @@ pipelineJob('${appStackSlug}') {
 @Library('shared-library') _
 
 dockerPipeline([
-    dockerImage: '${dockerImage}',
-    dockerRegistryUrl: '${dockerRegistryUrl}',
-    dockerRegistryCredentialsId: '${dockerRegistryCredentialId}',
-    dockerRepo: '${appStackSlug}',
-    appName: '${appStackSlug}',
+    dockerImage: '${escapeGroovy(dockerImage)}',
+    dockerRegistryUrl: '${escapeGroovy(dockerRegistryUrl)}',
+    dockerRegistryCredentialsId: '${escapeGroovy(dockerRegistryCredentialId)}',
+    dockerRepo: '${escapeGroovy(appStackSlug)}',
+    appName: '${escapeGroovy(appStackSlug)}',
     environmentVariables: [
 ${envVarsString}
     ],
     port: ${port},
-    targetNamespace: 'app-${appStackSlug}',
-    webhookEnv: '${env}'
+    targetNamespace: 'app-${escapeGroovy(appStackSlug)}',
+    webhookEnv: '${escapeGroovy(env)}'
 ])
             """)
             sandbox()

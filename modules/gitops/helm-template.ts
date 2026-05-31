@@ -1,11 +1,12 @@
+import * as jsYaml from "js-yaml"
+
 export class HelmChartRenderer {
   renderValues(values: Record<string, unknown>): string {
-    // In real world use a YAML library like 'js-yaml'
-    return JSON.stringify(values, null, 2)
+    return jsYaml.dump(values, { indent: 2, lineWidth: -1, noRefs: true })
   }
 
   renderChartMetadata(name: string, version = "0.1.0"): string {
-    return JSON.stringify(
+    return jsYaml.dump(
       {
         apiVersion: "v2",
         name,
@@ -14,8 +15,7 @@ export class HelmChartRenderer {
         version,
         appVersion: "1.0.0",
       },
-      null,
-      2
+      { indent: 2, lineWidth: -1, noRefs: true }
     )
   }
 

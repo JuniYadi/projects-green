@@ -8,10 +8,13 @@ export type AppDescriptor = {
   image: string
   port?: number
   host?: string
+  healthCheckPath?: string
 }
 
 export class YamlManifestGenerator {
   generateDeploymentYaml(app: AppDescriptor): KubernetesResource {
+    const port = app.port ?? 80
+    const healthPath = app.healthCheckPath ?? "/healthz"
     return {
       apiVersion: "apps/v1",
       kind: "Deployment",
@@ -30,7 +33,17 @@ export class YamlManifestGenerator {
               {
                 name: app.name,
                 image: app.image,
-                ports: [{ containerPort: app.port ?? 80 }],
+                ports: [{ containerPort: port }],
+                livenessProbe: {
+                  httpGet: { path: healthPath, port },
+                  initialDelaySeconds: 15,
+                  periodSeconds: 10,
+                },
+                readinessProbe: {
+                  httpGet: { path: healthPath, port },
+                  initialDelaySeconds: 5,
+                  periodSeconds: 5,
+                },
               },
             ],
           },

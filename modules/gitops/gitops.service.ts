@@ -1,4 +1,5 @@
 import type { AppManifest, KubernetesResource } from "./gitops.types"
+import * as jsYaml from "js-yaml"
 
 const GITOPS_REPO_PAT = process.env.GITOPS_REPO_PAT
 const GITOPS_REPO_BASE_URL = process.env.GITOPS_REPO_BASE_URL
@@ -61,18 +62,23 @@ export class GitOpsRepositoryService {
   }
 
   private serializeYaml(obj: unknown): string {
-    // In production, use 'js-yaml' library for proper YAML serialization
-    return JSON.stringify(obj, null, 2)
+    // Produces valid YAML (js-yaml dumps with default settings = block-indented safe)
+    return jsYaml.dump(obj, { indent: 2, lineWidth: -1, noRefs: true })
   }
 
   private async commitFiles(
     repo: string,
     message: string,
     files: Array<{ path: string; content: string }>,
-    _deletePaths: string[]
+    deletePaths: string[]
   ): Promise<void> {
     if (!GITOPS_REPO_PAT || !GITOPS_REPO_BASE_URL) {
       throw new Error("GitOps environment variables not configured")
+    }
+
+    if (deletePaths.length > 0) {
+      // TODO: implement file deletion via GitHub Trees API (create tree with status: "removed")
+      throw new Error(`commitFiles: deletePaths not yet implemented — ${deletePaths.join(", ")}`)
     }
 
     // Implementation: use GitHub API
