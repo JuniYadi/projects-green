@@ -124,4 +124,94 @@ export class PaymentService {
       },
     })
   }
+
+  async payWithBalance(invoiceId: string, tenantId: string) {
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: invoiceId, status: "OPEN" },
+    })
+
+    if (!invoice) {
+      throw new Error("Invoice not found or not open")
+    }
+
+    const amount = invoice.totalAmount?.toNumber() || 0
+
+    const account = await prisma.billingAccount.findUnique({
+      where: { tenantId },
+    })
+
+    if (!account) {
+      throw new Error("Billing account not found")
+    }
+
+    if (account.balance.toNumber() < amount) {
+      throw new Error("Insufficient balance")
+    }
+
+    await prisma.billingAdjustment.create({
+      data: {
+        billingAccountId: account.id,
+        invoiceId,
+        adjustmentType: "DEBIT",
+        amount,
+        currency: invoice.currency,
+        reason: `Payment for invoice ${invoice.invoiceNumber}`,
+        appliedAt: new Date(),
+      },
+    })
+
+    await prisma.billingAccount.update({
+      where: { tenantId },
+      data: { balance: { decrement: amount } },
+    })
+
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: { status: "PAID" },
+    })
+  }
+
+  async createTopupInvoiceForGap(
+    tenantId: string,
+    organizationId: string,
+    gapAmount: number
+  ) {
+    const dueDate = new Date()
+    dueDate.setDate(dueDate.getDate() + 7)
+
+    // Get or create billing account
+    let account = await prisma.billingAccount.findUnique({
+      where: { tenantId },
+    })
+
+    if (!account) {
+      account = await prisma.billingAccount.create({
+        data: {
+          tenantId,
+          organizationId,
+          currency: "IDR",
+        },
+      })
+    }
+
+    // Generate invoice number
+    const invoiceCount = await prisma.invoice.count()
+    const invoiceNumber = `TOP-${Date.now()}-${invoiceCount + 1}`
+
+    return prisma.invoice.create({
+      data: {
+        billingAccountId: account.id,
+        tenantId,
+        invoiceNumber,
+        type: "TOP_UP",
+        status: "OPEN",
+        dueDate,
+        subtotalAmount: gapAmount,
+        totalAmount: gapAmount,
+        currency: "IDR",
+        periodStart: new Date(),
+        periodEnd: dueDate,
+      },
+    })
+  }
 }
