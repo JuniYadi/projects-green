@@ -175,7 +175,6 @@ export const createInvoicePaymentRoutes = () =>
         // Create gap topup invoice
         const topupInvoice = await paymentService.createTopupInvoiceForGap(
           tenantId,
-          auth.organizationId,
           gapAmount
         )
 
