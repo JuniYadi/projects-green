@@ -154,8 +154,8 @@ export const createAdminDevicesRoutes = (
           organizationId: device.organizationId,
           phoneNumber: device.phoneNumber,
           status: device.status,
-          balance: Number(device.balance),
-          quotaBase: Number(device.quotaBase),
+          balance: Number(device.balance.toString()),
+          quotaBase: Number(device.quotaBase.toString()),
           quotaBaseIn: device.quotaBaseIn,
           quotaBaseOut: device.quotaBaseOut,
           dailyLimitMessage: device.dailyLimitMessage,
@@ -252,7 +252,7 @@ export const createAdminDevicesRoutes = (
 
         return {
           ok: true as const,
-          newBalance: Number(result.updatedDevice.balance),
+          newBalance: Number(result.updatedDevice.balance.toString()),
           amount,
         }
       } catch (error) {
