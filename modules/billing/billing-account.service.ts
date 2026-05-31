@@ -42,6 +42,7 @@ export const ensureBillingAccountForOrg = async (params: {
     // 2. Find or create BillingAccount
     let account = await tx.billingAccount.findUnique({
       where: { organizationId },
+      include: { tenant: true },
     })
 
     if (!account) {
@@ -51,7 +52,9 @@ export const ensureBillingAccountForOrg = async (params: {
           organizationId,
           balance: new Prisma.Decimal(0),
           currency: "USD",
+          timezone: "UTC",
         },
+        include: { tenant: true },
       })
     }
 

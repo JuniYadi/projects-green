@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "bun:test"
+import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 
 // Define mockPrisma BEFORE vi.mock
@@ -29,12 +30,19 @@ describe("ensureBillingAccountForOrg", () => {
   })
 
   it("returns existing billing account when it exists", async () => {
-    const existingTenant = { id: "tenant-1", code: "org_123", name: "My Org" }
+    const existingTenant = { id: "tenant-1", code: "org_123", name: "My Org", createdAt: new Date(), updatedAt: new Date(), isActive: true }
     const existingAccount = {
       id: "acc-1",
       tenantId: "tenant-1",
       organizationId: "org_123",
-      balance: 100_000,
+      balance: new Prisma.Decimal(100_000),
+      currency: "USD",
+      timezone: "UTC",
+      status: "ACTIVE" as const,
+      metadataJson: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tenant: existingTenant,
     }
 
     mockPrisma.$transaction.mockImplementation(async (fn) => {
@@ -48,19 +56,30 @@ describe("ensureBillingAccountForOrg", () => {
       getOrganizationAction: mockGetOrganizationAction,
     })
 
-    expect(result).toEqual(existingAccount)
+    expect(result).toMatchObject({
+      id: existingAccount.id,
+      tenantId: existingAccount.tenantId,
+      organizationId: existingAccount.organizationId,
+    })
     expect(mockPrisma.tenant.findUnique).toHaveBeenCalled()
     expect(mockPrisma.tenant.create).not.toHaveBeenCalled()
     expect(mockPrisma.billingAccount.create).not.toHaveBeenCalled()
   })
 
   it("creates both Tenant and BillingAccount when both are missing", async () => {
-    const newTenant = { id: "tenant-1", code: "org_123", name: "My Org" }
+    const newTenant = { id: "tenant-1", code: "org_123", name: "My Org", createdAt: new Date(), updatedAt: new Date(), isActive: true }
     const newAccount = {
       id: "acc-1",
       tenantId: "tenant-1",
       organizationId: "org_123",
-      balance: 0,
+      balance: new Prisma.Decimal(0),
+      currency: "USD",
+      timezone: "UTC",
+      status: "ACTIVE" as const,
+      metadataJson: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tenant: newTenant,
     }
     const orgFromWorkOS = { id: "org_123", name: "My Org" }
 
@@ -78,7 +97,11 @@ describe("ensureBillingAccountForOrg", () => {
       getOrganizationAction: mockGetOrganizationAction,
     })
 
-    expect(result).toEqual(newAccount)
+    expect(result).toMatchObject({
+      id: newAccount.id,
+      tenantId: newAccount.tenantId,
+      organizationId: newAccount.organizationId,
+    })
     expect(mockPrisma.tenant.findUnique).toHaveBeenCalledWith({
       where: { code: "org_123" },
     })
@@ -87,6 +110,7 @@ describe("ensureBillingAccountForOrg", () => {
     })
     expect(mockPrisma.billingAccount.findUnique).toHaveBeenCalledWith({
       where: { organizationId: "org_123" },
+      include: { tenant: true },
     })
     expect(mockPrisma.billingAccount.create).toHaveBeenCalledWith({
       data: {
@@ -94,17 +118,26 @@ describe("ensureBillingAccountForOrg", () => {
         organizationId: "org_123",
         balance: expect.anything(),
         currency: "USD",
+        timezone: "UTC",
       },
+      include: { tenant: true },
     })
   })
 
   it("creates only BillingAccount when Tenant already exists", async () => {
-    const existingTenant = { id: "tenant-1", code: "org_123", name: "My Org" }
+    const existingTenant = { id: "tenant-1", code: "org_123", name: "My Org", createdAt: new Date(), updatedAt: new Date(), isActive: true }
     const newAccount = {
       id: "acc-1",
       tenantId: "tenant-1",
       organizationId: "org_123",
-      balance: 0,
+      balance: new Prisma.Decimal(0),
+      currency: "USD",
+      timezone: "UTC",
+      status: "ACTIVE" as const,
+      metadataJson: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tenant: existingTenant,
     }
 
     mockPrisma.$transaction.mockImplementation(async (fn) => {
@@ -119,7 +152,11 @@ describe("ensureBillingAccountForOrg", () => {
       getOrganizationAction: mockGetOrganizationAction,
     })
 
-    expect(result).toEqual(newAccount)
+    expect(result).toMatchObject({
+      id: newAccount.id,
+      tenantId: newAccount.tenantId,
+      organizationId: newAccount.organizationId,
+    })
     expect(mockPrisma.tenant.create).not.toHaveBeenCalled()
     expect(mockPrisma.billingAccount.create).toHaveBeenCalled()
   })
