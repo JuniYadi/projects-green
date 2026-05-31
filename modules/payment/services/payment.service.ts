@@ -37,9 +37,8 @@ export class PaymentService {
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + PAYMENT_CONSTANTS.DEFAULT_EXPIRY_DAYS)
 
-    // Generate invoice number
-    const invoiceCount = await prisma.invoice.count()
-    const invoiceNumber = `TOP-${Date.now()}-${invoiceCount + 1}`
+    // Generate invoice number using UUID to avoid race condition
+    const invoiceNumber = `TOP-${crypto.randomUUID().split("-")[0].toUpperCase()}`
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -173,7 +172,6 @@ export class PaymentService {
 
   async createTopupInvoiceForGap(
     tenantId: string,
-    organizationId: string,
     gapAmount: number
   ) {
     const dueDate = new Date()
@@ -188,15 +186,14 @@ export class PaymentService {
       account = await prisma.billingAccount.create({
         data: {
           tenantId,
-          organizationId,
+          organizationId: tenantId,
           currency: "IDR",
         },
       })
     }
 
-    // Generate invoice number
-    const invoiceCount = await prisma.invoice.count()
-    const invoiceNumber = `TOP-${Date.now()}-${invoiceCount + 1}`
+    // Generate invoice number using UUID to avoid race condition
+    const invoiceNumber = `TOP-${crypto.randomUUID().split("-")[0].toUpperCase()}`
 
     return prisma.invoice.create({
       data: {
