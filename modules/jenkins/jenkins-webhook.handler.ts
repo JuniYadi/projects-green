@@ -1,13 +1,22 @@
 import { triggerJenkinsJob } from "./jenkins.service"
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 
 export interface JenkinsVersionUpdatePayload {
   version: string
   application_stack: string
 }
 
+export interface ApplicationStack {
+  id: string
+  repoName: string | null
+  fullName: string
+  buildConfigJson: Prisma.JsonValue
+}
+
 export class JenkinsWebhookHandler {
-  private static readonly DEFAULT_REGISTRY = "registry-apac.pfnapp.com"
+  private static readonly DEFAULT_REGISTRY =
+    process.env.JENKINS_DEFAULT_REGISTRY || "registry-apac.pfnapp.com"
 
   /**
    * Verify X-Jenkins-Token header
@@ -24,56 +33,45 @@ export class JenkinsWebhookHandler {
   /**
    * Find application stack by slug or name
    */
-  async resolveApplicationStack(identifier: string) {
-    let app = await prisma.githubRepositoryConnection.findFirst({
+  async resolveApplicationStack(
+    identifier: string
+  ): Promise<ApplicationStack | null> {
+    const app = await prisma.githubRepositoryConnection.findFirst({
       where: {
-        OR: [
-          { repoName: identifier },
-          { fullName: { contains: identifier } }
-        ]
-      }
+        OR: [{ repoName: identifier }, { fullName: { contains: identifier } }],
+      },
+      select: {
+        id: true,
+        repoName: true,
+        fullName: true,
+        buildConfigJson: true,
+      },
     })
 
     return app
   }
 
   /**
-   * Set default docker fields if empty
+   * Resolve Jenkins job name from stack config, with fallback naming convention
    */
-  populateDockerFields(stack: any) {
-    const slug = stack.repoName || "unknown"
-    const updates: any = {}
-
-    if (!stack.dockerRegistry) updates.dockerRegistry = JenkinsWebhookHandler.DEFAULT_REGISTRY
-    if (!stack.dockerImage) updates.dockerImage = slug
-    if (!stack.jenkinsJobName) updates.jenkinsJobName = `app-${slug}`
-
-    return updates
+  getJenkinsJobName(stack: ApplicationStack): string {
+    const config = stack.buildConfigJson as Record<string, unknown> | null
+    if (config?.jenkinsJobName && typeof config.jenkinsJobName === "string") {
+      return config.jenkinsJobName
+    }
+    return `app-${stack.repoName || "unknown"}`
   }
 
   /**
-   * Update version and trigger GitSync
+   * Trigger Jenkins build for a version update on the given application stack
    */
-  async syncVersion(stack: any, version: string) {
-    if (stack.version === version) {
-      console.log(`Version unchanged (${version}) for ${stack.repoName}`)
-      return { success: true, version, unchanged: true }
-    }
+  async syncVersion(stack: ApplicationStack, version: string) {
+    const jobName = this.getJenkinsJobName(stack)
 
-    const dockerUpdates = this.populateDockerFields(stack)
-    
-    await prisma.githubRepositoryConnection.update({
-      where: { id: stack.id },
-      data: {
-        ...dockerUpdates,
-      }
-    })
-
-    console.log(`Triggering sync for ${stack.repoName} with version ${version}`)
-    
-    await triggerJenkinsJob(dockerUpdates.jenkinsJobName || stack.jenkinsJobName || `app-${stack.repoName}`, {
+    await triggerJenkinsJob(jobName, {
       VERSION: version,
-      APP_NAME: stack.repoName
+      APP_NAME: stack.repoName || "unknown",
+      DOCKER_REGISTRY: JenkinsWebhookHandler.DEFAULT_REGISTRY,
     })
 
     return { success: true, version }
@@ -85,7 +83,7 @@ export class JenkinsWebhookHandler {
   async getWebhookStatus() {
     return {
       healthy: true,
-      tokenConfigured: !!process.env.JENKINS_WEBHOOK_TOKEN
+      tokenConfigured: !!process.env.JENKINS_WEBHOOK_TOKEN,
     }
   }
 }
