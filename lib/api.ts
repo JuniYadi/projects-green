@@ -5,6 +5,7 @@ import { z } from "zod"
 import { adminRoutes } from "@/modules/admin/api/admin.route"
 import { authRoutes } from "@/modules/auth/api/auth.route"
 import { billingRoutes } from "@/modules/billing/api"
+import { docsConsoleRoutes } from "@/modules/docs/api/docs-console.route"
 import { docsRoutes } from "@/modules/docs/api/docs.route"
 import { knowledgeRoutes } from "@/modules/docs/api/knowledge.route"
 import { deployRoutes } from "@/modules/deploy/api/deploy.route"
@@ -74,6 +75,7 @@ const toFieldErrors = (
 export const app = new Elysia({ prefix: "/api" })
   .use(openapi())
   .use(docsRoutes)
+  .use(docsConsoleRoutes)
   .use(knowledgeRoutes)
   .use(deployRoutes)
   .use(frameworkDetectionRoutes)

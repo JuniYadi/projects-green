@@ -15,6 +15,7 @@ import type {
 } from "@/modules/deploy/deploy.types"
 
 type StepMonitorProps = {
+  deployId?: string
   status: DeployStatus
   logScope: DeployLogScope
   attempt: number
@@ -25,6 +26,7 @@ type StepMonitorProps = {
 }
 
 export function StepMonitor({
+  deployId,
   status,
   logScope,
   attempt,
@@ -64,12 +66,13 @@ export function StepMonitor({
 
         <section className="space-y-2">
           <h3 className="text-sm font-medium">Status timeline</h3>
-          <DeployTimeline status={status} />
+          <DeployTimeline deployId={deployId} status={status} />
         </section>
 
         <section className="space-y-2">
           <h3 className="text-sm font-medium">Build and runtime logs</h3>
           <LogsPanel
+            deployId={deployId}
             status={status}
             scope={logScope}
             attempt={Math.max(attempt, 1)}
