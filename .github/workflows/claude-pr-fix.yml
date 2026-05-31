@@ -252,13 +252,18 @@ jobs:
             --body-file /tmp/pr_body.txt
 
       - name: Post comment on original PR
-        if: steps.create-branch.outputs.FIX_BRANCH != inputs.branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
-          FIX_PR_URL=$(gh pr view "$FIX_BRANCH" --json url --jq '.url')
+          FIX_PR_URL=$(gh pr list --head "$FIX_BRANCH" --json url --jq '.[0].url')
           PR_NUM="${{ steps.pr-info.outputs.PR_NUMBER }}"
+
+          if [ -z "$FIX_PR_URL" ]; then
+            echo "No PR found for branch $FIX_BRANCH, skipping comment."
+            exit 0
+          fi
+
           printf '%s\n%s\n' "🤖 Auto-fix PR created: $FIX_PR_URL" "Please review the fix PR and merge it before merging this PR." > /tmp/comment.txt
           gh pr comment "$PR_NUM" --body-file /tmp/comment.txt
 
