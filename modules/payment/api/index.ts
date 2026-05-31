@@ -5,6 +5,7 @@ import { createAdminConfirmationRoutes } from "./admin-confirmation.route"
 import { createAdminGatewayRoutes } from "./admin-gateway.route"
 import { createConfirmRoutes } from "./confirm.route"
 import { createTopupRoutes, createPaymentHistoryRoutes } from "./topup.route"
+import { createWebhookRoutes } from "./webhook.route"
 
 export const paymentRoutes = new Elysia({ prefix: "/portal/payments" })
   .use(createAdminBankRoutes())
@@ -15,3 +16,6 @@ export const userPaymentRoutes = new Elysia({ prefix: "/payments" })
   .use(createTopupRoutes())
   .use(createPaymentHistoryRoutes())
   .use(createConfirmRoutes())
+
+export const webhookRoutes = new Elysia({ prefix: "/webhooks" })
+  .use(createWebhookRoutes())

@@ -12,7 +12,7 @@ import { deployRoutes } from "@/modules/deploy/api/deploy.route"
 import { frameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
 import { githubRoutes } from "@/modules/github/api/github.route"
 import { invoicesRoutes } from "@/modules/invoices/api/invoices.route"
-import { paymentRoutes, userPaymentRoutes } from "@/modules/payment/api"
+import { paymentRoutes, userPaymentRoutes, webhookRoutes } from "@/modules/payment/api"
 import { supportTicketAttachmentRoutes } from "@/modules/support-tickets/api/support-ticket-attachments.route"
 import { supportTicketRoutes } from "@/modules/support-tickets/api/support-tickets.route"
 import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
@@ -75,6 +75,7 @@ const toFieldErrors = (
 
 export const app = new Elysia({ prefix: "/api" })
   .use(openapi())
+  .use(webhookRoutes)
   .use(docsRoutes)
   .use(docsConsoleRoutes)
   .use(knowledgeRoutes)
