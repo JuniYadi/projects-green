@@ -27,6 +27,22 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
+      - name: Skip fix PRs
+        if: github.event_name == 'pull_request_review'
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ "$AUTHOR" = "github-actions[bot]" ]; then
+            echo "Skipping: Fix PR created by bot"
+            exit 0
+          fi
+
+          if [[ "$BRANCH" == "fix/pr-"* ]]; then
+            echo "Skipping: Fix PR branch"
+            exit 0
+          fi
+
       - name: Determine PR number
         id: pr-info
         env:
@@ -256,8 +272,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
-          FIX_PR_URL=$(gh pr view "$FIX_BRANCH" --json url --jq '.url')
+          FIX_PR_URL=$(gh pr list --head "$FIX_BRANCH" --json url --jq '.[0].url')
           PR_NUM="${{ steps.pr-info.outputs.PR_NUMBER }}"
+
+          if [ -z "$FIX_PR_URL" ]; then
+            echo "No PR found for branch $FIX_BRANCH, skipping comment."
+            exit 0
+          fi
+
           printf '%s\n%s\n' "🤖 Auto-fix PR created: $FIX_PR_URL" "Please review the fix PR and merge it before merging this PR." > /tmp/comment.txt
           gh pr comment "$PR_NUM" --body-file /tmp/comment.txt
 
