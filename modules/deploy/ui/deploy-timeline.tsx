@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { cn } from "@/lib/utils"
 import type {
@@ -12,22 +12,10 @@ type DeployTimelineProps = {
 }
 
 const getStatusIndex = (status: DeployStatus) => {
-  if (status === "queued") {
-    return 0
-  }
-
-  if (status === "building") {
-    return 1
-  }
-
-  if (status === "deploying") {
-    return 2
-  }
-
-  if (status === "running" || status === "failed") {
-    return 3
-  }
-
+  if (status === "queued") return 0
+  if (status === "building") return 1
+  if (status === "deploying") return 2
+  if (status === "running" || status === "failed") return 3
   return -1
 }
 
@@ -35,6 +23,8 @@ export function DeployTimeline({ deployId, status }: DeployTimelineProps) {
   const statusIndex = getStatusIndex(status)
   const [timeline, setTimeline] = useState<DeployTimelineItem[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  const fetchEventsRef = useRef<() => void>(() => {})
 
   const fetchEvents = useCallback(async () => {
     if (!deployId || status === "idle") return
@@ -55,19 +45,23 @@ export function DeployTimeline({ deployId, status }: DeployTimelineProps) {
   }, [deployId])
 
   useEffect(() => {
-    fetchEvents()
+    fetchEventsRef.current = fetchEvents
+  }, [fetchEvents])
+
+  useEffect(() => {
+    fetchEventsRef.current()
 
     let interval: Timer | null = null
     if (status !== "running" && status !== "failed") {
       interval = setInterval(() => {
-        fetchEvents()
+        fetchEventsRef.current()
       }, 5000)
     }
 
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [fetchEvents, status])
+  }, [status])
 
   if (error) {
     return (

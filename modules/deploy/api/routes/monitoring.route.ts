@@ -1,10 +1,6 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
-
-import {
-  DEPLOY_LOG_LINES,
-  DEPLOY_TIMELINE,
-} from "@/modules/deploy/deploy.mock"
+// import { prisma } from "@/lib/prisma"
 
 export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   .get(
@@ -16,12 +12,9 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      // TODO: Query deploy by ID, verify org access, return real logs
-      // const deploy = await prisma.deploy.findUnique({ where: { id: deployId } })
-      return {
-        ok: true as const,
-        data: DEPLOY_LOG_LINES,
-      }
+      // TODO: Look up deploy by ID, verify org access, return real logs
+      // const deployLogs = await prisma.deploymentLog.findMany({ where: { deployId } })
+      return { ok: true, data: [] } // placeholder
     },
     {
       params: t.Object({
@@ -38,12 +31,9 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      // TODO: Query deploy by ID, return real timeline events
-      // const deploy = await prisma.deploy.findUnique({ where: { id: deployId } })
-      return {
-        ok: true as const,
-        data: DEPLOY_TIMELINE,
-      }
+      // TODO: Look up deploy by ID, return real timeline events
+      // const deployEvents = await prisma.deploymentEvent.findMany({ where: { deployId } })
+      return { ok: true, data: [] } // placeholder
     },
     {
       params: t.Object({
@@ -60,15 +50,9 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      // TODO: Query deploy by ID, return real status
-      // const deploy = await prisma.deploy.findUnique({ where: { id: deployId } })
-      return {
-        ok: true as const,
-        data: {
-          status: "building",
-          attempt: 1,
-        },
-      }
+      // TODO: Look up deploy by ID, return real status
+      // const deploy = await prisma.deployment.findUnique({ where: { id: deployId } })
+      return { ok: true, data: { status: "queued", attempt: 1 } } // placeholder
     },
     {
       params: t.Object({
