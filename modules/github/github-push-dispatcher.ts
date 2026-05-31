@@ -49,12 +49,9 @@ export interface Stack {
 }
 
 export class GithubPushEventHandler {
-  /**
-   * Main entry for push events
-   */
   async handlePush(stack: Stack, payload: GithubPushPayload): Promise<void> {
     const branch = this.extractBranch(payload.ref)
-    
+
     if (!branch) {
       console.log(`[GitHubPushEventHandler] Skipped stack ${stack.id}: Invalid ref ${payload.ref}`)
       return
@@ -68,17 +65,12 @@ export class GithubPushEventHandler {
     const commits = this.extractCommits(payload)
     const pusher = payload.pusher.name || payload.pusher.email
 
-    // Sync metadata
     await this.syncPushMetadata(stack, branch, commits, pusher)
 
-    // Trigger deployment
     const dispatcher = new GithubPushDispatcher()
-    await dispatcher.dispatchDeployment(stack, payload)
+    await dispatcher.dispatchDeployment(stack, branch, payload)
   }
 
-  /**
-   * Strips refs/heads/ to get branch name
-   */
   extractBranch(ref: string): string | null {
     if (!ref.startsWith("refs/heads/")) {
       return null
@@ -86,9 +78,6 @@ export class GithubPushEventHandler {
     return ref.replace("refs/heads/", "")
   }
 
-  /**
-   * Extracts first 10 commits with id/message/author/url
-   */
   extractCommits(payload: GithubPushPayload, limit = 10) {
     return (payload.commits || []).slice(0, limit).map(commit => ({
       id: commit.id,
@@ -98,25 +87,22 @@ export class GithubPushEventHandler {
     }))
   }
 
-  /**
-   * Checks auto_deploy + branch filter
-   */
   shouldTriggerDeploy(stack: Stack, branch: string): boolean {
     if (!stack.autoDeploy) {
       return false
     }
 
     if (stack.branchFilter) {
-      const filters = stack.branchFilter.split(",").map(f => f.trim())
-      return filters.includes(branch)
+      const filters = stack.branchFilter
+        .split(",")
+        .map((f) => f.trim().toLowerCase())
+        .filter((f) => f.length > 0)
+      return filters.includes(branch.toLowerCase())
     }
 
     return true
   }
 
-  /**
-   * Update stack metadata (stub for now, writes to DB eventually)
-   */
   async syncPushMetadata(stack: Stack, branch: string, commits: any[], pusher: string): Promise<void> {
     stack.metadata = {
       ...stack.metadata,
@@ -127,21 +113,15 @@ export class GithubPushEventHandler {
         timestamp: new Date().toISOString()
       }
     }
-    
-    // Stub: updateStackMetadata(stack.id, stack.metadata)
+
     console.log(`[GitHubPushEventHandler] Updated metadata for stack ${stack.id}`)
   }
 }
 
 export class GithubPushDispatcher {
-  /**
-   * Dispatches deployment when push received
-   */
-  async dispatchDeployment(stack: Stack, pushPayload: GithubPushPayload): Promise<void> {
-    const branch = pushPayload.ref.replace("refs/heads/", "")
-    
+  async dispatchDeployment(stack: Stack, branch: string, pushPayload: GithubPushPayload): Promise<void> {
     console.log(`[GitHubPushDispatcher] Dispatching deployment for stack ${stack.id} on branch ${branch}`)
-    
+
     const params = {
       GIT_REF: branch,
       GIT_COMMIT: pushPayload.after,
@@ -159,25 +139,51 @@ export class GithubPushDispatcher {
   }
 }
 
-/**
- * Verifies HMAC-SHA256 signature from GitHub
- */
-export function verifyGitHubSignature(payload: string, signature: string, secret: string): boolean {
+export function verifyGitHubSignature(
+  payload: string,
+  signature: string | null | undefined,
+  secret: string
+): boolean {
+  if (!payload || !signature || !secret) {
+    return false
+  }
+
   const hmac = createHmac("sha256", secret)
   const digest = "sha256=" + hmac.update(payload).digest("hex")
-  
-  return timingSafeEqual(
-    Buffer.from(digest),
-    Buffer.from(signature)
-  )
+
+  const expected = Buffer.from(digest)
+  const received = Buffer.from(signature)
+
+  if (expected.length !== received.length) {
+    return false
+  }
+
+  return timingSafeEqual(expected, received)
 }
 
-/**
- * Parse push payload and extract standard fields
- */
-export function parsePushPayload(body: any): GithubPushPayload {
-  if (typeof body === "string") {
-    return JSON.parse(body)
+export function createJenkinsPushDispatcher() {
+  return async (payload: {
+    webhookEventId: string
+    connectionId: string
+    branch: string
+    payload: Record<string, unknown>
+  }) => {
+    const repo = payload.payload.repository as Record<string, unknown> | undefined
+    const repoName = (repo?.name as string) || "unknown"
+    const commitSha = (payload.payload.after as string) || ""
+    const shortSha = commitSha.length >= 7 ? commitSha.slice(0, 7) : commitSha
+    const pusher = payload.payload.pusher as Record<string, unknown> | undefined
+
+    const params: Record<string, string | boolean | number> = {
+      GIT_REF: payload.branch,
+      GIT_COMMIT: commitSha,
+      PUSHER: (pusher?.name as string) || "unknown",
+      STACK_ID: payload.connectionId,
+      WEBHOOK_EVENT_ID: payload.webhookEventId,
+    }
+
+    await triggerJenkinsJob(`deploy-${repoName}`, params)
+
+    return { jobId: `${repoName}/${shortSha || "unknown"}` }
   }
-  return body
 }
