@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -7,7 +7,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { DEPLOY_LOG_LINES } from "@/modules/deploy/deploy.mock"
 import type {
   DeployLogScope,
   DeployStatus,
@@ -15,6 +14,7 @@ import type {
 } from "@/modules/deploy/deploy.types"
 
 type LogsPanelProps = {
+  deployId?: string
   status: DeployStatus
   scope: DeployLogScope
   attempt: number
@@ -85,16 +85,52 @@ const getTerminalLogLine = (
 }
 
 export function LogsPanel({
+  deployId,
   status,
   scope,
   attempt,
   onScopeChange,
 }: LogsPanelProps) {
   const [localIsOpen, setLocalIsOpen] = useState(status === "failed")
+  const [logs, setLogs] = useState<DeployLogLine[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const isOpen = status === "failed" || localIsOpen
 
+  useEffect(() => {
+    if (!deployId || status === "idle") {
+      return
+    }
+
+    const fetchLogs = async () => {
+      setIsLoading(true)
+      try {
+        const res = await fetch(`/api/deploy/logs/${deployId}`)
+        const json = await res.json()
+        if (json.ok) {
+          setLogs(json.data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch logs", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchLogs()
+
+    // If active, poll every 3s
+    let interval: Timer | null = null
+    if (status !== "running" && status !== "failed") {
+      interval = setInterval(fetchLogs, 3000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [deployId, status])
+
   const visibleLines = useMemo(() => {
-    const inScopeLines = getVisibleLogLines(DEPLOY_LOG_LINES, status, scope)
+    const inScopeLines = getVisibleLogLines(logs, status, scope)
     const terminalLine = getTerminalLogLine(status, attempt)
 
     if (!terminalLine || (scope !== "all" && scope !== terminalLine.scope)) {
@@ -102,7 +138,7 @@ export function LogsPanel({
     }
 
     return [...inScopeLines, terminalLine]
-  }, [attempt, scope, status])
+  }, [logs, attempt, scope, status])
 
   return (
     <Collapsible open={isOpen} onOpenChange={setLocalIsOpen}>

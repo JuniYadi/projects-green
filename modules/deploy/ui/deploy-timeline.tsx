@@ -1,8 +1,13 @@
+import { useEffect, useState } from "react"
+
 import { cn } from "@/lib/utils"
-import { DEPLOY_TIMELINE } from "@/modules/deploy/deploy.mock"
-import type { DeployStatus } from "@/modules/deploy/deploy.types"
+import type {
+  DeployStatus,
+  DeployTimelineItem,
+} from "@/modules/deploy/deploy.types"
 
 type DeployTimelineProps = {
+  deployId?: string
   status: DeployStatus
 }
 
@@ -26,12 +31,35 @@ const getStatusIndex = (status: DeployStatus) => {
   return -1
 }
 
-export function DeployTimeline({ status }: DeployTimelineProps) {
+export function DeployTimeline({ deployId, status }: DeployTimelineProps) {
   const statusIndex = getStatusIndex(status)
+  const [timeline, setTimeline] = useState<DeployTimelineItem[]>([])
+
+  useEffect(() => {
+    if (!deployId) return
+
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch(`/api/deploy/events/${deployId}`)
+        const json = await res.json()
+        if (json.ok) {
+          setTimeline(json.data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch events", error)
+      }
+    }
+
+    fetchEvents()
+  }, [deployId])
+
+  if (timeline.length === 0) {
+    return <div className="text-xs text-muted-foreground">Loading timeline...</div>
+  }
 
   return (
     <ol className="grid gap-2 sm:grid-cols-4">
-      {DEPLOY_TIMELINE.map((item, index) => {
+      {timeline.map((item, index) => {
         const isCompleted = index < statusIndex
         const isActive = index === statusIndex
 
