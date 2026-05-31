@@ -13,6 +13,17 @@ export const ensureBillingAccountForOrg = async (params: {
 }): Promise<Prisma.BillingAccountGetPayload<{ include: { tenant: true } }>> => {
   const { organizationId, getOrganizationAction } = params
 
+  // Fetch org name BEFORE transaction to avoid holding DB connection during external API call
+  let org: WorkOSOrganization
+  try {
+    org = await getOrganizationAction(organizationId)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    throw new Error(
+      `Failed to fetch organization ${organizationId} from WorkOS: ${message}`,
+    )
+  }
+
   return prisma.$transaction(async (tx) => {
     // 1. Find or create Tenant
     let tenant = await tx.tenant.findUnique({
@@ -20,21 +31,11 @@ export const ensureBillingAccountForOrg = async (params: {
     })
 
     if (!tenant) {
-      // Fetch org name from WorkOS
-      let org: WorkOSOrganization
-      try {
-        org = await getOrganizationAction(organizationId)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error"
-        throw new Error(
-          `Failed to fetch organization ${organizationId} from WorkOS: ${message}`,
-        )
-      }
-
       tenant = await tx.tenant.create({
         data: {
           code: organizationId,
           name: org.name,
+          isActive: true,
         },
       })
     }
@@ -53,6 +54,7 @@ export const ensureBillingAccountForOrg = async (params: {
           balance: new Prisma.Decimal(0),
           currency: "USD",
           timezone: "UTC",
+          status: "ACTIVE",
         },
         include: { tenant: true },
       })

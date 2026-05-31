@@ -44,7 +44,10 @@ describe("ensureBillingAccountForOrg", () => {
       updatedAt: new Date(),
       tenant: existingTenant,
     }
+    const orgFromWorkOS = { id: "org_123", name: "My Org" }
 
+    // WorkOS call happens BEFORE transaction (but tenant exists, so name is unused)
+    mockGetOrganizationAction.mockResolvedValue(orgFromWorkOS)
     mockPrisma.$transaction.mockImplementation(async (fn) => {
       return fn(mockPrisma)
     })
@@ -61,6 +64,7 @@ describe("ensureBillingAccountForOrg", () => {
       tenantId: existingAccount.tenantId,
       organizationId: existingAccount.organizationId,
     })
+    expect(mockGetOrganizationAction).toHaveBeenCalledWith("org_123")
     expect(mockPrisma.tenant.findUnique).toHaveBeenCalled()
     expect(mockPrisma.tenant.create).not.toHaveBeenCalled()
     expect(mockPrisma.billingAccount.create).not.toHaveBeenCalled()
@@ -83,6 +87,8 @@ describe("ensureBillingAccountForOrg", () => {
     }
     const orgFromWorkOS = { id: "org_123", name: "My Org" }
 
+    // WorkOS call happens BEFORE transaction
+    mockGetOrganizationAction.mockResolvedValue(orgFromWorkOS)
     mockPrisma.$transaction.mockImplementation(async (fn) => {
       return fn(mockPrisma)
     })
@@ -90,7 +96,6 @@ describe("ensureBillingAccountForOrg", () => {
     mockPrisma.tenant.create.mockResolvedValue(newTenant)
     mockPrisma.billingAccount.findUnique.mockResolvedValue(null)
     mockPrisma.billingAccount.create.mockResolvedValue(newAccount)
-    mockGetOrganizationAction.mockResolvedValue(orgFromWorkOS)
 
     const result = await ensureBillingAccountForOrg({
       organizationId: "org_123",
@@ -102,11 +107,12 @@ describe("ensureBillingAccountForOrg", () => {
       tenantId: newAccount.tenantId,
       organizationId: newAccount.organizationId,
     })
+    expect(mockGetOrganizationAction).toHaveBeenCalledWith("org_123")
     expect(mockPrisma.tenant.findUnique).toHaveBeenCalledWith({
       where: { code: "org_123" },
     })
     expect(mockPrisma.tenant.create).toHaveBeenCalledWith({
-      data: { code: "org_123", name: "My Org" },
+      data: { code: "org_123", name: "My Org", isActive: true },
     })
     expect(mockPrisma.billingAccount.findUnique).toHaveBeenCalledWith({
       where: { organizationId: "org_123" },
@@ -119,6 +125,7 @@ describe("ensureBillingAccountForOrg", () => {
         balance: expect.anything(),
         currency: "USD",
         timezone: "UTC",
+        status: "ACTIVE",
       },
       include: { tenant: true },
     })
@@ -139,7 +146,10 @@ describe("ensureBillingAccountForOrg", () => {
       updatedAt: new Date(),
       tenant: existingTenant,
     }
+    const orgFromWorkOS = { id: "org_123", name: "My Org" }
 
+    // WorkOS call happens BEFORE transaction (but tenant exists, so name is unused)
+    mockGetOrganizationAction.mockResolvedValue(orgFromWorkOS)
     mockPrisma.$transaction.mockImplementation(async (fn) => {
       return fn(mockPrisma)
     })
@@ -157,16 +167,18 @@ describe("ensureBillingAccountForOrg", () => {
       tenantId: newAccount.tenantId,
       organizationId: newAccount.organizationId,
     })
+    expect(mockGetOrganizationAction).toHaveBeenCalledWith("org_123")
     expect(mockPrisma.tenant.create).not.toHaveBeenCalled()
     expect(mockPrisma.billingAccount.create).toHaveBeenCalled()
   })
 
   it("throws when WorkOS org lookup fails", async () => {
-    mockPrisma.$transaction.mockImplementation(async (fn) => {
-      return fn(mockPrisma)
-    })
-    mockPrisma.tenant.findUnique.mockResolvedValue(null)
+    // WorkOS call happens BEFORE transaction, so transaction should never be called
     mockGetOrganizationAction.mockRejectedValue(new Error("Network timeout"))
+    // Ensure transaction is NOT called
+    mockPrisma.$transaction.mockImplementation(async () => {
+      throw new Error("Transaction should not be called")
+    })
 
     await expect(
       ensureBillingAccountForOrg({
@@ -174,5 +186,6 @@ describe("ensureBillingAccountForOrg", () => {
         getOrganizationAction: mockGetOrganizationAction,
       }),
     ).rejects.toThrow("Failed to fetch organization org_123 from WorkOS")
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled()
   })
 })
