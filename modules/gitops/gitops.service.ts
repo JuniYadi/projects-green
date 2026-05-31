@@ -50,10 +50,10 @@ export class GitOpsRepositoryService {
     for (const path of deletePaths) {
       treeItems.push({
         path,
-        mode: "100644",
-        type: "blob",
+        mode: "100644" as const,
+        type: "blob" as const,
         sha: null, // Deletion in Tree API
-      } as any)
+      })
     }
 
     // 4. Create new tree
@@ -96,7 +96,7 @@ export class GitOpsRepositoryService {
     return res.json() as Promise<{ sha: string }>
   }
 
-  private async createTree(repo: string, tree: any[], baseTree: string, token: string) {
+  private async createTree(repo: string, tree: { path: string, mode: "100644" | "100755" | "040000" | "160000" | "120000", type: "blob" | "tree" | "commit", sha: string | null }[], baseTree: string, token: string) {
     const res = await fetch(`${this.repoBaseUrl}/repos/${repo}/git/trees`, {
       method: "POST",
       headers: {
