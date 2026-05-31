@@ -4,6 +4,7 @@ import { z } from "zod"
 import { type JenkinsJobConfig, JenkinsApiError, JenkinsAuthError } from "../jenkins.types"
 import { getJenkinsJobStatus, triggerJenkinsJob, listJenkinsJobs } from "../jenkins.service"
 import { generateJenkinsDsl } from "../jenkins-dsl"
+import { jenkinsWebhookRoutes } from "./jenkins-webhook.route"
 
 const JOB_TYPES = ["php", "node", "docker"] as const
 
@@ -32,7 +33,7 @@ const jobDslSchema = z.object({
 })
 
 export const createJenkinsRoutes = () => {
-  return new Elysia({ prefix: "/integrations/jenkins" })
+  const apiRoutes = new Elysia({ prefix: "/integrations/jenkins" })
     .get("/status", async ({ set: _set }) => {
       try {
         const jobs = await listJenkinsJobs()
@@ -131,6 +132,10 @@ export const createJenkinsRoutes = () => {
         }
       }
     })
+
+  return new Elysia()
+    .use(apiRoutes)
+    .use(jenkinsWebhookRoutes)
 }
 
 export const jenkinsRoutes = createJenkinsRoutes()
