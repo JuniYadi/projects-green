@@ -31,3 +31,38 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: pfnapp-web
+    restart: unless-stopped
+    ports:
+      - "3300:3300"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres?schema=public
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  workers:
+    build:
+      context: .
+      dockerfile: Dockerfile.workers
+    container_name: pfnapp-workers
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres?schema=public
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["bun", "run", "worker:github"]
