@@ -29,8 +29,16 @@ export default function DocDetailPage() {
   const path = `/${slug}`
 
   const { data, isLoading } = useQuery<DocResponse>({
-    queryKey: ["docs", "detail", path],
-    queryFn: () => fetch(`/api/docs?path=${encodeURIComponent(path)}`).then((res) => res.json()),
+    queryKey: () => {
+      const s = Array.isArray(params.slug) ? params.slug.join("/") : params.slug
+      return ["docs", "detail", "/" + s]
+    },
+    queryFn: () => {
+      const s = Array.isArray(params.slug) ? params.slug.join("/") : params.slug
+      const p = "/" + s
+      return fetch(`/api/docs?path=${encodeURIComponent(p)}`).then((res) => res.json())
+    },
+    enabled: !!params.slug,
   })
 
   if (isLoading) {

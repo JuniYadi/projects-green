@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia"
+import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import {
   DEPLOY_LOG_LINES,
@@ -8,7 +9,15 @@ import {
 export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   .get(
     "/logs/:deployId",
-    () => {
+    async ({ params: { deployId }, set }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      // TODO: Query deploy by ID, verify org access, return real logs
+      // const deploy = await prisma.deploy.findUnique({ where: { id: deployId } })
       return {
         ok: true as const,
         data: DEPLOY_LOG_LINES,
@@ -22,7 +31,15 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   )
   .get(
     "/events/:deployId",
-    () => {
+    async ({ params: { deployId }, set }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      // TODO: Query deploy by ID, return real timeline events
+      // const deploy = await prisma.deploy.findUnique({ where: { id: deployId } })
       return {
         ok: true as const,
         data: DEPLOY_TIMELINE,
@@ -36,7 +53,15 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   )
   .get(
     "/status/:deployId",
-    () => {
+    async ({ params: { deployId }, set }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      // TODO: Query deploy by ID, return real status
+      // const deploy = await prisma.deploy.findUnique({ where: { id: deployId } })
       return {
         ok: true as const,
         data: {

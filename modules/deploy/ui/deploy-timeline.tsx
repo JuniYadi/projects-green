@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import { cn } from "@/lib/utils"
 import type {
@@ -34,24 +34,48 @@ const getStatusIndex = (status: DeployStatus) => {
 export function DeployTimeline({ deployId, status }: DeployTimelineProps) {
   const statusIndex = getStatusIndex(status)
   const [timeline, setTimeline] = useState<DeployTimelineItem[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchEvents = useCallback(async () => {
+    if (!deployId || status === "idle") return
+    try {
+      const res = await fetch(`/api/deploy/events/${deployId}`)
+      if (!res.ok) throw new Error("Failed to fetch events")
+      const json = await res.json()
+      if (json.ok) {
+        setTimeline(json.data)
+        setError(null)
+      } else {
+        setError(json.error || "Failed to fetch events")
+      }
+    } catch (err) {
+      console.error("Failed to fetch events", err)
+      setError("Failed to fetch events")
+    }
+  }, [deployId])
 
   useEffect(() => {
-    if (!deployId) return
+    fetchEvents()
 
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch(`/api/deploy/events/${deployId}`)
-        const json = await res.json()
-        if (json.ok) {
-          setTimeline(json.data)
-        }
-      } catch (error) {
-        console.error("Failed to fetch events", error)
-      }
+    let interval: Timer | null = null
+    if (status !== "running" && status !== "failed") {
+      interval = setInterval(() => {
+        fetchEvents()
+      }, 5000)
     }
 
-    fetchEvents()
-  }, [deployId])
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [fetchEvents, status])
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-between border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+        <span>{error}</span>
+      </div>
+    )
+  }
 
   if (timeline.length === 0) {
     return <div className="text-xs text-muted-foreground">Loading timeline...</div>

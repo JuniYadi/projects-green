@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
-import { normalizeDocPath } from "@/modules/docs/docs.service"
 
 export const createDocsConsoleRoutes = () =>
   new Elysia()

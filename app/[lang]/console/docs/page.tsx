@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { Search } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,17 +23,27 @@ type DocsListResponse = {
 }
 
 export default function DocsPage() {
-  const [search, setSearch] = useState("")
+  const [inputValue, setInputValue] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+
+  // Debounce search input by 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(inputValue)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [inputValue])
+
+  const endpoint = debouncedSearch
+    ? `/api/docs/search?q=${encodeURIComponent(debouncedSearch)}`
+    : "/api/docs/list"
 
   const { data, isLoading } = useQuery<DocsListResponse>({
-    queryKey: ["docs", "list"],
-    queryFn: () => fetch("/api/docs/list").then((res) => res.json()),
+    queryKey: ["docs", "list", debouncedSearch],
+    queryFn: () => fetch(endpoint).then((res) => res.json()),
   })
 
-  const filteredDocs = data?.docs?.filter((doc: DocListing) =>
-    doc.title.toLowerCase().includes(search.toLowerCase()) ||
-    doc.path.toLowerCase().includes(search.toLowerCase())
-  ) ?? []
+  const docs = data?.docs ?? []
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -49,8 +59,8 @@ export default function DocsPage() {
         <Input
           placeholder="Search documentation..."
           className="pl-8"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
         />
       </div>
 
@@ -62,7 +72,7 @@ export default function DocsPage() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredDocs.map((doc: DocListing) => (
+          {docs.map((doc: DocListing) => (
             <Link key={doc.id} href={`/console/docs/${doc.path.replace(/^\//, "")}`}>
               <Card className="h-full hover:bg-muted/50 transition-colors">
                 <CardHeader>
@@ -78,9 +88,11 @@ export default function DocsPage() {
               </Card>
             </Link>
           ))}
-          {filteredDocs.length === 0 && (
+          {docs.length === 0 && (
             <div className="col-span-full py-12 text-center text-muted-foreground">
-              No documentation found matching your search.
+              {debouncedSearch
+                ? "No documentation found matching your search."
+                : "No documentation available."}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -93,35 +93,48 @@ export function LogsPanel({
 }: LogsPanelProps) {
   const [localIsOpen, setLocalIsOpen] = useState(status === "failed")
   const [logs, setLogs] = useState<DeployLogLine[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const isOpen = status === "failed" || localIsOpen
+
+  const fetchLogsRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     if (!deployId || status === "idle") {
       return
     }
 
-    const fetchLogs = async () => {
-      setIsLoading(true)
+    let attempt = 0
+    const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+    const doFetch = async () => {
+      attempt++
       try {
         const res = await fetch(`/api/deploy/logs/${deployId}`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const json = await res.json()
-        if (json.ok) {
-          setLogs(json.data)
+        if (!json.ok) throw new Error(json.error || "Failed")
+        setLogs(json.data)
+        setError(null)
+        attempt = 0 // reset on success
+      } catch (e) {
+        if (attempt < 3) {
+          await delay(Math.pow(2, attempt) * 1000) // 2s, 4s, 8s
+          doFetch()
+        } else {
+          setError(e instanceof Error ? e.message : "Failed to fetch logs")
         }
-      } catch (error) {
-        console.error("Failed to fetch logs", error)
-      } finally {
-        setIsLoading(false)
       }
     }
 
-    fetchLogs()
+    fetchLogsRef.current = doFetch
+    doFetch()
 
-    // If active, poll every 3s
     let interval: Timer | null = null
     if (status !== "running" && status !== "failed") {
-      interval = setInterval(fetchLogs, 3000)
+      interval = setInterval(() => {
+        attempt = 0
+        fetchLogsRef.current()
+      }, 3000)
     }
 
     return () => {
@@ -157,6 +170,22 @@ export function LogsPanel({
       </div>
 
       <CollapsibleContent className="space-y-3 border border-t-0 border-border p-3">
+        {error && (
+          <div className="flex items-center justify-between rounded bg-destructive/10 p-2 text-xs text-destructive">
+            <span>{error}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => {
+                if (!deployId || status === "idle") return
+                fetchLogsRef.current()
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           {LOG_SCOPES.map((logScope) => {
             const isSelected = scope === logScope
