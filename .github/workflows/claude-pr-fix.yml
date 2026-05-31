@@ -232,6 +232,7 @@ jobs:
             4. If a fix fails lint/typecheck, fix it before committing
 
       - name: Create fix PR
+        if: steps.create-branch.outputs.FIX_BRANCH != inputs.branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -261,7 +262,7 @@ jobs:
           gh pr comment "$PR_NUM" --body-file /tmp/comment.txt
 
       - name: Cleanup on failure
-        if: failure()
+        if: failure() && steps.create-branch.outputs.FIX_BRANCH != inputs.branch
         run: |
           echo "Workflow failed. Cleaning up fix branch..."
           FIX_BRANCH="${{ steps.create-branch.outputs.FIX_BRANCH }}"
