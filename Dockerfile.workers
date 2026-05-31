@@ -18,6 +18,9 @@ COPY scripts ./scripts
 # Copy lib (needed by workers)
 COPY lib ./lib
 
+# Copy modules (needed by billing-cron worker)
+COPY modules ./modules
+
 # Set environment
 ENV NODE_ENV=production
 
