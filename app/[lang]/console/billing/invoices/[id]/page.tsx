@@ -40,22 +40,36 @@ export default function InvoiceDetailPage() {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+
     async function loadData() {
       try {
         const [invoiceResult, accountResult] = await Promise.all([
           getInvoice(invoiceId),
           getAccount(),
         ])
-        setData(invoiceResult)
-        setAccount(accountResult)
+        if (!cancelled) {
+          setData(invoiceResult)
+          setAccount(accountResult)
+        }
       } catch {
-        setError("Failed to load invoice")
+        if (!cancelled) {
+          setError("Failed to load invoice")
+        }
       } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
 
     void loadData()
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
   }, [invoiceId])
 
   function formatCurrency(amountIdr: string, currency: string): string {
