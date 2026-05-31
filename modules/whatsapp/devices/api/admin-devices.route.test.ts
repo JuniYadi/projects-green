@@ -302,7 +302,7 @@ describe("Admin Devices Routes", () => {
       }))
       mockUpdate.mockImplementation(async () => ({
         ...fakeDevice,
-        balance: { toNumber: () => 150000, valueOf: () => 150000 },
+        balance: { toNumber: () => 150000, valueOf: () => 150000, toString: () => "150000" },
       }))
 
       const app = createTestApp()
