@@ -1,0 +1,58 @@
+# Dependencies
+node_modules
+bun.lockb
+
+# Build outputs
+.next
+out
+dist
+coverage
+
+# Version control
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Docs and configs
+*.md
+*.json (!package.json)(!package-lock.json)
+.eslintrc*
+.prettierrc*
+tsconfig*.json
+bunfig.toml
+next.config.mjs
+postcss.config.mjs
+tailwind.config.*
+components.json
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Tests
+test
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+jest.config.*
+vitest.config.*
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

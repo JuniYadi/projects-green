@@ -705,6 +705,7 @@ function DeployWizardInner() {
 
     return (
       <StepMonitor
+        deployId={state.monitor.deployId}
         status={state.monitor.status}
         logScope={state.monitor.logScope}
         attempt={state.monitor.attempt}

@@ -1,37 +1,83 @@
+import { useCallback, useEffect, useRef, useState } from "react"
+
 import { cn } from "@/lib/utils"
-import { DEPLOY_TIMELINE } from "@/modules/deploy/deploy.mock"
-import type { DeployStatus } from "@/modules/deploy/deploy.types"
+import type {
+  DeployStatus,
+  DeployTimelineItem,
+} from "@/modules/deploy/deploy.types"
 
 type DeployTimelineProps = {
+  deployId?: string
   status: DeployStatus
 }
 
 const getStatusIndex = (status: DeployStatus) => {
-  if (status === "queued") {
-    return 0
-  }
-
-  if (status === "building") {
-    return 1
-  }
-
-  if (status === "deploying") {
-    return 2
-  }
-
-  if (status === "running" || status === "failed") {
-    return 3
-  }
-
+  if (status === "queued") return 0
+  if (status === "building") return 1
+  if (status === "deploying") return 2
+  if (status === "running" || status === "failed") return 3
   return -1
 }
 
-export function DeployTimeline({ status }: DeployTimelineProps) {
+export function DeployTimeline({ deployId, status }: DeployTimelineProps) {
   const statusIndex = getStatusIndex(status)
+  const [timeline, setTimeline] = useState<DeployTimelineItem[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchEventsRef = useRef<() => void>(() => {})
+
+  const fetchEvents = useCallback(async () => {
+    if (!deployId || status === "idle") return
+    try {
+      const res = await fetch(`/api/deploy/events/${deployId}`)
+      if (!res.ok) throw new Error("Failed to fetch events")
+      const json = await res.json()
+      if (json.ok) {
+        setTimeline(json.data)
+        setError(null)
+      } else {
+        setError(json.error || "Failed to fetch events")
+      }
+    } catch (err) {
+      console.error("Failed to fetch events", err)
+      setError("Failed to fetch events")
+    }
+  }, [deployId])
+
+  useEffect(() => {
+    fetchEventsRef.current = fetchEvents
+  }, [fetchEvents])
+
+  useEffect(() => {
+    fetchEventsRef.current()
+
+    let interval: Timer | null = null
+    if (status !== "running" && status !== "failed") {
+      interval = setInterval(() => {
+        fetchEventsRef.current()
+      }, 5000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [status])
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-between border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+        <span>{error}</span>
+      </div>
+    )
+  }
+
+  if (timeline.length === 0) {
+    return <div className="text-xs text-muted-foreground">Loading timeline...</div>
+  }
 
   return (
     <ol className="grid gap-2 sm:grid-cols-4">
-      {DEPLOY_TIMELINE.map((item, index) => {
+      {timeline.map((item, index) => {
         const isCompleted = index < statusIndex
         const isActive = index === statusIndex
 

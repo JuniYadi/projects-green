@@ -1,9 +1,10 @@
 import { Elysia } from "elysia"
-import { withAuth } from "@workos-inc/authkit-nextjs"
+import { withAuth, getWorkOS } from "@workos-inc/authkit-nextjs"
+import type { Organization } from "@workos-inc/node"
 import { Prisma } from "@prisma/client"
 
-import { prisma } from "@/lib/prisma"
 import { MINIMUM_BALANCE_WARN_IDR } from "../constants"
+import { ensureBillingAccountForOrg } from "../billing-account.service"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -12,16 +13,21 @@ type BillingAuthContext = {
   user: { id: string; email?: string | null } | null
 }
 
+type BillingAccountRouteDeps = {
+  authenticate: () => Promise<BillingAuthContext>
+  ensureBillingAccountForOrg: typeof ensureBillingAccountForOrg
+  getOrganizationAction: (orgId: string) => Promise<Organization>
+}
+
 type RouteSet = {
   status?: number | string
 }
 
-type BillingAccountRouteDeps = {
-  authenticate: () => Promise<BillingAuthContext>
-}
-
 const defaultDeps: BillingAccountRouteDeps = {
   authenticate: () => withAuth(),
+  ensureBillingAccountForOrg,
+  getOrganizationAction: async (orgId: string) =>
+    getWorkOS().organizations.getOrganization(orgId),
 }
 
 const toUnauthorized = (set: RouteSet) => {
@@ -38,15 +44,6 @@ const toForbidden = (set: RouteSet, message: string) => {
   return {
     ok: false as const,
     error: "FORBIDDEN" as const,
-    message,
-  }
-}
-
-const toNotFound = (set: RouteSet, message: string) => {
-  set.status = 404
-  return {
-    ok: false as const,
-    error: "NOT_FOUND" as const,
     message,
   }
 }
@@ -77,7 +74,10 @@ function daysSince(date: Date): string {
 export const createBillingAccountRoutes = (
   deps: Partial<BillingAccountRouteDeps> = {}
 ) => {
-  const { authenticate } = { ...defaultDeps, ...deps }
+  const { authenticate, ensureBillingAccountForOrg, getOrganizationAction } = {
+    ...defaultDeps,
+    ...deps,
+  }
 
   return new Elysia()
     .get("/account", async ({ set }) => {
@@ -92,14 +92,11 @@ export const createBillingAccountRoutes = (
       }
 
       try {
-        // Get tenantId from BillingAccount by organizationId
-        const account = await prisma.billingAccount.findUnique({
-          where: { organizationId: auth.organizationId },
+        // JIT upsert: find or create BillingAccount for org
+        const account = await ensureBillingAccountForOrg({
+          organizationId: auth.organizationId,
+          getOrganizationAction,
         })
-
-        if (!account) {
-          return toNotFound(set, "Billing account not found.")
-        }
 
         const balance = account.balance
         const isPositive = balance.gt(0)

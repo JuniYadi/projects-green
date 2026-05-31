@@ -1,0 +1,28 @@
+FROM oven/bun:1-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json bun.lock ./
+
+# Install dependencies (workers need full deps)
+RUN bun install --frozen-lockfile
+
+# Copy Prisma schema and generated client
+COPY prisma ./prisma
+RUN bun prisma generate
+
+# Copy scripts
+COPY scripts ./scripts
+
+# Copy lib (needed by workers)
+COPY lib ./lib
+
+# Copy modules (needed by billing-cron worker)
+COPY modules ./modules
+
+# Set environment
+ENV NODE_ENV=production
+
+# Default command - can be overridden in docker-compose
+CMD ["bun", "run", "worker:github"]
