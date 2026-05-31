@@ -126,7 +126,7 @@ export class PaymentService {
 
   async payWithBalance(invoiceId: string, tenantId: string) {
     const invoice = await prisma.invoice.findFirst({
-      where: { id: invoiceId, status: "OPEN" },
+      where: { id: invoiceId, status: "OPEN", tenantId },
     })
 
     if (!invoice) {
