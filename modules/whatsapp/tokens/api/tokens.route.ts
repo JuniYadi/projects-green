@@ -2,7 +2,8 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
   whatsappAuthPlugin,
-  guardTenantAdmin,
+  guardOrgRead,
+  guardOrgWrite,
   guardSuperAdmin,
 } from "@/lib/whatsapp/auth"
 
@@ -16,7 +17,7 @@ const tokenUpdateSchema = t.Partial(tokenBodySchema)
 
 export const tokensRoutes = new Elysia({ prefix: "/tokens" })
   .use(whatsappAuthPlugin)
-  .get("/", guardTenantAdmin(async ({ whatsappAuth }: { whatsappAuth: any }) => {
+  .get("/", guardOrgRead(async ({ whatsappAuth }: { whatsappAuth: any }) => {
     const tokens = await prisma.whatsappApiKey.findMany({
       where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" 
         ? { organizationId: whatsappAuth.organizationId! } 
@@ -25,7 +26,7 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
     })
     return { ok: true, tokens }
   }))
-  .get("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const token = await prisma.whatsappApiKey.findUnique({
       where: { id },
     })
@@ -42,7 +43,7 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
 
     return { ok: true, token }
   }))
-  .post("/", guardTenantAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
+  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
     if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
@@ -59,7 +60,7 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
   }), {
     body: tokenBodySchema
   })
-  .patch("/:id", guardTenantAdmin(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
+  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
     const token = await prisma.whatsappApiKey.findUnique({
       where: { id },
     })
