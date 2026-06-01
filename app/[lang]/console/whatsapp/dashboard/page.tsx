@@ -122,6 +122,20 @@ export default function WhatsAppDashboardPage() {
         setState("loaded")
       } catch (err) {
         if (cancelled) return
+
+        // UNAUTHORIZED → redirect to login (serverFetch already does this,
+        // but handle it here as a safety net)
+        if (
+          err instanceof Error &&
+          "error" in err &&
+          (err as any).error === "UNAUTHORIZED"
+        ) {
+          const pathParts = window.location.pathname.split("/")
+          const locale = pathParts[1] || "en"
+          window.location.href = `/${locale}/login/start?next=${encodeURIComponent(window.location.pathname)}`
+          return
+        }
+
         if (
           err instanceof Error &&
           "error" in err &&
