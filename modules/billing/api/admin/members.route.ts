@@ -88,8 +88,8 @@ export interface MemberBillingSummary {
   userId: string
   email: string | null
   name: string | null
-  tenantId: string | null
-  tenantName: string | null
+  organizationId: string | null
+  organizationName: string | null
   subscriptionCount: number
   activeSubscriptionCount: number
   monthlySpendIdr: string
@@ -138,29 +138,23 @@ export const createAdminMembersRoutes = (
       }
 
       try {
-        // Get all tenants with their billing accounts
+        // Get all billing accounts with their organizations
         // Super_admin sees all; admins see only their org via billing account
-        const tenantWhere = actor.platformRole !== "super_admin" && auth.organizationId
-          ? { billingAccounts: { some: { organizationId: auth.organizationId } } }
+        const billingAccountWhere = actor.platformRole !== "super_admin" && auth.organizationId
+          ? { organizationId: auth.organizationId }
           : undefined
 
-        const tenantsWithBilling = await prisma.tenant.findMany({
-          where: tenantWhere,
-          include: {
-            billingAccounts: {
-              select: {
-                id: true,
-                balance: true,
-              },
-            },
-          },
+        const billingAccountsWithOrg = await prisma.billingAccount.findMany({
+          where: billingAccountWhere,
         })
 
-        // Get all subscriptions for these tenants
-        const tenantIds = tenantsWithBilling.map((t) => t.id)
+        // Get organization IDs
+        const organizationIds = billingAccountsWithOrg.map((ba) => ba.organizationId)
+
+        // Get all subscriptions for these organizations
         const subscriptions = await prisma.subscription.findMany({
           where: {
-            tenantId: { in: tenantIds },
+            organizationId: { in: organizationIds },
           },
           include: {
             package: {
@@ -176,48 +170,48 @@ export const createAdminMembersRoutes = (
         const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM format
         const usageLedger = await prisma.usageLedger.findMany({
           where: {
-            tenantId: { in: tenantIds },
+            organizationId: { in: organizationIds },
             period: currentMonth,
           },
         })
 
-        // Aggregate data by user (workos user id from tenant relation)
-        // Since we don't have direct user mapping, we aggregate by tenant
+        // Aggregate data by organization
         const membersMap = new Map<string, MemberBillingSummary>()
 
-        for (const tenant of tenantsWithBilling) {
-          const tenantSubscriptions = subscriptions.filter(
-            (s) => s.tenantId === tenant.id
+        for (const billingAccount of billingAccountsWithOrg) {
+          const orgId = billingAccount.organizationId
+          const orgSubscriptions = subscriptions.filter(
+            (s) => s.organizationId === orgId
           )
-          const tenantUsage = usageLedger.filter(
-            (u) => u.tenantId === tenant.id
+          const orgUsage = usageLedger.filter(
+            (u) => u.organizationId === orgId
           )
 
           // Calculate monthly spend
-          const monthlySpend = tenantUsage.reduce(
+          const monthlySpend = orgUsage.reduce(
             (sum, u) => sum + (u.amountIdr?.toNumber() ?? 0),
             0
           )
 
           // Calculate active subscription count
-          const activeSubscriptionCount = tenantSubscriptions.filter(
+          const activeSubscriptionCount = orgSubscriptions.filter(
             (s) => s.status === "ACTIVE"
           ).length
 
           // Build member summary
           const memberEntry: MemberBillingSummary = {
-            userId: tenant.id, // Using tenant id as proxy - in real impl would be workos user id
-            email: null, // Would come from WorkOS
-            name: tenant.name,
-            tenantId: tenant.id,
-            tenantName: tenant.name,
-            subscriptionCount: tenantSubscriptions.length,
+            userId: orgId,
+            email: null,
+            name: orgId,
+            organizationId: orgId,
+            organizationName: orgId,
+            subscriptionCount: orgSubscriptions.length,
             activeSubscriptionCount,
             monthlySpendIdr: monthlySpend.toFixed(2),
-            balanceIdr: tenant.billingAccounts[0]?.balance.toFixed(2) ?? "0.00",
+            balanceIdr: billingAccount.balance.toFixed(2),
           }
 
-          // Aggregate by user if needed (for multi-tenant users)
+          // Aggregate by user if needed (for multi-org users)
           const existing = membersMap.get(memberEntry.userId)
           if (existing) {
             existing.subscriptionCount += memberEntry.subscriptionCount
@@ -272,30 +266,22 @@ export const createAdminMembersRoutes = (
       }
 
       try {
-        // Find tenant by the given userId (or tenant id as proxy)
-        const tenant = await prisma.tenant.findFirst({
+        // Find billing account by organization ID
+        const billingAccount = await prisma.billingAccount.findFirst({
           where: {
-            OR: [{ id: userId }, { code: userId }],
-          },
-          include: {
-            billingAccounts: {
-              select: {
-                id: true,
-                balance: true,
-              },
-            },
+            organizationId: userId,
           },
         })
 
-        // If no tenant found by id, search by subscription user context
-        // This is a placeholder - in real impl would query WorkOS for user memberships
-        if (!tenant) {
+        if (!billingAccount) {
           return toNotFound(set, "Member not found.")
         }
 
+        const orgId = billingAccount.organizationId
+
         // Get subscriptions
         const subscriptions = await prisma.subscription.findMany({
-          where: { tenantId: tenant.id },
+          where: { organizationId: orgId },
           include: {
             package: { select: { code: true } },
             plan: { select: { code: true } },
@@ -306,7 +292,7 @@ export const createAdminMembersRoutes = (
         const currentMonth = new Date().toISOString().slice(0, 7)
         const usageLedger = await prisma.usageLedger.findMany({
           where: {
-            tenantId: tenant.id,
+            organizationId: orgId,
             period: currentMonth,
           },
           orderBy: { createdAt: "desc" },
@@ -325,15 +311,15 @@ export const createAdminMembersRoutes = (
         ).length
 
         const memberDetail: MemberBillingDetail = {
-          userId: tenant.id,
-          email: null, // Would come from WorkOS
-          name: tenant.name,
-          tenantId: tenant.id,
-          tenantName: tenant.name,
+          userId: orgId,
+          email: null,
+          name: orgId,
+          organizationId: orgId,
+          organizationName: orgId,
           subscriptionCount: subscriptions.length,
           activeSubscriptionCount,
           monthlySpendIdr: monthlySpend.toFixed(2),
-          balanceIdr: tenant.billingAccounts[0]?.balance.toFixed(2) ?? "0.00",
+          balanceIdr: billingAccount.balance.toFixed(2),
           subscriptions: subscriptions.map((s) => ({
             id: s.id,
             status: s.status,
