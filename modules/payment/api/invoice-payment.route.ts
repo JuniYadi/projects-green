@@ -48,10 +48,9 @@ export const createInvoicePaymentRoutes = () =>
       }
 
       const { invoiceId } = parsed.data
-      const tenantId = auth.organizationId
 
       try {
-        await paymentService.payWithBalance(invoiceId, tenantId)
+        await paymentService.payWithBalance(invoiceId, auth.organizationId)
 
         return {
           ok: true as const,
@@ -126,12 +125,12 @@ export const createInvoicePaymentRoutes = () =>
       }
 
       const { invoiceId } = parsed.data
-      const tenantId = auth.organizationId
+      const organizationId = auth.organizationId
 
       try {
         // Get invoice details
         const invoice = await prisma.invoice.findFirst({
-          where: { id: invoiceId, status: "OPEN", tenantId },
+          where: { id: invoiceId, status: "OPEN", billingAccount: { organizationId } },
         })
 
         if (!invoice) {
@@ -147,7 +146,7 @@ export const createInvoicePaymentRoutes = () =>
 
         // Get billing account
         const account = await prisma.billingAccount.findUnique({
-          where: { tenantId },
+          where: { organizationId },
         })
 
         if (!account) {
@@ -164,7 +163,7 @@ export const createInvoicePaymentRoutes = () =>
 
         if (gapAmount <= 0) {
           // Already have sufficient balance, just pay directly
-          await paymentService.payWithBalance(invoiceId, tenantId)
+          await paymentService.payWithBalance(invoiceId, organizationId)
           return {
             ok: true as const,
             message: "Invoice paid with existing balance.",
@@ -174,7 +173,7 @@ export const createInvoicePaymentRoutes = () =>
 
         // Create gap topup invoice
         const topupInvoice = await paymentService.createTopupInvoiceForGap(
-          tenantId,
+          organizationId,
           gapAmount
         )
 
