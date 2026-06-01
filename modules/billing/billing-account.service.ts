@@ -10,7 +10,7 @@ type WorkOSOrganization = {
 export const ensureBillingAccountForOrg = async (params: {
   organizationId: string
   getOrganizationAction: (orgId: string) => Promise<WorkOSOrganization>
-}): Promise<Prisma.BillingAccountGetPayload<{ include: { tenant: true } }>> => {
+}): Promise<Prisma.BillingAccountGetPayload<object>> => {
   const { organizationId, getOrganizationAction } = params
 
   // Fetch org name BEFORE transaction to avoid holding DB connection during external API call
@@ -25,38 +25,20 @@ export const ensureBillingAccountForOrg = async (params: {
   }
 
   return prisma.$transaction(async (tx) => {
-    // 1. Find or create Tenant
-    let tenant = await tx.tenant.findUnique({
-      where: { code: organizationId },
-    })
-
-    if (!tenant) {
-      tenant = await tx.tenant.create({
-        data: {
-          code: organizationId,
-          name: org.name,
-          isActive: true,
-        },
-      })
-    }
-
-    // 2. Find or create BillingAccount
+    // Find or create BillingAccount
     let account = await tx.billingAccount.findUnique({
       where: { organizationId },
-      include: { tenant: true },
     })
 
     if (!account) {
       account = await tx.billingAccount.create({
         data: {
-          tenantId: tenant.id,
           organizationId,
           balance: new Prisma.Decimal(0),
           currency: "USD",
           timezone: "UTC",
           status: "ACTIVE",
         },
-        include: { tenant: true },
       })
     }
 
