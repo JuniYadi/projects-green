@@ -163,6 +163,9 @@ CREATE INDEX "Subscription_packageId_idx" ON "Subscription"("packageId");
 CREATE UNIQUE INDEX "Subscription_tenantId_packageId_planId_key" ON "Subscription"("tenantId", "packageId", "planId");
 
 -- CreateIndex
+CREATE INDEX "Subscription_pricingId_idx" ON "Subscription"("pricingId");
+
+-- CreateIndex
 CREATE INDEX "UsageLedger_tenantId_period_idx" ON "UsageLedger"("tenantId", "period");
 
 -- CreateIndex
