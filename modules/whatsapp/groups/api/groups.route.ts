@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
-  whatsappAuthPlugin,
   guardOrgRead,
   guardOrgWrite,
   guardOrgFull,
@@ -20,7 +19,6 @@ const groupBodySchema = t.Object({
 const groupUpdateSchema = t.Partial(groupBodySchema)
 
 export const groupsRoutes = new Elysia({ prefix: "/groups" })
-  .use(whatsappAuthPlugin)
   .get("/", guardOrgRead(async ({ whatsappAuth, query }: { whatsappAuth: any, query: any }) => {
     const { status, type, name } = query as any
     
