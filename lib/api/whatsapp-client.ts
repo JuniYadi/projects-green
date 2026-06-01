@@ -87,6 +87,16 @@ async function serverFetch<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
+
+    // 401 UNAUTHORIZED → redirect to login (session expired / missing)
+    if (res.status === 401 && body.error === "UNAUTHORIZED") {
+      if (typeof window !== "undefined") {
+        const pathParts = window.location.pathname.split("/")
+        const locale = pathParts[1] || "en"
+        window.location.href = `/${locale}/login/start?next=${encodeURIComponent(window.location.pathname)}`
+      }
+    }
+
     const error = new Error(body.message ?? `HTTP ${res.status}`) as Error & {
       error?: string
       required?: string
@@ -98,6 +108,9 @@ async function serverFetch<T>(
       error.required = body.required
       error.current = body.current ?? null
       error.action = body.action ?? ""
+    }
+    if (body.error === "UNAUTHORIZED") {
+      error.error = body.error
     }
     throw error
   }
