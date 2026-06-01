@@ -44,42 +44,42 @@ describe("AdminAdjustmentsRoute", () => {
   describe("defaultDeps.isAdmin", () => {
     const isAdmin = (actor: {
       platformRole: PlatformAccessRole
-      tenantRole: string | null | undefined
+      orgRole: string | null | undefined
     }) => {
       if (actor.platformRole === "super_admin") return true
-      return actor.tenantRole === "admin" || actor.tenantRole === "owner"
+      return actor.orgRole === "admin" || actor.orgRole === "owner"
     }
 
     it("returns true for super_admin with null tenant role (the bug scenario)", () => {
-      expect(isAdmin({ platformRole: "super_admin", tenantRole: null })).toBe(true)
+      expect(isAdmin({ platformRole: "super_admin", orgRole: null })).toBe(true)
     })
 
     it("returns true for super_admin with undefined tenant role", () => {
-      expect(isAdmin({ platformRole: "super_admin", tenantRole: undefined })).toBe(true)
+      expect(isAdmin({ platformRole: "super_admin", orgRole: undefined })).toBe(true)
     })
 
     it("returns true for super_admin with admin tenant role", () => {
-      expect(isAdmin({ platformRole: "super_admin", tenantRole: "admin" })).toBe(true)
+      expect(isAdmin({ platformRole: "super_admin", orgRole: "admin" })).toBe(true)
     })
 
     it("returns true for non-super_admin with admin tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: "admin" })).toBe(true)
+      expect(isAdmin({ platformRole: "none", orgRole: "admin" })).toBe(true)
     })
 
     it("returns true for non-super_admin with owner tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: "owner" })).toBe(true)
+      expect(isAdmin({ platformRole: "none", orgRole: "owner" })).toBe(true)
     })
 
     it("returns false for non-super_admin with member tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: "member" })).toBe(false)
+      expect(isAdmin({ platformRole: "none", orgRole: "member" })).toBe(false)
     })
 
     it("returns false for non-super_admin with null tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: null })).toBe(false)
+      expect(isAdmin({ platformRole: "none", orgRole: null })).toBe(false)
     })
 
     it("returns false for non-super_admin with undefined tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: undefined })).toBe(false)
+      expect(isAdmin({ platformRole: "none", orgRole: undefined })).toBe(false)
     })
   })
 
