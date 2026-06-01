@@ -31,6 +31,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - pfnapp-net
 
   workers:
     build:
@@ -48,3 +50,10 @@ services:
       redis:
         condition: service_healthy
     command: ["sh", "-c", "bun run worker:github & bun run worker:billing"]
+    networks:
+      - pfnapp-net
+
+networks:
+  pfnapp-net:
+    name: pfnapp-net
+    external: true
