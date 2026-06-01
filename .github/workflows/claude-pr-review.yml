@@ -85,6 +85,13 @@ jobs:
             - Be direct and professional. "This code is confusing and misses the X edge case" is better than "Consider refactoring if you have time".
 
             INSTRUCTIONS:
+
+            MANDATORY FIRST STEP — BUILD YOUR DIFF MANIFEST:
+            Run `gh pr diff ${{ github.event.pull_request.number }}` and store the FULL output.
+            This is your SOLE source of truth for file paths and line numbers.
+            You MUST ONLY reference files and line numbers that appear in this diff output.
+            Any file path or line number NOT in this diff is INVALID — do NOT attempt to post inline comments on them.
+
             1. Scan all existing comments and review threads on this PR using `gh api graphql`:
                ```
                gh api graphql -f query='
@@ -122,12 +129,14 @@ jobs:
                 - Post a reply "❌ PERSISTENT: This issue still exists in the latest changes." to the thread.
                 - Do NOT resolve it.
               - If it's a NEW issue:
+                - CRITICAL: Before posting, VERIFY the file path and line number exist in your PR diff manifest. If the path or line is NOT in the diff, SKIP the inline comment and add it to review_body.md instead.
                 - Use `mcp__github_inline_comment__create_inline_comment` to post the finding directly on the line.
                 - Start the comment with "🆕 NEW ISSUE:".
+                - If the MCP tool fails (any error), add the finding to `review_body.md` instead of retrying.
 
-            CRITICAL: Every single finding MUST have an inline comment. This allows us to track resolution state per-line.
+            CRITICAL: Every finding SHOULD have an inline comment when the target file and line exist in the PR diff. If the MCP tool fails or the target cannot be resolved, add the finding to review_body.md instead. The review MUST always be submitted regardless.
 
-            IMPORTANT: After resolving all outdated threads, re-scan the code for NEW issues. An outdated thread may mean the code was rewritten and a NEW issue now exists at that location.
+            IMPORTANT: After resolving all outdated threads, re-scan the code for NEW issues. An outdated thread may mean the code was rewritten and a NEW issue now exists at that location. Remember: only review files that appear in the PR diff — do not comment on files outside this PR.
 
             REVIEW SUBMISSION LOGIC:
             You MUST submit your final review summary using `gh pr review`.
@@ -135,13 +144,16 @@ jobs:
             If there are NO unresolved issues (all threads resolved/fixed and no new issues):
               Execute: `gh pr review --approve --body "LGTM! All issues have been addressed."`
 
-            If there are ANY "🆕 NEW" or "❌ PERSISTENT" issues:
-              STEP 1: Create a summary file `review_body.md`.
+            If there are ANY "🆕 NEW" or "❌ PERSISTENT" issues OR if `review_body.md` already has findings from failed inline comments:
+              STEP 1: Create or update the summary file `review_body.md`.
 
               <!-- FIX_PROMPT_START -->
               --- START OF review_body.md TEMPLATE ---
               ## PR Review Summary
               I have identified issues that require attention. See inline comments for details.
+
+              ### ⚠️ Findings (Inline Comment Failed)
+              If any inline comments failed to post (MCP tool error or path not in diff), list them here with file path, line range, and issue description.
 
               ### 💻 Local Refactoring Prompt
 
