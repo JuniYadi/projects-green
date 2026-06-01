@@ -15,22 +15,8 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres?schema=public
-      - REDIS_URL=redis://redis:6379/0
-      - WORKOS_API_KEY=${WORKOS_API_KEY}
-      - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID}
-      - WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD}
-      - NEXT_PUBLIC_WORKOS_REDIRECT_URI=${NEXT_PUBLIC_WORKOS_REDIRECT_URI}
-      - GITHUB_APP_ID=${GITHUB_APP_ID}
-      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
-      - GITHUB_APP_CLIENT_ID=${GITHUB_APP_CLIENT_ID}
-      - GITHUB_APP_CLIENT_SECRET=${GITHUB_APP_CLIENT_SECRET}
-      - GITHUB_APP_PRIVATE_KEY_BASE64=${GITHUB_APP_PRIVATE_KEY_BASE64}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
-      - EMAIL_FROM=${EMAIL_FROM}
-      - AI_API_KEY=${AI_API_KEY}
+    env_file:
+      - .env
     networks:
       - pfnapp-net
 
@@ -49,21 +35,8 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres?schema=public
-      - REDIS_URL=redis://redis:6379/0
-      - WORKOS_API_KEY=${WORKOS_API_KEY}
-      - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID}
-      - WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD}
-      - GITHUB_APP_ID=${GITHUB_APP_ID}
-      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
-      - GITHUB_APP_CLIENT_ID=${GITHUB_APP_CLIENT_ID}
-      - GITHUB_APP_CLIENT_SECRET=${GITHUB_APP_CLIENT_SECRET}
-      - GITHUB_APP_PRIVATE_KEY_BASE64=${GITHUB_APP_PRIVATE_KEY_BASE64}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
-      - EMAIL_FROM=${EMAIL_FROM}
-      - AI_API_KEY=${AI_API_KEY}
+    env_file:
+      - .env
     command: ["dumb-init", "--", "sh", "-c", "bun run worker:github & bun run worker:billing"]
     networks:
       - pfnapp-net

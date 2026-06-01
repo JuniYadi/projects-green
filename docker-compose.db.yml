@@ -10,7 +10,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./docker/postgres:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 10s
@@ -26,7 +26,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - ./docker/redis:/data
+      - redis-data:/data
     command: ["redis-server", "--appendonly", "yes"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -40,3 +40,9 @@ networks:
   pfnapp-net:
     name: pfnapp-net
     driver: bridge
+
+volumes:
+  postgres-data:
+    name: pfnapp-postgres-data
+  redis-data:
+    name: pfnapp-redis-data
