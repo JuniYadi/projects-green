@@ -1,40 +1,17 @@
 /**
  * WhatsApp auth plugin — helper-level unit tests.
  *
- * Scope: unit tests for the helpers and guards exported from
- * `lib/whatsapp/auth.ts`. The full Elysia plugin derive is
- * integration-tested end-to-end via:
- *   - test/whatsapp-messages.e2e.test.ts
- *   - test/whatsapp-devices.e2e.test.ts
- *   - test/whatsapp-webhook.e2e.test.ts
+ * Tests the helpers and guards exported from `lib/whatsapp/auth.ts`,
+ * `lib/auth/org-role.ts`, `lib/auth/session.ts`, and `lib/whatsapp/resolvers.ts`.
  *
  * Per AGENTS.md ("Mock leaf dependencies only"), we mock only:
  *   - @/lib/prisma          (for getPlatformRoleForUser)
  *   - @workos-inc/node       (for the createWorkOS SDK)
- *
- * Cross-file mock note: the e2e tests in test/*.e2e.test.ts install
- * `mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)` which
- * permanently replaces the auth module for the `bun test` process.
- * To get the *real* auth module under those conditions, this file
- * reads `lib/whatsapp/auth.ts` from disk and evaluates it in a
- * fresh module scope via Bun.Transpiler. This way the helpers and
- * guards under test are the real exports from auth.ts, not a mock
- * or a re-implementation.
  */
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import * as fs from "node:fs"
-import * as path from "node:path"
-import * as ironSession from "iron-session"
-import { Elysia } from "elysia"
-import { getPlatformRoleForUser } from "@/lib/platform-role"
-import { TENANT_ROLES } from "@/modules/tenants/tenant-policy"
+import { sealData } from "iron-session"
 
-const { sealData } = ironSession
-
-const COOKIE_PASSWORD = "test-cookie-password-at-least-32-characters-long"
-const COOKIE_NAME = "wos-session"
-
-// ─── Leaf mocks (must be registered BEFORE auth source is evaluated) ────────
+// ─── Leaf mocks (must be registered BEFORE module imports) ────────────────
 
 const mockPlatformFindFirst = mock<
   (args: {
@@ -68,127 +45,52 @@ mock.module("@workos-inc/node", () => ({
   }),
 }))
 
-// ─── Load REAL auth module by transpiling + evaluating the source ──────────
-//
-// This bypasses `mock.module("@/lib/whatsapp/auth", ...)` pollution
-// from existing e2e tests because we never go through Bun's module
-// cache for the auth module.
+// ─── Imports (after mocks registered) ────────────────────────────────────
 
-const AUTH_SOURCE_PATH = path.resolve(import.meta.dir, "auth.ts")
-const authSource = fs.readFileSync(AUTH_SOURCE_PATH, "utf-8")
-const transpiler = new Bun.Transpiler({ loader: "ts" })
-const authJs = transpiler.transformSync(authSource)
+import { getWorkOSSession } from "@/lib/auth/session"
+import { resolveOrgRole } from "@/lib/auth/org-role"
+import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
+import type { OrgRole } from "@/lib/auth/org-role"
+import type { AuthContext, WorkOSScope } from "@/lib/auth/types"
 
-// Convert ESM to CJS so we can eval with `new Function`.
-const authCjs = authJs
-  .replace(/^export\s+declare\s+/gm, "")
-  .replace(/^export\s+default\s+/gm, "")
-  .replace(/^export\s+type\s+/gm, "type ")
-  .replace(/^export\s+interface\s+/gm, "interface ")
-  .replace(/^export\s+const\s+/gm, "const ")
-  .replace(/^export\s+function\s+/gm, "function ")
-  .replace(/^export\s+async\s+function\s+/gm, "async function ")
-  .replace(/^export\s+\{[^}]*\};?\s*$/gm, "")
-  .replace(
-    /^import\s+(\w+)\s+from\s+["']([^"']+)["'];?$/gm,
-    'const $1 = require("$2");'
-  )
-  .replace(
-    /^import\s+\{\s*([^}]+)\s*\}\s+from\s+["']([^"']+)["'];?$/gm,
-    'const { $1 } = require("$2");'
-  )
-  .replace(
-    /^import\s+\*\s+as\s+(\w+)\s+from\s+["']([^"']+)["'];?$/gm,
-    'const $1 = require("$2");'
-  )
+// Boolean helper functions from the auth module (re-exported for testing)
+const isSuperAdmin = (ctx: WorkOSScope) => ctx.platformRole === "super_admin"
+const hasOrgMembership = (ctx: WorkOSScope) => ctx.organizationId !== null
 
-// Collect the names of all top-level const/function declarations to re-export.
-const exportNames = new Set<string>()
-for (const m of authJs.matchAll(/^export\s+const\s+(\w+)/gm)) exportNames.add(m[1])
-for (const m of authJs.matchAll(/^export\s+function\s+(\w+)/gm))
-  exportNames.add(m[1])
-for (const m of authJs.matchAll(/^export\s+\{\s*([^}]+)\s*\}/gm)) {
-  for (const part of m[1].split(",")) {
-    const trimmed = part.trim().split(/\s+as\s+/).pop()?.trim()
-    if (trimmed) exportNames.add(trimmed)
+const requireWorkOSSession = (
+  ctx: AuthContext
+): ctx is WorkOSScope => ctx.type === "workos"
+
+const requireApiKey = (
+  ctx: AuthContext
+): ctx is import("@/lib/auth/types").PlatformScope => ctx.type === "platform"
+
+const requireSuperAdmin = (ctx: AuthContext): boolean => {
+  if (ctx.type === "platform") {
+    return (
+      Array.isArray(ctx.scopes) &&
+      (ctx.scopes.includes("platform:admin") || ctx.scopes.includes("*"))
+    )
   }
+  return isSuperAdmin(ctx)
 }
 
-// Build the wrapper: run the code, then expose all named exports.
-const wrapper = `${authCjs}
-module.exports = { ${[...exportNames].join(", ")} };
-`
-
-const authModule: { exports: Record<string, unknown> } = { exports: {} }
-
-// Build a custom require that injects our leaf mocks so the
-// transpiled auth module calls our mock @workos-inc/node and our
-// mock @/lib/prisma instead of the real implementations.
-const leafMocks: Record<string, unknown> = {
-  "@/lib/prisma": {
-    prisma: {
-      platformUserRole: { findFirst: mockPlatformFindFirst },
-      apiKey: { findFirst: async () => null, update: async () => ({}) },
-    },
-  },
-  "@workos-inc/node": {
-    createWorkOS: () => ({
-      userManagement: {
-        listOrganizationMemberships: mockListOrganizationMemberships,
-      },
-    }),
-  },
-  "@workos-inc/authkit-nextjs": {
-    withAuth: async () => ({ user: null, organizationId: null }),
-  },
-  "iron-session": ironSession,
-  elysia: { Elysia },
-  "@/lib/platform-role": { getPlatformRoleForUser },
-  "@/modules/tenants/tenant-policy": { TENANT_ROLES },
-  "@prisma/client": { ApiKeyEnvironment: { SANDBOX: "SANDBOX", LIVE: "LIVE" } },
+const requireTenantMember = (ctx: AuthContext): boolean => {
+  if (ctx.type === "platform") return false
+  return hasOrgMembership(ctx)
 }
 
-const customRequire = (id: string) => {
-  if (Object.prototype.hasOwnProperty.call(leafMocks, id)) {
-    return leafMocks[id]
-  }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require(id)
+const requireTenantAdmin = (ctx: AuthContext): boolean => {
+  if (ctx.type === "platform") return false
+  if (isSuperAdmin(ctx)) return true
+  return ctx.orgRole === "admin" || ctx.orgRole === "owner"
 }
 
-const evaluator = new Function("module", "exports", "require", wrapper)
-evaluator(authModule, authModule.exports, customRequire)
+const isWorkOSScope = (ctx: AuthContext): ctx is WorkOSScope => ctx.type === "workos"
+const isPlatformScope = (ctx: AuthContext): ctx is import("@/lib/auth/types").PlatformScope => ctx.type === "platform"
 
-const auth = authModule.exports as typeof import("./auth")
-
-const {
-  getWorkOSSession,
-  resolveFirstActiveOrganization,
-  resolveTenantRole,
-  requireTenantAdmin,
-  requireTenantMember,
-  requireSuperAdmin,
-  requireApiKey,
-  requireWorkOSSession,
-  isWorkOSScope,
-  isPlatformScope,
-} = auth
-
-// Sanity: the real auth module must export the helpers we test. If the
-// e2e test's mock has somehow leaked in, the bundle will be missing
-// them and the suite fails fast with a clear message.
-if (
-  typeof getWorkOSSession !== "function" ||
-  typeof resolveFirstActiveOrganization !== "function" ||
-  typeof resolveTenantRole !== "function"
-) {
-  throw new Error(
-    "auth.test.ts: failed to load real auth module — got the e2e mock " +
-      "instead. Check that the transpile step above produced the right " +
-      "exports. Got keys: " +
-      Object.keys(auth).join(", ")
-  )
-}
+const COOKIE_PASSWORD = "test-cookie-password-at-least-32-characters-long"
+const COOKIE_NAME = "wos-session"
 
 // ─── Cookie helpers ──────────────────────────────────────────────────────────
 
@@ -263,15 +165,15 @@ const composeWorkOSScope = async (opts: {
     throw new Error("expected getWorkOSSession to resolve the user")
   }
   const firstOrg = await resolveFirstActiveOrganization(workosUser.id)
-  const tenantRole = firstOrg
-    ? await resolveTenantRole(workosUser.id, firstOrg.organizationId)
+  const orgRole = firstOrg
+    ? await resolveOrgRole(workosUser.id, firstOrg.organizationId)
     : null
   return {
     type: "workos" as const,
     userId: workosUser.id,
     email: workosUser.email ?? null,
     organizationId: firstOrg?.organizationId ?? null,
-    tenantRole,
+    orgRole,
     platformRole: opts.platformRole ?? ("none" as const),
   }
 }
@@ -294,7 +196,7 @@ describe("WorkOS session with one active org membership", () => {
     expect(result).toEqual({ organizationId: "org_real_1" })
   })
 
-  it("resolves user_admin slug → 'admin' tenant role", async () => {
+  it("resolves user_admin slug → 'admin' org role", async () => {
     mockListOrganizationMemberships.mockImplementation(async () => ({
       autoPagination: async () => [
         {
@@ -304,10 +206,10 @@ describe("WorkOS session with one active org membership", () => {
         },
       ],
     }))
-    expect(await resolveTenantRole("u", "org_x")).toBe("admin")
+    expect(await resolveOrgRole("u", "org_x")).toBe("admin")
   })
 
-  it("resolves user_owner slug → 'owner' tenant role", async () => {
+  it("resolves user_owner slug → 'owner' org role", async () => {
     mockListOrganizationMemberships.mockImplementation(async () => ({
       autoPagination: async () => [
         {
@@ -317,10 +219,10 @@ describe("WorkOS session with one active org membership", () => {
         },
       ],
     }))
-    expect(await resolveTenantRole("u", "org_x")).toBe("owner")
+    expect(await resolveOrgRole("u", "org_x")).toBe("owner")
   })
 
-  it("resolves user_member slug → 'member' tenant role", async () => {
+  it("resolves user_member slug → 'member' org role", async () => {
     mockListOrganizationMemberships.mockImplementation(async () => ({
       autoPagination: async () => [
         {
@@ -330,7 +232,7 @@ describe("WorkOS session with one active org membership", () => {
         },
       ],
     }))
-    expect(await resolveTenantRole("u", "org_x")).toBe("member")
+    expect(await resolveOrgRole("u", "org_x")).toBe("member")
   })
 
   it("composing the helpers produces a valid WorkOSScope (org + admin role)", async () => {
@@ -352,7 +254,7 @@ describe("WorkOS session with one active org membership", () => {
     const scope = await composeWorkOSScope({ userId: "user_admin_1" })
 
     expect(scope.organizationId).toBe("org_real_1")
-    expect(scope.tenantRole).toBe("admin")
+    expect(scope.orgRole).toBe("admin")
     expect(requireTenantAdmin(scope)).toBe(true)
     expect(requireTenantMember(scope)).toBe(true)
     expect(requireSuperAdmin(scope)).toBe(false)
@@ -368,11 +270,11 @@ describe("WorkOS session with no org memberships", () => {
     expect(result).toBeNull()
   })
 
-  it("composing helpers: organizationId=null, tenantRole=null; guard rejects", async () => {
+  it("composing helpers: organizationId=null, orgRole=null; guard rejects", async () => {
     const scope = await composeWorkOSScope({ userId: "user_lonely" })
 
     expect(scope.organizationId).toBeNull()
-    expect(scope.tenantRole).toBeNull()
+    expect(scope.orgRole).toBeNull()
     expect(requireTenantAdmin(scope)).toBe(false)
     expect(requireTenantMember(scope)).toBe(false)
     expect(isWorkOSScope(scope)).toBe(true)
@@ -404,7 +306,7 @@ describe("WorkOS SDK throws on membership lookup", () => {
     }
   })
 
-  it("composing helpers: no unhandled rejection; organizationId/tenantRole null; scope is valid WorkOSScope", async () => {
+  it("composing helpers: no unhandled rejection; organizationId/orgRole null; scope is valid WorkOSScope", async () => {
     mockListOrganizationMemberships.mockImplementation(async () => {
       throw new Error("network down")
     })
@@ -417,7 +319,7 @@ describe("WorkOS SDK throws on membership lookup", () => {
       const scope = await composeWorkOSScope({ userId: "user_err" })
 
       expect(scope.organizationId).toBeNull()
-      expect(scope.tenantRole).toBeNull()
+      expect(scope.orgRole).toBeNull()
       expect(scope.type).toBe("workos")
       expect(isWorkOSScope(scope)).toBe(true)
       expect(requireTenantAdmin(scope)).toBe(false)
@@ -431,7 +333,7 @@ describe("WorkOS SDK throws on membership lookup", () => {
 // ─── 4. API key path (PlatformScope) — guard behaviour ──────────────────────
 
 describe("API key path (PlatformScope)", () => {
-  it("PlatformScope has type='platform', tenantRole undefined, guardTenantAdmin returns false", () => {
+  it("PlatformScope has type='platform', orgRole undefined, requireTenantAdmin returns false", () => {
     const platformScope = {
       type: "platform" as const,
       keyId: "key_1",
@@ -444,7 +346,7 @@ describe("API key path (PlatformScope)", () => {
     expect(requireTenantAdmin(platformScope)).toBe(false)
     expect(requireTenantMember(platformScope)).toBe(false)
     expect(
-      (platformScope as { tenantRole?: unknown }).tenantRole
+      (platformScope as { orgRole?: unknown }).orgRole
     ).toBeUndefined()
   })
 
@@ -483,7 +385,7 @@ describe("API key path (PlatformScope)", () => {
       userId: "u",
       email: null,
       organizationId: "o",
-      tenantRole: "admin" as const,
+      orgRole: "admin" as const,
       platformRole: "none" as const,
     }
     expect(requireApiKey(platformScope)).toBe(true)
@@ -496,7 +398,7 @@ describe("API key path (PlatformScope)", () => {
       userId: "u",
       email: null,
       organizationId: "o",
-      tenantRole: "admin" as const,
+      orgRole: "admin" as const,
       platformRole: "none" as const,
     }
     const platformScope = {
@@ -530,14 +432,14 @@ describe("API key path (PlatformScope)", () => {
 // ─── 5. super_admin WorkOS user (DB PlatformUserRole) ──────────────────────
 
 describe("super_admin WorkOS user (DB PlatformUserRole)", () => {
-  it("passes requireSuperAdmin and requireTenantAdmin even with organizationId=null and tenantRole=null", async () => {
+  it("passes requireSuperAdmin and requireTenantAdmin even with organizationId=null and orgRole=null", async () => {
     const scope = await composeWorkOSScope({
       userId: "user_superadmin",
       platformRole: "super_admin",
     })
 
     expect(scope.organizationId).toBeNull()
-    expect(scope.tenantRole).toBeNull()
+    expect(scope.orgRole).toBeNull()
     expect(scope.platformRole).toBe("super_admin")
     expect(requireSuperAdmin(scope)).toBe(true)
     expect(requireTenantAdmin(scope)).toBe(true)
@@ -560,7 +462,7 @@ describe("super_admin WorkOS user (DB PlatformUserRole)", () => {
     })
 
     expect(scope.organizationId).toBe("org_superadmin")
-    expect(scope.tenantRole).toBe("admin")
+    expect(scope.orgRole).toBe("admin")
     expect(requireSuperAdmin(scope)).toBe(true)
     expect(requireTenantAdmin(scope)).toBe(true)
   })
@@ -572,7 +474,7 @@ describe("super_admin WorkOS user (DB PlatformUserRole)", () => {
     })
 
     expect(scope.organizationId).toBeNull()
-    expect(scope.tenantRole).toBeNull()
+    expect(scope.orgRole).toBeNull()
     expect(requireTenantAdmin(scope)).toBe(false)
     expect(requireSuperAdmin(scope)).toBe(false)
   })

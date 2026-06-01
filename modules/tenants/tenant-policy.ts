@@ -1,11 +1,25 @@
-import { PlatformAccessRole } from "@/lib/platform-role"
+/**
+ * Tenant policy — re-exports from lib/auth/org-role.ts for backward compatibility.
+ * New code should import directly from @/lib/auth/org-role or @/lib/auth.
+ */
+export { ORG_ROLES as TENANT_ROLES } from "@/lib/auth/org-role"
+export type { OrgRole as TenantRole } from "@/lib/auth/org-role"
+export { resolveOrgRole as resolveTenantRole } from "@/lib/auth/org-role"
 
-export const TENANT_ROLES = ["owner", "admin", "member"] as const
-export type TenantRole = (typeof TENANT_ROLES)[number]
+// Re-export policy functions that remain in this module
+export type { PlatformAccessRole } from "@/lib/platform-role"
+import type { PlatformAccessRole } from "@/lib/platform-role"
+import type { OrgRole } from "@/lib/auth/org-role"
+
+export type ActorRoleContext = {
+  platformRole: PlatformAccessRole
+  tenantRole: OrgRole | null
+}
+
 type ScopedRoleTarget = "admin" | "user"
 type ScopedRoleClaim = {
   target: ScopedRoleTarget
-  role: TenantRole
+  role: OrgRole
 }
 
 export const TENANT_ACTIONS = [
@@ -22,12 +36,7 @@ export const TENANT_ACTIONS = [
 
 export type TenantAction = (typeof TENANT_ACTIONS)[number]
 
-export type ActorRoleContext = {
-  platformRole: PlatformAccessRole
-  tenantRole: TenantRole | null
-}
-
-const LEGACY_TENANT_ROLE_ALIASES: Record<string, TenantRole> = {
+const LEGACY_TENANT_ROLE_ALIASES: Record<string, OrgRole> = {
   owner: "owner",
   admin: "admin",
   member: "member",
@@ -113,12 +122,15 @@ export const hasScopedSuperAdminClaim = (
     .map((role) => role?.trim().toLowerCase())
     .filter((role): role is string => Boolean(role))
 
-  return normalizedClaims.includes("super_admin") || normalizedClaims.includes("admin_owner")
+  return (
+    normalizedClaims.includes("super_admin") ||
+    normalizedClaims.includes("admin_owner")
+  )
 }
 
 export const normalizeTenantRole = (
   role: string | null | undefined
-): TenantRole | null => {
+): OrgRole | null => {
   if (!role) {
     return null
   }
@@ -134,7 +146,7 @@ export const normalizeTenantRole = (
 export const resolveTenantRoleFromClaims = (
   primaryRole: string | null | undefined,
   roles: string[] | null | undefined
-): TenantRole | null => {
+): OrgRole | null => {
   const normalizedRoles = toScopedRoleClaims(primaryRole, roles)
     .filter((claim) => claim.target === "user")
     .map((claim) => claim.role)
@@ -164,7 +176,7 @@ export const canManageTenant = (actor: ActorRoleContext) => {
 
 export const canInviteAsRole = (
   actor: ActorRoleContext,
-  targetRole: TenantRole
+  targetRole: OrgRole
 ) => {
   if (actor.platformRole === "super_admin") {
     return true
@@ -179,7 +191,7 @@ export const canInviteAsRole = (
 
 export const canPromoteToRole = (
   actor: ActorRoleContext,
-  targetRole: TenantRole
+  targetRole: OrgRole
 ) => {
   if (actor.platformRole === "super_admin") {
     return true
@@ -198,7 +210,7 @@ export const canPromoteToRole = (
 
 export const canDemoteFromRole = (
   actor: ActorRoleContext,
-  currentRole: TenantRole
+  currentRole: OrgRole
 ) => {
   if (actor.platformRole === "super_admin") {
     return true

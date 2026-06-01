@@ -70,7 +70,7 @@ describe("WhatsApp Devices E2E", () => {
       userId: "user-1",
       email: "admin@example.com",
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
       platformRole: "none",
     })
   })
@@ -142,7 +142,7 @@ describe("WhatsApp Devices E2E", () => {
     mockFindUnique.mockImplementationOnce(async () => deviceData)
 
     setMockAuthContext({
-      tenantRole: "admin",
+      orgRole: "admin",
       organizationId: "org-1",
     })
 
@@ -158,7 +158,7 @@ describe("WhatsApp Devices E2E", () => {
 
   it("returns 404 for non-existent device", async () => {
     setMockAuthContext({
-      tenantRole: "admin",
+      orgRole: "admin",
       organizationId: "org-1",
     })
 
@@ -191,7 +191,7 @@ describe("WhatsApp Devices E2E", () => {
     mockUpdate.mockImplementationOnce(async () => updatedDevice)
 
     setMockAuthContext({
-      tenantRole: "admin",
+      orgRole: "admin",
       organizationId: "org-1",
     })
 
@@ -273,7 +273,7 @@ describe("WhatsApp Devices E2E", () => {
   it("returns 403 when non-admin tries to create device", async () => {
     setMockAuthContext({
       platformRole: "none",
-      tenantRole: "member",
+      orgRole: "member",
     })
 
     const app = createTestApp()
@@ -306,7 +306,7 @@ describe("WhatsApp Devices E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()

@@ -32,11 +32,8 @@ export const createTopupRoutes = () =>
       const { amount } = parseResult.data
 
       try {
-        // Use organizationId as tenantId (org-scoped)
-        const tenantId = auth.organizationId
-
         const invoice = await paymentService.createTopupInvoice({
-          tenantId,
+          organizationId: auth.organizationId,
           amount,
         })
 
@@ -67,9 +64,7 @@ export const createTopupRoutes = () =>
         return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
       }
 
-      const tenantId = auth.organizationId
-
-      const invoice = await paymentService.getInvoiceForUser(params.id, tenantId)
+      const invoice = await paymentService.getInvoiceForUser(params.id, auth.organizationId)
 
       if (!invoice) {
         return { ok: false, error: "NOT_FOUND", message: "Invoice not found" }
@@ -97,9 +92,7 @@ export const createPaymentHistoryRoutes = () =>
       return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
     }
 
-    const tenantId = auth.organizationId
-
-    const invoices = await paymentService.getInvoicesForTenant(tenantId)
+    const invoices = await paymentService.getInvoicesForOrganization(auth.organizationId)
 
     return { ok: true, data: invoices }
   })

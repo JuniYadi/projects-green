@@ -5,7 +5,7 @@ import Decimal = Prisma.Decimal
 export class ConfirmationService {
   async create(input: {
     invoiceId: string
-    tenantId: string
+    organizationId: string
     data: {
       bankAccountId: string
       amount: number
@@ -17,7 +17,7 @@ export class ConfirmationService {
       notes?: string
     }
   }) {
-    const { invoiceId, tenantId, data } = input
+    const { invoiceId, organizationId, data } = input
 
     const invoice = await prisma.invoice.findFirst({
       where: { id: invoiceId, status: "OPEN" },
@@ -25,10 +25,6 @@ export class ConfirmationService {
 
     if (!invoice) {
       throw new Error("Invoice not found or not open")
-    }
-
-    if (invoice.tenantId && invoice.tenantId !== tenantId) {
-      throw new Error("Invoice does not belong to this tenant")
     }
 
     const confirmation = await prisma.paymentConfirmation.create({
@@ -98,13 +94,9 @@ export class ConfirmationService {
     const invoice = confirmation.invoice
     const amount = confirmation.amount
 
-    if (!invoice.tenantId) {
-      throw new Error("Invoice has no tenantId")
-    }
-
-    // Find billing account by tenantId
-    const account = await prisma.billingAccount.findFirst({
-      where: { tenantId: invoice.tenantId },
+    // Find billing account by invoice's billingAccountId
+    const account = await prisma.billingAccount.findUnique({
+      where: { id: invoice.billingAccountId },
     })
 
     if (!account) {

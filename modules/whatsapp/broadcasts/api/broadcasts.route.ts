@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import { whatsappAuthPlugin, guardTenantAdmin, type WhatsAppAuthContext } from "@/lib/whatsapp/auth"
+import { whatsappAuthPlugin, guardOrgRead, guardOrgWrite, guardOrgFull, type WhatsAppAuthContext } from "@/lib/whatsapp/auth"
 import { enqueueWhatsAppBroadcast } from "@/lib/queue/whatsapp-broadcast"
 
 const broadcastRecipientSchema = t.Object({
@@ -26,7 +26,7 @@ const broadcastCampaignUpdateSchema = t.Partial(
 
 export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
   .use(whatsappAuthPlugin)
-  .get("/", guardTenantAdmin(async ({ whatsappAuth }: { whatsappAuth: WhatsAppAuthContext }) => {
+  .get("/", guardOrgRead(async ({ whatsappAuth }: { whatsappAuth: WhatsAppAuthContext }) => {
     const campaigns = await prisma.whatsappBroadcastCampaign.findMany({
       where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin"
         ? { organizationId: whatsappAuth.organizationId! }
@@ -40,7 +40,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     })
     return { ok: true, campaigns }
   }))
-  .get("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: WhatsAppAuthContext, set: any }) => {
     const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
       where: { id },
       include: {
@@ -60,7 +60,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
 
     return { ok: true, campaign }
   }))
-  .post("/", guardTenantAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: WhatsAppAuthContext, set: any }) => {
     if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
@@ -88,7 +88,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
   }), {
     body: broadcastCampaignBodySchema
   })
-  .patch("/:id", guardTenantAdmin(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: WhatsAppAuthContext, set: any }) => {
     const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
       where: { id },
     })
@@ -112,7 +112,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
   }), {
     body: broadcastCampaignUpdateSchema
   })
-  .delete("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  .delete("/:id", guardOrgFull(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: WhatsAppAuthContext, set: any }) => {
     const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
       where: { id },
     })
@@ -133,7 +133,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
 
     return { ok: true, message: "Broadcast campaign deleted." }
   }))
-  .post("/:id/send", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  .post("/:id/send", guardOrgWrite(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: WhatsAppAuthContext, set: any }) => {
     const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
       where: { id },
       include: {

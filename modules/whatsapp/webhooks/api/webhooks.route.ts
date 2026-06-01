@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import { whatsappAuthPlugin, guardTenantAdmin, guardSuperAdmin } from "@/lib/whatsapp/auth"
+import { whatsappAuthPlugin, guardOrgRead, guardOrgWrite, guardOrgFull } from "@/lib/whatsapp/auth"
 
 export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   .use(whatsappAuthPlugin)
@@ -8,7 +8,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   // GET / — list webhook configs (paginated)
   .get(
     "/",
-    guardTenantAdmin(async ({ query, whatsappAuth, set }: any) => {
+    guardOrgRead(async ({ query, whatsappAuth, set }: any) => {
       const page = Number(query.page) || 1
       const limit = Number(query.limit) || 20
       const skip = (page - 1) * limit
@@ -40,7 +40,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   // GET /:id — get single webhook config
   .get(
     "/:id",
-    guardTenantAdmin(async ({ params, whatsappAuth, set }: any) => {
+    guardOrgRead(async ({ params, whatsappAuth, set }: any) => {
       const webhook = await prisma.whatsappWebhook.findUnique({ where: { id: params.id } })
       if (!webhook) throw new Error("Webhook not found")
       return webhook
@@ -50,7 +50,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   // POST / — create webhook config
   .post(
     "/",
-    guardTenantAdmin(async ({ body, whatsappAuth, set }: any) => {
+    guardOrgWrite(async ({ body, whatsappAuth, set }: any) => {
       const webhook = await prisma.whatsappWebhook.create({
         data: {
           whatsappDeviceId: body.deviceId,
@@ -75,7 +75,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   // PATCH /:id — update webhook config
   .patch(
     "/:id",
-    guardTenantAdmin(async ({ params, body, whatsappAuth, set }: any) => {
+    guardOrgWrite(async ({ params, body, whatsappAuth, set }: any) => {
       const updated = await prisma.whatsappWebhook.update({ where: { id: params.id }, data: body })
       return { ok: true, data: updated }
     }),
@@ -93,7 +93,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   // DELETE /:id — delete webhook config
   .delete(
     "/:id",
-    guardSuperAdmin(async ({ params, whatsappAuth, set }: any) => {
+    guardOrgFull(async ({ params, whatsappAuth, set }: any) => {
       await prisma.whatsappWebhook.delete({ where: { id: params.id } })
       return { ok: true }
     })

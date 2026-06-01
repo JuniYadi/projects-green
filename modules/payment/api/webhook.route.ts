@@ -50,19 +50,28 @@ export const createWebhookRoutes = () =>
 
       if (resultCode === "00") {
         try {
-          // Look up invoice to get correct tenantId before crediting
+          // Look up invoice and billing account to get organizationId before crediting
           const invoice = await prisma.invoice.findUnique({
             where: { id: merchantOrderId },
           })
 
-          if (!invoice?.tenantId) {
-            console.error(`Invoice ${merchantOrderId} not found or missing tenantId`)
+          if (!invoice?.billingAccountId) {
+            console.error(`Invoice ${merchantOrderId} not found or missing billingAccountId`)
             // Return 200 to prevent Duitku retries for invalid orders
             return { ok: true }
           }
 
+          const billingAccount = await prisma.billingAccount.findUnique({
+            where: { id: invoice.billingAccountId },
+          })
+
+          if (!billingAccount?.organizationId) {
+            console.error(`Billing account not found for invoice ${merchantOrderId}`)
+            return { ok: true }
+          }
+
           await paymentService.creditBalance(
-            invoice.tenantId,
+            billingAccount.organizationId,
             parseInt(amount),
             `DUITKU_${reference}`
           )

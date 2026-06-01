@@ -72,7 +72,7 @@ describe("messagesRoutes", () => {
       userId: "user-1",
       email: "admin@example.com",
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
       platformRole: "none",
     })
 
@@ -165,6 +165,14 @@ describe("messagesRoutes", () => {
 
   describe("DELETE /messages/:id", () => {
     it("returns 200 when message deleted", async () => {
+      setMockAuthContext({
+        type: "workos",
+        userId: "user-1",
+        email: "admin@example.com",
+        organizationId: "org-1",
+        orgRole: "owner",
+        platformRole: "none",
+      })
       mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce({
         id: "msg-1",
         conversation: { organizationId: "org-1" },
@@ -183,6 +191,14 @@ describe("messagesRoutes", () => {
     })
 
     it("returns 404 when message not found", async () => {
+      setMockAuthContext({
+        type: "workos",
+        userId: "user-1",
+        email: "admin@example.com",
+        organizationId: "org-1",
+        orgRole: "owner",
+        platformRole: "none",
+      })
       mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as any)
 
       const app = createTestApp()

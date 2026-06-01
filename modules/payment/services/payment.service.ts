@@ -4,12 +4,12 @@ import type { InvoiceTypeValue } from "@/modules/payment/types/payment.types"
 
 export class PaymentService {
   async createTopupInvoice(input: {
-    tenantId: string
+    organizationId: string
     amount: number
     paymentMethod?: string
     gatewayId?: string
   }) {
-    const { amount, tenantId, paymentMethod, gatewayId } = input
+    const { amount, organizationId, paymentMethod, gatewayId } = input
 
     if (amount < PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT) {
       throw new Error(`Minimum top-up amount is ${PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT}`)
@@ -18,16 +18,15 @@ export class PaymentService {
       throw new Error(`Maximum top-up amount is ${PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT}`)
     }
 
-    // Get or create billing account for tenant
+    // Get or create billing account for organization
     let account = await prisma.billingAccount.findUnique({
-      where: { tenantId },
+      where: { organizationId },
     })
 
     if (!account) {
       account = await prisma.billingAccount.create({
         data: {
-          tenantId,
-          organizationId: tenantId, // Use tenantId as organizationId fallback
+          organizationId,
           currency: "IDR",
         },
       })
@@ -43,7 +42,6 @@ export class PaymentService {
     const invoice = await prisma.invoice.create({
       data: {
         billingAccountId: account.id,
-        tenantId,
         invoiceNumber,
         type: "TOP_UP" as InvoiceTypeValue,
         paymentMethod,
@@ -61,19 +59,19 @@ export class PaymentService {
     return invoice
   }
 
-  async getInvoiceForUser(invoiceId: string, tenantId: string) {
+  async getInvoiceForUser(invoiceId: string, organizationId: string) {
     const invoice = await prisma.invoice.findFirst({
       where: {
         id: invoiceId,
-        tenantId,
+        billingAccount: { organizationId },
       },
     })
     return invoice
   }
 
-  async getInvoicesForTenant(tenantId: string, limit = 50) {
+  async getInvoicesForOrganization(organizationId: string, limit = 50) {
     const invoices = await prisma.invoice.findMany({
-      where: { tenantId },
+      where: { billingAccount: { organizationId } },
       orderBy: { createdAt: "desc" },
       take: limit,
     })
@@ -95,9 +93,9 @@ export class PaymentService {
     })
   }
 
-  async creditBalance(tenantId: string, amount: number, reference: string) {
+  async creditBalance(organizationId: string, amount: number, reference: string) {
     const account = await prisma.billingAccount.findUnique({
-      where: { tenantId },
+      where: { organizationId },
     })
 
     if (!account) {
@@ -117,16 +115,16 @@ export class PaymentService {
     })
 
     await prisma.billingAccount.update({
-      where: { tenantId },
+      where: { organizationId },
       data: {
         balance: { increment: amount },
       },
     })
   }
 
-  async payWithBalance(invoiceId: string, tenantId: string) {
+  async payWithBalance(invoiceId: string, organizationId: string) {
     const invoice = await prisma.invoice.findFirst({
-      where: { id: invoiceId, status: "OPEN", tenantId },
+      where: { id: invoiceId, status: "OPEN", billingAccount: { organizationId } },
     })
 
     if (!invoice) {
@@ -136,7 +134,7 @@ export class PaymentService {
     const amount = invoice.totalAmount?.toNumber() || 0
 
     const account = await prisma.billingAccount.findUnique({
-      where: { tenantId },
+      where: { organizationId },
     })
 
     if (!account) {
@@ -160,7 +158,7 @@ export class PaymentService {
     })
 
     await prisma.billingAccount.update({
-      where: { tenantId },
+      where: { organizationId },
       data: { balance: { decrement: amount } },
     })
 
@@ -171,7 +169,7 @@ export class PaymentService {
   }
 
   async createTopupInvoiceForGap(
-    tenantId: string,
+    organizationId: string,
     gapAmount: number
   ) {
     const dueDate = new Date()
@@ -179,14 +177,13 @@ export class PaymentService {
 
     // Get or create billing account
     let account = await prisma.billingAccount.findUnique({
-      where: { tenantId },
+      where: { organizationId },
     })
 
     if (!account) {
       account = await prisma.billingAccount.create({
         data: {
-          tenantId,
-          organizationId: tenantId,
+          organizationId,
           currency: "IDR",
         },
       })
@@ -198,7 +195,6 @@ export class PaymentService {
     return prisma.invoice.create({
       data: {
         billingAccountId: account.id,
-        tenantId,
         invoiceNumber,
         type: "TOP_UP",
         status: "OPEN",

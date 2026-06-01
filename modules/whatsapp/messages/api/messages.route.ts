@@ -2,7 +2,9 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
   whatsappAuthPlugin,
-  guardTenantAdmin,
+  guardOrgRead,
+  guardOrgWrite,
+  guardOrgFull,
 } from "@/lib/whatsapp/auth"
 import { messageService } from "../messages.service"
 import { InsufficientQuotaError } from "../quota.service"
@@ -32,7 +34,7 @@ const messageUpdateSchema = t.Partial(messageBodySchema)
 
 export const messagesRoutes = new Elysia({ prefix: "/messages" })
   .use(whatsappAuthPlugin)
-  .get("/", guardTenantAdmin(async ({ whatsappAuth, query }: { whatsappAuth: any, query: any }) => {
+  .get("/", guardOrgRead(async ({ whatsappAuth, query }: { whatsappAuth: any, query: any }) => {
     const { conversationId, direction, messageType } = query as any
 
     const where: any = {
@@ -54,7 +56,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     })
     return { ok: true, messages }
   }))
-  .get("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const message = await prisma.whatsappMessage.findFirst({
       where: {
         id,
@@ -74,7 +76,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
 
     return { ok: true, message }
   }))
-  .post("/", guardTenantAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
+  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
     // Validate conversation belongs to organization
     const conversation = await prisma.whatsappConversation.findFirst({
       where: {
@@ -98,7 +100,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
   }), {
     body: messageBodySchema
   })
-  .patch("/:id", guardTenantAdmin(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
+  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
     const message = await prisma.whatsappMessage.findFirst({
       where: {
         id,
@@ -122,7 +124,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
   }), {
     body: messageUpdateSchema
   })
-  .delete("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .delete("/:id", guardOrgFull(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const message = await prisma.whatsappMessage.findFirst({
       where: {
         id,
@@ -142,7 +144,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     })
     return { ok: true, message: "Message deleted." }
   }))
-  .post("/send", guardTenantAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
+  .post("/send", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
     const { phoneNumber, message, deviceId } = body
 
     try {
@@ -211,7 +213,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
   }), {
     body: sendSchema
   })
-  .get("/:id/media", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .get("/:id/media", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     // Find message with media
     const message = await prisma.whatsappMessage.findFirst({
       where: {

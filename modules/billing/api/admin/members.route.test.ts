@@ -19,7 +19,7 @@ const mockFindManySubscription = mock()
 const mockFindManyUsage = mock()
 
 const mockPrismaClient = {
-  tenant: {
+  billingAccount: {
     findMany: mockFindMany,
     findFirst: mockFindFirst,
   },
@@ -52,42 +52,42 @@ describe("AdminMembersRoute", () => {
   describe("defaultDeps.isAdmin", () => {
     const isAdmin = (actor: {
       platformRole: PlatformAccessRole
-      tenantRole: string | null | undefined
+      orgRole: string | null | undefined
     }) => {
       if (actor.platformRole === "super_admin") return true
-      return actor.tenantRole === "admin" || actor.tenantRole === "owner"
+      return actor.orgRole === "admin" || actor.orgRole === "owner"
     }
 
     it("returns true for super_admin with null tenant role (the bug scenario)", () => {
-      expect(isAdmin({ platformRole: "super_admin", tenantRole: null })).toBe(true)
+      expect(isAdmin({ platformRole: "super_admin", orgRole: null })).toBe(true)
     })
 
     it("returns true for super_admin with undefined tenant role", () => {
-      expect(isAdmin({ platformRole: "super_admin", tenantRole: undefined })).toBe(true)
+      expect(isAdmin({ platformRole: "super_admin", orgRole: undefined })).toBe(true)
     })
 
     it("returns true for super_admin with admin tenant role", () => {
-      expect(isAdmin({ platformRole: "super_admin", tenantRole: "admin" })).toBe(true)
+      expect(isAdmin({ platformRole: "super_admin", orgRole: "admin" })).toBe(true)
     })
 
     it("returns true for non-super_admin with admin tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: "admin" })).toBe(true)
+      expect(isAdmin({ platformRole: "none", orgRole: "admin" })).toBe(true)
     })
 
     it("returns true for non-super_admin with owner tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: "owner" })).toBe(true)
+      expect(isAdmin({ platformRole: "none", orgRole: "owner" })).toBe(true)
     })
 
     it("returns false for non-super_admin with member tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: "member" })).toBe(false)
+      expect(isAdmin({ platformRole: "none", orgRole: "member" })).toBe(false)
     })
 
     it("returns false for non-super_admin with null tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: null })).toBe(false)
+      expect(isAdmin({ platformRole: "none", orgRole: null })).toBe(false)
     })
 
     it("returns false for non-super_admin with undefined tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: undefined })).toBe(false)
+      expect(isAdmin({ platformRole: "none", orgRole: undefined })).toBe(false)
     })
   })
 
@@ -162,55 +162,47 @@ describe("AdminMembersRoute", () => {
     })
 
     it("returns 200 with members including billing data", async () => {
-      const mockTenants = [
+      const mockBillingAccounts = [
         {
-          id: "tenant-1",
-          code: "tenant-1",
-          name: "Tenant One",
-          isActive: true,
+          id: "acc-1",
+          organizationId: "org_1",
+          balance: new Decimal("150000.00"),
+          currency: "USD",
+          timezone: "UTC",
+          status: "ACTIVE",
           createdAt: new Date(),
           updatedAt: new Date(),
-          billingAccounts: [
-            {
-              id: "acc-1",
-              balance: new Decimal("150000.00"),
-            },
-          ],
         },
         {
-          id: "tenant-2",
-          code: "tenant-2",
-          name: "Tenant Two",
-          isActive: true,
+          id: "acc-2",
+          organizationId: "org_2",
+          balance: new Decimal("75000.50"),
+          currency: "USD",
+          timezone: "UTC",
+          status: "ACTIVE",
           createdAt: new Date(),
           updatedAt: new Date(),
-          billingAccounts: [
-            {
-              id: "acc-2",
-              balance: new Decimal("75000.50"),
-            },
-          ],
         },
       ]
 
       const mockSubscriptions = [
         {
           id: "sub-1",
-          tenantId: "tenant-1",
+          organizationId: "org_1",
           status: "ACTIVE",
           package: { code: "WA_BASIC" },
           plan: { code: "basic" },
         },
         {
           id: "sub-2",
-          tenantId: "tenant-1",
+          organizationId: "org_1",
           status: "ACTIVE",
           package: { code: "WA_PRO" },
           plan: { code: "pro" },
         },
         {
           id: "sub-3",
-          tenantId: "tenant-2",
+          organizationId: "org_2",
           status: "ACTIVE",
           package: { code: "WA_BASIC" },
           plan: { code: "basic" },
@@ -221,19 +213,19 @@ describe("AdminMembersRoute", () => {
       const mockUsage = [
         {
           id: "usage-1",
-          tenantId: "tenant-1",
+          organizationId: "org_1",
           period: currentMonth,
           amountIdr: new Decimal("25000.00"),
         },
         {
           id: "usage-2",
-          tenantId: "tenant-2",
+          organizationId: "org_2",
           period: currentMonth,
           amountIdr: new Decimal("15000.00"),
         },
       ]
 
-      mockFindMany.mockResolvedValueOnce(mockTenants)
+      mockFindMany.mockResolvedValueOnce(mockBillingAccounts)
       mockFindManySubscription.mockResolvedValueOnce(mockSubscriptions)
       mockFindManyUsage.mockResolvedValueOnce(mockUsage)
 
@@ -258,15 +250,15 @@ describe("AdminMembersRoute", () => {
       expect(body.ok).toBe(true)
       expect(body.members).toHaveLength(2)
 
-      const tenant1Member = body.members.find((m: { tenantId: string }) => m.tenantId === "tenant-1")
-      expect(tenant1Member.subscriptionCount).toBe(2)
-      expect(tenant1Member.monthlySpendIdr).toBe("25000.00")
-      expect(tenant1Member.balanceIdr).toBe("150000.00")
+      const org1Member = body.members.find((m: { organizationId: string }) => m.organizationId === "org_1")
+      expect(org1Member.subscriptionCount).toBe(2)
+      expect(org1Member.monthlySpendIdr).toBe("25000.00")
+      expect(org1Member.balanceIdr).toBe("150000.00")
 
-      const tenant2Member = body.members.find((m: { tenantId: string }) => m.tenantId === "tenant-2")
-      expect(tenant2Member.subscriptionCount).toBe(1)
-      expect(tenant2Member.monthlySpendIdr).toBe("15000.00")
-      expect(tenant2Member.balanceIdr).toBe("75000.50")
+      const org2Member = body.members.find((m: { organizationId: string }) => m.organizationId === "org_2")
+      expect(org2Member.subscriptionCount).toBe(1)
+      expect(org2Member.monthlySpendIdr).toBe("15000.00")
+      expect(org2Member.balanceIdr).toBe("75000.50")
     })
 
     it("returns 500 on database error", async () => {
@@ -364,25 +356,21 @@ describe("AdminMembersRoute", () => {
     })
 
     it("returns 200 with member detail", async () => {
-      const mockTenant = {
-        id: "tenant-1",
-        code: "tenant-1",
-        name: "Test Tenant",
-        isActive: true,
+      const mockBillingAccount = {
+        id: "acc-1",
+        organizationId: "org_1",
+        balance: new Decimal("200000.00"),
+        currency: "USD",
+        timezone: "UTC",
+        status: "ACTIVE",
         createdAt: new Date(),
         updatedAt: new Date(),
-        billingAccounts: [
-          {
-            id: "acc-1",
-            balance: new Decimal("200000.00"),
-          },
-        ],
       }
 
       const mockSubscriptions = [
         {
           id: "sub-1",
-          tenantId: "tenant-1",
+          organizationId: "org_1",
           status: "ACTIVE",
           package: { code: "WA_BASIC" },
           plan: { code: "basic" },
@@ -390,7 +378,7 @@ describe("AdminMembersRoute", () => {
         },
         {
           id: "sub-2",
-          tenantId: "tenant-1",
+          organizationId: "org_1",
           status: "ACTIVE",
           package: { code: "WA_PRO" },
           plan: { code: "pro" },
@@ -402,7 +390,7 @@ describe("AdminMembersRoute", () => {
       const mockUsage = [
         {
           id: "usage-1",
-          tenantId: "tenant-1",
+          organizationId: "org_1",
           period: currentMonth,
           category: "MESSAGE",
           amountIdr: new Decimal("35000.00"),
@@ -410,7 +398,7 @@ describe("AdminMembersRoute", () => {
         },
         {
           id: "usage-2",
-          tenantId: "tenant-1",
+          organizationId: "org_1",
           period: currentMonth,
           category: "DEVICE",
           amountIdr: new Decimal("15000.00"),
@@ -418,7 +406,7 @@ describe("AdminMembersRoute", () => {
         },
       ]
 
-      mockFindFirst.mockResolvedValueOnce(mockTenant)
+      mockFindFirst.mockResolvedValueOnce(mockBillingAccount)
       mockFindManySubscription.mockResolvedValueOnce(mockSubscriptions)
       mockFindManyUsage.mockResolvedValueOnce(mockUsage)
 
@@ -433,7 +421,7 @@ describe("AdminMembersRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/members/tenant-1", {
+        new Request("http://localhost/admin/members/org_1", {
           method: "GET",
         })
       )
@@ -441,8 +429,8 @@ describe("AdminMembersRoute", () => {
       expect(response.status).toBe(200)
       const body = await response.json()
       expect(body.ok).toBe(true)
-      expect(body.member.tenantId).toBe("tenant-1")
-      expect(body.member.name).toBe("Test Tenant")
+      expect(body.member.organizationId).toBe("org_1")
+      expect(body.member.name).toBe("org_1")
       expect(body.member.subscriptionCount).toBe(2)
       expect(body.member.monthlySpendIdr).toBe("50000.00")
       expect(body.member.balanceIdr).toBe("200000.00")
@@ -464,7 +452,7 @@ describe("AdminMembersRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/members/tenant-1", {
+        new Request("http://localhost/admin/members/org_1", {
           method: "GET",
         })
       )

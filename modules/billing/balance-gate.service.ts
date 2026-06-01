@@ -24,23 +24,23 @@ export class BalanceGateService {
 
   // ─── Balance queries ─────────────────────────────────────────────────────────
 
-  async getBalance(tenantId: string): Promise<Decimal> {
+  async getBalance(organizationId: string): Promise<Decimal> {
     const account = await this.prisma.billingAccount.findUnique({
-      where: { tenantId },
+      where: { organizationId },
       select: { balance: true },
     });
     if (!account) {
-      throw new BillingAccountNotFoundError(tenantId);
+      throw new BillingAccountNotFoundError(organizationId);
     }
     return account.balance;
   }
 
-  async isBalancePositive(tenantId: string): Promise<boolean> {
-    return (await this.getBalance(tenantId)).gt(0);
+  async isBalancePositive(organizationId: string): Promise<boolean> {
+    return (await this.getBalance(organizationId)).gt(0);
   }
 
-  async isBalanceAboveWarn(tenantId: string): Promise<boolean> {
-    return (await this.getBalance(tenantId)).gte(MINIMUM_BALANCE_WARN_IDR);
+  async isBalanceAboveWarn(organizationId: string): Promise<boolean> {
+    return (await this.getBalance(organizationId)).gte(MINIMUM_BALANCE_WARN_IDR);
   }
 
   // ─── Pricing lookup ─────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ export class BalanceGateService {
   // ─── Balance mutations ───────────────────────────────────────────────────────
 
   private async deductCore(
-    tenantId: string,
+    organizationId: string,
     amount: Decimal,
     description: string,
     type: "CREDIT" | "DEBIT",
@@ -138,10 +138,10 @@ export class BalanceGateService {
 
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.billingAccount.findUnique({
-        where: { tenantId },
+        where: { organizationId },
       });
       if (!account) {
-        throw new BillingAccountNotFoundError(tenantId);
+        throw new BillingAccountNotFoundError(organizationId);
       }
 
       const balanceBefore = account.balance;
@@ -185,21 +185,21 @@ export class BalanceGateService {
   }
 
   async addCredit(
-    tenantId: string,
+    organizationId: string,
     amount: Decimal,
     description: string,
     metadata?: object,
   ): Promise<ChargeResult> {
-    return this.deductCore(tenantId, amount, description, "CREDIT", metadata);
+    return this.deductCore(organizationId, amount, description, "CREDIT", metadata);
   }
 
   async deductBalance(
-    tenantId: string,
+    organizationId: string,
     amount: Decimal,
     description: string,
     metadata?: object,
   ): Promise<ChargeResult> {
-    return this.deductCore(tenantId, amount, description, "DEBIT", metadata);
+    return this.deductCore(organizationId, amount, description, "DEBIT", metadata);
   }
 
   // ─── Enforced billing flow ─────────────────────────────────────────────────
@@ -208,7 +208,7 @@ export class BalanceGateService {
    * For PAYG subscriptions: check balance, deduct computed cost.
    */
   async chargePayg(
-    tenantId: string,
+    organizationId: string,
     subscriptionId: string,
   ): Promise<ChargeResult> {
     // 1. Fetch subscription with pricing
@@ -275,10 +275,10 @@ export class BalanceGateService {
     // Use a SINGLE transaction for balance check + deduction to prevent race
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.billingAccount.findUnique({
-        where: { tenantId },
+        where: { organizationId },
       });
       if (!account) {
-        throw new BillingAccountNotFoundError(tenantId);
+        throw new BillingAccountNotFoundError(organizationId);
       }
 
       if (account.balance.lt(amount)) {
@@ -323,7 +323,7 @@ export class BalanceGateService {
    * For PACKAGE/BUNDLE subscriptions: deduct the fixed basePriceIdr from Pricing table.
    */
   async chargePackage(
-    tenantId: string,
+    organizationId: string,
     subscriptionId: string,
   ): Promise<ChargeResult> {
     const sub = await this.prisma.subscription.findUnique({
@@ -356,10 +356,10 @@ export class BalanceGateService {
 
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.billingAccount.findUnique({
-        where: { tenantId },
+        where: { organizationId },
       });
       if (!account) {
-        throw new BillingAccountNotFoundError(tenantId);
+        throw new BillingAccountNotFoundError(organizationId);
       }
 
       if (account.balance.lt(amount)) {
@@ -402,9 +402,9 @@ export class BalanceGateService {
    * For VPN and WhatsApp flat subscriptions.
    */
   async chargeFlatMonthly(
-    tenantId: string,
+    organizationId: string,
     subscriptionId: string,
   ): Promise<ChargeResult> {
-    return this.chargePackage(tenantId, subscriptionId);
+    return this.chargePackage(organizationId, subscriptionId);
   }
 }

@@ -12,13 +12,9 @@ type MockAuthContext = {
   user: { id: string; email?: string | null } | null
 }
 
-const mockFindUnique = mock()
 const mockFindMany = mock()
 
 const mockPrismaClient = {
-  billingAccount: {
-    findUnique: mockFindUnique,
-  },
   subscription: {
     findMany: mockFindMany,
   },
@@ -79,34 +75,7 @@ describe("SubscriptionsRoute", () => {
       expect(body.error).toBe("FORBIDDEN")
     })
 
-    it("returns 404 when billing account not found", async () => {
-      mockFindUnique.mockResolvedValueOnce(null)
-
-      const app = new Elysia()
-        .use(
-          createBillingSubscriptionsRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
-          })
-        )
-        .compile()
-
-      const response = await app.handle(
-        new Request("http://localhost/subscriptions", {
-          method: "GET",
-        })
-      )
-
-      expect(response.status).toBe(404)
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("NOT_FOUND")
-    })
-
     it("returns 200 with empty subscriptions array", async () => {
-      mockFindUnique.mockResolvedValueOnce({ id: "acc-1", tenantId: "tenant-1" })
       mockFindMany.mockResolvedValueOnce([])
 
       const app = new Elysia()
@@ -133,7 +102,6 @@ describe("SubscriptionsRoute", () => {
     })
 
     it("returns 200 with formatted subscriptions", async () => {
-      mockFindUnique.mockResolvedValueOnce({ id: "acc-1", tenantId: "tenant-1" })
       mockFindMany.mockResolvedValueOnce([
         {
           id: "sub-1",

@@ -114,7 +114,7 @@ describe("BillingCycleService", () => {
           billingAccountId: "ba-1",
           billingAccount: {
             id: "ba-1",
-            tenantId: "tenant-1",
+            organizationId: "tenant-1",
             balance: new Decimal(100000),
           },
         },
@@ -143,7 +143,7 @@ describe("BillingCycleService", () => {
           billingAccountId: "ba-1",
           billingAccount: {
             id: "ba-1",
-            tenantId: "tenant-1",
+            organizationId: "tenant-1",
             balance: new Decimal(500000),
           },
         },
@@ -170,7 +170,7 @@ describe("BillingCycleService", () => {
       // Mock billing account find inside transaction
       mockPrisma.billingAccount.findUnique.mockImplementation(async () => ({
         id: "ba-1",
-        tenantId: "tenant-1",
+        organizationId: "tenant-1",
         balance: new Decimal(500000),
       }))
 
@@ -192,7 +192,7 @@ describe("BillingCycleService", () => {
           billingAccountId: "ba-1",
           billingAccount: {
             id: "ba-1",
-            tenantId: "tenant-1",
+            organizationId: "tenant-1",
             balance: new Decimal(5000),
           },
         },
@@ -211,7 +211,7 @@ describe("BillingCycleService", () => {
 
       mockPrisma.billingAccount.findUnique.mockImplementation(async () => ({
         id: "ba-1",
-        tenantId: "tenant-1",
+        organizationId: "tenant-1",
         balance: new Decimal(5000),
       }))
 
@@ -247,7 +247,7 @@ describe("BillingCycleService", () => {
           billingAccountId: "ba-1",
           billingAccount: {
             id: "ba-1",
-            tenantId: "tenant-1",
+            organizationId: "tenant-1",
             balance: new Decimal(1000000),
           },
         },

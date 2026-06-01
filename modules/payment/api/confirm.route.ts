@@ -29,7 +29,7 @@ export const createConfirmRoutes = () =>
 
       const { bankAccountId, amount, paymentDateTime, senderBankName, senderName, senderAccount, screenshotUrl, notes } = parseResult.data
 
-      // Look up invoice to determine correct tenantId
+      // Look up invoice to determine correct organizationId
       const invoice = await prisma.invoice.findFirst({
         where: { id: params.id, status: "OPEN" },
       })
@@ -39,12 +39,10 @@ export const createConfirmRoutes = () =>
         return { ok: false, error: "NOT_FOUND", message: "Invoice not found or not open" }
       }
 
-      const tenantId = invoice.tenantId || auth.organizationId
-
       try {
         const confirmation = await confirmationService.create({
           invoiceId: params.id,
-          tenantId,
+          organizationId: auth.organizationId,
           data: {
             bankAccountId,
             amount,

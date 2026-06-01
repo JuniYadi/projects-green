@@ -26,7 +26,7 @@ type RouteSet = {
 type AdminAdjustRouteDeps = {
   authenticate: () => Promise<BillingAuthContext>
   getPlatformRole: (input: { id?: string | null; email?: string | null }) => Promise<PlatformAccessRole>
-  isAdmin: (actor: { platformRole: PlatformAccessRole; tenantRole: string | null | undefined }) => boolean
+  isAdmin: (actor: { platformRole: PlatformAccessRole; orgRole: string | null | undefined }) => boolean
 }
 
 const defaultDeps: AdminAdjustRouteDeps = {
@@ -34,7 +34,7 @@ const defaultDeps: AdminAdjustRouteDeps = {
   getPlatformRole: getPlatformRoleForUser,
   isAdmin: (actor) => {
     if (actor.platformRole === "super_admin") return true
-    return actor.tenantRole === "admin" || actor.tenantRole === "owner"
+    return actor.orgRole === "admin" || actor.orgRole === "owner"
   },
 }
 
@@ -76,7 +76,7 @@ async function resolveActor(
 
   return {
     platformRole,
-    tenantRole: auth.role,
+    orgRole: auth.role,
   }
 }
 
@@ -109,7 +109,7 @@ export const createAdminBillingRoutes = (
         }
       }
 
-      const { tenantId, type, amount, reason } = parsed.data
+      const { organizationId, type, amount, reason } = parsed.data
 
       // Check admin access
       const actor = await resolveActor(auth, getPlatformRole)
@@ -124,7 +124,7 @@ export const createAdminBillingRoutes = (
         // Perform adjustment in transaction to prevent race conditions
         const result = await prisma.$transaction(async (tx) => {
           const account = await tx.billingAccount.findUnique({
-            where: { tenantId },
+            where: { organizationId },
           })
 
           if (!account) {
@@ -161,7 +161,7 @@ export const createAdminBillingRoutes = (
                 reason,
                 metadataJson: {
                   performedBy: userId,
-                  actorRole: actor.platformRole === "super_admin" ? "super_admin" : actor.tenantRole,
+                  actorRole: actor.platformRole === "super_admin" ? "super_admin" : actor.orgRole,
                 },
               },
             }),
@@ -201,7 +201,7 @@ export const createAdminBillingRoutes = (
           return {
             ok: false as const,
             error: "NOT_FOUND" as const,
-            message: "Billing account not found for the specified tenant.",
+            message: "Billing account not found for the specified organization.",
           }
         }
 

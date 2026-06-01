@@ -47,14 +47,14 @@ describe("BalanceGateService", () => {
     it("getBalance returns DB value", async () => {
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
-        tenantId: "tenant-1",
+        organizationId: "org-1",
         balance: new Decimal(50_000),
       } as any);
 
-      const balance = await service.getBalance("tenant-1");
+      const balance = await service.getBalance("org-1");
       expect(balance.toNumber()).toBe(50_000);
       expect(mockedPrisma.billingAccount.findUnique).toHaveBeenCalledWith({
-        where: { tenantId: "tenant-1" },
+        where: { organizationId: "org-1" },
         select: { balance: true },
       });
     });
@@ -64,7 +64,7 @@ describe("BalanceGateService", () => {
         balance: new Decimal(1),
       } as any);
 
-      const result = await service.isBalancePositive("tenant-1");
+      const result = await service.isBalancePositive("org-1");
       expect(result).toBe(true);
     });
 
@@ -73,7 +73,7 @@ describe("BalanceGateService", () => {
         balance: new Decimal(0),
       } as any);
 
-      const result = await service.isBalancePositive("tenant-1");
+      const result = await service.isBalancePositive("org-1");
       expect(result).toBe(false);
     });
 
@@ -82,7 +82,7 @@ describe("BalanceGateService", () => {
         balance: new Decimal(50_000),
       } as any);
 
-      const result = await service.isBalanceAboveWarn("tenant-1");
+      const result = await service.isBalanceAboveWarn("org-1");
       expect(result).toBe(true);
     });
 
@@ -91,7 +91,7 @@ describe("BalanceGateService", () => {
         balance: new Decimal(5_000),
       } as any);
 
-      const result = await service.isBalanceAboveWarn("tenant-1");
+      const result = await service.isBalanceAboveWarn("org-1");
       expect(result).toBe(false);
     });
   });
@@ -121,7 +121,7 @@ describe("BalanceGateService", () => {
       })
 
       const result = await service.addCredit(
-        "tenant-1",
+        "org-1",
         new Decimal(5_000),
         "Test credit",
       );
@@ -146,7 +146,7 @@ describe("BalanceGateService", () => {
       })
 
       await expect(
-        service.deductBalance("tenant-1", new Decimal(15_000), "Test deduct"),
+        service.deductBalance("org-1", new Decimal(15_000), "Test deduct"),
       ).rejects.toThrow(NegativeBalanceError);
     });
   });
@@ -207,7 +207,7 @@ describe("BalanceGateService", () => {
       mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000 - 3280) } as any);
       mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
 
-      const result = await service.chargePayg("tenant-1", "sub-1");
+      const result = await service.chargePayg("org-1", "sub-1");
 
       expect(result.charged.toNumber()).toBe(3280);
       expect(result.balanceAfter.toNumber()).toBe(50_000 - 3280);
@@ -240,7 +240,7 @@ describe("BalanceGateService", () => {
         balance: new Decimal(1000),
       } as any);
 
-      await expect(service.chargePayg("tenant-1", "sub-1")).rejects.toThrow(
+      await expect(service.chargePayg("org-1", "sub-1")).rejects.toThrow(
         InsufficientBalanceError,
       );
     });
@@ -259,7 +259,7 @@ describe("BalanceGateService", () => {
       mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(0) } as any);
       mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
 
-      const result = await service.chargePayg("tenant-1", "sub-1");
+      const result = await service.chargePayg("org-1", "sub-1");
       expect(result.charged.toNumber()).toBe(3280);
       expect(result.balanceAfter.toNumber()).toBe(0);
     });
@@ -302,7 +302,7 @@ describe("BalanceGateService", () => {
       mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000) } as any);
       mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
 
-      const result = await service.chargePackage("tenant-1", "sub-pkg");
+      const result = await service.chargePackage("org-1", "sub-pkg");
 
       expect(result.charged.toNumber()).toBe(100_000);
     });
@@ -316,7 +316,7 @@ describe("BalanceGateService", () => {
         balance: new Decimal(50_000),
       } as any);
 
-      await expect(service.chargePackage("tenant-1", "sub-pkg")).rejects.toThrow(
+      await expect(service.chargePackage("org-1", "sub-pkg")).rejects.toThrow(
         InsufficientBalanceError,
       );
     });
@@ -334,7 +334,7 @@ describe("BalanceGateService", () => {
       mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000) } as any);
       mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
 
-      const result = await service.chargeFlatMonthly("tenant-1", "sub-pkg");
+      const result = await service.chargeFlatMonthly("org-1", "sub-pkg");
 
       expect(result.charged.toNumber()).toBe(100_000);
     });

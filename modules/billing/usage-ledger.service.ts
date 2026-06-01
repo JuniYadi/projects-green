@@ -23,13 +23,13 @@ export class UsageLedgerService {
   constructor(private prisma: PrismaClient) {}
 
   async recordUsage(params: {
-    tenantId: string
+    organizationId: string
     subscriptionId: string
     period: string
     entry: UsageLedgerEntry
   }): Promise<{
     id: string
-    tenantId: string
+    organizationId: string
     subscriptionId: string
     period: string
     category: string | null
@@ -39,7 +39,7 @@ export class UsageLedgerService {
   }> {
     return this.prisma.usageLedger.create({
       data: {
-        tenantId: params.tenantId,
+        organizationId: params.organizationId,
         subscriptionId: params.subscriptionId,
         period: params.period,
         category: params.entry.category,
@@ -50,13 +50,13 @@ export class UsageLedgerService {
   }
 
   async getSpendByCategory(
-    tenantId: string,
+    organizationId: string,
     period: string,
   ): Promise<{ category: string | null; totalIdr: Decimal }[]> {
     const result = await this.prisma.usageLedger.groupBy({
       by: ["category"],
       where: {
-        tenantId,
+        organizationId,
         period,
       },
       _sum: {
@@ -76,13 +76,13 @@ export class UsageLedgerService {
   }
 
   async getLedgerEntries(
-    tenantId: string,
+    organizationId: string,
     period: string,
     category?: string,
   ): Promise<
     {
       id: string
-      tenantId: string
+      organizationId: string
       subscriptionId: string
       period: string
       category: string | null
@@ -93,7 +93,7 @@ export class UsageLedgerService {
   > {
     return this.prisma.usageLedger.findMany({
       where: {
-        tenantId,
+        organizationId,
         period,
         ...(category ? { category } : {}),
       },
@@ -106,10 +106,10 @@ export class UsageLedgerService {
     })
   }
 
-  async getTotalSpend(tenantId: string, period: string): Promise<Decimal> {
+  async getTotalSpend(organizationId: string, period: string): Promise<Decimal> {
     const result = await this.prisma.usageLedger.aggregate({
       where: {
-        tenantId,
+        organizationId,
         period,
       },
       _sum: {
@@ -121,12 +121,12 @@ export class UsageLedgerService {
   }
 
   async generateRatedUsage(
-    tenantId: string,
+    organizationId: string,
     period: string,
   ): Promise<RatedUsage[]> {
     const entries = await this.prisma.usageLedger.findMany({
       where: {
-        tenantId,
+        organizationId,
         period,
       },
       include: {

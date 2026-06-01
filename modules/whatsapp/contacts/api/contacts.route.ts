@@ -2,7 +2,9 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
   whatsappAuthPlugin,
-  guardTenantAdmin,
+  guardOrgRead,
+  guardOrgWrite,
+  guardOrgFull,
   type WhatsAppAuthContext
 } from "@/lib/whatsapp/auth"
 
@@ -21,7 +23,7 @@ const contactUpdateSchema = t.Partial(contactBodySchema)
 
 export const contactsRoutes = new Elysia({ prefix: "/contacts" })
   .use(whatsappAuthPlugin)
-  .get("/", guardTenantAdmin(async ({ whatsappAuth, query }: { whatsappAuth: any, query: any }) => {
+  .get("/", guardOrgRead(async ({ whatsappAuth, query }: { whatsappAuth: any, query: any }) => {
     const { contactGroupId, status, phoneNumber } = query as any
     
     const where: any = {
@@ -38,7 +40,7 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
     })
     return { ok: true, contacts }
   }))
-  .get("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const contact = await prisma.whatsappContact.findFirst({
       where: { 
         id,
@@ -53,7 +55,7 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
 
     return { ok: true, contact }
   }))
-  .post("/", guardTenantAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
+  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
     if (!whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
@@ -96,7 +98,7 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
   }), {
     body: contactBodySchema
   })
-  .patch("/:id", guardTenantAdmin(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
+  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
     const contact = await prisma.whatsappContact.findFirst({
       where: { 
         id,
@@ -132,7 +134,7 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
   }), {
     body: contactUpdateSchema
   })
-  .delete("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .delete("/:id", guardOrgFull(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const contact = await prisma.whatsappContact.findFirst({
         where: { 
           id,
