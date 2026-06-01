@@ -2,21 +2,15 @@ import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 
-type WorkOSOrganization = {
-  id: string
-  name: string
-}
-
 export const ensureBillingAccountForOrg = async (params: {
   organizationId: string
-  getOrganizationAction: (orgId: string) => Promise<WorkOSOrganization>
+  getOrganizationAction: (orgId: string) => Promise<{ id: string; name: string }>
 }): Promise<Prisma.BillingAccountGetPayload<object>> => {
   const { organizationId, getOrganizationAction } = params
 
-  // Fetch org name BEFORE transaction to avoid holding DB connection during external API call
-  let org: WorkOSOrganization
+  // Verify org exists in WorkOS BEFORE transaction to avoid holding DB connection during external API call
   try {
-    org = await getOrganizationAction(organizationId)
+    await getOrganizationAction(organizationId)
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     throw new Error(
