@@ -100,7 +100,7 @@ describe("WhatsApp Devices E2E", () => {
     const app = createTestApp()
 
     const createResponse = await app.handle(
-      new Request("http://localhost/", {
+      new Request("http://localhost/devices/", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -119,7 +119,7 @@ describe("WhatsApp Devices E2E", () => {
     expect(createPayload.device).toBeDefined()
 
     // Verify it appears in list
-    const listResponse = await app.handle(new Request("http://localhost/"))
+    const listResponse = await app.handle(new Request("http://localhost/devices/"))
     expect(listResponse.status).toBe(200)
     const listPayload = await listResponse.json() as { ok: boolean; devices: unknown[] }
     expect(listPayload.ok).toBe(true)
@@ -148,7 +148,7 @@ describe("WhatsApp Devices E2E", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(new Request("http://localhost/dev_get"))
+    const response = await app.handle(new Request("http://localhost/devices/dev_get"))
     expect(response.status).toBe(200)
     const payload = await response.json() as { ok: boolean; device?: unknown }
     expect(payload.ok).toBe(true)
@@ -164,7 +164,7 @@ describe("WhatsApp Devices E2E", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(new Request("http://localhost/dev_missing"))
+    const response = await app.handle(new Request("http://localhost/devices/dev_missing"))
     expect(response.status).toBe(404)
     const payload = await response.json() as { ok: boolean; error: string }
     expect(payload.error).toBe("NOT_FOUND")
@@ -199,7 +199,7 @@ describe("WhatsApp Devices E2E", () => {
 
     // Update the device
     const patchResponse = await app.handle(
-      new Request("http://localhost/dev_patch", {
+      new Request("http://localhost/devices/dev_patch", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Updated Name" }),
@@ -214,7 +214,7 @@ describe("WhatsApp Devices E2E", () => {
     // Verify the change by fetching the device
     mockFindUnique.mockImplementationOnce(async () => updatedDevice)
 
-    const getResponse = await app.handle(new Request("http://localhost/dev_patch"))
+    const getResponse = await app.handle(new Request("http://localhost/devices/dev_patch"))
     expect(getResponse.status).toBe(200)
     const getPayload = await getResponse.json() as { ok: boolean; device?: unknown }
     expect((getPayload.device as any).name).toBe("Updated Name")
@@ -242,14 +242,14 @@ describe("WhatsApp Devices E2E", () => {
     const app = createTestApp()
 
     // Verify device exists in list
-    const listBeforeResponse = await app.handle(new Request("http://localhost/"))
+    const listBeforeResponse = await app.handle(new Request("http://localhost/devices/"))
     expect(listBeforeResponse.status).toBe(200)
     const listBeforePayload = await listBeforeResponse.json() as { ok: boolean; devices: unknown[] }
     expect(listBeforePayload.devices).toHaveLength(1)
 
     // Delete the device
     const deleteResponse = await app.handle(
-      new Request("http://localhost/dev_del", {
+      new Request("http://localhost/devices/dev_del", {
         method: "DELETE",
       })
     )
@@ -262,7 +262,7 @@ describe("WhatsApp Devices E2E", () => {
     // Verify device no longer in list
     mockFindMany.mockImplementationOnce(async () => [])
 
-    const listAfterResponse = await app.handle(new Request("http://localhost/"))
+    const listAfterResponse = await app.handle(new Request("http://localhost/devices/"))
     expect(listAfterResponse.status).toBe(200)
     const listAfterPayload = await listAfterResponse.json() as { ok: boolean; devices: unknown[] }
     expect(listAfterPayload.devices).toHaveLength(0)
@@ -279,7 +279,7 @@ describe("WhatsApp Devices E2E", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/", {
+      new Request("http://localhost/devices/", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -312,7 +312,7 @@ describe("WhatsApp Devices E2E", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_other_org", {
+      new Request("http://localhost/devices/dev_other_org", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Hacked" }),
