@@ -26,6 +26,7 @@ import {
   RocketLaunchIcon,
   GearSixIcon,
   WalletIcon,
+  WhatsappLogoIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
@@ -133,6 +134,12 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       icon: <RocketLaunchIcon />,
       isActive: startsWithRoute(path, "/console/app"),
     },
+    {
+      title: "WhatsApp",
+      url: localizePathname({ pathname: "/console/whatsapp/dashboard", locale }),
+      icon: <WhatsappLogoIcon />,
+      isActive: startsWithRoute(path, "/console/whatsapp"),
+    },
   ],
 })
 
@@ -181,6 +188,12 @@ const buildPortalNavMain = (
         isActive: startsWithRoute(pathname, "/portal/settings/ownership"),
       },
     ],
+  },
+  {
+    title: "WhatsApp",
+    url: localizePathname({ pathname: "/portal/whatsapp/devices", locale }),
+    icon: <WhatsappLogoIcon />,
+    isActive: startsWithRoute(pathname, "/portal/whatsapp"),
   },
 ]
 
