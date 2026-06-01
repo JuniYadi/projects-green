@@ -16,6 +16,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - pfnapp-net
 
   redis:
     image: redis:7-alpine
@@ -31,3 +33,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - pfnapp-net
+
+networks:
+  pfnapp-net:
+    name: pfnapp-net
+    driver: bridge
