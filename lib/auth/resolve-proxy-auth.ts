@@ -12,6 +12,10 @@ import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
 import { getWorkOSSession, resolveApiKey, extractBearerToken } from "@/lib/auth/session"
 import type { AuthContext, WorkOSScope } from "@/lib/auth/types"
 
+export type AuthSource = "proxy_header" | "direct_cookie" | "api_key"
+
+export type ResolvedAuth = { source: AuthSource } & NonNullable<AuthContext>
+
 export type ProxyAuthResult =
   | { ok: true; scope: WorkOSScope }
   | { ok: false }
@@ -66,13 +70,13 @@ export const resolveProxyAuth = async (
 
 export const resolveAuthContext = async (
   request: Request
-): Promise<AuthContext | null> => {
+): Promise<ResolvedAuth | null> => {
   // 1. Proxy-passed WorkOS session (from authkit middleware)
   const proxyResult = await resolveProxyAuth(request)
   if (proxyResult.ok) {
     const scope = proxyResult.scope
     console.debug("[auth] resolveAuthContext: source=proxy_header userId=%s", scope.userId)
-    return scope
+    return { ...scope, source: "proxy_header" }
   }
 
   // 2. Direct WorkOS session (cookie / wos_ bearer)
@@ -85,15 +89,15 @@ export const resolveAuthContext = async (
         ? await resolveOrgRole(workosUser.id, firstOrg.organizationId)
         : null
       console.debug("[auth] resolveAuthContext: source=direct_cookie userId=%s", workosUser.id)
-      const scope: WorkOSScope = {
+      return {
         type: "workos",
         userId: workosUser.id,
         email: workosUser.email ?? null,
         organizationId: firstOrg?.organizationId ?? null,
         orgRole,
         platformRole,
+        source: "direct_cookie",
       }
-      return scope
     }
   } catch (err) {
     console.error("[auth] direct cookie resolution failed", err)
@@ -109,7 +113,7 @@ export const resolveAuthContext = async (
     const apiKeyScope = await resolveApiKey(bearerToken, clientIp ?? undefined)
     if (apiKeyScope) {
       console.debug("[auth] resolveAuthContext: source=api_key keyId=%s", apiKeyScope.keyId)
-      return apiKeyScope
+      return { ...apiKeyScope, source: "api_key" }
     }
   }
 

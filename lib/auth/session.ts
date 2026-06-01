@@ -92,22 +92,25 @@ export const getWorkOSSession = async (
 // ─── API key resolver ──────────────────────────────────────────────────────────
 
 const API_KEY_HASH_SALT = () =>
-  process.env.API_KEY_HASH_SALT?.trim() ?? "dev-salt-change-me"
+  process.env.API_KEY_HASH_SALT?.trim() || DEFAULT_SALT
 
 const API_KEY_PREFIXES = {
   SANDBOX: "test_",
   LIVE: "live_",
 } as const
 
+const DEFAULT_SALT = "dev-salt-change-me"
+
+function isDefaultSalt(): boolean {
+  const salt = process.env.API_KEY_HASH_SALT?.trim()
+  return !salt || salt === DEFAULT_SALT
+}
+
 export const resolveApiKey = async (
   rawKey: string,
   clientIp?: string
 ): Promise<PlatformScope | null> => {
-  if (
-    process.env.NODE_ENV === "production" &&
-    (process.env.API_KEY_HASH_SALT?.trim() ?? "dev-salt-change-me") ===
-      "dev-salt-change-me"
-  ) {
+  if (process.env.NODE_ENV === "production" && isDefaultSalt()) {
     console.error(
       "[api-key] CRITICAL: API_KEY_HASH_SALT must be set in production. Refusing to resolve API key."
     )

@@ -44,7 +44,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     return { ok: true, device }
   }))
   .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
-    if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
+    if (!whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
     }
@@ -52,7 +52,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     const device = await prisma.whatsappDevice.create({
       data: {
         ...body,
-        organizationId: whatsappAuth.type === "workos" ? whatsappAuth.organizationId! : (body as any).organizationId,
+        organizationId: whatsappAuth.organizationId,
         status: "DISCONNECTED",
       },
     })

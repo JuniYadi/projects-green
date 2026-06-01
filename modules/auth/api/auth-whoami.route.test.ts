@@ -58,6 +58,7 @@ describe("auth-whoami route", () => {
       organizationId: "org_1",
       orgRole: "admin",
       platformRole: "none",
+      source: "proxy_header",
     }))
 
     const app = createTestApp()
@@ -81,6 +82,7 @@ describe("auth-whoami route", () => {
       organizationId: "org_1",
       environment: "SANDBOX",
       scopes: ["platform:admin"],
+      source: "api_key",
     }))
 
     const app = createTestApp()

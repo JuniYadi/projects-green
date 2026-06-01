@@ -70,12 +70,18 @@ export const requireSuperAdmin = (ctx: AuthContext): boolean => {
 }
 
 export const requireTenantMember = (ctx: AuthContext): boolean => {
-  if (ctx.type === "platform") return false
+  if (ctx.type === "platform") return ctx.organizationId.length > 0
   return hasOrgMembership(ctx)
 }
 
 export const requireTenantAdmin = (ctx: AuthContext): boolean => {
-  if (ctx.type === "platform") return false
+  if (ctx.type === "platform") {
+    return (
+      ctx.organizationId.length > 0 &&
+      Array.isArray(ctx.scopes) &&
+      (ctx.scopes.includes("platform:admin") || ctx.scopes.includes("*"))
+    )
+  }
   if (isSuperAdmin(ctx)) return true
   return ctx.orgRole === "admin" || ctx.orgRole === "owner"
 }

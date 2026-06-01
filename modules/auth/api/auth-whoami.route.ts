@@ -20,6 +20,6 @@ export const authWhoamiRoute = new Elysia()
       }
       return { ok: false as const, auth: null, message: "No valid session or API key. Try: curl ... -H 'Authorization: Bearer live_xxx'" }
     }
-    const source = auth.type === "platform" ? "api_key" as const : "proxy_header" as const
-    return { ok: true as const, auth: { ...auth, source } }
+    const { source, ...rest } = auth
+    return { ok: true as const, auth: { ...rest, source } }
   })
