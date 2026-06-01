@@ -2,8 +2,9 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
   whatsappAuthPlugin,
-  guardTenantAdmin,
-  guardSuperAdmin,
+  guardOrgRead,
+  guardOrgWrite,
+  guardOrgFull,
 } from "@/lib/whatsapp/auth"
 
 const deviceBodySchema = t.Object({
@@ -18,7 +19,7 @@ const deviceUpdateSchema = t.Partial(deviceBodySchema)
 
 export const devicesRoutes = new Elysia()
   .use(whatsappAuthPlugin)
-  .get("/", guardTenantAdmin(async ({ whatsappAuth, set }: { whatsappAuth: any, set: any }) => {
+  .get("/", guardOrgRead(async ({ whatsappAuth, set }: { whatsappAuth: any, set: any }) => {
     const devices = await prisma.whatsappDevice.findMany({
       where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" 
         ? { organizationId: whatsappAuth.organizationId! } 
@@ -27,7 +28,7 @@ export const devicesRoutes = new Elysia()
     })
     return { ok: true, devices }
   }))
-  .get("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const device = await prisma.whatsappDevice.findUnique({
       where: { id },
     })
@@ -44,7 +45,7 @@ export const devicesRoutes = new Elysia()
 
     return { ok: true, device }
   }))
-  .post("/", guardSuperAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
+  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
     if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
@@ -62,7 +63,7 @@ export const devicesRoutes = new Elysia()
   }), {
     body: deviceBodySchema,
   })
-  .patch("/:id", guardTenantAdmin(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
+  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
     const device = await prisma.whatsappDevice.findUnique({
       where: { id },
     })
@@ -86,13 +87,13 @@ export const devicesRoutes = new Elysia()
   }), {
     body: deviceUpdateSchema
   })
-  .delete("/:id", guardSuperAdmin(async ({ params: { id }, set }: { params: { id: string }, set: any }) => {
+  .delete("/:id", guardOrgFull(async ({ params: { id }, set }: { params: { id: string }, set: any }) => {
     await prisma.whatsappDevice.delete({
       where: { id },
     })
     return { ok: true, message: "Device deleted." }
   }))
-  .post("/:id/verify", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .post("/:id/verify", guardOrgWrite(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const device = await prisma.whatsappDevice.findUnique({
       where: { id },
     })
@@ -116,7 +117,7 @@ export const devicesRoutes = new Elysia()
 
     return { ok: true, device: updated }
   }))
-  .post("/:id/reconnect", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .post("/:id/reconnect", guardOrgWrite(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const device = await prisma.whatsappDevice.findUnique({
       where: { id },
     })
