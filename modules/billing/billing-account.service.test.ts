@@ -33,7 +33,7 @@ describe("ensureBillingAccountForOrg", () => {
     const existingTenant = { id: "tenant-1", code: "org_123", name: "My Org", createdAt: new Date(), updatedAt: new Date(), isActive: true }
     const existingAccount = {
       id: "acc-1",
-      tenantId: "tenant-1",
+      organizationId: "tenant-1",
       organizationId: "org_123",
       balance: new Prisma.Decimal(100_000),
       currency: "USD",
@@ -61,7 +61,7 @@ describe("ensureBillingAccountForOrg", () => {
 
     expect(result).toMatchObject({
       id: existingAccount.id,
-      tenantId: existingAccount.tenantId,
+      organizationId: existingAccount.organizationId,
       organizationId: existingAccount.organizationId,
     })
     expect(mockGetOrganizationAction).toHaveBeenCalledWith("org_123")
@@ -74,7 +74,7 @@ describe("ensureBillingAccountForOrg", () => {
     const newTenant = { id: "tenant-1", code: "org_123", name: "My Org", createdAt: new Date(), updatedAt: new Date(), isActive: true }
     const newAccount = {
       id: "acc-1",
-      tenantId: "tenant-1",
+      organizationId: "tenant-1",
       organizationId: "org_123",
       balance: new Prisma.Decimal(0),
       currency: "USD",
@@ -104,7 +104,7 @@ describe("ensureBillingAccountForOrg", () => {
 
     expect(result).toMatchObject({
       id: newAccount.id,
-      tenantId: newAccount.tenantId,
+      organizationId: newAccount.organizationId,
       organizationId: newAccount.organizationId,
     })
     expect(mockGetOrganizationAction).toHaveBeenCalledWith("org_123")
@@ -120,7 +120,7 @@ describe("ensureBillingAccountForOrg", () => {
     })
     expect(mockPrisma.billingAccount.create).toHaveBeenCalledWith({
       data: {
-        tenantId: "tenant-1",
+        organizationId: "tenant-1",
         organizationId: "org_123",
         balance: expect.anything(),
         currency: "USD",
@@ -135,7 +135,7 @@ describe("ensureBillingAccountForOrg", () => {
     const existingTenant = { id: "tenant-1", code: "org_123", name: "My Org", createdAt: new Date(), updatedAt: new Date(), isActive: true }
     const newAccount = {
       id: "acc-1",
-      tenantId: "tenant-1",
+      organizationId: "tenant-1",
       organizationId: "org_123",
       balance: new Prisma.Decimal(0),
       currency: "USD",
@@ -164,7 +164,7 @@ describe("ensureBillingAccountForOrg", () => {
 
     expect(result).toMatchObject({
       id: newAccount.id,
-      tenantId: newAccount.tenantId,
+      organizationId: newAccount.organizationId,
       organizationId: newAccount.organizationId,
     })
     expect(mockGetOrganizationAction).toHaveBeenCalledWith("org_123")

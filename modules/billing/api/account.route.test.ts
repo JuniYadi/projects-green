@@ -27,7 +27,7 @@ describe("GET /account - JIT upsert", () => {
   it("calls ensureBillingAccountForOrg when accessing account", async () => {
     const mockAccount = {
       id: "acc-1",
-      tenantId: "tenant-1",
+      organizationId: "tenant-1",
       organizationId: "org_123",
       balance: new Prisma.Decimal(100_000),
       currency: "USD",
@@ -50,7 +50,7 @@ describe("GET /account - JIT upsert", () => {
   it("returns account balance info from upserted account", async () => {
     const mockAccount = {
       id: "acc-1",
-      tenantId: "tenant-1",
+      organizationId: "tenant-1",
       organizationId: "org_123",
       balance: new Prisma.Decimal(500000),
       currency: "USD",
@@ -67,7 +67,7 @@ describe("GET /account - JIT upsert", () => {
 
     const data = await response.json()
     expect(data.ok).toBe(true)
-    expect(data.tenantId).toBe("tenant-1")
+    expect(data.organizationId).toBe("tenant-1")
     expect(data.balanceIdr).toBe("500000.00")
     expect(data.isPositive).toBe(true)
   })
@@ -201,7 +201,7 @@ describe("billingSchemas", () => {
       const { adminAdjustSchema } = require("./billing.schemas")
 
       const validInput = {
-        tenantId: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "CREDIT",
         amount: 5000,
         reason: "Refund for downtime",
@@ -215,7 +215,7 @@ describe("billingSchemas", () => {
       const { adminAdjustSchema } = require("./billing.schemas")
 
       const validInput = {
-        tenantId: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "DEBIT",
         amount: 5000,
         reason: "Correction",
@@ -225,11 +225,11 @@ describe("billingSchemas", () => {
       expect(result.success).toBe(true)
     })
 
-    it("rejects invalid tenantId UUID", async () => {
+    it("rejects invalid organizationId UUID", async () => {
       const { adminAdjustSchema } = require("./billing.schemas")
 
       const invalidInput = {
-        tenantId: "not-a-uuid",
+        organizationId: "not-a-uuid",
         type: "CREDIT",
         amount: 5000,
         reason: "Test",
@@ -243,7 +243,7 @@ describe("billingSchemas", () => {
       const { adminAdjustSchema } = require("./billing.schemas")
 
       const invalidInput = {
-        tenantId: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "REFUND",
         amount: 5000,
         reason: "Test",
@@ -257,7 +257,7 @@ describe("billingSchemas", () => {
       const { adminAdjustSchema } = require("./billing.schemas")
 
       const invalidInput = {
-        tenantId: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "CREDIT",
         amount: 0,
         reason: "Test",
@@ -271,7 +271,7 @@ describe("billingSchemas", () => {
       const { adminAdjustSchema } = require("./billing.schemas")
 
       const invalidInput = {
-        tenantId: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "CREDIT",
         amount: 5000,
         reason: "x".repeat(501),

@@ -170,23 +170,23 @@ export class BillingCycleService {
     subscription: {
       id: string
       billingAccountId: string
-      billingAccount: { tenantId: string | null; balance: Decimal; id: string }
+      billingAccount: { organizationId: string | null; balance: Decimal; id: string }
     },
     period: string,
     billingRunId: string,
   ): Promise<SubscriptionBillingResult> {
-    const tenantId = subscription.billingAccount.tenantId
+    const organizationId = subscription.billingAccount.organizationId
 
-    if (!tenantId) {
+    if (!organizationId) {
       console.info(
-        `[BillingCycle] Subscription ${subscription.id}: no tenantId, skipping.`,
+        `[BillingCycle] Subscription ${subscription.id}: no organizationId, skipping.`,
       )
       return { subscriptionId: subscription.id, status: "SKIPPED" }
     }
 
     // ── Generate rated usage ──────────────────────────────────────────────
     const ratedUsage = await this.usageLedger.generateRatedUsage(
-      tenantId,
+      organizationId,
       period,
     )
 
@@ -220,7 +220,6 @@ export class BillingCycleService {
       const invoice = await tx.invoice.create({
         data: {
           billingAccountId: subscription.billingAccountId,
-          tenantId,
           subscriptionId: subscription.id,
           billingRunId,
           invoiceNumber: `INV-${period}-${subscription.id.slice(0, 8)}-${billingRunId.slice(0, 8)}`,

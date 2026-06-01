@@ -376,7 +376,6 @@ model SupportTicketAttachmentUploadSession {
 
 model BillingAccount {
   id             String               @id @default(cuid())
-  tenantId       String               @unique
   organizationId String               @unique
   currency       String               @default("USD")
   timezone       String               @default("UTC")
@@ -386,7 +385,6 @@ model BillingAccount {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  tenant        Tenant?               @relation(fields: [tenantId], references: [id])
   subscriptions BillingSubscription[]
   usageEvents   UsageEvent[]
   ratedUsage    RatedUsage[]
@@ -561,7 +559,6 @@ model RatedUsage {
 model Invoice {
   id               String        @id @default(cuid())
   billingAccountId String
-  tenantId         String?
   subscriptionId   String?
   billingRunId     String?
   invoiceNumber    String        @unique
@@ -587,7 +584,6 @@ model Invoice {
   updatedAt       DateTime @updatedAt
 
   billingAccount       BillingAccount?          @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  tenant               Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
   subscription         BillingSubscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   billingRun           BillingRun?              @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
   gateway              PaymentGateway?          @relation(fields: [gatewayId], references: [id])
@@ -599,8 +595,6 @@ model Invoice {
   @@index([billingAccountId, status])
   @@index([subscriptionId, periodStart])
   @@index([billingRunId])
-  @@index([tenantId, status])
-  @@index([tenantId, periodStart])
 }
 
 model InvoiceLine {
@@ -706,20 +700,6 @@ model BillingAuditLog {
 
 // ─── Billing Models ──────────────────────────────────────────────────────────
 
-model Tenant {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  subscriptions   Subscription[]
-  usageLedgers    UsageLedger[]
-  invoices        Invoice[]
-  billingAccounts BillingAccount[]
-}
-
 model Region {
   id        String   @id @default(cuid())
   code      String   @unique
@@ -794,7 +774,7 @@ model Pricing {
 
 model Subscription {
   id                  String                   @id @default(cuid())
-  tenantId            String
+  organizationId      String
   packageId           String
   planId              String
   pricingId           String
@@ -808,20 +788,19 @@ model Subscription {
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
   package      Package      @relation(fields: [packageId], references: [id])
   plan         ServicePlan  @relation(fields: [planId], references: [id])
   pricing      Pricing      @relation(fields: [pricingId], references: [id])
   usageLedgers UsageLedger[]
 
-  @@unique([tenantId, packageId, planId])
-  @@index([tenantId, status])
+  @@unique([organizationId, packageId, planId])
+  @@index([organizationId, status])
   @@index([packageId])
 }
 
 model UsageLedger {
   id             String    @id @default(cuid())
-  tenantId       String
+  organizationId String
   subscriptionId String
   period         String
   category       String?
@@ -830,10 +809,9 @@ model UsageLedger {
   createdAt      DateTime  @default(now())
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id])
-  tenant       Tenant      @relation(fields: [tenantId], references: [id])
 
-  @@index([tenantId, period])
-  @@index([tenantId, category])
+  @@index([organizationId, period])
+  @@index([organizationId, category])
   @@index([subscriptionId])
 }
 

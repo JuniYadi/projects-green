@@ -34,8 +34,8 @@ export class PricingNotFoundError extends Error {
 }
 
 export class BillingAccountNotFoundError extends Error {
-  constructor(tenantId: string) {
-    super(`BillingAccount not found for tenant=${tenantId}`);
+  constructor(organizationId: string) {
+    super(`BillingAccount not found for organization=${organizationId}`);
     this.name = "BillingAccountNotFoundError";
   }
 }

@@ -58,24 +58,12 @@ export const messageService: MessageService = {
     const quotaGate = new QuotaGateService(prisma)
     const usageLedger = new UsageLedgerService(prisma)
 
-    // Get billing account to find tenantId
-    // STRICT MODE: Org without billing account cannot send messages
-    const billingAccount = await prisma.billingAccount.findUnique({
-      where: { organizationId },
-    })
-
-    if (!billingAccount) {
-      throw new Error("NO_BILLING_ACCOUNT")
-    }
-
-    const tenantId = billingAccount.tenantId
-
     // 1. Check balance (BalanceGateService)
-    const balanceOk = await balanceGate.isBalancePositive(tenantId)
+    const balanceOk = await balanceGate.isBalancePositive(organizationId)
     if (!balanceOk) {
       throw new InsufficientBalanceError(
         new Decimal(1),
-        billingAccount.balance
+        new Decimal(0)
       )
     }
 
@@ -106,7 +94,7 @@ export const messageService: MessageService = {
     // 3. Find active WhatsApp subscription for usage recording
     const subscription = await prisma.subscription.findFirst({
       where: {
-        tenantId,
+        organizationId,
         package: { code: "WHATSAPP" },
         status: "ACTIVE",
       },
@@ -176,7 +164,7 @@ export const messageService: MessageService = {
         const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
 
         await usageLedger.recordUsage({
-          tenantId,
+          organizationId,
           subscriptionId: subscription.id,
           period,
           entry: {

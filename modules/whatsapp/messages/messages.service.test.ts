@@ -45,7 +45,7 @@ const mockPrisma = {
   billingAccount: {
     findUnique: mock(async () => ({
       id: "ba-1",
-      tenantId: "tenant-1",
+      organizationId: "tenant-1",
       balance: { toString: () => "100000" },
     })),
   },
@@ -146,7 +146,7 @@ describe("messageService", () => {
     // Billing mocks - default with positive balance
     mockPrisma.billingAccount.findUnique.mockResolvedValue({
       id: "ba-1",
-      tenantId: "tenant-1",
+      organizationId: "tenant-1",
       balance: { toFixed: () => "100000", gte: () => true, gt: () => true },
     } as any)
     mockPrisma.subscription.findFirst.mockResolvedValue(null) // No subscription = no quota gate enforcement
@@ -195,7 +195,7 @@ describe("messageService", () => {
       // Even with legacy quota available, balance check should fail first
       mockPrisma.billingAccount.findUnique.mockResolvedValue({
         id: "ba-1",
-        tenantId: "tenant-1",
+        organizationId: "tenant-1",
         balance: { toFixed: () => "0.00", gte: () => false, gt: () => false },
       } as any)
       // Reset subscription mock so we don't trigger quota gate

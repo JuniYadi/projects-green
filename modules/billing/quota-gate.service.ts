@@ -6,7 +6,6 @@ import {
   QuotaExceededError,
   DailyLimitExceededError,
   DeviceNotFoundError,
-  OrganizationNotMappedError,
   SubscriptionNotFoundError,
 } from "./types"
 
@@ -15,12 +14,12 @@ export class QuotaGateService {
 
   /**
    * Get WhatsApp subscription for an organization.
-   * Finds BillingAccount by organizationId to get tenantId, then finds active WHATSAPP subscription.
+   * Finds active WHATSAPP subscription by organizationId.
    */
   private async getWhatsAppSubscription(organizationId: string): Promise<{
     subscription: {
       id: string
-      tenantId: string
+      organizationId: string
       status: string
       planId: string
     }
@@ -28,20 +27,10 @@ export class QuotaGateService {
       code: string
       resources: WhatsAppPlanResources
     }
-    tenantId: string
   }> {
-    const billingAccount = await this.prisma.billingAccount.findUnique({
-      where: { organizationId },
-      select: { tenantId: true },
-    })
-
-    if (!billingAccount) {
-      throw new OrganizationNotMappedError(organizationId)
-    }
-
     const subscription = await this.prisma.subscription.findFirst({
       where: {
-        tenantId: billingAccount.tenantId,
+        organizationId,
         package: { code: "WHATSAPP" },
         status: "ACTIVE",
       },
@@ -59,7 +48,7 @@ export class QuotaGateService {
     return {
       subscription: {
         id: subscription.id,
-        tenantId: subscription.tenantId,
+        organizationId: subscription.organizationId,
         status: subscription.status,
         planId: subscription.planId,
       },
@@ -67,7 +56,6 @@ export class QuotaGateService {
         code: subscription.plan.code,
         resources: subscription.plan.resources as unknown as WhatsAppPlanResources,
       },
-      tenantId: subscription.tenantId,
     }
   }
 
