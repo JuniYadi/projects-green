@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { adminRoutes } from "@/modules/admin/api/admin.route"
 import { authRoutes } from "@/modules/auth/api/auth.route"
+import { authWhoamiRoute } from "@/modules/auth/api/auth-whoami.route"
 import { billingRoutes } from "@/modules/billing/api"
 import { docsConsoleRoutes } from "@/modules/docs/api/docs-console.route"
 import { docsRoutes } from "@/modules/docs/api/docs.route"
@@ -87,6 +88,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(supportTicketAttachmentRoutes)
   .use(tenantsRoutes)
   .use(authRoutes)
+  .use(authWhoamiRoute)
   .use(billingRoutes)
   .use(paymentRoutes)
   .use(userPaymentRoutes)

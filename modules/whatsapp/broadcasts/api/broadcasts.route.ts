@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import { whatsappAuthPlugin, guardOrgRead, guardOrgWrite, guardOrgFull, type WhatsAppAuthContext } from "@/lib/whatsapp/auth"
+import { guardOrgRead, guardOrgWrite, guardOrgFull, type WhatsAppAuthContext } from "@/lib/whatsapp/auth"
 import { enqueueWhatsAppBroadcast } from "@/lib/queue/whatsapp-broadcast"
 
 const broadcastRecipientSchema = t.Object({
@@ -25,7 +25,6 @@ const broadcastCampaignUpdateSchema = t.Partial(
 )
 
 export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
-  .use(whatsappAuthPlugin)
   .get("/", guardOrgRead(async ({ whatsappAuth }: { whatsappAuth: WhatsAppAuthContext }) => {
     const campaigns = await prisma.whatsappBroadcastCampaign.findMany({
       where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin"

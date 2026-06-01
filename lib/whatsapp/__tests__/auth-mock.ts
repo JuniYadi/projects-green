@@ -44,9 +44,10 @@ export const whatsappAuthMock = {
       ctx.set.status = 401
       return { ok: false, error: "UNAUTHORIZED" }
     }
+    // Platform API keys pass read access (mirrors real guardOrgRead)
     if (auth.type === "platform") {
-      ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN" }
+      ;(ctx as any).whatsappAuth = auth
+      return route(ctx)
     }
     if (!auth.organizationId) {
       ctx.set.status = 403
@@ -61,9 +62,10 @@ export const whatsappAuthMock = {
       ctx.set.status = 401
       return { ok: false, error: "UNAUTHORIZED" }
     }
+    // Platform API keys pass write access (mirrors real guardOrgWrite)
     if (auth.type === "platform") {
-      ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN" }
+      ;(ctx as any).whatsappAuth = auth
+      return route(ctx)
     }
     if (auth.platformRole === "super_admin") {
       ;(ctx as any).whatsappAuth = auth
@@ -84,9 +86,17 @@ export const whatsappAuthMock = {
       ctx.set.status = 401
       return { ok: false, error: "UNAUTHORIZED" }
     }
+    // Platform keys need platform:admin or * scope for full access (mirrors real guardOrgFull)
     if (auth.type === "platform") {
-      ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN" }
+      const hasAdminScope =
+        Array.isArray(auth.scopes) &&
+        (auth.scopes.includes("platform:admin") || auth.scopes.includes("*"))
+      if (!hasAdminScope) {
+        ctx.set.status = 403
+        return { ok: false, error: "FORBIDDEN" }
+      }
+      ;(ctx as any).whatsappAuth = auth
+      return route(ctx)
     }
     if (auth.platformRole === "super_admin") {
       ;(ctx as any).whatsappAuth = auth

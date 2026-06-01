@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
-  whatsappAuthPlugin,
   guardOrgRead,
   guardOrgWrite,
   guardOrgFull,
@@ -16,7 +15,6 @@ const tokenBodySchema = t.Object({
 const tokenUpdateSchema = t.Partial(tokenBodySchema)
 
 export const tokensRoutes = new Elysia({ prefix: "/tokens" })
-  .use(whatsappAuthPlugin)
   .get("/", guardOrgRead(async ({ whatsappAuth }: { whatsappAuth: any }) => {
     const tokens = await prisma.whatsappApiKey.findMany({
       where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" 

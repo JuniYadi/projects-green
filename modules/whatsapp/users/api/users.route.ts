@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia"
 
 import {
-  whatsappAuthPlugin,
   guardOrgRead,
   guardOrgWrite,
   guardOrgFull,
@@ -53,7 +52,6 @@ type UpdateUserResponse = {
 }
 
 export const usersRoutes = new Elysia({ prefix: "/users" })
-  .use(whatsappAuthPlugin)
 
   /**
    * GET /api/whatsapp/users

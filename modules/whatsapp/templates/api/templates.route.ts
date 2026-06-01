@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
-  whatsappAuthPlugin,
   guardOrgRead,
   guardOrgWrite,
   guardOrgFull,
@@ -30,7 +29,6 @@ const templateBodySchema = t.Object({
 const templateUpdateSchema = t.Partial(t.Omit(templateBodySchema, ["languages"]))
 
 export const templatesRoutes = new Elysia({ prefix: "/templates" })
-  .use(whatsappAuthPlugin)
   .get("/", guardOrgRead(async ({ whatsappAuth }: { whatsappAuth: any }) => {
     const templates = await prisma.whatsappTemplate.findMany({
       where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin"

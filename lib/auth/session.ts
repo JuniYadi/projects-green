@@ -1,6 +1,5 @@
 import { createWorkOS } from "@workos-inc/node"
 import type { User } from "@workos-inc/node"
-import { unsealData } from "iron-session"
 
 import { prisma } from "@/lib/prisma"
 import type { ApiKeyEnvironment } from "@prisma/client"
@@ -9,61 +8,77 @@ import type { PlatformScope } from "./types"
 
 // ─── WorkOS session resolver ─────────────────────────────────────────────────
 
+let _workos: ReturnType<typeof createWorkOS> | null = null
+
+const getWorkOSClient = () => {
+  if (!_workos) {
+    _workos = createWorkOS({
+      apiKey: process.env.WORKOS_API_KEY ?? "",
+      clientId: process.env.WORKOS_CLIENT_ID ?? "",
+    })
+  }
+  return _workos
+}
+
+/**
+ * Resolve a WorkOS user from a request by calling the WorkOS SDK's
+ * `authenticateWithSessionCookie` — the single source of truth for
+ * session validation.
+ *
+ * Flow:
+ *  1. Extract the sealed session cookie from the request.
+ *  2. Call workos.userManagement.authenticateWithSessionCookie() which
+ *     internally unseals, verifies the JWT against WorkOS JWKS, and
+ *     optionally refreshes the session.
+ *  3. If authenticated, return the WorkOS User object.
+ *
+ * Also handles Bearer "wos_xxx" tokens (sealed session passed via
+ * Authorization header) for API clients.
+ */
 export const getWorkOSSession = async (
   request: Request
 ): Promise<User | null> => {
+  const cookiePassword = process.env.WORKOS_COOKIE_PASSWORD?.trim()
+  if (!cookiePassword) return null
+
+  // 1. Extract sealed session data from cookie or Bearer header
   const authHeader = request.headers.get("Authorization") ?? ""
   const bearerToken = authHeader.startsWith("Bearer ")
     ? authHeader.slice(7).trim()
     : null
 
-  if (bearerToken) {
-    if (bearerToken.startsWith("wos_")) {
-      try {
-        const cookiePassword = process.env.WORKOS_COOKIE_PASSWORD?.trim()
-        if (!cookiePassword) return null
-        const sessionPayload = await unsealData(bearerToken, {
-          password: cookiePassword,
-        })
-        if (
-          sessionPayload &&
-          typeof sessionPayload === "object" &&
-          "user" in sessionPayload
-        ) {
-          return (sessionPayload as { user: User }).user
-        }
-      } catch {
-        return null
-      }
-    }
+  let sessionData: string | null = null
+
+  if (bearerToken && bearerToken.startsWith("wos_")) {
+    // Sealed session passed as Bearer token
+    sessionData = bearerToken
+  } else {
+    // Sealed session from cookie
+    const cookieName =
+      process.env.WORKOS_COOKIE_NAME?.trim() || "wos-session"
+    const rawCookies = request.headers.get("Cookie") ?? ""
+    const cookies = Object.fromEntries(
+      rawCookies.split(";").map((c) => {
+        const [k, ...v] = c.trim().split("=")
+        return [k, v.join("=")]
+      })
+    )
+    sessionData = cookies[cookieName] ?? null
   }
 
-  const cookieName =
-    process.env.WORKOS_COOKIE_NAME?.trim() || "wos-session"
-  const rawCookies = request.headers.get("Cookie") ?? ""
-  const cookies = Object.fromEntries(
-    rawCookies.split(";").map((c) => {
-      const [k, ...v] = c.trim().split("=")
-      return [k, v.join("=")]
-    })
-  )
-  const sealedSession = cookies[cookieName]
-  if (!sealedSession) return null
+  if (!sessionData) return null
 
+  // 2. Validate via WorkOS SDK
   try {
-    const cookiePassword = process.env.WORKOS_COOKIE_PASSWORD?.trim()
-    if (!cookiePassword) return null
-    const sessionPayload = await unsealData(sealedSession, {
-      password: cookiePassword,
+    const workos = getWorkOSClient()
+    const result = await workos.userManagement.authenticateWithSessionCookie({
+      sessionData,
+      cookiePassword,
     })
-    if (
-      sessionPayload &&
-      typeof sessionPayload === "object" &&
-      "user" in sessionPayload
-    ) {
-      return (sessionPayload as { user: User }).user ?? null
-    }
-    return null
+
+    if (!result.authenticated) return null
+
+    return result.user as User
   } catch {
     return null
   }
