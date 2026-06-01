@@ -26,7 +26,7 @@ type RouteSet = {
 type AdminAdjustRouteDeps = {
   authenticate: () => Promise<BillingAuthContext>
   getPlatformRole: (input: { id?: string | null; email?: string | null }) => Promise<PlatformAccessRole>
-  isAdmin: (actor: { platformRole: PlatformAccessRole; tenantRole: string | null | undefined }) => boolean
+  isAdmin: (actor: { platformRole: PlatformAccessRole; orgRole: string | null | undefined }) => boolean
 }
 
 const defaultDeps: AdminAdjustRouteDeps = {
@@ -34,7 +34,7 @@ const defaultDeps: AdminAdjustRouteDeps = {
   getPlatformRole: getPlatformRoleForUser,
   isAdmin: (actor) => {
     if (actor.platformRole === "super_admin") return true
-    return actor.tenantRole === "admin" || actor.tenantRole === "owner"
+    return actor.orgRole === "admin" || actor.orgRole === "owner"
   },
 }
 
@@ -76,7 +76,7 @@ async function resolveActor(
 
   return {
     platformRole,
-    tenantRole: auth.role,
+    orgRole: auth.role,
   }
 }
 
@@ -161,7 +161,7 @@ export const createAdminBillingRoutes = (
                 reason,
                 metadataJson: {
                   performedBy: userId,
-                  actorRole: actor.platformRole === "super_admin" ? "super_admin" : actor.tenantRole,
+                  actorRole: actor.platformRole === "super_admin" ? "super_admin" : actor.orgRole,
                 },
               },
             }),
