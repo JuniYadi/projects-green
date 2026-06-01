@@ -80,11 +80,6 @@ export const requireTenantAdmin = (ctx: AuthContext): boolean => {
   if (isSuperAdmin(ctx)) return true
   return ctx.orgRole === "admin" || ctx.orgRole === "owner"
 }
-export {
-  getWorkOSSession,
-  resolveApiKey,
-  extractBearerToken,
-} from "@/lib/auth/session"
 export { hashApiKey } from "./crypto"
 export type { ApiKeyEnvironment } from "@prisma/client"
 
