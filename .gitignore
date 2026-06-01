@@ -47,3 +47,8 @@ goals/
 .claude/worktrees/
 .claude/*.lock
 docs/
+.mavis/
+.opencode/
+.superpowers/
+.worktrees/
+.worktree/

@@ -155,6 +155,41 @@ export const resolveTenantRole = async (
   }
 }
 
+/**
+ * Resolve the first active organization membership for a WorkOS user.
+ * Returns `null` (no org) when the user has no active memberships, or when
+ * the WorkOS SDK call fails (network / 401). Failures are logged once.
+ *
+ * Policy: "first active org wins" — when a user belongs to multiple
+ * WorkOS organizations, we use the first membership returned by the API.
+ * TODO(whatsapp-auth): support a multi-org override via
+ *   `?organizationId=` query param or `X-Organization-Id` header.
+ *   Out of scope for the current WorkOS-migration fix.
+ */
+export const resolveFirstActiveOrganization = async (
+  userId: string
+): Promise<{ organizationId: string } | null> => {
+  try {
+    const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
+    const memberships = await workos.userManagement
+      .listOrganizationMemberships({
+        userId,
+        statuses: ["active"],
+      })
+      .then((r) => r.autoPagination())
+
+    const first = memberships[0]
+    if (!first?.organizationId) return null
+    return { organizationId: first.organizationId }
+  } catch (err) {
+    console.warn(
+      "[whatsapp-auth] workos membership lookup failed",
+      err instanceof Error ? err.message : err
+    )
+    return null
+  }
+}
+
 // ─── API key resolver ──────────────────────────────────────────────────────────
 
 const API_KEY_HASH_SALT = () =>
@@ -293,13 +328,20 @@ export const whatsappAuthPlugin = new Elysia({ name: "whatsapp.auth" })
     const workosUser = await getWorkOSSession(request)
     if (workosUser) {
       const platformRole = await getPlatformRoleForUser(workosUser)
+      // Resolve the user's first active WorkOS organization membership and
+      // its tenant role. Failures fail closed — guards reject the caller
+      // with 403 instead of leaking data with `organizationId: null`.
+      const firstOrg = await resolveFirstActiveOrganization(workosUser.id)
+      const tenantRole = firstOrg
+        ? await resolveTenantRole(workosUser.id, firstOrg.organizationId)
+        : null
       return {
         whatsappAuth: {
           type: "workos" as const,
           userId: workosUser.id,
           email: workosUser.email ?? null,
-          organizationId: null, // caller must also provide orgId in request body/params
-          tenantRole: null,
+          organizationId: firstOrg?.organizationId ?? null,
+          tenantRole,
           platformRole,
         } satisfies WorkOSScope,
       }

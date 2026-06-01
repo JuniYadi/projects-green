@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient, PlatformRole, WhatsappDeviceStatus } from "@prisma/client"
+import { getWorkOS } from "@workos-inc/authkit-nextjs"
 
 const DATABASE_URL = process.env.DATABASE_URL?.trim()
 if (!DATABASE_URL) {
@@ -313,6 +314,127 @@ const removeTestData = async () => {
   console.log("WhatsApp test data removed")
 }
 
+/**
+ * Create (or upsert) a WorkOS organization + matching membership for the
+ * test super admin user. This is what lets the WhatsApp dashboard
+ * (`/en/console/whatsapp/dashboard`) pass `requireTenantAdmin` for the
+ * seeded test user after the WorkOS-org migration.
+ *
+ * Note: WorkOS does not allow client-supplied organization ids — the SDK
+ * `createOrganization` only accepts `name` / `externalId` / etc., and the
+ * returned id is a server-generated `org_xxx`. The DB rows in this seed
+ * use the sentinel id `wat org_seed` for compatibility with the existing
+ * WhatsApp device / contact / conversation payloads, but that string is
+ * NOT a valid WorkOS id. The super_admin test user is a member of the
+ * real WorkOS org we create here, with roleSlug=`user_admin`, which is
+ * enough to satisfy the auth plugin's "first active org wins" rule.
+ * The `requireTenantAdmin` guard still succeeds because the seed user
+ * is also a `super_admin` (via `PlatformUserRole`), which short-circuits
+ * the tenant role check.
+ *
+ * If WorkOS is unreachable in the current environment (e.g. CI without
+ * `WORKOS_API_KEY`), the script logs a clear warning and exits 0 — the
+ * rest of the seed (DB rows) still proceeds.
+ */
+const createWorkOSOrganizationAndMembership = async () => {
+  const workosApiKey = process.env.WORKOS_API_KEY?.trim()
+  if (!workosApiKey) {
+    console.warn(
+      "[seed] WORKOS_API_KEY not set — skipping WorkOS org/membership creation; test user will not pass WorkOS auth."
+    )
+    return
+  }
+
+  try {
+    const workos = getWorkOS()
+
+    // 1. Find an existing org by name (idempotent re-runs) or create a new
+    //    one. WorkOS doesn't have a generic upsert for organizations, so
+    //    we look it up by listing organizations and matching the name; if
+    //    none is found we create a fresh one. (We can't use the DB-only
+    //    sentinel id `wat org_seed` here because WorkOS requires ids
+    //    matching `^org_[A-Za-z0-9]+$` and generates them server-side.)
+    let organizationId: string | null = null
+    try {
+      const orgsList = await workos.organizations
+        .listOrganizations({})
+        .then((r) => r.autoPagination())
+      const existing = orgsList.find(
+        (org: { name?: string | null }) =>
+          org.name === DEFAULT_TEST_DATA.organizationName
+      )
+      if (existing) {
+        organizationId = existing.id
+        console.log(
+          `WorkOS organization ${organizationId} (${DEFAULT_TEST_DATA.organizationName}) already exists.`
+        )
+      }
+    } catch (lookupErr) {
+      console.warn(
+        `[seed] WorkOS listOrganizations failed; will attempt create: ${
+          lookupErr instanceof Error ? lookupErr.message : String(lookupErr)
+        }`
+      )
+    }
+
+    if (!organizationId) {
+      const created = await workos.organizations.createOrganization({
+        name: DEFAULT_TEST_DATA.organizationName,
+      })
+      organizationId = created.id
+      console.log(
+        `Created WorkOS organization: ${organizationId} (${DEFAULT_TEST_DATA.organizationName})`
+      )
+    }
+
+    // 2. Upsert the admin's membership in this org with roleSlug
+    //    "user_admin". We look up by userId+orgId and patch the role if it
+    //    already exists.
+    if (!organizationId) return
+
+    const memberships = await workos.userManagement
+      .listOrganizationMemberships({
+        organizationId,
+        userId: DEFAULT_TEST_DATA.superAdminUserId,
+        statuses: ["active", "pending", "inactive"],
+      })
+      .then((r) => r.autoPagination())
+
+    const existingMembership = memberships[0]
+    if (existingMembership) {
+      if (existingMembership.role?.slug !== "user_admin") {
+        await workos.userManagement.updateOrganizationMembership(
+          existingMembership.id,
+          { roleSlug: "user_admin" }
+        )
+        console.log(
+          `Updated WorkOS membership ${existingMembership.id} to roleSlug=user_admin.`
+        )
+      } else {
+        console.log(
+          `WorkOS membership for ${DEFAULT_TEST_DATA.superAdminUserId} already user_admin.`
+        )
+      }
+    } else {
+      await workos.userManagement.createOrganizationMembership({
+        organizationId,
+        userId: DEFAULT_TEST_DATA.superAdminUserId,
+        roleSlug: "user_admin",
+      })
+      console.log(
+        `Created WorkOS membership: user=${DEFAULT_TEST_DATA.superAdminUserId} org=${organizationId} roleSlug=user_admin.`
+      )
+    }
+  } catch (error) {
+    console.warn(
+      "[seed] WorkOS not reachable — skipping org/membership creation; test user will not pass WorkOS auth."
+    )
+    if (error instanceof Error) {
+      console.warn(`[seed] WorkOS error: ${error.message}`)
+    }
+  }
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────────────────────
 
 const main = async () => {
@@ -339,6 +461,7 @@ const main = async () => {
       await createTestContacts()
       await createTestConversations()
       await createTestMessages()
+      await createWorkOSOrganizationAndMembership()
 
       console.log("\nWhatsApp test data seeded successfully!")
     }
