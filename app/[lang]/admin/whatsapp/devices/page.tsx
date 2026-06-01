@@ -2,8 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Phone, Plus, ArrowsClockwise, WarningCircle } from "@phosphor-icons/react"
-import { toast } from "sonner"
+import { Phone, ArrowsClockwise, WarningCircle } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -54,7 +53,9 @@ export default function AdminDevicesPage() {
   }, [])
 
   React.useEffect(() => {
-    void loadDevices()
+    ;(async () => {
+      await loadDevices()
+    })()
   }, [loadDevices])
 
   // ── Loading skeleton ────────────────────────────────────────────────────

@@ -58,7 +58,6 @@ export function SignupForm({
   const signUpWithApplePath = `/signup/start?next=${encodedNext}&provider=apple`
   const signUpWithGooglePath = `/signup/start?next=${encodedNext}&provider=google`
   const signUpWithGithubPath = `/signup/start?next=${encodedNext}&provider=github`
-  const signUpStartPath = `/signup/start?next=${encodedNext}`
   const signInPath = `/login?next=${encodedNext}`
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)

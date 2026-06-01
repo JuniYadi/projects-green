@@ -72,7 +72,7 @@ function AmountCell({
   )
 }
 
-export function AdjustmentTable({ adjustments, isLoading: _isLoading }: AdjustmentTableProps) {
+export function AdjustmentTable({ adjustments }: AdjustmentTableProps) {
   const columns = useMemo<ColumnDef<AdminAdjustment, unknown>[]>(
     () => [
       {

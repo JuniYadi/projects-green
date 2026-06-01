@@ -59,7 +59,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
       } else {
         setError(invRes.message || "Failed to load invitations")
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
@@ -67,8 +67,9 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
   }, [organizationId])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadData()
+    ;(async () => {
+      await loadData()
+    })()
   }, [loadData])
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -86,12 +87,11 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
 
       if (res.ok) {
         setEmail("")
-         
         void loadData()
       } else {
         setError(res.message || "Failed to send invitation")
       }
-    } catch (_err) {
+    } catch {
       setError("An unexpected error occurred")
     } finally {
       setIsSubmitting(false)
@@ -103,12 +103,11 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     try {
       const res = await fetch(path, { method: "POST" }).then(r => r.json())
       if (res.ok) {
-         
         void loadData()
       } else {
         setError(res.message || "Action failed")
       }
-    } catch (_err) {
+    } catch {
       setError("An unexpected error occurred")
     }
   }

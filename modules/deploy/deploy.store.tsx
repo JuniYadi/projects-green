@@ -126,6 +126,7 @@ const deployWizardReducer = (
         ...state,
         monitor: {
           ...DEFAULT_MONITOR_STATE,
+          deployId: `deploy-${Math.random().toString(36).substring(7)}`,
           status: "queued",
           isActive: true,
           attempt: state.monitor.attempt + 1,
