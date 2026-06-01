@@ -26,7 +26,10 @@
     "grant:super-admin": "node scripts/grant-super-admin.mjs",
     "seed:workos-roles": "node scripts/seed-workos-roles.mjs",
     "seed:super-admin": "bun run scripts/seed-super-admin.ts",
-    "bootstrap:super-admin": "bun run scripts/bootstrap-super-admin.ts"
+    "bootstrap:super-admin": "bun run scripts/bootstrap-super-admin.ts",
+    "test:auth:cookie": "bun run scripts/test-api-auth-cookie.ts",
+    "test:auth:static-key": "bun run scripts/test-api-auth-static-key.ts",
+    "create:api-key": "bun run scripts/create-api-key.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.64",

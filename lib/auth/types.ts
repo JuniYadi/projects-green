@@ -4,6 +4,7 @@ export type PlatformScope = {
   type: "platform"
   keyId: string
   keyName: string
+  organizationId: string
   environment: "SANDBOX" | "LIVE"
   scopes: string[]
 }

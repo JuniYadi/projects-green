@@ -7,6 +7,11 @@ import { hashApiKey } from "@/lib/whatsapp/crypto"
 import type { PlatformScope } from "./types"
 
 // ─── WorkOS session resolver ─────────────────────────────────────────────────
+//
+// The sealed session cookie ("wos-session" by default, configurable via
+// WORKOS_COOKIE_NAME) is created by the WorkOS AuthKit middleware in
+// proxy.ts and by modules/auth/auth.service.ts during login flows.
+// This module validates it; it does NOT create it.
 
 let _workos: ReturnType<typeof createWorkOS> | null = null
 
@@ -98,6 +103,17 @@ export const resolveApiKey = async (
   rawKey: string,
   clientIp?: string
 ): Promise<PlatformScope | null> => {
+  if (
+    process.env.NODE_ENV === "production" &&
+    (process.env.API_KEY_HASH_SALT?.trim() ?? "dev-salt-change-me") ===
+      "dev-salt-change-me"
+  ) {
+    console.error(
+      "[api-key] CRITICAL: API_KEY_HASH_SALT must be set in production. Refusing to resolve API key."
+    )
+    return null
+  }
+
   let environment: ApiKeyEnvironment = "LIVE"
   let normalizedKey = rawKey
 
@@ -136,6 +152,7 @@ export const resolveApiKey = async (
     type: "platform",
     keyId: apiKey.id,
     keyName: apiKey.name,
+    organizationId: apiKey.organizationId,
     environment: apiKey.environment as ApiKeyEnvironment,
     scopes: apiKey.scopes as string[],
   }

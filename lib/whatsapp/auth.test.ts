@@ -352,6 +352,7 @@ describe("API key path (PlatformScope)", () => {
       type: "platform" as const,
       keyId: "key_1",
       keyName: "Test Key",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: ["read"],
     }
@@ -369,6 +370,7 @@ describe("API key path (PlatformScope)", () => {
       type: "platform" as const,
       keyId: "key_2",
       keyName: "Admin Key",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: ["platform:admin"],
     }
@@ -380,6 +382,7 @@ describe("API key path (PlatformScope)", () => {
       type: "platform" as const,
       keyId: "key_3",
       keyName: "Read Key",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: ["read"],
     }
@@ -391,6 +394,7 @@ describe("API key path (PlatformScope)", () => {
       type: "platform" as const,
       keyId: "k",
       keyName: "k",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: [],
     }
@@ -419,6 +423,7 @@ describe("API key path (PlatformScope)", () => {
       type: "platform" as const,
       keyId: "k",
       keyName: "k",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: [],
     }

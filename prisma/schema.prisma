@@ -36,6 +36,7 @@ model PlatformUserRole {
 model ApiKey {
   id          String         @id @default(cuid())
   name        String
+  organizationId String
   keyHash     String
   environment ApiKeyEnvironment @default(SANDBOX)
   scopes      String[]
