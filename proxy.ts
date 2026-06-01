@@ -85,8 +85,64 @@ const resolveUserArea = (session: { role?: string; roles?: string[] }) => {
 }
 
 export default async function proxy(request: NextRequest) {
-  const { session, headers } = await authkit(request)
   const { pathname, search } = request.nextUrl
+
+  // Run authkit for API routes to validate and refresh the WorkOS session
+  // cookie.  Without this, the Elysia WhatsApp plugin's getWorkOSSession
+  // call would eventually fail because the cookie is never refreshed
+  // (no Set-Cookie headers sent back to the browser).
+  //
+  // /callback is WorkOS's OAuth callback — authkit handles the code→session
+  // exchange there.
+  //
+  // For unauthenticated requests (e.g. curl with sk-xxx / live_xxx / test_xxx),
+  // authkit returns { session: null } without redirecting — Elysia's plugin
+  // falls through to API-key auth.
+  if (
+    pathname === "/api" ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/callback")
+  ) {
+    const { locale: localeFromPathname } = getLocaleFromPathname(pathname)
+    const locale = localeFromPathname ?? getPreferredLocale(request)
+
+    const { session, headers } = await authkit(request)
+    handleAuthkitHeaders(request, headers)
+
+    // Build the response with a modified request that carries the
+    // session info as custom headers.  This is the only reliable way to
+    // pass data from Next.js middleware to the downstream route handler
+    // (Elysia).  Setting headers on the incoming request object directly
+    // does NOT propagate to the route.
+    const requestHeaders = new Headers(request.headers)
+
+    if (session?.user) {
+      requestHeaders.set("x-workos-authed", "true")
+      requestHeaders.set("x-workos-user-id", session.user.id)
+      if (session.user.email) {
+        requestHeaders.set("x-workos-user-email", session.user.email)
+      }
+      if (session.role) {
+        requestHeaders.set("x-workos-session-role", session.role)
+      }
+      if (session.roles) {
+        requestHeaders.set(
+          "x-workos-session-roles",
+          JSON.stringify(session.roles)
+        )
+      }
+    }
+
+    return withLocaleCookie(
+      NextResponse.next({
+        request: { headers: requestHeaders },
+      }),
+      locale
+    )
+  }
+
+  const { session, headers } = await authkit(request)
+
   const {
     locale: localeFromPathname,
     pathnameWithoutLocale,
