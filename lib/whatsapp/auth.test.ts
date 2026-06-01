@@ -37,10 +37,18 @@ const mockListOrganizationMemberships = mock(
   })
 )
 
+const mockAuthenticateWithSessionCookie = mock<
+  (args: {
+    sessionData: string
+    cookiePassword: string
+  }) => Promise<{ authenticated: boolean; user?: Record<string, unknown> }>
+>(async () => ({ authenticated: false }))
+
 mock.module("@workos-inc/node", () => ({
   createWorkOS: () => ({
     userManagement: {
       listOrganizationMemberships: mockListOrganizationMemberships,
+      authenticateWithSessionCookie: mockAuthenticateWithSessionCookie,
     },
   }),
 }))
@@ -147,6 +155,12 @@ beforeEach(() => {
         organizationId: string
         role?: { slug?: string | null } | null
       }>,
+  }))
+
+  mockAuthenticateWithSessionCookie.mockReset()
+  mockAuthenticateWithSessionCookie.mockImplementation(async () => ({
+    authenticated: true,
+    user: makeWorkOSUser(),
   }))
 })
 
@@ -413,6 +427,9 @@ describe("API key path (PlatformScope)", () => {
   })
 
   it("getWorkOSSession rejects wos_-prefixed bearers it cannot unseal", async () => {
+    mockAuthenticateWithSessionCookie.mockImplementation(async () => ({
+      authenticated: false,
+    }))
     const request = buildBearerRequest("wos_garbage", "/")
     const result = await getWorkOSSession(request)
     expect(result).toBeNull()
@@ -421,6 +438,10 @@ describe("API key path (PlatformScope)", () => {
   it("getWorkOSSession returns the sealed user from a valid cookie", async () => {
     const user = makeWorkOSUser({ id: "user_cookie_1" })
     const sealed = await sealUser(user)
+    mockAuthenticateWithSessionCookie.mockImplementation(async () => ({
+      authenticated: true,
+      user,
+    }))
     const request = buildCookieRequest(sealed)
     const result = await getWorkOSSession(request)
     expect(result).not.toBeNull()
