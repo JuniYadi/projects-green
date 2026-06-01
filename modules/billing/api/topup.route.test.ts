@@ -253,7 +253,6 @@ describe("TopupRoute", () => {
       const mockUpdatedAccount = {
         id: "acc-1",
         organizationId: "org-1",
-        tenantId: "tenant-1",
         balance: new Decimal("100000.00"),
         currency: "IDR",
         createdAt: new Date(),
