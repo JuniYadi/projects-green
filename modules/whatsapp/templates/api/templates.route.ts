@@ -2,7 +2,8 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
   whatsappAuthPlugin,
-  guardTenantAdmin,
+  guardOrgRead,
+  guardOrgWrite,
   guardSuperAdmin,
 } from "@/lib/whatsapp/auth"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
@@ -30,7 +31,7 @@ const templateUpdateSchema = t.Partial(t.Omit(templateBodySchema, ["languages"])
 
 export const templatesRoutes = new Elysia({ prefix: "/templates" })
   .use(whatsappAuthPlugin)
-  .get("/", guardTenantAdmin(async ({ whatsappAuth }: { whatsappAuth: any }) => {
+  .get("/", guardOrgRead(async ({ whatsappAuth }: { whatsappAuth: any }) => {
     const templates = await prisma.whatsappTemplate.findMany({
       where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin"
         ? { organizationId: whatsappAuth.organizationId! }
@@ -42,7 +43,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
     })
     return { ok: true, templates }
   }))
-  .get("/:id", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const template = await prisma.whatsappTemplate.findUnique({
       where: { id },
       include: {
@@ -62,7 +63,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
 
     return { ok: true, template }
   }))
-  .post("/", guardTenantAdmin(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
+  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
     if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
@@ -87,7 +88,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
   }), {
     body: templateBodySchema
   })
-  .patch("/:id", guardTenantAdmin(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
+  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
     const template = await prisma.whatsappTemplate.findUnique({
       where: { id },
     })
@@ -120,7 +121,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
     })
     return { ok: true, message: "Template deleted." }
   }))
-  .post("/:id/sync", guardTenantAdmin(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .post("/:id/sync", guardOrgWrite(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
     const template = await prisma.whatsappTemplate.findUnique({
       where: { id },
     })
