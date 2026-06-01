@@ -664,10 +664,12 @@ const getIdempotencyKey = ({
   return `${deliveryId}:${eventName}`
 }
 
-export const dispatchInternalBuildJob: BuildDispatcher = async () => {
-  return {
-    jobId: null,
-  }
+export const dispatchInternalBuildJob: BuildDispatcher = async (payload) => {
+  const { createJenkinsPushDispatcher } = await import(
+    "@/modules/github/github-push-dispatcher"
+  )
+
+  return createJenkinsPushDispatcher()(payload)
 }
 
 export const processGithubWebhookEvent = async ({

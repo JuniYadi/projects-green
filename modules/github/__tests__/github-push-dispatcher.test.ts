@@ -1,107 +1,164 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test"
-import { GithubPushEventHandler, GithubPushDispatcher } from "../github-push-dispatcher"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 
-// Mock Jenkins service
+import {
+  createJenkinsPushDispatcher,
+  verifyGitHubSignature,
+} from "../github-push-dispatcher"
+
+const jenkinsCalls: Array<{
+  jobName: string
+  parameters: Record<string, string | number | boolean>
+}> = []
+let jenkinsShouldReject = false
+let jenkinsRejectError: Error | null = null
+
 mock.module("@/modules/jenkins/jenkins.service", () => ({
-  triggerJenkinsJob: mock(() => Promise.resolve())
+  triggerJenkinsJob: mock(
+    (
+      jobName: string,
+      parameters: Record<string, string | number | boolean> = {}
+    ) => {
+      jenkinsCalls.push({ jobName, parameters })
+
+      if (jenkinsShouldReject && jenkinsRejectError) {
+        return Promise.reject(jenkinsRejectError)
+      }
+
+      return Promise.resolve()
+    }
+  ),
 }))
 
-describe("GithubPushEventHandler", () => {
-  const handler = new GithubPushEventHandler()
-  
-  const mockStack = {
-    id: "stack-123",
-    autoDeploy: true,
-    branchFilter: "main,develop",
-    jenkinsJobName: "deploy-job",
-    metadata: {}
-  }
+const makePayload = (overrides: Record<string, unknown> = {}) => ({
+  ref: "refs/heads/main",
+  after: "abc1234def5678",
+  commits: [],
+  pusher: { name: "johndoe", email: "john@example.com" },
+  repository: {
+    id: 1,
+    full_name: "org/my-repo",
+    name: "my-repo",
+    owner: { login: "org" },
+  },
+  ...overrides,
+})
 
-  const mockPayload = {
-    ref: "refs/heads/main",
-    after: "sha123",
-    commits: [
+describe("createJenkinsPushDispatcher", () => {
+  beforeEach(() => {
+    jenkinsCalls.length = 0
+    jenkinsShouldReject = false
+    jenkinsRejectError = null
+  })
+
+  it("triggers Jenkins job with correct parameters", async () => {
+    const dispatcher = createJenkinsPushDispatcher()
+
+    await dispatcher({
+      webhookEventId: "evt_1",
+      connectionId: "conn_1",
+      branch: "main",
+      payload: makePayload(),
+    })
+
+    expect(jenkinsCalls).toEqual([
       {
-        id: "sha123",
-        message: "feat: update",
-        author: { name: "John Doe", email: "john@example.com" },
-        url: "http://github.com/commit/123",
-        timestamp: new Date().toISOString()
-      }
-    ],
-    pusher: { name: "johndoe", email: "john@example.com" },
-    repository: {
-      id: 1,
-      full_name: "org/repo",
-      name: "repo",
-      owner: { login: "org" }
-    }
-  }
-
-  it("extracts branch correctly", () => {
-    expect(handler.extractBranch("refs/heads/main")).toBe("main")
-    expect(handler.extractBranch("refs/tags/v1")).toBe(null)
+        jobName: "deploy-my-repo",
+        parameters: {
+          GIT_REF: "main",
+          GIT_COMMIT: "abc1234def5678",
+          PUSHER: "johndoe",
+          STACK_ID: "conn_1",
+          WEBHOOK_EVENT_ID: "evt_1",
+        },
+      },
+    ])
   })
 
-  it("should trigger deploy based on branch filter", () => {
-    expect(handler.shouldTriggerDeploy(mockStack, "main")).toBe(true)
-    expect(handler.shouldTriggerDeploy(mockStack, "develop")).toBe(true)
-    expect(handler.shouldTriggerDeploy(mockStack, "feature")).toBe(false)
+  it("returns a job ID with repo/sha format", async () => {
+    const dispatcher = createJenkinsPushDispatcher()
+
+    const result = await dispatcher({
+      webhookEventId: "evt_2",
+      connectionId: "conn_2",
+      branch: "release",
+      payload: makePayload({ after: "deadbeef1234567" }),
+    })
+
+    expect(result).toEqual({ jobId: expect.stringContaining("my-repo/") })
+    expect(result.jobId).toContain("deadbee")
   })
 
-  it("should not trigger deploy if autoDeploy is false", () => {
-    const inactiveStack = { ...mockStack, autoDeploy: false }
-    expect(handler.shouldTriggerDeploy(inactiveStack, "main")).toBe(false)
+  it("handles missing commit SHA gracefully", async () => {
+    const dispatcher = createJenkinsPushDispatcher()
+
+    const result = await dispatcher({
+      webhookEventId: "evt_3",
+      connectionId: "conn_3",
+      branch: "main",
+      payload: makePayload({ after: undefined }),
+    })
+
+    expect(result).toEqual({ jobId: "my-repo/unknown" })
   })
 
-  it("extracts commits correctly", () => {
-    const commits = handler.extractCommits(mockPayload)
-    expect(commits.length).toBe(1)
-    expect(commits[0].id).toBe("sha123")
-    expect(commits[0].author).toBe("John Doe")
+  it("handles unknown repository name", async () => {
+    const dispatcher = createJenkinsPushDispatcher()
+
+    const result = await dispatcher({
+      webhookEventId: "evt_4",
+      connectionId: "conn_4",
+      branch: "main",
+      payload: makePayload({ repository: undefined }),
+    })
+
+    expect(result).toEqual({ jobId: "unknown/abc1234" })
   })
 
-  it("syncs push metadata", async () => {
-    const stack = { ...mockStack }
-    await handler.syncPushMetadata(stack, "main", [{ id: "1" }], "johndoe")
-    expect(stack.metadata.lastPush).toBeDefined()
-    expect(stack.metadata.lastPush?.ref).toBe("main")
-    expect(stack.metadata.lastPush?.author).toBe("johndoe")
+  it("re-throws when Jenkins job trigger fails", async () => {
+    jenkinsShouldReject = true
+    jenkinsRejectError = new Error("Jenkins unreachable")
+
+    const dispatcher = createJenkinsPushDispatcher()
+
+    await expect(
+      dispatcher({
+        webhookEventId: "evt_5",
+        connectionId: "conn_5",
+        branch: "main",
+        payload: makePayload(),
+      })
+    ).rejects.toThrow("Jenkins unreachable")
   })
 })
 
-describe("GithubPushDispatcher", () => {
-  it("dispatches deployment to Jenkins", async () => {
-    const { triggerJenkinsJob } = await import("@/modules/jenkins/jenkins.service")
-    const dispatcher = new GithubPushDispatcher()
-    
-    const stack = {
-      id: "stack-123",
-      autoDeploy: true,
-      jenkinsJobName: "deploy-job",
-      metadata: {}
-    }
-    
-    const payload = {
-      ref: "refs/heads/main",
-      after: "sha123",
-      commits: [],
-      pusher: { name: "johndoe", email: "john@example.com" },
-      repository: {
-        id: 1,
-        full_name: "org/repo",
-        name: "repo",
-        owner: { login: "org" }
-      }
-    }
+describe("verifyGitHubSignature", () => {
+  it("returns false when signature is null", () => {
+    expect(verifyGitHubSignature("body", null, "secret")).toBe(false)
+  })
 
-    await dispatcher.dispatchDeployment(stack, payload)
-    
-    expect(triggerJenkinsJob).toHaveBeenCalledWith("deploy-job", {
-      GIT_REF: "main",
-      GIT_COMMIT: "sha123",
-      PUSHER: "johndoe",
-      STACK_ID: "stack-123"
-    })
+  it("returns false when signature is undefined", () => {
+    expect(verifyGitHubSignature("body", undefined, "secret")).toBe(false)
+  })
+
+  it("returns false when payload is empty", () => {
+    expect(verifyGitHubSignature("", "sig", "secret")).toBe(false)
+  })
+
+  it("returns false when secret is empty", () => {
+    expect(verifyGitHubSignature("body", "sig", "")).toBe(false)
+  })
+
+  it("returns true for valid signature", () => {
+    const { createHmac } = require("node:crypto")
+    const secret = "test-secret"
+    const payload = "test-payload"
+    const hmac = createHmac("sha256", secret)
+    const digest = "sha256=" + hmac.update(payload).digest("hex")
+
+    expect(verifyGitHubSignature(payload, digest, secret)).toBe(true)
+  })
+
+  it("returns false for invalid signature", () => {
+    expect(verifyGitHubSignature("body", "sha256=invalid", "secret")).toBe(false)
   })
 })
