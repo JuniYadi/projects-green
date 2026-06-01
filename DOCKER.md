@@ -4,8 +4,12 @@
 
 Docker Compose is split into two files for separation of concerns:
 
-- `docker-compose.db.yml` — Database services (PostgreSQL, Redis)
-- `docker-compose.app.yml` — Application services (Web, Workers)
+- `docker-compose.db.yml` — Database services (PostgreSQL, Redis) on the shared `pfnapp-net` network
+- `docker-compose.app.yml` — Application services (Web, Workers) on the same external `pfnapp-net` network
+
+The database and app compose files share a named external network (`pfnapp-net`) so the app services can resolve the `postgres` and `redis` hostnames and wait for them to be healthy via `depends_on`.
+
+> **Important:** Always start `docker-compose.db.yml` before `docker-compose.app.yml` so the shared network exists.
 
 ## Quick Start
 
@@ -21,7 +25,7 @@ docker compose -f docker-compose.db.yml up -d
 docker compose -f docker-compose.app.yml up -d
 ```
 
-### Start everything
+### Start everything (merged)
 
 ```bash
 docker compose -f docker-compose.db.yml -f docker-compose.app.yml up -d
@@ -71,8 +75,9 @@ docker compose -f docker-compose.app.yml logs -f web
 docker compose -f docker-compose.app.yml down
 docker compose -f docker-compose.db.yml down
 
-# Stop everything (including volumes)
-docker compose -f docker-compose.db.yml -f docker-compose.app.yml down -v
+# Stop everything (including volumes and shared network)
+docker compose -f docker-compose.db.yml down -v
+docker network rm pfnapp-net
 
 # Rebuild without cache
 docker compose -f docker-compose.app.yml build --no-cache web
