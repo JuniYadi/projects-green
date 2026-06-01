@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
-  whatsappAuthPlugin,
   guardOrgRead,
   guardOrgWrite,
   guardOrgFull,
@@ -17,8 +16,7 @@ const deviceBodySchema = t.Object({
 
 const deviceUpdateSchema = t.Partial(deviceBodySchema)
 
-export const devicesRoutes = new Elysia()
-  .use(whatsappAuthPlugin)
+export const devicesRoutes = new Elysia({ prefix: "/devices" })
   .get("/", guardOrgRead(async ({ whatsappAuth, set }: { whatsappAuth: any, set: any }) => {
     const devices = await prisma.whatsappDevice.findMany({
       where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" 
