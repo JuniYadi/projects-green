@@ -80,7 +80,7 @@ describe("resolveSidebarMenu", () => {
     ])
     expect(projects.find((project) => project.name === "Overview")?.isActive).toBe(true)
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications"])
+    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp"])
     expect(navMain[0]?.isActive).toBe(false)
   })
 
@@ -95,7 +95,7 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications"])
+    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp"])
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
       "Billing",
@@ -116,6 +116,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Documentation",
       "Settings",
+      "WhatsApp",
     ])
     expect(navMain[0]?.items?.map((item) => item.title)).toEqual(["Registry"])
     expect(navMain[0]?.isActive).toBe(true)

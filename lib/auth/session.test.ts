@@ -14,10 +14,6 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
-mock.module("@/lib/whatsapp/crypto", () => ({
-  hashApiKey: mock(async () => "mocked-hash"),
-}))
-
 const { resolveApiKey } = await import("@/lib/auth/session")
 
 describe("resolveApiKey", () => {

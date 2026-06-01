@@ -1,6 +1,7 @@
 /**
  * Billing Cycle Service Tests
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 import { Prisma, PrismaClient } from "@prisma/client"
@@ -16,52 +17,52 @@ const { BillingCycleService } = await import("./billing-cycle.service")
 function createMockPrisma() {
   return {
     billingRun: {
-      findFirst: mock<(...args: any[]) => any>(async () => null),
-      create: mock<(...args: any[]) => any>(async (data: any) => ({
+      findFirst: mock(async () => null as any),
+      create: mock(async (data: any) => ({
         id: "br-1",
         ...data,
         status: "RUNNING",
-      })),
-      update: mock<(...args: any[]) => any>(async (data: any) => data),
+      })) as any,
+      update: mock(async (data: unknown) => data),
     },
     billingSubscription: {
-      findMany: mock<(...args: any[]) => any>(async () => []),
+      findMany: mock(async () => [] as any),
     },
     billingAccount: {
-      findUnique: mock<(...args: any[]) => any>(async () => null),
-      update: mock<(...args: any[]) => any>(async (data: any) => data),
+      findUnique: mock(async () => null as any),
+      update: mock(async (data: unknown) => data),
     },
     invoice: {
-      create: mock<(...args: any[]) => any>(async (data: any) => ({
+      create: mock(async (data: any) => ({
         id: "inv-1",
         ...data.data,
       })),
-      update: mock<(...args: any[]) => any>(async (data: any) => data),
-      updateMany: mock<(...args: any[]) => any>(async () => ({ count: 0 })),
-      findMany: mock<(...args: any[]) => any>(async () => []),
+      update: mock(async (data: unknown) => data),
+      updateMany: mock(async () => ({ count: 0 })),
+      findMany: mock(async () => [] as any),
     },
     invoiceLine: {
-      create: mock<(...args: any[]) => any>(async (data: any) => ({
+      create: mock(async (data: any) => ({
         id: "il-1",
         ...data.data,
       })),
     },
     billingAdjustment: {
-      create: mock<(...args: any[]) => any>(async (data: any) => ({
+      create: mock(async (data: any) => ({
         id: "adj-1",
         ...data.data,
       })),
     },
-    $transaction: mock<(...args: any[]) => any>(async (fn: any) =>
+    $transaction: mock(async (fn: any) =>
       fn(createMockPrisma()),
-    ),
+    ) as any,
   }
 }
 
 // ─── Mock UsageLedgerService ────────────────────────────────────────────────
 
 const mockUsageLedger = {
-  generateRatedUsage: mock(async () => [] as any[]),
+  generateRatedUsage: mock(async () => [] as Array<Record<string, unknown>>),
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -215,7 +216,7 @@ describe("BillingCycleService", () => {
         balance: new Decimal(5000),
       }))
 
-      mockPrisma.$transaction.mockImplementation(async (fn: any) =>
+      mockPrisma.$transaction.mockImplementation(async (fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>) =>
         fn(mockPrisma),
       )
 
@@ -280,7 +281,7 @@ describe("BillingCycleService", () => {
         },
       }))
 
-      mockPrisma.$transaction.mockImplementation(async (fn: any) =>
+      mockPrisma.$transaction.mockImplementation(async (fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>) =>
         fn(mockPrisma),
       )
 

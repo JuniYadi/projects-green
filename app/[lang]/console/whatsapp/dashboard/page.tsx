@@ -125,10 +125,11 @@ export default function WhatsAppDashboardPage() {
 
         // UNAUTHORIZED → redirect to login (serverFetch already does this,
         // but handle it here as a safety net)
+        const apiError = err as Record<string, unknown>
         if (
           err instanceof Error &&
           "error" in err &&
-          (err as any).error === "UNAUTHORIZED"
+          apiError.error === "UNAUTHORIZED"
         ) {
           const pathParts = window.location.pathname.split("/")
           const locale = pathParts[1] || "en"
@@ -139,13 +140,13 @@ export default function WhatsAppDashboardPage() {
         if (
           err instanceof Error &&
           "error" in err &&
-          (err as any).error === "FORBIDDEN" &&
-          (err as any).required
+          apiError.error === "FORBIDDEN" &&
+          apiError.required
         ) {
           setAccessDenied({
-            required: (err as any).required,
-            current: (err as any).current ?? null,
-            action: (err as any).action ?? "",
+            required: apiError.required as string,
+            current: (apiError.current as string) ?? null,
+            action: (apiError.action as string) ?? "",
           })
           setState("access_denied")
         } else {

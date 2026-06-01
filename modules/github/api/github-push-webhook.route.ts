@@ -19,7 +19,8 @@ app.post("/push", async (c) => {
   const handler = new GithubPushEventHandler()
   
   // Find stacks associated with this repository
-  const stacks = await prisma.stack.findMany({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stacks = await (prisma as any).stack.findMany({
     where: {
       githubRepositoryConnection: {
         fullName: payload.repository.full_name
@@ -37,13 +38,15 @@ app.post("/push", async (c) => {
 
   // Handle push for each stack
   const results = await Promise.allSettled(
-    stacks.map(stack => handler.handlePush(stack as any, payload))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    stacks.map((stack: any) => handler.handlePush(stack as import("../github-push-dispatcher").Stack, payload))
   )
 
   return c.json({ 
     message: "Processed push event",
     stacksProcessed: stacks.length,
-    results: results.map(r => r.status)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    results: results.map((r: any) => r.status)
   })
 })
 

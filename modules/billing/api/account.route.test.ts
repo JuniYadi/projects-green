@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client"
 import type { Organization } from "@workos-inc/node"
 
 import { createBillingAccountRoutes } from "./account.route"
+import { topupSchema, adminAdjustSchema, adminSubscriptionUpdateSchema } from "./billing.schemas"
 
 describe("GET /account - JIT upsert", () => {
   const mockEnsureBillingAccountForOrg = vi.fn()
@@ -73,9 +74,9 @@ describe("GET /account - JIT upsert", () => {
   it("returns 401 when user is not authenticated", async () => {
     const createRouteUnauthorized = () =>
       createBillingAccountRoutes({
-        authenticate: async () => ({ user: null, organizationId: null }) as any,
-        ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg as any,
-        getOrganizationAction: mockGetOrganizationAction as any,
+        authenticate: async () => ({ user: null, organizationId: null }),
+        ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg,
+        getOrganizationAction: mockGetOrganizationAction,
       })
 
     const app = createRouteUnauthorized()
@@ -90,9 +91,9 @@ describe("GET /account - JIT upsert", () => {
         authenticate: async () => ({
           user: { id: "user-1", email: "test@example.com" },
           organizationId: null,
-        }) as any,
-        ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg as any,
-        getOrganizationAction: mockGetOrganizationAction as any,
+        }),
+        ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg,
+        getOrganizationAction: mockGetOrganizationAction,
       })
 
     const app = createRouteForbidden()
@@ -106,8 +107,6 @@ describe("GET /account - JIT upsert", () => {
 describe("billingSchemas", () => {
   describe("topupSchema", () => {
     it("validates correct input", async () => {
-      const { topupSchema } = require("./billing.schemas")
-
       const validInput = {
         amount: 50000,
         paymentMethod: "manual_bank_transfer",
@@ -119,8 +118,6 @@ describe("billingSchemas", () => {
     })
 
     it("accepts referenceId with alphanumeric and dash/underscore", async () => {
-      const { topupSchema } = require("./billing.schemas")
-
       const validInput = {
         amount: 100000,
         paymentMethod: "manual_bank_transfer",
@@ -132,8 +129,6 @@ describe("billingSchemas", () => {
     })
 
     it("rejects referenceId with special characters", async () => {
-      const { topupSchema } = require("./billing.schemas")
-
       const invalidInput = {
         amount: 50000,
         paymentMethod: "manual_bank_transfer",
@@ -145,8 +140,6 @@ describe("billingSchemas", () => {
     })
 
     it("enforces max amount of 1,000,000", async () => {
-      const { topupSchema } = require("./billing.schemas")
-
       const overLimitInput = {
         amount: 2_000_000,
         paymentMethod: "manual_bank_transfer",
@@ -157,8 +150,6 @@ describe("billingSchemas", () => {
     })
 
     it("enforces min amount of 1", async () => {
-      const { topupSchema } = require("./billing.schemas")
-
       const underLimitInput = {
         amount: 0,
         paymentMethod: "manual_bank_transfer",
@@ -169,8 +160,6 @@ describe("billingSchemas", () => {
     })
 
     it("enforces referenceId max length of 100", async () => {
-      const { topupSchema } = require("./billing.schemas")
-
       const longRefInput = {
         amount: 50000,
         paymentMethod: "manual_bank_transfer",
@@ -182,8 +171,6 @@ describe("billingSchemas", () => {
     })
 
     it("allows missing referenceId", async () => {
-      const { topupSchema } = require("./billing.schemas")
-
       const noRefInput = {
         amount: 50000,
         paymentMethod: "manual_bank_transfer",
@@ -196,8 +183,6 @@ describe("billingSchemas", () => {
 
   describe("adminAdjustSchema", () => {
     it("validates correct CREDIT input", async () => {
-      const { adminAdjustSchema } = require("./billing.schemas")
-
       const validInput = {
         organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "CREDIT",
@@ -210,8 +195,6 @@ describe("billingSchemas", () => {
     })
 
     it("validates correct DEBIT input", async () => {
-      const { adminAdjustSchema } = require("./billing.schemas")
-
       const validInput = {
         organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "DEBIT",
@@ -224,8 +207,6 @@ describe("billingSchemas", () => {
     })
 
     it("rejects invalid organizationId UUID", async () => {
-      const { adminAdjustSchema } = require("./billing.schemas")
-
       const invalidInput = {
         organizationId: "not-a-uuid",
         type: "CREDIT",
@@ -238,8 +219,6 @@ describe("billingSchemas", () => {
     })
 
     it("rejects invalid type", async () => {
-      const { adminAdjustSchema } = require("./billing.schemas")
-
       const invalidInput = {
         organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "REFUND",
@@ -252,8 +231,6 @@ describe("billingSchemas", () => {
     })
 
     it("enforces min amount of 1", async () => {
-      const { adminAdjustSchema } = require("./billing.schemas")
-
       const invalidInput = {
         organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "CREDIT",
@@ -266,8 +243,6 @@ describe("billingSchemas", () => {
     })
 
     it("enforces reason max length of 500", async () => {
-      const { adminAdjustSchema } = require("./billing.schemas")
-
       const invalidInput = {
         organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "CREDIT",
@@ -282,8 +257,6 @@ describe("billingSchemas", () => {
 
   describe("adminSubscriptionUpdateSchema", () => {
     it("validates planId only update", async () => {
-      const { adminSubscriptionUpdateSchema } = require("./billing.schemas")
-
       const validInput = {
         planId: "550e8400-e29b-41d4-a716-446655440000",
       }
@@ -293,8 +266,6 @@ describe("billingSchemas", () => {
     })
 
     it("validates status update", async () => {
-      const { adminSubscriptionUpdateSchema } = require("./billing.schemas")
-
       const validInput = {
         status: "SUSPENDED",
       }
@@ -304,8 +275,6 @@ describe("billingSchemas", () => {
     })
 
     it("validates allocatedConfig with cpu", async () => {
-      const { adminSubscriptionUpdateSchema } = require("./billing.schemas")
-
       const validInput = {
         allocatedConfig: {
           cpu: 2000,
@@ -317,8 +286,6 @@ describe("billingSchemas", () => {
     })
 
     it("validates allocatedConfig with devices", async () => {
-      const { adminSubscriptionUpdateSchema } = require("./billing.schemas")
-
       const validInput = {
         allocatedConfig: {
           devices: 5,
@@ -330,8 +297,6 @@ describe("billingSchemas", () => {
     })
 
     it("rejects invalid status", async () => {
-      const { adminSubscriptionUpdateSchema } = require("./billing.schemas")
-
       const invalidInput = {
         status: "PENDING",
       }
@@ -341,8 +306,6 @@ describe("billingSchemas", () => {
     })
 
     it("rejects cpu below minimum of 100", async () => {
-      const { adminSubscriptionUpdateSchema } = require("./billing.schemas")
-
       const invalidInput = {
         allocatedConfig: {
           cpu: 50,
@@ -354,8 +317,6 @@ describe("billingSchemas", () => {
     })
 
     it("rejects mem below minimum of 128", async () => {
-      const { adminSubscriptionUpdateSchema } = require("./billing.schemas")
-
       const invalidInput = {
         allocatedConfig: {
           mem: 64,

@@ -3,7 +3,30 @@
  * Migrated from Laravel JenkinsCredentialHandler.php
  */
 
-import type { EnvVar, Probe, Toleration } from "../deploy/deploy.helm"
+export interface EnvVar {
+  id: string
+  key: string
+  value: string
+  type?: "plain" | "secret"
+  scope?: "all" | "build" | "runtime"
+}
+
+export interface Probe {
+  path: string
+  port: number
+  initialDelaySeconds?: number
+  periodSeconds?: number
+  timeoutSeconds?: number
+  failureThreshold?: number
+  successThreshold?: number
+}
+
+export interface Toleration {
+  key?: string
+  operator?: string
+  value?: string
+  effect?: string
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

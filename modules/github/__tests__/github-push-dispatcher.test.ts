@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { createHmac } from "node:crypto"
 
 import {
   createJenkinsPushDispatcher,
@@ -149,7 +150,6 @@ describe("verifyGitHubSignature", () => {
   })
 
   it("returns true for valid signature", () => {
-    const { createHmac } = require("node:crypto")
     const secret = "test-secret"
     const payload = "test-payload"
     const hmac = createHmac("sha256", secret)

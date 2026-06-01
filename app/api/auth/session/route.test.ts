@@ -73,16 +73,16 @@ describe("GET /api/auth/session", () => {
     const response = await route.GET()
     const body = (await response.json()) as {
       ok: boolean
+      user: { id: string; lastSignInAt: string | null }
       authenticationMethod: string | null
       authenticationCategory: string
-      lastSignInAt: string | null
     }
 
     expect(response.status).toBe(200)
     expect(body.ok).toBe(true)
     expect(body.authenticationMethod).toBe("GoogleOAuth")
     expect(body.authenticationCategory).toBe("oauth")
-    expect(body.lastSignInAt).toBe("2026-05-20T05:00:00.000Z")
+    expect(body.user.lastSignInAt).toBe("2026-05-20T05:00:00.000Z")
   })
 
   it("returns unknown category when method cannot be decoded", async () => {

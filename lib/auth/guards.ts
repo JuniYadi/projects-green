@@ -1,7 +1,7 @@
-import type { AuthContext, WorkOSScope, PlatformScope } from "./types"
+import type { AuthContext, WorkOSScope } from "./types"
 import type { OrgRole } from "./org-role"
 
-type GuardHandler = (ctx: any) => Promise<unknown>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GuardedRoute = (ctx: any) => Promise<unknown>
 
 function isSuperAdmin(ctx: WorkOSScope): boolean {

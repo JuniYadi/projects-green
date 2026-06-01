@@ -46,6 +46,7 @@ export function BankAccountsTab({ lang }: { lang: string }) {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchBankAccounts()
   }, [fetchBankAccounts])
 

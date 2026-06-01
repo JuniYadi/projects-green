@@ -82,6 +82,13 @@ mock.module("react-icons/si", () => {
     SiWordpress: () => <div data-testid="si-wordpress">WordPress Icon</div>,
     SiN8N: () => <div data-testid="si-n8n">n8n Icon</div>,
     SiDocker: () => <div data-testid="si-docker">Docker Icon</div>,
+    SiGhost: () => <div>Ghost</div>,
+    SiStrapi: () => <div>Strapi</div>,
+    SiDirectus: () => <div>Directus</div>,
+    SiPayloadcms: () => <div>Payload</div>,
+    SiPocketbase: () => <div>PocketBase</div>,
+    SiUmami: () => <div>Umami</div>,
+    SiPlausibleanalytics: () => <div>Plausible</div>,
   }
 })
 

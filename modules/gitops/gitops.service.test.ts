@@ -2,7 +2,7 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 
 // 1. Define mock objects
 const mockFetch = mock()
-global.fetch = mockFetch as any
+global.fetch = mockFetch as unknown as typeof global.fetch
 
 // 2. Register module mocks (none needed for this leaf service yet, but we'll mock process.env)
 process.env.GITOPS_REPO_PAT = "test-pat"
@@ -90,8 +90,9 @@ describe("GitOpsRepositoryService", () => {
     expect(mockFetch).toHaveBeenCalledTimes(4) // getRef + createTree + createCommit + updateRef
 
     // Check createTree call body for deletion
-    const treeCall = mockFetch.mock.calls.find(call => call[0].endsWith("/git/trees"))
-    const body = JSON.parse(treeCall[1].body)
+    const treeCall = mockFetch.mock.calls.find(call => (call[0] as string).endsWith("/git/trees"))
+    expect(treeCall).toBeDefined()
+    const body = JSON.parse((treeCall as unknown as [string, { body: string }])[1].body)
     expect(body.tree).toContainEqual({
       path: "old-file.txt",
       mode: "100644",

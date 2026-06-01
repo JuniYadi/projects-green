@@ -15,7 +15,7 @@ import {
 } from "../users.service"
 
 const inviteBodySchema = t.Object({
-  email: t.String({ format: "email" }),
+  email: t.String(),
   role: t.Enum({ admin: "admin", member: "member" }),
 })
 
@@ -59,7 +59,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .get(
     "/",
-    guardOrgRead(async ({ whatsappAuth, set }) => {
+    guardOrgRead(async ({ whatsappAuth, set }: any) => {
       const auth = whatsappAuth as any
       if (!auth.organizationId) {
         set.status = 400
@@ -81,7 +81,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .post(
     "/",
-    guardOrgWrite(async ({ body, whatsappAuth, set })=> {
+    guardOrgWrite(async ({ body, whatsappAuth, set }: any)=> {
       const auth = whatsappAuth as any
       if (!auth.organizationId) {
         set.status = 400
@@ -113,7 +113,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .get(
     "/:id",
-    guardOrgRead(async ({ params: { id }, whatsappAuth, set })=> {
+    guardOrgRead(async ({ params: { id }, whatsappAuth, set }: any)=> {
       const auth = whatsappAuth as any
       const user = await getWhatsAppUser(id)
 
@@ -148,7 +148,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .patch(
     "/:id",
-    guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set })=> {
+    guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: any)=> {
       const auth = whatsappAuth as any
       const user = await getWhatsAppUser(id)
 
@@ -186,7 +186,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .delete(
     "/:id",
-    guardOrgFull(async ({ params: { id }, whatsappAuth, set })=> {
+    guardOrgFull(async ({ params: { id }, whatsappAuth, set }: any)=> {
       const auth = whatsappAuth as any
       const user = await getWhatsAppUser(id)
 

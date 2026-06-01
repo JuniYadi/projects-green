@@ -22,7 +22,7 @@ export const createAdminOrganizationsRoutes = (deps = {}) => {
       try {
         const org = await createAdminOrganization({
           name: body.name.trim(),
-          domains: body.domains?.map((d) => d.trim()),
+          domains: body.domains?.map((d: string) => d.trim()),
           externalId: body.externalId?.trim(),
         })
 
