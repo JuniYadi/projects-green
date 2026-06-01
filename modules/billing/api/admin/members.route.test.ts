@@ -196,21 +196,21 @@ describe("AdminMembersRoute", () => {
       const mockSubscriptions = [
         {
           id: "sub-1",
-          tenantId: "tenant-1",
+          organizationId: "tenant-1",
           status: "ACTIVE",
           package: { code: "WA_BASIC" },
           plan: { code: "basic" },
         },
         {
           id: "sub-2",
-          tenantId: "tenant-1",
+          organizationId: "tenant-1",
           status: "ACTIVE",
           package: { code: "WA_PRO" },
           plan: { code: "pro" },
         },
         {
           id: "sub-3",
-          tenantId: "tenant-2",
+          organizationId: "tenant-2",
           status: "ACTIVE",
           package: { code: "WA_BASIC" },
           plan: { code: "basic" },
@@ -221,13 +221,13 @@ describe("AdminMembersRoute", () => {
       const mockUsage = [
         {
           id: "usage-1",
-          tenantId: "tenant-1",
+          organizationId: "tenant-1",
           period: currentMonth,
           amountIdr: new Decimal("25000.00"),
         },
         {
           id: "usage-2",
-          tenantId: "tenant-2",
+          organizationId: "tenant-2",
           period: currentMonth,
           amountIdr: new Decimal("15000.00"),
         },
@@ -258,12 +258,12 @@ describe("AdminMembersRoute", () => {
       expect(body.ok).toBe(true)
       expect(body.members).toHaveLength(2)
 
-      const tenant1Member = body.members.find((m: { tenantId: string }) => m.tenantId === "tenant-1")
+      const tenant1Member = body.members.find((m: { organizationId: string }) => m.organizationId === "tenant-1")
       expect(tenant1Member.subscriptionCount).toBe(2)
       expect(tenant1Member.monthlySpendIdr).toBe("25000.00")
       expect(tenant1Member.balanceIdr).toBe("150000.00")
 
-      const tenant2Member = body.members.find((m: { tenantId: string }) => m.tenantId === "tenant-2")
+      const tenant2Member = body.members.find((m: { organizationId: string }) => m.organizationId === "tenant-2")
       expect(tenant2Member.subscriptionCount).toBe(1)
       expect(tenant2Member.monthlySpendIdr).toBe("15000.00")
       expect(tenant2Member.balanceIdr).toBe("75000.50")
@@ -382,7 +382,7 @@ describe("AdminMembersRoute", () => {
       const mockSubscriptions = [
         {
           id: "sub-1",
-          tenantId: "tenant-1",
+          organizationId: "tenant-1",
           status: "ACTIVE",
           package: { code: "WA_BASIC" },
           plan: { code: "basic" },
@@ -390,7 +390,7 @@ describe("AdminMembersRoute", () => {
         },
         {
           id: "sub-2",
-          tenantId: "tenant-1",
+          organizationId: "tenant-1",
           status: "ACTIVE",
           package: { code: "WA_PRO" },
           plan: { code: "pro" },
@@ -402,7 +402,7 @@ describe("AdminMembersRoute", () => {
       const mockUsage = [
         {
           id: "usage-1",
-          tenantId: "tenant-1",
+          organizationId: "tenant-1",
           period: currentMonth,
           category: "MESSAGE",
           amountIdr: new Decimal("35000.00"),
@@ -410,7 +410,7 @@ describe("AdminMembersRoute", () => {
         },
         {
           id: "usage-2",
-          tenantId: "tenant-1",
+          organizationId: "tenant-1",
           period: currentMonth,
           category: "DEVICE",
           amountIdr: new Decimal("15000.00"),
@@ -441,7 +441,7 @@ describe("AdminMembersRoute", () => {
       expect(response.status).toBe(200)
       const body = await response.json()
       expect(body.ok).toBe(true)
-      expect(body.member.tenantId).toBe("tenant-1")
+      expect(body.member.organizationId).toBe("tenant-1")
       expect(body.member.name).toBe("Test Tenant")
       expect(body.member.subscriptionCount).toBe(2)
       expect(body.member.monthlySpendIdr).toBe("50000.00")
