@@ -87,7 +87,19 @@ async function serverFetch<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.message ?? `HTTP ${res.status}`)
+    const error = new Error(body.message ?? `HTTP ${res.status}`) as Error & {
+      error?: string
+      required?: string
+      current?: string | null
+      action?: string
+    }
+    if (body.error === "FORBIDDEN" && body.required) {
+      error.error = body.error
+      error.required = body.required
+      error.current = body.current ?? null
+      error.action = body.action ?? ""
+    }
+    throw error
   }
 
   return res.json() as Promise<T>

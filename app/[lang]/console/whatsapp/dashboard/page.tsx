@@ -23,8 +23,15 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
+import { AccessRestricted } from "@/modules/whatsapp/ui/access-restricted"
 
-type DashboardState = "loading" | "error" | "loaded"
+type DashboardState = "loading" | "error" | "access_denied" | "loaded"
+
+type AccessDeniedInfo = {
+  required: string
+  current: string | null
+  action: string
+}
 
 type MessageDirection = "INBOX" | "OUTBOX"
 
@@ -95,6 +102,8 @@ export default function WhatsAppDashboardPage() {
     ConversationListItem[]
   >([])
   const [errorMessage, setErrorMessage] = React.useState("")
+  const [accessDenied, setAccessDenied] =
+    React.useState<AccessDeniedInfo | null>(null)
 
   const loadData = React.useCallback(() => {
     let cancelled = false
@@ -113,12 +122,26 @@ export default function WhatsAppDashboardPage() {
         setState("loaded")
       } catch (err) {
         if (cancelled) return
-        const message =
-          err instanceof Error
-            ? err.message
-            : "Failed to load dashboard data."
-        setErrorMessage(message)
-        setState("error")
+        if (
+          err instanceof Error &&
+          "error" in err &&
+          (err as any).error === "FORBIDDEN" &&
+          (err as any).required
+        ) {
+          setAccessDenied({
+            required: (err as any).required,
+            current: (err as any).current ?? null,
+            action: (err as any).action ?? "",
+          })
+          setState("access_denied")
+        } else {
+          const message =
+            err instanceof Error
+              ? err.message
+              : "Failed to load dashboard data."
+          setErrorMessage(message)
+          setState("error")
+        }
       }
     }
 
@@ -188,6 +211,10 @@ export default function WhatsAppDashboardPage() {
           </Button>
         </div>
       </div>
+
+      {state === "access_denied" && accessDenied && (
+        <AccessRestricted {...accessDenied} />
+      )}
 
       {state === "error" && (
         <Card className="border-destructive">
