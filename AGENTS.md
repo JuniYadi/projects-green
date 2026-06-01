@@ -100,6 +100,18 @@ Mock at the **lowest shared dependency** (infrastructure), not at intermediate s
 
 6. **Validate with `bun run test:coverage` before every PR** — coverage runs in a single process (same as CI), so it will surface cross-file pollution that `bun test` misses locally.
 
+## E2E Test Scripts
+
+Real-use-case scripts that exercise the API auth flows against a running dev server (`bun run dev` on `:3300`). These are NOT unit tests — they require a live server and, for the cookie test, a browser session.
+
+| Script | What it tests | Prerequisites |
+|---|---|---|
+| `bun run test:auth:cookie` | Cookie-based auth (`wos-session`) against `/api/auth/whoami` and `/api/whatsapp/devices` | `bun run dev` running; `WOS_SESSION_COOKIE` env var set (copy from browser DevTools: Application > Cookies > wos-session) |
+| `bun run test:auth:static-key` | Static API key auth (`Authorization: Bearer test_xxx`) against the same endpoints; creates + cleans up a key via Prisma | `bun run dev` running; `DATABASE_URL` + `ORGANIZATION_ID` env vars set |
+| `bun run create:api-key` | Issues a new API key and prints the raw value to stdout once | `DATABASE_URL` env var set |
+
+**Important:** These scripts hit the real server. They are not suitable for CI until a dev-server harness is added.
+
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commit style seen in history: `feat: ...`, `fix: ...`, `test: ...`, `chore: ...`, `docs: ...`.
 - Use imperative, scoped summaries (example: `feat: add onboarding flow page`).

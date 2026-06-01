@@ -19,9 +19,9 @@ const deviceUpdateSchema = t.Partial(deviceBodySchema)
 export const devicesRoutes = new Elysia({ prefix: "/devices" })
   .get("/", guardOrgRead(async ({ whatsappAuth, set }: { whatsappAuth: any, set: any }) => {
     const devices = await prisma.whatsappDevice.findMany({
-      where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" 
-        ? { organizationId: whatsappAuth.organizationId! } 
-        : {},
+      where: whatsappAuth.platformRole === "super_admin"
+        ? {}
+        : { organizationId: whatsappAuth.organizationId! },
       orderBy: { createdAt: "desc" },
     })
     return { ok: true, devices }
@@ -36,7 +36,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
-    if (whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+    if (whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
@@ -44,7 +44,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     return { ok: true, device }
   }))
   .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
-    if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
+    if (!whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
     }
@@ -52,7 +52,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     const device = await prisma.whatsappDevice.create({
       data: {
         ...body,
-        organizationId: whatsappAuth.type === "workos" ? whatsappAuth.organizationId! : (body as any).organizationId,
+        organizationId: whatsappAuth.organizationId,
         status: "DISCONNECTED",
       },
     })
@@ -71,7 +71,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
-    if (whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+    if (whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
@@ -101,7 +101,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
-    if (whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+    if (whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
@@ -125,7 +125,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
-    if (whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+    if (whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }

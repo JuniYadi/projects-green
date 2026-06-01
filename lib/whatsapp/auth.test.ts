@@ -84,12 +84,18 @@ const requireSuperAdmin = (ctx: AuthContext): boolean => {
 }
 
 const requireTenantMember = (ctx: AuthContext): boolean => {
-  if (ctx.type === "platform") return false
+  if (ctx.type === "platform") return ctx.organizationId.length > 0
   return hasOrgMembership(ctx)
 }
 
 const requireTenantAdmin = (ctx: AuthContext): boolean => {
-  if (ctx.type === "platform") return false
+  if (ctx.type === "platform") {
+    return (
+      ctx.organizationId.length > 0 &&
+      Array.isArray(ctx.scopes) &&
+      (ctx.scopes.includes("platform:admin") || ctx.scopes.includes("*"))
+    )
+  }
   if (isSuperAdmin(ctx)) return true
   return ctx.orgRole === "admin" || ctx.orgRole === "owner"
 }
@@ -347,32 +353,47 @@ describe("WorkOS SDK throws on membership lookup", () => {
 // ─── 4. API key path (PlatformScope) — guard behaviour ──────────────────────
 
 describe("API key path (PlatformScope)", () => {
-  it("PlatformScope has type='platform', orgRole undefined, requireTenantAdmin returns false", () => {
+  it("PlatformScope has type='platform', orgRole undefined, requireTenantMember returns true when orgId present, requireTenantAdmin returns false without admin scope", () => {
     const platformScope = {
       type: "platform" as const,
       keyId: "key_1",
       keyName: "Test Key",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: ["read"],
     }
     expect(isPlatformScope(platformScope)).toBe(true)
     expect(isWorkOSScope(platformScope)).toBe(false)
     expect(requireTenantAdmin(platformScope)).toBe(false)
-    expect(requireTenantMember(platformScope)).toBe(false)
+    expect(requireTenantMember(platformScope)).toBe(true)
     expect(
       (platformScope as { orgRole?: unknown }).orgRole
     ).toBeUndefined()
   })
 
-  it("PlatformScope with platform:admin scope passes requireSuperAdmin", () => {
+  it("PlatformScope with empty organizationId fails requireTenantMember", () => {
+    const platformScope = {
+      type: "platform" as const,
+      keyId: "key_empty",
+      keyName: "No Org Key",
+      organizationId: "",
+      environment: "LIVE" as const,
+      scopes: ["read"],
+    }
+    expect(requireTenantMember(platformScope)).toBe(false)
+  })
+
+  it("PlatformScope with platform:admin scope passes requireSuperAdmin and requireTenantAdmin", () => {
     const platformScope = {
       type: "platform" as const,
       keyId: "key_2",
       keyName: "Admin Key",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: ["platform:admin"],
     }
     expect(requireSuperAdmin(platformScope)).toBe(true)
+    expect(requireTenantAdmin(platformScope)).toBe(true)
   })
 
   it("PlatformScope without admin scope fails requireSuperAdmin", () => {
@@ -380,6 +401,7 @@ describe("API key path (PlatformScope)", () => {
       type: "platform" as const,
       keyId: "key_3",
       keyName: "Read Key",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: ["read"],
     }
@@ -391,6 +413,7 @@ describe("API key path (PlatformScope)", () => {
       type: "platform" as const,
       keyId: "k",
       keyName: "k",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: [],
     }
@@ -419,6 +442,7 @@ describe("API key path (PlatformScope)", () => {
       type: "platform" as const,
       keyId: "k",
       keyName: "k",
+      organizationId: "org_test",
       environment: "LIVE" as const,
       scopes: [],
     }

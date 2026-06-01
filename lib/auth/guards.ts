@@ -81,8 +81,22 @@ export const guardOrgWrite = (route: GuardedRoute): GuardedRoute =>
       return { ok: false, error: "UNAUTHORIZED", message: "Authentication required." }
     }
 
-    // Platform API keys pass write access — tighten with scope checks if needed.
+    // Platform API keys need platform:admin or * scope for write access.
     if (auth.type === "platform") {
+      const hasWriteScope =
+        Array.isArray(auth.scopes) &&
+        (auth.scopes.includes("platform:admin") || auth.scopes.includes("*"))
+      if (!hasWriteScope) {
+        ctx.set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Access restricted",
+          required: "admin",
+          current: null,
+          action: "This operation requires a platform:admin scoped API key.",
+        }
+      }
       return route(ctx)
     }
 
