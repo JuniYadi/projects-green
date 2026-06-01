@@ -88,8 +88,21 @@ export const GET = async () => {
 
   return NextResponse.json({
     ok: true as const,
+    user: {
+      id: auth.user.id,
+      email: auth.user.email,
+      firstName: auth.user.firstName,
+      lastName: auth.user.lastName,
+      profilePictureUrl: auth.user.profilePictureUrl,
+      lastSignInAt: auth.user.lastSignInAt,
+      createdAt: auth.user.createdAt,
+      updatedAt: auth.user.updatedAt,
+    },
+    organizationId: auth.organizationId ?? null,
+    role: auth.role ?? null,
+    roles: auth.roles ?? [],
+    impersonator: auth.impersonator ?? null,
     authenticationMethod,
     authenticationCategory: resolveAuthMethodCategory(authenticationMethod),
-    lastSignInAt: auth.user.lastSignInAt ?? null,
   })
 }
