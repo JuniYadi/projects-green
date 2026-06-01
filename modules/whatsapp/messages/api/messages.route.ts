@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
-  whatsappAuthPlugin,
   guardOrgRead,
   guardOrgWrite,
   guardOrgFull,
@@ -33,7 +32,6 @@ const sendSchema = t.Object({
 const messageUpdateSchema = t.Partial(messageBodySchema)
 
 export const messagesRoutes = new Elysia({ prefix: "/messages" })
-  .use(whatsappAuthPlugin)
   .get("/", guardOrgRead(async ({ whatsappAuth, query }: { whatsappAuth: any, query: any }) => {
     const { conversationId, direction, messageType } = query as any
 
