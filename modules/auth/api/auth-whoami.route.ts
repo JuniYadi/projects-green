@@ -13,60 +13,47 @@ import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { getWorkOSSession, resolveApiKey, extractBearerToken } from "@/lib/auth/session"
 import { resolveOrgRole } from "@/lib/auth/org-role"
 import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
+import { resolveProxyAuth } from "@/lib/auth/resolve-proxy-auth"
 
 export const authWhoamiRoute = new Elysia()
   .get("/auth/whoami", async ({ request }) => {
     // 1. Proxy-passed WorkOS session (from authkit middleware)
-    const proxyAuthed = request.headers.get("x-workos-authed")
-    if (proxyAuthed === "true") {
-      const userId = request.headers.get("x-workos-user-id") ?? ""
-      const email = request.headers.get("x-workos-user-email") ?? null
-      const role = request.headers.get("x-workos-session-role") ?? undefined
-      const rolesHeader = request.headers.get("x-workos-session-roles")
-      const roles = rolesHeader ? (JSON.parse(rolesHeader) as string[]) : undefined
-
-      const platformRole = await getPlatformRoleForUser({ id: userId, email })
-      const firstOrg = await resolveFirstActiveOrganization(userId)
-      const orgRole = firstOrg
-        ? await resolveOrgRole(userId, firstOrg.organizationId)
-        : null
-
+    const proxyResult = await resolveProxyAuth(request)
+    if (proxyResult.ok) {
       return {
         ok: true as const,
         auth: {
-          type: "workos" as const,
+          ...proxyResult.scope,
           source: "proxy_header" as const,
-          userId,
-          email,
-          organizationId: firstOrg?.organizationId ?? null,
-          orgRole,
-          platformRole,
-          org: firstOrg,
         },
       }
     }
 
     // 2. Direct WorkOS session (cookie / wos_ bearer)
-    const workosUser = await getWorkOSSession(request)
-    if (workosUser) {
-      const platformRole = await getPlatformRoleForUser(workosUser)
-      const firstOrg = await resolveFirstActiveOrganization(workosUser.id)
-      const orgRole = firstOrg
-        ? await resolveOrgRole(workosUser.id, firstOrg.organizationId)
-        : null
-      return {
-        ok: true as const,
-        auth: {
-          type: "workos" as const,
-          source: "direct_cookie" as const,
-          userId: workosUser.id,
-          email: workosUser.email ?? null,
-          organizationId: firstOrg?.organizationId ?? null,
-          orgRole,
-          platformRole,
-          org: firstOrg,
-        },
+    try {
+      const workosUser = await getWorkOSSession(request)
+      if (workosUser) {
+        const platformRole = await getPlatformRoleForUser(workosUser)
+        const firstOrg = await resolveFirstActiveOrganization(workosUser.id)
+        const orgRole = firstOrg
+          ? await resolveOrgRole(workosUser.id, firstOrg.organizationId)
+          : null
+        return {
+          ok: true as const,
+          auth: {
+            type: "workos" as const,
+            source: "direct_cookie" as const,
+            userId: workosUser.id,
+            email: workosUser.email ?? null,
+            organizationId: firstOrg?.organizationId ?? null,
+            orgRole,
+            platformRole,
+            org: firstOrg,
+          },
+        }
       }
+    } catch (err) {
+      console.error("[auth-whoami] direct cookie resolution failed", err)
     }
 
     // 3. Static API key
