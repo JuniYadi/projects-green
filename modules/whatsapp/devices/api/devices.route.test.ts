@@ -82,7 +82,7 @@ describe("devices routes", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(new Request("http://localhost/"))
+    const response = await app.handle(new Request("http://localhost/devices"))
 
     expect(response.status).toBe(200)
     const payload = (await response.json()) as { ok: boolean; devices: unknown[] }
@@ -93,7 +93,7 @@ describe("devices routes", () => {
   it("returns empty list when no devices", async () => {
     const app = createTestApp()
 
-    const response = await app.handle(new Request("http://localhost/"))
+    const response = await app.handle(new Request("http://localhost/devices"))
 
     expect(response.status).toBe(200)
     const payload = (await response.json()) as { ok: boolean; devices: unknown[] }
@@ -105,7 +105,7 @@ describe("devices routes", () => {
   it("returns 404 when device not found", async () => {
     const app = createTestApp()
 
-    const response = await app.handle(new Request("http://localhost/dev_missing"))
+    const response = await app.handle(new Request("http://localhost/devices/dev_missing"))
 
     expect(response.status).toBe(404)
     const payload = (await response.json()) as { ok: boolean; error: string }
@@ -123,7 +123,7 @@ describe("devices routes", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(new Request("http://localhost/dev_other"))
+    const response = await app.handle(new Request("http://localhost/devices/dev_other"))
 
     expect(response.status).toBe(403)
     const payload = (await response.json()) as { ok: boolean; error: string }
@@ -144,7 +144,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/", {
+      new Request("http://localhost/devices", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -167,7 +167,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/", {
+      new Request("http://localhost/devices", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -188,7 +188,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/", {
+      new Request("http://localhost/devices", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -217,7 +217,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/", {
+      new Request("http://localhost/devices", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -242,7 +242,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_missing", {
+      new Request("http://localhost/devices/dev_missing", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Updated" }),
@@ -266,7 +266,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_other", {
+      new Request("http://localhost/devices/dev_other", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Hacked" }),
@@ -299,7 +299,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_1", {
+      new Request("http://localhost/devices/dev_1", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: "Updated Name" }),
@@ -318,7 +318,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_1", {
+      new Request("http://localhost/devices/dev_1", {
         method: "DELETE",
       })
     )
@@ -333,7 +333,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_1", {
+      new Request("http://localhost/devices/dev_1", {
         method: "DELETE",
       })
     )
@@ -349,7 +349,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_missing/verify", {
+      new Request("http://localhost/devices/dev_missing/verify", {
         method: "POST",
       })
     )
@@ -371,7 +371,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_other/verify", {
+      new Request("http://localhost/devices/dev_other/verify", {
         method: "POST",
       })
     )
@@ -387,7 +387,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_missing/reconnect", {
+      new Request("http://localhost/devices/dev_missing/reconnect", {
         method: "POST",
       })
     )
@@ -409,7 +409,7 @@ describe("devices routes", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/dev_other/reconnect", {
+      new Request("http://localhost/devices/dev_other/reconnect", {
         method: "POST",
       })
     )
