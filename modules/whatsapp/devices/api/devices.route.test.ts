@@ -132,7 +132,15 @@ describe("devices routes", () => {
 
   // ── Create ────────────────────────────────────────────────────────────────────
 
-  it("returns 403 when non-super_admin tries to create", async () => {
+  it("returns 403 when non-admin tries to create", async () => {
+    setMockAuthContext({
+      type: "workos",
+      userId: "user_1",
+      email: "member@example.com",
+      organizationId: "org_1",
+      orgRole: "member",
+      platformRole: "none",
+    })
     const app = createTestApp()
 
     const response = await app.handle(

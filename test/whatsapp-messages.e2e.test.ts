@@ -280,7 +280,7 @@ describe("WhatsApp Messages E2E", () => {
 
   // ── Authorization ────────────────────────────────────────────────────────────
 
-  it("returns 403 for non-admin user", async () => {
+  it("returns 200 for member user on read-only endpoint", async () => {
     setMockAuthContext({
       organizationId: "org-1",
       orgRole: "member",
@@ -290,7 +290,8 @@ describe("WhatsApp Messages E2E", () => {
     const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/messages/"))
-    expect(response.status).toBe(403)
+    // guardOrgRead allows any org membership (member+)
+    expect(response.status).toBe(200)
   })
 
   it("returns authentication error for unauthenticated user", async () => {

@@ -28,6 +28,11 @@ export { resolveOrgRole } from "@/lib/auth/org-role"
 export { ORG_ROLES } from "@/lib/auth/org-role"
 export type { OrgRole } from "@/lib/auth/org-role"
 export {
+  getWorkOSSession,
+  resolveApiKey,
+  extractBearerToken,
+} from "@/lib/auth/session"
+export {
   guardOrgRead,
   guardOrgWrite,
   guardOrgFull,

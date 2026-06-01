@@ -47,19 +47,47 @@ mock.module("@workos-inc/node", () => ({
 
 // ─── Imports (after mocks registered) ────────────────────────────────────
 
-import {
-  getWorkOSSession,
-  requireTenantAdmin,
-  requireTenantMember,
-  requireSuperAdmin,
-  requireApiKey,
-  requireWorkOSSession,
-  isWorkOSScope,
-  isPlatformScope,
-} from "@/lib/whatsapp/auth"
+import { getWorkOSSession } from "@/lib/auth/session"
 import { resolveOrgRole } from "@/lib/auth/org-role"
 import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
 import type { OrgRole } from "@/lib/auth/org-role"
+import type { AuthContext, WorkOSScope } from "@/lib/auth/types"
+
+// Boolean helper functions from the auth module (re-exported for testing)
+const isSuperAdmin = (ctx: WorkOSScope) => ctx.platformRole === "super_admin"
+const hasOrgMembership = (ctx: WorkOSScope) => ctx.organizationId !== null
+
+const requireWorkOSSession = (
+  ctx: AuthContext
+): ctx is WorkOSScope => ctx.type === "workos"
+
+const requireApiKey = (
+  ctx: AuthContext
+): ctx is import("@/lib/auth/types").PlatformScope => ctx.type === "platform"
+
+const requireSuperAdmin = (ctx: AuthContext): boolean => {
+  if (ctx.type === "platform") {
+    return (
+      Array.isArray(ctx.scopes) &&
+      (ctx.scopes.includes("platform:admin") || ctx.scopes.includes("*"))
+    )
+  }
+  return isSuperAdmin(ctx)
+}
+
+const requireTenantMember = (ctx: AuthContext): boolean => {
+  if (ctx.type === "platform") return false
+  return hasOrgMembership(ctx)
+}
+
+const requireTenantAdmin = (ctx: AuthContext): boolean => {
+  if (ctx.type === "platform") return false
+  if (isSuperAdmin(ctx)) return true
+  return ctx.orgRole === "admin" || ctx.orgRole === "owner"
+}
+
+const isWorkOSScope = (ctx: AuthContext): ctx is WorkOSScope => ctx.type === "workos"
+const isPlatformScope = (ctx: AuthContext): ctx is import("@/lib/auth/types").PlatformScope => ctx.type === "platform"
 
 const COOKIE_PASSWORD = "test-cookie-password-at-least-32-characters-long"
 const COOKIE_NAME = "wos-session"
