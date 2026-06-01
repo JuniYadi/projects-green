@@ -109,7 +109,7 @@ export const createAdminBillingRoutes = (
         }
       }
 
-      const { tenantId, type, amount, reason } = parsed.data
+      const { organizationId, type, amount, reason } = parsed.data
 
       // Check admin access
       const actor = await resolveActor(auth, getPlatformRole)
@@ -124,7 +124,7 @@ export const createAdminBillingRoutes = (
         // Perform adjustment in transaction to prevent race conditions
         const result = await prisma.$transaction(async (tx) => {
           const account = await tx.billingAccount.findUnique({
-            where: { tenantId },
+            where: { organizationId },
           })
 
           if (!account) {
@@ -201,7 +201,7 @@ export const createAdminBillingRoutes = (
           return {
             ok: false as const,
             error: "NOT_FOUND" as const,
-            message: "Billing account not found for the specified tenant.",
+            message: "Billing account not found for the specified organization.",
           }
         }
 
