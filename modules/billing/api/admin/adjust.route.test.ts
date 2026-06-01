@@ -107,7 +107,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
             type: "CREDIT",
             amount: 50000,
             reason: "Test credit",
@@ -136,7 +136,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
             type: "CREDIT",
             amount: 0,
             reason: "Test",
@@ -165,7 +165,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
             type: "CREDIT",
             amount: -1000,
             reason: "Test",
@@ -178,7 +178,7 @@ describe("AdminAdjustRoute", () => {
       expect(body.error).toBe("VALIDATION_ERROR")
     })
 
-    it("returns 422 for invalid tenantId (not UUID)", async () => {
+    it("returns 422 for invalid organizationId (not UUID)", async () => {
       const app = new Elysia()
         .use(
           createAdminBillingRoutes({
@@ -194,7 +194,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "not-a-uuid",
+            organizationId: "not-a-uuid",
             type: "CREDIT",
             amount: 50000,
             reason: "Test",
@@ -223,7 +223,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
             type: "CREDIT",
             amount: 50000,
             reason: "Test credit",
@@ -254,7 +254,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
             type: "CREDIT",
             amount: 50000,
             reason: "Test credit",
@@ -285,7 +285,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
             type: "DEBIT",
             amount: 100000,
             reason: "Correction",
@@ -316,7 +316,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
             type: "CREDIT",
             amount: 1000000,
             reason: "Large credit",
@@ -332,10 +332,9 @@ describe("AdminAdjustRoute", () => {
     it("returns 200 with adjustment on valid CREDIT", async () => {
       const mockUpdatedAccount = {
         id: "acc-1",
-        tenantId: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "org-1",
         balance: new Decimal("100000.00"),
         currency: "IDR",
-        organizationId: "org-1",
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -371,7 +370,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
             type: "CREDIT",
             amount: 50000,
             reason: "Test credit",
@@ -390,10 +389,9 @@ describe("AdminAdjustRoute", () => {
     it("returns 200 with adjustment on valid DEBIT", async () => {
       const mockUpdatedAccount = {
         id: "acc-1",
-        tenantId: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "org-1",
         balance: new Decimal("0.00"),
         currency: "IDR",
-        organizationId: "org-1",
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -429,7 +427,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId: "550e8400-e29b-41d4-a716-446655440000",
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
             type: "DEBIT",
             amount: 10000,
             reason: "Correction debit",
