@@ -1,9 +1,8 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import { whatsappAuthPlugin, guardOrgRead, guardOrgWrite, guardOrgFull } from "@/lib/whatsapp/auth"
+import { guardOrgRead, guardOrgWrite, guardOrgFull } from "@/lib/whatsapp/auth"
 
 export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
-  .use(whatsappAuthPlugin)
 
   // GET / — list webhook configs (paginated)
   .get(
