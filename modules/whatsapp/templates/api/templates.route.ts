@@ -4,7 +4,7 @@ import {
   whatsappAuthPlugin,
   guardOrgRead,
   guardOrgWrite,
-  guardSuperAdmin,
+  guardOrgFull,
 } from "@/lib/whatsapp/auth"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
 
@@ -115,7 +115,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
   }), {
     body: templateUpdateSchema
   })
-  .delete("/:id", guardSuperAdmin(async ({ params: { id } }: { params: { id: string } }) => {
+  .delete("/:id", guardOrgFull(async ({ params: { id } }: { params: { id: string } }) => {
     await prisma.whatsappTemplate.delete({
       where: { id },
     })

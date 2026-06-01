@@ -62,7 +62,7 @@ describe("devices routes", () => {
       userId: "user_1",
       email: "admin@example.com",
       organizationId: "org_1",
-      tenantRole: "admin",
+      orgRole: "admin",
       platformRole: "none",
     })
   })

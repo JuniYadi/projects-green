@@ -9,7 +9,7 @@ export const mockAuthContext = {
     userId: "user-1",
     email: "admin@example.com",
     organizationId: "org-1",
-    tenantRole: "admin" as const,
+    orgRole: "admin" as const,
     platformRole: "none" as const,
   } as WorkOSScope,
 }
@@ -38,21 +38,64 @@ export const whatsappAuthMock = {
     .derive(() => ({
       whatsappAuth: mockAuthContext.current,
     })),
-  guardTenantAdmin: (route: any) => async (ctx: any) => {
-    const auth = mockAuthContext.current
+  guardOrgRead: (route: any) => async (ctx: any) => {
+    const auth = mockAuthContext.current as any
     if (!auth) {
       ctx.set.status = 401
       return { ok: false, error: "UNAUTHORIZED" }
     }
+    if (auth.type === "platform") {
+      ctx.set.status = 403
+      return { ok: false, error: "FORBIDDEN" }
+    }
+    if (!auth.organizationId) {
+      ctx.set.status = 403
+      return { ok: false, error: "FORBIDDEN" }
+    }
+    ;(ctx as any).whatsappAuth = auth
+    return route(ctx)
+  },
+  guardOrgWrite: (route: any) => async (ctx: any) => {
+    const auth = mockAuthContext.current as any
+    if (!auth) {
+      ctx.set.status = 401
+      return { ok: false, error: "UNAUTHORIZED" }
+    }
+    if (auth.type === "platform") {
+      ctx.set.status = 403
+      return { ok: false, error: "FORBIDDEN" }
+    }
+    if (auth.platformRole === "super_admin") {
+      ;(ctx as any).whatsappAuth = auth
+      return route(ctx)
+    }
     const isAdmin =
-      auth.tenantRole === "admin" ||
-      auth.tenantRole === "owner" ||
-      auth.platformRole === "super_admin"
+      auth.orgRole === "admin" || auth.orgRole === "owner"
     if (!isAdmin) {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-     
+    ;(ctx as any).whatsappAuth = auth
+    return route(ctx)
+  },
+  guardOrgFull: (route: any) => async (ctx: any) => {
+    const auth = mockAuthContext.current as any
+    if (!auth) {
+      ctx.set.status = 401
+      return { ok: false, error: "UNAUTHORIZED" }
+    }
+    if (auth.type === "platform") {
+      ctx.set.status = 403
+      return { ok: false, error: "FORBIDDEN" }
+    }
+    if (auth.platformRole === "super_admin") {
+      ;(ctx as any).whatsappAuth = auth
+      return route(ctx)
+    }
+    if (auth.orgRole !== "owner") {
+      ctx.set.status = 403
+      return { ok: false, error: "FORBIDDEN" }
+    }
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },
@@ -66,7 +109,6 @@ export const whatsappAuthMock = {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-     
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },
@@ -76,7 +118,6 @@ export const whatsappAuthMock = {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-     
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },
@@ -86,7 +127,24 @@ export const whatsappAuthMock = {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-     
+    ;(ctx as any).whatsappAuth = auth
+    return route(ctx)
+  },
+  // Backward-compatible aliases
+  guardTenantAdmin: (route: any) => async (ctx: any) => {
+    const auth = mockAuthContext.current
+    if (!auth) {
+      ctx.set.status = 401
+      return { ok: false, error: "UNAUTHORIZED" }
+    }
+    const isAdmin =
+      auth.orgRole === "admin" ||
+      auth.orgRole === "owner" ||
+      auth.platformRole === "super_admin"
+    if (!isAdmin) {
+      ctx.set.status = 403
+      return { ok: false, error: "FORBIDDEN" }
+    }
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },
@@ -96,15 +154,14 @@ export const whatsappAuthMock = {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
     }
-     
     ;(ctx as any).whatsappAuth = auth
     return route(ctx)
   },
   requireTenantAdmin: () => {
     const auth = mockAuthContext.current
     return (
-      auth.tenantRole === "admin" ||
-      auth.tenantRole === "owner" ||
+      auth.orgRole === "admin" ||
+      auth.orgRole === "owner" ||
       auth.platformRole === "super_admin"
     )
   },

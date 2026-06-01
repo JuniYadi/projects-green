@@ -4,7 +4,7 @@ import {
   whatsappAuthPlugin,
   guardOrgRead,
   guardOrgWrite,
-  guardSuperAdmin,
+  guardOrgFull,
 } from "@/lib/whatsapp/auth"
 
 const tokenBodySchema = t.Object({
@@ -84,7 +84,7 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
   }), {
     body: tokenUpdateSchema
   })
-  .delete("/:id", guardSuperAdmin(async ({ params: { id } }: { params: { id: string } }) => {
+  .delete("/:id", guardOrgFull(async ({ params: { id } }: { params: { id: string } }) => {
     await prisma.whatsappApiKey.delete({
       where: { id },
     })

@@ -72,7 +72,7 @@ describe("messagesRoutes", () => {
       userId: "user-1",
       email: "admin@example.com",
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
       platformRole: "none",
     })
 

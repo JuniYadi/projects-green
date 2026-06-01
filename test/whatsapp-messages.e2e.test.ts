@@ -67,7 +67,7 @@ describe("WhatsApp Messages E2E", () => {
       userId: "user-1",
       email: "admin@example.com",
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
       platformRole: "none",
     })
   })
@@ -81,7 +81,7 @@ describe("WhatsApp Messages E2E", () => {
   it.skip("returns queued job when sending a message", async () => {
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -106,7 +106,7 @@ describe("WhatsApp Messages E2E", () => {
   it.skip("returns queued job with deviceId when sending a message", async () => {
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -153,7 +153,7 @@ describe("WhatsApp Messages E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -170,7 +170,7 @@ describe("WhatsApp Messages E2E", () => {
   it("returns empty list when no messages", async () => {
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -196,7 +196,7 @@ describe("WhatsApp Messages E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -225,7 +225,7 @@ describe("WhatsApp Messages E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -240,7 +240,7 @@ describe("WhatsApp Messages E2E", () => {
   it("returns 404 for non-existent message", async () => {
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -257,7 +257,7 @@ describe("WhatsApp Messages E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -283,7 +283,7 @@ describe("WhatsApp Messages E2E", () => {
   it("returns 403 for non-admin user", async () => {
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "member",
+      orgRole: "member",
       platformRole: "none",
     })
 
@@ -326,7 +326,7 @@ describe("WhatsApp Messages E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()

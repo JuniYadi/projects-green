@@ -68,7 +68,7 @@ describe("WhatsApp Webhooks E2E", () => {
       userId: "user-1",
       email: "admin@example.com",
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
       platformRole: "none",
     })
   })
@@ -186,7 +186,7 @@ describe("WhatsApp Webhooks E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -236,7 +236,7 @@ describe("WhatsApp Webhooks E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -262,7 +262,7 @@ describe("WhatsApp Webhooks E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -287,7 +287,7 @@ describe("WhatsApp Webhooks E2E", () => {
 
     setMockAuthContext({
       organizationId: "org-1",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
@@ -314,7 +314,7 @@ describe("WhatsApp Webhooks E2E", () => {
 
     setMockAuthContext({
       platformRole: "super_admin",
-      tenantRole: "admin",
+      orgRole: "admin",
     })
 
     const app = createTestApp()
