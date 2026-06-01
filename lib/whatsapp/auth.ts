@@ -87,6 +87,39 @@ export type { ApiKeyEnvironment } from "@prisma/client"
 
 export const whatsappAuthPlugin = new Elysia({ name: "whatsapp.auth" })
   .derive(async ({ request }) => {
+    // 1. Check if the proxy already validated a WorkOS session and passed the
+    //    result via x-workos-authed headers.  This avoids a redundant WorkOS
+    //    authenticateWithSessionCookie call and keeps the cookie refresh cycle
+    //    owned by proxy.ts (which runs authkit middleware).
+    const proxyAuthed = request.headers.get("x-workos-authed")
+    if (proxyAuthed === "true") {
+      const userId = request.headers.get("x-workos-user-id") ?? ""
+      const email = request.headers.get("x-workos-user-email") ?? null
+      const role = request.headers.get("x-workos-session-role") ?? undefined
+      const rolesHeader = request.headers.get("x-workos-session-roles")
+      const roles = rolesHeader ? (JSON.parse(rolesHeader) as string[]) : undefined
+
+      const platformRole = await getPlatformRoleForUser({ id: userId, email })
+      const firstOrg = await resolveFirstActiveOrganization(userId)
+      const orgRole = firstOrg
+        ? await resolveOrgRole(userId, firstOrg.organizationId)
+        : null
+      console.debug("[whatsapp-auth] proxy header: userId=%s orgId=%s orgRole=%s", userId, firstOrg?.organizationId ?? null, orgRole)
+      return {
+        whatsappAuth: {
+          type: "workos" as const,
+          userId,
+          email,
+          organizationId: firstOrg?.organizationId ?? null,
+          orgRole,
+          platformRole,
+        },
+      }
+    }
+
+    // 2. Fallback: try direct WorkOS session validation from cookie.
+    //    This covers scenarios where proxy didn't run (e.g. direct access
+    //    without middleware, or the x-workos-authed header was stripped).
     const workosUser = await getWorkOSSession(request)
     if (workosUser) {
       const platformRole = await getPlatformRoleForUser(workosUser)
@@ -94,6 +127,7 @@ export const whatsappAuthPlugin = new Elysia({ name: "whatsapp.auth" })
       const orgRole = firstOrg
         ? await resolveOrgRole(workosUser.id, firstOrg.organizationId)
         : null
+      console.debug("[whatsapp-auth] direct cookie: userId=%s orgId=%s orgRole=%s", workosUser.id, firstOrg?.organizationId ?? null, orgRole)
       return {
         whatsappAuth: {
           type: "workos" as const,
@@ -106,9 +140,14 @@ export const whatsappAuthPlugin = new Elysia({ name: "whatsapp.auth" })
       }
     }
 
+    // 3. Fallback: static API key auth (for curl / external callers).
     const bearerToken = extractBearerToken(request)
     if (bearerToken) {
+      // wos_ tokens are sealed WorkOS sessions passed as Bearer header.
+      // They were already handled by proxy.ts (authkit middleware), so if we
+      // reach here it means they are invalid — don't retry.
       if (bearerToken.startsWith("wos_")) {
+        console.debug("[whatsapp-auth] wos_ bearer rejected (session should be handled by proxy)")
         return { whatsappAuth: null }
       }
       const clientIp =
@@ -117,10 +156,14 @@ export const whatsappAuthPlugin = new Elysia({ name: "whatsapp.auth" })
         null
       const apiKeyScope = await resolveApiKey(bearerToken, clientIp ?? undefined)
       if (apiKeyScope) {
+        console.debug("[whatsapp-auth] api key: keyId=%s env=%s", apiKeyScope.keyId, apiKeyScope.environment)
         return { whatsappAuth: apiKeyScope }
       }
+      console.debug("[whatsapp-auth] api key not found or inactive")
     }
 
+    // 4. No valid auth found.
+    console.debug("[whatsapp-auth] no valid auth resolved — returning null")
     return { whatsappAuth: null }
   })
   .onBeforeHandle(({ whatsappAuth, set }) => {
