@@ -132,7 +132,7 @@ export default function WhatsAppDashboardPage() {
         ) {
           const pathParts = window.location.pathname.split("/")
           const locale = pathParts[1] || "en"
-          window.location.href = `/${locale}/login/start?next=${encodeURIComponent(window.location.pathname)}`
+          window.location.href = `/${locale}/login?next=${encodeURIComponent(window.location.pathname)}`
           return
         }
 
