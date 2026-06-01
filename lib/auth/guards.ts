@@ -52,16 +52,10 @@ export const guardOrgRead = (route: GuardedRoute): GuardedRoute =>
       return { ok: false, error: "UNAUTHORIZED", message: "Authentication required." }
     }
 
+    // Platform API keys pass read access — routes are responsible for
+    // filtering results by organizationId when needed.
     if (auth.type === "platform") {
-      ctx.set.status = 403
-      return {
-        ok: false,
-        error: "FORBIDDEN",
-        message: "Access restricted",
-        required: "member",
-        current: null,
-        action: "API keys do not support org-scoped access. Use a WorkOS session.",
-      }
+      return route(ctx)
     }
 
     if (!hasOrgMembership(auth)) {
@@ -87,16 +81,9 @@ export const guardOrgWrite = (route: GuardedRoute): GuardedRoute =>
       return { ok: false, error: "UNAUTHORIZED", message: "Authentication required." }
     }
 
+    // Platform API keys pass write access — tighten with scope checks if needed.
     if (auth.type === "platform") {
-      ctx.set.status = 403
-      return {
-        ok: false,
-        error: "FORBIDDEN",
-        message: "Access restricted",
-        required: "admin",
-        current: null,
-        action: "API keys do not support org-scoped access. Use a WorkOS session.",
-      }
+      return route(ctx)
     }
 
     if (isSuperAdmin(auth)) return route(ctx)
@@ -136,16 +123,23 @@ export const guardOrgFull = (route: GuardedRoute): GuardedRoute =>
       return { ok: false, error: "UNAUTHORIZED", message: "Authentication required." }
     }
 
+    // Platform API keys need platform:admin or wildcard scope for full access.
     if (auth.type === "platform") {
-      ctx.set.status = 403
-      return {
-        ok: false,
-        error: "FORBIDDEN",
-        message: "Access restricted",
-        required: "owner",
-        current: null,
-        action: "API keys do not support org-scoped access. Use a WorkOS session.",
+      const hasAdminScope =
+        Array.isArray(auth.scopes) &&
+        (auth.scopes.includes("platform:admin") || auth.scopes.includes("*"))
+      if (!hasAdminScope) {
+        ctx.set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Access restricted",
+          required: "owner",
+          current: null,
+          action: "This operation requires a platform:admin scoped API key.",
+        }
       }
+      return route(ctx)
     }
 
     if (isSuperAdmin(auth)) return route(ctx)
