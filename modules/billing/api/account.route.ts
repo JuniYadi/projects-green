@@ -105,7 +105,7 @@ export const createBillingAccountRoutes = (
 
         return {
           ok: true as const,
-          tenantId: account.tenantId,
+          organizationId: account.organizationId,
           balanceIdr: balance.toFixed(2),
           formattedBalance: formatBalanceIdr(balance),
           isAboveWarn,
