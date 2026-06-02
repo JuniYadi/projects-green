@@ -12,13 +12,10 @@ import {
   HardDrive,
   ArrowClockwise,
   Question,
-  Gear,
   Calendar,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
-
-
 import type {
   K8sEnvironmentId,
   AppStatusType,
@@ -99,11 +96,8 @@ export default function ManagePage() {
   // Troubleshooter drawer
   const [isTroubleshooterOpen, setIsTroubleshooterOpen] = useState(false)
 
-  // DevTools Simulation Panel Open State
-  const [isDevToolsOpen, setIsDevToolsOpen] = useState(false)
-
-  // Simulation controls
-  const [diagnosticMode, setDiagnosticMode] = useState<string>("healthy")
+  // Simulation controls (always healthy in portal - no DevTools simulator)
+  const diagnosticMode = "healthy"
   const [cloudflareEnabled, setCloudflareEnabled] = useState<boolean>(true)
   const [dbConnected, setDbConnected] = useState<boolean>(true)
 
@@ -139,17 +133,6 @@ export default function ManagePage() {
     next.set(OPERATE_ENV_QUERY_KEY, selectedEnv)
     router.replace(`${pathname}?${next.toString()}`, { scroll: false })
   }, [activeTab, selectedEnv, pathname, router, searchParams])
-
-  // ESC key listener for DevTools drawer
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsDevToolsOpen(false)
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
 
   // Status badges
   const statusBadge = () => {
@@ -205,7 +188,7 @@ export default function ManagePage() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold tracking-tight text-white">
-                laravel-shop
+                Application
               </h2>
               {statusBadge()}
             </div>
@@ -335,146 +318,6 @@ export default function ManagePage() {
 
           {activeTab === "events" && <TabEvents />}
         </div>
-
-        {/* Floating DevTools Simulator Toggle */}
-        <div className="fixed bottom-6 right-6 z-40">
-          <Button
-            type="button"
-            onClick={() => setIsDevToolsOpen(true)}
-            className="h-11 w-11 rounded-full bg-primary shadow-lg shadow-primary/20 flex items-center justify-center text-white hover:bg-primary/95 transition-all hover:scale-105"
-            title="Open Developer Simulation Tools"
-          >
-            <Gear size={22} className="animate-spin-slow" />
-          </Button>
-        </div>
-
-        {/* DevTools Simulator Drawer */}
-        {isDevToolsOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs transition-all">
-            <div 
-              className="absolute inset-0" 
-              onClick={() => setIsDevToolsOpen(false)} 
-            />
-            <div className="relative h-full w-85 bg-neutral-950 border-l border-white/[0.08] p-6 shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-250">
-              <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
-                  <div className="flex items-center gap-2.5">
-                    <Gear size={20} className="text-primary animate-spin-slow" />
-                    <h3 className="font-bold text-white text-sm">Resilience Simulator</h3>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => setIsDevToolsOpen(false)}
-                    className="text-muted-foreground hover:text-white"
-                  >
-                    Close
-                  </Button>
-                </div>
-                
-                <div className="space-y-4">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Inject failures and review site performance. Bad states trigger status logs and recommendations dynamically inside other tabs.
-                  </p>
-                  
-                  <div className="space-y-2.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Simulated Environment Health
-                    </label>
-                    <div className="space-y-2">
-                      {[
-                        { value: "healthy", label: "Healthy (HTTP 200 OK)", color: "border-emerald-500/20 hover:border-emerald-500/50" },
-                        { value: "error_502", label: "502 Bad Gateway", color: "border-amber-500/20 hover:border-amber-500/50" },
-                        { value: "ssl_expired", label: "SSL Expired (Inaccessible)", color: "border-rose-500/20 hover:border-rose-500/50" },
-                        { value: "redirect_loop", label: "Redirect Loop (Flexible SSL)", color: "border-amber-500/20 hover:border-amber-500/50" },
-                      ].map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setDiagnosticMode(opt.value)}
-                          className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
-                            diagnosticMode === opt.value
-                              ? "bg-primary/10 border-primary text-white"
-                              : `bg-white/[0.01] ${opt.color} text-muted-foreground hover:bg-white/[0.03] hover:text-white`
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Cloudflare Proxying
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCloudflareEnabled(true)}
-                        className={`flex-1 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                          cloudflareEnabled
-                            ? "bg-primary/10 border-primary text-white"
-                            : "bg-white/[0.01] border-white/5 text-muted-foreground hover:text-white"
-                        }`}
-                      >
-                        Active
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCloudflareEnabled(false)}
-                        className={`flex-1 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                          !cloudflareEnabled
-                            ? "bg-primary/10 border-primary text-white"
-                            : "bg-white/[0.01] border-white/5 text-muted-foreground hover:text-white"
-                        }`}
-                      >
-                        Bypassed
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Database Connection
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDbConnected(true)}
-                        className={`flex-1 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                          dbConnected
-                            ? "bg-primary/10 border-primary text-white"
-                            : "bg-white/[0.01] border-white/5 text-muted-foreground hover:text-white"
-                        }`}
-                      >
-                        Connected
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDbConnected(false)}
-                        className={`flex-1 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                          !dbConnected
-                            ? "bg-primary/10 border-primary text-white"
-                            : "bg-white/[0.01] border-white/5 text-muted-foreground hover:text-white"
-                        }`}
-                      >
-                        Offline
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="border-t border-white/[0.08] pt-4 text-center">
-                <span className="text-[10px] text-muted-foreground">
-                  Press ESC or click outside to dismiss.
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Troubleshooter Drawer */}
         <OperateTroubleshooter

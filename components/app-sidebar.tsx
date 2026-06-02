@@ -18,6 +18,7 @@ import {
 import {
   BookOpenIcon,
   CaretLeftIcon,
+  CreditCardIcon,
   GaugeIcon,
   LifebuoyIcon,
   Lightning,
@@ -434,7 +435,7 @@ const buildPortalProjects = (
   {
     name: "Payments",
     url: localizePathname({ pathname: "/portal/payments", locale }),
-    icon: <WalletIcon />,
+    icon: <CreditCardIcon />,
     isActive: startsWithRoute(pathname, "/portal/payments"),
   },
   {
