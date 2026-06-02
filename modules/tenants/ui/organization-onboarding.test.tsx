@@ -22,9 +22,15 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
   }
 })
 
+let cachedOrganizationOnboarding: (typeof import("@/modules/tenants/ui/organization-onboarding"))["OrganizationOnboarding"] | null =
+  null
+
 const loadOrganizationOnboarding = async () => {
-  const mod = await import("@/modules/tenants/ui/organization-onboarding")
-  return mod.OrganizationOnboarding
+  if (!cachedOrganizationOnboarding) {
+    const mod = await import("@/modules/tenants/ui/organization-onboarding")
+    cachedOrganizationOnboarding = mod.OrganizationOnboarding
+  }
+  return cachedOrganizationOnboarding
 }
 
 const jsonResponse = (body: unknown, status = 200) => {

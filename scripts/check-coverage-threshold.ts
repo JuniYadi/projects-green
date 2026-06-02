@@ -1,10 +1,32 @@
+import { Glob } from "bun"
+
 const COVERAGE_THRESHOLD = 80
 const LINE_THRESHOLD = 80
 
+const EXCLUDED_DIR_PATTERNS = ["whatsapp", "test/", "modules/deploy/"]
+
 const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "")
+
+const isExcludedTestFile = (filePath: string): boolean =>
+  EXCLUDED_DIR_PATTERNS.some((pattern) => filePath.includes(pattern))
+
+const collectTestFiles = (): string[] => {
+  const files: string[] = []
+  for (const pattern of ["**/*.test.ts", "**/*.test.tsx"]) {
+    const glob = new Glob(pattern)
+    for (const f of glob.scanSync(".")) {
+      files.push(f.replace(/\\/g, "/"))
+    }
+  }
+  return files.filter((f) => !isExcludedTestFile(f))
+}
 
 const main = async () => {
   const passthroughArgs = process.argv.slice(2)
+
+  // Collect test files, excluding directories not counted in coverage
+  // to reduce memory pressure on CI runners (single-process coverage mode)
+  const testFiles = collectTestFiles()
 
   const proc = Bun.spawn(
     [
@@ -13,6 +35,7 @@ const main = async () => {
       "--coverage",
       "--coverage-reporter=text",
       "--coverage-reporter=lcov",
+      ...testFiles,
       ...passthroughArgs,
     ],
     {

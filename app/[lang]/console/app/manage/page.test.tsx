@@ -23,12 +23,17 @@ mock.module("next/navigation", () => {
   }
 })
 
+let cachedPageModule: typeof import("@/app/[lang]/console/app/manage/page") | null =
+  null
+
 const renderPage = async (query = "") => {
   currentQuery = query
   replaceCalls.splice(0)
 
-  const pageModule = await import("@/app/[lang]/console/app/manage/page")
-  return render(<pageModule.default />)
+  if (!cachedPageModule) {
+    cachedPageModule = await import("@/app/[lang]/console/app/manage/page")
+  }
+  return render(<cachedPageModule.default />)
 }
 
 describe("ManagePage", () => {

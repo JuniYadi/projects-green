@@ -99,6 +99,11 @@ const createPersistedState = (state: DeployWizardState) => {
   })
 }
 
+let cachedWizardModule: typeof import("@/modules/deploy/ui/deploy-wizard") | null =
+  null
+let cachedStoreModule: typeof import("@/modules/deploy/deploy.store") | null =
+  null
+
 const renderWizard = async (
   query = "github=connected",
   persistedState: DeployWizardState | null = null
@@ -113,13 +118,17 @@ const renderWizard = async (
     )
   }
 
-  const wizardModule = await import("@/modules/deploy/ui/deploy-wizard")
-  const storeModule = await import("@/modules/deploy/deploy.store")
+  if (!cachedWizardModule) {
+    cachedWizardModule = await import("@/modules/deploy/ui/deploy-wizard")
+  }
+  if (!cachedStoreModule) {
+    cachedStoreModule = await import("@/modules/deploy/deploy.store")
+  }
 
   return render(
-    <storeModule.DeployWizardProvider>
-      <wizardModule.DeployWizard />
-    </storeModule.DeployWizardProvider>
+    <cachedStoreModule.DeployWizardProvider>
+      <cachedWizardModule.DeployWizard />
+    </cachedStoreModule.DeployWizardProvider>
   )
 }
 
