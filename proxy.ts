@@ -1,4 +1,8 @@
-import { authkit, handleAuthkitHeaders } from "@workos-inc/authkit-nextjs"
+import {
+  authkit,
+  handleAuthkitHeaders,
+  partitionAuthkitHeaders,
+} from "@workos-inc/authkit-nextjs"
 import { NextRequest, NextResponse } from "next/server"
 
 import {
@@ -107,14 +111,11 @@ export default async function proxy(request: NextRequest) {
     const locale = localeFromPathname ?? getPreferredLocale(request)
 
     const { session, headers } = await authkit(request)
-    handleAuthkitHeaders(request, headers)
 
-    // Build the response with a modified request that carries the
-    // session info as custom headers.  This is the only reliable way to
-    // pass data from Next.js middleware to the downstream route handler
-    // (Elysia).  Setting headers on the incoming request object directly
-    // does NOT propagate to the route.
-    const requestHeaders = new Headers(request.headers)
+    // partitionAuthkitHeaders merges the fresh AuthKit headers (x-workos-middleware,
+    // x-workos-session, etc.) into the request headers.  These are required for
+    // downstream withAuth() calls in Elysia route handlers.
+    const { requestHeaders } = partitionAuthkitHeaders(request, headers)
 
     if (session?.user) {
       requestHeaders.set("x-workos-authed", "true")
