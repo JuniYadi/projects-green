@@ -8,11 +8,13 @@ import { getLocaleFromPathname } from "@/lib/i18n/pathname"
 
 describe("resolveSidebarMenu", () => {
   it("returns console-only navigation and projects for console surface (applications context)", () => {
-    const { navMain, projects } = resolveSidebarMenu({
+    const { navMain, projects, navMainLabel } = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/app/manage",
       locale: "en",
     })
+
+    expect(navMainLabel).toBe("Applications")
 
     // Flat menu structure under applications context
     expect(navMain.map((item) => item.title)).toEqual([
@@ -66,11 +68,13 @@ describe("resolveSidebarMenu", () => {
   })
 
   it("returns hub context when on /console page", () => {
-    const { navMain, projects } = resolveSidebarMenu({
+    const { navMain, projects, navMainLabel } = resolveSidebarMenu({
       surface: "console",
       pathname: "/console",
       locale: "en",
     })
+
+    expect(navMainLabel).toBe("Platform")
 
     // Hub context shows overview items under projects and top-level link under navMain
     expect(projects.map((project) => project.name)).toEqual([
@@ -140,5 +144,79 @@ describe("resolveSidebarMenu", () => {
     expect(items.find((item) => item.title === "Thunder AI Help")?.url).toBe(
       "/en/console?kb=1"
     )
+  })
+
+  it("returns whatsapp context navigation and projects for /console/whatsapp/dashboard", () => {
+    const { navMain, projects, navMainLabel } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/dashboard",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Dashboard",
+      "Devices",
+      "Templates",
+      "Messages",
+      "Contacts",
+    ])
+    expect(
+      navMain.find((item) => item.title === "Dashboard")?.isActive
+    ).toBe(true)
+
+    expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
+  })
+
+  it("marks devices active for its routes", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/devices",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(
+      navMain.find((item) => item.title === "Devices")?.isActive
+    ).toBe(true)
+  })
+
+  it("marks templates active for its routes", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/templates/new",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(
+      navMain.find((item) => item.title === "Templates")?.isActive
+    ).toBe(true)
+  })
+
+  it("marks messages active for its routes", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/messages",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(
+      navMain.find((item) => item.title === "Messages")?.isActive
+    ).toBe(true)
+  })
+
+  it("marks contacts active for its routes", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/contacts",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(
+      navMain.find((item) => item.title === "Contacts")?.isActive
+    ).toBe(true)
   })
 })

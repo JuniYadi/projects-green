@@ -76,12 +76,14 @@ interface SidebarContextConfig {
   matches: (pathname: string) => boolean
   getProjects: (pathname: string, locale: AppLocale) => AppSidebarProject[]
   getNavMain: (pathname: string, locale: AppLocale) => AppSidebarNavItem[]
+  navMainLabel: string
 }
 
 const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
   {
     context: "applications",
     matches: (path) => startsWithRoute(path, "/console/app"),
+    navMainLabel: "Applications",
     getProjects: (path, locale) => [
       {
         name: "Back to Console",
@@ -101,6 +103,65 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         url: localizePathname({ pathname: "/console/app/manage", locale }),
         icon: <GaugeIcon />,
         isActive: startsWithRoute(path, "/console/app/manage"),
+      },
+    ],
+  },
+  {
+    context: "whatsapp",
+    matches: (path) => startsWithRoute(path, "/console/whatsapp"),
+    navMainLabel: "WhatsApp",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Console",
+        url: localizePathname({ pathname: "/console", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Dashboard",
+        url: localizePathname({
+          pathname: "/console/whatsapp/dashboard",
+          locale,
+        }),
+        icon: <GaugeIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/dashboard"),
+      },
+      {
+        title: "Devices",
+        url: localizePathname({
+          pathname: "/console/whatsapp/devices",
+          locale,
+        }),
+        icon: <WhatsappLogoIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/devices"),
+      },
+      {
+        title: "Templates",
+        url: localizePathname({
+          pathname: "/console/whatsapp/templates",
+          locale,
+        }),
+        icon: <Lightning />,
+        isActive: startsWithRoute(path, "/console/whatsapp/templates"),
+      },
+      {
+        title: "Messages",
+        url: localizePathname({
+          pathname: "/console/whatsapp/messages",
+          locale,
+        }),
+        icon: <PaperPlaneTiltIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/messages"),
+      },
+      {
+        title: "Contacts",
+        url: localizePathname({
+          pathname: "/console/whatsapp/contacts",
+          locale,
+        }),
+        icon: <BookOpenIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/contacts"),
       },
     ],
   },
@@ -278,11 +339,13 @@ export const resolveSidebarMenu = ({
 }): {
   navMain: AppSidebarNavItem[]
   projects: AppSidebarProject[]
+  navMainLabel: string
 } => {
   if (surface !== "console") {
     return {
       navMain: buildPortalNavMain(pathname, locale),
       projects: buildPortalProjects(pathname, locale),
+      navMainLabel: "Platform",
     }
   }
 
@@ -291,10 +354,14 @@ export const resolveSidebarMenu = ({
     return {
       navMain: matchingContext.getNavMain(pathname, locale),
       projects: matchingContext.getProjects(pathname, locale),
+      navMainLabel: matchingContext.navMainLabel,
     }
   }
 
-  return getHubMenu(pathname, locale)
+  return {
+    ...getHubMenu(pathname, locale),
+    navMainLabel: "Platform",
+  }
 }
 
 export function AppSidebar({
@@ -305,7 +372,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const pathname = usePathname()
   const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
-  const { navMain, projects } = resolveSidebarMenu({
+  const { navMain, projects, navMainLabel } = resolveSidebarMenu({
     surface,
     pathname: pathnameWithoutLocale,
     locale: locale ?? defaultLocale,
@@ -322,7 +389,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavProjects projects={projects} />
-        <NavMain items={navMain} />
+        <NavMain items={navMain} label={navMainLabel} />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
