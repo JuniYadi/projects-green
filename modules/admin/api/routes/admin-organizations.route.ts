@@ -1,12 +1,18 @@
 import { Elysia } from "elysia"
 
-import { adminCreateOrganizationSchema } from "@/modules/admin/api/admin.schema"
+import {
+  adminCreateOrganizationSchema,
+  listOrganizationsQuerySchema,
+} from "@/modules/admin/api/admin.schema"
 import {
   requireSuperAdmin,
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
 import { toWorkosError } from "@/modules/admin/api/admin.errors"
-import { createAdminOrganization } from "@/modules/admin/admin.service"
+import {
+  createAdminOrganization,
+  listAdminOrganizations,
+} from "@/modules/admin/admin.service"
 
 export const createAdminOrganizationsRoutes = (deps = {}) => {
   const { requireSuperAdmin: guard = requireSuperAdmin } = { ...deps }
@@ -37,4 +43,41 @@ export const createAdminOrganizationsRoutes = (deps = {}) => {
     },
     { body: adminCreateOrganizationSchema }
   )
+    .get(
+      "/admin/organizations",
+      async ({ query, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) {
+          return actor as AdminApiError
+        }
+
+        try {
+          const { limit, before, after, search } = query
+          const result = await listAdminOrganizations({
+            limit,
+            before,
+            after,
+          })
+
+          let organizations = result.organizations
+          if (search) {
+            const searchLower = search.toLowerCase()
+            organizations = organizations.filter((org) =>
+              org.name.toLowerCase().includes(searchLower)
+            )
+          }
+
+          return {
+            ok: true,
+            data: {
+              organizations,
+              listMetadata: result.listMetadata,
+            },
+          }
+        } catch (error) {
+          return toWorkosError(set, error)
+        }
+      },
+      { query: listOrganizationsQuerySchema }
+    )
 }
