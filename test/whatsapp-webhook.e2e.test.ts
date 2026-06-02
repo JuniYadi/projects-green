@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import { whatsappAuthMock, setMockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
+import { whatsappAuthMock, setMockAuthContext, mockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
 import { workosNodeMock } from "./workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
@@ -43,14 +43,15 @@ mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
 mock.module("@workos-inc/node", () => workosNodeMock)
 
+mock.module("@/lib/auth/resolve-proxy-auth", () => ({
+  resolveAuthContext: async () => mockAuthContext.current,
+}))
+
 const { webhooksRoutes } = await import("@/modules/whatsapp/webhooks/api/webhooks.route")
 
-function createTestApp(withAuth = true) {
-  const app = new Elysia()
-  if (withAuth) {
-    app.use(whatsappAuthMock.whatsappAuthPlugin)
-  }
-  return app.use(webhooksRoutes)
+function createTestApp() {
+  return new Elysia()
+    .use(webhooksRoutes)
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────────
@@ -117,7 +118,7 @@ describe("WhatsApp Webhooks E2E", () => {
       metadata: webhookEvent,
     }))
 
-    const app = createTestApp(false)
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_webhook", {
@@ -133,7 +134,7 @@ describe("WhatsApp Webhooks E2E", () => {
   })
 
   it("immediately returns 200 for webhook endpoint", async () => {
-    const app = createTestApp(false)
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_123", {
@@ -149,7 +150,7 @@ describe("WhatsApp Webhooks E2E", () => {
   // ── GET /webhook/:id/verify — Meta verification ─────────────────────────────
 
   it("returns challenge for Meta webhook verification", async () => {
-    const app = createTestApp(false)
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_verify/verify?hub.mode=subscribe&hub.verify_token=test_token&hub.challenge=challenge_code")
@@ -161,7 +162,7 @@ describe("WhatsApp Webhooks E2E", () => {
   })
 
   it("returns 403 for invalid verify mode", async () => {
-    const app = createTestApp(false)
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_verify/verify?hub.mode=invalid&hub.verify_token=test&hub.challenge=code")
@@ -335,7 +336,7 @@ describe("WhatsApp Webhooks E2E", () => {
   it("handles webhook with signature in headers", async () => {
     // The actual signature verification would require Meta's secret key
     // This test verifies the webhook endpoint accepts requests with common headers
-    const app = createTestApp(false)
+    const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/webhooks/dev_signature", {

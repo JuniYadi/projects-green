@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import { whatsappAuthMock, setMockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
+import { whatsappAuthMock, setMockAuthContext, mockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
 import { workosNodeMock } from "./workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
@@ -44,11 +44,14 @@ mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
 mock.module("@workos-inc/node", () => workosNodeMock)
 
+mock.module("@/lib/auth/resolve-proxy-auth", () => ({
+  resolveAuthContext: async () => mockAuthContext.current,
+}))
+
 const { messagesRoutes } = await import("@/modules/whatsapp/messages/api/messages.route")
 
 function createTestApp() {
   return new Elysia()
-    .use(whatsappAuthMock.whatsappAuthPlugin)
     .use(messagesRoutes)
 }
 
@@ -280,7 +283,7 @@ describe("WhatsApp Messages E2E", () => {
 
   // ── Authorization ────────────────────────────────────────────────────────────
 
-  it("returns 200 for member user on read-only endpoint", async () => {
+  it("returns 200 for any authenticated user (guards removed)", async () => {
     setMockAuthContext({
       organizationId: "org-1",
       orgRole: "member",
@@ -290,19 +293,17 @@ describe("WhatsApp Messages E2E", () => {
     const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/messages/"))
-    // guardOrgRead allows any org membership (member+)
     expect(response.status).toBe(200)
   })
 
-  it("returns authentication error for unauthenticated user", async () => {
+  it("returns 401 for unauthenticated user", async () => {
     // Simulate no auth context
     setMockAuthContext(null)
 
     const app = createTestApp()
 
     const response = await app.handle(new Request("http://localhost/messages/"))
-    // The exact status code depends on the auth plugin - could be 401 or 403
-    expect([401, 403]).toContain(response.status)
+    expect(response.status).toBe(401)
   })
 
   // ── POST /create message ─────────────────────────────────────────────────────

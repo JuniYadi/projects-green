@@ -1,13 +1,18 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import { guardOrgRead, guardOrgWrite, guardOrgFull } from "@/lib/whatsapp/auth"
+import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 
 export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
 
   // GET / — list webhook configs (paginated)
   .get(
     "/",
-    guardOrgRead(async ({ query, whatsappAuth, set }: any) => {
+    async ({ request, query, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
       const page = Number(query.page) || 1
       const limit = Number(query.limit) || 20
       const skip = (page - 1) * limit
@@ -25,7 +30,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         data,
         meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       }
-    }),
+    },
     {
       query: t.Object({
         page: t.Optional(t.String()),
@@ -39,17 +44,27 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   // GET /:id — get single webhook config
   .get(
     "/:id",
-    guardOrgRead(async ({ params, whatsappAuth, set }: any) => {
+    async ({ request, params, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
       const webhook = await prisma.whatsappWebhook.findUnique({ where: { id: params.id } })
       if (!webhook) throw new Error("Webhook not found")
       return webhook
-    })
+    }
   )
 
   // POST / — create webhook config
   .post(
     "/",
-    guardOrgWrite(async ({ body, whatsappAuth, set }: any) => {
+    async ({ request, body, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
       const webhook = await prisma.whatsappWebhook.create({
         data: {
           whatsappDeviceId: body.deviceId,
@@ -60,7 +75,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         },
       })
       return { ok: true, data: webhook }
-    }),
+    },
     {
       body: t.Object({
         organizationId: t.String(),
@@ -74,10 +89,15 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   // PATCH /:id — update webhook config
   .patch(
     "/:id",
-    guardOrgWrite(async ({ params, body, whatsappAuth, set }: any) => {
+    async ({ request, params, body, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
       const updated = await prisma.whatsappWebhook.update({ where: { id: params.id }, data: body })
       return { ok: true, data: updated }
-    }),
+    },
     {
       body: t.Partial(
         t.Object({
@@ -92,10 +112,15 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   // DELETE /:id — delete webhook config
   .delete(
     "/:id",
-    guardOrgFull(async ({ params, whatsappAuth, set }: any) => {
+    async ({ request, params, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
       await prisma.whatsappWebhook.delete({ where: { id: params.id } })
       return { ok: true }
-    })
+    }
   )
 
   // GET /:id/verify — Meta webhook verification endpoint

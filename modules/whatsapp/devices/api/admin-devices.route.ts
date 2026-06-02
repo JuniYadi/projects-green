@@ -1,46 +1,22 @@
 /**
  * WhatsApp Devices — Admin API Routes
  *
- * Super-admin only: list all devices across orgs, view details, top up balance.
  * Mounted at /api/whatsapp/admin/devices
  */
 
 import { Elysia } from "elysia"
-import { withAuth } from "@workos-inc/authkit-nextjs"
 import { Prisma } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
-import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { topUpInputSchema } from "../devices.schemas"
 
 const MAX_BALANCE = new Decimal("999999999.99")
 
-type AuthContext = {
-  user: { id: string; email?: string | null } | null
-}
-
 type RouteSet = {
   status?: number | string
-}
-
-const toUnauthorized = (set: RouteSet) => {
-  set.status = 401
-  return {
-    ok: false as const,
-    error: "UNAUTHORIZED" as const,
-    message: "You must be signed in to access this resource.",
-  }
-}
-
-const toForbidden = (set: RouteSet, message: string) => {
-  set.status = 403
-  return {
-    ok: false as const,
-    error: "FORBIDDEN" as const,
-    message,
-  }
 }
 
 const toServerError = (set: RouteSet, message: string) => {
@@ -52,43 +28,13 @@ const toServerError = (set: RouteSet, message: string) => {
   }
 }
 
-type AdminDeviceRoutesDeps = {
-  authenticate: () => Promise<AuthContext>
-  getRole: (userId: string) => Promise<string | null>
-}
-
-type WithAuthResult = {
-  user: { id: string; email?: string | null } | null
-  organizationId?: string | null
-  role?: string | null
-  impersonator?: any
-}
-
-const defaultDeps: AdminDeviceRoutesDeps = {
-  authenticate: async () => {
-    const auth = (await withAuth()) as WithAuthResult
-    return { user: auth.user }
-  },
-  getRole: async (userId: string) => getPlatformRoleForUser({ id: userId }),
-}
-
-export const createAdminDevicesRoutes = (
-  deps: Partial<AdminDeviceRoutesDeps> = {},
-) => {
-  const { authenticate, getRole } = { ...defaultDeps, ...deps }
-
+export const createAdminDevicesRoutes = () => {
   return new Elysia({ prefix: "/admin/devices" })
-    .get("/", async ({ query, set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      const platformRole = await getRole(auth.user.id)
-
-      if (platformRole !== "super_admin") {
-        return toForbidden(set, "Only super admins can list all devices.")
+    .get("/", async ({ request, query, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
       }
 
       const take = Math.min(Number(query.take) || 50, 100)
@@ -121,17 +67,11 @@ export const createAdminDevicesRoutes = (
         skip,
       }
     })
-    .get("/:id", async ({ params: { id }, set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      const platformRole = await getRole(auth.user.id)
-
-      if (platformRole !== "super_admin") {
-        return toForbidden(set, "Only super admins can view device details.")
+    .get("/:id", async ({ request, params: { id }, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
       }
 
       const device = await prisma.whatsappDevice.findUnique({
@@ -168,20 +108,14 @@ export const createAdminDevicesRoutes = (
         },
       }
     })
-    .post("/:id/top-up", async ({ params: { id }, body, set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
+    .post("/:id/top-up", async ({ request, params: { id }, body, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
       }
 
-      const platformRole = await getRole(auth.user.id)
-
-      if (platformRole !== "super_admin") {
-        return toForbidden(set, "Only super admins can top up device balance.")
-      }
-
-      const currentUser = auth.user
+      const currentUser = auth.type === "workos" ? { id: auth.userId } : null
       const parsed = topUpInputSchema.safeParse(body)
 
       if (!parsed.success) {
@@ -241,7 +175,7 @@ export const createAdminDevicesRoutes = (
                 reason: `Device top-up: ${reason} (device: ${id})`,
                 metadataJson: {
                   deviceId: id,
-                  performedBy: currentUser!.id,
+                  performedBy: currentUser?.id,
                 },
               },
             }),

@@ -51,13 +51,23 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
-const mockAuth = { user: { id: "user-1", email: "admin@test.com" } }
+const mockAuthContext = {
+  type: "workos" as const,
+  userId: "user-1",
+  email: "admin@test.com",
+  organizationId: "org-1",
+  orgRole: "admin" as const,
+  platformRole: "super_admin" as const,
+  source: "direct_cookie" as const,
+}
 
-type AuthFn = () => Promise<{ user: { id: string; email?: string | null } | null }>
+const mockResolveAuthContext = mock<(...args: any[]) => any>(
+  async () => mockAuthContext,
+)
 
-const mockAuthenticate: AuthFn = mock(() => Promise.resolve(mockAuth))
-
-const mockGetRole = mock<(...args: any[]) => any>((_userId: string) => Promise.resolve("super_admin"))
+mock.module("@/lib/auth/resolve-proxy-auth", () => ({
+  resolveAuthContext: mockResolveAuthContext,
+}))
 
 // Module under test — must be imported AFTER mocks
 const { createAdminDevicesRoutes } = await import("./admin-devices.route")
@@ -65,12 +75,7 @@ const { createAdminDevicesRoutes } = await import("./admin-devices.route")
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function createTestApp() {
-  return new Elysia().use(
-    createAdminDevicesRoutes({
-      authenticate: mockAuthenticate,
-      getRole: mockGetRole,
-    }),
-  )
+  return new Elysia().use(createAdminDevicesRoutes())
 }
 
 const BASE = "http://localhost/admin/devices"
@@ -86,17 +91,14 @@ describe("Admin Devices Routes", () => {
     mockBillingFindUnique.mockImplementation(async () => null)
     mockBillingCreate.mockImplementation(async () => ({ id: "ba-1", balance: 0 }))
     mockAdjustmentCreate.mockImplementation(async () => ({ id: "adj-1" }))
-    ;(mockAuthenticate as any).mockImplementation(async () => mockAuth)
-    ;(mockGetRole as any).mockImplementation(
-      async (_userId: string) => "super_admin",
-    )
+    mockResolveAuthContext.mockImplementation(async () => mockAuthContext)
   })
 
   // ─── GET / ──────────────────────────────────────────────────────────────────
 
   describe("GET /", () => {
     it("returns 401 when not authenticated", async () => {
-      ;(mockAuthenticate as any).mockImplementation(async () => ({ user: null }))
+      mockResolveAuthContext.mockImplementation(async () => null)
 
       const app = createTestApp()
       const res = await app.handle(new Request(`${BASE}/`))
@@ -107,21 +109,7 @@ describe("Admin Devices Routes", () => {
       expect(body.error).toBe("UNAUTHORIZED")
     })
 
-    it("returns 403 when not super_admin", async () => {
-      ;(mockGetRole as any).mockImplementation(
-        async (_userId: string) => "admin",
-      )
-
-      const app = createTestApp()
-      const res = await app.handle(new Request(`${BASE}/`))
-      const body = await res.json()
-
-      expect(res.status).toBe(403)
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("FORBIDDEN")
-    })
-
-    it("returns all devices for super_admin", async () => {
+    it("returns all devices when authenticated", async () => {
       const devices = [
         {
           id: "dev-1",

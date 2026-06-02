@@ -1,10 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import {
-  guardOrgRead,
-  guardOrgWrite,
-  guardOrgFull,
-} from "@/lib/whatsapp/auth"
+import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 
 const conversationBodySchema = t.Object({
   contactPhone: t.String({ minLength: 10, maxLength: 20 } as any),
@@ -18,11 +14,15 @@ const conversationUpdateSchema = t.Partial(
 )
 
 export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
-  .get("/", guardOrgRead(async ({ whatsappAuth, query }: { whatsappAuth: any, query: any }) => {
+  .get("/", async ({ request, query }: { request: any, query: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const { contactPhone } = query as any
     
     const where: any = {
-      organizationId: whatsappAuth.organizationId,
+      organizationId: whatsappAuth.organizationId!,
     }
 
     if (contactPhone) {
@@ -40,12 +40,17 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
     })
     
     return { ok: true, conversations }
-  }))
-  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  })
+  .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const conversation = await prisma.whatsappConversation.findFirst({
       where: { 
         id,
-        organizationId: whatsappAuth.organizationId
+        organizationId: whatsappAuth.organizationId!
       },
       include: {
         whatsappMessages: {
@@ -61,13 +66,18 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
     }
 
     return { ok: true, conversation }
-  }))
-  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
+  })
+  .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     try {
       const conversation = await prisma.whatsappConversation.create({
         data: {
           ...body,
-          organizationId: whatsappAuth.organizationId,
+          organizationId: whatsappAuth.organizationId!,
         },
       })
 
@@ -79,14 +89,19 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       }
       throw error
     }
-  }), {
+  }, {
     body: conversationBodySchema
   })
-  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
+  .patch("/:id", async ({ request, params: { id }, body, set }: { request: any, params: { id: string }, body: any, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const conversation = await prisma.whatsappConversation.findFirst({
       where: { 
         id,
-        organizationId: whatsappAuth.organizationId
+        organizationId: whatsappAuth.organizationId!
       },
     })
 
@@ -101,14 +116,19 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
     })
 
     return { ok: true, conversation: updated }
-  }), {
+  }, {
     body: conversationUpdateSchema
   })
-  .delete("/:id", guardOrgFull(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .delete("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const conversation = await prisma.whatsappConversation.findFirst({
       where: { 
         id,
-        organizationId: whatsappAuth.organizationId
+        organizationId: whatsappAuth.organizationId!
       },
     })
 
@@ -122,4 +142,4 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
     })
     
     return { ok: true, message: "Conversation deleted." }
-  }))
+  })
