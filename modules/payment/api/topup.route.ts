@@ -63,22 +63,24 @@ export const createTopupRoutes = () =>
           const duitkuResult = await duitkuService.createPayment({
             invoiceId: invoice.id,
             amount,
-            email: "user@example.com",
-            customerName: "Customer",
+            email: `${auth.organizationId}@payment.local`,
+            customerName: `Org ${auth.organizationId}`,
             productDetails: `Top Up Balance - ${invoice.invoiceNumber}`,
             paymentMethod: duitkuMethod,
           })
 
-          await prisma.invoice.update({
-            where: { id: invoice.id },
-            data: {
-              metadata: {
-                paymentUrl: duitkuResult.paymentUrl,
-                vaNumber: duitkuResult.vaNumber,
-                duitkuReference: duitkuResult.reference,
+          await prisma.$transaction([
+            prisma.invoice.update({
+              where: { id: invoice.id },
+              data: {
+                metadata: {
+                  paymentUrl: duitkuResult.paymentUrl,
+                  vaNumber: duitkuResult.vaNumber,
+                  duitkuReference: duitkuResult.reference,
+                },
               },
-            },
-          })
+            }),
+          ])
 
           return {
             ok: true,
@@ -107,11 +109,18 @@ export const createTopupRoutes = () =>
           },
         }
       } catch (error) {
-        set.status = 400
+        const isClientError =
+          error instanceof Error &&
+          (error.message.includes("not configured") ||
+            error.message.includes("not found") ||
+            error.message.includes("Minimum") ||
+            error.message.includes("Maximum"))
+
+        set.status = isClientError ? 400 : 500
         return {
           ok: false,
-          error: "CREATE_FAILED",
-          message: error instanceof Error ? error.message : "Failed to create invoice",
+          error: isClientError ? "CLIENT_ERROR" : "INTERNAL_ERROR",
+          message: error instanceof Error ? error.message : "An unexpected error occurred",
         }
       }
     })

@@ -110,7 +110,6 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
         throw new Error(result.message || "Topup failed. Please try again.")
       }
 
-      setFormState("success")
       onSuccess?.({
         invoiceId: result.invoice.id,
         amount,
@@ -118,11 +117,16 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
       })
 
       if (paymentMethod === "MANUAL_BANK") {
+        setFormState("success")
         router.push(`/console/billing/payments/confirm?invoiceId=${result.invoice.id}&amount=${amount}&bankAccountId=${selectedBankAccount}`)
       } else if (paymentMethod === "VA" || paymentMethod === "QRIS") {
         if (result.paymentUrl) {
-          window.location.href = result.paymentUrl
+          setFormState("submitting")
+          setTimeout(() => {
+            window.location.href = result.paymentUrl
+          }, 150)
         } else {
+          setFormState("success")
           router.push(`/console/billing/invoices/${result.invoice.id}?payment=pending`)
         }
       }
