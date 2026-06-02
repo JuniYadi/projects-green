@@ -159,7 +159,6 @@ export const createAdminDevicesRoutes = (
           return toServerError(set, "Unable to create device.")
         }
       },
-      { body: adminCreateDeviceSchema }
     )
     .post("/:id/top-up", async ({ params: { id }, body, set }: any) => {
       const actor = await guard(set)
