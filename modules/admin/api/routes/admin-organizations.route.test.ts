@@ -2,10 +2,10 @@
  * Admin Organizations — API Routes Tests
  */
 
-import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { describe, it, expect, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-const mockListOrganizations = mock<(...args: any[]) => any>(async () => [
+const mockListOrganizations = mock<(...args: unknown[]) => unknown>(async () => [
   {
     id: "org_1",
     name: "Acme Corp",
@@ -26,13 +26,13 @@ const mockListOrganizations = mock<(...args: any[]) => any>(async () => [
 
 mock.module("@/modules/admin/admin.service", () => ({
   listAdminOrganizations: mockListOrganizations,
-  createAdminOrganization: mock<(...args: any[]) => any>(async () => {
+  createAdminOrganization: mock<(...args: unknown[]) => unknown>(async () => {
     throw new Error("Not implemented in tests")
   }),
 }))
 
-const mockRequireSuperAdmin = mock<(...args: any[]) => any>(async (set: any) => {
-  set.status = 401
+const mockRequireSuperAdmin = mock<(...args: unknown[]) => unknown>(async (set: unknown) => {
+  ;(set as { status?: number | string }).status = 401
   return {
     ok: false as const,
     error: "UNAUTHORIZED" as const,
@@ -42,12 +42,12 @@ const mockRequireSuperAdmin = mock<(...args: any[]) => any>(async (set: any) => 
 
 mock.module("@/modules/admin/api/admin.guards", () => ({
   requireSuperAdmin: mockRequireSuperAdmin,
-  getAdminActorContext: mock<any>(async () => null),
-  toUnauthorizedError: (set: any) => {
+  getAdminActorContext: mock<() => Promise<null>>(async () => null),
+  toUnauthorizedError: (set: { status?: number | string }) => {
     set.status = 401
     return { ok: false as const, error: "UNAUTHORIZED", message: "You must be signed in" }
   },
-  toForbiddenError: (set: any) => {
+  toForbiddenError: (set: { status?: number | string }) => {
     set.status = 403
     return { ok: false as const, error: "FORBIDDEN", policyCode: "SUPER_ADMIN_REQUIRED", message: "Forbidden" }
   },
@@ -62,7 +62,7 @@ const BASE = "http://localhost/admin/organizations"
 describe("Admin Organizations Routes", () => {
   describe("GET /admin/organizations", () => {
     it("returns 200 with list of organizations when guard allows", async () => {
-      const allowedGuard = mock<any>(async () => ({
+      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
@@ -90,8 +90,8 @@ describe("Admin Organizations Routes", () => {
     })
 
     it("returns 403 when guard returns forbidden", async () => {
-      const forbiddenGuard = mock<any>(async (set: any) => {
-        set.status = 403
+      const forbiddenGuard = mock<(...args: unknown[]) => unknown>(async (set: unknown) => {
+        ;(set as { status?: number | string }).status = 403
         return {
           ok: false as const,
           error: "FORBIDDEN" as const,
@@ -112,7 +112,7 @@ describe("Admin Organizations Routes", () => {
     })
 
     it("calls listAdminOrganizations on success", async () => {
-      const allowedGuard = mock<any>(async () => ({
+      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
