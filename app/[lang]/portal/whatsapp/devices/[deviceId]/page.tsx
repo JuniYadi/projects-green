@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { CheckCircle, XCircle } from "@phosphor-icons/react"
+import { StatusBadge } from "../_components/devices-ui"
 import { DeviceActions } from "./device-actions"
 import { QuotaBalanceCard } from "./quota-balance-card"
 
@@ -30,21 +30,6 @@ const formatDate = (date: string | null) => {
     month: "long",
     year: "numeric",
   }).format(new Date(date))
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const isActive = status === "ACTIVE"
-
-  return (
-    <Badge variant={isActive ? "default" : "secondary"} className="text-sm">
-      {isActive ? (
-        <CheckCircle weight="fill" className="mr-1 size-3.5" />
-      ) : (
-        <XCircle weight="fill" className="mr-1 size-3.5" />
-      )}
-      {isActive ? "Active" : "Inactive"}
-    </Badge>
-  )
 }
 
 type InfoRowProps = {
@@ -118,7 +103,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
               <h1 className="text-2xl font-semibold">
                 {device.phoneNumber}
               </h1>
-              <StatusBadge status={device.status} />
+              <StatusBadge status={device.status} className="text-sm" />
             </div>
             <p className="text-sm text-muted-foreground">
               Device {device.name && `- ${device.name}`}

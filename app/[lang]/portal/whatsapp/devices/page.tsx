@@ -2,7 +2,6 @@ import Link from "next/link"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
-import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardContent,
@@ -18,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { CheckCircle, XCircle, Phone } from "@phosphor-icons/react"
+import { StatusBadge, DeviceEmptyState } from "./_components/devices-ui"
 
 type DevicesPageProps = {
   params: Promise<{
@@ -40,21 +39,6 @@ const formatCurrency = (amount: number) => {
     currency: "IDR",
     minimumFractionDigits: 0,
   }).format(amount)
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const isActive = status === "ACTIVE"
-
-  return (
-    <Badge variant={isActive ? "default" : "secondary"}>
-      {isActive ? (
-        <CheckCircle weight="fill" className="mr-1 size-3.5" />
-      ) : (
-        <XCircle weight="fill" className="mr-1 size-3.5" />
-      )}
-      {isActive ? "Active" : "Inactive"}
-    </Badge>
-  )
 }
 
 export default async function PortalWhatsAppDevicesPage({
@@ -107,12 +91,7 @@ export default async function PortalWhatsAppDevicesPage({
           </CardHeader>
           <CardContent>
             {devices.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Phone className="mb-3 size-10 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  No devices found
-                </p>
-              </div>
+              <DeviceEmptyState />
             ) : (
               <Table>
                 <TableHeader>
