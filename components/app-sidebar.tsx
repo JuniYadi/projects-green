@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sidebar"
 import {
   BookOpenIcon,
+  BuildingsIcon,
   CaretLeftIcon,
   CreditCardIcon,
   GaugeIcon,
@@ -81,6 +82,29 @@ interface SidebarContextConfig {
 }
 
 const PORTAL_CONTEXTS: SidebarContextConfig[] = [
+  {
+    context: "admin",
+    matches: (path) => startsWithRoute(path, "/portal/admin"),
+    navMainLabel: "Admin",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Organizations",
+        url: localizePathname({
+          pathname: "/portal/admin/organizations",
+          locale,
+        }),
+        icon: <BuildingsIcon />,
+        isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+    ],
+  },
   {
     context: "app-hosting",
     matches: (path) => startsWithRoute(path, "/portal/app"),
