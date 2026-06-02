@@ -6,35 +6,55 @@ import {
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
 import { toWorkosError } from "@/modules/admin/api/admin.errors"
-import { createAdminOrganization } from "@/modules/admin/admin.service"
+import {
+  createAdminOrganization,
+  listAdminOrganizations,
+} from "@/modules/admin/admin.service"
 
 export const createAdminOrganizationsRoutes = (deps = {}) => {
   const { requireSuperAdmin: guard = requireSuperAdmin } = { ...deps }
 
-  return new Elysia().post(
-    "/admin/organizations",
-    async ({ body, set }) => {
-      const actor = await guard(set)
-      if ("ok" in actor && !actor.ok) {
-        return actor as AdminApiError
-      }
-
-      try {
-        const org = await createAdminOrganization({
-          name: body.name.trim(),
-          domains: body.domains?.map((d: string) => d.trim()),
-          externalId: body.externalId?.trim(),
-        })
-
-        set.status = 201
-        return {
-          ok: true,
-          organization: org,
+  return new Elysia()
+    .get(
+      "/admin/organizations",
+      async ({ set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) {
+          return actor as AdminApiError
         }
-      } catch (error) {
-        return toWorkosError(set, error)
+
+        try {
+          const organizations = await listAdminOrganizations()
+          return { ok: true as const, organizations }
+        } catch (error) {
+          return toWorkosError(set, error)
+        }
       }
-    },
-    { body: adminCreateOrganizationSchema }
-  )
+    )
+    .post(
+      "/admin/organizations",
+      async ({ body, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) {
+          return actor as AdminApiError
+        }
+
+        try {
+          const org = await createAdminOrganization({
+            name: body.name.trim(),
+            domains: body.domains?.map((d: string) => d.trim()),
+            externalId: body.externalId?.trim(),
+          })
+
+          set.status = 201
+          return {
+            ok: true,
+            organization: org,
+          }
+        } catch (error) {
+          return toWorkosError(set, error)
+        }
+      },
+      { body: adminCreateOrganizationSchema }
+    )
 }
