@@ -22,10 +22,16 @@ const originalFetch = globalThis.fetch
 const originalConfirm = window.confirm
 
 
+let cachedOrganizationAdminSurface: (typeof import("@/modules/tenants/ui/organization-admin-surface"))["OrganizationAdminSurface"] | null =
+  null
+
 const loadOrganizationAdminSurface = async () => {
-  const surfaceModule =
-    await import("@/modules/tenants/ui/organization-admin-surface")
-  return surfaceModule.OrganizationAdminSurface
+  if (!cachedOrganizationAdminSurface) {
+    const surfaceModule =
+      await import("@/modules/tenants/ui/organization-admin-surface")
+    cachedOrganizationAdminSurface = surfaceModule.OrganizationAdminSurface
+  }
+  return cachedOrganizationAdminSurface
 }
 
 type FetchMockConfig = {

@@ -20,23 +20,21 @@ const mockFetch = mock(
 ) as unknown as typeof fetch
 const originalFetch = globalThis.fetch
 
+let currentParams = ""
+let ThunderAiHelpDrawer: React.ComponentType
+
 describe("ThunderAiHelpDrawer", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mock.restore()
     globalThis.fetch = mockFetch
-  })
+    currentParams = ""
 
-  afterEach(() => {
-    globalThis.fetch = originalFetch
-  })
-
-  async function renderDrawer(params = "doc=1") {
     mock.module("next/navigation", () => ({
       useRouter: () => ({
         replace: mockReplace,
       }),
       usePathname: () => "/en/console",
-      useSearchParams: () => new URLSearchParams(params),
+      useSearchParams: () => new URLSearchParams(currentParams),
     }))
 
     mock.module("next/navigation.js", () => ({
@@ -44,15 +42,26 @@ describe("ThunderAiHelpDrawer", () => {
         replace: mockReplace,
       }),
       usePathname: () => "/en/console",
-      useSearchParams: () => new URLSearchParams(params),
+      useSearchParams: () => new URLSearchParams(currentParams),
     }))
 
-    const { ThunderAiHelpDrawer } = await import("./thunder-ai-help-drawer")
+    const mod = await import("./thunder-ai-help-drawer")
+    ThunderAiHelpDrawer = mod.ThunderAiHelpDrawer
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  async function renderDrawer(params = "doc=1") {
+    currentParams = params
 
     let view: ReturnType<typeof render> | undefined
 
     await act(async () => {
-      view = render(<ThunderAiHelpDrawer />)
+      view = render(
+        <ThunderAiHelpDrawer />
+      )
     })
 
     return view!
