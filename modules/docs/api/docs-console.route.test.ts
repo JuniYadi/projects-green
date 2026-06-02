@@ -1,64 +1,72 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { Elysia } from "elysia"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 
-import { createDocsConsoleRoutes } from "./docs-console.route"
+const mockFindMany = mock(() =>
+  Promise.resolve([
+    {
+      id: "1",
+      path: "/test",
+      title: "Test Doc",
+      updatedAt: new Date("2026-05-20"),
+      organizationId: "org_1",
+      searchText: "test",
+    },
+    {
+      id: "2",
+      path: "/global",
+      title: "Global Doc",
+      updatedAt: new Date("2026-05-21"),
+      organizationId: null,
+      searchText: "global",
+    },
+  ])
+)
 
-type MockPrismaKnowledgeDocument = {
-  findMany: ReturnType<typeof mock>
-}
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    knowledgeDocument: {
+      findMany: mockFindMany,
+    },
+  },
+}))
 
-type MockPrisma = {
-  knowledgeDocument: MockPrismaKnowledgeDocument
-}
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  withAuth: mock(() =>
+    Promise.resolve({
+      user: { id: "user_1" },
+      organizationId: "org_1",
+    })
+  ),
+}))
 
-let mockPrisma: MockPrisma
+const { createDocsConsoleRoutes } = await import("./docs-console.route")
 
 beforeEach(() => {
-  mockPrisma = {
-    knowledgeDocument: {
-      findMany: mock(() =>
-        Promise.resolve([
-          {
-            id: "1",
-            path: "/test",
-            title: "Test Doc",
-            updatedAt: new Date("2026-05-20"),
-            organizationId: "org_1",
-            searchText: "test",
-          },
-          {
-            id: "2",
-            path: "/global",
-            title: "Global Doc",
-            updatedAt: new Date("2026-05-21"),
-            organizationId: null,
-            searchText: "global",
-          },
-        ])
-      ),
-    },
-  }
+  mockFindMany.mockClear()
+  mockFindMany.mockImplementation(() =>
+    Promise.resolve([
+      {
+        id: "1",
+        path: "/test",
+        title: "Test Doc",
+        updatedAt: new Date("2026-05-20"),
+        organizationId: "org_1",
+        searchText: "test",
+      },
+      {
+        id: "2",
+        path: "/global",
+        title: "Global Doc",
+        updatedAt: new Date("2026-05-21"),
+        organizationId: null,
+        searchText: "global",
+      },
+    ])
+  )
 })
 
 describe("docsConsoleRoutes", () => {
   it("GET /docs/list returns docs for the organization and global", async () => {
-    // Must mock before importing the route module
-    mock.module("@/lib/prisma", () => ({
-      prisma: mockPrisma,
-    }))
-    mock.module("@workos-inc/authkit-nextjs", () => ({
-      withAuth: mock(() =>
-        Promise.resolve({
-          user: { id: "user_1" },
-          organizationId: "org_1",
-        })
-      ),
-    }))
-
-    const { createDocsConsoleRoutes: create } = await import(
-      "./docs-console.route"
-    )
-    const app = create()
+    const app = createDocsConsoleRoutes()
     const response = await app.handle(
       new Request("http://localhost/docs/list")
     )
@@ -67,11 +75,11 @@ describe("docsConsoleRoutes", () => {
     expect(response.status).toBe(200)
     expect(data.ok).toBe(true)
     expect(data.docs).toHaveLength(2)
-    expect(mockPrisma.knowledgeDocument.findMany).toHaveBeenCalled()
+    expect(mockFindMany).toHaveBeenCalled()
   })
 
   it("GET /docs/search returns matching docs", async () => {
-    mockPrisma.knowledgeDocument.findMany = mock(() =>
+    mockFindMany.mockImplementationOnce(() =>
       Promise.resolve([
         {
           id: "3",
@@ -84,22 +92,7 @@ describe("docsConsoleRoutes", () => {
       ])
     )
 
-    mock.module("@/lib/prisma", () => ({
-      prisma: mockPrisma,
-    }))
-    mock.module("@workos-inc/authkit-nextjs", () => ({
-      withAuth: mock(() =>
-        Promise.resolve({
-          user: { id: "user_1" },
-          organizationId: "org_1",
-        })
-      ),
-    }))
-
-    const { createDocsConsoleRoutes: create } = await import(
-      "./docs-console.route"
-    )
-    const app = create()
+    const app = createDocsConsoleRoutes()
     const response = await app.handle(
       new Request("http://localhost/docs/search?q=deploy")
     )
@@ -111,22 +104,7 @@ describe("docsConsoleRoutes", () => {
   })
 
   it("GET /docs/search returns empty when no query", async () => {
-    mock.module("@/lib/prisma", () => ({
-      prisma: mockPrisma,
-    }))
-    mock.module("@workos-inc/authkit-nextjs", () => ({
-      withAuth: mock(() =>
-        Promise.resolve({
-          user: { id: "user_1" },
-          organizationId: "org_1",
-        })
-      ),
-    }))
-
-    const { createDocsConsoleRoutes: create } = await import(
-      "./docs-console.route"
-    )
-    const app = create()
+    const app = createDocsConsoleRoutes()
     const response = await app.handle(
       new Request("http://localhost/docs/search")
     )
@@ -136,6 +114,6 @@ describe("docsConsoleRoutes", () => {
     expect(data.ok).toBe(true)
     expect(data.docs).toHaveLength(0)
     // findMany should NOT be called when q is absent
-    expect(mockPrisma.knowledgeDocument.findMany).not.toHaveBeenCalled()
+    expect(mockFindMany).not.toHaveBeenCalled()
   })
 })

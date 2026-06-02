@@ -5,7 +5,6 @@ import {
   InvoiceCancelNotAllowedError,
   InvoiceNotFoundError,
   toInvoiceStatus,
-  toInvoiceDetail,
 } from "@/modules/invoices/invoices.service"
 
 const baseInvoice = {

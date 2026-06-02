@@ -4,7 +4,6 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto"
-import type { PrismaClient } from "@prisma/client"
 
 const GITHUB_INSTALL_STATE_TTL_MS = 10 * 60 * 1000
 

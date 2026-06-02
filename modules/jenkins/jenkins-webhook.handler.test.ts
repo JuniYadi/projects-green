@@ -46,7 +46,6 @@ describe("JenkinsWebhookHandler", () => {
     it("returns false and warns when env var is not set", async () => {
       delete process.env.JENKINS_WEBHOOK_TOKEN
       const warnMessages: string[] = []
-      const originalWarn = process.env.JENKINS_WEBHOOK_TOKEN
       console.warn = (...args: string[]) => {
         warnMessages.push(args.join(" "))
       }

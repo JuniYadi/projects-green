@@ -17,7 +17,7 @@ const TABS: { value: TabValue; label: string }[] = [
   { value: "confirmations", label: "Confirmations" },
 ]
 
-export function PaymentTabs({ lang }: { lang: string }) {
+export function PaymentTabs() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -41,10 +41,10 @@ export function PaymentTabs({ lang }: { lang: string }) {
         </TabsList>
       </Tabs>
 
-      {activeTab === "overview" && <OverviewTab lang={lang} />}
-      {activeTab === "gateways" && <GatewaysTab lang={lang} />}
-      {activeTab === "bank-accounts" && <BankAccountsTab lang={lang} />}
-      {activeTab === "confirmations" && <ConfirmationsTab lang={lang} />}
+      {activeTab === "overview" && <OverviewTab />}
+      {activeTab === "gateways" && <GatewaysTab />}
+      {activeTab === "bank-accounts" && <BankAccountsTab />}
+      {activeTab === "confirmations" && <ConfirmationsTab />}
     </div>
   )
 }

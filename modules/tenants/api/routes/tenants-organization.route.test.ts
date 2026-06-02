@@ -7,9 +7,6 @@ import {
 
 import { createTenantsOrganizationRoutes } from "@/modules/tenants/api/routes/tenants-organization.route"
 import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
-import type { TenantApiError } from "@/modules/tenants/contracts/tenant-api.contract"
-import type { RouteSet } from "@/modules/tenants/api/tenants.errors"
-import type { ActorRoleContext } from "@/modules/tenants/tenant-policy"
 
 type MockOrganization = {
   id: string
@@ -31,22 +28,16 @@ const createOrganization = (): MockOrganization => ({
   updatedAt: "2026-01-02T00:00:00.000Z",
 })
 
-const mockRequireTenantActor = mock(async (_set: unknown) => ({
+const mockRequireTenantActor = mock(async () => ({
   userId: "user_1",
   organizationId: "org_1",
   platformRole: "none" as const,
   tenantRole: "owner" as const,
 }))
 
-const mockEnsureTenantContextAccess = mock(
-  (_orgId: string, _actor: unknown, _set: unknown): true => true
-)
-const mockCanManageTenant = mock(
-  (_actor: ActorRoleContext): boolean => true
-)
-const mockCanTransferOwnership = mock(
-  (_actor: ActorRoleContext): boolean => true
-)
+const mockEnsureTenantContextAccess = mock((): true => true)
+const mockCanManageTenant = mock((): boolean => true)
+const mockCanTransferOwnership = mock((): boolean => true)
 
 const mockGetTenantOrganizationById = mock(
   async (): Promise<MockOrganization | null> => createOrganization()
@@ -95,25 +86,15 @@ describe("tenantsOrganizationRoutes", () => {
     mockUpdateTenantOrganization.mockClear()
     mockDeleteTenantOrganization.mockClear()
 
-    mockRequireTenantActor.mockImplementation(async (_set: unknown) => ({
+    mockRequireTenantActor.mockImplementation(async () => ({
       userId: "user_1",
       organizationId: "org_1",
       platformRole: "none",
       tenantRole: "owner",
     }))
-    mockEnsureTenantContextAccess.mockImplementation(
-      (
-        _orgId: string,
-        _actor: unknown,
-        _set: unknown
-      ): true => true
-    )
-    mockCanManageTenant.mockImplementation(
-      (_actor: ActorRoleContext): boolean => true
-    )
-    mockCanTransferOwnership.mockImplementation(
-      (_actor: ActorRoleContext): boolean => true
-    )
+    mockEnsureTenantContextAccess.mockImplementation((): true => true)
+    mockCanManageTenant.mockImplementation((): boolean => true)
+    mockCanTransferOwnership.mockImplementation((): boolean => true)
     mockGetTenantOrganizationById.mockImplementation(async () =>
       createOrganization()
     )
@@ -194,7 +175,7 @@ describe("tenantsOrganizationRoutes", () => {
   it("returns context mismatch policy error when tenant context access fails", async () => {
     // Create a custom mock that returns a policy error and sets status
     const authenticatedMock = mock(
-      async (_set: { status?: number | string }): Promise<TenantActorContext> => ({
+      async (): Promise<TenantActorContext> => ({
         userId: "user_1",
         organizationId: "org_1",
         platformRole: "none" as const,
@@ -204,7 +185,7 @@ describe("tenantsOrganizationRoutes", () => {
     const contextAccessMock = mock(
       (
         _orgId: string,
-        _actor: unknown,
+        _actor: TenantActorContext,
         set: { status?: number | string }
       ) => {
         set.status = 403
@@ -264,9 +245,7 @@ describe("tenantsOrganizationRoutes", () => {
   })
 
   it("returns 403 when actor cannot manage organization settings", async () => {
-    mockCanManageTenant.mockImplementation(
-      (_actor: ActorRoleContext): boolean => false
-    )
+    mockCanManageTenant.mockImplementation((): boolean => false)
 
     const app = await createApp()
 
@@ -432,10 +411,7 @@ describe("tenantsOrganizationRoutes", () => {
   })
 
   it("blocks delete endpoint for non-owner and non-super-admin actors", async () => {
-    mockCanTransferOwnership.mockImplementation(
-      (_actor: { platformRole: string; tenantRole: string | null }): boolean =>
-        false
-    )
+    mockCanTransferOwnership.mockImplementation((): boolean => false)
 
     const app = await createApp()
 

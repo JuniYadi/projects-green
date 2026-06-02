@@ -1,7 +1,6 @@
 import { Worker, type Job } from "bullmq"
 
 import {
-  WHATSAPP_TEMPLATE_SYNC_JOB_NAME,
   WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME,
   getWhatsAppTemplateSyncRedisConnection,
   type WhatsAppTemplateSyncJobData,
@@ -12,9 +11,6 @@ const redisConnection = getWhatsAppTemplateSyncRedisConnection()
 const worker = new Worker<WhatsAppTemplateSyncJobData>(
   WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME,
   async (job: Job<WhatsAppTemplateSyncJobData>) => {
-    const maxAttempts =
-      typeof job.opts.attempts === "number" ? job.opts.attempts : 1
-
     if (job.data.method === "sync-templates") {
       // TODO: fetch templates from Meta Cloud API and upsert into Prisma
       console.info(

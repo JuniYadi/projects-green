@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, Mock } from "bun:test";
+import { describe, expect, it, vi, beforeEach } from "bun:test";
 import { PrismaClient } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import Decimal = Prisma.Decimal;
@@ -9,6 +9,23 @@ import {
   PricingNotFoundError,
   PricingLookup,
 } from "./types";
+
+type MockPrisma = {
+  billingAccount: {
+    findUnique: ReturnType<typeof vi.fn>
+    update: ReturnType<typeof vi.fn>
+  }
+  billingAdjustment: {
+    create: ReturnType<typeof vi.fn>
+  }
+  pricing: {
+    findFirst: ReturnType<typeof vi.fn>
+  }
+  subscription: {
+    findUnique: ReturnType<typeof vi.fn>
+  }
+  $transaction: ReturnType<typeof vi.fn>
+}
 
 // Create a mock PrismaClient
 const mockPrisma = {
@@ -27,7 +44,7 @@ const mockPrisma = {
   },
   $transaction: vi.fn(),
 } as unknown as PrismaClient;
-const mockedPrisma = mockPrisma as any;
+const mockedPrisma = mockPrisma as unknown as MockPrisma;
 
 describe("BalanceGateService", () => {
   let service: BalanceGateService;
@@ -35,11 +52,11 @@ describe("BalanceGateService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service = new BalanceGateService(mockPrisma);
-    mockedPrisma.$transaction.mockImplementation(async (callback: any) => {
+    mockedPrisma.$transaction.mockImplementation(async (callback: (tx: MockPrisma) => Promise<unknown>) => {
       if (typeof callback === 'function') {
         return callback(mockedPrisma);
       }
-      return callback; // Fallback for the old array tuple style used in addCredit
+      return callback;
     });
   });
 
@@ -49,7 +66,7 @@ describe("BalanceGateService", () => {
         id: "acc-1",
         organizationId: "org-1",
         balance: new Decimal(50_000),
-      } as any);
+      });
 
       const balance = await service.getBalance("org-1");
       expect(balance.toNumber()).toBe(50_000);
@@ -62,7 +79,7 @@ describe("BalanceGateService", () => {
     it("isBalancePositive true when balance=1", async () => {
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(1),
-      } as any);
+      });
 
       const result = await service.isBalancePositive("org-1");
       expect(result).toBe(true);
@@ -71,7 +88,7 @@ describe("BalanceGateService", () => {
     it("isBalancePositive false when balance=0", async () => {
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(0),
-      } as any);
+      });
 
       const result = await service.isBalancePositive("org-1");
       expect(result).toBe(false);
@@ -80,7 +97,7 @@ describe("BalanceGateService", () => {
     it("isBalanceAboveWarn true when balance=50_000", async () => {
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(50_000),
-      } as any);
+      });
 
       const result = await service.isBalanceAboveWarn("org-1");
       expect(result).toBe(true);
@@ -89,7 +106,7 @@ describe("BalanceGateService", () => {
     it("isBalanceAboveWarn false when balance=5_000", async () => {
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(5_000),
-      } as any);
+      });
 
       const result = await service.isBalanceAboveWarn("org-1");
       expect(result).toBe(false);
@@ -99,22 +116,22 @@ describe("BalanceGateService", () => {
   describe("Balance mutations", () => {
     it("addCredit increases balance", async () => {
       // Mock $transaction to execute callback with proper tx mock
-      mockedPrisma.$transaction.mockImplementation(async (callback: any) => {
+      mockedPrisma.$transaction.mockImplementation(async (callback: (tx: MockPrisma) => Promise<unknown>) => {
         // Set up ordered mocks for tx calls:
         // 1. billingAccount.findUnique
         mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
           id: "acc-1",
           balance: new Decimal(10_000),
-        } as any)
+        })
         // 2. billingAccount.update (inside Promise.all)
         mockedPrisma.billingAccount.update.mockResolvedValueOnce({
           id: "acc-1",
           balance: new Decimal(15_000),
-        } as any)
+        })
         // 3. billingAdjustment.create (inside Promise.all)
         mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({
           id: "adj-1",
-        } as any)
+        })
         // Execute the callback with the mock prisma
         const result = await callback(mockedPrisma)
         return result
@@ -134,12 +151,12 @@ describe("BalanceGateService", () => {
 
     it("deductBalance below zero throws NegativeBalanceError", async () => {
       // Mock $transaction to execute callback
-      mockedPrisma.$transaction.mockImplementation(async (callback: any) => {
+      mockedPrisma.$transaction.mockImplementation(async (callback: (tx: MockPrisma) => Promise<unknown>) => {
         // 1. billingAccount.findUnique returns balance of 10,000
         mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
           id: "acc-1",
           balance: new Decimal(10_000),
-        } as any)
+        })
         // Execute the callback - should throw NegativeBalanceError
         const result = await callback(mockedPrisma)
         return result
@@ -191,21 +208,21 @@ describe("BalanceGateService", () => {
     it("chargePayg deducts computed cost", async () => {
       // Setup mock subscription
       mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
-        mockPaygSubscription as any,
+        mockPaygSubscription,
       );
 
       // Setup mock balance (50_000 available)
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(50_000),
-      } as any); // for getBalance
+      }); // for getBalance
 
       // 150mCPU -> round up to 200 -> 200 * 10 = 2000
       // 200MB -> round up to 256 -> 256 * 5 = 1280
       // Total = 3280
 
-      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000 - 3280) } as any);
-      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
+      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000 - 3280) });
+      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" });
 
       const result = await service.chargePayg("org-1", "sub-1");
 
@@ -232,13 +249,13 @@ describe("BalanceGateService", () => {
 
     it("chargePayg insufficient balance", async () => {
       mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
-        mockPaygSubscription as any,
+        mockPaygSubscription,
       );
 
       // Balance = 1000, needed = 3280
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(1000),
-      } as any);
+      });
 
       await expect(service.chargePayg("org-1", "sub-1")).rejects.toThrow(
         InsufficientBalanceError,
@@ -247,17 +264,17 @@ describe("BalanceGateService", () => {
 
     it("chargePayg exact balance allowed", async () => {
       mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
-        mockPaygSubscription as any,
+        mockPaygSubscription,
       );
 
       // Balance = 3280, needed = 3280
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(3280),
-      } as any);
+      });
 
-      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(0) } as any);
-      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
+      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(0) });
+      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" });
 
       const result = await service.chargePayg("org-1", "sub-1");
       expect(result.charged.toNumber()).toBe(3280);
@@ -291,16 +308,16 @@ describe("BalanceGateService", () => {
 
     it("chargePackage deducts basePriceIdr", async () => {
       mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
-        mockPackageSubscription as any,
+        mockPackageSubscription,
       );
 
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(150_000),
-      } as any);
+      });
 
-      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000) } as any);
-      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
+      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000) });
+      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" });
 
       const result = await service.chargePackage("org-1", "sub-pkg");
 
@@ -309,12 +326,12 @@ describe("BalanceGateService", () => {
 
     it("chargePackage insufficient", async () => {
       mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
-        mockPackageSubscription as any,
+        mockPackageSubscription,
       );
 
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(50_000),
-      } as any);
+      });
 
       await expect(service.chargePackage("org-1", "sub-pkg")).rejects.toThrow(
         InsufficientBalanceError,
@@ -323,16 +340,16 @@ describe("BalanceGateService", () => {
 
     it("chargeFlatMonthly delegates to chargePackage", async () => {
       mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
-        mockPackageSubscription as any,
+        mockPackageSubscription,
       );
 
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         id: "acc-1",
         balance: new Decimal(150_000),
-      } as any);
+      });
 
-      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000) } as any);
-      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" } as any);
+      mockedPrisma.billingAccount.update.mockResolvedValueOnce({ balance: new Decimal(50_000) });
+      mockedPrisma.billingAdjustment.create.mockResolvedValueOnce({ id: "adj-1" });
 
       const result = await service.chargeFlatMonthly("org-1", "sub-pkg");
 
@@ -355,7 +372,7 @@ describe("BalanceGateService", () => {
         unitRateMessage: null,
         servicePlan: { code: "STANDARD", packageId: "pkg-1", resources: {} },
         region: { code: "INDONESIA" },
-      } as any);
+      });
 
       const pricing = await service.findPricing({
         planId: "plan-1",

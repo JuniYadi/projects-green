@@ -34,7 +34,7 @@ const jobDslSchema = z.object({
 
 export const createJenkinsRoutes = () => {
   const apiRoutes = new Elysia({ prefix: "/integrations/jenkins" })
-    .get("/status", async ({ set: _set }) => {
+    .get("/status", async () => {
       try {
         const jobs = await listJenkinsJobs()
         return { ok: true as const, connected: true, jobCount: jobs.length, jobs }

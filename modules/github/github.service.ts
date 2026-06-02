@@ -1,4 +1,4 @@
-import { createPrivateKey, createSign, sign } from "node:crypto"
+import { createPrivateKey, sign } from "node:crypto"
 
 import {
   FEATURE_FLAG_KEYS,
@@ -85,10 +85,6 @@ type GithubApiRepository = {
   owner?: {
     login?: string
   }
-}
-
-type GithubAppAccessTokenResponse = {
-  token?: string
 }
 
 type GithubInstallationStore = {

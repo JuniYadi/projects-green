@@ -51,6 +51,7 @@ export function useTemplates() {
   }, [])
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
 
@@ -79,6 +80,7 @@ export function useTemplate(id: string) {
   }, [id])
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
 

@@ -19,7 +19,7 @@ type GatewaysRequestState =
   | { status: "success"; data: PaymentGateway[] }
   | { status: "error"; message: string }
 
-export function GatewaysTab({ lang }: { lang: string }) {
+export function GatewaysTab() {
   const [state, setState] = useState<GatewaysRequestState>({ status: "loading" })
 
   const fetchGateways = useCallback(async () => {
@@ -44,6 +44,7 @@ export function GatewaysTab({ lang }: { lang: string }) {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchGateways()
   }, [fetchGateways])
 

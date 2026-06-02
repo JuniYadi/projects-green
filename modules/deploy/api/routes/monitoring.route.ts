@@ -5,7 +5,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   .get(
     "/logs/:deployId",
-    async ({ params: { deployId }, set }) => {
+    async ({ set }) => {
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
@@ -24,7 +24,7 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   )
   .get(
     "/events/:deployId",
-    async ({ params: { deployId }, set }) => {
+    async ({ set }) => {
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
@@ -43,7 +43,7 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   )
   .get(
     "/status/:deployId",
-    async ({ params: { deployId }, set }) => {
+    async ({ set }) => {
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401

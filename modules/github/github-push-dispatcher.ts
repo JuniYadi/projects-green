@@ -37,6 +37,7 @@ export interface StackMetadata {
     author: string
     timestamp: string
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any
 }
 
@@ -103,7 +104,7 @@ export class GithubPushEventHandler {
     return true
   }
 
-  async syncPushMetadata(stack: Stack, branch: string, commits: any[], pusher: string): Promise<void> {
+  async syncPushMetadata(stack: Stack, branch: string, commits: Array<{ id: string; message: string; author: string; url: string }>, pusher: string): Promise<void> {
     stack.metadata = {
       ...stack.metadata,
       lastPush: {
@@ -136,6 +137,42 @@ export class GithubPushDispatcher {
       console.error(`[GitHubPushDispatcher] Failed to trigger Jenkins job for stack ${stack.id}:`, error)
       throw error
     }
+  }
+}
+
+export function parsePushPayload(raw: Record<string, unknown>): GithubPushPayload {
+  const pusher = raw.pusher as Record<string, unknown> | undefined
+  const repository = raw.repository as Record<string, unknown> | undefined
+  const owner = repository?.owner as Record<string, unknown> | undefined
+
+  return {
+    ref: (raw.ref as string) ?? "",
+    after: (raw.after as string) ?? "",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    commits: ((raw.commits as unknown[]) ?? []).map((c: any) => ({
+      id: (c.id as string) ?? "",
+      message: (c.message as string) ?? "",
+      author: {
+        name: ((c.author as Record<string, unknown>)?.name as string) ?? "",
+        email: ((c.author as Record<string, unknown>)?.email as string) ?? "",
+        username: (c.author as Record<string, unknown>)?.username as string | undefined,
+      },
+      url: (c.url as string) ?? "",
+      timestamp: (c.timestamp as string) ?? "",
+    })),
+    pusher: {
+      name: (pusher?.name as string) ?? "",
+      email: (pusher?.email as string) ?? "",
+    },
+    repository: {
+      id: (repository?.id as number) ?? 0,
+      full_name: (repository?.full_name as string) ?? "",
+      name: (repository?.name as string) ?? "",
+      owner: {
+        login: (owner?.login as string) ?? "",
+      },
+    },
+    deleted: raw.deleted as boolean | undefined,
   }
 }
 

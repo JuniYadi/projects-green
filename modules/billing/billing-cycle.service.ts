@@ -13,7 +13,7 @@
 import { PrismaClient, Prisma } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
-import { UsageLedgerService, type RatedUsage } from "./usage-ledger.service"
+import { UsageLedgerService } from "./usage-ledger.service"
 import {
   type BillingRunResult,
   type SubscriptionBillingResult,

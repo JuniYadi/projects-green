@@ -284,6 +284,7 @@ export function SupportTicketDetailScreen({ ticketId }: SupportTicketDetailScree
       window.clearTimeout(timeoutId)
       requestSequenceRef.current += 1
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId])
 
   const ticket = thread?.ticket ?? null

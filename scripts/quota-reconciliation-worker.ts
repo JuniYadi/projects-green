@@ -12,22 +12,12 @@
  * - REDIS_URL: Redis connection URL (required)
  */
 
-import { Worker, type JobsOptions } from "bullmq"
+import { Worker } from "bullmq"
 import { getQuotaReconciliationRedisConnection, QUOTA_RECONCILIATION_QUEUE } from "@/lib/queue/quota-reconciliation"
 import type { QuotaReconciliationJobData } from "@/lib/queue/quota-reconciliation"
 import { prisma } from "@/lib/prisma"
 
 const CONCURRENCY = 4
-
-const DEFAULT_JOB_OPTIONS: JobsOptions = {
-  attempts: 3,
-  backoff: {
-    type: "exponential",
-    delay: 5_000,
-  },
-  removeOnComplete: 500,
-  removeOnFail: 1000,
-}
 
 async function processQuotaReconciliation(job: {
   id?: string

@@ -39,9 +39,8 @@ export const createAdminSettingsRoutes = () =>
         return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
       }
 
-      const { expiryDays, autoApproveThreshold } = body as {
+      const { expiryDays } = body as {
         expiryDays?: number
-        autoApproveThreshold?: number
       }
 
       if (expiryDays !== undefined && (expiryDays < 1 || expiryDays > 30)) {

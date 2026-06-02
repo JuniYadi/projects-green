@@ -74,13 +74,11 @@ const mockDeleteTenantMembershipSafely = mock(
 const mockRequireTenantActor = mock(
   async (): Promise<MockActor | TenantApiError> => ({ ...defaultActor })
 )
+/* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(
-  (
-    _orgId: string,
-    _actor: MockActor,
-    _set: MockRouteSet
-  ): true | TenantApiError => true
+  (_orgId: string, _actor: MockActor, _set: MockRouteSet): true | TenantApiError => true
 )
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 const toContextMismatchError = (set: MockRouteSet): TenantApiError => {
   set.status = 403
@@ -128,11 +126,7 @@ const resetAllMocks = () => {
     })
   )
   mockEnsureTenantContextAccess.mockImplementation(
-    (
-      _orgId: string,
-      _actor: MockActor,
-      _set: MockRouteSet
-    ): true | TenantApiError => true
+    (): true | TenantApiError => true
   )
   mockListTenantMemberships.mockImplementation(async () => [makeMembership()])
   mockGetTenantMembershipById.mockImplementation(

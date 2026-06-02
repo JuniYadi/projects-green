@@ -35,13 +35,11 @@ const defaultActor: MockActor = {
 const mockRequireTenantActor = mock(
   async (): Promise<MockActor> => ({ ...defaultActor })
 )
+/* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(
-  (
-    _orgId: string,
-    _actor: MockActor,
-    _set: MockRouteSet
-  ): true | TenantApiError => true
+  (_orgId: string, _actor: MockActor, _set: MockRouteSet): true | TenantApiError => true
 )
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 const makeMembership = (
   overrides: Partial<TenantMembershipSummary> = {}
@@ -173,11 +171,7 @@ describe("tenant admin routes", () => {
       async (): Promise<MockActor> => ({ ...defaultActor })
     )
     mockEnsureTenantContextAccess.mockImplementation(
-      (
-        _orgId: string,
-        _actor: MockActor,
-        _set: MockRouteSet
-      ): true | TenantApiError => true
+      (): true | TenantApiError => true
     )
     mockListTenantMemberships.mockImplementation(async () => [makeMembership()])
     mockGetTenantMembershipById.mockImplementation(async () => makeMembership())

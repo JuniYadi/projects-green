@@ -1,4 +1,3 @@
-import * as jsYaml from "js-yaml"
 import { createPrivateKey, sign } from "node:crypto"
 
 export interface GitFile {

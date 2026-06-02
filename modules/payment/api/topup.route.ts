@@ -1,7 +1,6 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
-import { prisma } from "@/lib/prisma"
 import { PaymentService } from "../services/payment.service"
 import { BankAccountService } from "../services/bank-account.service"
 import { CreateTopupSchema } from "../types/payment.types"

@@ -37,7 +37,7 @@ mock.module("@/lib/platform-role", () => ({
 
 mock.module("@/modules/tenants/tenant-policy", () => ({
   resolveTenantRoleFromClaims: mock(
-    (role: string | null, _roles: string[] | null) => {
+    (role: string | null) => {
       if (role === "admin" || role === "owner") return role as TenantRole
       return null
     }

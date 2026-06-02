@@ -29,7 +29,7 @@ const STATUS_VARIANTS: Record<PaymentConfirmation["status"], "default" | "second
   rejected: "destructive",
 }
 
-export function ConfirmationsTab({ lang }: { lang: string }) {
+export function ConfirmationsTab() {
   const [state, setState] = useState<ConfirmationsRequestState>({ status: "loading" })
 
   const fetchConfirmations = useCallback(async () => {
@@ -54,6 +54,7 @@ export function ConfirmationsTab({ lang }: { lang: string }) {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchConfirmations()
   }, [fetchConfirmations])
 

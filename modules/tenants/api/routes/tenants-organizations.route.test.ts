@@ -11,7 +11,6 @@ import type {
   TenantApiError,
   TenantBootstrapMembership,
 } from "@/modules/tenants/contracts/tenant-api.contract"
-import type { RouteSet } from "@/modules/tenants/api/tenants.errors"
 
 type MockActor = {
   userId: string
@@ -38,16 +37,16 @@ const makeBootstrapMembership = (
 })
 
 const mockRequireTenantActor = mock(
-  async (_set: RouteSet): Promise<MockActor | TenantApiError> => {
+  async (): Promise<MockActor | TenantApiError> => {
     return { ...defaultActor }
   }
 )
 const mockListTenantBootstrapMembershipsForUser = mock(
-  async (_userId: string): Promise<TenantBootstrapMembership[]> => [
+  async (): Promise<TenantBootstrapMembership[]> => [
     makeBootstrapMembership(),
   ]
 )
-const mockCreateTenantOrganization = mock(async (_name: string) => ({
+const mockCreateTenantOrganization = mock(async () => ({
   id: "org_new",
   object: "organization",
   name: "Acme",
@@ -121,14 +120,14 @@ describe("tenants-organizations routes", () => {
     mockGetBootstrapCreatorRoleSlug.mockReset()
 
     mockRequireTenantActor.mockImplementation(
-      async (_set: RouteSet): Promise<MockActor | TenantApiError> => {
+      async (): Promise<MockActor | TenantApiError> => {
         return { ...defaultActor }
       }
     )
     mockListTenantBootstrapMembershipsForUser.mockImplementation(async () => [
       makeBootstrapMembership(),
     ])
-    mockCreateTenantOrganization.mockImplementation(async (_name: string) => ({
+    mockCreateTenantOrganization.mockImplementation(async () => ({
       id: "org_new",
       object: "organization",
       name: "Acme",

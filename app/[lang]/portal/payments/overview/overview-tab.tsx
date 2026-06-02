@@ -18,7 +18,7 @@ type StatsRequestState =
   | { status: "success"; data: PaymentStats }
   | { status: "error"; message: string }
 
-export function OverviewTab({ lang }: { lang: string }) {
+export function OverviewTab() {
   const [state, setState] = useState<StatsRequestState>({ status: "loading" })
 
   const fetchStats = useCallback(async () => {
@@ -55,6 +55,7 @@ export function OverviewTab({ lang }: { lang: string }) {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchStats()
   }, [fetchStats])
 

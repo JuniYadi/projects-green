@@ -21,7 +21,7 @@ type BankAccountsRequestState =
   | { status: "success"; data: BankAccount[] }
   | { status: "error"; message: string }
 
-export function BankAccountsTab({ lang }: { lang: string }) {
+export function BankAccountsTab() {
   const [state, setState] = useState<BankAccountsRequestState>({ status: "loading" })
 
   const fetchBankAccounts = useCallback(async () => {
@@ -46,6 +46,7 @@ export function BankAccountsTab({ lang }: { lang: string }) {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchBankAccounts()
   }, [fetchBankAccounts])
 

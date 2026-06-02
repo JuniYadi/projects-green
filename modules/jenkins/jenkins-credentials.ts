@@ -3,7 +3,30 @@
  * Migrated from Laravel JenkinsCredentialHandler.php
  */
 
-import type { EnvVar, Probe, Toleration } from "../deploy/deploy.helm"
+export interface EnvVar {
+  id: string
+  key: string
+  value: string
+  type?: "plain" | "secret"
+  scope?: "all" | "build" | "runtime"
+}
+
+export interface Probe {
+  path: string
+  port: number
+  initialDelaySeconds?: number
+  periodSeconds?: number
+  timeoutSeconds?: number
+  failureThreshold?: number
+  successThreshold?: number
+}
+
+export interface Toleration {
+  key?: string
+  operator?: string
+  value?: string
+  effect?: string
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,13 +64,6 @@ export interface JenkinsCredentialSyncResult {
 function getBasicAuthHeader(username: string, token: string): string {
   const creds = Buffer.from(`${username}:${token}`).toString("base64")
   return `Basic ${creds}`
-}
-
-function authHeaders(config: JenkinsConfig): Record<string, string> {
-  return {
-    Authorization: getBasicAuthHeader(config.username, config.apiToken),
-    "Content-Type": "application/xml",
-  }
 }
 
 // ─── Jenkins Client ──────────────────────────────────────────────────────────
@@ -96,7 +112,7 @@ export class JenkinsClient {
     }
   }
 
-  async createJob(jobName: string, jobConfigXml: string): Promise<boolean> {
+  async createJob(jobName: string): Promise<boolean> {
     const res = await fetch(`${this.baseUrl()}/createItem`, {
       method: "POST",
       headers: {

@@ -12,11 +12,12 @@ import { Elysia } from "elysia"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 
 export const authWhoamiRoute = new Elysia()
-  .get("/auth/whoami", async ({ request, query }: { request: Request; query: Record<string, string | undefined> }) => {
+  .get("/auth/whoami", async ({ request, query, set }) => {
     const auth = await resolveAuthContext(request)
     if (!auth) {
       if (query.strict === "1") {
-        return { status: 401 as const, ok: false as const, error: "UNAUTHORIZED" as const, message: "Valid WorkOS session or API key required." }
+        set.status = 401
+        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Valid WorkOS session or API key required." }
       }
       return { ok: false as const, auth: null, message: "No valid session or API key. Try: curl ... -H 'Authorization: Bearer live_xxx'" }
     }

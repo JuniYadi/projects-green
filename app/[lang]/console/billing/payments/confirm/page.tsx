@@ -53,7 +53,6 @@ function ConfirmationPageContent() {
 
   // Form fields
   const [bankAccountId, setBankAccountId] = useState<string>("")
-  const [paymentDateTime, setPaymentDateTime] = useState<string>("")
   const [senderBankName, setSenderBankName] = useState<string>("")
   const [senderName, setSenderName] = useState<string>("")
   const [senderAccount, setSenderAccount] = useState<string>("")
