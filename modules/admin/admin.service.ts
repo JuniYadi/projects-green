@@ -210,6 +210,11 @@ export const listAdminOrganizations = async (
 
   return {
     organizations: result.data.map(toOrganizationSummary),
-    listMetadata: result.listMetadata,
+    listMetadata: result.listMetadata
+      ? {
+          before: result.listMetadata.before ?? undefined,
+          after: result.listMetadata.after ?? undefined,
+        }
+      : undefined,
   }
 }

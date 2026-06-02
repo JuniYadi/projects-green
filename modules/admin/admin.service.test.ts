@@ -58,7 +58,8 @@ describe("listAdminOrganizations", () => {
         },
       ],
       listMetadata: { before: "cursor_before", after: "cursor_after" },
-    })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
 
     const result = await listAdminOrganizations({ limit: 10 })
     expect(result.organizations).toHaveLength(1)
@@ -101,7 +102,8 @@ describe("listAdminOrganizationMembers", () => {
           updatedAt: "2024-01-01",
         },
       ],
-    })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
 
     mockListInvitations.mockResolvedValue({
       data: [
@@ -114,7 +116,8 @@ describe("listAdminOrganizationMembers", () => {
           expiresAt: "2024-02-02",
         },
       ],
-    })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
 
     const result = await listAdminOrganizationMembers("org_123")
     expect(result.memberships).toHaveLength(1)
