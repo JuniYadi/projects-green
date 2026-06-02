@@ -7,15 +7,32 @@ const mockListOrganizations = mock(() =>
   })
 )
 
+const mockListOrganizationMemberships = mock(() =>
+  Promise.resolve({
+    data: [],
+  })
+)
+
+const mockListInvitations = mock(() =>
+  Promise.resolve({
+    data: [],
+  })
+)
+
 mock.module("@workos-inc/authkit-nextjs", () => ({
   getWorkOS: () => ({
     organizations: {
       listOrganizations: mockListOrganizations,
     },
+    userManagement: {
+      listOrganizationMemberships: mockListOrganizationMemberships,
+      listInvitations: mockListInvitations,
+    },
   }),
 }))
 
-const { listAdminOrganizations } = await import("./admin.service")
+const { listAdminOrganizations, listAdminOrganizationMembers } =
+  await import("./admin.service")
 
 describe("listAdminOrganizations", () => {
   beforeEach(() => {
@@ -48,5 +65,61 @@ describe("listAdminOrganizations", () => {
     expect(result.organizations[0].name).toBe("Test Org")
     expect(result.organizations[0].domains).toEqual(["test.com"])
     expect(result.listMetadata?.before).toBe("cursor_before")
+  })
+})
+
+describe("listAdminOrganizationMembers", () => {
+  beforeEach(() => {
+    mockListOrganizationMemberships.mockClear()
+    mockListInvitations.mockClear()
+  })
+
+  it("calls both listOrganizationMemberships and listInvitations", async () => {
+    await listAdminOrganizationMembers("org_123")
+    expect(mockListOrganizationMemberships).toHaveBeenCalledWith({
+      organizationId: "org_123",
+    })
+    expect(mockListInvitations).toHaveBeenCalledWith({
+      organizationId: "org_123",
+    })
+  })
+
+  it("returns memberships and pendingInvitations", async () => {
+    mockListOrganizationMemberships.mockResolvedValue({
+      data: [
+        {
+          id: "mem_123",
+          userId: "user_123",
+          status: "active",
+          role: { slug: "member" },
+          user: {
+            email: "test@example.com",
+            firstName: "John",
+            lastName: "Doe",
+          },
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+        },
+      ],
+    })
+
+    mockListInvitations.mockResolvedValue({
+      data: [
+        {
+          id: "inv_123",
+          email: "pending@example.com",
+          state: "pending",
+          roleSlug: "admin",
+          createdAt: "2024-01-02",
+          expiresAt: "2024-02-02",
+        },
+      ],
+    })
+
+    const result = await listAdminOrganizationMembers("org_123")
+    expect(result.memberships).toHaveLength(1)
+    expect(result.memberships[0].email).toBe("test@example.com")
+    expect(result.pendingInvitations).toHaveLength(1)
+    expect(result.pendingInvitations[0].email).toBe("pending@example.com")
   })
 })

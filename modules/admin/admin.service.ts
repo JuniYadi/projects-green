@@ -32,6 +32,21 @@ type WorkOSOrganization = {
   updatedAt: string
 }
 
+type WorkOSMembership = {
+  id: string
+  userId: string
+  organizationId: string
+  status: string
+  role?: { slug?: string | null } | null
+  user?: {
+    email?: string | null
+    firstName?: string | null
+    lastName?: string | null
+  } | null
+  createdAt: string
+  updatedAt: string
+}
+
 type WorkOSInvitation = {
   id: string
   email: string
@@ -120,6 +135,66 @@ export type ListOrganizationsResult = {
     before?: string
     after?: string
   }
+}
+
+export type AdminMembershipSummary = {
+  id: string
+  userId: string
+  email: string
+  firstName: string | null
+  lastName: string | null
+  roleSlug: string
+  joinedAt: string
+}
+
+export type AdminInvitationPendingSummary = {
+  id: string
+  email: string
+  roleSlug: string
+  createdAt: string
+  expiresAt: string
+}
+
+export type ListOrganizationMembersResult = {
+  memberships: AdminMembershipSummary[]
+  pendingInvitations: AdminInvitationPendingSummary[]
+}
+
+export const listAdminOrganizationMembers = async (
+  organizationId: string
+): Promise<ListOrganizationMembersResult> => {
+  const workos = getWorkOS()
+
+  const [membershipsResult, invitationsResult] = await Promise.all([
+    workos.userManagement.listOrganizationMemberships({ organizationId }),
+    workos.userManagement.listInvitations({ organizationId }),
+  ])
+
+  const memberships: AdminMembershipSummary[] = (
+    membershipsResult.data as unknown as WorkOSMembership[]
+  ).map((m) => ({
+    id: m.id,
+    userId: m.userId,
+    email: m.user?.email ?? "",
+    firstName: m.user?.firstName ?? null,
+    lastName: m.user?.lastName ?? null,
+    roleSlug: m.role?.slug ?? "member",
+    joinedAt: m.createdAt,
+  }))
+
+  const pendingInvitations: AdminInvitationPendingSummary[] = (
+    invitationsResult.data as unknown as WorkOSInvitation[]
+  )
+    .filter((inv) => inv.state === "pending")
+    .map((inv) => ({
+      id: inv.id,
+      email: inv.email,
+      roleSlug: inv.roleSlug ?? "member",
+      createdAt: inv.createdAt,
+      expiresAt: inv.expiresAt,
+    }))
+
+  return { memberships, pendingInvitations }
 }
 
 export const listAdminOrganizations = async (
