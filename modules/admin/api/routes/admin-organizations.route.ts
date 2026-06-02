@@ -12,6 +12,7 @@ import { toWorkosError } from "@/modules/admin/api/admin.errors"
 import {
   createAdminOrganization,
   listAdminOrganizations,
+  listAdminOrganizationMembers,
 } from "@/modules/admin/admin.service"
 
 export const createAdminOrganizationsRoutes = (deps = {}) => {
@@ -79,5 +80,24 @@ export const createAdminOrganizationsRoutes = (deps = {}) => {
         }
       },
       { query: listOrganizationsQuerySchema }
+    )
+    .get(
+      "/admin/organizations/:id/members",
+      async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) {
+          return actor as AdminApiError
+        }
+
+        try {
+          const result = await listAdminOrganizationMembers(params.id)
+          return {
+            ok: true,
+            data: result,
+          }
+        } catch (error) {
+          return toWorkosError(set, error)
+        }
+      }
     )
 }
