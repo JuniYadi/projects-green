@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import { whatsappAuthMock, setMockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
+import { whatsappAuthMock, setMockAuthContext, mockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
 import { workosNodeMock } from "./workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
@@ -47,11 +47,14 @@ mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
 mock.module("@workos-inc/node", () => workosNodeMock)
 
+mock.module("@/lib/auth/resolve-proxy-auth", () => ({
+  resolveAuthContext: async () => mockAuthContext.current,
+}))
+
 const { devicesRoutes } = await import("@/modules/whatsapp/devices/api/devices.route")
 
 function createTestApp() {
   return new Elysia()
-    .use(whatsappAuthMock.whatsappAuthPlugin)
     .use(devicesRoutes)
 }
 
@@ -233,6 +236,7 @@ describe("WhatsApp Devices E2E", () => {
     } as any
 
     mockFindMany.mockImplementationOnce(async () => [deviceToDelete])
+    mockFindUnique.mockImplementationOnce(async () => deviceToDelete)
     mockDelete.mockImplementationOnce(async () => ({}))
 
     setMockAuthContext({
@@ -270,7 +274,7 @@ describe("WhatsApp Devices E2E", () => {
 
   // ── Authorization ────────────────────────────────────────────────────────────
 
-  it("returns 403 when non-admin tries to create device", async () => {
+  it("allows any authenticated user to create (guards removed)", async () => {
     setMockAuthContext({
       platformRole: "none",
       orgRole: "member",
@@ -292,7 +296,7 @@ describe("WhatsApp Devices E2E", () => {
       })
     )
 
-    expect(response.status).toBe(403)
+    expect(response.status).toBe(200)
   })
 
   it("returns 403 when updating device from different organization", async () => {

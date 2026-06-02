@@ -1,10 +1,6 @@
 import { Elysia, t } from "elysia"
 
-import {
-  guardOrgRead,
-  guardOrgWrite,
-  guardOrgFull,
-} from "@/lib/whatsapp/auth"
+import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import {
   listWhatsAppUsers,
   getWhatsAppUser,
@@ -59,8 +55,12 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .get(
     "/",
-    guardOrgRead(async ({ whatsappAuth, set }: any) => {
-      const auth = whatsappAuth as any
+    async ({ request, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+      }
       if (!auth.organizationId) {
         set.status = 400
         return {
@@ -72,7 +72,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
 
       const users = await listWhatsAppUsers(auth.organizationId)
       return { ok: true as const, users } satisfies ListUsersResponse
-    })
+    }
   )
 
   /**
@@ -81,8 +81,12 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .post(
     "/",
-    guardOrgWrite(async ({ body, whatsappAuth, set }: any)=> {
-      const auth = whatsappAuth as any
+    async ({ request, body, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+      }
       if (!auth.organizationId) {
         set.status = 400
         return {
@@ -96,14 +100,14 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         organizationId: auth.organizationId,
         email: (body as any).email,
         role: (body as any).role,
-        inviterUserId: auth.userId,
+        inviterUserId: auth.type === "workos" ? auth.userId : "system",
       })
 
       return {
         ok: true as const,
         invitation,
       } satisfies InviteUserResponse
-    }),
+    },
     { body: inviteBodySchema }
   )
 
@@ -113,8 +117,12 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .get(
     "/:id",
-    guardOrgRead(async ({ params: { id }, whatsappAuth, set }: any)=> {
-      const auth = whatsappAuth as any
+    async ({ request, params: { id }, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+      }
       const user = await getWhatsAppUser(id)
 
       if (!user) {
@@ -126,20 +134,13 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         }
       }
 
-      if (
-        auth.organizationId &&
-        user.organizationId !== auth.organizationId
-      ) {
+      if ((auth as any).platformRole !== "super_admin" && user.organizationId !== auth.organizationId) {
         set.status = 403
-        return {
-          ok: false as const,
-          error: "FORBIDDEN" as const,
-          message: "Access denied.",
-        }
+        return { ok: false as const, error: "FORBIDDEN" as const, message: "Access denied." }
       }
 
       return { ok: true as const, user } satisfies GetUserResponse
-    })
+    }
   )
 
   /**
@@ -148,8 +149,12 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .patch(
     "/:id",
-    guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: any)=> {
-      const auth = whatsappAuth as any
+    async ({ request, params: { id }, body, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+      }
       const user = await getWhatsAppUser(id)
 
       if (!user) {
@@ -161,22 +166,15 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         }
       }
 
-      if (
-        auth.organizationId &&
-        user.organizationId !== auth.organizationId
-      ) {
+      if ((auth as any).platformRole !== "super_admin" && user.organizationId !== auth.organizationId) {
         set.status = 403
-        return {
-          ok: false as const,
-          error: "FORBIDDEN" as const,
-          message: "Access denied.",
-        }
+        return { ok: false as const, error: "FORBIDDEN" as const, message: "Access denied." }
       }
 
       const updated = await updateWhatsAppUserRole(id, (body as any).role)
 
       return { ok: true as const, user: updated } satisfies UpdateUserResponse
-    }),
+    },
     { body: updateRoleSchema }
   )
 
@@ -186,8 +184,12 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    */
   .delete(
     "/:id",
-    guardOrgFull(async ({ params: { id }, whatsappAuth, set }: any)=> {
-      const auth = whatsappAuth as any
+    async ({ request, params: { id }, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+      }
       const user = await getWhatsAppUser(id)
 
       if (!user) {
@@ -199,20 +201,13 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         }
       }
 
-      if (
-        auth.organizationId &&
-        user.organizationId !== auth.organizationId
-      ) {
+      if ((auth as any).platformRole !== "super_admin" && user.organizationId !== auth.organizationId) {
         set.status = 403
-        return {
-          ok: false as const,
-          error: "FORBIDDEN" as const,
-          message: "Access denied.",
-        }
+        return { ok: false as const, error: "FORBIDDEN" as const, message: "Access denied." }
       }
 
       await removeWhatsAppUser(id)
 
       return { ok: true as const, message: "User removed." }
-    })
+    }
   )

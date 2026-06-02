@@ -2,8 +2,7 @@
  * WhatsApp module assembly.
  *
  * Composes all 10 WhatsApp sub-feature routes into a single Elysia instance
- * with the shared whatsappAuthPlugin, then exports the aggregate as
- * `whatsappRoutes` for mounting in lib/api.ts.
+ * and exports the aggregate as `whatsappRoutes` for mounting in lib/api.ts.
  */
 
 import { Elysia } from "elysia"
@@ -19,15 +18,7 @@ import { messagesRoutes } from "@/modules/whatsapp/messages/api/messages.route"
 import { webhooksRoutes } from "@/modules/whatsapp/webhooks/api/webhooks.route"
 import { usersRoutes } from "@/modules/whatsapp/users/api/users.route"
 
-/**
- * Top-level await is required here because whatsappAuthPlugin internally
- * performs a dynamic import of the WorkOS SDK at module-evaluation time.
- * Bun supports top-level await on ESM modules without any extra config.
- */
-const { whatsappAuthPlugin } = await import("@/lib/whatsapp/auth")
-
 export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
-  .use(whatsappAuthPlugin)
   .use(devicesRoutes)
   .use(tokensRoutes)
   .use(templatesRoutes)

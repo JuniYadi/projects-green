@@ -1,10 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import {
-  guardOrgRead,
-  guardOrgWrite,
-  guardOrgFull,
-} from "@/lib/whatsapp/auth"
+import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 
 const groupBodySchema = t.Object({
   name: t.String({ maxLength: 100 } as any),
@@ -19,11 +15,16 @@ const groupBodySchema = t.Object({
 const groupUpdateSchema = t.Partial(groupBodySchema)
 
 export const groupsRoutes = new Elysia({ prefix: "/groups" })
-  .get("/", guardOrgRead(async ({ whatsappAuth, query }: { whatsappAuth: any, query: any }) => {
+  .get("/", async ({ request, set, query }: { request: any, set: any, query: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const { status, type, name } = query as any
     
     const where: any = {
-      organizationId: whatsappAuth.organizationId,
+      organizationId: whatsappAuth.organizationId!,
     }
 
     if (status) where.status = status
@@ -35,12 +36,17 @@ export const groupsRoutes = new Elysia({ prefix: "/groups" })
       orderBy: { createdAt: "desc" },
     })
     return { ok: true, groups }
-  }))
-  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  })
+  .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const group = await prisma.whatsappContactGroup.findFirst({
       where: { 
         id,
-        organizationId: whatsappAuth.organizationId
+        organizationId: whatsappAuth.organizationId!
       },
       include: {
         _count: {
@@ -55,9 +61,14 @@ export const groupsRoutes = new Elysia({ prefix: "/groups" })
     }
 
     return { ok: true, group }
-  }))
-  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
-    if (!whatsappAuth.organizationId) {
+  })
+  .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
+    if (!whatsappAuth.organizationId!) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
     }
@@ -65,19 +76,24 @@ export const groupsRoutes = new Elysia({ prefix: "/groups" })
     const group = await prisma.whatsappContactGroup.create({
       data: {
         ...body,
-        organizationId: whatsappAuth.organizationId,
+        organizationId: whatsappAuth.organizationId!,
       },
     })
 
     return { ok: true, group }
-  }), {
+  }, {
     body: groupBodySchema
   })
-  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
+  .patch("/:id", async ({ request, params: { id }, body, set }: { request: any, params: { id: string }, body: any, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const group = await prisma.whatsappContactGroup.findFirst({
       where: { 
         id,
-        organizationId: whatsappAuth.organizationId
+        organizationId: whatsappAuth.organizationId!
       },
     })
 
@@ -92,14 +108,19 @@ export const groupsRoutes = new Elysia({ prefix: "/groups" })
     })
 
     return { ok: true, group: updated }
-  }), {
+  }, {
     body: groupUpdateSchema
   })
-  .delete("/:id", guardOrgFull(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .delete("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const group = await prisma.whatsappContactGroup.findFirst({
       where: { 
         id,
-        organizationId: whatsappAuth.organizationId
+        organizationId: whatsappAuth.organizationId!
       },
     })
 
@@ -122,4 +143,4 @@ export const groupsRoutes = new Elysia({ prefix: "/groups" })
       where: { id },
     })
     return { ok: true, message: "Group deleted." }
-  }))
+  })

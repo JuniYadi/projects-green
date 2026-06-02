@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import { guardOrgRead, guardOrgWrite, guardOrgFull, type WhatsAppAuthContext } from "@/lib/whatsapp/auth"
+import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { enqueueWhatsAppBroadcast } from "@/lib/queue/whatsapp-broadcast"
 
 const broadcastRecipientSchema = t.Object({
@@ -25,7 +25,12 @@ const broadcastCampaignUpdateSchema = t.Partial(
 )
 
 export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
-  .get("/", guardOrgRead(async ({ whatsappAuth }: { whatsappAuth: WhatsAppAuthContext }) => {
+  .get("/", async ({ request, set }: { request: any, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const campaigns = await prisma.whatsappBroadcastCampaign.findMany({
       where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin"
         ? { organizationId: whatsappAuth.organizationId! }
@@ -38,8 +43,13 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       orderBy: { createdAt: "desc" },
     })
     return { ok: true, campaigns }
-  }))
-  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  })
+  .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
       where: { id },
       include: {
@@ -52,14 +62,19 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       return { ok: false, error: "NOT_FOUND", message: "Broadcast campaign not found." }
     }
 
-    if (whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
+    if ((whatsappAuth as any).platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     return { ok: true, campaign }
-  }))
-  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  })
+  .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
@@ -84,10 +99,15 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     })
 
     return { ok: true, campaign }
-  }), {
+  }, {
     body: broadcastCampaignBodySchema
   })
-  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  .patch("/:id", async ({ request, params: { id }, body, set }: { request: any, params: { id: string }, body: any, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
       where: { id },
     })
@@ -97,7 +117,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       return { ok: false, error: "NOT_FOUND", message: "Broadcast campaign not found." }
     }
 
-    if (whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
+    if ((whatsappAuth as any).platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
@@ -108,10 +128,15 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     })
 
     return { ok: true, campaign: updated }
-  }), {
+  }, {
     body: broadcastCampaignUpdateSchema
   })
-  .delete("/:id", guardOrgFull(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  .delete("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
       where: { id },
     })
@@ -121,7 +146,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       return { ok: false, error: "NOT_FOUND", message: "Broadcast campaign not found." }
     }
 
-    if (whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
+    if ((whatsappAuth as any).platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
@@ -131,8 +156,13 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     })
 
     return { ok: true, message: "Broadcast campaign deleted." }
-  }))
-  .post("/:id/send", guardOrgWrite(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: WhatsAppAuthContext, set: any }) => {
+  })
+  .post("/:id/send", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
       where: { id },
       include: {
@@ -147,7 +177,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       return { ok: false, error: "NOT_FOUND", message: "Broadcast campaign not found." }
     }
 
-    if (whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
+    if ((whatsappAuth as any).platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
@@ -172,4 +202,4 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     }
 
     return { ok: true, message: `Dispatched ${campaign.recipients.length} recipients for broadcasting.` }
-  }))
+  })

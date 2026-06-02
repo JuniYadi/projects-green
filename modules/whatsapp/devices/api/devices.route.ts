@@ -1,10 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import {
-  guardOrgRead,
-  guardOrgWrite,
-  guardOrgFull,
-} from "@/lib/whatsapp/auth"
+import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 
 const deviceBodySchema = t.Object({
   name: t.String(),
@@ -17,16 +13,26 @@ const deviceBodySchema = t.Object({
 const deviceUpdateSchema = t.Partial(deviceBodySchema)
 
 export const devicesRoutes = new Elysia({ prefix: "/devices" })
-  .get("/", guardOrgRead(async ({ whatsappAuth, set }: { whatsappAuth: any, set: any }) => {
+  .get("/", async ({ request, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const devices = await prisma.whatsappDevice.findMany({
-      where: whatsappAuth.platformRole === "super_admin"
+      where: (whatsappAuth as any).platformRole === "super_admin"
         ? {}
         : { organizationId: whatsappAuth.organizationId! },
       orderBy: { createdAt: "desc" },
     })
     return { ok: true, devices }
-  }))
-  .get("/:id", guardOrgRead(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  })
+  .get("/:id", async ({ request, params: { id }, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const device = await prisma.whatsappDevice.findUnique({
       where: { id },
     })
@@ -36,14 +42,19 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
-    if (whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     return { ok: true, device }
-  }))
-  .post("/", guardOrgWrite(async ({ body, whatsappAuth, set }: { body: any, whatsappAuth: any, set: any }) => {
+  })
+  .post("/", async ({ request, body, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     if (!whatsappAuth.organizationId) {
       set.status = 400
       return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
@@ -58,10 +69,15 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     })
 
     return { ok: true, device }
-  }), {
+  }, {
     body: deviceBodySchema,
   })
-  .patch("/:id", guardOrgWrite(async ({ params: { id }, body, whatsappAuth, set }: { params: { id: string }, body: any, whatsappAuth: any, set: any }) => {
+  .patch("/:id", async ({ request, params: { id }, body, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const device = await prisma.whatsappDevice.findUnique({
       where: { id },
     })
@@ -71,7 +87,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
-    if (whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
@@ -82,16 +98,15 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     })
 
     return { ok: true, device: updated }
-  }), {
+  }, {
     body: deviceUpdateSchema
   })
-  .delete("/:id", guardOrgFull(async ({ params: { id }, set }: { params: { id: string }, set: any }) => {
-    await prisma.whatsappDevice.delete({
-      where: { id },
-    })
-    return { ok: true, message: "Device deleted." }
-  }))
-  .post("/:id/verify", guardOrgWrite(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  .delete("/:id", async ({ request, params: { id }, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const device = await prisma.whatsappDevice.findUnique({
       where: { id },
     })
@@ -101,7 +116,32 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
-    if (whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
+    await prisma.whatsappDevice.delete({
+      where: { id },
+    })
+    return { ok: true, message: "Device deleted." }
+  })
+  .post("/:id/verify", async ({ request, params: { id }, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
+    const device = await prisma.whatsappDevice.findUnique({
+      where: { id },
+    })
+
+    if (!device) {
+      set.status = 404
+      return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
@@ -114,8 +154,13 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     })
 
     return { ok: true, device: updated }
-  }))
-  .post("/:id/reconnect", guardOrgWrite(async ({ params: { id }, whatsappAuth, set }: { params: { id: string }, whatsappAuth: any, set: any }) => {
+  })
+  .post("/:id/reconnect", async ({ request, params: { id }, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
     const device = await prisma.whatsappDevice.findUnique({
       where: { id },
     })
@@ -125,7 +170,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
-    if (whatsappAuth.platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
       set.status = 403
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
@@ -137,4 +182,4 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     })
 
     return { ok: true, device: updated }
-  }))
+  })
