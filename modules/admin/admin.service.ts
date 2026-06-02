@@ -62,6 +62,12 @@ const toInvitationSummary = (inv: WorkOSInvitation): AdminInvitationSummary => (
   acceptedAt: inv.acceptedAt ?? null,
 })
 
+export const listAdminOrganizations = async (): Promise<AdminOrganizationSummary[]> => {
+  const workos = getWorkOS()
+  const response = await workos.organizations.listOrganizations({ limit: 100 })
+  return response.data.map(toOrganizationSummary)
+}
+
 export const createAdminOrganization = async (params: {
   name: string
   domains?: string[]
