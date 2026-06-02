@@ -107,3 +107,34 @@ export const sendAdminInvitation = async (params: {
 
   return toInvitationSummary(invitation as WorkOSInvitation)
 }
+
+export type ListOrganizationsParams = {
+  limit?: number
+  before?: string
+  after?: string
+}
+
+export type ListOrganizationsResult = {
+  organizations: AdminOrganizationSummary[]
+  listMetadata?: {
+    before?: string
+    after?: string
+  }
+}
+
+export const listAdminOrganizations = async (
+  params: ListOrganizationsParams = {}
+): Promise<ListOrganizationsResult> => {
+  const workos = getWorkOS()
+
+  const result = await workos.organizations.listOrganizations({
+    limit: params.limit,
+    before: params.before,
+    after: params.after,
+  })
+
+  return {
+    organizations: result.data.map(toOrganizationSummary),
+    listMetadata: result.listMetadata,
+  }
+}
