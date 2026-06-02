@@ -20,8 +20,21 @@ export const createDeviceSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
   phoneNumber: z.string().trim().min(1, "Phone number is required"),
   environment: deviceEnvironmentEnum.optional().default("LIVE"),
+  displayName: z.string().trim().max(120).optional(),
+  whatsappBusinessAccountId: z.string().trim().max(64).optional(),
+  whatsappPhoneId: z.string().trim().max(64).optional(),
+  whatsappApplicationId: z.string().trim().max(64).optional(),
+  callbackUrl: z.string().url().optional().or(z.literal("")),
 })
 export type CreateDeviceInput = z.infer<typeof createDeviceSchema>
+
+export const adminCreateDeviceSchema = createDeviceSchema.extend({
+  organizationId: z
+    .string()
+    .trim()
+    .min(1, "Organization ID is required"),
+})
+export type AdminCreateDeviceInput = z.infer<typeof adminCreateDeviceSchema>
 
 export const updateDeviceSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
