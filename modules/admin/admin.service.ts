@@ -4,7 +4,9 @@ export type AdminOrganizationSummary = {
   id: string
   name: string
   externalId: string | null
+  domains: string[]
   allowProfilesOutsideOrganization: boolean
+  memberCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -24,6 +26,7 @@ type WorkOSOrganization = {
   id: string
   name: string
   externalId?: string | null
+  domains?: Array<{ domain: string; state: string }>
   allowProfilesOutsideOrganization?: boolean
   createdAt: string
   updatedAt: string
@@ -46,6 +49,7 @@ const toOrganizationSummary = (org: WorkOSOrganization): AdminOrganizationSummar
   id: org.id,
   name: org.name,
   externalId: org.externalId ?? null,
+  domains: org.domains?.map((d) => d.domain) ?? [],
   allowProfilesOutsideOrganization: org.allowProfilesOutsideOrganization ?? false,
   createdAt: org.createdAt,
   updatedAt: org.updatedAt,
