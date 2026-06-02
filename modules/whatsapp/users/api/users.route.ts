@@ -134,6 +134,11 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         }
       }
 
+      if ((auth as any).platformRole !== "super_admin" && user.organizationId !== auth.organizationId) {
+        set.status = 403
+        return { ok: false as const, error: "FORBIDDEN" as const, message: "Access denied." }
+      }
+
       return { ok: true as const, user } satisfies GetUserResponse
     }
   )
@@ -159,6 +164,11 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
           error: "NOT_FOUND" as const,
           message: "User not found.",
         }
+      }
+
+      if ((auth as any).platformRole !== "super_admin" && user.organizationId !== auth.organizationId) {
+        set.status = 403
+        return { ok: false as const, error: "FORBIDDEN" as const, message: "Access denied." }
       }
 
       const updated = await updateWhatsAppUserRole(id, (body as any).role)
@@ -189,6 +199,11 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
           error: "NOT_FOUND" as const,
           message: "User not found.",
         }
+      }
+
+      if ((auth as any).platformRole !== "super_admin" && user.organizationId !== auth.organizationId) {
+        set.status = 403
+        return { ok: false as const, error: "FORBIDDEN" as const, message: "Access denied." }
       }
 
       await removeWhatsAppUser(id)

@@ -42,6 +42,11 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
     return { ok: true, device }
   })
   .post("/", async ({ request, body, set }: any) => {
@@ -82,6 +87,11 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
     }
 
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
     const updated = await prisma.whatsappDevice.update({
       where: { id },
       data: body,
@@ -97,6 +107,20 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
+    const device = await prisma.whatsappDevice.findUnique({
+      where: { id },
+    })
+
+    if (!device) {
+      set.status = 404
+      return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
     await prisma.whatsappDevice.delete({
       where: { id },
     })
@@ -115,6 +139,11 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     if (!device) {
       set.status = 404
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     // Logic to verify device with Meta API would go here
@@ -139,6 +168,11 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     if (!device) {
       set.status = 404
       return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && device.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     // Logic to reconnect device would go here

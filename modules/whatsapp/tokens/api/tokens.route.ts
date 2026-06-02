@@ -11,9 +11,10 @@ const tokenBodySchema = t.Object({
 const tokenUpdateSchema = t.Partial(tokenBodySchema)
 
 export const tokensRoutes = new Elysia({ prefix: "/tokens" })
-  .get("/", async ({ request }: { request: any }) => {
+  .get("/", async ({ request, set }: { request: any, set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
     if (!whatsappAuth) {
+      set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
     const tokens = await prisma.whatsappApiKey.findMany({
@@ -37,6 +38,11 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
     if (!token) {
       set.status = 404
       return { ok: false, error: "NOT_FOUND", message: "Token not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && token.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     return { ok: true, token }
@@ -78,6 +84,11 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
       return { ok: false, error: "NOT_FOUND", message: "Token not found." }
     }
 
+    if ((whatsappAuth as any).platformRole !== "super_admin" && token.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
     const updated = await prisma.whatsappApiKey.update({
       where: { id },
       data: body,
@@ -93,6 +104,20 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
+    const token = await prisma.whatsappApiKey.findUnique({
+      where: { id },
+    })
+
+    if (!token) {
+      set.status = 404
+      return { ok: false, error: "NOT_FOUND", message: "Token not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && token.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
     await prisma.whatsappApiKey.delete({
       where: { id },
     })

@@ -25,9 +25,10 @@ const templateBodySchema = t.Object({
 const templateUpdateSchema = t.Partial(t.Omit(templateBodySchema, ["languages"]))
 
 export const templatesRoutes = new Elysia({ prefix: "/templates" })
-  .get("/", async ({ request }: { request: any }) => {
+  .get("/", async ({ request, set }: { request: any, set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
     if (!whatsappAuth) {
+      set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
     const templates = await prisma.whatsappTemplate.findMany({
@@ -57,6 +58,11 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
     if (!template) {
       set.status = 404
       return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && template.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     return { ok: true, template }
@@ -106,6 +112,11 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       return { ok: false, error: "NOT_FOUND", message: "Template not found." }
     }
 
+    if ((whatsappAuth as any).platformRole !== "super_admin" && template.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
     const updated = await prisma.whatsappTemplate.update({
       where: { id },
       data: body,
@@ -124,6 +135,20 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
+    const template = await prisma.whatsappTemplate.findUnique({
+      where: { id },
+    })
+
+    if (!template) {
+      set.status = 404
+      return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && template.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
     await prisma.whatsappTemplate.delete({
       where: { id },
     })
@@ -142,6 +167,11 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
     if (!template) {
       set.status = 404
       return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && template.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     if (!template.whatsappDeviceId) {

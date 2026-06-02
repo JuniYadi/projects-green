@@ -15,9 +15,10 @@ const groupBodySchema = t.Object({
 const groupUpdateSchema = t.Partial(groupBodySchema)
 
 export const groupsRoutes = new Elysia({ prefix: "/groups" })
-  .get("/", async ({ request, query }: { request: any, query: any }) => {
+  .get("/", async ({ request, set, query }: { request: any, set: any, query: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
     if (!whatsappAuth) {
+      set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
     const { status, type, name } = query as any

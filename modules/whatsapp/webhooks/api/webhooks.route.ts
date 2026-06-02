@@ -51,7 +51,16 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
       const webhook = await prisma.whatsappWebhook.findUnique({ where: { id: params.id } })
-      if (!webhook) throw new Error("Webhook not found")
+      if (!webhook) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
+      }
+
+      if ((whatsappAuth as any).platformRole !== "super_admin" && webhook.organizationId !== whatsappAuth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
       return webhook
     }
   )
@@ -65,10 +74,14 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      if (!whatsappAuth.organizationId) {
+        set.status = 400
+        return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
+      }
       const webhook = await prisma.whatsappWebhook.create({
         data: {
           whatsappDeviceId: body.deviceId,
-          organizationId: body.organizationId,
+          organizationId: whatsappAuth.organizationId,
           webhookUrl: body.webhookUrl,
           verifyToken: body.verifyToken,
           active: true,
@@ -78,7 +91,6 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
     },
     {
       body: t.Object({
-        organizationId: t.String(),
         deviceId: t.String(),
         webhookUrl: t.String(),
         verifyToken: t.String(),
@@ -95,6 +107,17 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      const webhook = await prisma.whatsappWebhook.findUnique({ where: { id: params.id } })
+      if (!webhook) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
+      }
+
+      if ((whatsappAuth as any).platformRole !== "super_admin" && webhook.organizationId !== whatsappAuth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
       const updated = await prisma.whatsappWebhook.update({ where: { id: params.id }, data: body })
       return { ok: true, data: updated }
     },
@@ -118,6 +141,17 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      const webhook = await prisma.whatsappWebhook.findUnique({ where: { id: params.id } })
+      if (!webhook) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
+      }
+
+      if ((whatsappAuth as any).platformRole !== "super_admin" && webhook.organizationId !== whatsappAuth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
       await prisma.whatsappWebhook.delete({ where: { id: params.id } })
       return { ok: true }
     }

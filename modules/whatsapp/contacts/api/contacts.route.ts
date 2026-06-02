@@ -16,9 +16,10 @@ const contactBodySchema = t.Object({
 const contactUpdateSchema = t.Partial(contactBodySchema)
 
 export const contactsRoutes = new Elysia({ prefix: "/contacts" })
-  .get("/", async ({ request, query }: { request: any, query: any }) => {
+  .get("/", async ({ request, set, query }: { request: any, set: any, query: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
     if (!whatsappAuth) {
+      set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
     const { contactGroupId, status, phoneNumber } = query as any

@@ -275,15 +275,22 @@ describe("WhatsApp Webhooks E2E", () => {
   })
 
   it("updates a webhook config", async () => {
-    const updatedConfig = {
+    const existingConfig = {
       id: "wh_patch",
       organizationId: "org-1",
       whatsappDeviceId: "dev_1",
+      webhookUrl: "https://example.com/webhook",
+      verifyToken: "token123",
+      active: true,
+    }
+
+    const updatedConfig = {
+      ...existingConfig,
       webhookUrl: "https://example.com/new-webhook",
-      verifyToken: "new_token",
       active: false,
     }
 
+    mockFindUnique.mockImplementationOnce(async () => existingConfig as any)
     mockUpdate.mockImplementationOnce(async () => updatedConfig as any)
 
     setMockAuthContext({
@@ -311,6 +318,14 @@ describe("WhatsApp Webhooks E2E", () => {
   })
 
   it("deletes a webhook config as super_admin", async () => {
+    mockFindUnique.mockImplementationOnce(async () => ({
+      id: "wh_delete",
+      organizationId: "org-other",
+      whatsappDeviceId: "dev_1",
+      webhookUrl: "https://example.com/webhook",
+      verifyToken: "token123",
+      active: true,
+    } as any))
     mockDelete.mockImplementationOnce(async () => ({}))
 
     setMockAuthContext({

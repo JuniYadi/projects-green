@@ -14,9 +14,10 @@ const conversationUpdateSchema = t.Partial(
 )
 
 export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
-  .get("/", async ({ request, query }: { request: any, query: any }) => {
+  .get("/", async ({ request, set, query }: { request: any, set: any, query: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
     if (!whatsappAuth) {
+      set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
     const { contactPhone } = query as any

@@ -4,6 +4,7 @@ import { Elysia } from "elysia"
 import {
   whatsappAuthMock,
   setMockAuthContext,
+  mockAuthContext,
 } from "@/lib/whatsapp/__tests__/auth-mock"
 import { workosNodeMock } from "../../../../test/workos-node-mock"
 
@@ -44,6 +45,10 @@ mock.module("@/lib/prisma", () => ({
 mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
 mock.module("@workos-inc/node", () => workosNodeMock)
+
+mock.module("@/lib/auth/resolve-proxy-auth", () => ({
+  resolveAuthContext: async () => mockAuthContext.current,
+}))
 
 const { devicesRoutes } = await import("./devices.route")
 
@@ -112,7 +117,7 @@ describe("devices routes", () => {
     expect(payload.error).toBe("NOT_FOUND")
   })
 
-  it("returns device from other org (guards removed)", async () => {
+  it("returns 403 for device from other org", async () => {
     mockFindUnique.mockImplementationOnce(async () => ({
       id: "dev_other",
       organizationId: "org_other",
@@ -125,9 +130,9 @@ describe("devices routes", () => {
 
     const response = await app.handle(new Request("http://localhost/devices/dev_other"))
 
-    expect(response.status).toBe(200)
-    const payload = (await response.json()) as { ok: boolean; device: unknown }
-    expect(payload.ok).toBe(true)
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.error).toBe("FORBIDDEN")
   })
 
   // ── Create ────────────────────────────────────────────────────────────────────
@@ -254,7 +259,7 @@ describe("devices routes", () => {
     expect(payload.error).toBe("NOT_FOUND")
   })
 
-  it("allows updating device from other org (guards removed)", async () => {
+  it("returns 403 when updating device from other org", async () => {
     mockFindUnique.mockImplementationOnce(async () => ({
       id: "dev_other",
       organizationId: "org_other",
@@ -273,9 +278,9 @@ describe("devices routes", () => {
       })
     )
 
-    expect(response.status).toBe(200)
-    const payload = (await response.json()) as { ok: boolean; device?: unknown }
-    expect(payload.ok).toBe(true)
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.error).toBe("FORBIDDEN")
   })
 
   it("updates device", async () => {
@@ -314,6 +319,14 @@ describe("devices routes", () => {
   // ── Delete ────────────────────────────────────────────────────────────────────
 
   it("deletes device as super_admin", async () => {
+    mockFindUnique.mockImplementationOnce(async () => ({
+      id: "dev_1",
+      organizationId: "org_other",
+      phoneNumber: "+628****1111",
+      name: "Device 1",
+      status: "ACTIVE",
+    } as any))
+
     setMockAuthContext({ platformRole: "super_admin" })
     const app = createTestApp()
 
@@ -329,7 +342,15 @@ describe("devices routes", () => {
     expect(payload.message).toBe("Device deleted.")
   })
 
-  it("allows any authenticated user to delete (guards removed)", async () => {
+  it("allows authenticated user to delete device from own org", async () => {
+    mockFindUnique.mockImplementationOnce(async () => ({
+      id: "dev_1",
+      organizationId: "org_1",
+      phoneNumber: "+628****1111",
+      name: "Device 1",
+      status: "ACTIVE",
+    } as any))
+
     const app = createTestApp()
 
     const response = await app.handle(
@@ -360,7 +381,7 @@ describe("devices routes", () => {
     expect(payload.error).toBe("NOT_FOUND")
   })
 
-  it("allows verifying device from other org (guards removed)", async () => {
+  it("returns 403 when verifying device from other org", async () => {
     mockFindUnique.mockImplementationOnce(async () => ({
       id: "dev_other",
       organizationId: "org_other",
@@ -377,9 +398,9 @@ describe("devices routes", () => {
       })
     )
 
-    expect(response.status).toBe(200)
-    const payload = (await response.json()) as { ok: boolean; device?: unknown }
-    expect(payload.ok).toBe(true)
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.error).toBe("FORBIDDEN")
   })
 
   // ── Reconnect ─────────────────────────────────────────────────────────────────
@@ -398,7 +419,7 @@ describe("devices routes", () => {
     expect(payload.error).toBe("NOT_FOUND")
   })
 
-  it("allows reconnecting device from other org (guards removed)", async () => {
+  it("returns 403 when reconnecting device from other org", async () => {
     mockFindUnique.mockImplementationOnce(async () => ({
       id: "dev_other",
       organizationId: "org_other",
@@ -415,8 +436,8 @@ describe("devices routes", () => {
       })
     )
 
-    expect(response.status).toBe(200)
-    const payload = (await response.json()) as { ok: boolean; device?: unknown }
-    expect(payload.ok).toBe(true)
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.error).toBe("FORBIDDEN")
   })
 })

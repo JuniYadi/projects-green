@@ -25,9 +25,10 @@ const broadcastCampaignUpdateSchema = t.Partial(
 )
 
 export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
-  .get("/", async ({ request }: { request: any }) => {
+  .get("/", async ({ request, set }: { request: any, set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
     if (!whatsappAuth) {
+      set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
     const campaigns = await prisma.whatsappBroadcastCampaign.findMany({
@@ -59,6 +60,11 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     if (!campaign) {
       set.status = 404
       return { ok: false, error: "NOT_FOUND", message: "Broadcast campaign not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     return { ok: true, campaign }
@@ -111,6 +117,11 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       return { ok: false, error: "NOT_FOUND", message: "Broadcast campaign not found." }
     }
 
+    if ((whatsappAuth as any).platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
     const updated = await prisma.whatsappBroadcastCampaign.update({
       where: { id },
       data: body,
@@ -133,6 +144,11 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     if (!campaign) {
       set.status = 404
       return { ok: false, error: "NOT_FOUND", message: "Broadcast campaign not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     await prisma.whatsappBroadcastCampaign.delete({
@@ -159,6 +175,11 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     if (!campaign) {
       set.status = 404
       return { ok: false, error: "NOT_FOUND", message: "Broadcast campaign not found." }
+    }
+
+    if ((whatsappAuth as any).platformRole !== "super_admin" && campaign.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     if (campaign.status !== "QUEUED") {

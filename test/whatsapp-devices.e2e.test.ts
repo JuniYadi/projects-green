@@ -236,6 +236,7 @@ describe("WhatsApp Devices E2E", () => {
     } as any
 
     mockFindMany.mockImplementationOnce(async () => [deviceToDelete])
+    mockFindUnique.mockImplementationOnce(async () => deviceToDelete)
     mockDelete.mockImplementationOnce(async () => ({}))
 
     setMockAuthContext({
@@ -298,7 +299,7 @@ describe("WhatsApp Devices E2E", () => {
     expect(response.status).toBe(200)
   })
 
-  it("allows updating device from different organization (guards removed)", async () => {
+  it("returns 403 when updating device from different organization", async () => {
     mockFindUnique.mockImplementationOnce(async () => ({
       id: "dev_other_org",
       organizationId: "org-other",
@@ -322,7 +323,7 @@ describe("WhatsApp Devices E2E", () => {
       })
     )
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(403)
   })
 })
 
