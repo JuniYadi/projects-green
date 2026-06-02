@@ -120,12 +120,14 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Documentation",
       "Settings",
+      "App Hosting",
       "WhatsApp",
     ])
     expect(navMain[0]?.items?.map((item) => item.title)).toEqual(["Registry"])
     expect(navMain[0]?.isActive).toBe(true)
 
     expect(projects.map((project) => project.name)).toContain("Documentation")
+    expect(projects.map((project) => project.name)).toContain("Payments")
     expect(projects.map((project) => project.name)).not.toContain(
       "Applications"
     )

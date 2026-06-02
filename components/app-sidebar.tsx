@@ -18,6 +18,7 @@ import {
 import {
   BookOpenIcon,
   CaretLeftIcon,
+  CreditCardIcon,
   GaugeIcon,
   LifebuoyIcon,
   Lightning,
@@ -78,6 +79,117 @@ interface SidebarContextConfig {
   getNavMain: (pathname: string, locale: AppLocale) => AppSidebarNavItem[]
   navMainLabel: string
 }
+
+const PORTAL_CONTEXTS: SidebarContextConfig[] = [
+  {
+    context: "app-hosting",
+    matches: (path) => startsWithRoute(path, "/portal/app"),
+    navMainLabel: "App Hosting",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Deploy",
+        url: localizePathname({ pathname: "/portal/app/deploy", locale }),
+        icon: <RocketLaunchIcon />,
+        isActive: path === "/portal/app/deploy",
+      },
+      {
+        title: "Manage",
+        url: localizePathname({ pathname: "/portal/app/manage", locale }),
+        icon: <GaugeIcon />,
+        isActive: startsWithRoute(path, "/portal/app/manage"),
+      },
+    ],
+  },
+  {
+    context: "whatsapp",
+    matches: (path) => startsWithRoute(path, "/portal/whatsapp"),
+    navMainLabel: "WhatsApp",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Devices",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/devices",
+          locale,
+        }),
+        icon: <WhatsappLogoIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/devices"),
+      },
+      {
+        title: "Templates",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/templates",
+          locale,
+        }),
+        icon: <Lightning />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/templates"),
+      },
+    ],
+  },
+  {
+    context: "payments",
+    matches: (path) => startsWithRoute(path, "/portal/payments"),
+    navMainLabel: "Payments",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Overview",
+        url: localizePathname({
+          pathname: "/portal/payments/overview",
+          locale,
+        }),
+        icon: <GaugeIcon />,
+        isActive: startsWithRoute(path, "/portal/payments/overview"),
+      },
+      {
+        title: "Gateways",
+        url: localizePathname({
+          pathname: "/portal/payments/gateways",
+          locale,
+        }),
+        icon: <WalletIcon />,
+        isActive: startsWithRoute(path, "/portal/payments/gateways"),
+      },
+      {
+        title: "Bank Accounts",
+        url: localizePathname({
+          pathname: "/portal/payments/bank-accounts",
+          locale,
+        }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/portal/payments/bank-accounts"),
+      },
+      {
+        title: "Confirmations",
+        url: localizePathname({
+          pathname: "/portal/payments/confirmations",
+          locale,
+        }),
+        icon: <BookOpenIcon />,
+        isActive: startsWithRoute(path, "/portal/payments/confirmations"),
+      },
+    ],
+  },
+]
 
 const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
   {
@@ -251,6 +363,12 @@ const buildPortalNavMain = (
     ],
   },
   {
+    title: "App Hosting",
+    url: localizePathname({ pathname: "/portal/app", locale }),
+    icon: <RocketLaunchIcon />,
+    isActive: startsWithRoute(pathname, "/portal/app"),
+  },
+  {
     title: "WhatsApp",
     url: localizePathname({ pathname: "/portal/whatsapp/devices", locale }),
     icon: <WhatsappLogoIcon />,
@@ -315,6 +433,12 @@ const buildPortalProjects = (
     isActive: startsWithRoute(pathname, "/portal/billing"),
   },
   {
+    name: "Payments",
+    url: localizePathname({ pathname: "/portal/payments", locale }),
+    icon: <CreditCardIcon />,
+    isActive: startsWithRoute(pathname, "/portal/payments"),
+  },
+  {
     name: "Invoices",
     url: localizePathname({ pathname: "/portal/invoices", locale }),
     icon: <ReceiptIcon />,
@@ -341,6 +465,24 @@ export const resolveSidebarMenu = ({
   projects: AppSidebarProject[]
   navMainLabel: string
 } => {
+  if (surface === "portal") {
+    const matchingContext = PORTAL_CONTEXTS.find((cfg) =>
+      cfg.matches(pathname)
+    )
+    if (matchingContext) {
+      return {
+        navMain: matchingContext.getNavMain(pathname, locale),
+        projects: matchingContext.getProjects(pathname, locale),
+        navMainLabel: matchingContext.navMainLabel,
+      }
+    }
+    return {
+      navMain: buildPortalNavMain(pathname, locale),
+      projects: buildPortalProjects(pathname, locale),
+      navMainLabel: "Platform",
+    }
+  }
+
   if (surface !== "console") {
     return {
       navMain: buildPortalNavMain(pathname, locale),
