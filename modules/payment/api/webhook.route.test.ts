@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 // Mock prisma
 const mockPaymentAuditLog = {
-  findFirst: mock(() => Promise.resolve(null)),
+  findFirst: mock<() => Promise<Record<string, unknown> | null>>(() =>
+    Promise.resolve(null)
+  ),
   create: mock(() => Promise.resolve({})),
 }
 
