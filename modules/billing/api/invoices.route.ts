@@ -79,8 +79,7 @@ function formatInvoiceLine(
     unitPrice: Decimal
     amount: Decimal
     description: string
-  },
-  currency: string
+  }
 ): InvoiceLineResponse {
   // Use field names from InvoiceLine schema: quantity, unitPrice, amount
   return {
@@ -140,7 +139,7 @@ export const createBillingInvoicesRoutes = (
           dueAt: inv.dueAt?.toISOString() ?? null,
           totalAmountIdr: inv.totalAmount.toFixed(2),
           currency: inv.currency,
-          lines: inv.lines.map((line) => formatInvoiceLine(line, inv.currency)),
+          lines: inv.lines.map((line) => formatInvoiceLine(line)),
         }))
 
         return {
@@ -214,7 +213,7 @@ export const createBillingInvoicesRoutes = (
             totalAmountIdr: invoice.totalAmount.toFixed(2),
             currency: invoice.currency,
             lines: invoice.lines.map((line) =>
-              formatInvoiceLine(line, invoice.currency)
+              formatInvoiceLine(line)
             ),
           },
         }

@@ -66,13 +66,6 @@ function getBasicAuthHeader(username: string, token: string): string {
   return `Basic ${creds}`
 }
 
-function authHeaders(config: JenkinsConfig): Record<string, string> {
-  return {
-    Authorization: getBasicAuthHeader(config.username, config.apiToken),
-    "Content-Type": "application/xml",
-  }
-}
-
 // ─── Jenkins Client ──────────────────────────────────────────────────────────
 
 export class JenkinsClient {
@@ -119,7 +112,7 @@ export class JenkinsClient {
     }
   }
 
-  async createJob(jobName: string, jobConfigXml: string): Promise<boolean> {
+  async createJob(jobName: string): Promise<boolean> {
     const res = await fetch(`${this.baseUrl()}/createItem`, {
       method: "POST",
       headers: {

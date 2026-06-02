@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import type { Transporter } from "nodemailer"
 
 // Mock console.error to suppress error logging in tests
-const mockConsoleError = mock((...args: unknown[]) => {})
+const mockConsoleError = mock(() => {})
 console.error = mockConsoleError
 
 // Mock nodemailer at module level

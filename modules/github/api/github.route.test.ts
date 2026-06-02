@@ -22,10 +22,6 @@ const {
   GithubIntegrationDisabledError,
 } = await import("@/modules/github/github.service")
 import type { GithubService } from "@/modules/github/github.service"
-import type {
-  GithubActorContext,
-  GithubRepositoryListQuery,
-} from "@/modules/github/github.types"
 
 const createBaseService = (enabled: boolean): GithubService => ({
   getFeatureStatus: () => ({
@@ -38,10 +34,7 @@ const createBaseService = (enabled: boolean): GithubService => ({
       throw new GithubIntegrationDisabledError()
     }
   },
-  async listRepositoriesForActor(
-    _actor: GithubActorContext,
-    _query: GithubRepositoryListQuery
-  ) {
+  async listRepositoriesForActor() {
     return {
       items: [],
       nextCursor: null,
@@ -224,10 +217,7 @@ describe("githubRoutes", () => {
         ...baseDependencies,
         service: {
           ...createBaseService(true),
-          async listRepositoriesForActor(
-            _actor: GithubActorContext,
-            _query: GithubRepositoryListQuery
-          ) {
+          async listRepositoriesForActor() {
             throw new GithubCursorError()
           },
         },

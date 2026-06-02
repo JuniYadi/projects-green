@@ -161,9 +161,7 @@ describe("BillingCycleService", () => {
         },
       ])
 
-      let transactionCallback: any
       mockPrisma.$transaction.mockImplementation(async (fn: any) => {
-        transactionCallback = fn
         // The transaction receives the mock prisma itself
         return fn(mockPrisma)
       })

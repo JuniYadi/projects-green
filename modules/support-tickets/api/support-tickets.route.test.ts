@@ -273,7 +273,7 @@ describe("support ticket routes", () => {
   })
 
   it("handles organization lookup error gracefully with null organizationName", async () => {
-    const mockGetOrganization = mock(async (orgId: string) => {
+    const mockGetOrganization = mock(async () => {
       throw new Error("Organization service unavailable")
     })
 

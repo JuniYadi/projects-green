@@ -132,12 +132,6 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
     }
   }
 
-  function handleReset() {
-    setFormState("idle")
-    setAmount(50000)
-    setErrorMessage(null)
-  }
-
   const selectedBank = bankAccounts.find((b) => b.id === selectedBankAccount)
 
   const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: React.ElementType; description: string }[] = [

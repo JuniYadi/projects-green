@@ -1,7 +1,6 @@
 import { Worker, type Job } from "bullmq"
 
 import {
-  WHATSAPP_BROADCAST_JOB_NAME,
   WHATSAPP_BROADCAST_QUEUE_NAME,
   getWhatsAppBroadcastRedisConnection,
   type WhatsAppBroadcastJobData,
@@ -12,9 +11,6 @@ const redisConnection = getWhatsAppBroadcastRedisConnection()
 const worker = new Worker<WhatsAppBroadcastJobData>(
   WHATSAPP_BROADCAST_QUEUE_NAME,
   async (job: Job<WhatsAppBroadcastJobData>) => {
-    const maxAttempts =
-      typeof job.opts.attempts === "number" ? job.opts.attempts : 1
-
     if (job.data.method === "dispatch") {
       // TODO: implement actual dispatch via WhatsAppDeviceClient
       console.info(

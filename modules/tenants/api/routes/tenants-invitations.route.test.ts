@@ -47,13 +47,11 @@ const mockRequireTenantActor = mock(
     ...defaultActor,
   })
 )
+/* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(
-  (
-    _orgId: string,
-    _actor: MockActor,
-    _set: MockRouteSet
-  ): true | TenantApiError => true
+  (_orgId: string, _actor: MockActor, _set: MockRouteSet): true | TenantApiError => true
 )
+/* eslint-enable @typescript-eslint/no-unused-vars */
 const mockListTenantInvitations = mock(async () => [makeInvitation()])
 const mockGetTenantInvitationById = mock(
   async (): Promise<TenantInvitationSummary | null> => makeInvitation()
@@ -119,11 +117,7 @@ const resetAllMocks = () => {
     })
   )
   mockEnsureTenantContextAccess.mockImplementation(
-    (
-      _orgId: string,
-      _actor: MockActor,
-      _set: MockRouteSet
-    ): true | TenantApiError => true
+    (): true | TenantApiError => true
   )
   mockListTenantInvitations.mockImplementation(async () => [makeInvitation()])
   mockGetTenantInvitationById.mockImplementation(

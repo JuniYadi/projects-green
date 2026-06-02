@@ -18,11 +18,11 @@ declare module "recharts" {
   export const ReferenceLine: any
   export type TooltipProps = any
   export type TooltipValueType = any
-  export type DefaultTooltipContentProps<V = any, N = any> = any
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  export type DefaultTooltipContentProps<T = any, N = any> = any
   export type DefaultLegendContentProps = any
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare module "react-icons/si" {
   import type { ComponentType } from "react"
   const icons: Record<string, ComponentType<any>>

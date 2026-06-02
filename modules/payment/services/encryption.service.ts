@@ -3,7 +3,6 @@ import {
   decrypt,
   parseEncryptedField,
   serializeEncryptedField,
-  type EncryptedData,
 } from "@/lib/encryption"
 
 export class EncryptionService {

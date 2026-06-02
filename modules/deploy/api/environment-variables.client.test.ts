@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from "bun:test"
+import { describe, expect, it, beforeEach } from "bun:test"
 import { createEnvironmentVariablesClient } from "@/modules/deploy/api/environment-variables.client"
 
 describe("environment-variables.client", () => {

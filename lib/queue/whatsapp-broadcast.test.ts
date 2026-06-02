@@ -7,7 +7,12 @@ const queueAddMock = mock(
     _name: string,
     _data: WhatsAppBroadcastJobData,
     _opts?: JobsOptions
-  ) => ({ id: "job_1" })
+  ) => {
+    void _name
+    void _data
+    void _opts
+    return { id: "job_1" }
+  }
 )
 const queueCloseMock = mock(async () => undefined)
 const queueConstructorMock = mock((...args: unknown[]) => {

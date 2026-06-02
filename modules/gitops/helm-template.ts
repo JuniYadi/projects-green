@@ -1,4 +1,3 @@
-import type { AppManifest, KubernetesResource } from "./gitops.types"
 import * as jsYaml from "js-yaml"
 
 export class HelmChartRenderer {

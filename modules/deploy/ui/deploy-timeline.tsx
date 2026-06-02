@@ -42,6 +42,7 @@ export function DeployTimeline({ deployId, status }: DeployTimelineProps) {
       console.error("Failed to fetch events", err)
       setError("Failed to fetch events")
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deployId])
 
   useEffect(() => {

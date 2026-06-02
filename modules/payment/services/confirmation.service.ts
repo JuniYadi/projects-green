@@ -17,7 +17,7 @@ export class ConfirmationService {
       notes?: string
     }
   }) {
-    const { invoiceId, organizationId, data } = input
+    const { invoiceId, data } = input
 
     const invoice = await prisma.invoice.findFirst({
       where: { id: invoiceId, status: "OPEN" },

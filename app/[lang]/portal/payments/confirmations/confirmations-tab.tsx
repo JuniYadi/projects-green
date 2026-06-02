@@ -29,7 +29,7 @@ const STATUS_VARIANTS: Record<PaymentConfirmation["status"], "default" | "second
   rejected: "destructive",
 }
 
-export function ConfirmationsTab({ lang }: { lang: string }) {
+export function ConfirmationsTab() {
   const [state, setState] = useState<ConfirmationsRequestState>({ status: "loading" })
 
   const fetchConfirmations = useCallback(async () => {

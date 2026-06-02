@@ -18,7 +18,7 @@ type StatsRequestState =
   | { status: "success"; data: PaymentStats }
   | { status: "error"; message: string }
 
-export function OverviewTab({ lang }: { lang: string }) {
+export function OverviewTab() {
   const [state, setState] = useState<StatsRequestState>({ status: "loading" })
 
   const fetchStats = useCallback(async () => {
