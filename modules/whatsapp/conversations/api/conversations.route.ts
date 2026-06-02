@@ -7,7 +7,7 @@ import {
 } from "@/lib/whatsapp/auth"
 
 const conversationBodySchema = t.Object({
-  contactPhone: t.String(),
+  contactPhone: t.String({ minLength: 10, maxLength: 20 } as any),
   whatsappDeviceId: t.Optional(t.Nullable(t.String())),
 })
 

@@ -15,7 +15,7 @@ import {
 } from "../users.service"
 
 const inviteBodySchema = t.Object({
-  email: t.String(),
+  email: t.String({ format: "email" } as any),
   role: t.Enum({ admin: "admin", member: "member" }),
 })
 

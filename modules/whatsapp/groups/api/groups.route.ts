@@ -7,8 +7,8 @@ import {
 } from "@/lib/whatsapp/auth"
 
 const groupBodySchema = t.Object({
-  name: t.String(),
-  description: t.String(),
+  name: t.String({ maxLength: 100 } as any),
+  description: t.String({ maxLength: 500 } as any),
   type: t.Optional(t.Enum({ STATIC: "STATIC", DYNAMIC: "DYNAMIC" })),
   status: t.Optional(t.Enum({ ACTIVE: "ACTIVE", INACTIVE: "INACTIVE" })),
   throttleMaxMessages: t.Optional(t.Nullable(t.Number())),

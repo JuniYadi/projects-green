@@ -19,6 +19,8 @@ app.post("/push", async (c) => {
   const handler = new GithubPushEventHandler()
   
   // Find stacks associated with this repository
+  // NOTE: Stack model was removed from Prisma schema but this route is still referenced
+  // by webhook dispatch. Cast is required until this route is fully deprecated.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stacks = await (prisma as any).stack.findMany({
     where: {
@@ -38,15 +40,13 @@ app.post("/push", async (c) => {
 
   // Handle push for each stack
   const results = await Promise.allSettled(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    stacks.map((stack: any) => handler.handlePush(stack as import("../github-push-dispatcher").Stack, payload))
+    stacks.map((stack: Record<string, unknown>) => handler.handlePush(stack as unknown as import("../github-push-dispatcher").Stack, payload))
   )
 
   return c.json({ 
     message: "Processed push event",
     stacksProcessed: stacks.length,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    results: results.map((r: any) => r.status)
+    results: results.map((r) => r.status)
   })
 })
 
