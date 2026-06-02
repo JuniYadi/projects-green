@@ -9,15 +9,27 @@ import { Prisma } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
-import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { topUpInputSchema } from "../devices.schemas"
+import {
+  adminCreateDeviceSchema,
+  topUpInputSchema,
+} from "../devices.schemas"
+import { createDeviceService } from "../devices.service"
+import {
+  requireSuperAdmin,
+  type AdminActorContext,
+  type AdminApiError,
+} from "@/modules/admin/api/admin.guards"
 
 const MAX_BALANCE = new Decimal("999999999.99")
 
 type RouteSet = {
   status?: number | string
 }
+
+type AdminGuard = (
+  set: RouteSet
+) => Promise<AdminActorContext | AdminApiError>
 
 const toServerError = (set: RouteSet, message: string) => {
   set.status = 500
@@ -28,14 +40,19 @@ const toServerError = (set: RouteSet, message: string) => {
   }
 }
 
-export const createAdminDevicesRoutes = () => {
+const isAdminError = (
+  value: AdminActorContext | AdminApiError
+): value is AdminApiError => "ok" in value && !value.ok
+
+export const createAdminDevicesRoutes = (
+  deps: { requireSuperAdmin?: AdminGuard } = {}
+) => {
+  const guard: AdminGuard = deps.requireSuperAdmin ?? requireSuperAdmin
+
   return new Elysia({ prefix: "/admin/devices" })
-    .get("/", async ({ request, query, set }: any) => {
-      const auth = await resolveAuthContext(request)
-      if (!auth) {
-        set.status = 401
-        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
-      }
+    .get("/", async ({ query, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
 
       const take = Math.min(Number(query.take) || 50, 100)
       const skip = Number(query.skip) || 0
@@ -59,6 +76,11 @@ export const createAdminDevicesRoutes = () => {
           balance: Number(d.balance.toString()),
           quotaBase: Number(d.quotaBase.toString()),
           dailyLimitMessage: d.dailyLimitMessage,
+          whatsappBusinessAccountId: d.whatsappBusinessAccountId,
+          whatsappPhoneId: d.whatsappPhoneId,
+          whatsappApplicationId: d.whatsappApplicationId,
+          callbackUrl: d.callbackUrl,
+          whatsappProfile: d.whatsappProfile,
           createdAt: d.createdAt.toISOString(),
           updatedAt: d.updatedAt.toISOString(),
         })),
@@ -67,12 +89,9 @@ export const createAdminDevicesRoutes = () => {
         skip,
       }
     })
-    .get("/:id", async ({ request, params: { id }, set }: any) => {
-      const auth = await resolveAuthContext(request)
-      if (!auth) {
-        set.status = 401
-        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
-      }
+    .get("/:id", async ({ params: { id }, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
 
       const device = await prisma.whatsappDevice.findUnique({
         where: { id },
@@ -101,23 +120,52 @@ export const createAdminDevicesRoutes = () => {
           dailyLimitMessage: device.dailyLimitMessage,
           whatsappBusinessAccountId: device.whatsappBusinessAccountId,
           whatsappPhoneId: device.whatsappPhoneId,
+          whatsappApplicationId: device.whatsappApplicationId,
           callbackUrl: device.callbackUrl,
           expiredAt: device.expiredAt?.toISOString() ?? null,
+          whatsappProfile: device.whatsappProfile,
           createdAt: device.createdAt.toISOString(),
           updatedAt: device.updatedAt.toISOString(),
         },
       }
     })
-    .post("/:id/top-up", async ({ request, params: { id }, body, set }: any) => {
-      const auth = await resolveAuthContext(request)
-      if (!auth) {
-        set.status = 401
-        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
-      }
+    .post(
+      "/",
+      async ({ body, set }: any) => {
+        const actor = await guard(set)
+        if (isAdminError(actor)) return actor
 
-      const currentUser = auth.type === "workos" ? { id: auth.userId } : null
+        const parsed = adminCreateDeviceSchema.safeParse(body)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          }
+        }
+
+        try {
+          const device = await createDeviceService().create({
+            ...parsed.data,
+            organizationId: parsed.data.organizationId,
+          })
+
+          set.status = 201
+          return { ok: true as const, device }
+        } catch (error) {
+          console.error("[AdminDevices] Create error:", error)
+          return toServerError(set, "Unable to create device.")
+        }
+      },
+      { body: adminCreateDeviceSchema }
+    )
+    .post("/:id/top-up", async ({ params: { id }, body, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
+
       const parsed = topUpInputSchema.safeParse(body)
-
       if (!parsed.success) {
         set.status = 422
         return {
@@ -146,7 +194,6 @@ export const createAdminDevicesRoutes = () => {
             throw new Error("BALANCE_LIMIT_EXCEEDED")
           }
 
-          // Find or create a billing account for the device's org
           let billingAccount = await tx.billingAccount.findUnique({
             where: { organizationId: device.organizationId },
           })
@@ -175,7 +222,7 @@ export const createAdminDevicesRoutes = () => {
                 reason: `Device top-up: ${reason} (device: ${id})`,
                 metadataJson: {
                   deviceId: id,
-                  performedBy: currentUser?.id,
+                  performedBy: actor.userId,
                 },
               },
             }),
@@ -199,7 +246,10 @@ export const createAdminDevicesRoutes = () => {
           }
         }
 
-        if (error instanceof Error && error.message === "BALANCE_LIMIT_EXCEEDED") {
+        if (
+          error instanceof Error &&
+          error.message === "BALANCE_LIMIT_EXCEEDED"
+        ) {
           set.status = 400
           return {
             ok: false as const,
@@ -213,5 +263,3 @@ export const createAdminDevicesRoutes = () => {
       }
     })
 }
-
-export const adminDevicesRoutes = createAdminDevicesRoutes()
