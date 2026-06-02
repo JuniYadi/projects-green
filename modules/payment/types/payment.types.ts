@@ -27,6 +27,7 @@ export type ConfirmationStatusValue = (typeof ConfirmationStatus)[keyof typeof C
 // Request/Response schemas using Zod
 export const CreateTopupSchema = z.object({
   amount: z.number().min(10000).max(100000000),
+  paymentMethod: z.enum(["VA", "QRIS", "MANUAL_BANK"]),
 })
 
 export const ConfirmPaymentSchema = z.object({
