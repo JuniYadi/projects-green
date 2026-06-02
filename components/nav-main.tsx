@@ -22,6 +22,7 @@ import { CaretRightIcon } from "@phosphor-icons/react"
 
 export function NavMain({
   items,
+  label = "Platform",
 }: {
   items: {
     title: string
@@ -34,10 +35,11 @@ export function NavMain({
       isActive?: boolean
     }[]
   }[]
+  label?: string
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           const hasActiveChild = item.items?.some((subItem) => subItem.isActive)
