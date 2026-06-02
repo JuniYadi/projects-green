@@ -101,7 +101,7 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
       const response = await fetch("/api/payments/topup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount, paymentMethod }),
       })
 
       const result = await response.json()
@@ -117,14 +117,14 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
         paymentMethod,
       })
 
-      // Redirect based on payment method
       if (paymentMethod === "MANUAL_BANK") {
-        // Navigate to confirmation page for manual bank transfer
         router.push(`/console/billing/payments/confirm?invoiceId=${result.invoice.id}&amount=${amount}&bankAccountId=${selectedBankAccount}`)
       } else if (paymentMethod === "VA" || paymentMethod === "QRIS") {
-        // For VA/QRIS, would redirect to payment gateway
-        // For now, just show success
-        setFormState("success")
+        if (result.paymentUrl) {
+          window.location.href = result.paymentUrl
+        } else {
+          router.push(`/console/billing/invoices/${result.invoice.id}?payment=pending`)
+        }
       }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Topup failed. Please try again.")
@@ -278,7 +278,7 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
           className="w-full"
           disabled={!isValid || formState === "submitting"}
         >
-          {formState === "submitting" ? "Creating Invoice..." : "Create Invoice"}
+          {formState === "submitting" ? "Processing..." : "Create Invoice"}
         </Button>
       </div>
     </form>
