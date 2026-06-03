@@ -165,7 +165,34 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
         {/* Amount Input */}
         <Field>
           <FieldLabel>Amount (IDR)</FieldLabel>
-          <div className="relative">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {[50000, 100000, 250000, 500000, 1000000].map((preset) => (
+              <Button
+                key={preset}
+                type="button"
+                variant={amount === preset ? "default" : "outline"}
+                size="sm"
+                disabled={formState === "submitting"}
+                onClick={() => setAmount(preset)}
+              >
+                {formatCurrency(preset)}
+              </Button>
+            ))}
+            <Button
+              type="button"
+              variant={
+                ![50000, 100000, 250000, 500000, 1000000].includes(amount)
+                  ? "default"
+                  : "outline"
+              }
+              size="sm"
+              disabled={formState === "submitting"}
+              onClick={() => setAmount(0)}
+            >
+              Custom
+            </Button>
+          </div>
+          <div className="relative mt-2">
             <Input
               type="text"
               inputMode="numeric"
