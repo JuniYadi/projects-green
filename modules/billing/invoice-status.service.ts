@@ -129,7 +129,7 @@ export class InvoiceStatusManager {
 
     const invoices = await this.prisma.invoice.findMany({
       where: {
-        status: "OPEN",
+        status: "ISSUED",
         dueAt: {
           gte: now,
           lte: threshold,
@@ -141,8 +141,31 @@ export class InvoiceStatusManager {
     let sent = 0
 
     for (const invoice of invoices) {
+      // Idempotency: skip if reminder already sent today
+      const metadata = (invoice.metadataJson as Record<string, unknown>) ?? {}
+      const lastReminderAt = metadata.lastReminderAt as string | undefined
+      if (lastReminderAt) {
+        const lastDate = new Date(lastReminderAt).toDateString()
+        if (lastDate === now.toDateString()) {
+          continue // Already sent reminder today
+        }
+      }
+
       if (this.emailService && invoice.billingAccount?.organizationId) {
-        this.sendPaymentReminderEmail(invoice, invoice.billingAccount.organizationId)
+        const reminderCount = ((metadata.reminderCount as number) ?? 0) + 1
+
+        await this.prisma.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            metadataJson: {
+              ...metadata,
+              lastReminderAt: now.toISOString(),
+              reminderCount,
+            },
+          },
+        })
+
+        await this.sendPaymentReminderEmail(invoice, invoice.billingAccount.organizationId)
         sent++
       }
     }

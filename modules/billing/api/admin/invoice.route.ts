@@ -1,7 +1,7 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
-import { Prisma } from "@prisma/client"
+import { Prisma, InvoiceStatus } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
@@ -202,7 +202,7 @@ export const createAdminInvoiceRoutes = (
         }
 
         const updateData: Prisma.InvoiceUpdateInput = {
-          status: targetStatus as any,
+          status: targetStatus as InvoiceStatus,
         }
 
         if (targetStatus === "ISSUED") {
