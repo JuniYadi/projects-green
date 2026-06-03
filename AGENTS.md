@@ -48,7 +48,7 @@ Before committing or opening a PR, ALL MUST PASS:
 
 ## Prisma Types: Always Use Generated Types (HARD REQUIREMENT)
 
-All Prisma types must come from the generated client (`@prisma/client` — resolved via tsconfig alias to `prisma/generated/client/`). NEVER declare manual types that mirror Prisma models.
+All Prisma types must come from the generated client (`@prisma/client` — resolves via `node_modules/.prisma/client/`). NEVER declare manual types that mirror Prisma models.
 
 ### DO ✅
 ```ts
@@ -80,24 +80,85 @@ const delegate = (prisma as unknown as { invoice?: InvoiceDelegate }).invoice
 const where: Record<string, unknown> = {}
 ```
 
-### Exception (for API response shapes)
-UI/DTO types that intentionally select/reshape model fields for public consumption ARE acceptable, as long as they use `Pick<Prisma.ModelType, ...>` or extend Prisma types instead of re-declaring fields:
+## DTO Layer: Boundary Contract, Not Duplication (HARD REQUIREMENT)
+
+Every API response must go through an explicit DTO. Internal service-to-service calls use Prisma types directly.
+
+### The rule by layer
+
+| Layer | Type | Rule |
+|-------|------|------|
+| Route handler → Client | **DTO** (derived) | **WAJIB** — API contract, security, stability |
+| Service → Service (same module) | Prisma types | ❌ Jangan bikin DTO — boilerplate tanpa value |
+| Service → Service (cross-module) | DTO or Prisma types | ⚠️ DTO disarankan kalo beda domain |
+| Repository/Prisma → Service | Prisma types | ❌ Pakai Prisma langsung — KISS |
+| Serialization / Display | **DTO** (derived) | ✅ Format transform, tanggal, currency |
+
+### Pattern: `*.dto.ts` + `toDTO` helper per module
+
 ```ts
-// GOOD — derived from Prisma type
-type SafeUser = Pick<Prisma.UserGetPayload<{}>, "id" | "name">
+// modules/invoices/invoices.dto.ts
+import { Prisma } from "@prisma/client"
 
-// ALSO GOOD — thin wrapper but uses Prisma namespace for enums
-import type { InvoiceStatus } from "@prisma/client"
+// DTO — explicit, stable contract untuk client
+export type InvoiceDTO = Pick<
+  Prisma.InvoiceGetPayload<{}>,
+  "id" | "invoiceNumber" | "totalAmount" | "status"
+>
 
-// BAD — re-declares fields and enums manually
-type InvoiceRecord = { id: string; status: "DRAFT" | "OPEN" }
+export type InvoiceDetailDTO = InvoiceDTO & {
+  lines: Array<Pick<Prisma.InvoiceLineGetPayload<{}>, "description" | "amount">>
+}
+
+// Mapping function — testable, explicit
+export function toInvoiceDTO(
+  invoice: Prisma.InvoiceGetPayload<{}>
+): InvoiceDTO {
+  return {
+    id: invoice.id,
+    invoiceNumber: invoice.invoiceNumber,
+    totalAmount: invoice.totalAmount,
+    status: invoice.status,
+  }
+}
 ```
 
-### Fixing existing violations
+```ts
+// modules/invoices/api/invoices.route.ts
+import { toInvoiceDTO, type InvoiceDTO } from "../invoices.dto"
+
+router.get("/invoices", async (ctx) => {
+  const invoices = await invoiceService.list(orgId)
+  return invoices.map(toInvoiceDTO)  // ✅ DTO di boundary
+})
+```
+
+### Internal service — Prisma types langsung
+
+```ts
+// modules/invoices/invoices.service.ts
+// ❌ JANGAN bikin DTO untuk internal
+async function calculateTax(
+  invoice: Prisma.InvoiceGetPayload<{ include: { lines: true } }>
+): Promise<Decimal> {
+  // ✅ Pakai Prisma types langsung — fully typed
+  return invoice.lines.reduce((sum, line) => sum.add(line.amount), new Decimal(0))
+}
+```
+
+### Kenapa DTO di boundary?
+- **Stable contract** — rename kolom DB gak nge-break API client
+- **Security** — accidental expose `internalNotesJson` gak bakal terjadi
+- **Over-fetching** — Prisma `select` jadi jelas karena DTO yang menentukan
+- **Testable** — mapping function bisa di-UT sendiri
+
+## Fixing Existing Violations
+
 When touching a file with manual Prisma types, refactor them to use generated types. Common refactors:
 1. **Manual `foo.service.ts`** → import `PrismaClient` from `@prisma/client`, use generated model names and `Prisma.ModelWhereInput` etc.
 2. **Manual store/delegate** → delete the type, pass `prisma` directly (or use `Pick` on generated `PrismaClient` if mocking is needed)
 3. **Manual enums** → import the enum from `@prisma/client`
+4. **Response from route handler** → create `*.dto.ts` with `Pick<Prisma.ModelGetPayload<{}>, ...>` and a `toDTO` mapper
 
 ## Console Surface Consistency
 - Keep all pages under `app/[lang]/console/**` visually consistent with the console overview page structure.
