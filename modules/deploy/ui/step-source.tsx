@@ -34,7 +34,7 @@ import {
   List,
   CaretLeft,
   CaretRight,
-} from "@phosphor-icons/react"
+} from "@/components/ui/phosphor-icons"
 import {
   SiN8N,
   SiDocker,

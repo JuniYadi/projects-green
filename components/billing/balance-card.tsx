@@ -1,4 +1,4 @@
-import { WarningIcon, WalletIcon } from "@phosphor-icons/react"
+import { WarningIcon, WalletIcon } from "@/components/ui/phosphor-icons"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"

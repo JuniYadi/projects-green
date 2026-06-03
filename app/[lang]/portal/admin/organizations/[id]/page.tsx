@@ -1,6 +1,6 @@
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
-import { ArrowLeftIcon } from "@phosphor-icons/react"
+import { ArrowLeftIcon } from "@/components/ui/phosphor-icons"
 import Link from "next/link"
 import { MembersTable } from "./members-table"
 
