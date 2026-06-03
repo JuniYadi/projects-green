@@ -35,12 +35,12 @@ const defaultDeps: AdminInvoiceRouteDeps = {
   },
 }
 
-const invoiceFinalizeSchema = z.object({
-  invoiceId: z.string().min(1),
+const invoiceParamsSchema = z.object({
+  id: z.string().min(1),
 })
 
-const invoiceVoidSchema = z.object({
-  invoiceId: z.string().min(1),
+const patchInvoiceSchema = z.object({
+  status: z.enum(["ISSUED", "CANCELLED"]),
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -133,69 +133,85 @@ export const createAdminInvoiceRoutes = (
   }
 
   return new Elysia()
-    // POST /billing/admin/invoice-finalize — Finalize a DRAFT invoice
-    .post("/admin/invoice-finalize", async ({ body, set }) => {
+    // PATCH /admin/invoices/:id — Update invoice status (issue, cancel)
+    .patch("/admin/invoices/:id", async ({ params, body, set }) => {
       const auth = await authenticate()
 
       if (!auth.user) {
         return toUnauthorized(set)
       }
 
-      // Parse and validate body
-      const parsed = invoiceFinalizeSchema.safeParse(body)
-      if (!parsed.success) {
+      // Validate params
+      const paramsParsed = invoiceParamsSchema.safeParse(params)
+      if (!paramsParsed.success) {
+        set.status = 422
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
+          message: "Invalid invoice ID.",
+        }
+      }
+
+      // Validate body
+      const bodyParsed = patchInvoiceSchema.safeParse(body)
+      if (!bodyParsed.success) {
         set.status = 422
         return {
           ok: false as const,
           error: "VALIDATION_ERROR" as const,
           message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          fieldErrors: fieldErrorMapFromIssues(bodyParsed.error.issues),
         }
       }
 
-      const { invoiceId } = parsed.data
+      const { id } = paramsParsed.data
+      const { status: targetStatus } = bodyParsed.data
 
       // Check admin access
       const actor = await resolveActor(auth, getPlatformRole)
       if (!isAdmin(actor)) {
         return toForbidden(
           set,
-          "Only administrators can finalize invoices."
+          "Only administrators can update invoice status."
         )
       }
 
       try {
-        // Fetch invoice
         const invoice = await prisma.invoice.findUnique({
-          where: { id: invoiceId },
+          where: { id },
         })
 
         if (!invoice) {
           return toNotFound(set, "Invoice not found.")
         }
 
-        // Validate invoice is in DRAFT status
-        if (invoice.status !== "DRAFT") {
+        // Validate status transitions
+        const validTransitions: Record<string, string[]> = {
+          DRAFT: ["ISSUED", "CANCELLED"],
+          ISSUED: ["CANCELLED"],
+        }
+
+        const allowed = validTransitions[invoice.status] ?? []
+        if (!allowed.includes(targetStatus)) {
           set.status = 422
           return {
             ok: false as const,
             error: "INVALID_STATUS" as const,
-            message: "Only DRAFT invoices can be finalized.",
+            message: `Cannot transition from ${invoice.status} to ${targetStatus}.`,
           }
         }
 
-        // Calculate due date (30 days from now)
-        const now = new Date()
-        const dueDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+        const updateData: Prisma.InvoiceUpdateInput = {
+          status: targetStatus as any,
+        }
 
-        // Update invoice to OPEN status
+        if (targetStatus === "ISSUED") {
+          updateData.issuedAt = new Date()
+        }
+
         const updatedInvoice = await prisma.invoice.update({
-          where: { id: invoiceId },
-          data: {
-            status: "OPEN",
-            issuedAt: now,
-            dueAt: dueDate,
-          },
+          where: { id },
+          data: updateData,
         })
 
         return {
@@ -203,88 +219,8 @@ export const createAdminInvoiceRoutes = (
           invoice: formatInvoiceResponse(updatedInvoice),
         }
       } catch (error) {
-        console.error("[AdminInvoiceFinalize] Error:", error)
-        return toServerError(set, "Unable to finalize invoice.")
-      }
-    })
-    // POST /billing/admin/invoice-void — Void an invoice
-    .post("/admin/invoice-void", async ({ body, set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      // Parse and validate body
-      const parsed = invoiceVoidSchema.safeParse(body)
-      if (!parsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
-        }
-      }
-
-      const { invoiceId } = parsed.data
-
-      // Check admin access
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(
-          set,
-          "Only administrators can void invoices."
-        )
-      }
-
-      try {
-        // Fetch invoice
-        const invoice = await prisma.invoice.findUnique({
-          where: { id: invoiceId },
-        })
-
-        if (!invoice) {
-          return toNotFound(set, "Invoice not found.")
-        }
-
-        // Validate invoice status
-        if (invoice.status !== "OPEN" && invoice.status !== "PAID") {
-          set.status = 422
-          return {
-            ok: false as const,
-            error: "INVALID_STATUS" as const,
-            message: "Only OPEN or PAID invoices can be voided.",
-          }
-        }
-
-        // Validate within 7 days of creation
-        const now = new Date()
-        const daysSinceCreation = (now.getTime() - invoice.createdAt.getTime()) / (1000 * 60 * 60 * 24)
-        if (daysSinceCreation > 7) {
-          set.status = 422
-          return {
-            ok: false as const,
-            error: "VOID_WINDOW_EXPIRED" as const,
-            message: "Invoices can only be voided within 7 days of creation.",
-          }
-        }
-
-        // Update invoice to VOID status
-        const updatedInvoice = await prisma.invoice.update({
-          where: { id: invoiceId },
-          data: {
-            status: "VOID",
-          },
-        })
-
-        return {
-          ok: true as const,
-          invoice: formatInvoiceResponse(updatedInvoice),
-        }
-      } catch (error) {
-        console.error("[AdminInvoiceVoid] Error:", error)
-        return toServerError(set, "Unable to void invoice.")
+        console.error("[AdminInvoiceUpdate] Error:", error)
+        return toServerError(set, "Unable to update invoice.")
       }
     })
 }
