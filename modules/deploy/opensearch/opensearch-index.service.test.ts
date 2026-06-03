@@ -38,4 +38,15 @@ describe("OpenSearch Index Service", () => {
     await ensureLogIndex("acme-corp")
     expect(mockClient.indices.create).not.toHaveBeenCalled()
   })
+
+  it("handles race condition when index already exists between exists check and create", async () => {
+    mockClient.indices.exists.mockResolvedValue({ body: false })
+    mockClient.indices.create.mockRejectedValueOnce(
+      new Error("resource_already_exists_exception")
+    )
+
+    // Should not throw
+    const result = await ensureLogIndex("acme-corp")
+    expect(result).toBe("deploy-logs-acme-corp-2026.06")
+  })
 })
