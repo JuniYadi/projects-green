@@ -174,6 +174,8 @@ describe("Admin Devices Routes", () => {
           status: "ACTIVE",
           balance: { toString: () => "100000", valueOf: () => 100000 },
           quotaBase: { toString: () => "1000", valueOf: () => 1000 },
+          quotaBaseIn: 0,
+          quotaBaseOut: 1000,
           dailyLimitMessage: 500,
           whatsappBusinessAccountId: null,
           whatsappPhoneId: null,

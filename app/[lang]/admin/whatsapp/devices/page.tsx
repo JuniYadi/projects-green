@@ -54,6 +54,7 @@ type AdminOrganizationSummary = {
   id: string
   name: string
   externalId: string | null
+  domains: string[]
   allowProfilesOutsideOrganization: boolean
   createdAt: string
   updatedAt: string
@@ -119,7 +120,7 @@ export default function AdminDevicesPage() {
         throw new Error(body.message || "Failed to load organizations.")
       }
 
-      setOrganizations(body.organizations)
+      setOrganizations(body.data.organizations)
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to load organizations."

@@ -17,6 +17,8 @@ export type DeviceEnvironment = z.infer<typeof deviceEnvironmentEnum>
 // ─── Input schemas ────────────────────────────────────────────────────────────
 
 export const createDeviceSchema = z.object({
+  // NOTE: `name` is accepted by the schema for API compatibility but is NOT
+  // persisted to the DB — no `name` column exists on `WhatsappDevice`.
   name: z.string().trim().min(1, "Name is required").max(100),
   phoneNumber: z.string().trim().min(1, "Phone number is required"),
   environment: deviceEnvironmentEnum.optional().default("LIVE"),
