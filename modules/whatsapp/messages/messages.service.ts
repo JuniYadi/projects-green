@@ -9,6 +9,7 @@ import Decimal = Prisma.Decimal
 import { BalanceGateService } from "@/modules/billing/balance-gate.service"
 import { QuotaGateService } from "@/modules/billing/quota-gate.service"
 import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
+import { MessageCostService } from "@/modules/billing/message-cost.service"
 import { USAGE_CATEGORY_WHATSAPP_OUT } from "@/modules/billing/constants"
 import {
   InsufficientBalanceError,
@@ -57,15 +58,23 @@ export const messageService: MessageService = {
     const balanceGate = new BalanceGateService(prisma)
     const quotaGate = new QuotaGateService(prisma)
     const usageLedger = new UsageLedgerService(prisma)
+    const messageCostService = new MessageCostService(prisma)
 
-    // 1. Check balance (BalanceGateService)
-    const balanceOk = await balanceGate.isBalancePositive(organizationId)
-    if (!balanceOk) {
+    // 1. Check balance against estimated message cost (PGREEN-049)
+    const balanceCheck = await messageCostService.checkBalanceForMessage({
+      organizationId,
+      messageType: "text",
+      deviceId,
+    })
+
+    if (!balanceCheck.sufficient) {
       throw new InsufficientBalanceError(
-        new Decimal(1),
-        new Decimal(0)
+        balanceCheck.required,
+        balanceCheck.available,
       )
     }
+
+    const estimatedCost = balanceCheck.required
 
     // 2. Check quota (QuotaGateService) — for outbound messages
     let quotaCheckResult
@@ -178,6 +187,21 @@ export const messageService: MessageService = {
             },
           },
         })
+      }
+
+      // 6. Deduct balance for the sent message (PGREEN-049 fix)
+      if (waMessageId && estimatedCost.gt(0)) {
+        try {
+          await balanceGate.deductBalance(
+            organizationId,
+            estimatedCost,
+            `WhatsApp message: ${jobId}`,
+            { messageId: jobId, deviceId: device.id, phoneNumber },
+          )
+        } catch (err) {
+          console.error("[messageService] Failed to deduct balance:", err)
+          // Message already sent — don't block, log for async repair
+        }
       }
     }
 

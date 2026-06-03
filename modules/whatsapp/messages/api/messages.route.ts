@@ -9,6 +9,18 @@ import {
   DailyLimitExceededError,
 } from "@/modules/billing/types"
 
+function getDailyResetAt(): string {
+  const now = new Date()
+  const reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+  return reset.toISOString()
+}
+
+function getMonthlyResetAt(): string {
+  const now = new Date()
+  const reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+  return reset.toISOString()
+}
+
 const messageBodySchema = t.Object({
   conversationId: t.String(),
   direction: t.Enum({ INBOX: "INBOX", OUTBOX: "OUTBOX" }),
@@ -194,6 +206,8 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           ok: false,
           error: "INSUFFICIENT_BALANCE",
           message: "Insufficient balance for WhatsApp messaging. Please top up your balance.",
+          balance: error.available.toString(),
+          estimatedCost: error.required.toString(),
         }
       }
 
@@ -201,8 +215,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         set.status = 429
         return {
           ok: false,
-          error: "QUOTA_EXCEEDED",
+          error: "MONTHLY_QUOTA_EXCEEDED",
           message: `Monthly outbound quota exceeded. Limit: ${error.monthlyLimit}, Used: ${error.monthlyUsed}`,
+          resetAt: getMonthlyResetAt(),
         }
       }
 
@@ -210,8 +225,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         set.status = 429
         return {
           ok: false,
-          error: "DAILY_LIMIT_EXCEEDED",
+          error: "DAILY_QUOTA_EXCEEDED",
           message: `Daily limit exceeded. Limit: ${error.dailyLimit}, Used: ${error.dailyUsed}`,
+          resetAt: getDailyResetAt(),
         }
       }
 

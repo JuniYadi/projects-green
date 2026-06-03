@@ -143,6 +143,97 @@ describe("QuotaGateService", () => {
       expect(result.dailyLimit).toBe(null)
     })
 
+    it("allows when unlimited flag is true (PGREEN-050)", async () => {
+      const unlimitedSub = {
+        ...mockSubscription,
+        plan: {
+          code: "WHATSAPP_ENTERPRISE",
+          resources: {
+            quotaIn: 100,
+            quotaOut: 100,
+            dailyPerDevice: 10,
+            devices: 5,
+            unlimited: true,
+          },
+        },
+      }
+      ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        unlimitedSub,
+      )
+
+      const result = await service.checkMessageQuota("org-1", "device-1", "OUT")
+
+      expect(result.allowed).toBe(true)
+      expect(result.monthlyUsed).toBe(0)
+      expect(result.dailyUsed).toBe(0)
+    })
+
+    it("respects quotaOutPerDeviceDaily canonical name (PGREEN-050)", async () => {
+      const subWithCanonical = {
+        ...mockSubscription,
+        plan: {
+          code: "WHATSAPP_STANDARD",
+          resources: {
+            quotaIn: 1000,
+            quotaOut: 500,
+            dailyPerDevice: 999,
+            quotaOutPerDeviceDaily: 50,
+            devices: 5,
+          },
+        },
+      }
+      ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        subWithCanonical,
+      )
+      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        mockDevice,
+      )
+      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        messageInboxCount: 0,
+        messageOutboxCount: 50,
+      })
+      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+
+      const result = await service.checkMessageQuota("org-1", "device-1", "OUT")
+
+      // Should use quotaOutPerDeviceDaily (50) not dailyPerDevice (999)
+      expect(result.allowed).toBe(false)
+      expect(result.dailyLimit).toBe(50)
+    })
+
+    it("respects quotaOutMonthly canonical name (PGREEN-050)", async () => {
+      const subWithCanonical = {
+        ...mockSubscription,
+        plan: {
+          code: "WHATSAPP_STANDARD",
+          resources: {
+            quotaIn: 1000,
+            quotaOut: 999,
+            quotaOutMonthly: 200,
+            dailyPerDevice: 100,
+            devices: 5,
+          },
+        },
+      }
+      ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        subWithCanonical,
+      )
+      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        mockDevice,
+      )
+      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        messageInboxCount: 0,
+        messageOutboxCount: 200,
+      })
+
+      const result = await service.checkMessageQuota("org-1", "device-1", "OUT")
+
+      // Should use quotaOutMonthly (200) not quotaOut (999)
+      expect(result.allowed).toBe(false)
+      expect(result.monthlyLimit).toBe(200)
+    })
+
     it("throws SubscriptionNotFoundError when no active WhatsApp subscription", async () => {
       ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
 
@@ -295,6 +386,33 @@ describe("QuotaGateService", () => {
       expect(mockPrisma.whatsappDailyCount.upsert).toHaveBeenCalled()
       expect(mockPrisma.whatsappMonthlyCount.upsert).toHaveBeenCalled()
     })
+
+    it("bypasses deduction when unlimited flag is true (PGREEN-050)", async () => {
+      const unlimitedSub = {
+        ...mockSubscription,
+        plan: {
+          code: "WHATSAPP_ENTERPRISE",
+          resources: {
+            quotaIn: 100,
+            quotaOut: 100,
+            dailyPerDevice: 10,
+            devices: 5,
+            unlimited: true,
+          },
+        },
+      }
+      ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        unlimitedSub,
+      )
+
+      const result = await service.deductMessageQuota("org-1", "device-1", "OUT")
+
+      expect(result.allowed).toBe(true)
+      expect(result.monthlyLimit).toBe(null)
+      expect(result.dailyLimit).toBe(null)
+      expect(mockPrisma.whatsappDailyCount.upsert).not.toHaveBeenCalled()
+      expect(mockPrisma.whatsappMonthlyCount.upsert).not.toHaveBeenCalled()
+    })
   })
 
   describe("getQuotaStatus", () => {
@@ -323,6 +441,35 @@ describe("QuotaGateService", () => {
       await expect(service.getQuotaStatus("org-1", "unknown-device")).rejects.toThrow(
         DeviceNotFoundError,
       )
+    })
+
+    it("marks all quotas as allowed when unlimited flag is true (PGREEN-050)", async () => {
+      const unlimitedSub = {
+        ...mockSubscription,
+        plan: {
+          code: "WHATSAPP_ENTERPRISE",
+          resources: {
+            quotaIn: 100,
+            quotaOut: 100,
+            dailyPerDevice: 10,
+            devices: 5,
+            unlimited: true,
+          },
+        },
+      }
+      ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(
+        unlimitedSub,
+      )
+      ;(mockPrisma.whatsappDevice.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+        mockDevice,
+      ])
+      ;(mockPrisma.whatsappDailyCount.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+      ;(mockPrisma.whatsappMonthlyCount.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+
+      const results = await service.getQuotaStatus("org-1")
+
+      expect(results).toHaveLength(2)
+      expect(results.every((r) => r.allowed)).toBe(true)
     })
   })
 })

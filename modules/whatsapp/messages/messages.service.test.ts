@@ -13,10 +13,26 @@ const mockTx = {
   whatsappDevice: {
     findFirst: mock(async () => null),
   },
+  whatsappDailyCount: {
+    findUnique: mock(async () => null),
+    upsert: mock(async () => ({ id: "daily-1" })),
+  },
   whatsappMonthlyCount: {
     findFirst: mock(async () => null),
+    findUnique: mock(async () => null),
     create: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
     update: mock(async () => ({ id: "count-1", messageOutboxCount: 1 })),
+    upsert: mock(async () => ({ id: "monthly-1" })),
+  },
+  billingAccount: {
+    findUnique: mock(async () => ({
+      id: "ba-1",
+      balance: { toFixed: () => "100000", gte: () => true, gt: () => true, minus: () => ({ toFixed: () => "99950", lt: () => false, gt: () => false }) },
+    })),
+    update: mock(async () => ({ id: "ba-1", balance: { toFixed: () => "99950" } })),
+  },
+  billingAdjustment: {
+    create: mock(async () => ({ id: "adj-1" })),
   },
 }
 
@@ -52,6 +68,9 @@ const mockPrisma = {
   subscription: {
     findFirst: mock(async () => null),
     findUnique: mock(async () => null),
+  },
+  pricing: {
+    findFirst: mock(async () => null),
   },
   usageLedger: {
     create: mock(async () => ({ id: "ledger-1" })),
@@ -118,12 +137,19 @@ describe("messageService", () => {
     mockPrisma.whatsappMonthlyCount.update.mockClear()
     mockPrisma.billingAccount.findUnique.mockClear()
     mockPrisma.subscription.findFirst.mockClear()
+    mockPrisma.pricing.findFirst.mockClear()
     mockPrisma.usageLedger.create.mockClear()
     mockPrisma.$transaction.mockClear()
     mockTx.whatsappDevice.findFirst.mockClear()
+    mockTx.whatsappDailyCount.findUnique.mockClear()
+    mockTx.whatsappDailyCount.upsert.mockClear()
     mockTx.whatsappMonthlyCount.findFirst.mockClear()
     mockTx.whatsappMonthlyCount.create.mockClear()
     mockTx.whatsappMonthlyCount.update.mockClear()
+    mockTx.whatsappMonthlyCount.upsert.mockClear()
+    mockTx.billingAccount.findUnique.mockClear()
+    mockTx.billingAccount.update.mockClear()
+    mockTx.billingAdjustment.create.mockClear()
     mockDeviceClient.sendMessage.mockClear()
     mockEnqueue.mockClear()
 
@@ -166,6 +192,17 @@ describe("messageService", () => {
       id: "count-1",
       messageOutboxCount: 1,
     } as any)
+    mockTx.billingAccount.findUnique.mockResolvedValue({
+      id: "ba-1",
+      balance: { toFixed: () => "100000", gte: () => true, gt: () => true, minus: () => ({ toFixed: () => "99950", lt: () => false, gt: () => false }) },
+    } as any)
+    mockTx.billingAccount.update.mockResolvedValue({
+      id: "ba-1",
+      balance: { toFixed: () => "99950" },
+    } as any)
+    mockTx.billingAdjustment.create.mockResolvedValue({
+      id: "adj-1",
+    } as any)
 
     mockDeviceClient.sendMessage.mockResolvedValue({
       providerMessageId: "wa-msg-123",
@@ -193,13 +230,59 @@ describe("messageService", () => {
     it("throws InsufficientBalanceError when balance is zero or negative", async () => {
       // With billing integration: if balance is 0, throws InsufficientBalanceError
       // Even with legacy quota available, balance check should fail first
+      mockPrisma.subscription.findFirst.mockResolvedValue({
+        planId: "plan-1",
+        plan: { resources: {} },
+      } as any)
+      mockPrisma.pricing.findFirst.mockResolvedValue({
+        id: "price-1",
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        basePriceIdr: { toString: () => "0" },
+        monthlyCapIdr: null,
+        unitRateCpu: null,
+        unitRateMem: null,
+        unitRateMessage: { toString: () => "150", gt: () => true },
+        isActive: true,
+        servicePlan: { code: "STANDARD", packageId: "WHATSAPP", resources: {} },
+        region: { code: "GLOBAL" },
+      } as any)
       mockPrisma.billingAccount.findUnique.mockResolvedValue({
         id: "ba-1",
         organizationId: "tenant-1",
         balance: { toFixed: () => "0.00", gte: () => false, gt: () => false },
       } as any)
-      // Reset subscription mock so we don't trigger quota gate
-      mockPrisma.subscription.findFirst.mockResolvedValue(null)
+
+      await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
+    })
+
+    it("throws InsufficientBalanceError when balance is below estimated cost (PGREEN-049)", async () => {
+      mockPrisma.subscription.findFirst.mockResolvedValue({
+        planId: "plan-1",
+        plan: { resources: {} },
+      } as any)
+      mockPrisma.pricing.findFirst.mockResolvedValue({
+        id: "price-1",
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        basePriceIdr: { toString: () => "0" },
+        monthlyCapIdr: null,
+        unitRateCpu: null,
+        unitRateMem: null,
+        unitRateMessage: { toString: () => "500", gt: () => true },
+        isActive: true,
+        servicePlan: { code: "STANDARD", packageId: "WHATSAPP", resources: {} },
+        region: { code: "GLOBAL" },
+      } as any)
+      mockPrisma.billingAccount.findUnique.mockResolvedValue({
+        id: "ba-1",
+        organizationId: "tenant-1",
+        balance: { toFixed: () => "100.00", gte: (val: number) => 100 >= val, gt: () => true },
+      } as any)
 
       await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
     })
@@ -216,6 +299,40 @@ describe("messageService", () => {
 
       // Deduct quota goes through $transaction
       expect(mockPrisma.$transaction).toHaveBeenCalled()
+    })
+
+    it("deducts balance after successful send when estimated cost > 0 (PGREEN-049 fix)", async () => {
+      // Set up subscription + pricing so estimated cost > 0
+      mockPrisma.subscription.findFirst.mockResolvedValue({
+        planId: "plan-1",
+        plan: { resources: {} },
+      } as any)
+      mockPrisma.pricing.findFirst.mockResolvedValue({
+        id: "price-1",
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        basePriceIdr: { toString: () => "0" },
+        monthlyCapIdr: null,
+        unitRateCpu: null,
+        unitRateMem: null,
+        unitRateMessage: { toString: () => "150", gt: () => true },
+        isActive: true,
+        servicePlan: { code: "STANDARD", packageId: "WHATSAPP", resources: {} },
+        region: { code: "GLOBAL" },
+      } as any)
+
+      // Balance check needs billingAccount on the outer prisma
+      mockPrisma.billingAccount.findUnique.mockResolvedValue({
+        id: "ba-1",
+        balance: { toFixed: () => "1000.00", gte: () => true, gt: () => true },
+      } as any)
+
+      await sendMessageTestHelper({ organizationId: "org-1", deviceId: "device-1" })
+
+      // Balance deduction goes through $transaction via deductBalance
+      expect(mockTx.billingAccount.update).toHaveBeenCalled()
     })
 
     it("creates message record in database", async () => {
