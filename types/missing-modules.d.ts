@@ -74,9 +74,6 @@ declare module "react-icons/si" {
   export const SiPlausibleanalytics: ComponentType<any>
 }
 
-declare module "@prisma/client/index" {
-  export * from "@prisma/client"
-}
 
 declare module "@prisma/adapter-pg" {
   export class PrismaPg {
