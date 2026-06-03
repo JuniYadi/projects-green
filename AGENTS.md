@@ -27,14 +27,14 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - `bun run prisma:migrate:dev` / `bun run prisma:generate`: Apply DB migrations and refresh Prisma client.
 
 **4 PILLARS VALIDATION (HARD REQUIREMENT):**
-Before committing or opening a PR, ALL MUST PASS:
+Must pass before committing or opening a PR. **NOT** per-edit — run once at the end when all work is complete:
 1. `bun run lint` — 0 errors
 2. `bun run typecheck` — 0 errors
 3. `bun run test` — all tests pass
 4. `bun run test:coverage` — line coverage acceptable
 5. `bun run build` — production build succeeds
 
-**NEVER commit or open PR if any pillar fails.**
+**NEVER commit or open PR if any pillar fails. Run them only when ready to commit — not after every incremental change.**
 
 ## Coding Style & Naming Conventions
 - TypeScript-first; strict mode is enabled in `tsconfig.json`.
