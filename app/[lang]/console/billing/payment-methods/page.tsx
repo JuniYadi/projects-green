@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 
 import { PaymentMethodsList } from "./payment-methods-list"
 import { Button } from "@/components/ui/button"
-import { PlusIcon } from "@phosphor-icons/react"
 import Link from "next/link"
 
 export const metadata: Metadata = {
@@ -22,10 +21,7 @@ export default function PaymentMethodsPage() {
             </p>
           </div>
           <Button asChild size="sm">
-            <Link href="/console/billing/topup">
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Add Payment Method
-            </Link>
+            <Link href="/console/billing/topup">Add Payment Method</Link>
           </Button>
         </div>
       </header>

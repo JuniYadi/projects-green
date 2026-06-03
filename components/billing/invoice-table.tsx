@@ -5,13 +5,26 @@ import { useMemo } from "react"
 import { type ColumnDef } from "@tanstack/react-table"
 
 import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
 import type { InvoiceListItem } from "@/lib/billing-client"
 
 type InvoiceTableProps = {
+  emptyMessage?: string
   invoices: InvoiceListItem[]
   lang: string
 }
+
+const INVOICE_STATUS_FILTERS = [
+  { label: "Draft", value: "DRAFT" },
+  { label: "Issued", value: "ISSUED" },
+  { label: "Open", value: "OPEN" },
+  { label: "Paid", value: "PAID" },
+  { label: "Overdue", value: "OVERDUE" },
+  { label: "Cancelled", value: "CANCELLED" },
+  { label: "Void", value: "VOID" },
+  { label: "Uncollectible", value: "UNCOLLECTIBLE" },
+]
 
 function formatCurrency(amountIdr: string, currency: string): string {
   const amount = Number.parseFloat(amountIdr)
@@ -51,12 +64,18 @@ function InvoiceNumberCell({
   )
 }
 
-export function InvoiceTable({ invoices, lang }: InvoiceTableProps) {
+export function InvoiceTable({
+  emptyMessage = "No invoices match your filters.",
+  invoices,
+  lang,
+}: InvoiceTableProps) {
   const columns = useMemo<ColumnDef<InvoiceListItem, unknown>[]>(
     () => [
       {
         accessorKey: "invoiceNumber",
-        header: "Invoice #",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Invoice #" />
+        ),
         cell: ({ row }) => (
           <InvoiceNumberCell
             invoiceNumber={row.original.invoiceNumber}
@@ -67,7 +86,9 @@ export function InvoiceTable({ invoices, lang }: InvoiceTableProps) {
       },
       {
         accessorKey: "issuedAt",
-        header: "Period",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Period" />
+        ),
         cell: ({ row }) => {
           const issued = formatDate(row.original.issuedAt)
           const due = formatDate(row.original.dueAt)
@@ -77,10 +98,13 @@ export function InvoiceTable({ invoices, lang }: InvoiceTableProps) {
             </span>
           )
         },
+        sortingFn: "datetime",
       },
       {
         accessorKey: "totalAmountIdr",
-        header: "Amount",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Amount" />
+        ),
         cell: ({ row }) => (
           <span className="font-medium">
             {formatCurrency(row.original.totalAmountIdr, row.original.currency)}
@@ -89,12 +113,10 @@ export function InvoiceTable({ invoices, lang }: InvoiceTableProps) {
       },
       {
         accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => (
-          <InvoiceStatusBadge
-            status={row.original.status as "PENDING" | "PAID" | "VOID"}
-          />
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
         ),
+        cell: ({ row }) => <InvoiceStatusBadge status={row.original.status} />,
       },
     ],
     [lang]
@@ -106,7 +128,16 @@ export function InvoiceTable({ invoices, lang }: InvoiceTableProps) {
       data={invoices}
       searchableColumns={["invoiceNumber"]}
       searchPlaceholder="Search invoices..."
-      emptyMessage="No invoices found."
+      facetFilters={[
+        {
+          columnId: "status",
+          label: "Status",
+          allLabel: "All status",
+          options: INVOICE_STATUS_FILTERS,
+        },
+      ]}
+      initialSorting={[{ id: "issuedAt", desc: true }]}
+      emptyMessage={emptyMessage}
     />
   )
 }

@@ -330,9 +330,11 @@ export function BillingDashboard() {
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border p-6 text-center">
-            <p className="text-muted-foreground">No active subscriptions</p>
-          </div>
+          <Card>
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground">No active subscriptions</p>
+            </CardContent>
+          </Card>
         )}
       </section>
 
@@ -345,16 +347,11 @@ export function BillingDashboard() {
           </Button>
         </div>
 
-        {data.invoices?.invoices.length ? (
-          <InvoiceTable
-            invoices={data.invoices.invoices.slice(0, 5)}
-            lang="en"
-          />
-        ) : (
-          <div className="rounded-lg border p-6 text-center">
-            <p className="text-muted-foreground">No invoices yet</p>
-          </div>
-        )}
+        <InvoiceTable
+          invoices={data.invoices?.invoices.slice(0, 5) ?? []}
+          lang="en"
+          emptyMessage="No invoices yet."
+        />
       </section>
     </div>
   )

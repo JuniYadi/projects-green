@@ -64,13 +64,7 @@ export default function InvoicesPage() {
           <CardTitle className="text-base">Billing History</CardTitle>
         </CardHeader>
         <CardContent>
-          {data?.invoices.length ? (
-            <InvoiceTable invoices={data.invoices} lang="en" />
-          ) : (
-            <div className="py-12 text-center">
-              <p className="text-muted-foreground">No invoices found</p>
-            </div>
-          )}
+          <InvoiceTable invoices={data?.invoices ?? []} lang="en" />
         </CardContent>
       </Card>
     </main>
