@@ -14,6 +14,7 @@ import { PrismaClient, Prisma } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
 import { UsageLedgerService } from "./usage-ledger.service"
+import { type InvoiceEmailService } from "@/modules/invoices/email.service"
 import {
   type BillingRunResult,
   type SubscriptionBillingResult,
@@ -29,6 +30,7 @@ export class BillingCycleService {
   constructor(
     private prisma: PrismaClient,
     private usageLedger: UsageLedgerService,
+    private emailService?: InvoiceEmailService,
   ) {}
 
   /**
@@ -321,6 +323,43 @@ export class BillingCycleService {
       }
     })
 
+    // After the transaction, send email notifications (fire-and-forget)
+    if (this.emailService && organizationId) {
+      this.resolveOrgAdminEmail(organizationId)
+        .then(async (adminEmail) => {
+          if (!adminEmail) return
+          try {
+            const invoice = await this.prisma.invoice.findUnique({
+              where: { id: result.invoiceId },
+            })
+            if (!invoice) return
+
+            const invoiceData = {
+              id: invoice.id,
+              invoiceNumber: invoice.invoiceNumber,
+              totalAmount: Number(invoice.totalAmount),
+              currency: invoice.currency,
+              status: invoice.status.toLowerCase() as "draft" | "open" | "paid" | "canceled" | "uncollectible",
+              periodStart: invoice.periodStart.toISOString(),
+              periodEnd: invoice.periodEnd.toISOString(),
+              issuedAt: invoice.issuedAt?.toISOString() ?? null,
+              dueAt: invoice.dueAt?.toISOString() ?? null,
+            }
+
+            await this.emailService!.sendInvoiceCreated(invoiceData, adminEmail)
+
+            if (invoice.status === "PAID") {
+              await this.emailService!.sendInvoicePaid(invoiceData, adminEmail)
+            }
+          } catch (err) {
+            console.error("[BillingCycle] Failed to send invoice email:", err)
+          }
+        })
+        .catch((err) => {
+          console.error("[BillingCycle] Failed to resolve admin email:", err)
+        })
+    }
+
     return {
       subscriptionId: subscription.id,
       status:
@@ -329,6 +368,27 @@ export class BillingCycleService {
           : "INSUFFICIENT_BALANCE",
       invoiceId: result.invoiceId,
       totalAmount: result.totalAmount,
+    }
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  private async resolveOrgAdminEmail(organizationId: string): Promise<string | null> {
+    try {
+      const { getWorkOS } = await import("@workos-inc/authkit-nextjs")
+      const workos = getWorkOS()
+      const memberships = await workos.userManagement.listOrganizationMemberships({
+        organizationId,
+        statuses: ["active"],
+      })
+      const admin = memberships.data.find(
+        (m) => m.role?.slug === "user_owner" || m.role?.slug === "user_admin"
+      ) ?? memberships.data[0]
+      if (!admin) return null
+      const user = await workos.userManagement.getUser(admin.userId)
+      return user.email ?? null
+    } catch {
+      return null
     }
   }
 
