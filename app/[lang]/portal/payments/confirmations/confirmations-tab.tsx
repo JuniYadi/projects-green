@@ -34,7 +34,7 @@ export function ConfirmationsTab() {
 
   const fetchConfirmations = useCallback(async () => {
     try {
-      const response = await fetch("/api/payments/confirmations")
+      const response = await fetch("/api/portal/payments/confirmations")
 
       if (!response.ok) {
         setState({ status: "error", message: "Failed to load confirmations" })

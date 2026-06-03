@@ -25,9 +25,9 @@ export function OverviewTab() {
     try {
       // Fetch stats in parallel
       const [gatewaysRes, bankAccountsRes, confirmationsRes] = await Promise.all([
-        fetch("/api/payments/gateways"),
-        fetch("/api/payments/bank-accounts"),
-        fetch("/api/payments/confirmations"),
+        fetch("/api/portal/payments/gateways"),
+        fetch("/api/portal/payments/bank-accounts"),
+        fetch("/api/portal/payments/confirmations"),
       ])
 
       const gateways = gatewaysRes.ok ? await gatewaysRes.json() : { ok: false }
