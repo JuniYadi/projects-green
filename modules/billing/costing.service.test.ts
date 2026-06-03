@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
+import { PrismaClient } from "@prisma/client"
 import { CostingService } from "./costing.service"
 
 const mockPrisma = {
@@ -14,7 +15,7 @@ describe("CostingService", () => {
   let service: CostingService
 
   beforeEach(() => {
-    service = new CostingService(mockPrisma as any)
+    service = new CostingService(mockPrisma as unknown as PrismaClient)
     mockPrisma.subscription.findUnique.mockClear()
     mockPrisma.usageLedger.findMany.mockClear()
   })
@@ -27,7 +28,7 @@ describe("CostingService", () => {
         pricing: {
           unitRateMessage: 0.05,
         },
-      })
+      } as never)
 
       const result = await service.calculateWhatsAppCost({
         organizationId: "org-1",
@@ -64,7 +65,7 @@ describe("CostingService", () => {
         pricing: {
           unitRateMessage: null,
         },
-      })
+      } as never)
 
       const result = await service.calculateWhatsAppCost({
         organizationId: "org-1",
@@ -87,7 +88,7 @@ describe("CostingService", () => {
           unitRateCpu: 0.10,
           unitRateMem: 0.05,
         },
-      })
+      } as never)
 
       const result = await service.calculateHostingCost({
         organizationId: "org-1",
@@ -123,7 +124,7 @@ describe("CostingService", () => {
         { category: "whatsapp", amountIdr: 1000 },
         { category: "whatsapp", amountIdr: 2000 },
         { category: "hosting", amountIdr: 5000 },
-      ])
+      ] as never[])
 
       const result = await service.getUsageBreakdown("org-1", "2026-06")
 
@@ -147,7 +148,7 @@ describe("CostingService", () => {
     it("should handle null category as unknown", async () => {
       mockPrisma.usageLedger.findMany.mockResolvedValue([
         { category: null, amountIdr: 1000 },
-      ])
+      ] as never[])
 
       const result = await service.getUsageBreakdown("org-1", "2026-06")
 

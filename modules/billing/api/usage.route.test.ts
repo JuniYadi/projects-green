@@ -17,8 +17,8 @@ describe("Usage Routes", () => {
 
   beforeEach(() => {
     routes = createUsageRoutes({
-      usageLedgerService: mockUsageLedgerService as any,
-      costingService: mockCostingService as any,
+      usageLedgerService: mockUsageLedgerService as unknown as Parameters<typeof createUsageRoutes>[0]["usageLedgerService"],
+      costingService: mockCostingService as unknown as Parameters<typeof createUsageRoutes>[0]["costingService"],
     })
     mockUsageLedgerService.getUsageByDateRange.mockClear()
     mockUsageLedgerService.getSpendByCategory.mockClear()
@@ -30,7 +30,7 @@ describe("Usage Routes", () => {
   it("should return current period usage", async () => {
     mockUsageLedgerService.getSpendByCategory.mockResolvedValue([
       { category: "whatsapp", totalIdr: 5000 },
-    ])
+    ] as never[])
     mockUsageLedgerService.getTotalSpend.mockResolvedValue(5000)
 
     const response = await routes.handle(
@@ -51,7 +51,7 @@ describe("Usage Routes", () => {
         amountIdr: 1000,
         createdAt: new Date(),
       },
-    ])
+    ] as never[])
 
     const response = await routes.handle(
       new Request("http://localhost/usage?from=2026-06-01&to=2026-06-30")
@@ -77,7 +77,7 @@ describe("Usage Routes", () => {
         totalCost: 5000,
         percentage: 50,
       },
-    ])
+    ] as never[])
 
     const response = await routes.handle(
       new Request("http://localhost/usage/breakdown")
@@ -93,7 +93,7 @@ describe("Usage Routes", () => {
     mockUsageLedgerService.getDailyUsageTrend.mockResolvedValue([
       { date: "2026-06-01", amount: 1000 },
       { date: "2026-06-02", amount: 2000 },
-    ])
+    ] as never[])
 
     const response = await routes.handle(
       new Request("http://localhost/usage/trend?days=7")
