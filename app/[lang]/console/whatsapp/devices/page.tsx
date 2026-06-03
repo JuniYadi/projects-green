@@ -1,13 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-  Phone,
-  Plus,
-  PencilSimple,
-  Trash,
-  DotsThreeVertical,
-} from "@phosphor-icons/react"
+import { Phone, PencilSimple, DotsThreeVertical } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -30,25 +24,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type {
   DeviceListItem,
   DeviceStatus,
-  DeviceEnvironment,
 } from "@/modules/whatsapp/devices/devices.schemas"
 
 // ─── Status badge ───────────────────────────────────────────────────────────
@@ -70,23 +55,13 @@ function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
 // ─── Empty form state ───────────────────────────────────────────────────────
 
 type EditFormState = {
-  name: string
   phoneNumber: string
-  environment: DeviceEnvironment
   quotaBase: number
   dailyLimitMessage: number
 }
 
-const emptyFormState = {
-  name: "",
-  phoneNumber: "",
-  environment: "LIVE" as DeviceEnvironment,
-}
-
 const emptyEditFormState: EditFormState = {
-  name: "",
   phoneNumber: "",
-  environment: "LIVE",
   quotaBase: 1000,
   dailyLimitMessage: 500,
 }
@@ -99,16 +74,11 @@ export default function WhatsAppDevicesPage() {
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
   // Dialog states
-  const [addDialogOpen, setAddDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [editingDevice, setEditingDevice] =
-    React.useState<DeviceListItem | null>(null)
-  const [deletingDevice, setDeletingDevice] =
     React.useState<DeviceListItem | null>(null)
 
   // Form states
-  const [addForm, setAddForm] = React.useState(emptyFormState)
   const [editForm, setEditForm] = React.useState(emptyEditFormState)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
@@ -140,39 +110,11 @@ export default function WhatsAppDevicesPage() {
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
-  const handleAddDevice = async () => {
-    if (!addForm.name.trim() || !addForm.phoneNumber.trim()) {
-      toast.error("Name and phone number are required.")
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      await whatsappClient.devices.create({
-        name: addForm.name,
-        phoneNumber: addForm.phoneNumber,
-        environment: addForm.environment,
-      })
-
-      toast.success("Device added successfully.")
-      setAddDialogOpen(false)
-      setAddForm(emptyFormState)
-      void loadDevices()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to add device."
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   const handleEditDevice = async () => {
     if (!editingDevice) return
 
-    if (!editForm.name.trim() || !editForm.phoneNumber.trim()) {
-      toast.error("Name and phone number are required.")
+    if (!editForm.phoneNumber.trim()) {
+      toast.error("Phone number is required.")
       return
     }
 
@@ -180,9 +122,7 @@ export default function WhatsAppDevicesPage() {
 
     try {
       await whatsappClient.devices.update(editingDevice.id, {
-        name: editForm.name,
         phoneNumber: editForm.phoneNumber,
-        environment: editForm.environment,
         quotaBase: editForm.quotaBase,
         dailyLimitMessage: editForm.dailyLimitMessage,
       })
@@ -200,44 +140,16 @@ export default function WhatsAppDevicesPage() {
     }
   }
 
-  const handleDeleteDevice = async () => {
-    if (!deletingDevice) return
-
-    setIsSubmitting(true)
-
-    try {
-      await whatsappClient.devices.delete(deletingDevice.id)
-
-      toast.success("Device deleted successfully.")
-      setDeleteDialogOpen(false)
-      setDeletingDevice(null)
-      void loadDevices()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to delete device."
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   // ── Dialog open handlers ──────────────────────────────────────────────────
 
   const openEditDialog = (device: DeviceListItem) => {
     setEditingDevice(device)
     setEditForm({
-      name: device.name,
       phoneNumber: device.phoneNumber,
-      environment: device.environment,
       quotaBase: device.quotaBase,
       dailyLimitMessage: device.dailyLimitMessage,
     })
     setEditDialogOpen(true)
-  }
-
-  const openDeleteDialog = (device: DeviceListItem) => {
-    setDeletingDevice(device)
-    setDeleteDialogOpen(true)
   }
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
@@ -253,14 +165,11 @@ export default function WhatsAppDevicesPage() {
         </div>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>WhatsApp Devices</CardTitle>
-              <CardDescription>
-                Manage your WhatsApp Business devices
-              </CardDescription>
-            </div>
-            <Skeleton className="h-9 w-32" />
+          <CardHeader>
+            <CardTitle>WhatsApp Devices</CardTitle>
+            <CardDescription>
+              Manage your WhatsApp Business devices
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -337,32 +246,20 @@ export default function WhatsAppDevicesPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>WhatsApp Devices</CardTitle>
-            <CardDescription>
-              Manage your WhatsApp Business devices
-            </CardDescription>
-          </div>
-          <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus weight="bold" className="mr-2 size-4" />
-            Add Device
-          </Button>
+        <CardHeader>
+          <CardTitle>WhatsApp Devices</CardTitle>
+          <CardDescription>
+            View and update your assigned WhatsApp Business devices
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {devices.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Phone className="mb-3 size-10 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                No devices configured yet
+                No devices assigned yet. Contact an admin to add a WhatsApp
+                device from the portal.
               </p>
-              <Button
-                variant="outline"
-                className="mt-3"
-                onClick={() => setAddDialogOpen(true)}
-              >
-                Add your first device
-              </Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -398,14 +295,6 @@ export default function WhatsAppDevicesPage() {
                           <PencilSimple className="mr-2 size-4" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => openDeleteDialog(device)}
-                        >
-                          <Trash className="mr-2 size-4" />
-                          Delete
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -416,86 +305,6 @@ export default function WhatsAppDevicesPage() {
         </CardContent>
       </Card>
 
-      {/* ── Add Device Dialog ──────────────────────────────────────────────── */}
-
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add WhatsApp Device</DialogTitle>
-            <DialogDescription>
-              Connect a new WhatsApp Business device to your account.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="add-name">Name</Label>
-              <Input
-                id="add-name"
-                value={addForm.name}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, name: e.target.value })
-                }
-                placeholder="My WhatsApp Device"
-                required
-                aria-required="true"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="add-phone">Phone Number</Label>
-              <Input
-                id="add-phone"
-                value={addForm.phoneNumber}
-                onChange={(e) =>
-                  setAddForm({ ...addForm, phoneNumber: e.target.value })
-                }
-                placeholder="+1234567890"
-                inputMode="tel"
-                autoComplete="tel"
-                required
-                aria-required="true"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="add-environment">Environment</Label>
-              <Select
-                value={addForm.environment}
-                onValueChange={(value) =>
-                  setAddForm({
-                    ...addForm,
-                    environment: value as DeviceEnvironment,
-                  })
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select environment" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="LIVE">Live</SelectItem>
-                  <SelectItem value="SANDBOX">Sandbox</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setAddDialogOpen(false)
-                setAddForm(emptyFormState)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => void handleAddDevice()}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Adding..." : "Add Device"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* ── Edit Device Dialog ─────────────────────────────────────────────── */}
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -503,23 +312,10 @@ export default function WhatsAppDevicesPage() {
           <DialogHeader>
             <DialogTitle>Edit Device</DialogTitle>
             <DialogDescription>
-              Update the device name, phone number, or environment.
+              Update the device phone number and usage limits.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-name">Name</Label>
-              <Input
-                id="edit-name"
-                value={editForm.name}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, name: e.target.value })
-                }
-                placeholder="My WhatsApp Device"
-                required
-                aria-required="true"
-              />
-            </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-phone">Phone Number</Label>
               <Input
@@ -534,26 +330,6 @@ export default function WhatsAppDevicesPage() {
                 required
                 aria-required="true"
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-environment">Environment</Label>
-              <Select
-                value={editForm.environment}
-                onValueChange={(value) =>
-                  setEditForm({
-                    ...editForm,
-                    environment: value as DeviceEnvironment,
-                  })
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select environment" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="LIVE">Live</SelectItem>
-                  <SelectItem value="SANDBOX">Sandbox</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-balance">Balance</Label>
@@ -611,36 +387,6 @@ export default function WhatsAppDevicesPage() {
               disabled={isSubmitting}
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Delete Confirmation Dialog ─────────────────────────────────────── */}
-
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Device</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete{" "}
-              <strong>{deletingDevice?.name ?? "this device"}</strong>? This
-              action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleDeleteDevice()}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

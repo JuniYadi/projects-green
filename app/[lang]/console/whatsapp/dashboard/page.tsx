@@ -191,9 +191,7 @@ export default function WhatsAppDashboardPage() {
   const quotaUsed = totalDailyLimit > 0 ? totalMessagesToday : 0
 
   const quotaPercent =
-    totalDailyLimit > 0
-      ? Math.round((quotaUsed / totalDailyLimit) * 100)
-      : 0
+    totalDailyLimit > 0 ? Math.round((quotaUsed / totalDailyLimit) * 100) : 0
 
   const recentConversations = React.useMemo(
     () => conversations.slice(0, 5),
@@ -410,12 +408,11 @@ export default function WhatsAppDashboardPage() {
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Phone className="mb-3 size-10 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    No devices configured yet
+                    No devices assigned yet. Contact an admin to add a WhatsApp
+                    device from the portal.
                   </p>
-                  <Button className="mt-3" asChild>
-                    <Link href="/console/whatsapp/devices">
-                      Add your first device
-                    </Link>
+                  <Button className="mt-3" variant="outline" asChild>
+                    <Link href="/console/whatsapp/devices">View devices</Link>
                   </Button>
                 </div>
               ) : (

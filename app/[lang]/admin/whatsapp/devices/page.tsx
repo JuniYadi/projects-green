@@ -86,7 +86,9 @@ export default function AdminDevicesPage() {
   const [devices, setDevices] = React.useState<AdminDevice[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [organizations, setOrganizations] = React.useState<AdminOrganizationSummary[]>([])
+  const [organizations, setOrganizations] = React.useState<
+    AdminOrganizationSummary[]
+  >([])
   const [addDialogOpen, setAddDialogOpen] = React.useState(false)
   const [addForm, setAddForm] = React.useState<AddDeviceForm>(emptyAddForm)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -137,7 +139,7 @@ export default function AdminDevicesPage() {
     setIsSubmitting(true)
 
     try {
-      const res = await fetch("/api/whatsapp/admin/devices", {
+      const res = await fetch("/api/admin/devices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -145,7 +147,8 @@ export default function AdminDevicesPage() {
           phoneNumber: addForm.phoneNumber,
           name: addForm.name || "Admin Device",
           displayName: addForm.displayName || undefined,
-          whatsappBusinessAccountId: addForm.whatsappBusinessAccountId || undefined,
+          whatsappBusinessAccountId:
+            addForm.whatsappBusinessAccountId || undefined,
           whatsappPhoneId: addForm.whatsappPhoneId || undefined,
           whatsappApplicationId: addForm.whatsappApplicationId || undefined,
           callbackUrl: addForm.callbackUrl || undefined,
@@ -162,9 +165,7 @@ export default function AdminDevicesPage() {
       setAddForm(emptyAddForm)
       void loadDevices()
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to add device."
-      )
+      toast.error(err instanceof Error ? err.message : "Failed to add device.")
     } finally {
       setIsSubmitting(false)
     }
@@ -189,9 +190,7 @@ export default function AdminDevicesPage() {
     return (
       <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Devices (Admin)
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">Devices (Admin)</h1>
           <p className="text-muted-foreground">
             Manage all WhatsApp devices across organizations.
           </p>
@@ -200,9 +199,7 @@ export default function AdminDevicesPage() {
         <Card>
           <CardHeader>
             <CardTitle>All Devices</CardTitle>
-            <CardDescription>
-              Loading device list...
-            </CardDescription>
+            <CardDescription>Loading device list...</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -231,9 +228,7 @@ export default function AdminDevicesPage() {
     return (
       <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Devices (Admin)
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">Devices (Admin)</h1>
           <p className="text-muted-foreground">
             Manage all WhatsApp devices across organizations.
           </p>
@@ -289,9 +284,7 @@ export default function AdminDevicesPage() {
           {devices.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Phone className="mb-3 size-10 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                No devices found
-              </p>
+              <p className="text-sm text-muted-foreground">No devices found</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Devices will appear here once they are created by organizations.
               </p>
