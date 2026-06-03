@@ -51,17 +51,20 @@ function DownloadPdfButton({
     setIsDownloading(true)
     try {
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`)
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = URL.createObjectURL(blob)
-        const anchor = document.createElement("a")
-        anchor.href = url
-        anchor.download = `${invoiceNumber}.pdf`
-        document.body.append(anchor)
-        anchor.click()
-        anchor.remove()
-        URL.revokeObjectURL(url)
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`)
       }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = `${invoiceNumber}.pdf`
+      document.body.append(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Failed to download invoice:", err)
     } finally {
       setIsDownloading(false)
     }

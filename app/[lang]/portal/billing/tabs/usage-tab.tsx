@@ -37,14 +37,20 @@ export function UsageTab({ lang: _lang }: UsageTabProps) {
           fetch("/api/billing/usage/trend?days=30", { credentials: "include" }),
         ])
 
-        if (!breakdownRes.ok || !trendRes.ok) {
-          throw new Error("Failed to fetch usage data")
+        if (!breakdownRes.ok) {
+          throw new Error(`Failed to fetch usage breakdown: ${breakdownRes.status}`)
+        }
+        if (!trendRes.ok) {
+          throw new Error(`Failed to fetch usage trend: ${trendRes.status}`)
         }
 
         const breakdownData = await breakdownRes.json()
         const trendData = await trendRes.json()
 
-        setBreakdown(breakdownData.data.breakdown)
+        setBreakdown(breakdownData.data.breakdown.map((item: Record<string, unknown>) => ({
+          ...item,
+          totalCost: Number(item.totalCost),
+        })))
         setTrend(trendData.data.trend)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error")
@@ -79,7 +85,7 @@ export function UsageTab({ lang: _lang }: UsageTabProps) {
     )
   }
 
-  const totalCost = breakdown.reduce((sum, item) => sum + item.totalCost, 0)
+  const totalCost = breakdown.reduce((sum, item) => sum + Number(item.totalCost), 0)
 
   return (
     <div className="space-y-6">
@@ -93,7 +99,7 @@ export function UsageTab({ lang: _lang }: UsageTabProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              Rp {totalCost.toLocaleString()}
+              Rp {Number(totalCost).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
               Estimated monthly cost
@@ -125,7 +131,7 @@ export function UsageTab({ lang: _lang }: UsageTabProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              Rp {trend.length > 0 ? Math.round(totalCost / trend.length).toLocaleString() : 0}
+              Rp {trend.length > 0 ? Math.round(Number(totalCost) / trend.length).toLocaleString() : 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Average daily spend

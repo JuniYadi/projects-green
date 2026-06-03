@@ -202,7 +202,7 @@ export const createAdminInvoiceRoutes = (
         }
 
         const updateData: Prisma.InvoiceUpdateInput = {
-          status: targetStatus as any,
+          status: targetStatus as Prisma.InvoiceStatus,
         }
 
         if (targetStatus === "ISSUED") {
