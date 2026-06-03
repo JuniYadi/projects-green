@@ -8,10 +8,10 @@ import {
   MockAuthContext,
   defaultAuth,
   mockPlatformRole,
+  mockPlatformRoleNone,
   mockIsAdmin,
   testIsAdmin,
 } from "@/test/helpers/test-auth"
-import type { PlatformAccessRole } from "@/lib/platform-role"
 
 const mockFindUnique = mock()
 const mockUpdate = mock()
@@ -165,7 +165,7 @@ describe("AdminAdjustRoute", () => {
         .use(
           createAdminBillingRoutes({
             authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: async () => "none" as PlatformAccessRole,
+            getPlatformRole: mockPlatformRoleNone,
             isAdmin: () => false,
           })
         )

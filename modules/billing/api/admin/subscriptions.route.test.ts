@@ -6,11 +6,11 @@ import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 import {
   type MockAuthContext,
   defaultAuth,
+  mockPlatformRoleNone,
   mockPlatformRole,
   mockIsAdmin,
   testIsAdmin,
 } from "@/test/helpers/test-auth"
-import type { PlatformAccessRole } from "@/lib/platform-role"
 
 const mockFindUnique = mock()
 const mockUpdate = mock()
@@ -94,7 +94,7 @@ describe("AdminSubscriptionRoute", () => {
         .use(
           createAdminSubscriptionRoutes({
             authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: async () => "none" as PlatformAccessRole,
+            getPlatformRole: mockPlatformRoleNone,
             isAdmin: () => false,
           })
         )

@@ -30,6 +30,7 @@ export const defaultAuthNoUser: MockAuthContext = {
 }
 
 export const mockPlatformRole = async () => "super_admin" as PlatformAccessRole
+export const mockPlatformRoleNone = async () => "none" as PlatformAccessRole
 export const mockIsAdmin = () => true
 
 // ── Route dependencies helper ──────────────────────────

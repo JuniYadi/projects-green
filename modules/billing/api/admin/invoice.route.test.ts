@@ -3,11 +3,11 @@ import { Elysia } from "elysia"
 import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 
 import { createAdminInvoiceRoutes } from "./invoice.route"
-import type { PlatformAccessRole } from "@/lib/platform-role"
 import { 
   type MockAuthContext, 
   defaultAuth, 
-  mockPlatformRole, 
+  mockPlatformRoleNone,
+  mockPlatformRole,
   mockIsAdmin,
   testIsAdmin 
 } from "@/test/helpers/test-auth"
@@ -66,7 +66,7 @@ describe("AdminInvoiceRoute", () => {
         .use(
           createAdminInvoiceRoutes({
             authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: async () => "none" as PlatformAccessRole,
+            getPlatformRole: mockPlatformRoleNone,
             isAdmin: () => false,
           })
         )
@@ -272,7 +272,7 @@ describe("AdminInvoiceRoute", () => {
         .use(
           createAdminInvoiceRoutes({
             authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: async () => "none" as PlatformAccessRole,
+            getPlatformRole: mockPlatformRoleNone,
             isAdmin: () => false,
           })
         )
