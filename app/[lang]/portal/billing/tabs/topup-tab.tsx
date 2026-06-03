@@ -8,7 +8,7 @@ type TopupTabProps = {
   lang: string
 }
 
-export function TopupTab({ lang }: TopupTabProps) {
+export function TopupTab({ lang: _lang }: TopupTabProps) {
   return (
     <div className="space-y-6">
       <Card>

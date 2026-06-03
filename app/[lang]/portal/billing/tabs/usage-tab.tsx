@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BarChartIcon, TrendDownIcon, WalletIcon } from "@phosphor-icons/react"
+import { ChartBarIcon, TrendDownIcon, WalletIcon } from "@phosphor-icons/react"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 
 interface UsageBreakdown {
@@ -23,7 +23,7 @@ type UsageTabProps = {
   lang: string
 }
 
-export function UsageTab({ lang }: UsageTabProps) {
+export function UsageTab({ lang: _lang }: UsageTabProps) {
   const [breakdown, setBreakdown] = useState<UsageBreakdown[]>([])
   const [trend, setTrend] = useState<DailyTrend[]>([])
   const [loading, setLoading] = useState(true)
@@ -104,7 +104,7 @@ export function UsageTab({ lang }: UsageTabProps) {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <BarChartIcon className="h-4 w-4" />
+              <ChartBarIcon className="h-4 w-4" />
               Services Used
             </CardTitle>
           </CardHeader>
