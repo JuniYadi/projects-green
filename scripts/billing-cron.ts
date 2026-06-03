@@ -6,9 +6,11 @@ import {
   BILLING_MONTHLY_RESET_JOB,
   BILLING_MONTHLY_BILLING_JOB,
   BILLING_INVOICE_STATUS_JOB,
+  BILLING_PAYMENT_REMINDER_JOB,
   BILLING_DAILY_RESET_QUEUE,
   BILLING_MONTHLY_RESET_QUEUE,
   BILLING_INVOICE_STATUS_QUEUE,
+  BILLING_PAYMENT_REMINDER_QUEUE,
   getBillingRedisConnection,
   type BillingCronJobData,
 } from "@/lib/queue/billing-cron"
@@ -84,11 +86,25 @@ async function processInvoiceStatusManager(): Promise<{
   issued: number
   overdue: number
 }> {
-  const statusManager = new InvoiceStatusManager(prisma)
+  const statusManager = new InvoiceStatusManager(prisma, invoiceEmailService)
   const result = await statusManager.runDailyTransitions()
 
   console.info(
     `[billing-cron] invoice status manager: issued=${result.issued} overdue=${result.overdue}`,
+  )
+
+  return result
+}
+
+/**
+ * Payment reminder: send reminder emails for invoices due within 3 days.
+ */
+async function processPaymentReminder(): Promise<{ sent: number }> {
+  const statusManager = new InvoiceStatusManager(prisma, invoiceEmailService)
+  const result = await statusManager.sendPaymentReminders()
+
+  console.info(
+    `[billing-cron] payment reminder: sent=${result.sent}`,
   )
 
   return result
@@ -145,6 +161,23 @@ const statusWorker = new Worker<BillingCronJobData>(
       const result = await processInvoiceStatusManager()
       console.info(
         `[billing-cron] invoice status: ${result.issued} issued, ${result.overdue} overdue`,
+      )
+    }
+  },
+  {
+    connection: redisConnection,
+    concurrency: 1,
+  }
+)
+
+// Payment reminder worker
+const reminderWorker = new Worker<BillingCronJobData>(
+  BILLING_PAYMENT_REMINDER_QUEUE,
+  async (job: Job<BillingCronJobData>) => {
+    if (job.name === BILLING_PAYMENT_REMINDER_JOB) {
+      const result = await processPaymentReminder()
+      console.info(
+        `[billing-cron] payment reminder: sent=${result.sent}`,
       )
     }
   },
@@ -226,6 +259,30 @@ statusWorker.on("failed", (job, error) => {
   )
 })
 
+reminderWorker.on("active", (job) => {
+  console.info(
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
+})
+
+reminderWorker.on("completed", (job) => {
+  console.info(
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
+})
+
+reminderWorker.on("failed", (job, error) => {
+  if (!job) {
+    console.error("[billing-cron] reminder worker failed job missing payload", error)
+    return
+  }
+
+  console.error(
+    `[billing-cron] reminder worker failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
+    error
+  )
+})
+
 // Register repeatable jobs on startup
 async function registerRepeatableJobs() {
   const { Queue } = await import("bullmq")
@@ -263,9 +320,19 @@ async function registerRepeatableJobs() {
     jobId: "billing-invoice-status",
   })
 
+  // Payment reminder: daily at 09:00 UTC
+  const reminderQueue = new Queue(BILLING_PAYMENT_REMINDER_QUEUE, {
+    connection: redisConnection,
+  })
+  await reminderQueue.add(BILLING_PAYMENT_REMINDER_JOB, {}, {
+    repeat: { pattern: "0 9 * * *" },
+    jobId: "billing-payment-reminder",
+  })
+
   await dailyQueue.close()
   await monthlyQueue.close()
   await statusQueue.close()
+  await reminderQueue.close()
 
   console.info("[billing-cron] repeatable jobs registered")
 }
@@ -284,6 +351,7 @@ const shutdown = async (signal: string) => {
     await worker.close()
     await monthlyWorker.close()
     await statusWorker.close()
+    await reminderWorker.close()
     await prisma.$disconnect()
     process.exit(0)
   } catch (error) {
@@ -303,6 +371,6 @@ process.on("SIGINT", () => {
 // Register repeatable jobs then print ready message
 void registerRepeatableJobs().then(() => {
   console.info(
-    `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE}`
+    `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE}`
   )
 })
