@@ -41,6 +41,35 @@ services:
     networks:
       - pfnapp-net
 
+  opensearch:
+    image: opensearchproject/opensearch:2.12.0
+    container_name: pfnapp-opensearch
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=admin
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - pfnapp-net
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.12.0
+    container_name: pfnapp-opensearch-dashboards
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+    ports:
+      - "5601:5601"
+    depends_on:
+      - opensearch
+    networks:
+      - pfnapp-net
+
+volumes:
+  opensearch-data:
+
 networks:
   pfnapp-net:
     name: pfnapp-net

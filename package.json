@@ -30,7 +30,8 @@
     "bootstrap:super-admin": "bun run scripts/bootstrap-super-admin.ts",
     "test:auth:cookie": "bun run scripts/test-api-auth-cookie.ts",
     "test:auth:static-key": "bun run scripts/test-api-auth-static-key.ts",
-    "create:api-key": "bun run scripts/create-api-key.ts"
+    "create:api-key": "bun run scripts/create-api-key.ts",
+    "worker:opensearch-ingest": "bun run scripts/opensearch-ingest-worker.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.64",
@@ -38,6 +39,7 @@
     "@elysia/openapi": "^1.4.15",
     "@formatjs/intl-localematcher": "^0.8.8",
     "@openrouter/ai-sdk-provider": "^2.9.0",
+    "@opensearch-project/opensearch": "^3.6.0",
     "@phosphor-icons/react": "^2.1.10",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",

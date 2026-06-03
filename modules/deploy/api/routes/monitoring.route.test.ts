@@ -1,10 +1,13 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { monitoringRoutes } from "./monitoring.route"
 
-// Mock withAuth to return authenticated user
+// Mock withAuth to return authenticated user with orgSlug
 const mockWithAuth = mock(async () => ({
-  user: { id: "user-123", email: "test@example.com" },
-  organization: { id: "org-123", slug: "test-org" },
+  user: {
+    id: "user-123",
+    email: "test@example.com",
+    metadata: { orgSlug: "test-org" } as Record<string, string>,
+  },
 }))
 
 mock.module("@workos-inc/authkit-nextjs", () => ({
@@ -32,8 +35,6 @@ describe("monitoringRoutes", () => {
     const body = (await response.json()) as { ok: boolean; data: unknown[] }
     expect(body.ok).toBe(true)
     expect(Array.isArray(body.data)).toBe(true)
-    // Placeholder returns empty array; adjust when real data is implemented
-    expect(body.data.length).toBeGreaterThanOrEqual(0)
   })
 
   it("returns events for a deployment", async () => {
@@ -59,5 +60,23 @@ describe("monitoringRoutes", () => {
     }
     expect(body.ok).toBe(true)
     expect(body.data.status).toBeDefined()
+  })
+
+  it("returns 403 for logs when orgSlug is missing from metadata", async () => {
+    mockWithAuth.mockResolvedValueOnce({
+      user: {
+        id: "user-123",
+        email: "test@example.com",
+        metadata: {} as Record<string, string>,
+      },
+    })
+
+    const response = await monitoringRoutes.handle(
+      buildRequest("/deploy/logs/deploy-123")
+    )
+
+    expect(response.status).toBe(403)
+    const body = (await response.json()) as { error: string }
+    expect(body.error).toBe("FORBIDDEN")
   })
 })

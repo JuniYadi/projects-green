@@ -1,20 +1,32 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
-// import { prisma } from "@/lib/prisma"
+import { queryLogs } from "../../opensearch/opensearch-log.service"
 
 export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   .get(
     "/logs/:deployId",
-    async ({ set }) => {
+    async ({ params, set }) => {
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      // TODO: Look up deploy by ID, verify org access, return real logs
-      // const deployLogs = await prisma.deploymentLog.findMany({ where: { deployId } })
-      return { ok: true, data: [] } // placeholder
+      const userMeta = (auth.user as unknown as { metadata?: Record<string, string> })?.metadata
+      const orgSlug = userMeta?.orgSlug
+
+      if (!orgSlug) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied: no organization context" }
+      }
+
+      const result = await queryLogs({
+        tenantSlug: orgSlug,
+        deployId: params.deployId,
+        size: 200,
+      })
+
+      return { ok: true, data: result.hits }
     },
     {
       params: t.Object({
