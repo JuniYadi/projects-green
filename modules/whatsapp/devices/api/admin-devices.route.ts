@@ -1,7 +1,7 @@
 /**
  * WhatsApp Devices — Admin API Routes
  *
- * Mounted at /api/whatsapp/admin/devices
+ * Mounted at /api/admin/devices
  */
 
 import { Elysia } from "elysia"
@@ -10,10 +10,7 @@ import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-import {
-  adminCreateDeviceSchema,
-  topUpInputSchema,
-} from "../devices.schemas"
+import { adminCreateDeviceSchema, topUpInputSchema } from "../devices.schemas"
 import { createDeviceService } from "../devices.service"
 import {
   requireSuperAdmin,
@@ -27,9 +24,7 @@ type RouteSet = {
   status?: number | string
 }
 
-type AdminGuard = (
-  set: RouteSet
-) => Promise<AdminActorContext | AdminApiError>
+type AdminGuard = (set: RouteSet) => Promise<AdminActorContext | AdminApiError>
 
 const toServerError = (set: RouteSet, message: string) => {
   set.status = 500
@@ -129,37 +124,34 @@ export const createAdminDevicesRoutes = (
         },
       }
     })
-    .post(
-      "/",
-      async ({ body, set }: any) => {
-        const actor = await guard(set)
-        if (isAdminError(actor)) return actor
+    .post("/", async ({ body, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
 
-        const parsed = adminCreateDeviceSchema.safeParse(body)
-        if (!parsed.success) {
-          set.status = 422
-          return {
-            ok: false as const,
-            error: "VALIDATION_ERROR" as const,
-            message: "Please fix the highlighted fields and try again.",
-            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
-          }
+      const parsed = adminCreateDeviceSchema.safeParse(body)
+      if (!parsed.success) {
+        set.status = 422
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
+          message: "Please fix the highlighted fields and try again.",
+          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
         }
+      }
 
-        try {
-          const device = await createDeviceService().create({
-            ...parsed.data,
-            organizationId: parsed.data.organizationId,
-          })
+      try {
+        const device = await createDeviceService().create({
+          ...parsed.data,
+          organizationId: parsed.data.organizationId,
+        })
 
-          set.status = 201
-          return { ok: true as const, device }
-        } catch (error) {
-          console.error("[AdminDevices] Create error:", error)
-          return toServerError(set, "Unable to create device.")
-        }
-      },
-    )
+        set.status = 201
+        return { ok: true as const, device }
+      } catch (error) {
+        console.error("[AdminDevices] Create error:", error)
+        return toServerError(set, "Unable to create device.")
+      }
+    })
     .post("/:id/top-up", async ({ params: { id }, body, set }: any) => {
       const actor = await guard(set)
       if (isAdminError(actor)) return actor
