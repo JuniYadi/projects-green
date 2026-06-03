@@ -13,7 +13,7 @@ import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
 import { DataTable } from "@/components/data-table"
 import { getInvoices } from "@/lib/billing-client"
 import type { InvoiceListItem } from "@/lib/billing-client"
-import { ArrowRightIcon } from "@phosphor-icons/react"
+import { ArrowRightIcon, DownloadIcon } from "@phosphor-icons/react"
 
 type InvoicesTabProps = {
   lang: string
@@ -36,6 +36,47 @@ function formatDate(dateStr: string | null): string {
     month: "short",
     year: "numeric",
   }).format(new Date(dateStr))
+}
+
+function DownloadPdfButton({
+  invoiceId,
+  invoiceNumber,
+}: {
+  invoiceId: string
+  invoiceNumber: string
+}) {
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownload = async () => {
+    setIsDownloading(true)
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/pdf`)
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const anchor = document.createElement("a")
+        anchor.href = url
+        anchor.download = `${invoiceNumber}.pdf`
+        document.body.append(anchor)
+        anchor.click()
+        anchor.remove()
+        URL.revokeObjectURL(url)
+      }
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={() => void handleDownload()}
+      disabled={isDownloading}
+    >
+      <DownloadIcon className="h-4 w-4" />
+    </Button>
+  )
 }
 
 function InvoiceNumberCell({
@@ -154,12 +195,18 @@ export function InvoicesTab({ lang }: InvoicesTabProps) {
     {
       id: "actions",
       cell: ({ row }) => (
-        <Button asChild size="sm" variant="ghost">
-          <Link href={`/${lang}/portal/invoices/${row.original.id}`}>
-            View
-            <ArrowRightIcon className="ml-1 h-4 w-4" />
-          </Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          <DownloadPdfButton
+            invoiceId={row.original.id}
+            invoiceNumber={row.original.invoiceNumber}
+          />
+          <Button asChild size="sm" variant="ghost">
+            <Link href={`/${lang}/portal/invoices/${row.original.id}`}>
+              View
+              <ArrowRightIcon className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       ),
     },
   ]
