@@ -214,8 +214,11 @@ enum MeterAggregation {
 
 enum InvoiceStatus {
   DRAFT
+  ISSUED
   OPEN
   PAID
+  OVERDUE
+  CANCELLED
   VOID
   UNCOLLECTIBLE
 }

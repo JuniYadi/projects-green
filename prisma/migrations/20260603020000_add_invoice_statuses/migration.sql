@@ -1,0 +1,4 @@
+-- AlterEnum
+ALTER TYPE "InvoiceStatus" ADD VALUE 'ISSUED';
+ALTER TYPE "InvoiceStatus" ADD VALUE 'OVERDUE';
+ALTER TYPE "InvoiceStatus" ADD VALUE 'CANCELLED';
