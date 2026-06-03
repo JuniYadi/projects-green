@@ -1,16 +1,8 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
-import { Prisma } from "@prisma/client"
-import Decimal = Prisma.Decimal
-
+import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
+import { MockAuthContext } from "@/test/helpers/test-auth"
 import { createBillingTopupRoutes } from "./topup.route"
-
-type MockAuthContext = {
-  organizationId?: string | null
-  role?: string | null
-  roles?: string[] | null
-  user: { id: string; email?: string | null } | null
-}
 
 const mockFindUnique = mock()
 const mockUpdate = mock()
