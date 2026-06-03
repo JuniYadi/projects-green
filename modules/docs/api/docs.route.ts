@@ -8,6 +8,8 @@ import {
   normalizeDocPath,
   getDocByPath as getDocByPathService,
   upsertDocByPath as upsertDocByPathService,
+  listDocs as listDocsService,
+  deleteDocById as deleteDocByIdService,
 } from "@/modules/docs/docs.service"
 
 const docsQuerySchema = z.object({
@@ -43,6 +45,8 @@ type DocsRouteDependencies = {
   }) => Promise<"none" | "super_admin">
   getDocByPath: typeof getDocByPathService
   upsertDocByPath: typeof upsertDocByPathService
+  listDocs: (organizationId: string | null) => Promise<Array<{ id: string; path: string; title: string; updatedAt: string; score: number }>>
+  deleteDocById: (id: string) => Promise<void>
 }
 
 const createDefaultDependencies = (): DocsRouteDependencies => ({
@@ -50,6 +54,8 @@ const createDefaultDependencies = (): DocsRouteDependencies => ({
   getPlatformRole: getPlatformRoleForUser,
   getDocByPath: getDocByPathService,
   upsertDocByPath: upsertDocByPathService,
+  listDocs: listDocsService,
+  deleteDocById: deleteDocByIdService,
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -62,13 +68,13 @@ const toUnauthorized = (set: RouteSet) => {
   }
 }
 
-const toForbidden = (set: RouteSet) => {
+const toForbidden = (set: RouteSet, message?: string) => {
   set.status = 403
 
   return {
     ok: false as const,
     error: "FORBIDDEN" as const,
-    message: "Only super admins can update documentation entries.",
+    message: message ?? "Only super admins can update documentation entries.",
   }
 }
 
@@ -190,6 +196,48 @@ export const createDocsRoutes = (
       return {
         ok: true as const,
         ...savedDoc,
+      }
+    })
+    .get("/docs/list", async ({ set }) => {
+      const auth = await dependencies.authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      const docs = await dependencies.listDocs(auth.organizationId ?? null)
+
+      return {
+        ok: true as const,
+        docs,
+      }
+    })
+    .delete("/docs/:id", async ({ params: { id }, set }) => {
+      const auth = await dependencies.authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      const platformRole = await dependencies.getPlatformRole({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
+
+      if (platformRole !== "super_admin") {
+        return toForbidden(set)
+      }
+
+      try {
+        await dependencies.deleteDocById(id)
+        return { ok: true as const }
+      } catch {
+        set.status = 404
+        return {
+          ok: false as const,
+          error: "DOC_NOT_FOUND" as const,
+          message: `Document with id "${id}" not found.`,
+        }
       }
     })
 
