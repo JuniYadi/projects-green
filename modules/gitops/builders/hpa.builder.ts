@@ -72,7 +72,7 @@ export class HpaBuilder {
     return this
   }
 
-  withMemoryTarget( memoryMi: number): this {
+  withMemoryTarget(memoryMi: number): this {
     this.memoryTargetMi = memoryMi
     return this
   }

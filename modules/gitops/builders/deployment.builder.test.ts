@@ -109,7 +109,7 @@ describe("DeploymentBuilder", () => {
     })
     expect(hpa!.spec.metrics).toContainEqual({
       type: "Resource",
-      resource: { name: "memory", target: { type: "Utilization", averageUtilization: 80 } },
+      resource: { name: "memory", target: { type: "AverageValue", averageValue: "80Mi" } },
     })
   })
 })

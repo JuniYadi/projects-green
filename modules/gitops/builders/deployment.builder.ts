@@ -196,7 +196,14 @@ export class DeploymentBuilder {
 
     const metrics: Array<{
       type: "Resource"
-      resource: { name: string; target: { type: "Utilization"; averageUtilization: number } }
+      resource: {
+        name: string
+        target: {
+          type: "Utilization" | "AverageValue"
+          averageUtilization?: number
+          averageValue?: string
+        }
+      }
     }> = []
 
     if (this.hpaTargetCPUUtilization !== undefined) {
@@ -214,7 +221,10 @@ export class DeploymentBuilder {
         type: "Resource",
         resource: {
           name: "memory",
-          target: { type: "Utilization", averageUtilization: this.hpaTargetMemoryUtilization },
+          target: {
+            type: "AverageValue",
+            averageValue: `${this.hpaTargetMemoryUtilization}Mi`,
+          },
         },
       })
     }
@@ -267,7 +277,14 @@ export interface KubernetesHPA {
     scaleTargetRef: { apiVersion: string; kind: string; name: string }
     metrics: Array<{
       type: "Resource"
-      resource: { name: string; target: { type: "Utilization"; averageUtilization: number } }
+      resource: {
+        name: string
+        target: {
+          type: "Utilization" | "AverageValue"
+          averageUtilization?: number
+          averageValue?: string
+        }
+      }
     }>
   }
 }

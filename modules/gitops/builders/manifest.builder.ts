@@ -182,7 +182,7 @@ export class AppManifestBuilder {
 
     resources.push(deploymentBuilder.build() as unknown as KubernetesResource)
 
-    if (this.hpaMinReplicas === undefined && this.hpaTargetCPUUtilization === undefined) {
+    if (this.hpaMinReplicas === undefined && this.hpaTargetCPUUtilization === undefined && this.hpaTargetMemoryMi === undefined) {
       const service: KubernetesResource = {
         apiVersion: "v1",
         kind: "Service",
@@ -199,7 +199,7 @@ export class AppManifestBuilder {
       resources.push(service)
     }
 
-    if (this.hpaMinReplicas !== undefined || this.hpaTargetCPUUtilization !== undefined) {
+    if (this.hpaMinReplicas !== undefined || this.hpaTargetCPUUtilization !== undefined || this.hpaTargetMemoryMi !== undefined) {
       const hpaBuilder = new HpaBuilder()
         .setName(`${this.appName}-hpa`)
         .setNamespace(this.namespace)
