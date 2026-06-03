@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
+import type { PrismaClient } from "@prisma/client"
 
 const mockUpdateMany = mock()
 
@@ -19,7 +20,7 @@ describe("InvoiceStatusManager", () => {
 
   beforeEach(() => {
     mock.clearAllMocks()
-    manager = new InvoiceStatusManager(mockPrismaClient as any)
+    manager = new InvoiceStatusManager(mockPrismaClient as unknown as PrismaClient)
   })
 
   describe("issueDraftInvoices", () => {
