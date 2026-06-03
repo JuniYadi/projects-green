@@ -59,4 +59,28 @@ describe("AppManifestBuilder", () => {
     expect(volumes).toContainEqual({ name: "app-secrets", secret: { secretName: "app-secrets" } })
     expect(volumes).toContainEqual({ name: "data-pvc", persistentVolumeClaim: { claimName: "data-pvc" } })
   })
+
+  it("generates manifest with custom port and HPA memory metric", () => {
+    const manifest = new AppManifestBuilder()
+      .setAppName("my-app")
+      .setTeamSlug("my-team")
+      .setNamespace("default")
+      .setImage("nginx:latest")
+      .setPort(8080)
+      .setHPAMinReplicas(1)
+      .setHPAMaxReplicas(5)
+      .setHPATargetCPUUtilization(60)
+      .setHPATargetMemoryUtilization(512)
+      .build()
+
+    expect(manifest.resources).toHaveLength(2) // Deployment + HPA
+
+    const deployment = manifest.resources.find((r) => r.kind === "Deployment")! as unknown as KubernetesDeployment
+    expect(deployment.spec.template.spec.containers[0].ports).toEqual([{ containerPort: 8080 }])
+
+    const hpa = manifest.resources.find((r) => r.kind === "HorizontalPodAutoscaler")! as unknown as KubernetesHPA
+    expect(hpa.spec.minReplicas).toBe(1)
+    expect(hpa.spec.maxReplicas).toBe(5)
+    expect(hpa.spec.metrics).toHaveLength(2)
+  })
 })

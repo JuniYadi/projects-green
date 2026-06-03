@@ -52,4 +52,64 @@ describe("DeploymentBuilder", () => {
     })
     expect(deployment.metadata.annotations?.["autoscaling.kubernetes.io/current-replicas"]).toBeUndefined()
   })
+
+  it("creates deployment with custom replicas and health check path", () => {
+    const deployment = new DeploymentBuilder()
+      .setName("my-app")
+      .setNamespace("default")
+      .setImage("nginx:latest")
+      .setPort(8080)
+      .setReplicas(3)
+      .setHealthCheckPath("/ready")
+      .build()
+
+    expect(deployment.spec.replicas).toBe(3)
+    expect(deployment.spec.template.spec.containers[0].livenessProbe).toEqual({
+      httpGet: { path: "/ready", port: 8080 },
+      initialDelaySeconds: 15,
+      periodSeconds: 10,
+    })
+    expect(deployment.spec.template.spec.containers[0].readinessProbe).toEqual({
+      httpGet: { path: "/ready", port: 8080 },
+      initialDelaySeconds: 5,
+      periodSeconds: 5,
+    })
+  })
+
+  it("buildHPA returns null when no HPA settings configured", () => {
+    const builder = new DeploymentBuilder()
+      .setName("my-app")
+      .setNamespace("default")
+      .setImage("nginx:latest")
+      .setPort(80)
+
+    expect(builder.buildHPA()).toBeNull()
+  })
+
+  it("buildHPA with CPU and memory metrics", () => {
+    const builder = new DeploymentBuilder()
+      .setName("my-app")
+      .setNamespace("default")
+      .setImage("nginx:latest")
+      .setPort(80)
+      .setHPAMinReplicas(2)
+      .setHPAMaxReplicas(10)
+      .setHPATargetCPUUtilization(70)
+      .setHPATargetMemoryUtilization(80)
+
+    const hpa = builder.buildHPA()
+
+    expect(hpa).not.toBeNull()
+    expect(hpa!.spec.minReplicas).toBe(2)
+    expect(hpa!.spec.maxReplicas).toBe(10)
+    expect(hpa!.spec.metrics).toHaveLength(2)
+    expect(hpa!.spec.metrics).toContainEqual({
+      type: "Resource",
+      resource: { name: "cpu", target: { type: "Utilization", averageUtilization: 70 } },
+    })
+    expect(hpa!.spec.metrics).toContainEqual({
+      type: "Resource",
+      resource: { name: "memory", target: { type: "Utilization", averageUtilization: 80 } },
+    })
+  })
 })

@@ -41,4 +41,15 @@ describe("SecretBuilder", () => {
 
     expect(secret.metadata.annotations!["reloader.stakater.com/auto"]).toBe("true")
   })
+
+  it("generates Secret with stringData", () => {
+    const secret = new SecretBuilder()
+      .setName("my-secret")
+      .setNamespace("default")
+      .addStringData({ CONFIG_VALUE: "plaintext-value" })
+      .build()
+
+    expect(secret.stringData).toEqual({ CONFIG_VALUE: "plaintext-value" })
+    expect(secret.data).toBeUndefined()
+  })
 })
