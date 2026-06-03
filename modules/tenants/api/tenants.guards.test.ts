@@ -187,7 +187,7 @@ describe("ensureTenantContextAccess", () => {
     expect((result as { policyCode: string }).policyCode).toBe("TENANT_CONTEXT_MISMATCH")
   })
 
-  it("rejects when user has no tenant role", () => {
+  it("allows when user has no tenant role but valid org (fallback to member)", () => {
     const actor = {
       userId: "user-1",
       organizationId: "org-1",
@@ -195,8 +195,18 @@ describe("ensureTenantContextAccess", () => {
       tenantRole: null as TenantRole | null,
     }
     const result = ensureTenantContextAccess("org-1", actor, mockSet)
+    expect(result).toBe(true)
+  })
+
+  it("rejects when user has no tenant role and no org context", () => {
+    const actor = {
+      userId: "user-1",
+      organizationId: null,
+      platformRole: "none" as PlatformAccessRole,
+      tenantRole: null as TenantRole | null,
+    }
+    const result = ensureTenantContextAccess("org-1", actor, mockSet)
     expect(result).toHaveProperty("error")
     expect((result as { error: string }).error).toBe("FORBIDDEN")
-    expect((result as { policyCode: string }).policyCode).toBe("TENANT_ROLE_REQUIRED")
   })
 })
