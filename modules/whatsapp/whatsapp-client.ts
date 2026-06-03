@@ -13,8 +13,6 @@ type ApiResponse<T> = ApiSuccess<T> | ApiError
 // ─── Device Types ─────────────────────────────────────────────────────────
 
 export type DeviceStatus = "ACTIVE" | "NON_ACTIVE"
-export type DeviceEnvironment = "SANDBOX" | "LIVE"
-
 export type Device = {
   id: string
   organizationId: string
@@ -39,15 +37,14 @@ export type Device = {
   updatedAt: string
 }
 
-export type CreateDeviceInput = {
-  name: string
-  phoneNumber: string
-  businessId: string
-  accessToken: string
-  environment: DeviceEnvironment
+export type UpdateDeviceInput = {
+  phoneNumber?: string
+  status?: DeviceStatus
+  token?: string
+  quotaBase?: number
+  dailyLimitMessage?: number
+  callbackUrl?: string
 }
-
-export type UpdateDeviceInput = Partial<CreateDeviceInput>
 
 // ─── Template Types ───────────────────────────────────────────────────────
 
@@ -169,11 +166,7 @@ export type CreateConversationInput = {
 
 // ─── Message Types ────────────────────────────────────────────────────────
 
-export type MessageDeliveryStatus =
-  | "SENT"
-  | "DELIVERED"
-  | "READ"
-  | "FAILED"
+export type MessageDeliveryStatus = "SENT" | "DELIVERED" | "READ" | "FAILED"
 
 export type Message = {
   id: string
@@ -277,7 +270,11 @@ export type CreateBroadcastInput = {
   throttlePerMinutes?: number | null
   whatsappDeviceId?: string | null
   whatsappContactGroupId?: string | null
-  recipients: Array<{ phoneNumber: string; name?: string | null; dynamicValues?: Record<string, unknown> | null }>
+  recipients: Array<{
+    phoneNumber: string
+    name?: string | null
+    dynamicValues?: Record<string, unknown> | null
+  }>
 }
 
 export type UpdateBroadcastInput = Partial<
@@ -382,16 +379,16 @@ export const createWhatsAppClient = () => {
     // ── Devices ────────────────────────────────────────────────────────
 
     async listDevices() {
-      const payload = await requestJson<
-        ApiSuccess<{ devices: Device[] }>
-      >(`${API_BASE}/devices`, undefined, "Unable to load WhatsApp devices.")
+      const payload = await requestJson<ApiSuccess<{ devices: Device[] }>>(
+        `${API_BASE}/devices`,
+        undefined,
+        "Unable to load WhatsApp devices."
+      )
       return payload.devices
     },
 
     async getDevice(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ device: Device }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ device: Device }>>(
         `${API_BASE}/devices/${id}`,
         undefined,
         "Unable to load WhatsApp device."
@@ -399,25 +396,8 @@ export const createWhatsAppClient = () => {
       return payload.device
     },
 
-    async createDevice(input: CreateDeviceInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ device: Device }>
-      >(
-        `${API_BASE}/devices`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(input),
-        },
-        "Unable to create WhatsApp device."
-      )
-      return payload.device
-    },
-
     async updateDevice(id: string, input: UpdateDeviceInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ device: Device }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ device: Device }>>(
         `${API_BASE}/devices/${id}`,
         {
           method: "PATCH",
@@ -429,18 +409,8 @@ export const createWhatsAppClient = () => {
       return payload.device
     },
 
-    async deleteDevice(id: string) {
-      await requestJson<ApiSuccess<object>>(
-        `${API_BASE}/devices/${id}`,
-        { method: "DELETE" },
-        "Unable to delete WhatsApp device."
-      )
-    },
-
     async verifyDevice(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ device: Device }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ device: Device }>>(
         `${API_BASE}/devices/${id}/verify`,
         { method: "POST" },
         "Unable to verify WhatsApp device."
@@ -449,9 +419,7 @@ export const createWhatsAppClient = () => {
     },
 
     async reconnectDevice(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ device: Device }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ device: Device }>>(
         `${API_BASE}/devices/${id}/reconnect`,
         { method: "POST" },
         "Unable to reconnect WhatsApp device."
@@ -462,16 +430,16 @@ export const createWhatsAppClient = () => {
     // ── Templates ──────────────────────────────────────────────────────
 
     async listTemplates() {
-      const payload = await requestJson<
-        ApiSuccess<{ templates: Template[] }>
-      >(`${API_BASE}/templates`, undefined, "Unable to load WhatsApp templates.")
+      const payload = await requestJson<ApiSuccess<{ templates: Template[] }>>(
+        `${API_BASE}/templates`,
+        undefined,
+        "Unable to load WhatsApp templates."
+      )
       return payload.templates
     },
 
     async getTemplate(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ template: Template }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ template: Template }>>(
         `${API_BASE}/templates/${id}`,
         undefined,
         "Unable to load WhatsApp template."
@@ -480,9 +448,7 @@ export const createWhatsAppClient = () => {
     },
 
     async createTemplate(input: CreateTemplateInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ template: Template }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ template: Template }>>(
         `${API_BASE}/templates`,
         {
           method: "POST",
@@ -495,9 +461,7 @@ export const createWhatsAppClient = () => {
     },
 
     async updateTemplate(id: string, input: UpdateTemplateInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ template: Template }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ template: Template }>>(
         `${API_BASE}/templates/${id}`,
         {
           method: "PATCH",
@@ -518,9 +482,7 @@ export const createWhatsAppClient = () => {
     },
 
     async syncTemplate(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ message: string }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ message: string }>>(
         `${API_BASE}/templates/${id}/sync`,
         { method: "POST" },
         "Unable to sync WhatsApp template."
@@ -536,14 +498,14 @@ export const createWhatsAppClient = () => {
       phoneNumber?: string
     }) {
       const searchParams = new URLSearchParams()
-      if (params?.contactGroupId) searchParams.set("contactGroupId", params.contactGroupId)
+      if (params?.contactGroupId)
+        searchParams.set("contactGroupId", params.contactGroupId)
       if (params?.status) searchParams.set("status", params.status)
-      if (params?.phoneNumber) searchParams.set("phoneNumber", params.phoneNumber)
+      if (params?.phoneNumber)
+        searchParams.set("phoneNumber", params.phoneNumber)
       const qs = searchParams.toString()
 
-      const payload = await requestJson<
-        ApiSuccess<{ contacts: Contact[] }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ contacts: Contact[] }>>(
         `${API_BASE}/contacts${qs ? `?${qs}` : ""}`,
         undefined,
         "Unable to load WhatsApp contacts."
@@ -552,9 +514,7 @@ export const createWhatsAppClient = () => {
     },
 
     async getContact(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ contact: Contact }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ contact: Contact }>>(
         `${API_BASE}/contacts/${id}`,
         undefined,
         "Unable to load WhatsApp contact."
@@ -563,9 +523,7 @@ export const createWhatsAppClient = () => {
     },
 
     async createContact(input: CreateContactInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ contact: Contact }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ contact: Contact }>>(
         `${API_BASE}/contacts`,
         {
           method: "POST",
@@ -578,9 +536,7 @@ export const createWhatsAppClient = () => {
     },
 
     async updateContact(id: string, input: UpdateContactInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ contact: Contact }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ contact: Contact }>>(
         `${API_BASE}/contacts/${id}`,
         {
           method: "PATCH",
@@ -604,7 +560,8 @@ export const createWhatsAppClient = () => {
 
     async listConversations(params?: { contactPhone?: string }) {
       const searchParams = new URLSearchParams()
-      if (params?.contactPhone) searchParams.set("contactPhone", params.contactPhone)
+      if (params?.contactPhone)
+        searchParams.set("contactPhone", params.contactPhone)
       const qs = searchParams.toString()
 
       const payload = await requestJson<
@@ -651,14 +608,14 @@ export const createWhatsAppClient = () => {
       messageType?: string
     }) {
       const searchParams = new URLSearchParams()
-      if (params?.conversationId) searchParams.set("conversationId", params.conversationId)
+      if (params?.conversationId)
+        searchParams.set("conversationId", params.conversationId)
       if (params?.direction) searchParams.set("direction", params.direction)
-      if (params?.messageType) searchParams.set("messageType", params.messageType)
+      if (params?.messageType)
+        searchParams.set("messageType", params.messageType)
       const qs = searchParams.toString()
 
-      const payload = await requestJson<
-        ApiSuccess<{ messages: Message[] }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ messages: Message[] }>>(
         `${API_BASE}/messages${qs ? `?${qs}` : ""}`,
         undefined,
         "Unable to load WhatsApp messages."
@@ -667,9 +624,7 @@ export const createWhatsAppClient = () => {
     },
 
     async getMessage(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ message: Message }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ message: Message }>>(
         `${API_BASE}/messages/${id}`,
         undefined,
         "Unable to load WhatsApp message."
@@ -678,9 +633,7 @@ export const createWhatsAppClient = () => {
     },
 
     async sendMessage(input: SendMessageInput) {
-      const payload = await requestJson<
-        ApiSuccess<SendMessageResult>
-      >(
+      const payload = await requestJson<ApiSuccess<SendMessageResult>>(
         `${API_BASE}/messages/send`,
         {
           method: "POST",
@@ -695,16 +648,16 @@ export const createWhatsAppClient = () => {
     // ── Groups ──────────────────────────────────────────────────────────
 
     async listGroups() {
-      const payload = await requestJson<
-        ApiSuccess<{ groups: ContactGroup[] }>
-      >(`${API_BASE}/groups`, undefined, "Unable to load WhatsApp groups.")
+      const payload = await requestJson<ApiSuccess<{ groups: ContactGroup[] }>>(
+        `${API_BASE}/groups`,
+        undefined,
+        "Unable to load WhatsApp groups."
+      )
       return payload.groups
     },
 
     async getGroup(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ group: ContactGroup }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ group: ContactGroup }>>(
         `${API_BASE}/groups/${id}`,
         undefined,
         "Unable to load WhatsApp group."
@@ -713,9 +666,7 @@ export const createWhatsAppClient = () => {
     },
 
     async createGroup(input: CreateGroupInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ group: ContactGroup }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ group: ContactGroup }>>(
         `${API_BASE}/groups`,
         {
           method: "POST",
@@ -728,9 +679,7 @@ export const createWhatsAppClient = () => {
     },
 
     async updateGroup(id: string, input: UpdateGroupInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ group: ContactGroup }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ group: ContactGroup }>>(
         `${API_BASE}/groups/${id}`,
         {
           method: "PATCH",
@@ -755,14 +704,16 @@ export const createWhatsAppClient = () => {
     async listBroadcasts() {
       const payload = await requestJson<
         ApiSuccess<{ broadcasts: Broadcast[] }>
-      >(`${API_BASE}/broadcasts`, undefined, "Unable to load WhatsApp broadcasts.")
+      >(
+        `${API_BASE}/broadcasts`,
+        undefined,
+        "Unable to load WhatsApp broadcasts."
+      )
       return payload.broadcasts
     },
 
     async getBroadcast(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ broadcast: Broadcast }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ broadcast: Broadcast }>>(
         `${API_BASE}/broadcasts/${id}`,
         undefined,
         "Unable to load WhatsApp broadcast."
@@ -771,9 +722,7 @@ export const createWhatsAppClient = () => {
     },
 
     async createBroadcast(input: CreateBroadcastInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ broadcast: Broadcast }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ broadcast: Broadcast }>>(
         `${API_BASE}/broadcasts`,
         {
           method: "POST",
@@ -786,9 +735,7 @@ export const createWhatsAppClient = () => {
     },
 
     async updateBroadcast(id: string, input: UpdateBroadcastInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ broadcast: Broadcast }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ broadcast: Broadcast }>>(
         `${API_BASE}/broadcasts/${id}`,
         {
           method: "PATCH",
@@ -809,9 +756,7 @@ export const createWhatsAppClient = () => {
     },
 
     async sendBroadcast(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ message: string }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ message: string }>>(
         `${API_BASE}/broadcasts/${id}/send`,
         { method: "POST" },
         "Unable to send WhatsApp broadcast."
@@ -822,16 +767,16 @@ export const createWhatsAppClient = () => {
     // ── Webhooks ────────────────────────────────────────────────────────
 
     async listWebhooks() {
-      const payload = await requestJson<
-        ApiSuccess<{ webhooks: Webhook[] }>
-      >(`${API_BASE}/webhooks`, undefined, "Unable to load WhatsApp webhooks.")
+      const payload = await requestJson<ApiSuccess<{ webhooks: Webhook[] }>>(
+        `${API_BASE}/webhooks`,
+        undefined,
+        "Unable to load WhatsApp webhooks."
+      )
       return payload.webhooks
     },
 
     async getWebhook(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ webhook: Webhook }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ webhook: Webhook }>>(
         `${API_BASE}/webhooks/${id}`,
         undefined,
         "Unable to load WhatsApp webhook."
@@ -840,9 +785,7 @@ export const createWhatsAppClient = () => {
     },
 
     async createWebhook(input: CreateWebhookInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ webhook: Webhook }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ webhook: Webhook }>>(
         `${API_BASE}/webhooks`,
         {
           method: "POST",
@@ -855,9 +798,7 @@ export const createWhatsAppClient = () => {
     },
 
     async updateWebhook(id: string, input: UpdateWebhookInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ webhook: Webhook }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ webhook: Webhook }>>(
         `${API_BASE}/webhooks/${id}`,
         {
           method: "PATCH",
@@ -880,16 +821,16 @@ export const createWhatsAppClient = () => {
     // ── Users ───────────────────────────────────────────────────────────
 
     async listWhatsAppUsers() {
-      const payload = await requestJson<
-        ApiSuccess<{ users: WhatsAppUser[] }>
-      >(`${API_BASE}/users`, undefined, "Unable to load WhatsApp users.")
+      const payload = await requestJson<ApiSuccess<{ users: WhatsAppUser[] }>>(
+        `${API_BASE}/users`,
+        undefined,
+        "Unable to load WhatsApp users."
+      )
       return payload.users
     },
 
     async getWhatsAppUser(id: string) {
-      const payload = await requestJson<
-        ApiSuccess<{ user: WhatsAppUser }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ user: WhatsAppUser }>>(
         `${API_BASE}/users/${id}`,
         undefined,
         "Unable to load WhatsApp user."
@@ -898,9 +839,7 @@ export const createWhatsAppClient = () => {
     },
 
     async createWhatsAppUser(input: CreateWhatsAppUserInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ user: WhatsAppUser }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ user: WhatsAppUser }>>(
         `${API_BASE}/users`,
         {
           method: "POST",
@@ -913,9 +852,7 @@ export const createWhatsAppClient = () => {
     },
 
     async updateWhatsAppUser(id: string, input: UpdateWhatsAppUserInput) {
-      const payload = await requestJson<
-        ApiSuccess<{ user: WhatsAppUser }>
-      >(
+      const payload = await requestJson<ApiSuccess<{ user: WhatsAppUser }>>(
         `${API_BASE}/users/${id}`,
         {
           method: "PATCH",

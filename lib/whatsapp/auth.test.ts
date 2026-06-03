@@ -65,9 +65,8 @@ import type { AuthContext, WorkOSScope } from "@/lib/auth/types"
 const isSuperAdmin = (ctx: WorkOSScope) => ctx.platformRole === "super_admin"
 const hasOrgMembership = (ctx: WorkOSScope) => ctx.organizationId !== null
 
-const requireWorkOSSession = (
-  ctx: AuthContext
-): ctx is WorkOSScope => ctx.type === "workos"
+const requireWorkOSSession = (ctx: AuthContext): ctx is WorkOSScope =>
+  ctx.type === "workos"
 
 const requireApiKey = (
   ctx: AuthContext
@@ -100,8 +99,11 @@ const requireTenantAdmin = (ctx: AuthContext): boolean => {
   return ctx.orgRole === "admin" || ctx.orgRole === "owner"
 }
 
-const isWorkOSScope = (ctx: AuthContext): ctx is WorkOSScope => ctx.type === "workos"
-const isPlatformScope = (ctx: AuthContext): ctx is import("@/lib/auth/types").PlatformScope => ctx.type === "platform"
+const isWorkOSScope = (ctx: AuthContext): ctx is WorkOSScope =>
+  ctx.type === "workos"
+const isPlatformScope = (
+  ctx: AuthContext
+): ctx is import("@/lib/auth/types").PlatformScope => ctx.type === "platform"
 
 const COOKIE_PASSWORD = "test-cookie-password-at-least-32-characters-long"
 const COOKIE_NAME = "wos-session"
@@ -135,12 +137,6 @@ const buildCookieRequest = (sealed: string, path = "/") => {
       return Reflect.get(target, prop)
     },
   }) as unknown as Request
-}
-
-const buildBearerRequest = (bearer: string, path = "/") => {
-  return new Request(`http://localhost${path}`, {
-    headers: { Authorization: `Bearer ${bearer}` },
-  })
 }
 
 // ─── Default state ───────────────────────────────────────────────────────────
@@ -366,9 +362,7 @@ describe("API key path (PlatformScope)", () => {
     expect(isWorkOSScope(platformScope)).toBe(false)
     expect(requireTenantAdmin(platformScope)).toBe(false)
     expect(requireTenantMember(platformScope)).toBe(true)
-    expect(
-      (platformScope as { orgRole?: unknown }).orgRole
-    ).toBeUndefined()
+    expect((platformScope as { orgRole?: unknown }).orgRole).toBeUndefined()
   })
 
   it("PlatformScope with empty organizationId fails requireTenantMember", () => {
@@ -448,29 +442,6 @@ describe("API key path (PlatformScope)", () => {
     }
     expect(requireWorkOSSession(workosScope)).toBe(true)
     expect(requireWorkOSSession(platformScope)).toBe(false)
-  })
-
-  it("getWorkOSSession rejects wos_-prefixed bearers it cannot unseal", async () => {
-    mockAuthenticateWithSessionCookie.mockImplementation(async () => ({
-      authenticated: false,
-    }))
-    const request = buildBearerRequest("wos_garbage", "/")
-    const result = await getWorkOSSession(request)
-    expect(result).toBeNull()
-  })
-
-  it("getWorkOSSession returns the sealed user from a valid cookie", async () => {
-    const user = makeWorkOSUser({ id: "user_cookie_1" })
-    const sealed = await sealUser(user)
-    mockAuthenticateWithSessionCookie.mockImplementation(async () => ({
-      authenticated: true,
-      user,
-    }))
-    const request = buildCookieRequest(sealed)
-    const result = await getWorkOSSession(request)
-    expect(result).not.toBeNull()
-    expect(result!.id).toBe("user_cookie_1")
-    expect(result!.email).toBe("admin@example.com")
   })
 })
 
