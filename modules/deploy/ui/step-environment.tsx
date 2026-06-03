@@ -22,7 +22,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Globe,
-} from "@phosphor-icons/react"
+} from "@/components/ui/phosphor-icons"
 
 type StepEnvironmentProps = {
   generatedSubdomain: string
