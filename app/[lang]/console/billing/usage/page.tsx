@@ -26,8 +26,8 @@ export default function UsagePage() {
     async function fetchData() {
       try {
         const [breakdownRes, trendRes] = await Promise.all([
-          fetch("/api/billing/usage/breakdown"),
-          fetch("/api/billing/usage/trend?days=30"),
+          fetch("/api/billing/usage/breakdown", { credentials: "include" }),
+          fetch("/api/billing/usage/trend?days=30", { credentials: "include" }),
         ])
 
         if (!breakdownRes.ok || !trendRes.ok) {

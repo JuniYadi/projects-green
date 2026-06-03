@@ -12,6 +12,13 @@ const mockCostingService = {
   getUsageBreakdown: mock(() => Promise.resolve([])),
 }
 
+const mockAuthenticate = mock(() =>
+  Promise.resolve({
+    user: { id: "user-1", email: "test@example.com" },
+    organizationId: "org-1",
+  }),
+)
+
 describe("Usage Routes", () => {
   let routes: ReturnType<typeof createUsageRoutes>
 
@@ -19,12 +26,14 @@ describe("Usage Routes", () => {
     routes = createUsageRoutes({
       usageLedgerService: mockUsageLedgerService as unknown as Parameters<typeof createUsageRoutes>[0]["usageLedgerService"],
       costingService: mockCostingService as unknown as Parameters<typeof createUsageRoutes>[0]["costingService"],
+      authenticate: mockAuthenticate,
     })
     mockUsageLedgerService.getUsageByDateRange.mockClear()
     mockUsageLedgerService.getSpendByCategory.mockClear()
     mockUsageLedgerService.getTotalSpend.mockClear()
     mockUsageLedgerService.getDailyUsageTrend.mockClear()
     mockCostingService.getUsageBreakdown.mockClear()
+    mockAuthenticate.mockClear()
   })
 
   it("should return current period usage", async () => {
@@ -104,5 +113,70 @@ describe("Usage Routes", () => {
     expect(data.success).toBe(true)
     expect(data.data.trend).toHaveLength(2)
     expect(data.data.days).toBe(7)
+  })
+
+  it("should return 401 when not authenticated", async () => {
+    mockAuthenticate.mockResolvedValueOnce({
+      user: null,
+      organizationId: null,
+    } as unknown as Awaited<ReturnType<typeof mockAuthenticate>>)
+
+    const response = await routes.handle(
+      new Request("http://localhost/usage")
+    )
+
+    expect(response.status).toBe(401)
+    const data = await response.json()
+    expect(data.success).toBe(false)
+    expect(data.error).toBe("UNAUTHORIZED")
+  })
+
+  it("should return 403 when no organization", async () => {
+    mockAuthenticate.mockResolvedValueOnce({
+      user: { id: "user-1", email: "test@example.com" },
+      organizationId: null,
+    } as unknown as Awaited<ReturnType<typeof mockAuthenticate>>)
+
+    const response = await routes.handle(
+      new Request("http://localhost/usage")
+    )
+
+    expect(response.status).toBe(403)
+    const data = await response.json()
+    expect(data.success).toBe(false)
+    expect(data.error).toBe("FORBIDDEN")
+  })
+
+  it("should return 422 for invalid date format", async () => {
+    const response = await routes.handle(
+      new Request("http://localhost/usage?from=invalid&to=2026-06-30")
+    )
+
+    expect(response.status).toBe(422)
+    const data = await response.json()
+    expect(data.success).toBe(false)
+    expect(data.error).toBe("VALIDATION_ERROR")
+  })
+
+  it("should return 422 when from date is after to date", async () => {
+    const response = await routes.handle(
+      new Request("http://localhost/usage?from=2026-06-30&to=2026-06-01")
+    )
+
+    expect(response.status).toBe(422)
+    const data = await response.json()
+    expect(data.success).toBe(false)
+    expect(data.error).toBe("VALIDATION_ERROR")
+  })
+
+  it("should return 422 for invalid days parameter", async () => {
+    const response = await routes.handle(
+      new Request("http://localhost/usage/trend?days=invalid")
+    )
+
+    expect(response.status).toBe(422)
+    const data = await response.json()
+    expect(data.success).toBe(false)
+    expect(data.error).toBe("VALIDATION_ERROR")
   })
 })

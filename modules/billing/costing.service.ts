@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client"
 import { Prisma } from "@prisma/client"
 import Decimal = Prisma.Decimal
 import { CostingResult, UsageBreakdown } from "./types"
+import { STORAGE_RATE_PER_GB_MONTH_IDR } from "./constants"
 
 export class CostingService {
   constructor(private prisma: PrismaClient) {}
@@ -64,7 +65,7 @@ export class CostingService {
 
     const cpuCost = new Decimal(subscription.pricing.unitRateCpu ?? 0).mul(params.vcpuHours)
     const memCost = new Decimal(subscription.pricing.unitRateMem ?? 0).mul(params.memoryGbHours)
-    const storageCost = new Decimal(0.26).mul(params.storageGbMonths)
+    const storageCost = new Decimal(STORAGE_RATE_PER_GB_MONTH_IDR).mul(params.storageGbMonths)
 
     const totalCost = cpuCost.plus(memCost).plus(storageCost)
 
@@ -88,30 +89,32 @@ export class CostingService {
       },
     })
 
-    const categoryMap = new Map<string, Decimal>()
+    const categoryMap = new Map<string, { totalCost: Decimal; entryCount: number }>()
 
     for (const entry of entries) {
       const category = entry.category ?? "unknown"
-      const existing = categoryMap.get(category) ?? new Decimal(0)
-      categoryMap.set(category, existing.plus(entry.amountIdr ?? 0))
+      const existing = categoryMap.get(category) ?? { totalCost: new Decimal(0), entryCount: 0 }
+      existing.totalCost = existing.totalCost.plus(entry.amountIdr ?? 0)
+      existing.entryCount += 1
+      categoryMap.set(category, existing)
     }
 
     const totalSpend = Array.from(categoryMap.values()).reduce(
-      (sum, val) => sum.plus(val),
+      (sum, val) => sum.plus(val.totalCost),
       new Decimal(0),
     )
 
     const breakdown: UsageBreakdown[] = []
 
-    for (const [category, totalCost] of categoryMap.entries()) {
+    for (const [category, data] of categoryMap.entries()) {
       const percentage = totalSpend.gt(0)
-        ? totalCost.div(totalSpend).mul(100).toNumber()
+        ? data.totalCost.div(totalSpend).mul(100).toNumber()
         : 0
 
       breakdown.push({
         category,
-        quantity: entries.filter((e) => e.category === category).length,
-        totalCost,
+        quantity: data.entryCount,
+        totalCost: data.totalCost,
         percentage,
       })
     }
