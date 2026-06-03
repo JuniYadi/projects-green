@@ -4,7 +4,7 @@ import { queryLogs } from "../../opensearch/opensearch-log.service"
 
 export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   .get(
-    "/logs/:deployId",
+    "/logs/:logKey",
     async ({ params, set }) => {
       const auth = await withAuth()
       if (!auth.user) {
@@ -22,7 +22,7 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
 
       const result = await queryLogs({
         tenantSlug: orgSlug,
-        deployId: params.deployId,
+        deployId: params.logKey,
         size: 200,
       })
 
@@ -30,7 +30,7 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
     },
     {
       params: t.Object({
-        deployId: t.String(),
+        logKey: t.String(),
       }),
     }
   )

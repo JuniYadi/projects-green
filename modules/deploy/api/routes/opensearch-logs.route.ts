@@ -22,8 +22,9 @@ function isValidISODate(str: string | undefined): string | undefined {
 
 export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
   .get(
-    "/logs/:tenantSlug/search",
+    "/logs/:logKey/search",
     async ({ params, query, set }) => {
+      const tenantSlug = params.logKey
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
@@ -38,14 +39,14 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
 
       if (platformRole !== "super_admin") {
         const userMeta = (auth.user as unknown as { metadata?: Record<string, string> })?.metadata
-        if (!userMeta?.orgSlug || userMeta.orgSlug !== params.tenantSlug) {
+        if (!userMeta?.orgSlug || userMeta.orgSlug !== tenantSlug) {
           set.status = 403
           return { ok: false, error: "FORBIDDEN", message: "Access denied" }
         }
       }
 
       const result = await queryLogs({
-        tenantSlug: params.tenantSlug,
+        tenantSlug,
         query: query.q as string | undefined,
         level: query.level as LogLevel | undefined,
         stackId: query.stackId as string | undefined,
@@ -59,7 +60,7 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
       return { ok: true, data: result }
     },
     {
-      params: t.Object({ tenantSlug: t.String() }),
+      params: t.Object({ logKey: t.String() }),
       query: t.Optional(
         t.Object({
           q: t.Optional(t.String()),
@@ -75,8 +76,9 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
     }
   )
   .get(
-    "/logs/:tenantSlug/aggregation",
+    "/logs/:logKey/aggregation",
     async ({ params, query, set }) => {
+      const tenantSlug = params.logKey
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
@@ -91,14 +93,14 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
 
       if (platformRole !== "super_admin") {
         const userMeta = (auth.user as unknown as { metadata?: Record<string, string> })?.metadata
-        if (!userMeta?.orgSlug || userMeta.orgSlug !== params.tenantSlug) {
+        if (!userMeta?.orgSlug || userMeta.orgSlug !== tenantSlug) {
           set.status = 403
           return { ok: false, error: "FORBIDDEN", message: "Access denied" }
         }
       }
 
       const result = await getDeployAggregation(
-        params.tenantSlug,
+        tenantSlug,
         isValidISODate(query.from as string | undefined),
         isValidISODate(query.to as string | undefined)
       )
@@ -106,7 +108,7 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
       return { ok: true, data: result }
     },
     {
-      params: t.Object({ tenantSlug: t.String() }),
+      params: t.Object({ logKey: t.String() }),
       query: t.Optional(
         t.Object({
           from: t.Optional(t.String()),
