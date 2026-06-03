@@ -22,7 +22,9 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@prisma/client": ["./prisma/generated/client"],
+      "@prisma/client/*": ["./prisma/generated/client/*"]
     }
   },
   "include": [
