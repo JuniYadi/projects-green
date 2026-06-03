@@ -1,8 +1,12 @@
 import { Elysia } from "elysia"
 
+import { deployPipelineRoutes } from "@/modules/deploy/api/routes/deploy-pipeline.route"
+import { deployTriggerRoutes } from "@/modules/deploy/api/routes/deploy-trigger.route"
 import { environmentVariablesRoutes } from "@/modules/deploy/api/routes/environment-variables.route"
 import { monitoringRoutes } from "@/modules/deploy/api/routes/monitoring.route"
 
 export const deployRoutes = new Elysia()
+  .use(deployTriggerRoutes)
+  .use(deployPipelineRoutes)
   .use(environmentVariablesRoutes)
   .use(monitoringRoutes)

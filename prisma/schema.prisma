@@ -126,6 +126,129 @@ model GithubRepositoryConnection {
   @@unique([githubRepositoryId, installationId])
   @@index([installationId])
   @@index([fullName])
+
+  stacks ApplicationStack[]
+}
+
+enum StackStatus {
+  IDLE
+  QUEUED
+  BUILDING
+  DEPLOYING
+  RUNNING
+  FAILED
+}
+
+enum DeploySource {
+  GITHUB
+  TEMPLATE
+  MANUAL
+}
+
+model ApplicationStack {
+  id                     String         @id @default(cuid())
+  organizationId         String
+  name                   String
+  slug                   String
+  status                 StackStatus    @default(IDLE)
+  sourceType             DeploySource   @default(GITHUB)
+  repositoryConnectionId String?
+  branchName             String         @default("main")
+  rootDirectory          String         @default("/")
+  framework              String?
+  buildCommand           String?
+  dockerfileDetected     Boolean        @default(false)
+  resourcePlanId         String?
+  cpu                    Int?
+  memory                 Int?
+  customDomain           String?
+  subdomain              String?
+  envVarsJson            Json           @default("[]")
+  lastDeployedAt         DateTime?
+  lastDeployStatus       StackStatus?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  deployments          Deployment[]
+  repositoryConnection GithubRepositoryConnection? @relation(fields: [repositoryConnectionId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([repositoryConnectionId])
+  @@index([status])
+}
+
+model Deployment {
+  id               String       @id @default(cuid())
+  stackId          String
+  organizationId   String
+  status           StackStatus  @default(QUEUED)
+  triggerType      DeploySource @default(MANUAL)
+  commitSha        String?
+  commitMessage    String?
+  commitAuthor     String?
+  branchName       String       @default("main")
+  manifestPushed   Boolean      @default(false)
+  manifestPushedAt DateTime?
+  argocdSynced     Boolean      @default(false)
+  argocdSyncedAt   DateTime?
+  startedAt        DateTime     @default(now())
+  completedAt      DateTime?
+  failureReason    String?
+  rollbackOfId     String?
+  attempt          Int          @default(1)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  stack  ApplicationStack @relation(fields: [stackId], references: [id], onDelete: Cascade)
+  events DeployEvent[]
+  logs   DeploymentLog[]
+
+  @@index([stackId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum DeployEventType {
+  QUEUED
+  BUILD_STARTED
+  MANIFEST_PUSHED
+  ARGOCD_SYNC_STARTED
+  ARGOCD_SYNCED
+  DEPLOY_COMPLETED
+  DEPLOY_FAILED
+  ROLLBACK_STARTED
+  ROLLBACK_COMPLETED
+}
+
+model DeployEvent {
+  id           String           @id @default(cuid())
+  deploymentId String
+  type         DeployEventType
+  message      String?
+  metadataJson Json?
+  createdAt    DateTime         @default(now())
+
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  @@index([deploymentId])
+  @@index([type])
+  @@index([createdAt(sort: Desc)])
+}
+
+model DeploymentLog {
+  id           String   @id @default(cuid())
+  deploymentId String
+  scope        String   @default("runtime")
+  status       String
+  message      String
+  timestamp    DateTime @default(now())
+
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  @@index([deploymentId])
+  @@index([timestamp(sort: Desc)])
 }
 
 model GithubWebhookEvent {
