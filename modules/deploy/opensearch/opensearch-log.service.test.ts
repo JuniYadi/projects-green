@@ -19,6 +19,9 @@ const mockClient = {
       },
     })
   ),
+  indices: {
+    exists: mock(() => Promise.resolve({ body: true })),
+  },
 }
 
 mock.module("@/lib/opensearch", () => ({
@@ -39,6 +42,7 @@ describe("OpenSearch Log Service", () => {
     mockClient.index.mockClear()
     mockClient.search.mockClear()
     mockClient.bulk.mockClear()
+    mockClient.indices.exists.mockClear()
   })
 
   it("indexes a log entry", async () => {
@@ -90,6 +94,30 @@ describe("OpenSearch Log Service", () => {
     })
     expect(result.hits).toEqual([])
     expect(result.total).toBe(0)
+  })
+
+  it("returns empty result when index does not exist", async () => {
+    mockClient.indices.exists.mockResolvedValueOnce({ body: false })
+
+    const result = await queryLogs({
+      tenantSlug: "nonexistent",
+      size: 10,
+    })
+    expect(result.hits).toEqual([])
+    expect(result.total).toBe(0)
+    expect(result.took).toBe(0)
+  })
+
+  it("returns empty result when search throws an error", async () => {
+    mockClient.search.mockRejectedValueOnce(new Error("Connection refused"))
+
+    const result = await queryLogs({
+      tenantSlug: "test",
+      size: 10,
+    })
+    expect(result.hits).toEqual([])
+    expect(result.total).toBe(0)
+    expect(result.took).toBe(0)
   })
 
   it("returns deployment aggregations", async () => {
