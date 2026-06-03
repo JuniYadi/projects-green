@@ -303,6 +303,8 @@ export const createSupportTicketRoutes = (
           dependencies.emailService.sendTicketCreated(ticket, requesterEmail).catch((err) => {
             console.error("[Support Ticket] Failed to send ticket created email:", err)
           })
+        } else {
+          console.warn("[Support Ticket] No requester email available for ticket created notification:", ticket.id)
         }
 
         return {
@@ -477,6 +479,8 @@ export const createSupportTicketRoutes = (
                 dependencies.emailService.sendTicketReplied(thread.ticket, reply, requesterEmail).catch((err) => {
                   console.error("[Support Ticket] Failed to send ticket replied email:", err)
                 })
+              } else {
+                console.warn("[Support Ticket] Could not resolve requester email for reply notification:", thread.ticket.id)
               }
             })
             .catch((err) => {
@@ -511,6 +515,8 @@ export const createSupportTicketRoutes = (
               dependencies.emailService.sendTicketClosed(ticket, requesterEmail).catch((err) => {
                 console.error("[Support Ticket] Failed to send ticket closed email:", err)
               })
+            } else {
+              console.warn("[Support Ticket] Could not resolve requester email for close notification:", ticket.id)
             }
           })
           .catch((err) => {
