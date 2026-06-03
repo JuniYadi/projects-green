@@ -3,6 +3,8 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
 import { triggerDeploy } from "../../deploy-pipeline.service"
 import { rollbackDeployment, getRollbackOptions } from "../../deploy-rollback.service"
+import { resolveTenantRoleFromClaims, hasScopedSuperAdminClaim } from "@/modules/tenants/tenant-policy"
+import { getPlatformRoleForUser } from "@/lib/platform-role"
 
 export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
   .post(
@@ -12,6 +14,22 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
       if (!auth.user) {
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Organization required" }
+      }
+
+      // Check deploy permissions
+      const platformRole = await getPlatformRoleForUser(auth.user)
+      const isSuperAdmin = platformRole === "super_admin" || hasScopedSuperAdminClaim(auth.role ?? null, auth.roles ?? null)
+      if (!isSuperAdmin) {
+        const tenantRole = resolveTenantRoleFromClaims(auth.role ?? null, auth.roles ?? null)
+        if (tenantRole !== "owner" && tenantRole !== "admin") {
+          set.status = 403
+          return { ok: false, error: "FORBIDDEN", message: "Admin/Owner role required for deploy operations" }
+        }
       }
 
       const stack = await prisma.applicationStack.findUnique({
@@ -48,6 +66,22 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
       if (!auth.user) {
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Organization required" }
+      }
+
+      // Check deploy permissions
+      const platformRole = await getPlatformRoleForUser(auth.user)
+      const isSuperAdmin = platformRole === "super_admin" || hasScopedSuperAdminClaim(auth.role ?? null, auth.roles ?? null)
+      if (!isSuperAdmin) {
+        const tenantRole = resolveTenantRoleFromClaims(auth.role ?? null, auth.roles ?? null)
+        if (tenantRole !== "owner" && tenantRole !== "admin") {
+          set.status = 403
+          return { ok: false, error: "FORBIDDEN", message: "Admin/Owner role required for deploy operations" }
+        }
       }
 
       const stack = await prisma.applicationStack.findUnique({

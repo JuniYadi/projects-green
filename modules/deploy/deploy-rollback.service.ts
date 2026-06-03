@@ -1,54 +1,66 @@
 import { prisma } from "@/lib/prisma"
-import { recordDeployEvent } from "./deploy-event.service"
 
 export async function rollbackDeployment(params: {
   stackId: string
   targetDeploymentId: string
 }) {
-  const targetDeployment = await prisma.deployment.findUniqueOrThrow({
-    where: { id: params.targetDeploymentId },
-  })
+  // Wrap in transaction for atomicity
+  const rollbackDeployment = await prisma.$transaction(async (tx) => {
+    const targetDeployment = await tx.deployment.findUniqueOrThrow({
+      where: { id: params.targetDeploymentId },
+    })
 
-  if (targetDeployment.stackId !== params.stackId) {
-    throw new Error("Target deployment does not belong to this stack")
-  }
+    if (targetDeployment.stackId !== params.stackId) {
+      throw new Error("Target deployment does not belong to this stack")
+    }
 
-  if (targetDeployment.status !== "RUNNING") {
-    throw new Error("Can only rollback to a successful deployment")
-  }
+    if (targetDeployment.status !== "RUNNING") {
+      throw new Error("Can only rollback to a successful deployment")
+    }
 
-  const currentStack = await prisma.applicationStack.findUniqueOrThrow({
-    where: { id: params.stackId },
-  })
+    const currentStack = await tx.applicationStack.findUniqueOrThrow({
+      where: { id: params.stackId },
+    })
 
-  // Create rollback deployment
-  const rollbackDeployment = await prisma.deployment.create({
-    data: {
-      stackId: params.stackId,
-      organizationId: currentStack.organizationId,
-      status: "QUEUED",
-      triggerType: "MANUAL",
-      commitSha: targetDeployment.commitSha,
-      commitMessage: `Rollback to deployment ${targetDeployment.id}`,
-      commitAuthor: "system",
-      branchName: targetDeployment.branchName,
-      rollbackOfId: targetDeployment.id,
-    },
-  })
+    // Count previous non-rollback deployments to set attempt number
+    const previousAttempts = await tx.deployment.count({
+      where: { stackId: params.stackId, rollbackOfId: null },
+    })
 
-  await recordDeployEvent({
-    deploymentId: rollbackDeployment.id,
-    type: "ROLLBACK_STARTED",
-    message: `Rolling back to deployment ${targetDeployment.id}`,
-    metadata: {
-      targetDeploymentId: targetDeployment.id,
-      targetCommitSha: targetDeployment.commitSha,
-    },
-  })
+    // Create rollback deployment
+    const rollback = await tx.deployment.create({
+      data: {
+        stackId: params.stackId,
+        organizationId: currentStack.organizationId,
+        status: "QUEUED",
+        triggerType: "MANUAL",
+        commitSha: targetDeployment.commitSha,
+        commitMessage: `Rollback to deployment ${targetDeployment.id}`,
+        commitAuthor: "system",
+        branchName: targetDeployment.branchName,
+        rollbackOfId: targetDeployment.id,
+        attempt: previousAttempts + 1,
+      },
+    })
 
-  await prisma.applicationStack.update({
-    where: { id: params.stackId },
-    data: { status: "QUEUED" },
+    await tx.deployEvent.create({
+      data: {
+        deploymentId: rollback.id,
+        type: "ROLLBACK_STARTED",
+        message: `Rolling back to deployment ${targetDeployment.id}`,
+        metadataJson: {
+          targetDeploymentId: targetDeployment.id,
+          targetCommitSha: targetDeployment.commitSha,
+        },
+      },
+    })
+
+    await tx.applicationStack.update({
+      where: { id: params.stackId },
+      data: { status: "QUEUED" },
+    })
+
+    return rollback
   })
 
   return { deploymentId: rollbackDeployment.id, status: "QUEUED" as const }

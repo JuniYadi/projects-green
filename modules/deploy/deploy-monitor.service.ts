@@ -1,6 +1,16 @@
 import { prisma } from "@/lib/prisma"
 import { recordDeployEvent, recordDeployLog } from "./deploy-event.service"
 
+const BATCH_SIZE = 10
+
+async function chunkArray<T>(array: T[], size: number): Promise<T[][]> {
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size))
+  }
+  return chunks
+}
+
 export async function monitorActiveDeployments() {
   const activeDeployments = await prisma.deployment.findMany({
     where: {
@@ -11,33 +21,42 @@ export async function monitorActiveDeployments() {
   })
 
   const results = []
+  const batches = await chunkArray(activeDeployments, BATCH_SIZE)
 
-  for (const deployment of activeDeployments) {
-    try {
-      const result = await checkDeploymentStatus(deployment)
-      results.push(result)
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : "Monitor error"
-      console.error(
-        `[deploy-monitor] failed to check deployment ${deployment.id}:`,
-        reason
-      )
+  for (const batch of batches) {
+    const batchResults = await Promise.allSettled(
+      batch.map((deployment) => checkDeploymentStatus(deployment))
+    )
 
-      await prisma.deployment.update({
-        where: { id: deployment.id },
-        data: { status: "FAILED", failureReason: reason, completedAt: new Date() },
-      })
+    for (let i = 0; i < batch.length; i++) {
+      const result = batchResults[i]
+      if (result.status === "rejected") {
+        const deployment = batch[i]
+        const reason = result.reason instanceof Error ? result.reason.message : "Monitor error"
+        console.error(
+          `[deploy-monitor] failed to check deployment ${deployment.id}:`,
+          reason
+        )
 
-      await recordDeployEvent({
-        deploymentId: deployment.id,
-        type: "DEPLOY_FAILED",
-        message: `Monitor detected failure: ${reason}`,
-      })
+        await prisma.deployment.update({
+          where: { id: deployment.id },
+          data: { status: "FAILED", failureReason: reason, completedAt: new Date() },
+        })
 
-      await prisma.applicationStack.update({
-        where: { id: deployment.stackId },
-        data: { status: "FAILED", lastDeployStatus: "FAILED" },
-      })
+        await recordDeployEvent({
+          deploymentId: deployment.id,
+          type: "DEPLOY_FAILED",
+          message: `Monitor detected failure: ${reason}`,
+        })
+
+        // Only update lastDeployStatus, not the full status - stack can still accept new deploys
+        await prisma.applicationStack.update({
+          where: { id: deployment.stackId },
+          data: { lastDeployStatus: "FAILED" },
+        })
+      } else {
+        results.push(result.value)
+      }
     }
   }
 

@@ -33,6 +33,8 @@ export const deployPipelineRoutes = new Elysia({ prefix: "/deploy" })
         ok: true,
         data: {
           id: deployment.id,
+          stackName: deployment.stack.name,
+          stackSlug: deployment.stack.slug,
           status: deployment.status,
           manifestPushed: deployment.manifestPushed,
           manifestPushedAt: deployment.manifestPushedAt,

@@ -31,10 +31,12 @@ const mockPrisma = {
     findUniqueOrThrow: mock(() => Promise.resolve(mockTargetDeployment)),
     create: mock(() => Promise.resolve(mockRollbackDeployment)),
     findMany: mock(() => Promise.resolve([mockTargetDeployment])),
+    count: mock(() => Promise.resolve(0)),
   },
   deployEvent: {
     create: mock(() => Promise.resolve({ id: "evt-1" })),
   },
+  $transaction: mock((fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
 }
 
 mock.module("@/lib/prisma", () => ({
@@ -49,6 +51,7 @@ describe("deploy-rollback.service", () => {
   beforeEach(() => {
     mockPrisma.deployment.create.mockClear()
     mockPrisma.deployEvent.create.mockClear()
+    mockPrisma.$transaction.mockClear()
   })
 
   it("rollbackDeployment creates rollback deployment", async () => {
@@ -59,6 +62,7 @@ describe("deploy-rollback.service", () => {
 
     expect(result).toHaveProperty("deploymentId")
     expect(result.status).toBe("QUEUED")
+    expect(mockPrisma.$transaction).toHaveBeenCalled()
     expect(mockPrisma.deployment.create).toHaveBeenCalled()
     expect(mockPrisma.deployEvent.create).toHaveBeenCalled()
   })

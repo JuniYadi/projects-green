@@ -44,6 +44,7 @@ const mockPrisma = {
     findUniqueOrThrow: mock(() => Promise.resolve(mockDeployment)),
     findUnique: mock(() => Promise.resolve(mockDeployment)),
     update: mock(() => Promise.resolve(mockDeployment)),
+    count: mock(() => Promise.resolve(0)),
   },
   deployEvent: {
     create: mock(() => Promise.resolve({ id: "evt-1" })),
@@ -53,6 +54,7 @@ const mockPrisma = {
     create: mock(() => Promise.resolve({ id: "log-1" })),
     findMany: mock(() => Promise.resolve([])),
   },
+  $transaction: mock((fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
 }
 
 mock.module("@/lib/prisma", () => ({
@@ -66,6 +68,8 @@ describe("deploy-pipeline.service", () => {
     mockPrisma.applicationStack.findUniqueOrThrow.mockClear()
     mockPrisma.deployment.create.mockClear()
     mockPrisma.deployEvent.create.mockClear()
+    mockPrisma.deployment.count.mockClear()
+    mockPrisma.$transaction.mockClear()
   })
 
   it("triggerDeploy creates deployment and records event", async () => {
@@ -76,6 +80,7 @@ describe("deploy-pipeline.service", () => {
 
     expect(result).toHaveProperty("deploymentId")
     expect(result.status).toBe("QUEUED")
+    expect(mockPrisma.$transaction).toHaveBeenCalled()
     expect(mockPrisma.deployment.create).toHaveBeenCalled()
     expect(mockPrisma.deployEvent.create).toHaveBeenCalled()
   })
