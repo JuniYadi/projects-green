@@ -7,7 +7,7 @@ export function createUsageRoutes(services: {
   costingService: CostingService
 }) {
   return new Elysia({ prefix: "/usage" })
-    .get("/", async ({ query, set }) => {
+    .get("/", async ({ query }) => {
       const { from, to } = query as { from?: string; to?: string }
 
       const now = new Date()
@@ -49,7 +49,7 @@ export function createUsageRoutes(services: {
         },
       }
     })
-    .get("/breakdown", async ({ set }) => {
+    .get("/breakdown", async () => {
       const now = new Date()
       const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
@@ -66,7 +66,7 @@ export function createUsageRoutes(services: {
         },
       }
     })
-    .get("/trend", async ({ query, set }) => {
+    .get("/trend", async ({ query }) => {
       const { days } = query as { days?: string }
       const daysNum = days ? parseInt(days, 10) : 30
 
