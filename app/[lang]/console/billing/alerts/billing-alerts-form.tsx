@@ -39,8 +39,8 @@ function loadPreferences(): AlertPreferences {
     if (stored) {
       return { ...defaultPreferences, ...JSON.parse(stored) }
     }
-  } catch {
-    // Ignore parse errors
+  } catch (e) {
+    console.warn("Failed to parse stored alert preferences:", e)
   }
   return defaultPreferences
 }
@@ -232,6 +232,13 @@ export function BillingAlertsForm() {
           </p>
         )}
       </div>
+
+      {/* localStorage notice */}
+      <p className="text-xs text-muted-foreground">
+        Alert preferences are stored locally in your browser. They will not
+        persist across devices and will be lost if you clear browser data. Backend
+        integration for server-side persistence is planned.
+      </p>
     </div>
   )
 }

@@ -76,7 +76,7 @@ export default function UsagePage() {
     async function fetchData() {
       try {
         const [summaryRes, trendRes] = await Promise.all([
-          fetch("/api/billing/usage", { credentials: "include" }),
+          fetch("/api/billing/usage/breakdown", { credentials: "include" }),
           fetch("/api/billing/usage/trend?days=30", { credentials: "include" }),
         ])
 
@@ -318,85 +318,16 @@ export default function UsagePage() {
         </Card>
       </div>
 
-      {/* Quota Usage Section */}
+      {/* Quota Usage — pending backend support */}
       <Card>
         <CardHeader>
           <CardTitle>Quota Usage</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Daily Message Limit
-                </span>
-                <span className="font-medium">850 / 1,000</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-yellow-500 transition-all"
-                  style={{ width: "85%" }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                85% used — 150 messages remaining today
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Monthly API Calls
-                </span>
-                <span className="font-medium">12,450 / 50,000</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-green-500 transition-all"
-                  style={{ width: "24.9%" }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                24.9% used — 37,550 calls remaining
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Storage Allocation
-                </span>
-                <span className="font-medium">2.1 GB / 5 GB</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-blue-500 transition-all"
-                  style={{ width: "42%" }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                42% used — 2.9 GB remaining
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Active Device Slots
-                </span>
-                <span className="font-medium">3 / 10</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-purple-500 transition-all"
-                  style={{ width: "30%" }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                30% used — 7 slots available
-              </p>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Quota usage data will be available here once the backend quota
+            tracking system is implemented.
+          </p>
         </CardContent>
       </Card>
     </main>

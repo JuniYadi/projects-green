@@ -15,7 +15,7 @@ type RouteSet = {
 function toUnauthorized(set: RouteSet) {
   set.status = 401
   return {
-    success: false as const,
+    ok: false as const,
     error: "UNAUTHORIZED" as const,
     message: "You must be signed in to access payment methods.",
   }
@@ -24,7 +24,7 @@ function toUnauthorized(set: RouteSet) {
 function toForbidden(set: RouteSet, message: string) {
   set.status = 403
   return {
-    success: false as const,
+    ok: false as const,
     error: "FORBIDDEN" as const,
     message,
   }
@@ -33,7 +33,7 @@ function toForbidden(set: RouteSet, message: string) {
 function toValidationError(set: RouteSet, message: string) {
   set.status = 422
   return {
-    success: false as const,
+    ok: false as const,
     error: "VALIDATION_ERROR" as const,
     message,
   }
@@ -42,7 +42,7 @@ function toValidationError(set: RouteSet, message: string) {
 function toNotFoundError(set: RouteSet) {
   set.status = 404
   return {
-    success: false as const,
+    ok: false as const,
     error: "NOT_FOUND" as const,
     message: "Payment method not found.",
   }
@@ -63,13 +63,12 @@ export function createUserBankAccountRoutes() {
         return toForbidden(set, "No active organization found.")
       }
 
+      // Bank accounts are global resources — all authenticated org members can view active ones
       const accounts = await bankAccountService.getActiveAccounts()
 
       return {
-        success: true,
-        data: {
-          accounts,
-        },
+        ok: true,
+        accounts,
       }
     })
     .patch("/:id/default", async ({ params, set }) => {
@@ -93,10 +92,8 @@ export function createUserBankAccountRoutes() {
       })
 
       return {
-        success: true,
-        data: {
-          account: updated,
-        },
+        ok: true,
+        account: updated,
       }
     })
     .delete("/:id", async ({ params, set }) => {
@@ -125,10 +122,8 @@ export function createUserBankAccountRoutes() {
       await bankAccountService.toggle(params.id)
 
       return {
-        success: true,
-        data: {
-          message: "Payment method removed successfully.",
-        },
+        ok: true,
+        message: "Payment method removed successfully.",
       }
     })
 }

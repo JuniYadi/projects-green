@@ -53,7 +53,7 @@ function getNextBillingDate(
   const dates = subscriptions.subscriptions
     .map((s) => s.currentPeriodEnd)
     .filter((d): d is string => d !== null)
-    .sort()
+    .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
 
   return dates.length > 0 ? dates[0] : null
 }
