@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { BankAccountService } from "../services/bank-account.service"
+import { getPlatformRoleForUser } from "@/lib/platform-role"
 
 type BankAuthContext = {
   organizationId?: string | null
@@ -63,7 +64,7 @@ export function createUserBankAccountRoutes() {
         return toForbidden(set, "No active organization found.")
       }
 
-      // Bank accounts are global resources — all authenticated org members can view active ones
+      // Bank accounts are platform-level payment configuration
       const accounts = await bankAccountService.getActiveAccounts()
 
       return {
@@ -76,6 +77,12 @@ export function createUserBankAccountRoutes() {
 
       if (!auth.user) {
         return toUnauthorized(set)
+      }
+
+      // Bank account modification is restricted to platform super admins
+      const platformRole = await getPlatformRoleForUser(auth.user)
+      if (platformRole !== "super_admin") {
+        return toForbidden(set, "Admin access required to modify payment methods.")
       }
 
       if (!auth.organizationId) {
@@ -103,6 +110,12 @@ export function createUserBankAccountRoutes() {
         return toUnauthorized(set)
       }
 
+      // Bank account modification is restricted to platform super admins
+      const platformRole = await getPlatformRoleForUser(auth.user)
+      if (platformRole !== "super_admin") {
+        return toForbidden(set, "Admin access required to modify payment methods.")
+      }
+
       if (!auth.organizationId) {
         return toForbidden(set, "No active organization found.")
       }
@@ -119,7 +132,7 @@ export function createUserBankAccountRoutes() {
         )
       }
 
-      await bankAccountService.toggle(params.id)
+      await bankAccountService.update(params.id, { isActive: false })
 
       return {
         ok: true,
