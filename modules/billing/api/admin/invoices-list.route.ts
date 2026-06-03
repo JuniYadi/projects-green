@@ -72,7 +72,7 @@ function formatInvoiceResponse(invoice: {
   dueAt: Date | null
   paidAt: Date | null
   createdAt: Date
-  billingAccount: { organizationId: string | null }
+  billingAccount: { organizationId: string | null } | null
 }) {
   return {
     id: invoice.id,
@@ -87,7 +87,7 @@ function formatInvoiceResponse(invoice: {
     dueAt: invoice.dueAt?.toISOString() ?? null,
     paidAt: invoice.paidAt?.toISOString() ?? null,
     createdAt: invoice.createdAt.toISOString(),
-    organizationId: invoice.billingAccount.organizationId,
+    organizationId: invoice.billingAccount?.organizationId ?? null,
   }
 }
 
