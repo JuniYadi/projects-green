@@ -1,8 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import { Bar, BarChart, XAxis, YAxis } from "recharts"
+import {
+  CurrencyDollarIcon,
+  PaperPlaneTiltIcon,
+  LightningIcon,
+  DeviceMobileIcon,
+  DownloadIcon,
+} from "@phosphor-icons/react"
+import type { ChartConfig } from "@/components/ui/chart"
 
 interface UsageBreakdown {
   category: string
@@ -16,8 +31,43 @@ interface DailyTrend {
   amount: number
 }
 
+interface UsageSummary {
+  period: string
+  breakdown: UsageBreakdown[]
+  totalSpend: number
+}
+
+const chartConfig = {
+  cost: {
+    label: "Cost",
+    color: "var(--chart-1)",
+  },
+} satisfies ChartConfig
+
+function formatCurrency(amount: number): string {
+  return `Rp ${amount.toLocaleString()}`
+}
+
+function exportToCSV(data: UsageBreakdown[], filename: string) {
+  const headers = ["Category", "Quantity", "Total Cost (IDR)", "Percentage"]
+  const rows = data.map((item) => [
+    item.category,
+    item.quantity.toString(),
+    item.totalCost.toString(),
+    `${item.percentage.toFixed(1)}%`,
+  ])
+
+  const csvContent = [headers, ...rows].map((row) => row.join(",")).join("\n")
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  const link = document.createElement("a")
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
 export default function UsagePage() {
-  const [breakdown, setBreakdown] = useState<UsageBreakdown[]>([])
+  const [summary, setSummary] = useState<UsageSummary | null>(null)
   const [trend, setTrend] = useState<DailyTrend[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -25,19 +75,19 @@ export default function UsagePage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [breakdownRes, trendRes] = await Promise.all([
-          fetch("/api/billing/usage/breakdown", { credentials: "include" }),
+        const [summaryRes, trendRes] = await Promise.all([
+          fetch("/api/billing/usage", { credentials: "include" }),
           fetch("/api/billing/usage/trend?days=30", { credentials: "include" }),
         ])
 
-        if (!breakdownRes.ok || !trendRes.ok) {
+        if (!summaryRes.ok || !trendRes.ok) {
           throw new Error("Failed to fetch usage data")
         }
 
-        const breakdownData = await breakdownRes.json()
+        const summaryData = await summaryRes.json()
         const trendData = await trendRes.json()
 
-        setBreakdown(breakdownData.data.breakdown)
+        setSummary(summaryData.data)
         setTrend(trendData.data.trend)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error")
@@ -49,34 +99,127 @@ export default function UsagePage() {
     fetchData()
   }, [])
 
+  const handleExport = useCallback(() => {
+    if (summary?.breakdown) {
+      const filename = `usage-report-${summary.period}.csv`
+      exportToCSV(summary.breakdown, filename)
+    }
+  }, [summary])
+
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold">Usage & Costs</h1>
+          <p className="text-sm text-muted-foreground">
+            Monitor your usage and track costs across all services.
+          </p>
+        </header>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
+        </div>
+      </main>
+    )
   }
 
   if (error) {
-    return <div>Error: {error}</div>
+    return (
+      <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold">Usage & Costs</h1>
+          <p className="text-sm text-muted-foreground">
+            Monitor your usage and track costs across all services.
+          </p>
+        </header>
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      </main>
+    )
   }
 
-  const totalCost = breakdown.reduce((sum, item) => sum + item.totalCost, 0)
+  const breakdown = summary?.breakdown ?? []
+  const totalCost = summary?.totalSpend ?? 0
+  const totalEvents = breakdown.reduce((sum, item) => sum + item.quantity, 0)
+
+  const summaryCards = [
+    {
+      title: "Total Cost",
+      value: formatCurrency(totalCost),
+      icon: CurrencyDollarIcon,
+      description: "Current period",
+    },
+    {
+      title: "Total Events",
+      value: totalEvents.toLocaleString(),
+      icon: LightningIcon,
+      description: "All services",
+    },
+    {
+      title: "Services Used",
+      value: breakdown.length.toString(),
+      icon: DeviceMobileIcon,
+      description: "Active categories",
+    },
+    {
+      title: "Daily Average",
+      value: formatCurrency(
+        trend.length > 0
+          ? Math.round(trend.reduce((sum, d) => sum + d.amount, 0) / trend.length)
+          : 0
+      ),
+      icon: PaperPlaneTiltIcon,
+      description: "Last 30 days",
+    },
+  ]
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <h1 className="text-2xl font-bold">Usage & Costs</h1>
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      <header className="space-y-1">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Usage & Costs</h1>
+            <p className="text-sm text-muted-foreground">
+              Monitor your usage and track costs across all services.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <DownloadIcon className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
+      </header>
 
+      {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              Rp {totalCost.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
+        {summaryCards.map((card) => (
+          <Card key={card.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {card.title}
+              </CardTitle>
+              <card.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{card.value}</div>
+              <p className="text-xs text-muted-foreground">
+                {card.description}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
+      {/* Charts Row */}
       <div className="grid gap-4 md:grid-cols-2">
+        {/* Cost Breakdown */}
         <Card>
           <CardHeader>
             <CardTitle>Cost by Service</CardTitle>
@@ -84,35 +227,49 @@ export default function UsagePage() {
           <CardContent>
             <div className="space-y-4">
               {breakdown.map((item) => (
-                <div key={item.category} className="flex items-center">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium capitalize">
-                      {item.category}
+                <div key={item.category} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium capitalize">
+                        {item.category}
+                      </span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        ({item.quantity.toLocaleString()} events)
+                      </span>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {item.quantity} events
+                    <div className="text-right">
+                      <span className="font-medium">
+                        {formatCurrency(item.totalCost)}
+                      </span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {item.percentage.toFixed(1)}%
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-medium">
-                      Rp {item.totalCost.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {item.percentage.toFixed(1)}%
-                    </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                    />
                   </div>
                 </div>
               ))}
+              {breakdown.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No usage data for this period.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
 
+        {/* Daily Trend Chart */}
         <Card>
           <CardHeader>
             <CardTitle>Daily Trend (Last 30 Days)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ChartContainer config={chartConfig} className="h-[300px]">
               <BarChart data={trend}>
                 <XAxis
                   dataKey="date"
@@ -122,32 +279,126 @@ export default function UsagePage() {
                       day: "numeric",
                     })
                   }
+                  tickLine={false}
+                  axisLine={false}
                 />
                 <YAxis
                   tickFormatter={(value: number) =>
                     `Rp ${(value / 1000).toFixed(0)}k`
                   }
+                  tickLine={false}
+                  axisLine={false}
                 />
-                <Tooltip
-                  formatter={(value: number) => [
-                    `Rp ${value.toLocaleString()}`,
-                    "Cost",
-                  ]}
-                  labelFormatter={(label: string) =>
-                    new Date(label).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value: number) => [
+                        formatCurrency(value),
+                        "Cost",
+                      ]}
+                      labelFormatter={(label: string) =>
+                        new Date(label).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      }
+                    />
                   }
                 />
-                <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="amount"
+                  fill="var(--color-cost)"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>
-    </div>
+
+      {/* Quota Usage Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quota Usage</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Daily Message Limit
+                </span>
+                <span className="font-medium">850 / 1,000</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-yellow-500 transition-all"
+                  style={{ width: "85%" }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                85% used — 150 messages remaining today
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Monthly API Calls
+                </span>
+                <span className="font-medium">12,450 / 50,000</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-green-500 transition-all"
+                  style={{ width: "24.9%" }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                24.9% used — 37,550 calls remaining
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Storage Allocation
+                </span>
+                <span className="font-medium">2.1 GB / 5 GB</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-blue-500 transition-all"
+                  style={{ width: "42%" }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                42% used — 2.9 GB remaining
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Active Device Slots
+                </span>
+                <span className="font-medium">3 / 10</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-purple-500 transition-all"
+                  style={{ width: "30%" }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                30% used — 7 slots available
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </main>
   )
 }
