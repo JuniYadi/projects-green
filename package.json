@@ -29,7 +29,8 @@
     "bootstrap:super-admin": "bun run scripts/bootstrap-super-admin.ts",
     "test:auth:cookie": "bun run scripts/test-api-auth-cookie.ts",
     "test:auth:static-key": "bun run scripts/test-api-auth-static-key.ts",
-    "create:api-key": "bun run scripts/create-api-key.ts"
+    "create:api-key": "bun run scripts/create-api-key.ts",
+    "worker:opensearch-ingest": "bun run scripts/opensearch-ingest-worker.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.64",
