@@ -4,7 +4,9 @@ export type AdminOrganizationSummary = {
   id: string
   name: string
   externalId: string | null
+  domains: string[]
   allowProfilesOutsideOrganization: boolean
+  memberCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -24,7 +26,23 @@ type WorkOSOrganization = {
   id: string
   name: string
   externalId?: string | null
+  domains?: Array<{ domain: string; state: string }>
   allowProfilesOutsideOrganization?: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+type WorkOSMembership = {
+  id: string
+  userId: string
+  organizationId: string
+  status: string
+  role?: { slug?: string | null } | null
+  user?: {
+    email?: string | null
+    firstName?: string | null
+    lastName?: string | null
+  } | null
   createdAt: string
   updatedAt: string
 }
@@ -46,6 +64,7 @@ const toOrganizationSummary = (org: WorkOSOrganization): AdminOrganizationSummar
   id: org.id,
   name: org.name,
   externalId: org.externalId ?? null,
+  domains: org.domains?.map((d) => d.domain) ?? [],
   allowProfilesOutsideOrganization: org.allowProfilesOutsideOrganization ?? false,
   createdAt: org.createdAt,
   updatedAt: org.updatedAt,
@@ -61,12 +80,6 @@ const toInvitationSummary = (inv: WorkOSInvitation): AdminInvitationSummary => (
   expiresAt: inv.expiresAt,
   acceptedAt: inv.acceptedAt ?? null,
 })
-
-export const listAdminOrganizations = async (): Promise<AdminOrganizationSummary[]> => {
-  const workos = getWorkOS()
-  const response = await workos.organizations.listOrganizations({ limit: 100 })
-  return response.data.map(toOrganizationSummary)
-}
 
 export const createAdminOrganization = async (params: {
   name: string
@@ -108,4 +121,100 @@ export const sendAdminInvitation = async (params: {
   })
 
   return toInvitationSummary(invitation as WorkOSInvitation)
+}
+
+export type ListOrganizationsParams = {
+  limit?: number
+  before?: string
+  after?: string
+}
+
+export type ListOrganizationsResult = {
+  organizations: AdminOrganizationSummary[]
+  listMetadata?: {
+    before?: string
+    after?: string
+  }
+}
+
+export type AdminMembershipSummary = {
+  id: string
+  userId: string
+  email: string
+  firstName: string | null
+  lastName: string | null
+  roleSlug: string
+  joinedAt: string
+}
+
+export type AdminInvitationPendingSummary = {
+  id: string
+  email: string
+  roleSlug: string
+  createdAt: string
+  expiresAt: string
+}
+
+export type ListOrganizationMembersResult = {
+  memberships: AdminMembershipSummary[]
+  pendingInvitations: AdminInvitationPendingSummary[]
+}
+
+export const listAdminOrganizationMembers = async (
+  organizationId: string
+): Promise<ListOrganizationMembersResult> => {
+  const workos = getWorkOS()
+
+  const [membershipsResult, invitationsResult] = await Promise.all([
+    workos.userManagement.listOrganizationMemberships({ organizationId }),
+    workos.userManagement.listInvitations({ organizationId }),
+  ])
+
+  const memberships: AdminMembershipSummary[] = (
+    membershipsResult.data as unknown as WorkOSMembership[]
+  ).map((m) => ({
+    id: m.id,
+    userId: m.userId,
+    email: m.user?.email ?? "",
+    firstName: m.user?.firstName ?? null,
+    lastName: m.user?.lastName ?? null,
+    roleSlug: m.role?.slug ?? "member",
+    joinedAt: m.createdAt,
+  }))
+
+  const pendingInvitations: AdminInvitationPendingSummary[] = (
+    invitationsResult.data as unknown as WorkOSInvitation[]
+  )
+    .filter((inv) => inv.state === "pending")
+    .map((inv) => ({
+      id: inv.id,
+      email: inv.email,
+      roleSlug: inv.roleSlug ?? "member",
+      createdAt: inv.createdAt,
+      expiresAt: inv.expiresAt,
+    }))
+
+  return { memberships, pendingInvitations }
+}
+
+export const listAdminOrganizations = async (
+  params: ListOrganizationsParams = {}
+): Promise<ListOrganizationsResult> => {
+  const workos = getWorkOS()
+
+  const result = await workos.organizations.listOrganizations({
+    limit: params.limit,
+    before: params.before,
+    after: params.after,
+  })
+
+  return {
+    organizations: result.data.map(toOrganizationSummary),
+    listMetadata: result.listMetadata
+      ? {
+          before: result.listMetadata.before ?? undefined,
+          after: result.listMetadata.after ?? undefined,
+        }
+      : undefined,
+  }
 }

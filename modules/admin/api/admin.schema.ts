@@ -33,5 +33,14 @@ export const adminSendInvitationSchema = z.object({
   expiresInDays: z.number().int().positive().optional(),
 })
 
+export const listOrganizationsQuerySchema = z.object({
+  limit: z.coerce.number().min(1).max(100).optional().default(10),
+  before: z.string().optional(),
+  after: z.string().optional(),
+  search: z.string().optional(),
+})
+
+export type ListOrganizationsQuery = z.infer<typeof listOrganizationsQuerySchema>
+
 export type AdminCreateOrganizationInput = z.infer<typeof adminCreateOrganizationSchema>
 export type AdminSendInvitationInput = z.infer<typeof adminSendInvitationSchema>

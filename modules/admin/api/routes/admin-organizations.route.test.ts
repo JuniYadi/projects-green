@@ -5,28 +5,34 @@
 import { describe, it, expect, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-const mockListOrganizations = mock<(...args: unknown[]) => unknown>(async () => [
-  {
-    id: "org_1",
-    name: "Acme Corp",
-    externalId: "acme-123",
-    allowProfilesOutsideOrganization: false,
-    createdAt: "2025-01-01T00:00:00.000Z",
-    updatedAt: "2025-01-01T00:00:00.000Z",
-  },
-  {
-    id: "org_2",
-    name: "Globex Inc",
-    externalId: null,
-    allowProfilesOutsideOrganization: true,
-    createdAt: "2025-01-02T00:00:00.000Z",
-    updatedAt: "2025-01-02T00:00:00.000Z",
-  },
-])
+const mockListOrganizations = mock<(...args: unknown[]) => unknown>(async () => ({
+  organizations: [
+    {
+      id: "org_1",
+      name: "Acme Corp",
+      externalId: "acme-123",
+      allowProfilesOutsideOrganization: false,
+      createdAt: "2025-01-01T00:00:00.000Z",
+      updatedAt: "2025-01-01T00:00:00.000Z",
+    },
+    {
+      id: "org_2",
+      name: "Globex Inc",
+      externalId: null,
+      allowProfilesOutsideOrganization: true,
+      createdAt: "2025-01-02T00:00:00.000Z",
+      updatedAt: "2025-01-02T00:00:00.000Z",
+    },
+  ],
+  listMetadata: undefined,
+}))
 
 mock.module("@/modules/admin/admin.service", () => ({
   listAdminOrganizations: mockListOrganizations,
   createAdminOrganization: mock<(...args: unknown[]) => unknown>(async () => {
+    throw new Error("Not implemented in tests")
+  }),
+  listAdminOrganizationMembers: mock<(...args: unknown[]) => unknown>(async () => {
     throw new Error("Not implemented in tests")
   }),
 }))
@@ -74,9 +80,9 @@ describe("Admin Organizations Routes", () => {
 
       expect(res.status).toBe(200)
       expect(body.ok).toBe(true)
-      expect(body.organizations).toHaveLength(2)
-      expect(body.organizations[0].id).toBe("org_1")
-      expect(body.organizations[0].name).toBe("Acme Corp")
+      expect(body.data.organizations).toHaveLength(2)
+      expect(body.data.organizations[0].id).toBe("org_1")
+      expect(body.data.organizations[0].name).toBe("Acme Corp")
     })
 
     it("returns 401 when guard returns unauthorized", async () => {
