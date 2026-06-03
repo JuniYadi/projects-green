@@ -13,8 +13,15 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
       }
 
       const userMeta = (auth.user as unknown as { metadata?: Record<string, string> })?.metadata
+      const orgSlug = userMeta?.orgSlug
+
+      if (!orgSlug) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied: no organization context" }
+      }
+
       const result = await queryLogs({
-        tenantSlug: userMeta?.orgSlug ?? "default",
+        tenantSlug: orgSlug,
         deployId: params.deployId,
         size: 200,
       })
