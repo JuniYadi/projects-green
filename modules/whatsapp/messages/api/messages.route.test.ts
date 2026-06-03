@@ -43,12 +43,29 @@ import {
   setMockAuthContext,
 } from "@/lib/whatsapp/__tests__/auth-mock"
 import { InsufficientQuotaError } from "../quota.service"
+import {
+  InsufficientBalanceError,
+  QuotaExceededError,
+  DailyLimitExceededError,
+} from "@/modules/billing/types"
 
 mock.module("@/modules/whatsapp/messages/quota.service", () => ({
   InsufficientQuotaError,
 }))
 
 mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
+
+mock.module("@/lib/auth/resolve-proxy-auth", () => ({
+  resolveAuthContext: mock(async () => ({
+    type: "workos",
+    userId: "user-1",
+    email: "admin@example.com",
+    organizationId: "org-1",
+    orgRole: "admin",
+    platformRole: "none",
+    source: "proxy_header",
+  })),
+}))
 
 const { messagesRoutes } = await import("./messages.route")
 
@@ -209,6 +226,90 @@ describe("messagesRoutes", () => {
       )
 
       expect(res.status).toBe(404)
+    })
+  })
+
+  describe("POST /messages/send", () => {
+    it("returns 200 on successful send", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send", {
+          method: "POST",
+          body: JSON.stringify({ phoneNumber: "+1234567890", message: "Hello" }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.jobId).toBe("job-1")
+    })
+
+    it("returns 402 with balance details on insufficient balance (PGREEN-049)", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new InsufficientBalanceError(
+          { toString: () => "500" } as any,
+          { toString: () => "100" } as any,
+        )
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send", {
+          method: "POST",
+          body: JSON.stringify({ phoneNumber: "+1234567890", message: "Hello" }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(402)
+      const body = await res.json()
+      expect(body.error).toBe("INSUFFICIENT_BALANCE")
+      expect(body.balance).toBe("100")
+      expect(body.estimatedCost).toBe("500")
+    })
+
+    it("returns 429 with resetAt on monthly quota exceeded (PGREEN-050)", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new QuotaExceededError("org-1", "device-1", "OUT", 1000, 1000)
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send", {
+          method: "POST",
+          body: JSON.stringify({ phoneNumber: "+1234567890", message: "Hello" }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(429)
+      const body = await res.json()
+      expect(body.error).toBe("MONTHLY_QUOTA_EXCEEDED")
+      expect(body.resetAt).toBeDefined()
+      expect(body.resetAt).toContain("T")
+    })
+
+    it("returns 429 with resetAt on daily quota exceeded (PGREEN-050)", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new DailyLimitExceededError("org-1", "device-1", 100, 100)
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send", {
+          method: "POST",
+          body: JSON.stringify({ phoneNumber: "+1234567890", message: "Hello" }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(429)
+      const body = await res.json()
+      expect(body.error).toBe("DAILY_QUOTA_EXCEEDED")
+      expect(body.resetAt).toBeDefined()
+      expect(body.resetAt).toContain("T")
     })
   })
 

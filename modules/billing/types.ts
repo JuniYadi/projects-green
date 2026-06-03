@@ -170,6 +170,10 @@ export interface WhatsAppPlanResources {
   quotaOut: number | null;
   dailyPerDevice: number | null;
   devices: number | null;
+  // New canonical field names (PGREEN-050)
+  quotaOutPerDeviceDaily?: number | null;
+  quotaOutMonthly?: number | null;
+  unlimited?: boolean;
 }
 
 export interface QuotaCheckResult {

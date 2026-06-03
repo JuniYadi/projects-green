@@ -60,6 +60,23 @@ export class QuotaGateService {
   }
 
   /**
+   * Resolve effective limit from resources, preferring new canonical names
+   * with fallback to legacy names.
+   */
+  private resolveLimit(
+    resources: WhatsAppPlanResources,
+    direction: "IN" | "OUT",
+  ): { monthlyLimit: number | null; dailyLimit: number | null } {
+    const monthlyLimit =
+      direction === "IN"
+        ? resources.quotaIn
+        : (resources.quotaOutMonthly ?? resources.quotaOut)
+    const dailyLimit =
+      resources.quotaOutPerDeviceDaily ?? resources.dailyPerDevice
+    return { monthlyLimit, dailyLimit }
+  }
+
+  /**
    * Check if a message is allowed under current quota limits.
    */
   async checkMessageQuota(
@@ -72,6 +89,21 @@ export class QuotaGateService {
     )
 
     const resources = servicePlan.resources
+
+    // PGREEN-050: Skip quota checks for unlimited/enterprise plans
+    if (resources.unlimited === true) {
+      return {
+        allowed: true,
+        direction,
+        monthlyLimit: null,
+        monthlyUsed: 0,
+        dailyLimit: null,
+        dailyUsed: 0,
+        planCode: servicePlan.code,
+        planResources: resources,
+      }
+    }
+
     const now = new Date()
     const year = now.getUTCFullYear()
     const month = now.getUTCMonth() + 1
@@ -120,9 +152,7 @@ export class QuotaGateService {
         ? monthlyCount?.messageInboxCount ?? 0
         : monthlyCount?.messageOutboxCount ?? 0
 
-    const monthlyLimit =
-      direction === "IN" ? resources.quotaIn : resources.quotaOut
-    const dailyLimit = resources.dailyPerDevice
+    const { monthlyLimit, dailyLimit } = this.resolveLimit(resources, direction)
 
     // Check daily limit
     const dailyExceeded =
@@ -159,6 +189,21 @@ export class QuotaGateService {
       // Re-check quota within transaction
       const { servicePlan } = await this.getWhatsAppSubscription(organizationId)
       const resources = servicePlan.resources
+
+      // PGREEN-050: Skip quota checks for unlimited/enterprise plans
+      if (resources.unlimited === true) {
+        return {
+          allowed: true,
+          direction,
+          monthlyLimit: null,
+          monthlyUsed: 0,
+          dailyLimit: null,
+          dailyUsed: 0,
+          planCode: servicePlan.code,
+          planResources: resources,
+        }
+      }
+
       const now = new Date()
       const year = now.getUTCFullYear()
       const month = now.getUTCMonth() + 1
@@ -209,9 +254,7 @@ export class QuotaGateService {
           ? monthlyCount?.messageInboxCount ?? 0
           : monthlyCount?.messageOutboxCount ?? 0
 
-      const monthlyLimit =
-        direction === "IN" ? resources.quotaIn : resources.quotaOut
-      const dailyLimit = resources.dailyPerDevice
+      const { monthlyLimit, dailyLimit } = this.resolveLimit(resources, direction)
 
       const dailyExceeded =
         dailyLimit !== null && dailyLimit !== 0 && dailyUsed >= dailyLimit
@@ -399,14 +442,14 @@ export class QuotaGateService {
             ? monthly?.messageInboxCount ?? 0
             : monthly?.messageOutboxCount ?? 0
 
-        const monthlyLimit =
-          direction === "IN" ? resources.quotaIn : resources.quotaOut
-        const dailyLimit = resources.dailyPerDevice
+        const { monthlyLimit, dailyLimit } = this.resolveLimit(resources, direction)
 
-        const allowed = !(
-          (dailyLimit !== null && dailyLimit !== 0 && dailyUsed >= dailyLimit) ||
-          (monthlyLimit !== null && monthlyLimit !== 0 && monthlyUsed >= monthlyLimit)
-        )
+        const allowed =
+          resources.unlimited === true ||
+          !(
+            (dailyLimit !== null && dailyLimit !== 0 && dailyUsed >= dailyLimit) ||
+            (monthlyLimit !== null && monthlyLimit !== 0 && monthlyUsed >= monthlyLimit)
+          )
 
         results.push({
           allowed,

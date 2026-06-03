@@ -9,6 +9,7 @@ import Decimal = Prisma.Decimal
 import { BalanceGateService } from "@/modules/billing/balance-gate.service"
 import { QuotaGateService } from "@/modules/billing/quota-gate.service"
 import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
+import { MessageCostService } from "@/modules/billing/message-cost.service"
 import { USAGE_CATEGORY_WHATSAPP_OUT } from "@/modules/billing/constants"
 import {
   InsufficientBalanceError,
@@ -57,13 +58,19 @@ export const messageService: MessageService = {
     const balanceGate = new BalanceGateService(prisma)
     const quotaGate = new QuotaGateService(prisma)
     const usageLedger = new UsageLedgerService(prisma)
+    const messageCostService = new MessageCostService(prisma)
 
-    // 1. Check balance (BalanceGateService)
-    const balanceOk = await balanceGate.isBalancePositive(organizationId)
-    if (!balanceOk) {
+    // 1. Check balance against estimated message cost (PGREEN-049)
+    const balanceCheck = await messageCostService.checkBalanceForMessage({
+      organizationId,
+      messageType: "text",
+      deviceId,
+    })
+
+    if (!balanceCheck.sufficient) {
       throw new InsufficientBalanceError(
-        new Decimal(1),
-        new Decimal(0)
+        balanceCheck.required,
+        balanceCheck.available,
       )
     }
 

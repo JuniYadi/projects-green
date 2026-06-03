@@ -53,6 +53,9 @@ const mockPrisma = {
     findFirst: mock(async () => null),
     findUnique: mock(async () => null),
   },
+  pricing: {
+    findFirst: mock(async () => null),
+  },
   usageLedger: {
     create: mock(async () => ({ id: "ledger-1" })),
   },
@@ -118,6 +121,7 @@ describe("messageService", () => {
     mockPrisma.whatsappMonthlyCount.update.mockClear()
     mockPrisma.billingAccount.findUnique.mockClear()
     mockPrisma.subscription.findFirst.mockClear()
+    mockPrisma.pricing.findFirst.mockClear()
     mockPrisma.usageLedger.create.mockClear()
     mockPrisma.$transaction.mockClear()
     mockTx.whatsappDevice.findFirst.mockClear()
@@ -193,13 +197,57 @@ describe("messageService", () => {
     it("throws InsufficientBalanceError when balance is zero or negative", async () => {
       // With billing integration: if balance is 0, throws InsufficientBalanceError
       // Even with legacy quota available, balance check should fail first
+      mockPrisma.subscription.findFirst.mockResolvedValue({
+        planId: "plan-1",
+      } as any)
+      mockPrisma.pricing.findFirst.mockResolvedValue({
+        id: "price-1",
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        basePriceIdr: { toString: () => "0" },
+        monthlyCapIdr: null,
+        unitRateCpu: null,
+        unitRateMem: null,
+        unitRateMessage: { toString: () => "150" },
+        isActive: true,
+        servicePlan: { code: "STANDARD", packageId: "WHATSAPP", resources: {} },
+        region: { code: "GLOBAL" },
+      } as any)
       mockPrisma.billingAccount.findUnique.mockResolvedValue({
         id: "ba-1",
         organizationId: "tenant-1",
         balance: { toFixed: () => "0.00", gte: () => false, gt: () => false },
       } as any)
-      // Reset subscription mock so we don't trigger quota gate
-      mockPrisma.subscription.findFirst.mockResolvedValue(null)
+
+      await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
+    })
+
+    it("throws InsufficientBalanceError when balance is below estimated cost (PGREEN-049)", async () => {
+      mockPrisma.subscription.findFirst.mockResolvedValue({
+        planId: "plan-1",
+      } as any)
+      mockPrisma.pricing.findFirst.mockResolvedValue({
+        id: "price-1",
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        basePriceIdr: { toString: () => "0" },
+        monthlyCapIdr: null,
+        unitRateCpu: null,
+        unitRateMem: null,
+        unitRateMessage: { toString: () => "500" },
+        isActive: true,
+        servicePlan: { code: "STANDARD", packageId: "WHATSAPP", resources: {} },
+        region: { code: "GLOBAL" },
+      } as any)
+      mockPrisma.billingAccount.findUnique.mockResolvedValue({
+        id: "ba-1",
+        organizationId: "tenant-1",
+        balance: { toFixed: () => "100.00", gte: (val: number) => 100 >= val, gt: () => true },
+      } as any)
 
       await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
     })
