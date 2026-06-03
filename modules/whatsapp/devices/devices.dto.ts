@@ -20,6 +20,16 @@ const toJsonRecord = (
   return value as Record<string, unknown>
 }
 
+/**
+ * Map a Prisma WhatsappDevice record to the API response type.
+ *
+ * NOTE: `name` and `environment` are derived, not stored columns:
+ * - The DB model has no `name` column; the `createDeviceSchema` accepts a `name`
+ *   field but it is NOT persisted. `phoneNumber` is used as display name.
+ * - The DB model has no `environment` column; all devices are treated as LIVE.
+ *   The `createDeviceSchema` accepts `environment` (default "LIVE") but it is
+ *   NOT persisted.
+ */
 export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
   return {
     id: device.id,
