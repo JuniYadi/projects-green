@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import { whatsappAuthMock, setMockAuthContext, mockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
+import {
+  setMockAuthContext,
+  mockAuthContext,
+} from "@/lib/whatsapp/__tests__/auth-mock"
 import { workosNodeMock } from "./workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
@@ -40,19 +43,17 @@ mock.module("@/lib/prisma", () => ({
 
 // ─── Auth mock ─────────────────────────────────────────────────────────────────
 
-mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
-
 mock.module("@workos-inc/node", () => workosNodeMock)
 
 mock.module("@/lib/auth/resolve-proxy-auth", () => ({
   resolveAuthContext: async () => mockAuthContext.current,
 }))
 
-const { messagesRoutes } = await import("@/modules/whatsapp/messages/api/messages.route")
+const { messagesRoutes } =
+  await import("@/modules/whatsapp/messages/api/messages.route")
 
 function createTestApp() {
-  return new Elysia()
-    .use(messagesRoutes)
+  return new Elysia().use(messagesRoutes)
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────────
@@ -101,7 +102,10 @@ describe("WhatsApp Messages E2E", () => {
     )
 
     expect(response.status).toBe(200)
-    const payload = await response.json() as { messageId: string; status: string }
+    const payload = (await response.json()) as {
+      messageId: string
+      status: string
+    }
     expect(payload.messageId).toMatch(/^stub_/)
     expect(payload.status).toBe("queued")
   })
@@ -127,7 +131,10 @@ describe("WhatsApp Messages E2E", () => {
     )
 
     expect(response.status).toBe(200)
-    const payload = await response.json() as { messageId: string; status: string }
+    const payload = (await response.json()) as {
+      messageId: string
+      status: string
+    }
     expect(payload.messageId).toMatch(/^stub_/)
     expect(payload.status).toBe("queued")
   })
@@ -163,7 +170,10 @@ describe("WhatsApp Messages E2E", () => {
 
     const response = await app.handle(new Request("http://localhost/messages/"))
     expect(response.status).toBe(200)
-    const payload = await response.json() as { ok: boolean; messages: unknown[] }
+    const payload = (await response.json()) as {
+      ok: boolean
+      messages: unknown[]
+    }
     expect(payload.ok).toBe(true)
     expect(payload.messages).toHaveLength(2)
     expect((payload.messages[0] as any).direction).toBe("OUTBOX")
@@ -180,7 +190,10 @@ describe("WhatsApp Messages E2E", () => {
 
     const response = await app.handle(new Request("http://localhost/messages/"))
     expect(response.status).toBe(200)
-    const payload = await response.json() as { ok: boolean; messages: unknown[] }
+    const payload = (await response.json()) as {
+      ok: boolean
+      messages: unknown[]
+    }
     expect(payload.messages).toHaveLength(0)
   })
 
@@ -208,7 +221,10 @@ describe("WhatsApp Messages E2E", () => {
       new Request("http://localhost/messages/?conversationId=conv_filtered")
     )
     expect(response.status).toBe(200)
-    const payload = await response.json() as { ok: boolean; messages: unknown[] }
+    const payload = (await response.json()) as {
+      ok: boolean
+      messages: unknown[]
+    }
     expect(payload.messages).toHaveLength(1)
   })
 
@@ -233,9 +249,14 @@ describe("WhatsApp Messages E2E", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(new Request("http://localhost/messages/msg_get"))
+    const response = await app.handle(
+      new Request("http://localhost/messages/msg_get")
+    )
     expect(response.status).toBe(200)
-    const payload = await response.json() as { ok: boolean; message?: unknown }
+    const payload = (await response.json()) as {
+      ok: boolean
+      message?: unknown
+    }
     expect(payload.ok).toBe(true)
     expect((payload.message as any).id).toBe("msg_get")
   })
@@ -248,7 +269,9 @@ describe("WhatsApp Messages E2E", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(new Request("http://localhost/messages/msg_missing"))
+    const response = await app.handle(
+      new Request("http://localhost/messages/msg_missing")
+    )
     expect(response.status).toBe(404)
   })
 
@@ -347,8 +370,10 @@ describe("WhatsApp Messages E2E", () => {
     )
 
     expect(response.status).toBe(200)
-    const payload = await response.json() as { ok: boolean; message?: unknown }
+    const payload = (await response.json()) as {
+      ok: boolean
+      message?: unknown
+    }
     expect(payload.ok).toBe(true)
   })
 })
-

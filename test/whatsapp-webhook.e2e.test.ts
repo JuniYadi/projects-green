@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import { whatsappAuthMock, setMockAuthContext, mockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
+import {
+  setMockAuthContext,
+  mockAuthContext,
+} from "@/lib/whatsapp/__tests__/auth-mock"
 import { workosNodeMock } from "./workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
@@ -39,19 +42,17 @@ mock.module("@/lib/prisma", () => ({
 
 // ─── Auth mock ─────────────────────────────────────────────────────────────────
 
-mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
-
 mock.module("@workos-inc/node", () => workosNodeMock)
 
 mock.module("@/lib/auth/resolve-proxy-auth", () => ({
   resolveAuthContext: async () => mockAuthContext.current,
 }))
 
-const { webhooksRoutes } = await import("@/modules/whatsapp/webhooks/api/webhooks.route")
+const { webhooksRoutes } =
+  await import("@/modules/whatsapp/webhooks/api/webhooks.route")
 
 function createTestApp() {
-  return new Elysia()
-    .use(webhooksRoutes)
+  return new Elysia().use(webhooksRoutes)
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────────
@@ -153,7 +154,9 @@ describe("WhatsApp Webhooks E2E", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/webhooks/dev_verify/verify?hub.mode=subscribe&hub.verify_token=test_token&hub.challenge=challenge_code")
+      new Request(
+        "http://localhost/webhooks/dev_verify/verify?hub.mode=subscribe&hub.verify_token=test_token&hub.challenge=challenge_code"
+      )
     )
 
     expect(response.status).toBe(200)
@@ -165,7 +168,9 @@ describe("WhatsApp Webhooks E2E", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request("http://localhost/webhooks/dev_verify/verify?hub.mode=invalid&hub.verify_token=test&hub.challenge=code")
+      new Request(
+        "http://localhost/webhooks/dev_verify/verify?hub.mode=invalid&hub.verify_token=test&hub.challenge=code"
+      )
     )
 
     expect(response.status).toBe(500)
@@ -206,7 +211,7 @@ describe("WhatsApp Webhooks E2E", () => {
     )
 
     expect(response.status).toBe(200)
-    const payload = await response.json() as { ok: boolean; data?: unknown }
+    const payload = (await response.json()) as { ok: boolean; data?: unknown }
     expect(payload.ok).toBe(true)
     expect((payload.data as any).webhookUrl).toBe("https://example.com/webhook")
   })
@@ -244,7 +249,10 @@ describe("WhatsApp Webhooks E2E", () => {
 
     const response = await app.handle(new Request("http://localhost/webhooks/"))
     expect(response.status).toBe(200)
-    const payload = await response.json() as { data: unknown[]; meta: { total: number } }
+    const payload = (await response.json()) as {
+      data: unknown[]
+      meta: { total: number }
+    }
     expect(payload.data).toHaveLength(2)
     expect(payload.meta.total).toBe(2)
   })
@@ -268,9 +276,11 @@ describe("WhatsApp Webhooks E2E", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(new Request("http://localhost/webhooks/wh_get"))
+    const response = await app.handle(
+      new Request("http://localhost/webhooks/wh_get")
+    )
     expect(response.status).toBe(200)
-    const payload = await response.json() as { id: string }
+    const payload = (await response.json()) as { id: string }
     expect(payload.id).toBe("wh_get")
   })
 
@@ -312,20 +322,23 @@ describe("WhatsApp Webhooks E2E", () => {
     )
 
     expect(response.status).toBe(200)
-    const payload = await response.json() as { ok: boolean; data?: unknown }
+    const payload = (await response.json()) as { ok: boolean; data?: unknown }
     expect(payload.ok).toBe(true)
     expect((payload.data as any).active).toBe(false)
   })
 
   it("deletes a webhook config as super_admin", async () => {
-    mockFindUnique.mockImplementationOnce(async () => ({
-      id: "wh_delete",
-      organizationId: "org-other",
-      whatsappDeviceId: "dev_1",
-      webhookUrl: "https://example.com/webhook",
-      verifyToken: "token123",
-      active: true,
-    } as any))
+    mockFindUnique.mockImplementationOnce(
+      async () =>
+        ({
+          id: "wh_delete",
+          organizationId: "org-other",
+          whatsappDeviceId: "dev_1",
+          webhookUrl: "https://example.com/webhook",
+          verifyToken: "token123",
+          active: true,
+        }) as any
+    )
     mockDelete.mockImplementationOnce(async () => ({}))
 
     setMockAuthContext({
@@ -342,7 +355,7 @@ describe("WhatsApp Webhooks E2E", () => {
     )
 
     expect(response.status).toBe(200)
-    const payload = await response.json() as { ok: boolean }
+    const payload = (await response.json()) as { ok: boolean }
     expect(payload.ok).toBe(true)
   })
 
@@ -370,4 +383,3 @@ describe("WhatsApp Webhooks E2E", () => {
     expect(response.status).toBe(200)
   })
 })
-
