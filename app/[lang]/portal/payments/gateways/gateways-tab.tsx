@@ -24,7 +24,7 @@ export function GatewaysTab() {
 
   const fetchGateways = useCallback(async () => {
     try {
-      const response = await fetch("/api/payments/gateways")
+      const response = await fetch("/api/portal/payments/gateways")
 
       if (!response.ok) {
         setState({ status: "error", message: "Failed to load gateways" })

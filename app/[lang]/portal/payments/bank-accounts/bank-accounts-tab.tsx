@@ -26,7 +26,7 @@ export function BankAccountsTab() {
 
   const fetchBankAccounts = useCallback(async () => {
     try {
-      const response = await fetch("/api/payments/bank-accounts")
+      const response = await fetch("/api/portal/payments/bank-accounts")
 
       if (!response.ok) {
         setState({ status: "error", message: "Failed to load bank accounts" })
