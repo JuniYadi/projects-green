@@ -103,6 +103,9 @@ export function BillingDashboard() {
               </Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
+              <Link href="/console/billing/transactions">Transaction History</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
               <Link href="/console/billing/subscription">View Subscription</Link>
             </Button>
           </div>

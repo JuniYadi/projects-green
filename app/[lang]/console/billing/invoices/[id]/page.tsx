@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
 import { getInvoice, getAccount, payWithBalance, topupAndPay } from "@/lib/billing-client"
 import type { InvoiceDetail, BillingAccount } from "@/lib/billing-client"
-import { ArrowLeftIcon, DownloadIcon, WalletIcon, PlusIcon, CheckCircleIcon } from "@phosphor-icons/react"
+import { ArrowLeftIcon, DownloadIcon, WalletIcon, PlusIcon, CheckCircleIcon, ClockIcon, XCircleIcon } from "@phosphor-icons/react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Dialog,
@@ -23,7 +23,9 @@ import {
 
 export default function InvoiceDetailPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const invoiceId = params.id as string
+  const paymentStatus = searchParams.get("payment")
 
   const [data, setData] = useState<InvoiceDetail | null>(null)
   const [account, setAccount] = useState<BillingAccount | null>(null)
@@ -178,9 +180,47 @@ export default function InvoiceDetailPage() {
             </Link>
           </Button>
           <h1 className="text-2xl font-semibold">Invoice {invoice.invoiceNumber}</h1>
-          <InvoiceStatusBadge status={invoice.status as "PENDING" | "PAID" | "VOID"} />
+          <InvoiceStatusBadge status={invoice.status as "OPEN" | "PENDING" | "PAID" | "VOID" | "EXPIRED"} />
         </div>
       </header>
+
+      {/* Payment Status Banner (after Duitku redirect) */}
+      {paymentStatus === "success" && (
+        <div className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+          <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <div>
+            <p className="font-medium text-green-600 dark:text-green-400">Payment Successful</p>
+            <p className="text-sm text-muted-foreground">
+              Your payment has been processed. The balance will be updated shortly.
+            </p>
+          </div>
+        </div>
+      )}
+      {paymentStatus === "pending" && (
+        <div className="flex items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
+          <ClockIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+          <div>
+            <p className="font-medium text-yellow-600 dark:text-yellow-400">Payment Pending</p>
+            <p className="text-sm text-muted-foreground">
+              Your payment is being processed. This may take a few minutes.
+            </p>
+          </div>
+        </div>
+      )}
+      {paymentStatus === "failed" && (
+        <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+          <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+          <div>
+            <p className="font-medium text-red-600 dark:text-red-400">Payment Failed</p>
+            <p className="text-sm text-muted-foreground">
+              The payment could not be processed. Please try again.
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm" className="ml-auto">
+            <Link href="/console/billing/topup">Retry Payment</Link>
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
