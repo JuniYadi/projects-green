@@ -29,8 +29,8 @@ mock.module("@/lib/prisma", () => ({
       create: mockCreate,
       update: mockUpdate,
       delete: mockDelete,
-      $disconnect: mock(async () => undefined),
     },
+    $disconnect: mock(async () => undefined),
   },
 }))
 
@@ -134,7 +134,7 @@ describe("admin-role operations", () => {
     expect(mockCreate).toHaveBeenCalledWith({
       data: {
         email: "admin@example.com",
-        workosUserId: null,
+        workosUserId: "bootstrap:258d8dc916db8cea",
         role: PlatformRole.SUPER_ADMIN,
       },
     })
