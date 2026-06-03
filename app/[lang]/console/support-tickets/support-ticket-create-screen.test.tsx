@@ -249,4 +249,22 @@ describe("SupportTicketCreateScreen", () => {
     expect(view.queryByText("screenshot.png")).toBeNull()
     expect(view.getByText("report.pdf")).toBeTruthy()
   })
+
+  it("adds newly selected attachments without replacing existing ones", async () => {
+    const view = renderScreen()
+
+    const imgFile = new File(["dummy image"], "screenshot.png", {
+      type: "image/png",
+    })
+    const docFile = new File(["dummy doc"], "report.pdf", {
+      type: "application/pdf",
+    })
+
+    attachFiles(view, [imgFile])
+    attachFiles(view, [docFile])
+
+    expect(view.getByText("screenshot.png")).toBeTruthy()
+    expect(view.getByText("report.pdf")).toBeTruthy()
+    expect(view.getAllByRole("button", { name: "✕" }).length).toBe(2)
+  })
 })

@@ -341,14 +341,8 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
       file,
       previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
     }))
-    setFiles((prev) => {
-      prev.forEach((f) => {
-        if (f.previewUrl) {
-          URL.revokeObjectURL(f.previewUrl)
-        }
-      })
-      return nextFiles
-    })
+    setFiles((prev) => [...prev, ...nextFiles])
+    event.currentTarget.value = ""
   }
 
   const handleRemoveFile = (index: number) => {
