@@ -32,7 +32,11 @@ export async function ensureLogIndex(
   const indexName = getLogIndexName(tenantSlug)
 
   const { body: exists } = await client.indices.exists({ index: indexName })
-  if (!exists) {
+  if (exists) {
+    return indexName
+  }
+
+  try {
     await client.indices.create({
       index: indexName,
       body: {
@@ -44,6 +48,9 @@ export async function ensureLogIndex(
         },
       },
     })
+  } catch {
+    // Race: another process may have created the index between our exists check
+    // and the create call. This is safe to ignore — the index now exists.
   }
 
   return indexName
