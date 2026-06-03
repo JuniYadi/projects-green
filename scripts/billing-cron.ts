@@ -15,6 +15,7 @@ import {
 import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
 import { BillingCycleService } from "@/modules/billing/billing-cycle.service"
 import { InvoiceStatusManager } from "@/modules/billing/invoice-status.service"
+import { invoiceEmailService } from "@/modules/invoices/email.service"
 
 const redisConnection = getBillingRedisConnection()
 
@@ -66,7 +67,7 @@ async function processMonthlyReset(): Promise<number> {
  */
 async function processMonthlyBilling(): Promise<{ processed: number; skipped: number }> {
   const usageLedger = new UsageLedgerService(prisma)
-  const billingCycle = new BillingCycleService(prisma, usageLedger)
+  const billingCycle = new BillingCycleService(prisma, usageLedger, invoiceEmailService)
   const result = await billingCycle.processMonthlyBilling()
 
   console.info(

@@ -51,6 +51,18 @@ type SupportTicketRouteDependencies = {
   emailService: EmailService
 }
 
+async function resolveRequesterEmail(
+  requesterWorkosUserId: string,
+): Promise<string | null> {
+  try {
+    const workos = getWorkOS()
+    const user = await workos.userManagement.getUser(requesterWorkosUserId)
+    return user.email ?? null
+  } catch {
+    return null
+  }
+}
+
 const createDefaultDependencies = (): SupportTicketRouteDependencies => ({
   authenticate: () => withAuth(),
   getPlatformRole: async (input) => {
@@ -291,6 +303,8 @@ export const createSupportTicketRoutes = (
           dependencies.emailService.sendTicketCreated(ticket, requesterEmail).catch((err) => {
             console.error("[Support Ticket] Failed to send ticket created email:", err)
           })
+        } else {
+          console.warn("[Support Ticket] No requester email available for ticket created notification:", ticket.id)
         }
 
         return {
@@ -459,11 +473,19 @@ export const createSupportTicketRoutes = (
 
         // Send email notification to ticket requester (if not internal note and not self-reply)
         if (!payload.isInternalNote && thread.ticket.requesterWorkosUserId !== actor.workosUserId) {
-          // Get requester email from user data - for now we skip if not available
-          // In production, you'd fetch this from the user service
-          dependencies.emailService.sendTicketReplied(thread.ticket, reply, "user@example.com").catch((err) => {
-            console.error("[Support Ticket] Failed to send ticket replied email:", err)
-          })
+          resolveRequesterEmail(thread.ticket.requesterWorkosUserId)
+            .then((requesterEmail) => {
+              if (requesterEmail) {
+                dependencies.emailService.sendTicketReplied(thread.ticket, reply, requesterEmail).catch((err) => {
+                  console.error("[Support Ticket] Failed to send ticket replied email:", err)
+                })
+              } else {
+                console.warn("[Support Ticket] Could not resolve requester email for reply notification:", thread.ticket.id)
+              }
+            })
+            .catch((err) => {
+              console.error("[Support Ticket] Failed to resolve requester email for reply notification:", err)
+            })
         }
 
         return {
@@ -487,9 +509,19 @@ export const createSupportTicketRoutes = (
         })
 
         // Send email notification when ticket is closed
-        dependencies.emailService.sendTicketClosed(ticket, "user@example.com").catch((err) => {
-          console.error("[Support Ticket] Failed to send ticket closed email:", err)
-        })
+        resolveRequesterEmail(ticket.requesterWorkosUserId)
+          .then((requesterEmail) => {
+            if (requesterEmail) {
+              dependencies.emailService.sendTicketClosed(ticket, requesterEmail).catch((err) => {
+                console.error("[Support Ticket] Failed to send ticket closed email:", err)
+              })
+            } else {
+              console.warn("[Support Ticket] Could not resolve requester email for close notification:", ticket.id)
+            }
+          })
+          .catch((err) => {
+            console.error("[Support Ticket] Failed to resolve requester email for close notification:", err)
+          })
 
         return {
           ok: true as const,
