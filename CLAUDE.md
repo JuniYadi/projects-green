@@ -112,4 +112,5 @@ Env-var based with `FEATURE_*` prefix, checked via `isFeatureEnabled()` from `li
 
 - **DRY**: extract shared helpers instead of copy-pasting (especially in tests)
 - **KISS**: prefer straightforward implementations; avoid over-engineering
+- **Prisma Types — Use Generated Only**: never declare manual model types, delegates, or enum aliases. Import from `@prisma/client` instead (tsconfig aliases to `prisma/generated/client/`). See AGENTS.md for details and examples.
 - **4 Pillars**: lint, typecheck, test, coverage, and build MUST pass before any commit/PR

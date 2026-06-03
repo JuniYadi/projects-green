@@ -46,6 +46,59 @@ Before committing or opening a PR, ALL MUST PASS:
 - DRY (Don't Repeat Yourself): extract shared helpers for repeated setup, fixtures, and assertions (especially in tests) instead of copy-pasting logic across files.
 - KISS (Keep It Simple, Stupid): prefer straightforward implementations and tests with clear intent; avoid over-engineering, unnecessary abstractions, and brittle test scaffolding.
 
+## Prisma Types: Always Use Generated Types (HARD REQUIREMENT)
+
+All Prisma types must come from the generated client (`@prisma/client` — resolved via tsconfig alias to `prisma/generated/client/`). NEVER declare manual types that mirror Prisma models.
+
+### DO ✅
+```ts
+import { Prisma, PrismaClient } from "@prisma/client"
+import type { PlatformUserRole, InvoiceStatus } from "@prisma/client"
+
+// Use Prisma namespace for query arg types
+const where: Prisma.InvoiceWhereInput = { status: "OPEN" }
+
+// Direct model access — full type safety
+const record = await prisma.platformUserRole.findFirst({ where: { workosUserId } })
+```
+
+### DON'T ❌
+```ts
+// Manual model type — duplicates Prisma, rots over time
+type InvoiceRecord = { id: string; status: string; totalAmount: number }
+
+// Manual delegate type — bypasses Prisma's generated types entirely
+type InvoiceDelegate = { findMany: (args: {...}) => Promise<InvoiceRecord[]> }
+
+// Manual enum — duplicates Prisma enum, string comparison risks
+type PrismaInvoiceStatus = "DRAFT" | "OPEN" | "PAID"
+
+// `as unknown as` cast on prisma — discards all type safety
+const delegate = (prisma as unknown as { invoice?: InvoiceDelegate }).invoice
+
+// `Record<string, unknown>` for Prisma query args — loses type safety
+const where: Record<string, unknown> = {}
+```
+
+### Exception (for API response shapes)
+UI/DTO types that intentionally select/reshape model fields for public consumption ARE acceptable, as long as they use `Pick<Prisma.ModelType, ...>` or extend Prisma types instead of re-declaring fields:
+```ts
+// GOOD — derived from Prisma type
+type SafeUser = Pick<Prisma.UserGetPayload<{}>, "id" | "name">
+
+// ALSO GOOD — thin wrapper but uses Prisma namespace for enums
+import type { InvoiceStatus } from "@prisma/client"
+
+// BAD — re-declares fields and enums manually
+type InvoiceRecord = { id: string; status: "DRAFT" | "OPEN" }
+```
+
+### Fixing existing violations
+When touching a file with manual Prisma types, refactor them to use generated types. Common refactors:
+1. **Manual `foo.service.ts`** → import `PrismaClient` from `@prisma/client`, use generated model names and `Prisma.ModelWhereInput` etc.
+2. **Manual store/delegate** → delete the type, pass `prisma` directly (or use `Pick` on generated `PrismaClient` if mocking is needed)
+3. **Manual enums** → import the enum from `@prisma/client`
+
 ## Console Surface Consistency
 - Keep all pages under `app/[lang]/console/**` visually consistent with the console overview page structure.
 - Use `main` wrapper class `flex flex-1 flex-col gap-6 p-6 pt-0` for content pages unless a parent layout already provides the same spacing contract.
