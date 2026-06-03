@@ -38,10 +38,7 @@ mock.module("@/modules/whatsapp/messages/messages.service", () => ({
 
 import { describe, expect, it, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
-import {
-  whatsappAuthMock,
-  setMockAuthContext,
-} from "@/lib/whatsapp/__tests__/auth-mock"
+import { setMockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
 import { InsufficientQuotaError } from "../quota.service"
 import {
   InsufficientBalanceError,
@@ -52,8 +49,6 @@ import {
 mock.module("@/modules/whatsapp/messages/quota.service", () => ({
   InsufficientQuotaError,
 }))
-
-mock.module("@/lib/whatsapp/auth", () => whatsappAuthMock)
 
 mock.module("@/lib/auth/resolve-proxy-auth", () => ({
   resolveAuthContext: mock(async () => ({
@@ -101,16 +96,26 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappConversation.findFirst.mockClear()
     mockMessageService.sendMessage.mockClear()
 
-    mockPrisma.whatsappMessage.findMany.mockResolvedValue([{ id: "msg-1" }] as any)
+    mockPrisma.whatsappMessage.findMany.mockResolvedValue([
+      { id: "msg-1" },
+    ] as any)
     mockPrisma.whatsappMessage.findFirst.mockResolvedValue({
       id: "msg-1",
       body: "Test message",
       conversation: { organizationId: "org-1" },
     } as any)
-    mockPrisma.whatsappMessage.create.mockResolvedValue({ id: "msg-new" } as any)
-    mockPrisma.whatsappMessage.update.mockResolvedValue({ id: "msg-1", body: "Updated body" } as any)
+    mockPrisma.whatsappMessage.create.mockResolvedValue({
+      id: "msg-new",
+    } as any)
+    mockPrisma.whatsappMessage.update.mockResolvedValue({
+      id: "msg-1",
+      body: "Updated body",
+    } as any)
     mockPrisma.whatsappMessage.delete.mockResolvedValue({ id: "msg-1" } as any)
-    mockPrisma.whatsappConversation.findFirst.mockResolvedValue({ id: "conv-1", organizationId: "org-1" } as any)
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue({
+      id: "conv-1",
+      organizationId: "org-1",
+    } as any)
     mockMessageService.sendMessage.mockResolvedValue({
       jobId: "job-1",
       messageId: "msg-1",
@@ -235,7 +240,10 @@ describe("messagesRoutes", () => {
       const res = await app.handle(
         authRequest("/messages/send", {
           method: "POST",
-          body: JSON.stringify({ phoneNumber: "+1234567890", message: "Hello" }),
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            message: "Hello",
+          }),
           headers: { "Content-Type": "application/json" },
         })
       )
@@ -250,17 +258,17 @@ describe("messagesRoutes", () => {
       const { Prisma } = await import("@prisma/client")
       const Decimal = Prisma.Decimal
       mockMessageService.sendMessage.mockRejectedValueOnce(
-        new InsufficientBalanceError(
-          new Decimal(500),
-          new Decimal(100),
-        )
+        new InsufficientBalanceError(new Decimal(500), new Decimal(100))
       )
 
       const app = createTestApp()
       const res = await app.handle(
         authRequest("/messages/send", {
           method: "POST",
-          body: JSON.stringify({ phoneNumber: "+1234567890", message: "Hello" }),
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            message: "Hello",
+          }),
           headers: { "Content-Type": "application/json" },
         })
       )
@@ -281,7 +289,10 @@ describe("messagesRoutes", () => {
       const res = await app.handle(
         authRequest("/messages/send", {
           method: "POST",
-          body: JSON.stringify({ phoneNumber: "+1234567890", message: "Hello" }),
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            message: "Hello",
+          }),
           headers: { "Content-Type": "application/json" },
         })
       )
@@ -302,7 +313,10 @@ describe("messagesRoutes", () => {
       const res = await app.handle(
         authRequest("/messages/send", {
           method: "POST",
-          body: JSON.stringify({ phoneNumber: "+1234567890", message: "Hello" }),
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            message: "Hello",
+          }),
           headers: { "Content-Type": "application/json" },
         })
       )
