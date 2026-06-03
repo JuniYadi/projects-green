@@ -193,4 +193,72 @@ export class UsageLedgerService {
 
     return ratedUsageList
   }
+
+  async getUsageByDateRange(
+    organizationId: string,
+    from: string,
+    to: string,
+    category?: string,
+  ): Promise<
+    {
+      id: string
+      organizationId: string
+      subscriptionId: string
+      period: string
+      category: string | null
+      amountIdr: Decimal | null
+      metadata: Prisma.InputJsonValue | null
+      createdAt: Date
+    }[]
+  > {
+    return this.prisma.usageLedger.findMany({
+      where: {
+        organizationId,
+        createdAt: {
+          gte: new Date(from),
+          lte: new Date(to),
+        },
+        ...(category ? { category } : {}),
+      },
+      include: {
+        subscription: true,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    })
+  }
+
+  async getDailyUsageTrend(
+    organizationId: string,
+    days: number = 30,
+  ): Promise<{ date: string; amount: Decimal }[]> {
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - days)
+
+    const entries = await this.prisma.usageLedger.findMany({
+      where: {
+        organizationId,
+        createdAt: {
+          gte: startDate,
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    })
+
+    const dailyMap = new Map<string, Decimal>()
+
+    for (const entry of entries) {
+      const dateStr = entry.createdAt.toISOString().split("T")[0]
+      const existing = dailyMap.get(dateStr) ?? new Decimal(0)
+      dailyMap.set(dateStr, existing.plus(entry.amountIdr ?? 0))
+    }
+
+    return Array.from(dailyMap.entries()).map(([date, amount]) => ({
+      date,
+      amount,
+    }))
+  }
 }
