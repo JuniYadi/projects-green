@@ -26,10 +26,18 @@ export class MessageCostService {
         package: { code: "WHATSAPP" },
         status: "ACTIVE",
       },
-      select: { planId: true },
+      include: {
+        plan: { select: { resources: true } },
+      },
     })
 
     if (!subscription) {
+      return new Decimal(0)
+    }
+
+    // Unlimited / enterprise plans have no per-message cost
+    const resources = subscription.plan?.resources as Record<string, unknown> | undefined
+    if (resources && resources.unlimited === true) {
       return new Decimal(0)
     }
 
@@ -44,11 +52,6 @@ export class MessageCostService {
       })
 
       const cost = pricing.unitRateMessage ?? new Decimal(0)
-
-      // Future: apply multipliers based on message type
-      // For now all message types use the same base rate
-      void options.messageType
-      void options.deviceId
 
       return cost
     } catch {

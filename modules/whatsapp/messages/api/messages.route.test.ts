@@ -247,10 +247,12 @@ describe("messagesRoutes", () => {
     })
 
     it("returns 402 with balance details on insufficient balance (PGREEN-049)", async () => {
+      const { Prisma } = await import("@prisma/client")
+      const Decimal = Prisma.Decimal
       mockMessageService.sendMessage.mockRejectedValueOnce(
         new InsufficientBalanceError(
-          { toString: () => "500" } as any,
-          { toString: () => "100" } as any,
+          new Decimal(500),
+          new Decimal(100),
         )
       )
 

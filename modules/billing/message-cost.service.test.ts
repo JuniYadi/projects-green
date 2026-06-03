@@ -30,6 +30,7 @@ describe("MessageCostService", () => {
     it("returns unitRateMessage from PAYG pricing", async () => {
       ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         planId: "plan-1",
+        plan: { resources: {} },
       })
       ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "price-1",
@@ -69,8 +70,25 @@ describe("MessageCostService", () => {
     it("returns 0 when no PAYG pricing found", async () => {
       ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         planId: "plan-1",
+        plan: { resources: {} },
       })
       ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+
+      const cost = await service.estimateMessageCost({
+        organizationId: "org-1",
+        messageType: "text",
+      })
+
+      expect(cost.toNumber()).toBe(0)
+    })
+
+    it("returns 0 when plan has unlimited flag", async () => {
+      ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        planId: "plan-1",
+        plan: {
+          resources: { unlimited: true },
+        },
+      })
 
       const cost = await service.estimateMessageCost({
         organizationId: "org-1",
@@ -85,6 +103,7 @@ describe("MessageCostService", () => {
     it("returns sufficient=true when balance >= estimated cost", async () => {
       ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         planId: "plan-1",
+        plan: { resources: {} },
       })
       ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "price-1",
@@ -118,6 +137,7 @@ describe("MessageCostService", () => {
     it("returns sufficient=false when balance < estimated cost", async () => {
       ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         planId: "plan-1",
+        plan: { resources: {} },
       })
       ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "price-1",
@@ -151,6 +171,7 @@ describe("MessageCostService", () => {
     it("returns sufficient=false when no billing account exists", async () => {
       ;(mockPrisma.subscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         planId: "plan-1",
+        plan: { resources: {} },
       })
       ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "price-1",

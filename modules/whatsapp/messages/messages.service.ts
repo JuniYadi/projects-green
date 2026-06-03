@@ -74,6 +74,8 @@ export const messageService: MessageService = {
       )
     }
 
+    const estimatedCost = balanceCheck.required
+
     // 2. Check quota (QuotaGateService) — for outbound messages
     let quotaCheckResult
     try {
@@ -185,6 +187,21 @@ export const messageService: MessageService = {
             },
           },
         })
+      }
+
+      // 6. Deduct balance for the sent message (PGREEN-049 fix)
+      if (waMessageId && estimatedCost.gt(0)) {
+        try {
+          await balanceGate.deductBalance(
+            organizationId,
+            estimatedCost,
+            `WhatsApp message: ${jobId}`,
+            { messageId: jobId, deviceId: device.id, phoneNumber },
+          )
+        } catch (err) {
+          console.error("[messageService] Failed to deduct balance:", err)
+          // Message already sent — don't block, log for async repair
+        }
       }
     }
 
