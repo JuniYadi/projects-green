@@ -12,10 +12,9 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
+      const userMeta = (auth.user as unknown as { metadata?: Record<string, string> })?.metadata
       const result = await queryLogs({
-        tenantSlug: (auth.user as Record<string, unknown>).metadata
-          ? ((auth.user as Record<string, unknown>).metadata as Record<string, string>).orgSlug ?? "default"
-          : "default",
+        tenantSlug: userMeta?.orgSlug ?? "default",
         deployId: params.deployId,
         size: 200,
       })

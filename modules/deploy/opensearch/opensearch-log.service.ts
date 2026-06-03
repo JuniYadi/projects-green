@@ -95,6 +95,9 @@ export async function queryLogs(
   if (params.container) {
     must.push({ term: { container: params.container } })
   }
+  if (params.deployId) {
+    must.push({ term: { deployId: params.deployId } })
+  }
 
   const filter: Array<Record<string, unknown>> = []
   if (params.from || params.to) {
@@ -114,7 +117,15 @@ export async function queryLogs(
       from: params.fromOffset ?? 0,
       size: params.size ?? 100,
     },
-  })) as { body: any }
+  })) as {
+    body: {
+      hits: {
+        hits: Array<{ _source?: LogEntry }>
+        total: { value: number } | number
+      }
+      took: number
+    }
+  }
 
   const hits = body.hits.hits.map(
     (hit: { _source?: LogEntry }) => hit._source as LogEntry
@@ -183,9 +194,21 @@ export async function getDeployAggregation(
         },
       },
     },
-  })) as { body: any }
+  })) as {
+    body: {
+      aggregations?: Record<
+        string,
+        {
+          buckets?: Array<{ key_as_string: string; doc_count: number }>
+          doc_count: number
+          success?: { doc_count: number }
+          value?: number
+        }
+      >
+    }
+  }
 
-  const aggs = body.aggregations as Record<string, any> | undefined
+  const aggs = body.aggregations
   const freqBuckets = aggs?.by_date?.buckets ?? []
   const successAgg = aggs?.success_rate ?? {
     doc_count: 0,

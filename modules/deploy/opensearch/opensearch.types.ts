@@ -19,6 +19,7 @@ export interface LogQueryParams {
   level?: LogLevel
   stackId?: string
   container?: string
+  deployId?: string
   from?: string
   to?: string
   fromOffset?: number
