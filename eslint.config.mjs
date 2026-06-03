@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Test files - lower strictness
     "test/**",
+    // Ignore worktrees
+    ".claude/worktrees/**",
+    ".worktrees/**",
   ]),
   // Relaxed rules for test files
   {

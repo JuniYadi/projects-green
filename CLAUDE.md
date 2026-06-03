@@ -112,4 +112,6 @@ Env-var based with `FEATURE_*` prefix, checked via `isFeatureEnabled()` from `li
 
 - **DRY**: extract shared helpers instead of copy-pasting (especially in tests)
 - **KISS**: prefer straightforward implementations; avoid over-engineering
+- **Prisma Types — Use Generated Only**: never declare manual model types, delegates, or enum aliases. Import from `@prisma/client` instead (resolves via `node_modules/.prisma/client/`). See AGENTS.md for details and examples.
+- **DTO at API Boundary**: every route handler response must go through a DTO (`*.dto.ts` + `toDTO` mapper). Internal service-to-service calls use Prisma types directly. See AGENTS.md for the layer-by-layer breakdown.
 - **4 Pillars**: lint, typecheck, test, coverage, and build MUST pass before any commit/PR
