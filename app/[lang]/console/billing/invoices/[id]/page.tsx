@@ -180,7 +180,7 @@ export default function InvoiceDetailPage() {
             </Link>
           </Button>
           <h1 className="text-2xl font-semibold">Invoice {invoice.invoiceNumber}</h1>
-          <InvoiceStatusBadge status={invoice.status as "OPEN" | "PENDING" | "PAID" | "VOID" | "EXPIRED"} />
+          <InvoiceStatusBadge status={invoice.status as "OPEN" | "PENDING" | "PAID" | "VOID"} />
         </div>
       </header>
 

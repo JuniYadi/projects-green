@@ -22,7 +22,7 @@ interface Transaction {
   metadata: Record<string, unknown> | null
 }
 
-type FilterStatus = "ALL" | "OPEN" | "PAID" | "VOID" | "EXPIRED"
+type FilterStatus = "ALL" | "OPEN" | "PAID" | "VOID"
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -96,7 +96,6 @@ export default function TransactionsPage() {
     { value: "OPEN", label: "Open" },
     { value: "PAID", label: "Paid" },
     { value: "VOID", label: "Void" },
-    { value: "EXPIRED", label: "Expired" },
   ]
 
   return (
@@ -189,7 +188,7 @@ export default function TransactionsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <InvoiceStatusBadge
-                          status={tx.status as "OPEN" | "PAID" | "VOID" | "EXPIRED"}
+                          status={tx.status as "OPEN" | "PAID" | "VOID"}
                         />
                       </td>
                       <td className="px-4 py-3 text-sm">

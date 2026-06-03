@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 
-type InvoiceStatus = "OPEN" | "PENDING" | "PAID" | "VOID" | "EXPIRED"
+type InvoiceStatus = "OPEN" | "PENDING" | "PAID" | "VOID"
 
 type InvoiceStatusBadgeProps = {
   status: InvoiceStatus
@@ -15,8 +15,6 @@ const statusStyles: Record<InvoiceStatus, string> = {
   PAID:
     "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400",
   VOID: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
-  EXPIRED:
-    "border-gray-500/20 bg-gray-500/10 text-gray-600 dark:text-gray-400",
 }
 
 const statusLabels: Record<InvoiceStatus, string> = {
@@ -24,7 +22,6 @@ const statusLabels: Record<InvoiceStatus, string> = {
   PENDING: "Pending",
   PAID: "Paid",
   VOID: "Void",
-  EXPIRED: "Expired",
 }
 
 export function InvoiceStatusBadge({ status, className }: InvoiceStatusBadgeProps) {
