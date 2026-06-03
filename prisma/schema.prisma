@@ -504,6 +504,7 @@ model SupportTicketAttachmentUploadSession {
 model BillingAccount {
   id             String               @id @default(cuid())
   organizationId String               @unique
+  tenantId       String?
   currency       String               @default("USD")
   timezone       String               @default("UTC")
   status         BillingAccountStatus @default(ACTIVE)
@@ -901,7 +902,7 @@ model Pricing {
 
 model Subscription {
   id                  String                   @id @default(cuid())
-  organizationId      String
+  organizationId      String                   @map("tenantId")
   packageId           String
   planId              String
   pricingId           String
@@ -920,14 +921,14 @@ model Subscription {
   pricing      Pricing      @relation(fields: [pricingId], references: [id])
   usageLedgers UsageLedger[]
 
-  @@unique([organizationId, packageId, planId])
-  @@index([organizationId, status])
+  @@unique([organizationId, packageId, planId], map: "Subscription_tenantId_packageId_planId_key")
+  @@index([organizationId, status], map: "Subscription_tenantId_status_idx")
   @@index([packageId])
 }
 
 model UsageLedger {
   id             String    @id @default(cuid())
-  organizationId String
+  organizationId String    @map("tenantId")
   subscriptionId String
   period         String
   category       String?
@@ -937,7 +938,7 @@ model UsageLedger {
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id])
 
-  @@index([organizationId, period])
+  @@index([organizationId, period], map: "UsageLedger_tenantId_period_idx")
   @@index([organizationId, category])
   @@index([subscriptionId])
 }
