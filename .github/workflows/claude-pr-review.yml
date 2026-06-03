@@ -139,33 +139,37 @@ jobs:
             IMPORTANT: After resolving all outdated threads, re-scan the code for NEW issues. An outdated thread may mean the code was rewritten and a NEW issue now exists at that location. Remember: only review files that appear in the PR diff — do not comment on files outside this PR.
 
             REVIEW SUBMISSION LOGIC:
-            You MUST submit your final review summary using `gh pr review`.
+            You MUST submit your final review using `gh pr review`. Do NOT post a separate `gh pr comment` — the review body is the single source of truth.
 
             If there are NO unresolved issues (all threads resolved/fixed and no new issues):
               Execute: `gh pr review --approve --body "LGTM! All issues have been addressed."`
 
-            If there are ANY "🆕 NEW" or "❌ PERSISTENT" issues OR if `review_body.md` already has findings from failed inline comments:
-              STEP 1: Create or update the summary file `review_body.md`.
+            If there are ANY "🆕 NEW" or "❌ PERSISTENT" issues OR if findings exist from failed inline comments:
+              STEP 1: Create or update `review_body.md`.
 
-              <!-- FIX_PROMPT_START -->
               --- START OF review_body.md TEMPLATE ---
               ## PR Review Summary
-              I have identified issues that require attention. See inline comments for details.
 
-              ### ⚠️ Findings (Inline Comment Failed)
-              If any inline comments failed to post (MCP tool error or path not in diff), list them here with file path, line range, and issue description.
+              I've identified **[N blocking issue(s)]** that require attention before this PR can be merged.
+
+              ### 🆕 NEW ISSUES / ❌ PERSISTENT ISSUES
+
+              (List all findings here with file path, line range, and issue description.
+              Only include items that are NOT already posted as inline comments.
+              Items that already have inline comments do NOT need to be listed here —
+              just mention the count.)
+
+              ---
 
               ### 💻 Local Refactoring Prompt
 
               <details>
                 <summary>📦 Click to expand and copy full prompt for Local AI Assistant</summary>
 
-                <<-- start prompt must wrap with markdown -->>
                 ````markdown
                 You are a senior software engineer executing a local PR review remediation sweep.
                 Please refactor and fix the following specific code locations according to these instructions:
-                
-                <<-- each issue must follow this exact format and be included in the prompt if applicable -->>
+
                 #### File: [Insert File Path]
                 - **Status:** [❌ PERSISTENT | 🆕 NEW]
                 - **Target Line Range:** [e.g., lines 45-52]
@@ -175,17 +179,12 @@ jobs:
                 ```[language]
                 // Exact code patch or snippet to implement
                 ```
-                <<-- end of issue format, can be repeated for more than 1 issue -->>
-                
-                [Include ALL active issues here. Do not include ✅ FIXED items in this raw prompt block.]
 
-                // ANY NOTES OR GUIDANCE IN LAST PARAGRAPH
+                [Include ALL active issues here. Do not include ✅ FIXED items.]
                 ````
-                <<-- end prompt must wrap with markdown -->>
 
               </details>
               --- END OF review_body.md TEMPLATE ---
-              <!-- FIX_PROMPT_END -->
 
-              STEP 2: Execute the review using the file you just created:
+              STEP 2: Submit the review using the file you just created:
               `gh pr review --request-changes -F review_body.md`
