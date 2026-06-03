@@ -18,32 +18,7 @@ import {
 export const createAdminOrganizationsRoutes = (deps = {}) => {
   const { requireSuperAdmin: guard = requireSuperAdmin } = { ...deps }
 
-  return new Elysia().post(
-    "/admin/organizations",
-    async ({ body, set }) => {
-      const actor = await guard(set)
-      if ("ok" in actor && !actor.ok) {
-        return actor as AdminApiError
-      }
-
-      try {
-        const org = await createAdminOrganization({
-          name: body.name.trim(),
-          domains: body.domains?.map((d: string) => d.trim()),
-          externalId: body.externalId?.trim(),
-        })
-
-        set.status = 201
-        return {
-          ok: true,
-          organization: org,
-        }
-      } catch (error) {
-        return toWorkosError(set, error)
-      }
-    },
-    { body: adminCreateOrganizationSchema }
-  )
+  return new Elysia()
     .get(
       "/admin/organizations",
       async ({ query, set }) => {
@@ -80,6 +55,32 @@ export const createAdminOrganizationsRoutes = (deps = {}) => {
         }
       },
       { query: listOrganizationsQuerySchema }
+    )
+    .post(
+      "/admin/organizations",
+      async ({ body, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) {
+          return actor as AdminApiError
+        }
+
+        try {
+          const org = await createAdminOrganization({
+            name: body.name.trim(),
+            domains: body.domains?.map((d: string) => d.trim()),
+            externalId: body.externalId?.trim(),
+          })
+
+          set.status = 201
+          return {
+            ok: true,
+            organization: org,
+          }
+        } catch (error) {
+          return toWorkosError(set, error)
+        }
+      },
+      { body: adminCreateOrganizationSchema }
     )
     .get(
       "/admin/organizations/:id/members",

@@ -11,9 +11,14 @@ const mockFindMany = mock<(...args: any[]) => any>(async () => [])
 const mockCount = mock<(...args: any[]) => any>(async () => 0)
 const mockFindUnique = mock<(...args: any[]) => any>(async () => null)
 const mockUpdate = mock<(...args: any[]) => any>(async () => ({}))
+const mockCreate = mock<(...args: any[]) => any>(async () => ({}))
 const mockBillingFindUnique = mock<(...args: any[]) => any>(async () => null)
-const mockBillingCreate = mock<(...args: any[]) => any>(async () => ({ id: "ba-1", balance: 0 }))
-const mockAdjustmentCreate = mock<(...args: any[]) => any>(async () => ({ id: "adj-1" }))
+const mockBillingCreate = mock<(...args: any[]) => any>(
+  async () => ({ id: "ba-1", balance: 0 })
+)
+const mockAdjustmentCreate = mock<(...args: any[]) => any>(
+  async () => ({ id: "adj-1" })
+)
 const mockTransaction = mock<(...args: any[]) => any>(async (fn: (tx: any) => any) =>
   fn({
     whatsappDevice: {
@@ -21,6 +26,7 @@ const mockTransaction = mock<(...args: any[]) => any>(async (fn: (tx: any) => an
       count: mockCount,
       findUnique: mockFindUnique,
       update: mockUpdate,
+      create: mockCreate,
     },
     billingAccount: {
       findUnique: mockBillingFindUnique,
@@ -29,7 +35,7 @@ const mockTransaction = mock<(...args: any[]) => any>(async (fn: (tx: any) => an
     billingAdjustment: {
       create: mockAdjustmentCreate,
     },
-  }),
+  })
 )
 
 mock.module("@/lib/prisma", () => ({
@@ -39,6 +45,7 @@ mock.module("@/lib/prisma", () => ({
       count: mockCount,
       findUnique: mockFindUnique,
       update: mockUpdate,
+      create: mockCreate,
     },
     billingAccount: {
       findUnique: mockBillingFindUnique,
@@ -51,22 +58,9 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
-const mockAuthContext = {
-  type: "workos" as const,
-  userId: "user-1",
-  email: "admin@test.com",
-  organizationId: "org-1",
-  orgRole: "admin" as const,
+const mockRequireSuperAdmin = mock<(...args: any[]) => any>(async () => ({
+  userId: "admin-1",
   platformRole: "super_admin" as const,
-  source: "direct_cookie" as const,
-}
-
-const mockResolveAuthContext = mock<(...args: any[]) => any>(
-  async () => mockAuthContext,
-)
-
-mock.module("@/lib/auth/resolve-proxy-auth", () => ({
-  resolveAuthContext: mockResolveAuthContext,
 }))
 
 // Module under test — must be imported AFTER mocks
@@ -74,33 +68,84 @@ const { createAdminDevicesRoutes } = await import("./admin-devices.route")
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function createTestApp() {
-  return new Elysia().use(createAdminDevicesRoutes())
+function createTestApp(guard = mockRequireSuperAdmin) {
+  return new Elysia().use(createAdminDevicesRoutes({ requireSuperAdmin: guard }))
 }
 
 const BASE = "http://localhost/admin/devices"
 
+const mockUnauthorized = (set: any) => {
+  set.status = 401
+  return {
+    ok: false as const,
+    error: "UNAUTHORIZED" as const,
+    message: "You must be signed in to perform this action.",
+  }
+}
+
+const mockForbidden = (set: any) => {
+  set.status = 403
+  return {
+    ok: false as const,
+    error: "FORBIDDEN" as const,
+    policyCode: "SUPER_ADMIN_REQUIRED" as const,
+    message: "This action requires super admin access.",
+  }
+}
+
+function unauthorizedContext() {
+  return mockUnauthorized as any
+}
+
+function forbiddenContext() {
+  return mockForbidden as any
+}
+
+function superAdminContext() {
+  return mockRequireSuperAdmin
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe("Admin Devices Routes", () => {
+  const defaultDevice = {
+    id: "dev-default",
+    organizationId: "org-1",
+    phoneNumber: "+6280000000000",
+    status: "ACTIVE" as const,
+    balance: { toString: () => "0", valueOf: () => 0 },
+    quotaBase: { toString: () => "1000", valueOf: () => 1000 },
+    dailyLimitMessage: 0,
+    whatsappBusinessAccountId: null,
+    whatsappPhoneId: null,
+    whatsappApplicationId: null,
+    callbackUrl: null,
+    expiredAt: null,
+    whatsappProfile: null,
+    createdAt: new Date("2025-01-01"),
+    updatedAt: new Date("2025-01-01"),
+  }
+
   beforeEach(() => {
     mockFindMany.mockImplementation(async () => [])
     mockCount.mockImplementation(async () => 0)
     mockFindUnique.mockImplementation(async () => null)
     mockUpdate.mockImplementation(async () => ({}))
+    mockCreate.mockImplementation(async () => ({ ...defaultDevice }))
     mockBillingFindUnique.mockImplementation(async () => null)
-    mockBillingCreate.mockImplementation(async () => ({ id: "ba-1", balance: 0 }))
+    mockBillingCreate.mockImplementation(async () => ({
+      id: "ba-1",
+      balance: 0,
+    }))
     mockAdjustmentCreate.mockImplementation(async () => ({ id: "adj-1" }))
-    mockResolveAuthContext.mockImplementation(async () => mockAuthContext)
+    superAdminContext()
   })
 
   // ─── GET / ──────────────────────────────────────────────────────────────────
 
   describe("GET /", () => {
     it("returns 401 when not authenticated", async () => {
-      mockResolveAuthContext.mockImplementation(async () => null)
-
-      const app = createTestApp()
+      const app = createTestApp(unauthorizedContext())
       const res = await app.handle(new Request(`${BASE}/`))
       const body = await res.json()
 
@@ -109,16 +154,34 @@ describe("Admin Devices Routes", () => {
       expect(body.error).toBe("UNAUTHORIZED")
     })
 
-    it("returns all devices when authenticated", async () => {
+    it("returns 403 when authenticated but not super admin", async () => {
+      const app = createTestApp(forbiddenContext())
+      const res = await app.handle(new Request(`${BASE}/`))
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+      expect(body.policyCode).toBe("SUPER_ADMIN_REQUIRED")
+    })
+
+    it("returns all devices when super admin", async () => {
       const devices = [
         {
           id: "dev-1",
           organizationId: "org-1",
           phoneNumber: "+6281234567890",
           status: "ACTIVE",
-          balance: 100000,
-          quotaBase: 1000,
+          balance: { toString: () => "100000", valueOf: () => 100000 },
+          quotaBase: { toString: () => "1000", valueOf: () => 1000 },
+          quotaBaseIn: 0,
+          quotaBaseOut: 1000,
           dailyLimitMessage: 500,
+          whatsappBusinessAccountId: null,
+          whatsappPhoneId: null,
+          whatsappApplicationId: null,
+          callbackUrl: null,
+          whatsappProfile: null,
           createdAt: new Date("2025-01-01"),
           updatedAt: new Date("2025-01-15"),
         },
@@ -148,9 +211,19 @@ describe("Admin Devices Routes", () => {
     })
   })
 
-  // ─── GET /:id ───────────────────────────────────────────────────────────────
+  // ─── GET /:id ─────────────────────────────────────────────────────────────
 
   describe("GET /:id", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(new Request(`${BASE}/dev-1`))
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
     it("returns 404 when device not found", async () => {
       mockFindUnique.mockImplementation(async () => null)
 
@@ -169,15 +242,17 @@ describe("Admin Devices Routes", () => {
         organizationId: "org-1",
         phoneNumber: "+6281234567890",
         status: "ACTIVE",
-        balance: 250000,
-        quotaBase: 2000,
+        balance: { toString: () => "250000", valueOf: () => 250000 },
+        quotaBase: { toString: () => "2000", valueOf: () => 2000 },
         quotaBaseIn: 100,
         quotaBaseOut: 100,
         dailyLimitMessage: 500,
         whatsappBusinessAccountId: "waba-1",
         whatsappPhoneId: "phone-1",
+        whatsappApplicationId: "app-1",
         callbackUrl: "https://example.com/callback",
         expiredAt: null,
+        whatsappProfile: { name: "Primary" },
         createdAt: new Date("2025-01-01"),
         updatedAt: new Date("2025-01-15"),
       }
@@ -191,12 +266,219 @@ describe("Admin Devices Routes", () => {
       expect(body.ok).toBe(true)
       expect(body.device.id).toBe("dev-1")
       expect(body.device.balance).toBe(250000)
+      expect(body.device.whatsappProfile).toEqual({ name: "Primary" })
     })
   })
 
-  // ─── POST /:id/top-up ──────────────────────────────────────────────────────
+  // ─── POST / ───────────────────────────────────────────────────────────────
+
+  describe("POST /", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(
+        new Request(`${BASE}/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Test Device",
+            organizationId: "org-1",
+            phoneNumber: "+6281234567890",
+          }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not super admin", async () => {
+      const app = createTestApp(forbiddenContext())
+      const res = await app.handle(
+        new Request(`${BASE}/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Test Device",
+            organizationId: "org-1",
+            phoneNumber: "+6281234567890",
+          }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 422 when organizationId is missing", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Test Device",
+            phoneNumber: "+6281234567890",
+          }),
+        })
+      )
+      const bodyText = await res.text()
+      const body = bodyText ? JSON.parse(bodyText) : null
+
+      expect(res.status).toBe(422)
+      expect(body).not.toBeNull()
+      expect(body!.ok).toBe(false)
+      expect(body!.error).toBe("VALIDATION_ERROR")
+      expect(body!.fieldErrors.organizationId).toBeDefined()
+    })
+
+    it("returns 422 when phoneNumber is missing", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Test Device",
+            organizationId: "org-1",
+          }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(422)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.fieldErrors.phoneNumber).toBeDefined()
+    })
+
+    it("returns 201 and creates device with minimal body", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Test Device",
+            organizationId: "org-1",
+            phoneNumber: "+6281234567890",
+          }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(201)
+      expect(body.ok).toBe(true)
+      expect(body.device.id).toBe("dev-default")
+      expect(body.device.organizationId).toBe("org-1")
+    })
+
+    it("returns 201 and persists all optional fields", async () => {
+      let capturedData: any = null
+      mockCreate.mockImplementation(async (data: any) => {
+        capturedData = data
+        return {
+          id: "dev-full",
+          organizationId: data.organizationId,
+          phoneNumber: data.phoneNumber,
+          status: "ACTIVE",
+          balance: { toString: () => "0", valueOf: () => 0 },
+          quotaBase: { toString: () => "1000", valueOf: () => 1000 },
+          dailyLimitMessage: 0,
+          whatsappBusinessAccountId: data.whatsappBusinessAccountId,
+          whatsappPhoneId: data.whatsappPhoneId,
+          whatsappApplicationId: data.whatsappApplicationId,
+          callbackUrl: data.callbackUrl,
+          expiredAt: null,
+          whatsappProfile: data.whatsappProfile,
+          createdAt: new Date("2025-01-01"),
+          updatedAt: new Date("2025-01-01"),
+        }
+      })
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Test Device",
+            organizationId: "org-1",
+            phoneNumber: "+6281234567890",
+            displayName: "Primary Device",
+            environment: "LIVE",
+            whatsappBusinessAccountId: "waba-1",
+            whatsappPhoneId: "phone-1",
+            whatsappApplicationId: "app-1",
+            callbackUrl: "https://example.com/cb",
+          }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(201)
+      expect(body.ok).toBe(true)
+      expect(capturedData.data).toEqual(
+        expect.objectContaining({
+          organizationId: "org-1",
+          phoneNumber: "+6281234567890",
+          status: "ACTIVE",
+          whatsappBusinessAccountId: "waba-1",
+          whatsappPhoneId: "phone-1",
+          whatsappApplicationId: "app-1",
+          callbackUrl: "https://example.com/cb",
+          whatsappProfile: { name: "Primary Device" },
+        })
+      )
+    })
+
+    it("returns 500 on service failure", async () => {
+      mockCreate.mockImplementation(async () => {
+        throw new Error("Database exploded")
+      })
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Test Device",
+            organizationId: "org-1",
+            phoneNumber: "+6281234567890",
+          }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(500)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
+  })
+
+  // ─── POST /:id/top-up ───────────────────────────────────────────────────
 
   describe("POST /:id/top-up", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/top-up`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 50000, reason: "Test" }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
     it("returns 422 when amount is missing", async () => {
       const app = createTestApp()
       const res = await app.handle(
@@ -204,7 +486,7 @@ describe("Admin Devices Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
-        }),
+        })
       )
       const body = await res.json()
 
@@ -220,7 +502,7 @@ describe("Admin Devices Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ amount: 0, reason: "Test" }),
-        }),
+        })
       )
       const body = await res.json()
 
@@ -238,7 +520,7 @@ describe("Admin Devices Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ amount: 50000, reason: "Test top-up" }),
-        }),
+        })
       )
       const body = await res.json()
 
@@ -264,7 +546,7 @@ describe("Admin Devices Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ amount: 500000000, reason: "Excessive" }),
-        }),
+        })
       )
       const body = await res.json()
 
@@ -304,7 +586,7 @@ describe("Admin Devices Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ amount: 50000, reason: "Monthly top-up" }),
-        }),
+        })
       )
       const body = await res.json()
 

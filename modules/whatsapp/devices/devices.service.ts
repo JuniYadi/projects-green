@@ -90,13 +90,19 @@ export const createDeviceService = (options: { prisma?: typeof prisma } = {}): D
     },
 
     async create(input) {
-      // NOTE: Schema does not have 'name' field - phoneNumber is used as name
       const device = await db.whatsappDevice.create({
         data: {
           organizationId: input.organizationId ?? "",
           phoneNumber: input.phoneNumber,
           status: "ACTIVE",
-          // environment: not yet persisted; add column in follow-up
+          whatsappBusinessAccountId:
+            input.whatsappBusinessAccountId ?? null,
+          whatsappPhoneId: input.whatsappPhoneId ?? null,
+          whatsappApplicationId: input.whatsappApplicationId ?? null,
+          callbackUrl: input.callbackUrl || null,
+          ...(input.displayName
+            ? { whatsappProfile: { name: input.displayName } }
+            : {}),
         },
       })
       return _toDeviceDetail(device as PrismaDeviceFields)
