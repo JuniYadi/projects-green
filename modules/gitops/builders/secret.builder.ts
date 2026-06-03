@@ -49,10 +49,8 @@ export class SecretBuilder {
   addTLSData(tlsData: TLSSecretData): this {
     this.type = TLS_SECRET_TYPE
     this.data = {
-      tls: {
-        crt: Buffer.from(tlsData.cert).toString("base64"),
-        key: Buffer.from(tlsData.key).toString("base64"),
-      },
+      "tls.crt": Buffer.from(tlsData.cert).toString("base64"),
+      "tls.key": Buffer.from(tlsData.key).toString("base64"),
     }
     return this
   }

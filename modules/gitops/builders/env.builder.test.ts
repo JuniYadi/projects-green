@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { EnvBuilder, EnvVar, EnvFromSource } from "./env.builder"
+import { EnvBuilder } from "./env.builder"
 
 describe("EnvBuilder", () => {
   it("adds simple env vars (HasEnv equivalent)", () => {

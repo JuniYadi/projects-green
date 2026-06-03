@@ -29,8 +29,8 @@ describe("SecretBuilder", () => {
       .build()
 
     expect(secret.type).toBe("kubernetes.io/tls")
-    expect(secret.data!.tls.crt).toBe(Buffer.from("-----BEGIN CERTIFICATE-----\ncert-content\n-----END CERTIFICATE-----").toString("base64"))
-    expect(secret.data!.tls.key).toBe(Buffer.from("-----BEGIN PRIVATE KEY-----\nkey-content\n-----END PRIVATE KEY-----").toString("base64"))
+    expect(secret.data!["tls.crt"]).toBe(Buffer.from("-----BEGIN CERTIFICATE-----\ncert-content\n-----END CERTIFICATE-----").toString("base64"))
+    expect(secret.data!["tls.key"]).toBe(Buffer.from("-----BEGIN PRIVATE KEY-----\nkey-content\n-----END PRIVATE KEY-----").toString("base64"))
   })
 
   it("adds reloader annotation for auto-restart", () => {
