@@ -23,7 +23,7 @@ Run a single test file: `bun test path/to/file.test.ts`
 
 ## Validation Requirements (4 Pillars)
 
-**HARD REQUIREMENT:** Must pass before committing or opening a PR. **NOT** per-edit — run once at the end when all work is complete:
+**HARD REQUIREMENT:** Must pass before opening a PR. **NOT** per-edit — run only when explicitly instructed to open a PR (saves tokens during local work):
 
 1. `bun run lint` — 0 errors
 2. `bun run typecheck` — 0 errors
@@ -31,7 +31,7 @@ Run a single test file: `bun test path/to/file.test.ts`
 4. `bun run test:coverage` — line coverage ≥ 85% (target di codecov.yml)
 5. `bun run build` — production build succeeds
 
-**Never commit or open PR if any pillar fails. Run them only when ready to commit — not after every incremental change.**
+**Never open PR if any pillar fails. Do NOT run these during local development — only when the user asks you to open a PR.**
 
 ## Architecture
 
