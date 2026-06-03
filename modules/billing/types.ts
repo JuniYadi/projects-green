@@ -188,3 +188,18 @@ export interface UsageLedgerEntry {
   amountIdr: Prisma.Decimal;
   metadata?: object;
 }
+
+export interface CostingResult {
+  category: string
+  quantity: number
+  unitPrice: Prisma.Decimal
+  totalCost: Prisma.Decimal
+  serviceType: string
+}
+
+export interface UsageBreakdown {
+  category: string
+  quantity: number
+  totalCost: Prisma.Decimal
+  percentage: number
+}
