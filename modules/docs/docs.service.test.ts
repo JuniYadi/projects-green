@@ -206,4 +206,157 @@ describe("searchKnowledgeDocs", () => {
     expect(results[0]?.id).toBe("route_doc")
     expect(results.length).toBeGreaterThan(0)
   })
+
+  it("returns empty array when no docs match", async () => {
+    const { searchKnowledgeDocs } = await loadService()
+    mockFindMany.mockResolvedValueOnce([])
+
+    const results = await searchKnowledgeDocs({
+      organizationId: "org_1",
+      routePath: "/nonexistent",
+      query: "nothing",
+      limit: 1,
+    })
+
+    expect(results).toEqual([])
+  })
+
+  it("handles empty query string", async () => {
+    const { searchKnowledgeDocs } = await loadService()
+    mockFindMany.mockResolvedValueOnce([
+      buildRecord({
+        id: "doc_1",
+        path: "/console",
+        searchText: "some content",
+      }),
+    ])
+
+    const results = await searchKnowledgeDocs({
+      organizationId: "org_1",
+      routePath: "/console",
+      query: "",
+      limit: 1,
+    })
+
+    // Empty query = no query tokens, so lexical score = 0
+    // Route match still gives 100 for exact path match
+    expect(results.length).toBe(1)
+  })
+})
+
+describe("normalizeDocPath edge cases", () => {
+  it("handles path with query string", async () => {
+    const { normalizeDocPath } = await loadService()
+    expect(normalizeDocPath("/page?foo=bar&baz=1")).toBe("/page")
+  })
+
+  it("handles path with hash fragment", async () => {
+    const { normalizeDocPath } = await loadService()
+    expect(normalizeDocPath("/page#section")).toBe("/page")
+  })
+
+  it("adds leading slash when missing", async () => {
+    const { normalizeDocPath } = await loadService()
+    expect(normalizeDocPath("page")).toBe("/page")
+  })
+
+  it("preserves single slash", async () => {
+    const { normalizeDocPath } = await loadService()
+    expect(normalizeDocPath("/")).toBe("/")
+  })
+})
+
+describe("getDocByPath edge cases", () => {
+  it("returns null for empty path after normalization", async () => {
+    const { getDocByPath } = await loadService()
+    const doc = await getDocByPath({
+      path: "   ",
+      organizationId: "org_1",
+    })
+    expect(doc).toBeNull()
+  })
+})
+
+describe("semanticSearchKnowledgeDocs", () => {
+  it("returns results using lexical fallback when embedding is not available", async () => {
+    const { semanticSearchKnowledgeDocs } = await loadService()
+    mockFindMany.mockResolvedValueOnce([
+      buildRecord({
+        id: "semantic_1",
+        path: "/console",
+        searchText: "deploy applications",
+      }),
+    ])
+    mockEmbedDocument.mockRejectedValueOnce(new Error("AI not configured"))
+
+    const results = await semanticSearchKnowledgeDocs({
+      organizationId: "org_1",
+      routePath: "/console",
+      query: "deploy",
+      limit: 1,
+    })
+
+    expect(results.length).toBeGreaterThan(0)
+  })
+
+  it("returns empty array when no candidates match", async () => {
+    const { semanticSearchKnowledgeDocs } = await loadService()
+    mockFindMany.mockResolvedValueOnce([])
+
+    const results = await semanticSearchKnowledgeDocs({
+      organizationId: null,
+      routePath: "/console",
+      query: "test",
+    })
+
+    expect(results).toEqual([])
+  })
+})
+
+describe("backfillEmbeddings", () => {
+  it("returns zero processed when no documents need backfill", async () => {
+    const { backfillEmbeddings } = await loadService()
+    mockFindMany.mockResolvedValueOnce([])
+
+    const result = await backfillEmbeddings(50)
+    expect(result.processed).toBe(0)
+    expect(result.errors).toEqual([])
+  })
+
+  it("processes documents and updates embeddings", async () => {
+    const { backfillEmbeddings } = await loadService()
+    mockFindMany.mockResolvedValueOnce([
+      buildRecord({
+        id: "backfill_1",
+        path: "/console",
+        howTo: ["Step 1"],
+        notes: ["Note 1"],
+      }),
+    ])
+    // Second call returns empty to stop the loop
+    mockFindMany.mockResolvedValueOnce([])
+
+    const result = await backfillEmbeddings(1)
+    expect(result.processed).toBe(1)
+  })
+
+  it("collects errors when embedding fails", async () => {
+    const { backfillEmbeddings } = await loadService()
+    mockFindMany.mockResolvedValueOnce([
+      buildRecord({
+        id: "fail_1",
+        path: "/fail",
+        howTo: [],
+        notes: [],
+      }),
+    ])
+    mockFindMany.mockResolvedValueOnce([])
+    mockEmbedDocument.mockRejectedValueOnce(new Error("Embedding failed"))
+
+    const result = await backfillEmbeddings(1)
+    // Document found but embedding failed
+    expect(result.processed).toBe(0)
+    expect(result.errors.length).toBe(1)
+    expect(result.errors[0]).toContain("fail_1")
+  })
 })

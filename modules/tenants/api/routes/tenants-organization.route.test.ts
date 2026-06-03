@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
-import {
-  NotFoundException,
-  UnprocessableEntityException,
-} from "@workos-inc/node"
+
+import { workosNodeMock } from "@/test/workos-node-mock"
+
+// Mock @workos-inc/node upfront so the module is consistent in both
+// isolated (no coverage) and single-process (coverage) mode.
+mock.module("@workos-inc/node", () => workosNodeMock)
+
+const { NotFoundException, UnprocessableEntityException } =
+  workosNodeMock
 
 import { createTenantsOrganizationRoutes } from "@/modules/tenants/api/routes/tenants-organization.route"
 import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"

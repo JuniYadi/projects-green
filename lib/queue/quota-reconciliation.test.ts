@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from "bun:test"
+import { afterEach, describe, expect, it, mock } from "bun:test"
 
 import { createQuotaReconciliationQueue, __testing } from "./quota-reconciliation"
 
@@ -29,6 +29,63 @@ describe("parseRedisDb", () => {
     expect(() => parseRedisDb("/-1")).toThrow(
       'Expected empty path or numeric DB index.'
     )
+  })
+})
+
+describe("getQuotaReconciliationRedisConnection", () => {
+  const originalEnv = process.env
+
+  afterEach(() => {
+    process.env = originalEnv
+  })
+
+  it("throws when REDIS_URL is not set", async () => {
+    const { getQuotaReconciliationRedisConnection } = await import("./quota-reconciliation")
+    delete process.env.REDIS_URL
+
+    expect(() => getQuotaReconciliationRedisConnection()).toThrow(
+      "Missing REDIS_URL environment variable"
+    )
+  })
+
+  it("parses REDIS_URL and returns connection config", async () => {
+    const { getQuotaReconciliationRedisConnection } = await import("./quota-reconciliation")
+    process.env.REDIS_URL = "redis://user:pass@localhost:6379/5"
+
+    const config = getQuotaReconciliationRedisConnection()
+
+    expect(config.host).toBe("localhost")
+    expect(config.port).toBe(6379)
+    expect(config.username).toBe("user")
+    expect(config.password).toBe("pass")
+    expect(config.db).toBe(5)
+    expect(config.tls).toBeUndefined()
+  })
+
+  it("enables TLS for rediss:// protocol", async () => {
+    const { getQuotaReconciliationRedisConnection } = await import("./quota-reconciliation")
+    process.env.REDIS_URL = "rediss://localhost:6380"
+
+    const config = getQuotaReconciliationRedisConnection()
+
+    expect(config.tls).toEqual({})
+    expect(config.port).toBe(6380)
+  })
+
+  it("throws for invalid port", async () => {
+    const { getQuotaReconciliationRedisConnection } = await import("./quota-reconciliation")
+    process.env.REDIS_URL = "redis://localhost:invalid"
+
+    expect(() => getQuotaReconciliationRedisConnection()).toThrow()
+  })
+
+  it("uses default port 6379 when not specified", async () => {
+    const { getQuotaReconciliationRedisConnection } = await import("./quota-reconciliation")
+    process.env.REDIS_URL = "redis://localhost"
+
+    const config = getQuotaReconciliationRedisConnection()
+
+    expect(config.port).toBe(6379)
   })
 })
 

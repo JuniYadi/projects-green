@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test"
+
+// ─── Prisma mocks for resolveApiKey ─────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockApiKeyFindFirst = mock(async (): Promise<any> => null)
@@ -14,7 +16,24 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
-const { resolveApiKey } = await import("@/lib/auth/session")
+// ─── WorkOS mock for getWorkOSSession ────────────────────────────────────────
+
+const mockAuthenticateWithSessionCookie = mock<
+  () => Promise<{ authenticated: boolean; user?: Record<string, unknown> }>
+>()
+
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: () => ({
+    userManagement: {
+      authenticateWithSessionCookie: mockAuthenticateWithSessionCookie,
+    },
+  }),
+}))
+
+const { resolveApiKey, getWorkOSSession, extractBearerToken } =
+  await import("@/lib/auth/session")
+
+// ─── resolveApiKey ───────────────────────────────────────────────────────────
 
 describe("resolveApiKey", () => {
   beforeEach(() => {
@@ -26,7 +45,6 @@ describe("resolveApiKey", () => {
   })
 
   it("returns null when no matching key found", async () => {
-    mockApiKeyFindFirst.mockImplementationOnce(async () => null)
     const result = await resolveApiKey("live_testkey")
     expect(result).toBeNull()
   })
@@ -105,5 +123,251 @@ describe("resolveApiKey", () => {
     expect(result!.keyId).toBe("key_4")
 
     delete process.env.API_KEY_HASH_SALT
+  })
+
+  it("passes clientIp to lastUsedIp update", async () => {
+    mockApiKeyFindFirst.mockImplementationOnce(async () => ({
+      id: "key_5",
+      name: "IP Key",
+      environment: "LIVE",
+      organizationId: "org_1",
+      scopes: [],
+    }))
+
+    await resolveApiKey("live_ipkey", "192.168.1.1")
+
+    expect(mockApiKeyUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          lastUsedIp: "192.168.1.1",
+        }),
+      })
+    )
+  })
+
+  it("handles update failure gracefully (catch)", async () => {
+    mockApiKeyFindFirst.mockImplementationOnce(async () => ({
+      id: "key_6",
+      name: "Fail Key",
+      environment: "LIVE",
+      organizationId: "org_1",
+      scopes: [],
+    }))
+    mockApiKeyUpdate.mockImplementationOnce(async () => {
+      throw new Error("DB error")
+    })
+
+    const result = await resolveApiKey("live_failkey")
+    expect(result).not.toBeNull()
+    expect(result!.keyId).toBe("key_6")
+  })
+})
+
+// ─── extractBearerToken ─────────────────────────────────────────────────────
+
+describe("extractBearerToken", () => {
+  it("returns token from Authorization header", () => {
+    const request = new Request("http://localhost", {
+      headers: { Authorization: "Bearer mytoken123" },
+    })
+
+    const result = extractBearerToken(request)
+    expect(result).toBe("mytoken123")
+  })
+
+  it("returns null when no Authorization header", () => {
+    const request = new Request("http://localhost")
+
+    const result = extractBearerToken(request)
+    expect(result).toBeNull()
+  })
+
+  it("returns null when Authorization header is not Bearer", () => {
+    const request = new Request("http://localhost", {
+      headers: { Authorization: "Basic dXNlcjpwYXNz" },
+    })
+
+    const result = extractBearerToken(request)
+    expect(result).toBeNull()
+  })
+
+  it("returns null when Bearer token is empty", () => {
+    const request = new Request("http://localhost", {
+      headers: { Authorization: "Bearer " },
+    })
+
+    const result = extractBearerToken(request)
+    expect(result).toBeNull()
+  })
+})
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Bun blocks setting Cookie header on Request (forbidden header name),
+// so we override headers.get to return the desired cookie string.
+function withCookie(cookieStr: string): Request {
+  const req = new Request("http://localhost")
+  const originalGet = req.headers.get.bind(req.headers)
+  req.headers.get = (name: string) => {
+    if (name.toLowerCase() === "cookie") return cookieStr
+    return originalGet(name)
+  }
+  return req
+}
+
+function withBearer(token: string): Request {
+  return new Request("http://localhost", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+function withBearerAndCookie(bearer: string, cookie: string): Request {
+  const req = withBearer(bearer)
+  const originalGet = req.headers.get.bind(req.headers)
+  req.headers.get = (name: string) => {
+    if (name.toLowerCase() === "cookie") return cookie
+    return originalGet(name)
+  }
+  return req
+}
+
+// ─── getWorkOSSession ────────────────────────────────────────────────────────
+
+describe("getWorkOSSession", () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    process.env = { ...originalEnv }
+    delete process.env.WORKOS_COOKIE_PASSWORD
+    delete process.env.WORKOS_COOKIE_NAME
+    mockAuthenticateWithSessionCookie.mockReset()
+  })
+
+  afterAll(() => {
+    process.env = originalEnv
+  })
+
+  it("returns null when WORKOS_COOKIE_PASSWORD is not set", async () => {
+    const request = new Request("http://localhost")
+    const result = await getWorkOSSession(request)
+    expect(result).toBeNull()
+  })
+
+  it("returns null when cookie password is empty string", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "   "
+    const request = new Request("http://localhost")
+    const result = await getWorkOSSession(request)
+    expect(result).toBeNull()
+  })
+
+  it("extracts session from cookie and returns user when authenticated", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"
+
+    mockAuthenticateWithSessionCookie.mockResolvedValue({
+      authenticated: true,
+      user: { id: "user_1", email: "test@example.com" },
+    })
+
+    const request = withCookie("wos-session=sealed_session_data_here")
+
+    const result = await getWorkOSSession(request)
+    expect(result).not.toBeNull()
+    expect(result!.id).toBe("user_1")
+    expect(result!.email).toBe("test@example.com")
+
+    expect(mockAuthenticateWithSessionCookie).toHaveBeenCalledWith({
+      sessionData: "sealed_session_data_here",
+      cookiePassword: "super-secret-password",
+    })
+  })
+
+  it("extracts session from custom cookie name", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"
+    process.env.WORKOS_COOKIE_NAME = "my-session"
+
+    mockAuthenticateWithSessionCookie.mockResolvedValue({
+      authenticated: true,
+      user: { id: "user_2" },
+    })
+
+    const request = withCookie("my-session=custom_cookie_data")
+
+    const result = await getWorkOSSession(request)
+    expect(result).not.toBeNull()
+    expect(result!.id).toBe("user_2")
+  })
+
+  it("uses Bearer token with wos_ prefix when present", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"
+
+    mockAuthenticateWithSessionCookie.mockResolvedValue({
+      authenticated: true,
+      user: { id: "user_3" },
+    })
+
+    const request = withBearer("wos_sealed_token")
+
+    const result = await getWorkOSSession(request)
+    expect(result).not.toBeNull()
+
+    expect(mockAuthenticateWithSessionCookie).toHaveBeenCalledWith({
+      sessionData: "wos_sealed_token",
+      cookiePassword: "super-secret-password",
+    })
+  })
+
+  it("returns null when WorkOS SDK returns not authenticated", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"
+
+    mockAuthenticateWithSessionCookie.mockResolvedValue({
+      authenticated: false,
+    })
+
+    const request = withCookie("wos-session=invalid_data")
+
+    const result = await getWorkOSSession(request)
+    expect(result).toBeNull()
+  })
+
+  it("returns null when WorkOS SDK throws", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"
+
+    mockAuthenticateWithSessionCookie.mockRejectedValue(
+      new Error("SDK error")
+    )
+
+    const request = withCookie("wos-session=bad_data")
+
+    const result = await getWorkOSSession(request)
+    expect(result).toBeNull()
+  })
+
+  it("returns null when no session data in cookie or bearer", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"
+
+    const request = new Request("http://localhost")
+
+    const result = await getWorkOSSession(request)
+    expect(result).toBeNull()
+  })
+
+  it("prefers bearer token over cookie when both present", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"
+
+    mockAuthenticateWithSessionCookie.mockResolvedValue({
+      authenticated: true,
+      user: { id: "user_bearer" },
+    })
+
+    const request = withBearerAndCookie("wos_bearer_token", "wos-session=cookie_data")
+
+    const result = await getWorkOSSession(request)
+    expect(result).not.toBeNull()
+
+    // Should have used the bearer token, not the cookie
+    expect(mockAuthenticateWithSessionCookie).toHaveBeenCalledWith({
+      sessionData: "wos_bearer_token",
+      cookiePassword: "super-secret-password",
+    })
   })
 })
