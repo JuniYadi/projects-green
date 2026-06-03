@@ -62,6 +62,7 @@ export class BankAccountService {
       accountName?: string
       accountNumber?: string
       isDefault?: boolean
+      isActive?: boolean
     }
   ): Promise<BankAccountResponse> {
     const existing = await prisma.bankAccount.findUnique({ where: { id } })
@@ -80,6 +81,7 @@ export class BankAccountService {
     if (input.accountName) data.accountName = this.encryption.encryptField(input.accountName)
     if (input.accountNumber) data.accountNumber = this.encryption.encryptField(input.accountNumber)
     if (input.isDefault !== undefined) data.isDefault = input.isDefault
+    if (input.isActive !== undefined) data.isActive = input.isActive
 
     const account = await prisma.bankAccount.update({
       where: { id },

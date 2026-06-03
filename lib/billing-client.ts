@@ -97,6 +97,23 @@ export type ApiErrorResponse = {
   fieldErrors?: Record<string, string[]>
 }
 
+// Payment Method types
+
+export type PaymentMethod = {
+  id: string
+  bankCode: string
+  bankName: string
+  accountName: string
+  accountNumber: string
+  isActive: boolean
+  isDefault: boolean
+}
+
+export type PaymentMethodsResponse = {
+  ok: true
+  accounts: PaymentMethod[]
+}
+
 async function fetchBilling<T>(
   endpoint: string,
   options?: RequestInit
@@ -179,6 +196,34 @@ export async function topupAndPay(
     {
       method: "POST",
       body: JSON.stringify({ invoiceId }),
+    }
+  )
+}
+
+// Payment Methods API
+
+export async function getPaymentMethods(): Promise<PaymentMethodsResponse> {
+  return fetchBilling<PaymentMethodsResponse>("/api/payments/bank-accounts")
+}
+
+export async function setDefaultPaymentMethod(
+  id: string
+): Promise<{ ok: true; account: PaymentMethod }> {
+  return fetchBilling<{ ok: true; account: PaymentMethod }>(
+    `/api/payments/bank-accounts/${id}/default`,
+    {
+      method: "PATCH",
+    }
+  )
+}
+
+export async function removePaymentMethod(
+  id: string
+): Promise<{ ok: true; message: string }> {
+  return fetchBilling<{ ok: true; message: string }>(
+    `/api/payments/bank-accounts/${id}`,
+    {
+      method: "DELETE",
     }
   )
 }
