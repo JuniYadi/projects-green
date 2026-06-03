@@ -27,6 +27,8 @@ const mockUpsertDocByPath = mock(async () => ({
   notes: ["Initial note"],
   updatedAt: "2026-05-22",
 }))
+const mockListDocs = mock(async () => [])
+const mockDeleteDocById = mock(async () => {})
 
 const createApp = () =>
   new Elysia().use(
@@ -35,6 +37,8 @@ const createApp = () =>
       getPlatformRole: mockGetPlatformRole,
       getDocByPath: mockGetDocByPath,
       upsertDocByPath: mockUpsertDocByPath,
+      listDocs: mockListDocs,
+      deleteDocById: mockDeleteDocById,
     })
   )
 
@@ -43,6 +47,8 @@ beforeEach(() => {
   mockGetPlatformRole.mockReset()
   mockGetDocByPath.mockReset()
   mockUpsertDocByPath.mockReset()
+  mockListDocs.mockReset()
+  mockDeleteDocById.mockReset()
 
   mockAuthenticate.mockImplementation(async (): Promise<import("@/modules/docs/api/docs.route").DocsAuthContext> => ({
     organizationId: "org_1",

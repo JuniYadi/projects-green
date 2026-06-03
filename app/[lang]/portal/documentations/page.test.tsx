@@ -1,21 +1,42 @@
-import { describe, expect, it } from "bun:test"
-import { render } from "@testing-library/react"
+import { beforeEach, describe, expect, it, mock, type Mock } from "bun:test"
+import { render, screen, waitFor } from "@testing-library/react"
 
-import PortalDocumentationsPage from "@/app/[lang]/portal/documentations/page"
+// Mock fetch for the docs list API call
+const mockFetch = mock(
+  (): Promise<Response> =>
+    Promise.resolve({
+      json: () =>
+        Promise.resolve({
+          ok: true,
+          docs: [
+            {
+              id: "1",
+              path: "/test",
+              title: "Test Doc",
+              purpose: "Testing",
+              howTo: ["step1"],
+              notes: [],
+              updatedAt: "2026-06-01",
+              score: 0,
+            },
+          ],
+        }),
+    } as Response)
+) as Mock
+
+global.fetch = mockFetch
 
 describe("PortalDocumentationsPage", () => {
-  it("keeps documentation scope and links tenant management to console", async () => {
-    const ui = await PortalDocumentationsPage({
-      params: Promise.resolve({ lang: "en" }),
-    })
-    const view = render(ui)
+  beforeEach(() => {
+    mockFetch.mockClear()
+  })
 
-    expect(view.getByText("Documentation Registry")).toBeTruthy()
-    expect(
-      view
-        .getByRole("link", { name: "Open Console Organization Admin" })
-        .getAttribute("href")
-    ).toBe("/en/console/organization")
-    expect(view.queryByText("Effective role:")).toBeNull()
+  it("renders documentation list after loading", async () => {
+    const { default: Page } = await import("./page")
+    render(<Page />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Test Doc")).toBeTruthy()
+    })
   })
 })

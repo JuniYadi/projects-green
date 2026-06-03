@@ -14,22 +14,17 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { TrashIcon } from "@phosphor-icons/react"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 
 type DocEntry = {
   id: string
+  organizationId: string | null
   path: string
   title: string
+  purpose: string
+  howTo: string[]
+  notes: string[]
   updatedAt: string
+  score: number
 }
 
 export default function PortalDocumentationsPage() {
@@ -38,7 +33,6 @@ export default function PortalDocumentationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [selectedDoc, setSelectedDoc] = useState<DocEntry | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<DocEntry | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const loadDocs = useCallback(async () => {
@@ -64,16 +58,21 @@ export default function PortalDocumentationsPage() {
     void loadDocs()
   }, [loadDocs])
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return
+  const handleDelete = async (doc: DocEntry) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete "${doc.title}"? This action cannot be undone.`
+      )
+    )
+      return
     setIsDeleting(true)
     try {
-      const res = await fetch(`/api/docs/${deleteTarget.id}`, {
+      const res = await fetch(`/api/docs/${doc.id}`, {
         method: "DELETE",
       }).then((r) => r.json())
       if (res.ok) {
-        setDocs((prev) => prev.filter((d) => d.id !== deleteTarget.id))
-        if (selectedDoc?.id === deleteTarget.id) setSelectedDoc(null)
+        setDocs((prev) => prev.filter((d) => d.id !== doc.id))
+        if (selectedDoc?.id === doc.id) setSelectedDoc(null)
       } else {
         setError(res.message || "Failed to delete")
       }
@@ -83,7 +82,6 @@ export default function PortalDocumentationsPage() {
       )
     } finally {
       setIsDeleting(false)
-      setDeleteTarget(null)
     }
   }
 
@@ -163,9 +161,10 @@ export default function PortalDocumentationsPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive"
+                        disabled={isDeleting}
                         onClick={(e) => {
                           e.stopPropagation()
-                          setDeleteTarget(doc)
+                          void handleDelete(doc)
                         }}
                       >
                         <TrashIcon className="h-4 w-4" />
@@ -187,35 +186,6 @@ export default function PortalDocumentationsPage() {
         </h2>
         <DocumentationForm initialData={selectedDoc} />
       </section>
-
-      <AlertDialog
-        open={!!deleteTarget}
-        onOpenChange={() => setDeleteTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete Documentation Entry
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;
-              {deleteTarget?.title}&rdquo;? This action cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </main>
   )
 }
