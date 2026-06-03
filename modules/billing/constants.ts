@@ -8,6 +8,9 @@ export const MIN_MEM_MB = 128;
 export const CPU_STEP_MCPU = 100;
 export const MEM_STEP_MB = 128;
 
+// Storage cost rate per GB-month (IDR)
+export const STORAGE_RATE_PER_GB_MONTH_IDR = 0.26;
+
 // Rounding helpers
 export function roundCpu(mcpu: number): number {
   return Math.max(

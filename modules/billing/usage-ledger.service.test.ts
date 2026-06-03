@@ -315,4 +315,130 @@ describe("UsageLedgerService", () => {
       expect(sub2Vpn!.cappedAmountIdr.toNumber()).toBe(3000)
     })
   })
+
+  describe("getUsageByDateRange", () => {
+    it("returns entries within date range", async () => {
+      const entries = [
+        {
+          id: "ledger-1",
+          organizationId: "org-1",
+          subscriptionId: "sub-1",
+          period: "2026-06",
+          category: "whatsapp",
+          amountIdr: new Decimal(1000),
+          metadata: null,
+          createdAt: new Date("2026-06-01"),
+          subscription: { id: "sub-1" },
+        },
+      ]
+      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(entries)
+
+      const results = await service.getUsageByDateRange("org-1", "2026-06-01", "2026-06-30")
+
+      expect(results).toHaveLength(1)
+      expect(mockPrisma.usageLedger.findMany).toHaveBeenCalledWith({
+        where: {
+          organizationId: "org-1",
+          createdAt: {
+            gte: new Date("2026-06-01"),
+            lte: new Date("2026-06-30"),
+          },
+        },
+        include: { subscription: true },
+        orderBy: { createdAt: "asc" },
+      })
+    })
+
+    it("filters by category when provided", async () => {
+      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+
+      await service.getUsageByDateRange("org-1", "2026-06-01", "2026-06-30", "whatsapp")
+
+      expect(mockPrisma.usageLedger.findMany).toHaveBeenCalledWith({
+        where: {
+          organizationId: "org-1",
+          createdAt: {
+            gte: new Date("2026-06-01"),
+            lte: new Date("2026-06-30"),
+          },
+          category: "whatsapp",
+        },
+        include: { subscription: true },
+        orderBy: { createdAt: "asc" },
+      })
+    })
+
+    it("returns empty array when no entries", async () => {
+      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+
+      const results = await service.getUsageByDateRange("org-1", "2026-06-01", "2026-06-30")
+
+      expect(results).toHaveLength(0)
+    })
+  })
+
+  describe("getDailyUsageTrend", () => {
+    it("returns daily aggregated amounts", async () => {
+      const entries = [
+        {
+          id: "ledger-1",
+          organizationId: "org-1",
+          subscriptionId: "sub-1",
+          period: "2026-06",
+          category: "whatsapp",
+          amountIdr: new Decimal(1000),
+          metadata: null,
+          createdAt: new Date("2026-06-01T10:00:00Z"),
+        },
+        {
+          id: "ledger-2",
+          organizationId: "org-1",
+          subscriptionId: "sub-1",
+          period: "2026-06",
+          category: "whatsapp",
+          amountIdr: new Decimal(2000),
+          metadata: null,
+          createdAt: new Date("2026-06-01T14:00:00Z"),
+        },
+        {
+          id: "ledger-3",
+          organizationId: "org-1",
+          subscriptionId: "sub-1",
+          period: "2026-06",
+          category: "hosting",
+          amountIdr: new Decimal(5000),
+          metadata: null,
+          createdAt: new Date("2026-06-02T10:00:00Z"),
+        },
+      ]
+      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(entries)
+
+      const results = await service.getDailyUsageTrend("org-1", 30)
+
+      expect(results).toHaveLength(2)
+      expect(results[0].date).toBe("2026-06-01")
+      expect(results[0].amount.toNumber()).toBe(3000)
+      expect(results[1].date).toBe("2026-06-02")
+      expect(results[1].amount.toNumber()).toBe(5000)
+    })
+
+    it("returns empty array when no entries", async () => {
+      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+
+      const results = await service.getDailyUsageTrend("org-1", 30)
+
+      expect(results).toHaveLength(0)
+    })
+
+    it("uses default 30 days when not specified", async () => {
+      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+
+      await service.getDailyUsageTrend("org-1")
+
+      const call = (mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      expect(call.where.createdAt.gte).toBeInstanceOf(Date)
+    })
+  })
 })
