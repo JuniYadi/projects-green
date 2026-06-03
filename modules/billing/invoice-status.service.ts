@@ -40,6 +40,9 @@ function toInvoiceListItem(invoice: {
 }
 
 export class InvoiceStatusManager {
+  // Cache org → admin email to avoid N+1 WorkOS API calls
+  private orgEmailCache = new Map<string, string | null>()
+
   constructor(
     private prisma: PrismaClient,
     private emailService?: InvoiceEmailService,
@@ -84,8 +87,9 @@ export class InvoiceStatusManager {
 
       issued++
 
+      // Fire-and-forget: email delivery is best-effort, invoice status already updated
       if (this.emailService && invoice.billingAccount?.organizationId) {
-        this.sendInvoiceCreatedEmail(invoice, invoice.billingAccount.organizationId)
+        void this.sendInvoiceCreatedEmail(invoice, invoice.billingAccount.organizationId)
       }
     }
 
@@ -114,8 +118,9 @@ export class InvoiceStatusManager {
 
       overdue++
 
+      // Fire-and-forget: email delivery is best-effort, invoice status already updated
       if (this.emailService && invoice.billingAccount?.organizationId) {
-        this.sendInvoiceOverdueEmail(invoice, invoice.billingAccount.organizationId)
+        void this.sendInvoiceOverdueEmail(invoice, invoice.billingAccount.organizationId)
       }
     }
 
@@ -234,6 +239,11 @@ export class InvoiceStatusManager {
   }
 
   private async resolveOrgAdminEmail(organizationId: string): Promise<string | null> {
+    // Check cache first to avoid N+1 WorkOS API calls
+    if (this.orgEmailCache.has(organizationId)) {
+      return this.orgEmailCache.get(organizationId) ?? null
+    }
+
     try {
       const { createWorkOS } = await import("@workos-inc/node")
       const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
@@ -250,15 +260,22 @@ export class InvoiceStatusManager {
         return slug === "user_owner" || slug === "user_admin"
       })
 
-      if (!admin?.userId) return null
+      if (!admin?.userId) {
+        this.orgEmailCache.set(organizationId, null)
+        return null
+      }
 
       const user = await workos.userManagement.getUser(admin.userId)
-      return user.email
+      const email = user.email
+      this.orgEmailCache.set(organizationId, email)
+      return email
     } catch (error) {
       console.error(
         `[InvoiceStatusManager] Failed to resolve admin email for org ${organizationId}:`,
         error,
       )
+      // Cache null to avoid repeated failed lookups for same org
+      this.orgEmailCache.set(organizationId, null)
       return null
     }
   }
