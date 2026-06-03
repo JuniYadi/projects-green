@@ -10,7 +10,7 @@ export type BillingRunResult = {
     invoiceId: string
     subscriptionId: string
     totalAmount: number
-    status: "OPEN" | "PAID"
+    status: "DRAFT" | "PAID"
   }>
 }
 
@@ -22,4 +22,11 @@ export type SubscriptionBillingResult = {
   error?: string
 }
 
+export type InvoiceStatusTransition =
+  | { from: "DRAFT"; to: "ISSUED" }
+  | { from: "ISSUED"; to: "PAID" }
+  | { from: "ISSUED"; to: "OVERDUE" }
+  | { from: "DRAFT" | "ISSUED"; to: "CANCELLED" }
+
 export const GRACE_PERIOD_DAYS = 7
+export const OVERDUE_GRACE_DAYS = 14

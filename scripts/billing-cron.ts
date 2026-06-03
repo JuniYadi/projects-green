@@ -5,13 +5,16 @@ import {
   BILLING_DAILY_RESET_JOB,
   BILLING_MONTHLY_RESET_JOB,
   BILLING_MONTHLY_BILLING_JOB,
+  BILLING_INVOICE_STATUS_JOB,
   BILLING_DAILY_RESET_QUEUE,
   BILLING_MONTHLY_RESET_QUEUE,
+  BILLING_INVOICE_STATUS_QUEUE,
   getBillingRedisConnection,
   type BillingCronJobData,
 } from "@/lib/queue/billing-cron"
 import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
 import { BillingCycleService } from "@/modules/billing/billing-cycle.service"
+import { InvoiceStatusManager } from "@/modules/billing/invoice-status.service"
 
 const redisConnection = getBillingRedisConnection()
 
@@ -73,6 +76,23 @@ async function processMonthlyBilling(): Promise<{ processed: number; skipped: nu
   return { processed: result.processed, skipped: result.skipped }
 }
 
+/**
+ * Invoice status manager: run daily transitions (DRAFT→ISSUED, ISSUED→OVERDUE).
+ */
+async function processInvoiceStatusManager(): Promise<{
+  issued: number
+  overdue: number
+}> {
+  const statusManager = new InvoiceStatusManager(prisma)
+  const result = await statusManager.runDailyTransitions()
+
+  console.info(
+    `[billing-cron] invoice status manager: issued=${result.issued} overdue=${result.overdue}`,
+  )
+
+  return result
+}
+
 const worker = new Worker<BillingCronJobData>(
   BILLING_DAILY_RESET_QUEUE,
   async (job: Job<BillingCronJobData>) => {
@@ -107,6 +127,23 @@ const monthlyWorker = new Worker<BillingCronJobData>(
       const result = await processMonthlyBilling()
       console.info(
         `[billing-cron] monthly billing: ${result.processed} processed`,
+      )
+    }
+  },
+  {
+    connection: redisConnection,
+    concurrency: 1,
+  }
+)
+
+// Invoice status manager worker
+const statusWorker = new Worker<BillingCronJobData>(
+  BILLING_INVOICE_STATUS_QUEUE,
+  async (job: Job<BillingCronJobData>) => {
+    if (job.name === BILLING_INVOICE_STATUS_JOB) {
+      const result = await processInvoiceStatusManager()
+      console.info(
+        `[billing-cron] invoice status: ${result.issued} issued, ${result.overdue} overdue`,
       )
     }
   },
@@ -164,6 +201,30 @@ monthlyWorker.on("failed", (job, error) => {
   )
 })
 
+statusWorker.on("active", (job) => {
+  console.info(
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
+})
+
+statusWorker.on("completed", (job) => {
+  console.info(
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
+})
+
+statusWorker.on("failed", (job, error) => {
+  if (!job) {
+    console.error("[billing-cron] status worker failed job missing payload", error)
+    return
+  }
+
+  console.error(
+    `[billing-cron] status worker failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
+    error
+  )
+})
+
 // Register repeatable jobs on startup
 async function registerRepeatableJobs() {
   const { Queue } = await import("bullmq")
@@ -192,8 +253,18 @@ async function registerRepeatableJobs() {
     jobId: "billing-monthly-billing",
   })
 
+  // Invoice status manager: daily at 02:00 UTC
+  const statusQueue = new Queue(BILLING_INVOICE_STATUS_QUEUE, {
+    connection: redisConnection,
+  })
+  await statusQueue.add(BILLING_INVOICE_STATUS_JOB, {}, {
+    repeat: { pattern: "0 2 * * *" },
+    jobId: "billing-invoice-status",
+  })
+
   await dailyQueue.close()
   await monthlyQueue.close()
+  await statusQueue.close()
 
   console.info("[billing-cron] repeatable jobs registered")
 }
@@ -211,6 +282,7 @@ const shutdown = async (signal: string) => {
   try {
     await worker.close()
     await monthlyWorker.close()
+    await statusWorker.close()
     await prisma.$disconnect()
     process.exit(0)
   } catch (error) {
@@ -230,6 +302,6 @@ process.on("SIGINT", () => {
 // Register repeatable jobs then print ready message
 void registerRepeatableJobs().then(() => {
   console.info(
-    `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE}`
+    `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE}`
   )
 })

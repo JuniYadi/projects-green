@@ -3,13 +3,13 @@ import { Elysia } from "elysia"
 import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 
 import { createAdminInvoiceRoutes } from "./invoice.route"
-import { 
-  type MockAuthContext, 
-  defaultAuth, 
+import {
+  type MockAuthContext,
+  defaultAuth,
   mockPlatformRoleNone,
   mockPlatformRole,
   mockIsAdmin,
-  testIsAdmin 
+  testIsAdmin,
 } from "@/test/helpers/test-auth"
 
 const mockFindUnique = mock()
@@ -36,7 +36,7 @@ describe("AdminInvoiceRoute", () => {
     return actor.tenantRole === "admin" || actor.tenantRole === "owner"
   }, "tenantRole")
 
-  describe("POST /admin/invoice-finalize", () => {
+  describe("PATCH /admin/invoices/:id", () => {
     it("returns 401 when no auth", async () => {
       const app = new Elysia()
         .use(
@@ -49,10 +49,10 @@ describe("AdminInvoiceRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/invoice-finalize", {
-          method: "POST",
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
+          body: JSON.stringify({ status: "ISSUED" }),
         })
       )
 
@@ -73,10 +73,10 @@ describe("AdminInvoiceRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/invoice-finalize", {
-          method: "POST",
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
+          body: JSON.stringify({ status: "ISSUED" }),
         })
       )
 
@@ -85,60 +85,10 @@ describe("AdminInvoiceRoute", () => {
       expect(body.error).toBe("FORBIDDEN")
     })
 
-    it("returns 422 for missing invoiceId", async () => {
-      const app = new Elysia()
-        .use(
-          createAdminInvoiceRoutes({
-            authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: mockPlatformRole,
-            isAdmin: mockIsAdmin,
-          })
-        )
-        .compile()
-
-      const response = await app.handle(
-        new Request("http://localhost/admin/invoice-finalize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        })
-      )
-
-      expect(response.status).toBe(422)
-      const body = await response.json()
-      expect(body.error).toBe("VALIDATION_ERROR")
-    })
-
-    it("returns 404 when invoice not found", async () => {
-      mockFindUnique.mockResolvedValueOnce(null)
-
-      const app = new Elysia()
-        .use(
-          createAdminInvoiceRoutes({
-            authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: mockPlatformRole,
-            isAdmin: mockIsAdmin,
-          })
-        )
-        .compile()
-
-      const response = await app.handle(
-        new Request("http://localhost/admin/invoice-finalize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "nonexistent" }),
-        })
-      )
-
-      expect(response.status).toBe(404)
-      const body = await response.json()
-      expect(body.error).toBe("NOT_FOUND")
-    })
-
-    it("returns 422 when invoice is not DRAFT", async () => {
+    it("returns 422 for invalid status transition", async () => {
       mockFindUnique.mockResolvedValueOnce({
         id: "inv-1",
-        status: "OPEN",
+        status: "PAID",
       })
 
       const app = new Elysia()
@@ -152,10 +102,10 @@ describe("AdminInvoiceRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/invoice-finalize", {
-          method: "POST",
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
+          body: JSON.stringify({ status: "ISSUED" }),
         })
       )
 
@@ -164,32 +114,30 @@ describe("AdminInvoiceRoute", () => {
       expect(body.error).toBe("INVALID_STATUS")
     })
 
-    it("returns 200 when invoice finalized successfully", async () => {
+    it("returns 200 when DRAFT→ISSUED transition succeeds", async () => {
       const mockInvoice = {
         id: "inv-1",
-        invoiceNumber: "INV-2024-001",
+        invoiceNumber: "INV-2026-05-001",
         status: "DRAFT",
         subtotalAmount: new Decimal("100000.00"),
-        taxAmount: new Decimal("11000.00"),
+        taxAmount: new Decimal("0.00"),
         discountAmount: new Decimal("0.00"),
-        totalAmount: new Decimal("111000.00"),
+        totalAmount: new Decimal("100000.00"),
         currency: "IDR",
         issuedAt: null,
-        dueAt: null,
+        dueAt: new Date("2026-06-15"),
         paidAt: null,
-        createdAt: new Date("2024-01-01"),
-        updatedAt: new Date("2024-01-01"),
+        createdAt: new Date("2026-06-01"),
       }
 
-      const mockUpdatedInvoice = {
+      const mockUpdated = {
         ...mockInvoice,
-        status: "OPEN",
-        issuedAt: new Date("2024-01-15"),
-        dueAt: new Date("2024-02-14"),
+        status: "ISSUED",
+        issuedAt: new Date(),
       }
 
       mockFindUnique.mockResolvedValueOnce(mockInvoice)
-      mockUpdate.mockResolvedValueOnce(mockUpdatedInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
 
       const app = new Elysia()
         .use(
@@ -202,21 +150,42 @@ describe("AdminInvoiceRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/invoice-finalize", {
-          method: "POST",
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
+          body: JSON.stringify({ status: "ISSUED" }),
         })
       )
 
       expect(response.status).toBe(200)
       const body = await response.json()
       expect(body.ok).toBe(true)
-      expect(body.invoice.status).toBe("OPEN")
+      expect(body.invoice.status).toBe("ISSUED")
     })
 
-    it("returns 500 on database error", async () => {
-      mockFindUnique.mockRejectedValueOnce(new Error("Database error"))
+    it("returns 200 when DRAFT→CANCELLED transition succeeds", async () => {
+      const mockInvoice = {
+        id: "inv-1",
+        invoiceNumber: "INV-2026-05-001",
+        status: "DRAFT",
+        subtotalAmount: new Decimal("100000.00"),
+        taxAmount: new Decimal("0.00"),
+        discountAmount: new Decimal("0.00"),
+        totalAmount: new Decimal("100000.00"),
+        currency: "IDR",
+        issuedAt: null,
+        dueAt: new Date("2026-06-15"),
+        paidAt: null,
+        createdAt: new Date("2026-06-01"),
+      }
+
+      const mockUpdated = {
+        ...mockInvoice,
+        status: "CANCELLED",
+      }
+
+      mockFindUnique.mockResolvedValueOnce(mockInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
 
       const app = new Elysia()
         .use(
@@ -229,69 +198,43 @@ describe("AdminInvoiceRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/invoice-finalize", {
-          method: "POST",
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
+          body: JSON.stringify({ status: "CANCELLED" }),
         })
       )
 
-      expect(response.status).toBe(500)
+      expect(response.status).toBe(200)
       const body = await response.json()
-      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
-    })
-  })
-
-  describe("POST /admin/invoice-void", () => {
-    it("returns 401 when no auth", async () => {
-      const app = new Elysia()
-        .use(
-          createAdminInvoiceRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
-            getPlatformRole: mockPlatformRole,
-            isAdmin: mockIsAdmin,
-          })
-        )
-        .compile()
-
-      const response = await app.handle(
-        new Request("http://localhost/admin/invoice-void", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
-        })
-      )
-
-      expect(response.status).toBe(401)
-      const body = await response.json()
-      expect(body.error).toBe("UNAUTHORIZED")
+      expect(body.ok).toBe(true)
+      expect(body.invoice.status).toBe("CANCELLED")
     })
 
-    it("returns 403 when not admin", async () => {
-      const app = new Elysia()
-        .use(
-          createAdminInvoiceRoutes({
-            authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: mockPlatformRoleNone,
-            isAdmin: () => false,
-          })
-        )
-        .compile()
+    it("returns 200 when ISSUED→CANCELLED transition succeeds", async () => {
+      const mockInvoice = {
+        id: "inv-1",
+        invoiceNumber: "INV-2026-05-001",
+        status: "ISSUED",
+        subtotalAmount: new Decimal("100000.00"),
+        taxAmount: new Decimal("0.00"),
+        discountAmount: new Decimal("0.00"),
+        totalAmount: new Decimal("100000.00"),
+        currency: "IDR",
+        issuedAt: new Date("2026-06-01"),
+        dueAt: new Date("2026-06-15"),
+        paidAt: null,
+        createdAt: new Date("2026-06-01"),
+      }
 
-      const response = await app.handle(
-        new Request("http://localhost/admin/invoice-void", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
-        })
-      )
+      const mockUpdated = {
+        ...mockInvoice,
+        status: "CANCELLED",
+      }
 
-      expect(response.status).toBe(403)
-      const body = await response.json()
-      expect(body.error).toBe("FORBIDDEN")
-    })
+      mockFindUnique.mockResolvedValueOnce(mockInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
 
-    it("returns 422 for missing invoiceId", async () => {
       const app = new Elysia()
         .use(
           createAdminInvoiceRoutes({
@@ -303,16 +246,17 @@ describe("AdminInvoiceRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/invoice-void", {
-          method: "POST",
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ status: "CANCELLED" }),
         })
       )
 
-      expect(response.status).toBe(422)
+      expect(response.status).toBe(200)
       const body = await response.json()
-      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.ok).toBe(true)
+      expect(body.invoice.status).toBe("CANCELLED")
     })
 
     it("returns 404 when invoice not found", async () => {
@@ -329,95 +273,16 @@ describe("AdminInvoiceRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/invoice-void", {
-          method: "POST",
+        new Request("http://localhost/admin/invoices/nonexistent", {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "nonexistent" }),
+          body: JSON.stringify({ status: "ISSUED" }),
         })
       )
 
       expect(response.status).toBe(404)
       const body = await response.json()
       expect(body.error).toBe("NOT_FOUND")
-    })
-
-    it("returns 422 when invoice is DRAFT (not OPEN or PAID)", async () => {
-      mockFindUnique.mockResolvedValueOnce({
-        id: "inv-1",
-        status: "DRAFT",
-      })
-
-      const app = new Elysia()
-        .use(
-          createAdminInvoiceRoutes({
-            authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: mockPlatformRole,
-            isAdmin: mockIsAdmin,
-          })
-        )
-        .compile()
-
-      const response = await app.handle(
-        new Request("http://localhost/admin/invoice-void", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
-        })
-      )
-
-      expect(response.status).toBe(422)
-      const body = await response.json()
-      expect(body.error).toBe("INVALID_STATUS")
-    })
-
-    it("returns 200 when invoice voided successfully", async () => {
-      const now = new Date()
-      const mockInvoice = {
-        id: "inv-1",
-        invoiceNumber: "INV-2024-001",
-        status: "OPEN",
-        subtotalAmount: new Decimal("100000.00"),
-        taxAmount: new Decimal("11000.00"),
-        discountAmount: new Decimal("0.00"),
-        totalAmount: new Decimal("111000.00"),
-        currency: "IDR",
-        issuedAt: now,
-        dueAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-        paidAt: null,
-        createdAt: now,
-        updatedAt: now,
-      }
-
-      const mockVoidedInvoice = {
-        ...mockInvoice,
-        status: "VOID",
-      }
-
-      mockFindUnique.mockResolvedValueOnce(mockInvoice)
-      mockUpdate.mockResolvedValueOnce(mockVoidedInvoice)
-
-      const app = new Elysia()
-        .use(
-          createAdminInvoiceRoutes({
-            authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: mockPlatformRole,
-            isAdmin: mockIsAdmin,
-          })
-        )
-        .compile()
-
-      const response = await app.handle(
-        new Request("http://localhost/admin/invoice-void", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
-        })
-      )
-
-      expect(response.status).toBe(200)
-      const body = await response.json()
-      expect(body.ok).toBe(true)
-      expect(body.invoice.status).toBe("VOID")
     })
 
     it("returns 500 on database error", async () => {
@@ -434,10 +299,10 @@ describe("AdminInvoiceRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/invoice-void", {
-          method: "POST",
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: "inv-1" }),
+          body: JSON.stringify({ status: "ISSUED" }),
         })
       )
 

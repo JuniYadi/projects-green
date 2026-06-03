@@ -2,9 +2,11 @@ import { Queue, type JobsOptions, type RedisOptions } from "bullmq"
 
 export const BILLING_DAILY_RESET_QUEUE = "billing-daily-reset"
 export const BILLING_MONTHLY_RESET_QUEUE = "billing-monthly-reset"
+export const BILLING_INVOICE_STATUS_QUEUE = "billing-invoice-status"
 export const BILLING_DAILY_RESET_JOB = "billing-daily-reset-job"
 export const BILLING_MONTHLY_RESET_JOB = "billing-monthly-reset-job"
 export const BILLING_MONTHLY_BILLING_JOB = "billing-monthly-billing-job"
+export const BILLING_INVOICE_STATUS_JOB = "billing-invoice-status-job"
 
 export type BillingCronJobData = Record<string, never>
 
@@ -85,6 +87,14 @@ export const createBillingCronQueues = (): BillingCronQueue => {
   // Monthly queue
   queues.push(
     new Queue(BILLING_MONTHLY_RESET_QUEUE, {
+      connection: getBillingRedisConnection(),
+      defaultJobOptions: DEFAULT_JOB_OPTIONS,
+    }),
+  )
+
+  // Invoice status queue
+  queues.push(
+    new Queue(BILLING_INVOICE_STATUS_QUEUE, {
       connection: getBillingRedisConnection(),
       defaultJobOptions: DEFAULT_JOB_OPTIONS,
     }),

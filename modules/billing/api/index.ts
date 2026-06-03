@@ -9,6 +9,7 @@ import { createAdminAdjustmentsRoutes } from "./admin/adjustments.route"
 import { createAdminSubscriptionRoutes } from "./admin/subscriptions.route"
 import { createAdminMembersRoutes } from "./admin/members.route"
 import { createAdminInvoiceRoutes } from "./admin/invoice.route"
+import { createAdminInvoicesListRoutes } from "./admin/invoices-list.route"
 import { createUsageRoutes } from "./usage.route"
 import { UsageLedgerService } from "../usage-ledger.service"
 import { CostingService } from "../costing.service"
@@ -27,4 +28,5 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createAdminSubscriptionRoutes())
   .use(createAdminMembersRoutes())
   .use(createAdminInvoiceRoutes())
+  .use(createAdminInvoicesListRoutes())
   .use(createUsageRoutes({ usageLedgerService, costingService }))
