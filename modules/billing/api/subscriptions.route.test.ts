@@ -4,9 +4,13 @@ import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 import { MockAuthContext } from "@/test/helpers/test-auth"
 import { createBillingSubscriptionsRoutes } from "./subscriptions.route"
 
+const mockFindBillingAccount = mock()
 const mockFindMany = mock()
 
 const mockPrismaClient = {
+  billingAccount: {
+    findUnique: mockFindBillingAccount,
+  },
   subscription: {
     findMany: mockFindMany,
   },
@@ -68,6 +72,7 @@ describe("SubscriptionsRoute", () => {
     })
 
     it("returns 200 with empty subscriptions array", async () => {
+      mockFindBillingAccount.mockResolvedValueOnce({ tenantId: "tenant-1" })
       mockFindMany.mockResolvedValueOnce([])
 
       const app = new Elysia()
@@ -91,9 +96,15 @@ describe("SubscriptionsRoute", () => {
       const body = await response.json()
       expect(body.ok).toBe(true)
       expect(body.subscriptions).toEqual([])
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { organizationId: "tenant-1" },
+        })
+      )
     })
 
     it("returns 200 with formatted subscriptions", async () => {
+      mockFindBillingAccount.mockResolvedValueOnce({ tenantId: "tenant-1" })
       mockFindMany.mockResolvedValueOnce([
         {
           id: "sub-1",
