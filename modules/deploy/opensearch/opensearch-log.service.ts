@@ -7,6 +7,10 @@ import type {
   DeployAggregation,
 } from "./opensearch.types"
 
+function logError(context: string, error: unknown): void {
+  console.error(`[opensearch-log] ${context}:`, error instanceof Error ? error.message : String(error))
+}
+
 export async function ingestLog(entry: LogEntry): Promise<boolean> {
   try {
     const indexName = await ensureLogIndex(entry.tenantSlug)
@@ -30,7 +34,8 @@ export async function ingestLog(entry: LogEntry): Promise<boolean> {
     })
 
     return true
-  } catch {
+  } catch (error) {
+    logError("ingestLog failed", error)
     return false
   }
 }
@@ -41,7 +46,7 @@ export async function ingestLogBatch(
   if (entries.length === 0) return { success: 0, failed: 0 }
 
   const client = getOpenSearchClient()
-  const indexName = getLogIndexName(entries[0].tenantSlug)
+  const indexName = await ensureLogIndex(entries[0].tenantSlug)
 
   const body = entries.flatMap((entry) => [
     { index: { _index: indexName } },
@@ -66,7 +71,8 @@ export async function ingestLogBatch(
         (item: { index?: { error?: unknown } }) => item.index?.error
       ).length ?? 0
     return { success: entries.length - failed, failed }
-  } catch {
+  } catch (error) {
+    logError("ingestLogBatch failed", error)
     return { success: 0, failed: entries.length }
   }
 }
@@ -76,6 +82,18 @@ export async function queryLogs(
 ): Promise<LogQueryResult> {
   const client = getOpenSearchClient()
   const indexName = getLogIndexName(params.tenantSlug)
+
+  // Check if index exists before attempting search
+  try {
+    const { body: exists } = await client.indices.exists({ index: indexName })
+    if (!exists) {
+      return { hits: [], total: 0, took: 0 }
+    }
+  } catch {
+    // Connection error talking to OpenSearch — return empty rather than throwing
+    logError("queryLogs: index existence check failed for " + indexName, "")
+    return { hits: [], total: 0, took: 0 }
+  }
 
   const must: Array<Record<string, unknown>> = [
     { match_phrase: { tenantSlug: params.tenantSlug } },
@@ -107,38 +125,43 @@ export async function queryLogs(
     filter.push({ range: { timestamp: range } })
   }
 
-  const { body } = (await client.search({
-    index: indexName,
-    body: {
-      query: {
-        bool: { must, filter },
+  try {
+    const { body } = (await client.search({
+      index: indexName,
+      body: {
+        query: {
+          bool: { must, filter },
+        },
+        sort: [{ timestamp: { order: "desc" } }],
+        from: params.fromOffset ?? 0,
+        size: params.size ?? 100,
       },
-      sort: [{ timestamp: { order: "desc" } }],
-      from: params.fromOffset ?? 0,
-      size: params.size ?? 100,
-    },
-  })) as {
-    body: {
-      hits: {
-        hits: Array<{ _source?: LogEntry }>
-        total: { value: number } | number
+    })) as {
+      body: {
+        hits: {
+          hits: Array<{ _source?: LogEntry }>
+          total: { value: number } | number
+        }
+        took: number
       }
-      took: number
     }
-  }
 
-  const hits = body.hits.hits.map(
-    (hit: { _source?: LogEntry }) => hit._source as LogEntry
-  )
-  const total =
-    typeof body.hits.total === "object"
-      ? body.hits.total.value
-      : (body.hits.total as number) ?? 0
+    const hits = body.hits.hits.map(
+      (hit: { _source?: LogEntry }) => hit._source as LogEntry
+    )
+    const total =
+      typeof body.hits.total === "object"
+        ? body.hits.total.value
+        : (body.hits.total as number) ?? 0
 
-  return {
-    hits,
-    total,
-    took: body.took,
+    return {
+      hits,
+      total,
+      took: body.took,
+    }
+  } catch (error) {
+    logError("queryLogs: search failed for " + indexName, error)
+    return { hits: [], total: 0, took: 0 }
   }
 }
 
@@ -150,6 +173,16 @@ export async function getDeployAggregation(
   const client = getOpenSearchClient()
   const indexName = getLogIndexName(tenantSlug)
 
+  // Check if index exists before aggregating
+  try {
+    const { body: exists } = await client.indices.exists({ index: indexName })
+    if (!exists) {
+      return emptyAggregation()
+    }
+  } catch {
+    return emptyAggregation()
+  }
+
   const filter: Array<Record<string, unknown>> = [
     { match_phrase: { tenantSlug } },
   ]
@@ -160,77 +193,90 @@ export async function getDeployAggregation(
     filter.push({ range: { timestamp: range } })
   }
 
-  const { body } = (await client.search({
-    index: indexName,
-    body: {
-      size: 0,
-      query: { bool: { filter } },
-      aggs: {
-        by_date: {
-          date_histogram: {
-            field: "timestamp",
-            calendar_interval: "day",
+  try {
+    const { body } = (await client.search({
+      index: indexName,
+      body: {
+        size: 0,
+        query: { bool: { filter } },
+        aggs: {
+          by_date: {
+            date_histogram: {
+              field: "timestamp",
+              calendar_interval: "day",
+            },
           },
-        },
-        success_rate: {
-          filter: { term: { source: "deploy" } },
-          aggs: {
-            success: {
-              filter: {
-                bool: {
-                  must: [
-                    { term: { level: "INFO" } },
-                    { match_phrase: { message: "deployed successfully" } },
-                  ],
+          success_rate: {
+            filter: { term: { source: "deploy" } },
+            aggs: {
+              success: {
+                filter: {
+                  bool: {
+                    must: [
+                      { term: { level: "INFO" } },
+                      { match_phrase: { message: "deployed successfully" } },
+                    ],
+                  },
                 },
               },
             },
           },
-        },
-        avg_duration: {
-          avg: {
-            field: "metadata.durationMs",
+          avg_duration: {
+            avg: {
+              field: "metadata.durationMs",
+            },
           },
         },
       },
-    },
-  })) as {
-    body: {
-      aggregations?: Record<
-        string,
-        {
-          buckets?: Array<{ key_as_string: string; doc_count: number }>
-          doc_count: number
-          success?: { doc_count: number }
-          value?: number
-        }
-      >
+    })) as {
+      body: {
+        aggregations?: Record<
+          string,
+          {
+            buckets?: Array<{ key_as_string: string; doc_count: number }>
+            doc_count: number
+            success?: { doc_count: number }
+            value?: number
+          }
+        >
+      }
     }
+
+    const aggs = body.aggregations
+    const freqBuckets = aggs?.by_date?.buckets ?? []
+    const successAgg = aggs?.success_rate ?? {
+      doc_count: 0,
+      success: { doc_count: 0 },
+    }
+
+    const total: number = successAgg.doc_count
+    const success: number = successAgg.success?.doc_count ?? 0
+
+    return {
+      deployFrequency: freqBuckets.map(
+        (bucket: { key_as_string: string; doc_count: number }) => ({
+          date: bucket.key_as_string,
+          count: bucket.doc_count,
+        })
+      ),
+      successRate: {
+        total,
+        success,
+        failed: total - success,
+        rate: total > 0 ? Math.round((success / total) * 100) : 0,
+      },
+      avgDurationMs: Math.round(aggs?.avg_duration?.value ?? 0),
+    }
+  } catch (error) {
+    logError("getDeployAggregation failed", error)
+    return emptyAggregation()
   }
+}
 
-  const aggs = body.aggregations
-  const freqBuckets = aggs?.by_date?.buckets ?? []
-  const successAgg = aggs?.success_rate ?? {
-    doc_count: 0,
-    success: { doc_count: 0 },
-  }
-
-  const total: number = successAgg.doc_count
-  const success: number = successAgg.success?.doc_count ?? 0
-
+function emptyAggregation(): DeployAggregation {
   return {
-    deployFrequency: freqBuckets.map(
-      (bucket: { key_as_string: string; doc_count: number }) => ({
-        date: bucket.key_as_string,
-        count: bucket.doc_count,
-      })
-    ),
-    successRate: {
-      total,
-      success,
-      failed: total - success,
-      rate: total > 0 ? Math.round((success / total) * 100) : 0,
-    },
-    avgDurationMs: Math.round(aggs?.avg_duration?.value ?? 0),
+    deployFrequency: [],
+    successRate: { total: 0, success: 0, failed: 0, rate: 0 },
+    avgDurationMs: 0,
   }
 }
