@@ -1,17 +1,16 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
-import { Prisma } from "@prisma/client"
-import Decimal = Prisma.Decimal
+import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 
 import { createAdminInvoiceRoutes } from "./invoice.route"
 import type { PlatformAccessRole } from "@/lib/platform-role"
-
-type MockAuthContext = {
-  organizationId?: string | null
-  role?: string | null
-  roles?: string[] | null
-  user: { id: string; email?: string | null } | null
-}
+import { 
+  type MockAuthContext, 
+  defaultAuth, 
+  mockPlatformRole, 
+  mockIsAdmin,
+  testIsAdmin 
+} from "@/test/helpers/test-auth"
 
 const mockFindUnique = mock()
 const mockUpdate = mock()
@@ -32,56 +31,10 @@ describe("AdminInvoiceRoute", () => {
     mock.clearAllMocks()
   })
 
-  const defaultAuth = {
-    user: { id: "admin-1", email: "admin@example.com" },
-    organizationId: "org-1",
-    role: "owner" as const,
-  }
-
-  const mockPlatformRole = async () => "super_admin" as PlatformAccessRole
-  const mockIsAdmin = () => true
-
-  describe("defaultDeps.isAdmin", () => {
-    const isAdmin = (actor: {
-      platformRole: PlatformAccessRole
-      tenantRole: string | null | undefined
-    }) => {
-      if (actor.platformRole === "super_admin") return true
-      return actor.tenantRole === "admin" || actor.tenantRole === "owner"
-    }
-
-    it("returns true for super_admin with null tenant role (the bug scenario)", () => {
-      expect(isAdmin({ platformRole: "super_admin", tenantRole: null })).toBe(true)
-    })
-
-    it("returns true for super_admin with undefined tenant role", () => {
-      expect(isAdmin({ platformRole: "super_admin", tenantRole: undefined })).toBe(true)
-    })
-
-    it("returns true for super_admin with admin tenant role", () => {
-      expect(isAdmin({ platformRole: "super_admin", tenantRole: "admin" })).toBe(true)
-    })
-
-    it("returns true for non-super_admin with admin tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: "admin" })).toBe(true)
-    })
-
-    it("returns true for non-super_admin with owner tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: "owner" })).toBe(true)
-    })
-
-    it("returns false for non-super_admin with member tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: "member" })).toBe(false)
-    })
-
-    it("returns false for non-super_admin with null tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: null })).toBe(false)
-    })
-
-    it("returns false for non-super_admin with undefined tenant role", () => {
-      expect(isAdmin({ platformRole: "none", tenantRole: undefined })).toBe(false)
-    })
-  })
+  testIsAdmin((actor) => {
+    if (actor.platformRole === "super_admin") return true
+    return actor.tenantRole === "admin" || actor.tenantRole === "owner"
+  }, "tenantRole")
 
   describe("POST /admin/invoice-finalize", () => {
     it("returns 401 when no auth", async () => {

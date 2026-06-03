@@ -1,17 +1,10 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
-import { Prisma } from "@prisma/client"
-import Decimal = Prisma.Decimal
+import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 
 import { createAdminMembersRoutes } from "./members.route"
 import type { PlatformAccessRole } from "@/lib/platform-role"
-
-type MockAuthContext = {
-  organizationId?: string | null
-  role?: string | null
-  roles?: string[] | null
-  user: { id: string; email?: string | null } | null
-}
+import { type MockAuthContext, defaultAuth, mockPlatformRole, mockIsAdmin, testIsAdmin } from "@/test/helpers/test-auth"
 
 const mockFindMany = mock()
 const mockFindFirst = mock()
@@ -40,55 +33,9 @@ describe("AdminMembersRoute", () => {
     mock.clearAllMocks()
   })
 
-  const defaultAuth = {
-    user: { id: "admin-1", email: "admin@example.com" },
-    organizationId: "org-1",
-    role: "owner" as const,
-  }
-
-  const mockPlatformRole = async () => "super_admin" as PlatformAccessRole
-  const mockIsAdmin = () => true
-
-  describe("defaultDeps.isAdmin", () => {
-    const isAdmin = (actor: {
-      platformRole: PlatformAccessRole
-      orgRole: string | null | undefined
-    }) => {
-      if (actor.platformRole === "super_admin") return true
-      return actor.orgRole === "admin" || actor.orgRole === "owner"
-    }
-
-    it("returns true for super_admin with null tenant role (the bug scenario)", () => {
-      expect(isAdmin({ platformRole: "super_admin", orgRole: null })).toBe(true)
-    })
-
-    it("returns true for super_admin with undefined tenant role", () => {
-      expect(isAdmin({ platformRole: "super_admin", orgRole: undefined })).toBe(true)
-    })
-
-    it("returns true for super_admin with admin tenant role", () => {
-      expect(isAdmin({ platformRole: "super_admin", orgRole: "admin" })).toBe(true)
-    })
-
-    it("returns true for non-super_admin with admin tenant role", () => {
-      expect(isAdmin({ platformRole: "none", orgRole: "admin" })).toBe(true)
-    })
-
-    it("returns true for non-super_admin with owner tenant role", () => {
-      expect(isAdmin({ platformRole: "none", orgRole: "owner" })).toBe(true)
-    })
-
-    it("returns false for non-super_admin with member tenant role", () => {
-      expect(isAdmin({ platformRole: "none", orgRole: "member" })).toBe(false)
-    })
-
-    it("returns false for non-super_admin with null tenant role", () => {
-      expect(isAdmin({ platformRole: "none", orgRole: null })).toBe(false)
-    })
-
-    it("returns false for non-super_admin with undefined tenant role", () => {
-      expect(isAdmin({ platformRole: "none", orgRole: undefined })).toBe(false)
-    })
+  testIsAdmin((actor) => {
+    if (actor.platformRole === "super_admin") return true
+    return actor.orgRole === "admin" || actor.orgRole === "owner"
   })
 
   describe("GET /admin/members", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "bun:test"
-import { Prisma } from "@prisma/client"
+import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 import type { Organization } from "@workos-inc/node"
 
 import { createBillingAccountRoutes } from "./account.route"
@@ -29,7 +29,7 @@ describe("GET /account - JIT upsert", () => {
     const mockAccount = {
       id: "acc-1",
       organizationId: "org_123",
-      balance: new Prisma.Decimal(100_000),
+      balance: new Decimal(100_000),
       currency: "USD",
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -51,7 +51,7 @@ describe("GET /account - JIT upsert", () => {
     const mockAccount = {
       id: "acc-1",
       organizationId: "org_123",
-      balance: new Prisma.Decimal(500000),
+      balance: new Decimal(500000),
       currency: "USD",
       createdAt: new Date("2026-05-01"),
       updatedAt: new Date(),
