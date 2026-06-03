@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock, type Mock } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, screen, waitFor } from "@testing-library/react"
 
 // Mock fetch for the docs list API call
@@ -21,10 +21,10 @@ const mockFetch = mock(
             },
           ],
         }),
-    } as Response)
-) as Mock
+    } as unknown as Response)
+)
 
-global.fetch = mockFetch
+global.fetch = mockFetch as unknown as typeof fetch
 
 describe("PortalDocumentationsPage", () => {
   beforeEach(() => {
