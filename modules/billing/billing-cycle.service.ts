@@ -20,6 +20,8 @@ import {
   GRACE_PERIOD_DAYS,
 } from "./billing-cycle.types"
 
+
+
 const IDR_CURRENCY = "IDR"
 const ZERO = new Decimal(0)
 
@@ -158,7 +160,7 @@ export class BillingCycleService {
           subscriptionId: r.subscriptionId,
           totalAmount: r.totalAmount ?? 0,
           status:
-            r.status === "INSUFFICIENT_BALANCE" ? "OPEN" as const : "PAID" as const,
+            r.status === "INSUFFICIENT_BALANCE" ? "DRAFT" as const : "PAID" as const,
         })),
     }
   }
@@ -266,7 +268,7 @@ export class BillingCycleService {
       }
 
       if (account.balance.gte(totalDue)) {
-        // Sufficient balance — deduct and mark PAID
+        // Sufficient balance — deduct and mark PAID directly
         await tx.billingAccount.update({
           where: { id: account.id },
           data: { balance: account.balance.minus(totalDue) },
@@ -274,7 +276,7 @@ export class BillingCycleService {
 
         await tx.invoice.update({
           where: { id: invoice.id },
-          data: { status: "PAID", paidAt: new Date() },
+          data: { status: "PAID", paidAt: new Date(), issuedAt: new Date() },
         })
 
         // Also mark previous unpaid invoices as PAID
@@ -311,12 +313,7 @@ export class BillingCycleService {
         }
       }
 
-      // Insufficient balance — leave OPEN
-      await tx.invoice.update({
-        where: { id: invoice.id },
-        data: { status: "OPEN" },
-      })
-
+      // Insufficient balance — keep as DRAFT for admin review
       return {
         invoiceId: invoice.id,
         totalAmount: Number(totalDue.toString()),
