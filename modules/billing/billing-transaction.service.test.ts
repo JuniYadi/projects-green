@@ -100,7 +100,8 @@ describe("BillingTransactionService", () => {
       // Verify metadata in adjustment creation
       const createCall = mockPrisma.billingAdjustment.create.mock.calls[0][0]
       expect(createCall.data.metadataJson.source).toBe("TOPUP")
-      expect(createCall.data.metadataJson.idempotencyKey).toBe("topup:test:001")
+      // idempotencyKey is stored under _internal to avoid leaking into user-facing API responses
+      expect(createCall.data.metadataJson._internal.idempotencyKey).toBe("topup:test:001")
       expect(createCall.data.metadataJson.balanceBefore).toBe("100")
       expect(createCall.data.metadataJson.balanceAfter).toBe("150")
     })
@@ -110,7 +111,7 @@ describe("BillingTransactionService", () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockPrisma.billingAdjustment.findFirst.mockResolvedValue({
         id: "adj_existing",
-        metadataJson: { idempotencyKey: "topup:test:001" },
+        metadataJson: { _internal: { idempotencyKey: "topup:test:001" } },
       })
 
       const result = await service.creditBalance(baseInput())

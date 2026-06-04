@@ -9,6 +9,7 @@ const mockPrisma = {
         invoiceNumber: "TOP-ABC123",
         totalAmount: { toNumber: () => 50000 },
         status: "OPEN",
+        currency: "IDR",
         paymentMethod: "VA",
         dueDate: new Date("2026-06-10"),
         type: "TOP_UP",
@@ -74,13 +75,11 @@ const mockBillingTransactions = {
 
 const { PaymentService } = await import("./payment.service")
 
-type MockBillingTransactions = Pick<BillingTransactionService, "creditBalance" | "debitBalance">
-
 describe("PaymentService", () => {
   let service: InstanceType<typeof PaymentService>
 
   beforeEach(() => {
-    service = new PaymentService(mockBillingTransactions as unknown as MockBillingTransactions)
+    service = new PaymentService(mockBillingTransactions as unknown as BillingTransactionService)
     mockPrisma.invoice.create.mockClear()
     mockPrisma.invoice.update.mockClear()
     mockPrisma.invoice.findFirst.mockClear()
@@ -149,8 +148,8 @@ describe("PaymentService", () => {
         invoiceNumber: "TOP-USD001",
         currency: "USD",
         totalAmount: { toNumber: () => 50000 },
-        status: "OPEN",
-        paymentMethod: null,
+        status: "OPEN" as string,
+        paymentMethod: null as unknown as string,
         dueDate: new Date(),
         type: "TOP_UP",
       })

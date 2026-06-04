@@ -323,7 +323,10 @@ export class BillingCycleService {
       }
     })
 
-    // After the transaction, send email notifications (fire-and-forget)
+    // After the transaction, send email notifications (fire-and-forget, best-effort).
+    // Failed sends do not affect billing — the invoice is already committed.
+    // Subsequent cron runs skip already-PAID invoices, so retries rely on
+    // the admin to manually re-send if needed.
     if (this.emailService && organizationId) {
       this.resolveOrgAdminEmail(organizationId)
         .then(async (adminEmail) => {
@@ -433,6 +436,9 @@ export class BillingCycleService {
     )
 
     // Send email notifications for finalized invoices
+    // Emails are best-effort delivery. Failed sends do not rollback
+    // finalization — subsequent cron runs skip already-PAID invoices.
+    // Consider adding a retry mechanism if reliable delivery is required.
     if (this.emailService) {
       for (const invoice of invoices) {
         try {

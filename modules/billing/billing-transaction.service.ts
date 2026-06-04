@@ -144,12 +144,12 @@ export class BillingTransactionService {
       if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
       if (account.currency !== input.currency) throw new Error("CURRENCY_MISMATCH")
 
-      // Idempotency check
+      // Idempotency check — idempotencyKey is stored under _internal to avoid leaking into user-facing API responses
       const existing = await tx.billingAdjustment.findFirst({
         where: {
           billingAccountId: account.id,
           metadataJson: {
-            path: ["idempotencyKey"],
+            path: ["_internal", "idempotencyKey"],
             equals: input.idempotencyKey,
           },
         },
@@ -215,10 +215,11 @@ export class BillingTransactionService {
         metadataJson: {
           ...input.metadata,
           source: input.source,
-          idempotencyKey: input.idempotencyKey,
           invoiceLineId: invoiceLineId ?? null,
           balanceBefore: balanceBefore.toString(),
           balanceAfter: balanceAfter.toString(),
+          // Internal fields — not exposed in user-facing API responses
+          _internal: { idempotencyKey: input.idempotencyKey },
         },
       },
     })

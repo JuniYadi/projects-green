@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
+import { randomInt } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { PAYMENT_CONSTANTS } from "../constants"
@@ -15,9 +16,10 @@ export class PaymentService {
 
   /**
    * Generate a 3-digit unique code for manual transfer verification.
+   * Uses crypto.randomInt for cryptographic security (financial context).
    */
   private generateUniqueCode(): number {
-    return Math.floor(Math.random() * 999) + 1
+    return randomInt(1, 1000)
   }
 
   async createTopupInvoice(input: {
