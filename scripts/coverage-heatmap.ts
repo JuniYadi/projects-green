@@ -45,7 +45,7 @@ function parseLcov(lcovPath: string): FileCoverage[] {
 
     const daLines = [...rec.matchAll(/^DA:(\d+),(\d+)$/gm)]
     const totalLines = daLines.length
-    const hitLines = daLines.filter(([, h]) => parseInt(h) > 0).length
+    const hitLines = daLines.filter(([, , h]) => parseInt(h) > 0).length
 
     const fnfMatch = rec.match(/^FNF:(\d+)$/m)
     const fnhMatch = rec.match(/^FNH:(\d+)$/m)
@@ -54,8 +54,10 @@ function parseLcov(lcovPath: string): FileCoverage[] {
 
     // Collect uncovered line numbers
     const uncovered: number[] = []
-    for (const [, lineNum, hit] of daLines) {
-      if (parseInt(hit) === 0) uncovered.push(parseInt(lineNum))
+    for (const da of daLines) {
+      const lineNum = parseInt(da[1])
+      const hit = parseInt(da[2])
+      if (hit === 0) uncovered.push(lineNum)
     }
 
     results.push({
