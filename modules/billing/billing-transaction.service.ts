@@ -105,7 +105,7 @@ export class BillingTransactionService {
           periodEnd: invoice.periodEnd,
           metadataJson: {
             source: input.source,
-            idempotencyKey: input.idempotencyKey,
+            _internal: { idempotencyKey: input.idempotencyKey },
           },
         },
       })
