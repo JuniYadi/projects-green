@@ -332,7 +332,10 @@ export type SupportTicketRepository = {
     uploaderWorkosUserId: string
   }): Promise<SupportTicketAttachmentUploadSession>
   getTicketById(ticketId: string): Promise<SupportTicket | null>
-  getTicketThread(ticketId: string): Promise<SupportTicketThread | null>
+  getTicketThread(input: {
+    includeInternalNotes?: boolean
+    ticketId: string
+  }): Promise<SupportTicketThread | null>
   getUploadSessionById(
     id: string
   ): Promise<SupportTicketAttachmentUploadSession | null>
@@ -538,13 +541,16 @@ export const supportTicketRepository: SupportTicketRepository = {
 
     return rows.map(mapTicketRecord)
   },
-  async getTicketThread(ticketId) {
+  async getTicketThread(input) {
     const ticket = await prisma.supportTicket.findUnique({
       where: {
-        id: ticketId,
+        id: input.ticketId,
       },
       include: {
         replies: {
+          where: input.includeInternalNotes
+            ? undefined
+            : { isInternalNote: false },
           orderBy: {
             createdAt: "asc",
           },

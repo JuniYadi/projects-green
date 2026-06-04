@@ -656,4 +656,49 @@ describe("support ticket routes", () => {
 
     expect(response.status).toBe(403)
   })
+
+  it("returns thread with all replies for admin users", async () => {
+    const internalNoteReply = {
+      id: "reply_internal",
+      ticketId: "ticket_1",
+      authorWorkosUserId: "user_admin",
+      body: "This is an internal note",
+      secureForm: null,
+      isInternalNote: true,
+      attachmentMetadata: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    const publicReply = {
+      id: "reply_public",
+      ticketId: "ticket_1",
+      authorWorkosUserId: "user_1",
+      body: "This is a public reply",
+      secureForm: null,
+      isInternalNote: false,
+      attachmentMetadata: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    const app = createAdminApp({
+      async getTicketThread() {
+        return {
+          ticket: baseTicket,
+          replies: [internalNoteReply, publicReply],
+        }
+      },
+    }, "super_admin")
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const json = (await response.json()) as SupportTicketThreadResponse
+    expect(json.ok).toBe(true)
+    expect(json.thread.replies).toHaveLength(2)
+  })
 })
