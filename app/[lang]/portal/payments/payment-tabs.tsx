@@ -17,11 +17,11 @@ const TABS: { value: TabValue; label: string }[] = [
   { value: "confirmations", label: "Confirmations" },
 ]
 
-export function PaymentTabs() {
+export function PaymentTabs({ defaultTab }: { defaultTab?: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const activeTab = (searchParams.get("tab") as TabValue) ?? "overview"
+  const activeTab = (searchParams.get("tab") as TabValue) ?? (defaultTab as TabValue) ?? "overview"
 
   function handleTabChange(value: string) {
     const params = new URLSearchParams(searchParams.toString())

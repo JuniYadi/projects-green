@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 
 import { localizePathname, getLocaleFromPathname } from "@/lib/i18n/pathname"
 import { NavMain } from "@/components/nav-main"
@@ -34,6 +34,15 @@ import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
 const startsWithRoute = (pathname: string, route: string) =>
   pathname === route || pathname.startsWith(`${route}/`)
+
+const tabMatches = (fullPath: string, tab: string) => {
+  // fullPath may contain ?tab=xxx appended by AppSidebar
+  const [base, qs] = fullPath.split("?")
+  if (base !== "/portal/payments") return false
+  if (!qs) return tab === "overview"
+  const params = new URLSearchParams(qs)
+  return params.get("tab") === tab
+}
 
 export type AppSidebarSurface = "console" | "portal" | "admin"
 
@@ -178,38 +187,38 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
       {
         title: "Overview",
         url: localizePathname({
-          pathname: "/portal/payments/overview",
+          pathname: "/portal/payments",
           locale,
         }),
         icon: <GaugeIcon />,
-        isActive: startsWithRoute(path, "/portal/payments/overview"),
+        isActive: tabMatches(path, "overview"),
       },
       {
         title: "Gateways",
         url: localizePathname({
-          pathname: "/portal/payments/gateways",
+          pathname: "/portal/payments",
           locale,
-        }),
+        }) + "?tab=gateways",
         icon: <WalletIcon />,
-        isActive: startsWithRoute(path, "/portal/payments/gateways"),
+        isActive: tabMatches(path, "gateways"),
       },
       {
         title: "Bank Accounts",
         url: localizePathname({
-          pathname: "/portal/payments/bank-accounts",
+          pathname: "/portal/payments",
           locale,
-        }),
+        }) + "?tab=bank-accounts",
         icon: <ReceiptIcon />,
-        isActive: startsWithRoute(path, "/portal/payments/bank-accounts"),
+        isActive: tabMatches(path, "bank-accounts"),
       },
       {
         title: "Confirmations",
         url: localizePathname({
-          pathname: "/portal/payments/confirmations",
+          pathname: "/portal/payments",
           locale,
-        }),
+        }) + "?tab=confirmations",
         icon: <BookOpenIcon />,
-        isActive: startsWithRoute(path, "/portal/payments/confirmations"),
+        isActive: tabMatches(path, "confirmations"),
       },
     ],
   },
@@ -537,10 +546,18 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname()
+  const sParams = useSearchParams()
   const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
+
+  // Enrich pathname with ?tab= so payments nav items can match tabs correctly
+  const tab = sParams.get("tab")
+  const enrichedPathname = tab
+    ? `${pathnameWithoutLocale}?tab=${tab}`
+    : pathnameWithoutLocale
+
   const { navMain, projects, navMainLabel } = resolveSidebarMenu({
     surface,
-    pathname: pathnameWithoutLocale,
+    pathname: enrichedPathname,
     locale: locale ?? defaultLocale,
   })
   const navSecondary = resolveSidebarSecondaryLinks({
