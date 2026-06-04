@@ -136,6 +136,25 @@ describe("resolveSidebarMenu", () => {
     )
   })
 
+  it("returns payment tab navigation with localized query URLs", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/payments?tab=bank-accounts",
+      locale: "id",
+    })
+
+    expect(navMainLabel).toBe("Payments")
+    expect(navMain.map((item) => [item.title, item.url])).toEqual([
+      ["Overview", "/id/portal/payments"],
+      ["Gateways", "/id/portal/payments?tab=gateways"],
+      ["Bank Accounts", "/id/portal/payments?tab=bank-accounts"],
+      ["Confirmations", "/id/portal/payments?tab=confirmations"],
+    ])
+    expect(
+      navMain.find((item) => item.title === "Bank Accounts")?.isActive
+    ).toBe(true)
+  })
+
   it("includes thunder AI help trigger link for console sidebar secondary links", () => {
     const items = resolveSidebarSecondaryLinks({
       surface: "console",

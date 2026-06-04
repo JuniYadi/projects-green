@@ -1,7 +1,19 @@
-import { describe, expect, it } from "bun:test"
-import { render, screen } from "@testing-library/react"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { render } from "@testing-library/react"
+
+const mockFetch = mock(() =>
+  Promise.resolve({
+    json: () => Promise.resolve({}),
+  } as Response)
+)
+
+global.fetch = mockFetch as unknown as typeof fetch
 
 describe("ConsolePage", () => {
+  beforeEach(() => {
+    mockFetch.mockClear()
+  })
+
   it("renders static header text", async () => {
     const { default: ConsolePage } = await import("./page")
     const { container } = render(<ConsolePage />)

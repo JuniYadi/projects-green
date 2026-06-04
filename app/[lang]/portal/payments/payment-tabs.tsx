@@ -21,7 +21,9 @@ export function PaymentTabs({ defaultTab }: { defaultTab?: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const activeTab = (searchParams.get("tab") as TabValue) ?? (defaultTab as TabValue) ?? "overview"
+  const rawTab = searchParams.get("tab") ?? defaultTab
+  const activeTab =
+    TABS.find((tab) => tab.value === rawTab)?.value ?? "overview"
 
   function handleTabChange(value: string) {
     const params = new URLSearchParams(searchParams.toString())

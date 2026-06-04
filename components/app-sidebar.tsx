@@ -32,13 +32,42 @@ import {
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
-const startsWithRoute = (pathname: string, route: string) =>
-  pathname === route || pathname.startsWith(`${route}/`)
+const PAYMENTS_PATH = "/portal/payments"
+
+const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
+
+const startsWithRoute = (pathname: string, route: string) => {
+  const normalizedPathname = getPathnameWithoutSearch(pathname)
+  return (
+    normalizedPathname === route || normalizedPathname.startsWith(`${route}/`)
+  )
+}
+
+const buildUrlWithSearchParam = (
+  pathname: string,
+  paramName: string,
+  paramValue?: string
+) => {
+  const url = new URL(pathname, "https://projects-green.local")
+
+  if (paramValue) {
+    url.searchParams.set(paramName, paramValue)
+  }
+
+  return `${url.pathname}${url.search}`
+}
+
+const buildPaymentUrl = (locale: AppLocale, tab?: string) =>
+  buildUrlWithSearchParam(
+    localizePathname({ pathname: PAYMENTS_PATH, locale }),
+    "tab",
+    tab
+  )
 
 const tabMatches = (fullPath: string, tab: string) => {
   // fullPath may contain ?tab=xxx appended by AppSidebar
   const [base, qs] = fullPath.split("?")
-  if (base !== "/portal/payments") return false
+  if (base !== PAYMENTS_PATH) return false
   if (!qs) return tab === "overview"
   const params = new URLSearchParams(qs)
   return params.get("tab") === tab
@@ -174,7 +203,7 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
   },
   {
     context: "payments",
-    matches: (path) => startsWithRoute(path, "/portal/payments"),
+    matches: (path) => startsWithRoute(path, PAYMENTS_PATH),
     navMainLabel: "Payments",
     getProjects: (path, locale) => [
       {
@@ -186,37 +215,25 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     getNavMain: (path, locale) => [
       {
         title: "Overview",
-        url: localizePathname({
-          pathname: "/portal/payments",
-          locale,
-        }),
+        url: buildPaymentUrl(locale),
         icon: <GaugeIcon />,
         isActive: tabMatches(path, "overview"),
       },
       {
         title: "Gateways",
-        url: localizePathname({
-          pathname: "/portal/payments",
-          locale,
-        }) + "?tab=gateways",
+        url: buildPaymentUrl(locale, "gateways"),
         icon: <WalletIcon />,
         isActive: tabMatches(path, "gateways"),
       },
       {
         title: "Bank Accounts",
-        url: localizePathname({
-          pathname: "/portal/payments",
-          locale,
-        }) + "?tab=bank-accounts",
+        url: buildPaymentUrl(locale, "bank-accounts"),
         icon: <ReceiptIcon />,
         isActive: tabMatches(path, "bank-accounts"),
       },
       {
         title: "Confirmations",
-        url: localizePathname({
-          pathname: "/portal/payments",
-          locale,
-        }) + "?tab=confirmations",
+        url: buildPaymentUrl(locale, "confirmations"),
         icon: <BookOpenIcon />,
         isActive: tabMatches(path, "confirmations"),
       },
@@ -467,9 +484,9 @@ const buildPortalProjects = (
   },
   {
     name: "Payments",
-    url: localizePathname({ pathname: "/portal/payments", locale }),
+    url: localizePathname({ pathname: PAYMENTS_PATH, locale }),
     icon: <CreditCardIcon />,
-    isActive: startsWithRoute(pathname, "/portal/payments"),
+    isActive: startsWithRoute(pathname, PAYMENTS_PATH),
   },
   {
     name: "Invoices",
