@@ -1,8 +1,17 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import type { PrismaClient } from "@prisma/client"
+import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import Decimal = Prisma.Decimal
 
 export class ConfirmationService {
+  private billingTransactions: BillingTransactionService
+
+  constructor(billingTransactions?: BillingTransactionService) {
+    this.billingTransactions =
+      billingTransactions ?? new BillingTransactionService(prisma as unknown as PrismaClient)
+  }
+
   async create(input: {
     invoiceId: string
     organizationId: string
@@ -74,71 +83,64 @@ export class ConfirmationService {
   }
 
   async approve(id: string, adminUserId: string) {
-    const confirmation = await prisma.paymentConfirmation.findUnique({
-      where: { id },
-      include: { invoice: true },
-    })
+    // Wrap all operations in a single transaction for atomicity.
+    // If creditBalance succeeds but the subsequent updates fail, the transaction
+    // rolls back entirely — no orphaned credits.
+    await prisma.$transaction(async (tx) => {
+      const confirmation = await tx.paymentConfirmation.findUnique({
+        where: { id },
+        include: { invoice: { include: { billingAccount: true } } },
+      })
 
-    if (!confirmation) throw new Error("Confirmation not found")
-    if (confirmation.status !== "PENDING") throw new Error("Confirmation already processed")
+      if (!confirmation) throw new Error("Confirmation not found")
+      if (confirmation.status !== "PENDING") throw new Error("Confirmation already processed")
 
-    await prisma.paymentConfirmation.update({
-      where: { id },
-      data: {
-        status: "APPROVED",
-        reviewedBy: adminUserId,
-        reviewedAt: new Date(),
-      },
-    })
+      const invoice = confirmation.invoice
+      const amount = confirmation.amount
 
-    const invoice = confirmation.invoice
-    const amount = confirmation.amount
+      if (!invoice?.billingAccount?.organizationId) {
+        throw new Error("Billing account not found for invoice")
+      }
 
-    // Find billing account by invoice's billingAccountId
-    const account = await prisma.billingAccount.findUnique({
-      where: { id: invoice.billingAccountId },
-    })
-
-    if (!account) {
-      throw new Error("Billing account not found")
-    }
-
-    const newBalance = account.balance.plus(amount)
-
-    await prisma.billingAdjustment.create({
-      data: {
-        billingAccountId: account.id,
-        adjustmentType: "CREDIT",
+      // Credit balance via BillingTransactionService with transaction-scoped Prisma client
+      const billingTx = new BillingTransactionService(tx as unknown as PrismaClient)
+      await billingTx.creditBalance({
+        organizationId: invoice.billingAccount.organizationId,
         amount: new Decimal(amount),
-        currency: "IDR",
+        currency: invoice.billingAccount.currency,
+        source: "TOPUP",
         reason: "Manual payment confirmed",
-        metadataJson: {
-          reference: `PAYMENT_CONFIRM_${id}`,
-          source: "manual_bank_transfer",
+        idempotencyKey: `manual:${id}`,
+        invoiceId: invoice.id,
+        metadata: { confirmedBy: adminUserId, confirmationId: id },
+      })
+
+      // Mark confirmation as approved
+      await tx.paymentConfirmation.update({
+        where: { id },
+        data: {
+          status: "APPROVED",
+          reviewedBy: adminUserId,
+          reviewedAt: new Date(),
         },
-      },
-    })
+      })
 
-    await prisma.billingAccount.update({
-      where: { id: account.id },
-      data: {
-        balance: newBalance,
-      },
-    })
+      // Mark invoice as paid
+      await tx.invoice.update({
+        where: { id: confirmation.invoiceId },
+        data: { status: "PAID" },
+      })
 
-    await prisma.invoice.update({
-      where: { id: confirmation.invoiceId },
-      data: { status: "PAID" },
-    })
-
-    await prisma.paymentAuditLog.create({
-      data: {
-        action: "PAYMENT_APPROVED",
-        entityType: "PaymentConfirmation",
-        entityId: id,
-        actorId: adminUserId,
-        details: { amount, invoiceId: confirmation.invoiceId },
-      },
+      // Audit log
+      await tx.paymentAuditLog.create({
+        data: {
+          action: "PAYMENT_APPROVED",
+          entityType: "PaymentConfirmation",
+          entityId: id,
+          actorId: adminUserId,
+          details: { amount, invoiceId: confirmation.invoiceId },
+        },
+      })
     })
   }
 

@@ -62,6 +62,16 @@ export const createBillingTopupRoutes = (
 
   return new Elysia()
     .post("/topup", async ({ body, set }) => {
+      // Guard: simulated route is not for production use
+      if (process.env.NODE_ENV === "production") {
+        set.status = 410
+        return {
+          ok: false as const,
+          error: "REAL_TOPUP_REQUIRED" as const,
+          message: "Use /api/payments/topup for balance top-up payments.",
+        }
+      }
+
       const auth = await authenticate()
 
       if (!auth.user) {

@@ -7,7 +7,7 @@ const duitkuService = new DuitkuService()
 const paymentService = new PaymentService()
 
 export const createWebhookRoutes = () =>
-  new Elysia({ prefix: "/webhooks" })
+  new Elysia()
     .post("/duitku/callback", async ({ body, set }) => {
       const params = body as Record<string, string>
 
@@ -73,7 +73,7 @@ export const createWebhookRoutes = () =>
           await paymentService.creditBalance(
             billingAccount.organizationId,
             parseInt(amount),
-            `DUITKU_${reference}`
+            merchantOrderId
           )
 
           await paymentService.markInvoiceAsPaid(merchantOrderId)

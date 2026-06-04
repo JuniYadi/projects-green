@@ -1,8 +1,27 @@
+import { Prisma } from "@prisma/client"
+import type { PrismaClient } from "@prisma/client"
+import { randomInt } from "node:crypto"
 import { prisma } from "@/lib/prisma"
+import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { PAYMENT_CONSTANTS } from "../constants"
-import type { InvoiceTypeValue } from "@/modules/payment/types/payment.types"
+import type { InvoiceTypeValue } from "../types/payment.types"
 
 export class PaymentService {
+  private billingTransactions: BillingTransactionService
+
+  constructor(billingTransactions?: BillingTransactionService) {
+    this.billingTransactions =
+      billingTransactions ?? new BillingTransactionService(prisma as unknown as PrismaClient)
+  }
+
+  /**
+   * Generate a 3-digit unique code for manual transfer verification.
+   * Uses crypto.randomInt for cryptographic security (financial context).
+   */
+  private generateUniqueCode(): number {
+    return randomInt(1, 1000)
+  }
+
   async createTopupInvoice(input: {
     organizationId: string
     amount: number
@@ -39,6 +58,22 @@ export class PaymentService {
     // Generate invoice number using UUID to avoid race condition
     const invoiceNumber = `TOP-${crypto.randomUUID().split("-")[0].toUpperCase()}`
 
+    // Generate unique code for manual transfer if enabled
+    const uniqueCodeEnabled = process.env.MANUAL_TRANSFER_UNIQUE_CODE_ENABLED !== "false"
+    let uniqueCode: number | undefined
+    let finalAmount = amount
+    let metadata: Record<string, unknown> | undefined
+
+    if (paymentMethod === "MANUAL_BANK" && uniqueCodeEnabled) {
+      uniqueCode = this.generateUniqueCode()
+      finalAmount = amount + uniqueCode
+      metadata = {
+        baseAmount: amount,
+        uniqueCode,
+        finalAmount,
+      }
+    }
+
     const invoice = await prisma.invoice.create({
       data: {
         billingAccountId: account.id,
@@ -48,11 +83,12 @@ export class PaymentService {
         gatewayId,
         dueDate,
         status: "OPEN",
-        subtotalAmount: amount,
-        totalAmount: amount,
-        currency: "IDR",
+        subtotalAmount: finalAmount,
+        totalAmount: finalAmount,
+        currency: account.currency,
         periodStart: now,
         periodEnd: dueDate,
+        metadataJson: (metadata ?? Prisma.DbNull) as Prisma.InputJsonValue,
       },
     })
 
@@ -93,7 +129,11 @@ export class PaymentService {
     })
   }
 
-  async creditBalance(organizationId: string, amount: number, reference: string) {
+  /**
+   * Credit balance via BillingTransactionService with idempotency guard.
+   * Uses invoiceId as the idempotency key to prevent double-crediting.
+   */
+  async creditBalance(organizationId: string, amount: number, invoiceId: string) {
     const account = await prisma.billingAccount.findUnique({
       where: { organizationId },
     })
@@ -102,26 +142,21 @@ export class PaymentService {
       throw new Error("Billing account not found")
     }
 
-    await prisma.billingAdjustment.create({
-      data: {
-        billingAccountId: account.id,
-        invoiceId: reference,
-        adjustmentType: "CREDIT",
-        amount,
-        currency: "IDR",
-        reason: "Top-up payment received",
-        appliedAt: new Date(),
-      },
-    })
-
-    await prisma.billingAccount.update({
-      where: { organizationId },
-      data: {
-        balance: { increment: amount },
-      },
+    await this.billingTransactions.creditBalance({
+      organizationId,
+      amount: new Prisma.Decimal(amount),
+      currency: account.currency,
+      source: "TOPUP",
+      reason: "Top-up payment received",
+      idempotencyKey: `topup:${invoiceId}`,
+      invoiceId,
+      metadata: { reference: invoiceId },
     })
   }
 
+  /**
+   * Pay an invoice using balance. Uses BillingTransactionService for atomic debit.
+   */
   async payWithBalance(invoiceId: string, organizationId: string) {
     const invoice = await prisma.invoice.findFirst({
       where: { id: invoiceId, status: "OPEN", billingAccount: { organizationId } },
@@ -145,21 +180,14 @@ export class PaymentService {
       throw new Error("Insufficient balance")
     }
 
-    await prisma.billingAdjustment.create({
-      data: {
-        billingAccountId: account.id,
-        invoiceId,
-        adjustmentType: "DEBIT",
-        amount,
-        currency: invoice.currency,
-        reason: `Payment for invoice ${invoice.invoiceNumber}`,
-        appliedAt: new Date(),
-      },
-    })
-
-    await prisma.billingAccount.update({
-      where: { organizationId },
-      data: { balance: { decrement: amount } },
+    await this.billingTransactions.debitBalance({
+      organizationId,
+      amount: new Prisma.Decimal(amount),
+      currency: invoice.currency,
+      source: "ADJUSTMENT",
+      reason: `Payment for invoice ${invoice.invoiceNumber}`,
+      idempotencyKey: `pay:${invoiceId}`,
+      invoiceId,
     })
 
     await prisma.invoice.update({
@@ -168,10 +196,7 @@ export class PaymentService {
     })
   }
 
-  async createTopupInvoiceForGap(
-    organizationId: string,
-    gapAmount: number
-  ) {
+  async createTopupInvoiceForGap(organizationId: string, gapAmount: number) {
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 7)
 
@@ -201,7 +226,7 @@ export class PaymentService {
         dueDate,
         subtotalAmount: gapAmount,
         totalAmount: gapAmount,
-        currency: "IDR",
+        currency: account.currency,
         periodStart: new Date(),
         periodEnd: dueDate,
       },

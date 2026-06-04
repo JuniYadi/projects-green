@@ -80,7 +80,8 @@ export class DuitkuService {
       throw new Error("Duitku gateway not configured")
     }
 
-    const stringToSign = params.merchantCode + params.merchantOrderId + params.amount
+    // Order: merchantCode + amount + merchantOrderId (berbeda dengan request signing)
+    const stringToSign = params.merchantCode + params.amount + params.merchantOrderId
     const expectedSignature = crypto
       .createHmac("sha256", config.apiKey)
       .update(stringToSign)

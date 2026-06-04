@@ -1,3 +1,4 @@
+import type { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 const mockPrisma = {
@@ -8,6 +9,7 @@ const mockPrisma = {
         invoiceNumber: "TOP-ABC123",
         totalAmount: { toNumber: () => 50000 },
         status: "OPEN",
+        currency: "IDR",
         paymentMethod: "VA",
         dueDate: new Date("2026-06-10"),
         type: "TOP_UP",
@@ -24,12 +26,14 @@ const mockPrisma = {
         id: "ba-123",
         organizationId: "org-123",
         balance: { toNumber: () => 100000 },
+        currency: "IDR",
       })
     ),
     create: mock(() =>
       Promise.resolve({
         id: "ba-123",
         organizationId: "org-123",
+        currency: "IDR",
       })
     ),
     update: mock(() => Promise.resolve({})),
@@ -43,13 +47,39 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
+// Mock BillingTransactionService to verify it's called correctly
+const mockBillingTransactions = {
+  creditBalance: mock(() =>
+    Promise.resolve({
+      billingAccountId: "ba-123",
+      adjustmentId: "adj-1",
+      balanceBefore: { toString: () => "100000" },
+      balanceAfter: { toString: () => "150000" },
+      amount: { toString: () => "50000" },
+      currency: "IDR",
+      alreadyProcessed: false,
+    })
+  ),
+  debitBalance: mock(() =>
+    Promise.resolve({
+      billingAccountId: "ba-123",
+      adjustmentId: "adj-2",
+      balanceBefore: { toString: () => "100000" },
+      balanceAfter: { toString: () => "50000" },
+      amount: { toString: () => "50000" },
+      currency: "IDR",
+      alreadyProcessed: false,
+    })
+  ),
+}
+
 const { PaymentService } = await import("./payment.service")
 
 describe("PaymentService", () => {
   let service: InstanceType<typeof PaymentService>
 
   beforeEach(() => {
-    service = new PaymentService()
+    service = new PaymentService(mockBillingTransactions as unknown as BillingTransactionService)
     mockPrisma.invoice.create.mockClear()
     mockPrisma.invoice.update.mockClear()
     mockPrisma.invoice.findFirst.mockClear()
@@ -58,6 +88,8 @@ describe("PaymentService", () => {
     mockPrisma.billingAccount.create.mockClear()
     mockPrisma.billingAccount.update.mockClear()
     mockPrisma.billingAdjustment.create.mockClear()
+    mockBillingTransactions.creditBalance.mockClear()
+    mockBillingTransactions.debitBalance.mockClear()
   })
 
   describe("createTopupInvoice", () => {
@@ -104,6 +136,31 @@ describe("PaymentService", () => {
 
       expect(mockPrisma.billingAccount.create).toHaveBeenCalledTimes(1)
     })
+
+    it("uses account currency for top-up invoice", async () => {
+      ;(mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce({
+        id: "ba-usd",
+        organizationId: "org-usd",
+        currency: "USD",
+      })
+      mockPrisma.invoice.create.mockResolvedValueOnce({
+        id: "inv-usd",
+        invoiceNumber: "TOP-USD001",
+        currency: "USD",
+        totalAmount: { toNumber: () => 50000 },
+        status: "OPEN" as string,
+        paymentMethod: null as unknown as string,
+        dueDate: new Date(),
+        type: "TOP_UP",
+      })
+
+      const invoice = await service.createTopupInvoice({
+        organizationId: "org-usd",
+        amount: 50000,
+      })
+
+      expect(invoice.currency).toBe("USD")
+    })
   })
 
   describe("getInvoicesForOrganization", () => {
@@ -127,14 +184,19 @@ describe("PaymentService", () => {
   })
 
   describe("creditBalance", () => {
-    it("should create adjustment and update balance", async () => {
-      await service.creditBalance("org-123", 50000, "DUITKU_REF001")
+    it("should credit via BillingTransactionService with idempotencyKey", async () => {
+      await service.creditBalance("org-123", 50000, "inv-123")
 
-      expect(mockPrisma.billingAdjustment.create).toHaveBeenCalledTimes(1)
-      expect(mockPrisma.billingAccount.update).toHaveBeenCalledWith({
-        where: { organizationId: "org-123" },
-        data: { balance: { increment: 50000 } },
-      })
+      expect(mockBillingTransactions.creditBalance).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-123",
+          amount: expect.objectContaining({}),
+          currency: "IDR",
+          source: "TOPUP",
+          idempotencyKey: "topup:inv-123",
+          invoiceId: "inv-123",
+        })
+      )
     })
 
     it("should throw error when billing account not found", async () => {
@@ -149,7 +211,7 @@ describe("PaymentService", () => {
   })
 
   describe("payWithBalance", () => {
-    it("should debit balance and mark invoice as paid", async () => {
+    it("should debit via BillingTransactionService and mark invoice as paid", async () => {
       ;(mockPrisma.invoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce({
         id: "inv-123",
         status: "OPEN",
@@ -160,11 +222,16 @@ describe("PaymentService", () => {
 
       await service.payWithBalance("inv-123", "org-123")
 
-      expect(mockPrisma.billingAdjustment.create).toHaveBeenCalledTimes(1)
-      expect(mockPrisma.billingAccount.update).toHaveBeenCalledWith({
-        where: { organizationId: "org-123" },
-        data: { balance: { decrement: 50000 } },
-      })
+      expect(mockBillingTransactions.debitBalance).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-123",
+          amount: expect.objectContaining({}),
+          currency: "IDR",
+          source: "ADJUSTMENT",
+          idempotencyKey: "pay:inv-123",
+          invoiceId: "inv-123",
+        })
+      )
       expect(mockPrisma.invoice.update).toHaveBeenCalledWith({
         where: { id: "inv-123" },
         data: { status: "PAID" },

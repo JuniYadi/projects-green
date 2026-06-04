@@ -31,6 +31,37 @@ describe("TopupRoute", () => {
   })
 
   describe("POST /topup", () => {
+    it("returns 410 in production and directs to /api/payments/topup", async () => {
+      const origEnv = process.env.NODE_ENV
+      ;(process.env as Record<string, string>).NODE_ENV = "production"
+
+      const app = new Elysia()
+        .use(
+          createBillingTopupRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1" },
+              organizationId: "org-1",
+            } as MockAuthContext),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/topup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+        })
+      )
+
+      expect(response.status).toBe(410)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("REAL_TOPUP_REQUIRED")
+
+      ;(process.env as Record<string, string>).NODE_ENV = origEnv
+    })
+
     it("returns 401 when no auth", async () => {
       const app = new Elysia()
         .use(
