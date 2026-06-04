@@ -196,6 +196,8 @@ describe("environment step validation", () => {
     customDomain: "",
     envVars: [],
     resourcePlanId: "starter" as const,
+    billingMode: "PAYG" as const,
+    paygBufferHours: 24,
   }
 
   it("requires custom domain when domain mode is custom", () => {
@@ -270,6 +272,42 @@ describe("environment step validation", () => {
         ],
       })
     ).toBe(false)
+  })
+
+  it("accepts PAYG billing mode with valid buffer hours", () => {
+    expect(
+      validateEnvironmentStep({
+        ...baseEnvironmentState,
+        billingMode: "PAYG",
+        paygBufferHours: 48,
+      })
+    ).toBe(true)
+  })
+
+  it("defaults billing mode to PAYG when not specified", () => {
+    const result = validateEnvironmentStep({
+      ...baseEnvironmentState,
+    })
+    expect(result).toBe(true)
+  })
+
+  it("rejects buffer hours below 24", () => {
+    expect(
+      validateEnvironmentStep({
+        ...baseEnvironmentState,
+        billingMode: "PAYG",
+        paygBufferHours: 12,
+      })
+    ).toBe(false)
+  })
+
+  it("accepts PACKAGE billing mode", () => {
+    expect(
+      validateEnvironmentStep({
+        ...baseEnvironmentState,
+        billingMode: "PACKAGE",
+      })
+    ).toBe(true)
   })
 })
 

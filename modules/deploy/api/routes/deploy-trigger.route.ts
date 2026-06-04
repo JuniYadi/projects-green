@@ -5,6 +5,8 @@ import { triggerDeploy } from "../../deploy-pipeline.service"
 import { rollbackDeployment, getRollbackOptions } from "../../deploy-rollback.service"
 import { resolveTenantRoleFromClaims, hasScopedSuperAdminClaim } from "@/modules/tenants/tenant-policy"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { AppHostingBillingService } from "../../billing/app-hosting-billing.service"
+import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 
 export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
   .post(
@@ -44,6 +46,33 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
       if (stack.organizationId !== auth.organizationId) {
         set.status = 403
         return { ok: false, error: "FORBIDDEN", message: "Access denied" }
+      }
+
+      // Billing gate: check balance before deploy for PAYG stacks
+      const billingMode = (stack as Record<string, unknown>).billingMode
+      if (billingMode === "PAYG" && stack.resourcePlanId === "payg") {
+        const hourlyCost = (stack as Record<string, unknown>).hourlyCost
+        if (hourlyCost) {
+          const transactions = new BillingTransactionService(prisma)
+          const billingService = new AppHostingBillingService(prisma, transactions)
+          try {
+            await billingService.assertCanStartPayg({
+              organizationId: auth.organizationId,
+              hourlyCost: new (await import("@prisma/client")).Prisma.Decimal(String(hourlyCost)),
+            })
+          } catch (error) {
+            if (error instanceof Error && error.message === "INSUFFICIENT_PAYG_BUFFER") {
+              set.status = 402
+              return {
+                ok: false,
+                error: "INSUFFICIENT_PAYG_BUFFER",
+                message: "Your balance must cover at least 24 hours of runtime before deploying PAYG apps.",
+                topupUrl: "/console/billing/topup",
+              }
+            }
+            throw error
+          }
+        }
       }
 
       const result = await triggerDeploy({
