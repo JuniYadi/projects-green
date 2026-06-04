@@ -54,7 +54,7 @@ type SupportTicketThreadResponse = {
   ok: true
   thread: {
     ticket: SupportTicket
-    replies: Array<{ id: string; authorWorkosUserId: string; organizationName?: string | null }>
+    replies: Array<{ id: string; authorWorkosUserId: string; isInternalNote: boolean; organizationName?: string | null }>
     users?: Record<string, { isStaff: boolean }>
   }
 }
@@ -700,5 +700,81 @@ describe("support ticket routes", () => {
     const json = (await response.json()) as SupportTicketThreadResponse
     expect(json.ok).toBe(true)
     expect(json.thread.replies).toHaveLength(2)
+  })
+
+  it("returns only public replies for regular users", async () => {
+    const publicReply = {
+      id: "reply_public",
+      ticketId: "ticket_1",
+      authorWorkosUserId: "user_1",
+      body: "This is a public reply",
+      secureForm: null,
+      isInternalNote: false,
+      attachmentMetadata: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    // The service layer filters internal notes for non-super-admin actors.
+    // This route-level test verifies the end-to-end plumbing: the route
+    // correctly passes through the filtered response from the service.
+    const app = createApp({
+      async getTicketThread() {
+        return {
+          ticket: baseTicket,
+          replies: [publicReply],
+        }
+      },
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const json = (await response.json()) as SupportTicketThreadResponse
+    expect(json.ok).toBe(true)
+    expect(json.thread.replies).toHaveLength(1)
+    expect(json.thread.replies[0]!.isInternalNote).toBe(false)
+  })
+
+  it("returns only public replies for tenant admins on requester console", async () => {
+    const publicReply = {
+      id: "reply_public",
+      ticketId: "ticket_1",
+      authorWorkosUserId: "user_1",
+      body: "This is a public reply",
+      secureForm: null,
+      isInternalNote: false,
+      attachmentMetadata: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    // Tenant admin (platformRole "none") is not a super_admin, so the
+    // service returns only public replies. The route test verifies the
+    // response structure is correct.
+    const app = createAdminApp({
+      async getTicketThread() {
+        return {
+          ticket: baseTicket,
+          replies: [publicReply],
+        }
+      },
+    }, "none")
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const json = (await response.json()) as SupportTicketThreadResponse
+    expect(json.ok).toBe(true)
+    expect(json.thread.replies).toHaveLength(1)
+    expect(json.thread.replies[0]!.isInternalNote).toBe(false)
   })
 })
