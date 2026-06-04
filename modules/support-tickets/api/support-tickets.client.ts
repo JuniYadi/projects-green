@@ -187,15 +187,19 @@ export const createSupportTicketsClient = () => {
       file: File
       uploadUrl: string
     }) {
-      const response = await fetch(input.uploadUrl, {
-        method: "PUT",
-        headers: {
-          "content-type": input.file.type || "application/octet-stream",
-        },
-        body: input.file,
+      const formData = new FormData()
+      formData.append("file", input.file)
+      formData.append("uploadUrl", input.uploadUrl)
+      formData.append("mimeType", input.file.type || "application/octet-stream")
+
+      const response = await fetch("/api/support-tickets/attachments/upload", {
+        method: "POST",
+        body: formData,
       })
 
-      if (!response.ok) {
+      const payload = await parseJsonSafely(response)
+
+      if (!response.ok || !payload || typeof payload !== "object" || !("ok" in payload) || !payload.ok) {
         throw new Error("Attachment upload failed.")
       }
     },
