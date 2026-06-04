@@ -86,7 +86,7 @@ export class PaymentService {
         currency: account.currency,
         periodStart: now,
         periodEnd: dueDate,
-        metadataJson: metadata as Record<string, unknown> | undefined,
+        metadataJson: (metadata ?? Prisma.DbNull) as Prisma.InputJsonValue,
       },
     })
 

@@ -1,5 +1,11 @@
-import type { PrismaClient } from "@prisma/client"
 import { Prisma } from "@prisma/client"
+import type { PrismaClient } from "@prisma/client"
+
+// Transaction client type returned by Prisma $transaction callback
+type TxClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$use" | "$extends"
+>
 
 export type BillingChargeSource =
   | "TOPUP"
@@ -172,7 +178,7 @@ export class BillingTransactionService {
   }
 
   private async executeMutation(
-    tx: PrismaClient,
+    tx: TxClient,
     account: {
       id: string
       balance: Prisma.Decimal
@@ -229,7 +235,7 @@ export class BillingTransactionService {
   }
 
   private async ensureMonthlyServiceInvoice(
-    tx: PrismaClient,
+    tx: TxClient,
     billingAccountId: string,
     currency: string,
   ) {

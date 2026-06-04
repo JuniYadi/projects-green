@@ -33,7 +33,7 @@ describe("TopupRoute", () => {
   describe("POST /topup", () => {
     it("returns 410 in production and directs to /api/payments/topup", async () => {
       const origEnv = process.env.NODE_ENV
-      process.env.NODE_ENV = "production"
+      ;(process.env as Record<string, string>).NODE_ENV = "production"
 
       const app = new Elysia()
         .use(
@@ -59,7 +59,7 @@ describe("TopupRoute", () => {
       expect(body.ok).toBe(false)
       expect(body.error).toBe("REAL_TOPUP_REQUIRED")
 
-      process.env.NODE_ENV = origEnv
+      ;(process.env as Record<string, string>).NODE_ENV = origEnv
     })
 
     it("returns 401 when no auth", async () => {

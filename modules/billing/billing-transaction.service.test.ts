@@ -69,7 +69,7 @@ describe("BillingTransactionService", () => {
     service = new BillingTransactionService(mockPrisma as unknown as PrismaClient)
 
     // Default mock: $transaction invokes the callback with mockPrisma
-    mockPrisma.$transaction.mockImplementation(async (fn: Function) => {
+    mockPrisma.$transaction.mockImplementation(async (fn: (...args: unknown[]) => unknown) => {
       return fn(mockPrisma)
     })
   })
