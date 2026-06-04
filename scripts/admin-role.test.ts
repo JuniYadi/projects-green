@@ -1,24 +1,19 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { PlatformRole } from "@prisma/client"
+import { PlatformRole, type PlatformUserRole } from "@prisma/client"
 
-const mockFindMany = mock(async () => [])
-const mockFindFirst = mock(async () => null)
-const mockCreate = mock(async () => ({
+const baseSuperAdminRecord: PlatformUserRole = {
   id: "pur_1",
   email: "admin@example.com",
   workosUserId: "user_123",
   role: PlatformRole.SUPER_ADMIN,
   createdAt: new Date("2026-06-04T00:00:00.000Z"),
   updatedAt: new Date("2026-06-04T00:00:00.000Z"),
-}))
-const mockUpdate = mock(async () => ({
-  id: "pur_1",
-  email: "admin@example.com",
-  workosUserId: "user_123",
-  role: PlatformRole.SUPER_ADMIN,
-  createdAt: new Date("2026-06-04T00:00:00.000Z"),
-  updatedAt: new Date("2026-06-04T00:00:00.000Z"),
-}))
+}
+
+const mockFindMany = mock(async () => [] as PlatformUserRole[])
+const mockFindFirst = mock(async () => null as PlatformUserRole | null)
+const mockCreate = mock(async () => baseSuperAdminRecord)
+const mockUpdate = mock(async () => baseSuperAdminRecord)
 const mockDelete = mock(async () => ({ id: "pur_1" }))
 
 mock.module("@/lib/prisma", () => ({
@@ -85,36 +80,13 @@ describe("admin-role operations", () => {
 
     mockFindMany.mockResolvedValue([])
     mockFindFirst.mockResolvedValue(null)
-    mockCreate.mockResolvedValue({
-      id: "pur_1",
-      email: "admin@example.com",
-      workosUserId: "user_123",
-      role: PlatformRole.SUPER_ADMIN,
-      createdAt: new Date("2026-06-04T00:00:00.000Z"),
-      updatedAt: new Date("2026-06-04T00:00:00.000Z"),
-    })
-    mockUpdate.mockResolvedValue({
-      id: "pur_1",
-      email: "admin@example.com",
-      workosUserId: "user_123",
-      role: PlatformRole.SUPER_ADMIN,
-      createdAt: new Date("2026-06-04T00:00:00.000Z"),
-      updatedAt: new Date("2026-06-04T00:00:00.000Z"),
-    })
+    mockCreate.mockResolvedValue(baseSuperAdminRecord)
+    mockUpdate.mockResolvedValue(baseSuperAdminRecord)
     mockDelete.mockResolvedValue({ id: "pur_1" })
   })
 
   it("lists super admins ordered by createdAt ascending", async () => {
-    mockFindMany.mockResolvedValue([
-      {
-        id: "pur_1",
-        email: "admin@example.com",
-        workosUserId: "user_123",
-        role: PlatformRole.SUPER_ADMIN,
-        createdAt: new Date("2026-06-04T00:00:00.000Z"),
-        updatedAt: new Date("2026-06-04T00:00:00.000Z"),
-      },
-    ])
+    mockFindMany.mockResolvedValue([baseSuperAdminRecord])
 
     const rows = await listSuperAdmins()
 
@@ -142,12 +114,9 @@ describe("admin-role operations", () => {
 
   it("promotes an existing non-admin row by workos user id", async () => {
     mockFindFirst.mockResolvedValue({
-      id: "pur_1",
+      ...baseSuperAdminRecord,
       email: null,
-      workosUserId: "user_123",
       role: PlatformRole.NONE,
-      createdAt: new Date("2026-06-04T00:00:00.000Z"),
-      updatedAt: new Date("2026-06-04T00:00:00.000Z"),
     })
 
     await addSuperAdmin({ workosUserId: " user_123 " })
@@ -159,14 +128,7 @@ describe("admin-role operations", () => {
   })
 
   it("deletes the row when delete finds a matching super admin", async () => {
-    mockFindFirst.mockResolvedValue({
-      id: "pur_1",
-      email: "admin@example.com",
-      workosUserId: "user_123",
-      role: PlatformRole.SUPER_ADMIN,
-      createdAt: new Date("2026-06-04T00:00:00.000Z"),
-      updatedAt: new Date("2026-06-04T00:00:00.000Z"),
-    })
+    mockFindFirst.mockResolvedValue(baseSuperAdminRecord)
 
     await deleteSuperAdmin({ email: "admin@example.com" })
 

@@ -4,8 +4,6 @@ import { PlatformRole, type PlatformUserRole } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 
-type AdminRoleAction = "list" | "add" | "delete"
-
 type ParsedAdminRoleArgs =
   | { action: "list" }
   | { action: "add"; email: string }
