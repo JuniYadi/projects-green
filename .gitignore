@@ -10,6 +10,9 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+*.snap
 
 # next.js
 /.next/
