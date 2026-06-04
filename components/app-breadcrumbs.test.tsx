@@ -47,6 +47,30 @@ describe("buildAppBreadcrumbItems", () => {
       { label: "Organizations", href: "/en/portal/admin/organizations" },
       { label: "Organization Detail", href: undefined },
     ])
+
+    expect(
+      buildAppBreadcrumbItems({
+        pathname: "/en/portal/admin/organizations/ORG_123",
+        rootSegment: "portal",
+      })
+    ).toEqual([
+      { label: "Portal", href: "/en/portal" },
+      { label: "Admin", href: "/en/portal/admin" },
+      { label: "Organizations", href: "/en/portal/admin/organizations" },
+      { label: "Organization Detail", href: undefined },
+    ])
+
+    expect(
+      buildAppBreadcrumbItems({
+        pathname: "/en/portal/admin/organizations/12345",
+        rootSegment: "portal",
+      })
+    ).toEqual([
+      { label: "Portal", href: "/en/portal" },
+      { label: "Admin", href: "/en/portal/admin" },
+      { label: "Organizations", href: "/en/portal/admin/organizations" },
+      { label: "Organization Detail", href: undefined },
+    ])
   })
 
   it("renders route-specific labels for documentation and new template routes", () => {

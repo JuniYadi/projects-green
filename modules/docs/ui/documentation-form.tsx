@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -58,7 +58,7 @@ function formStateFromInitialData(
 }
 
 export function DocumentationForm({ initialData, onSuccess }: DocumentationFormProps = {}) {
-  const [previousInitialData, setPreviousInitialData] =
+  const [, setPreviousInitialData] =
     useState<DocumentationFormInitialData>(initialData)
   const [form, setForm] = useState<FormState>(() =>
     formStateFromInitialData(initialData)
@@ -68,10 +68,12 @@ export function DocumentationForm({ initialData, onSuccess }: DocumentationFormP
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [savedPath, setSavedPath] = useState<string | null>(null)
 
-  if (initialData !== previousInitialData) {
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     setPreviousInitialData(initialData)
     setForm(formStateFromInitialData(initialData))
-  }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [initialData])
 
   const normalizedHowTo = useMemo(
     () =>
