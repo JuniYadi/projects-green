@@ -33,9 +33,10 @@ export type DocumentationFormProps = {
     howTo: string[]
     notes?: string[]
   } | null
+  onSuccess?: () => void
 }
 
-export function DocumentationForm({ initialData }: DocumentationFormProps = {}) {
+export function DocumentationForm({ initialData, onSuccess }: DocumentationFormProps = {}) {
   const [form, setForm] = useState<FormState>(initialState)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState<string | null>(null)
@@ -125,6 +126,7 @@ export function DocumentationForm({ initialData }: DocumentationFormProps = {}) 
 
       setSubmitMessage("Documentation saved.")
       setSavedPath(payload.path)
+      onSuccess?.()
     } catch {
       setSubmitError("Network error while saving documentation.")
     } finally {

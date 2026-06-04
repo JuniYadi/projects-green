@@ -185,7 +185,7 @@ export default function PortalDocumentationsPage() {
             ? `Edit: ${selectedDoc.title}`
             : "Create New Entry"}
         </h2>
-        <DocumentationForm initialData={selectedDoc} />
+        <DocumentationForm initialData={selectedDoc} onSuccess={() => void loadDocs()} />
       </section>
     </main>
   )
