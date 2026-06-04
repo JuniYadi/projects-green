@@ -104,8 +104,18 @@ test.describe("Landing Page (/)", () => {
   })
 
   test("pricing toggles between Monthly and Yearly", async ({ page }) => {
+    // Verify default state (yearly pricing)
     await expect(page.getByRole("button", { name: /Monthly/i })).toBeVisible()
     await expect(page.getByRole("button", { name: /Yearly.*-20%/i })).toBeVisible()
+    await expect(page.locator("#pricing-plan-pro")).toContainText("$23")
+
+    // Click Monthly and verify prices update
+    await page.click("#pricing-toggle-monthly")
+    await expect(page.locator("#pricing-plan-pro")).toContainText("$29")
+
+    // Click Yearly and verify prices update back
+    await page.click("#pricing-toggle-yearly")
+    await expect(page.locator("#pricing-plan-pro")).toContainText("$23")
   })
 
   test("features section heading is visible", async ({ page }) => {

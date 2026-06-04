@@ -31,6 +31,6 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    cwd: "/home/juniyadi/projects-green",
+    cwd: process.cwd(),
   },
 })
