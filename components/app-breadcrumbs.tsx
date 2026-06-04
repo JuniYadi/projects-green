@@ -130,7 +130,7 @@ function labelForSegment(segment: string, parentSegment?: string): string {
 function isDetailSegment(segment: string): boolean {
   return (
     /^\d+$/.test(segment) ||
-    /^[a-z]+_[a-zA-Z0-9]+$/i.test(segment) ||
+    /^[a-z0-9]+_[a-z0-9]+$/i.test(segment) ||
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(segment)
   )
 }
