@@ -236,13 +236,35 @@ export const createSupportTicketAttachmentRoutes = (
     .post(
       "/attachments/upload",
       async ({ body, set }) => {
+        const auth = await dependencies.authenticate()
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        const uploadUrl = String(body.uploadUrl)
+        const mimeType = String(body.mimeType || "application/octet-stream")
+
+        // Validate the uploadUrl references the configured S3 endpoint and bucket
+        const s3Endpoint = (process.env.S3_ENDPOINT || "").trim()
+        const s3Bucket = (process.env.S3_BUCKET || "").trim()
+
+        if (s3Endpoint && s3Bucket) {
+          const expectedPrefix = `${s3Endpoint}/${s3Bucket}`
+          if (!uploadUrl.toLowerCase().startsWith(expectedPrefix.toLowerCase())) {
+            set.status = 403
+            return {
+              ok: false as const,
+              error: "FORBIDDEN" as const,
+              message: "Upload URL does not match configured storage endpoint.",
+            }
+          }
+        }
+
         try {
           const fileBuffer = await body.file.arrayBuffer()
-          const response = await fetch(body.uploadUrl, {
+          const response = await fetch(uploadUrl, {
             method: "PUT",
-            headers: {
-              "content-type": body.mimeType || "application/octet-stream",
-            },
+            headers: { "content-type": mimeType },
             body: fileBuffer,
           })
 
