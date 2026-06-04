@@ -57,9 +57,10 @@ function formStateFromInitialData(
   }
 }
 
-export function DocumentationForm({ initialData, onSuccess }: DocumentationFormProps = {}) {
-  const [, setPreviousInitialData] =
-    useState<DocumentationFormInitialData>(initialData)
+export function DocumentationForm({
+  initialData,
+  onSuccess,
+}: DocumentationFormProps = {}) {
   const [form, setForm] = useState<FormState>(() =>
     formStateFromInitialData(initialData)
   )
@@ -70,7 +71,6 @@ export function DocumentationForm({ initialData, onSuccess }: DocumentationFormP
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
-    setPreviousInitialData(initialData)
     setForm(formStateFromInitialData(initialData))
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [initialData])
