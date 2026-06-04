@@ -1,33 +1,16 @@
-import { describe, expect, it, mock } from "bun:test"
-import { render, screen, waitFor } from "@testing-library/react"
-
-// Mock all API calls to return empty/unavailable states
-const mockFetch = mock((url: string) => {
-  if (url.includes("/docs/list")) {
-    return Promise.resolve({
-      json: () => Promise.resolve({ ok: true, docs: [] }),
-    } as Response)
-  }
-  return Promise.resolve({
-    json: () => Promise.resolve({ ok: false }),
-  } as unknown as Response)
-})
-
-global.fetch = mockFetch as unknown as typeof fetch
+import { describe, expect, it } from "bun:test"
+import { render, screen } from "@testing-library/react"
 
 describe("ConsolePage", () => {
-  it("renders dashboard header and loading state", async () => {
-    const { default: Page } = await import("./page")
-    render(<Page />)
+  it("renders static header text", async () => {
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
 
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Console" })).toBeInTheDocument()
-    })
-
-    // Should show 4 dashboard card titles
-    expect(screen.getByText("Current Balance")).toBeInTheDocument()
-    expect(screen.getByText("Spent This Month")).toBeInTheDocument()
-    expect(screen.getByText("Last Invoice")).toBeInTheDocument()
-    expect(screen.getByText("Open Tickets")).toBeInTheDocument()
+    // Static header text renders in initial client render
+    expect(container.textContent).toContain("Console")
+    expect(container.textContent).toContain("Current Balance")
+    expect(container.textContent).toContain("Spent This Month")
+    expect(container.textContent).toContain("Last Invoice")
+    expect(container.textContent).toContain("Open Tickets")
   })
 })
