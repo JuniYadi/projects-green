@@ -92,15 +92,17 @@ const createRepositoryStub = () => {
     async getTicketById(ticketId) {
       return tickets.get(ticketId) ?? null
     },
-    async getTicketThread(ticketId) {
-      const ticket = tickets.get(ticketId)
+    async getTicketThread(input) {
+      const ticket = tickets.get(input.ticketId)
       if (!ticket) {
         return null
       }
 
       return {
         ticket,
-        replies: replies.filter((reply) => reply.ticketId === ticketId),
+        replies: input.includeInternalNotes
+          ? replies.filter((reply) => reply.ticketId === input.ticketId)
+          : replies.filter((reply) => reply.ticketId === input.ticketId && !reply.isInternalNote),
       }
     },
     async updateTicketStatus(input) {
@@ -283,6 +285,159 @@ describe("supportTicketService", () => {
     ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
   })
 
+  it("filters out internal notes from thread for regular users", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    // Add a public reply
+    await service.addReply({
+      actor: {
+        canManageTickets: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+      reply: {
+        ticketId: "ticket_1",
+        authorWorkosUserId: "user_agent",
+        body: "This is a public reply",
+        isInternalNote: false,
+      },
+    })
+
+    // Add an internal note
+    await service.addReply({
+      actor: {
+        canManageTickets: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+      reply: {
+        ticketId: "ticket_1",
+        authorWorkosUserId: "user_agent",
+        body: "This is an internal note",
+        isInternalNote: true,
+      },
+    })
+
+    // Regular user (no isSuperAdmin, no canManageTickets) should NOT see internal notes
+    const thread = await service.getTicketThread({
+      actor: {
+        organizationId: "org_1",
+        workosUserId: "user_requester",
+      },
+      ticketId: "ticket_1",
+    })
+
+    expect(thread.replies).toHaveLength(1)
+    expect(thread.replies[0]!.body).toBe("This is a public reply")
+    expect(thread.replies[0]!.isInternalNote).toBe(false)
+  })
+
+  it("filters out internal notes from thread for tenant admins on the requester console", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await service.addReply({
+      actor: {
+        isSuperAdmin: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+      reply: {
+        ticketId: "ticket_1",
+        authorWorkosUserId: "user_agent",
+        body: "This is a public reply",
+        isInternalNote: false,
+      },
+    })
+
+    await service.addReply({
+      actor: {
+        isSuperAdmin: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+      reply: {
+        ticketId: "ticket_1",
+        authorWorkosUserId: "user_agent",
+        body: "This is an internal note",
+        isInternalNote: true,
+      },
+    })
+
+    const thread = await service.getTicketThread({
+      actor: {
+        canManageTickets: true,
+        organizationId: "org_1",
+        workosUserId: "user_requester",
+      },
+      ticketId: "ticket_1",
+    })
+
+    expect(thread.replies).toHaveLength(1)
+    expect(thread.replies[0]!.body).toBe("This is a public reply")
+    expect(thread.replies[0]!.isInternalNote).toBe(false)
+  })
+
+  it("includes internal notes in thread for super admin users", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    // Add a public reply
+    await service.addReply({
+      actor: {
+        canManageTickets: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+      reply: {
+        ticketId: "ticket_1",
+        authorWorkosUserId: "user_agent",
+        body: "This is a public reply",
+        isInternalNote: false,
+      },
+    })
+
+    // Add an internal note
+    await service.addReply({
+      actor: {
+        canManageTickets: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+      reply: {
+        ticketId: "ticket_1",
+        authorWorkosUserId: "user_agent",
+        body: "This is an internal note",
+        isInternalNote: true,
+      },
+    })
+
+    // Super admin users SHOULD see internal notes
+    const thread = await service.getTicketThread({
+      actor: {
+        isSuperAdmin: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+      ticketId: "ticket_1",
+    })
+
+    expect(thread.replies).toHaveLength(2)
+    expect(thread.replies[0]!.body).toBe("This is a public reply")
+    expect(thread.replies[1]!.body).toBe("This is an internal note")
+    expect(thread.replies[1]!.isInternalNote).toBe(true)
+  })
+
   it("encrypts secure form and keeps legacy encrypted content readable", async () => {
     const contentCipher = createSupportTicketContentCipher({
       key: "base64:bjY4kQV6Dj6MimVz5Zt2JYhjpQf8j2uZMQvNclTBIw4=",
@@ -342,15 +497,17 @@ describe("supportTicketService", () => {
       async getTicketById(ticketId) {
         return tickets.get(ticketId) ?? null
       },
-      async getTicketThread(ticketId) {
-        const ticket = tickets.get(ticketId)
+      async getTicketThread(input) {
+        const ticket = tickets.get(input.ticketId)
         if (!ticket) {
           return null
         }
 
         return {
           ticket,
-          replies: replies.filter((reply) => reply.ticketId === ticketId),
+          replies: input.includeInternalNotes
+            ? replies.filter((reply) => reply.ticketId === input.ticketId)
+            : replies.filter((reply) => reply.ticketId === input.ticketId && !reply.isInternalNote),
         }
       },
       async updateTicketStatus(input) {
@@ -509,8 +666,8 @@ describe("supportTicketService", () => {
       async getTicketById(ticketId) {
         return tickets.get(ticketId) ?? null
       },
-      async getTicketThread(ticketId) {
-        const ticket = tickets.get(ticketId)
+      async getTicketThread(input) {
+        const ticket = tickets.get(input.ticketId)
         if (!ticket) {
           return null
         }

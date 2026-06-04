@@ -147,9 +147,9 @@ const createLazyDefaultRepository = (): SupportTicketRepository => {
       const repository = await loadRepository()
       return repository.getTicketById(ticketId)
     },
-    async getTicketThread(ticketId) {
+    async getTicketThread(input) {
       const repository = await loadRepository()
-      return repository.getTicketThread(ticketId)
+      return repository.getTicketThread(input)
     },
     async updateTicketStatus(input) {
       const repository = await loadRepository()
@@ -331,7 +331,12 @@ export const createSupportTicketService = (
         throw new SupportTicketAccessDeniedError("read")
       }
 
-      const ticketThread = await repository.getTicketThread(input.ticketId)
+      const includeInternalNotes = actor.isSuperAdmin
+
+      const ticketThread = await repository.getTicketThread({
+        ticketId: input.ticketId,
+        includeInternalNotes,
+      })
       if (!ticketThread) {
         throw new SupportTicketNotFoundError(input.ticketId)
       }
