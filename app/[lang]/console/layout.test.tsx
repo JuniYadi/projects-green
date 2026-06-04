@@ -167,7 +167,7 @@ describe("ConsoleLayout", () => {
     expect(view.getByText("Sidebar:console:Jane Doe:Acme Inc")).toBeInTheDocument()
     expect(view.getByText("AI Help")).toBeInTheDocument()
     expect(view.getByText("Console")).toBeInTheDocument()
-    expect(view.getByText("Workspace")).toBeInTheDocument()
+    expect(view.queryByText("Workspace")).not.toBeInTheDocument()
     expect(view.getByText("Child Content")).toBeInTheDocument()
   })
 

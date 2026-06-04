@@ -1,12 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+import { AppBreadcrumbs } from "@/components/app-breadcrumbs"
 import { Separator } from "@/components/ui/separator"
 import {
   SidebarInset,
@@ -72,19 +65,7 @@ export default async function PortalLayout({
               orientation="vertical"
               className="mr-2 data-vertical:h-4 data-vertical:self-auto"
             />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href={portalPath}>
-                    Portal
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Workspace</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+            <AppBreadcrumbs rootSegment="portal" />
           </div>
           <div className="ml-auto px-6">
             <ThunderAiHelpDrawer />

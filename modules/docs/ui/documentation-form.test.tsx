@@ -35,6 +35,49 @@ describe("DocumentationForm", () => {
     expect((view.getByLabelText("Purpose") as HTMLTextAreaElement).value).toBe("")
   })
 
+  it("resets fields when selected documentation changes", () => {
+    const firstDoc = {
+      path: "/console",
+      title: "Console Overview",
+      purpose: "Understand the console.",
+      howTo: ["Open console", "Review cards"],
+      notes: ["Internal users only"],
+    }
+    const secondDoc = {
+      path: "/portal/billing",
+      title: "Billing",
+      purpose: "Manage billing.",
+      howTo: ["Open billing", "Review usage"],
+      notes: ["Requires active workspace"],
+    }
+
+    const view = render(<DocumentationForm initialData={firstDoc} />)
+
+    expect(view.getByLabelText("Path")).toHaveValue("/console")
+    expect(view.getByLabelText("Title")).toHaveValue("Console Overview")
+    expect(view.getByLabelText("Purpose")).toHaveValue(
+      "Understand the console."
+    )
+    expect(view.getByLabelText("How To (one step per line)")).toHaveValue(
+      "Open console\nReview cards"
+    )
+    expect(
+      view.getByLabelText("Notes (optional, one item per line)")
+    ).toHaveValue("Internal users only")
+
+    view.rerender(<DocumentationForm initialData={secondDoc} />)
+
+    expect(view.getByLabelText("Path")).toHaveValue("/portal/billing")
+    expect(view.getByLabelText("Title")).toHaveValue("Billing")
+    expect(view.getByLabelText("Purpose")).toHaveValue("Manage billing.")
+    expect(view.getByLabelText("How To (one step per line)")).toHaveValue(
+      "Open billing\nReview usage"
+    )
+    expect(
+      view.getByLabelText("Notes (optional, one item per line)")
+    ).toHaveValue("Requires active workspace")
+  })
+
   describe("form submission", () => {
     const fetchMock = mock()
 
