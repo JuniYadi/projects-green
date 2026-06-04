@@ -73,7 +73,7 @@ export const createWebhookRoutes = () =>
           await paymentService.creditBalance(
             billingAccount.organizationId,
             parseInt(amount),
-            `DUITKU_${reference}`
+            merchantOrderId
           )
 
           await paymentService.markInvoiceAsPaid(merchantOrderId)
