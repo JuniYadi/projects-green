@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 
 import { localizePathname, getLocaleFromPathname } from "@/lib/i18n/pathname"
 import { NavMain } from "@/components/nav-main"
@@ -32,8 +32,46 @@ import {
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
-const startsWithRoute = (pathname: string, route: string) =>
-  pathname === route || pathname.startsWith(`${route}/`)
+const PAYMENTS_PATH = "/portal/payments"
+
+const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
+
+const startsWithRoute = (pathname: string, route: string) => {
+  const normalizedPathname = getPathnameWithoutSearch(pathname)
+  return (
+    normalizedPathname === route || normalizedPathname.startsWith(`${route}/`)
+  )
+}
+
+const buildUrlWithSearchParam = (
+  pathname: string,
+  paramName: string,
+  paramValue?: string
+) => {
+  const url = new URL(pathname, "https://projects-green.local")
+
+  if (paramValue) {
+    url.searchParams.set(paramName, paramValue)
+  }
+
+  return `${url.pathname}${url.search}`
+}
+
+const buildPaymentUrl = (locale: AppLocale, tab?: string) =>
+  buildUrlWithSearchParam(
+    localizePathname({ pathname: PAYMENTS_PATH, locale }),
+    "tab",
+    tab
+  )
+
+const tabMatches = (fullPath: string, tab: string) => {
+  // fullPath may contain ?tab=xxx appended by AppSidebar
+  const [base, qs] = fullPath.split("?")
+  if (base !== PAYMENTS_PATH) return false
+  if (!qs) return tab === "overview"
+  const params = new URLSearchParams(qs)
+  return params.get("tab") === tab
+}
 
 export type AppSidebarSurface = "console" | "portal" | "admin"
 
@@ -165,7 +203,7 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
   },
   {
     context: "payments",
-    matches: (path) => startsWithRoute(path, "/portal/payments"),
+    matches: (path) => startsWithRoute(path, PAYMENTS_PATH),
     navMainLabel: "Payments",
     getProjects: (path, locale) => [
       {
@@ -177,39 +215,27 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     getNavMain: (path, locale) => [
       {
         title: "Overview",
-        url: localizePathname({
-          pathname: "/portal/payments/overview",
-          locale,
-        }),
+        url: buildPaymentUrl(locale),
         icon: <GaugeIcon />,
-        isActive: startsWithRoute(path, "/portal/payments/overview"),
+        isActive: tabMatches(path, "overview"),
       },
       {
         title: "Gateways",
-        url: localizePathname({
-          pathname: "/portal/payments/gateways",
-          locale,
-        }),
+        url: buildPaymentUrl(locale, "gateways"),
         icon: <WalletIcon />,
-        isActive: startsWithRoute(path, "/portal/payments/gateways"),
+        isActive: tabMatches(path, "gateways"),
       },
       {
         title: "Bank Accounts",
-        url: localizePathname({
-          pathname: "/portal/payments/bank-accounts",
-          locale,
-        }),
+        url: buildPaymentUrl(locale, "bank-accounts"),
         icon: <ReceiptIcon />,
-        isActive: startsWithRoute(path, "/portal/payments/bank-accounts"),
+        isActive: tabMatches(path, "bank-accounts"),
       },
       {
         title: "Confirmations",
-        url: localizePathname({
-          pathname: "/portal/payments/confirmations",
-          locale,
-        }),
+        url: buildPaymentUrl(locale, "confirmations"),
         icon: <BookOpenIcon />,
-        isActive: startsWithRoute(path, "/portal/payments/confirmations"),
+        isActive: tabMatches(path, "confirmations"),
       },
     ],
   },
@@ -458,9 +484,9 @@ const buildPortalProjects = (
   },
   {
     name: "Payments",
-    url: localizePathname({ pathname: "/portal/payments", locale }),
+    url: localizePathname({ pathname: PAYMENTS_PATH, locale }),
     icon: <CreditCardIcon />,
-    isActive: startsWithRoute(pathname, "/portal/payments"),
+    isActive: startsWithRoute(pathname, PAYMENTS_PATH),
   },
   {
     name: "Invoices",
@@ -537,10 +563,18 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname()
+  const sParams = useSearchParams()
   const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
+
+  // Enrich pathname with ?tab= so payments nav items can match tabs correctly
+  const tab = sParams.get("tab")
+  const enrichedPathname = tab
+    ? `${pathnameWithoutLocale}?tab=${tab}`
+    : pathnameWithoutLocale
+
   const { navMain, projects, navMainLabel } = resolveSidebarMenu({
     surface,
-    pathname: pathnameWithoutLocale,
+    pathname: enrichedPathname,
     locale: locale ?? defaultLocale,
   })
   const navSecondary = resolveSidebarSecondaryLinks({

@@ -7,12 +7,12 @@ import { InvoiceDetailScreen } from "@/modules/invoices/ui/invoice-detail-screen
 type InvoiceDetailPageProps = {
   params: Promise<{
     lang: string
-    invoiceId: string
+    id: string
   }>
 }
 
 export default async function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
-  const { lang, invoiceId } = await params
+  const { lang, id } = await params
   const locale = resolveLocaleOrDefault(lang)
 
   const invoicesPath = localizePathname({
@@ -32,7 +32,7 @@ export default async function InvoiceDetailPage({ params }: InvoiceDetailPagePro
         </p>
       </header>
 
-      <InvoiceDetailScreen invoiceId={invoiceId} lang={lang} />
+      <InvoiceDetailScreen invoiceId={id} lang={lang} />
     </main>
   )
 }
