@@ -23,7 +23,7 @@ Run a single test file: `bun test path/to/file.test.ts`
 
 ## Validation Requirements (4 Pillars)
 
-**HARD REQUIREMENT:** Must pass before opening a PR. **NOT** per-edit — run only when explicitly instructed:
+**HARD REQUIREMENT:** Must pass before opening a PR. **NOT** per-edit — run only when explicitly instructed to open a PR (saves tokens during local work):
 
 1. `bun run lint` — 0 errors
 2. `bun run typecheck` — 0 errors
@@ -31,7 +31,7 @@ Run a single test file: `bun test path/to/file.test.ts`
 4. `bun run test:coverage` — line coverage ≥ 85% (target di codecov.yml)
 5. `bun run build` — production build succeeds
 
-**Never open PR if any pillar fails.**
+**Never open PR if any pillar fails. Do NOT run these during local development — only when the user asks you to open a PR.**
 
 ## Architecture
 
@@ -112,11 +112,6 @@ Env-var based with `FEATURE_*` prefix, checked via `isFeatureEnabled()` from `li
 
 - **DRY**: extract shared helpers instead of copy-pasting (especially in tests)
 - **KISS**: prefer straightforward implementations; avoid over-engineering
-
----
-
-## Implementation Rules (ON-DEMAND ONLY)
-
-**Read `RULES.md` only when doing implementation work** (writing code, fixing bugs, adding tests). These rules DO NOT apply during planning, spec writing, design, or brainstorming sessions.
-
-RULES.md covers: Prisma types (use generated only), DTO layer (boundary contract), testing guidelines (mock.module cache rules), console consistency, E2E scripts, commit/PR conventions, Kanban task standard.
+- **Prisma Types — Use Generated Only**: never declare manual model types, delegates, or enum aliases. Import from `@prisma/client` instead (resolves via `node_modules/.prisma/client/`). See AGENTS.md for details and examples.
+- **DTO at API Boundary**: every route handler response must go through a DTO (`*.dto.ts` + `toDTO` mapper). Internal service-to-service calls use Prisma types directly. See AGENTS.md for the layer-by-layer breakdown.
+- **4 Pillars**: lint, typecheck, test, coverage, and build MUST pass before any commit/PR
