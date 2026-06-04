@@ -1,25 +1,33 @@
-import { describe, expect, it } from "bun:test"
-import { render } from "@testing-library/react"
+import { describe, expect, it, mock } from "bun:test"
+import { render, screen, waitFor } from "@testing-library/react"
 
-import ConsolePage from "@/app/[lang]/console/page"
+// Mock all API calls to return empty/unavailable states
+const mockFetch = mock((url: string) => {
+  if (url.includes("/docs/list")) {
+    return Promise.resolve({
+      json: () => Promise.resolve({ ok: true, docs: [] }),
+    } as Response)
+  }
+  return Promise.resolve({
+    json: () => Promise.resolve({ ok: false }),
+  } as unknown as Response)
+})
+
+global.fetch = mockFetch as unknown as typeof fetch
 
 describe("ConsolePage", () => {
-  it("renders workspace entry cards for tenant admin, docs, and applications", async () => {
-    const ui = await ConsolePage({
-      params: Promise.resolve({ lang: "en" }),
+  it("renders dashboard header and loading state", async () => {
+    const { default: Page } = await import("./page")
+    render(<Page />)
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Console" })).toBeInTheDocument()
     })
-    const view = render(ui)
 
-    expect(view.getByRole("heading", { name: "Console" })).toBeInTheDocument()
-    expect(view.getByText("Tenant Management")).toBeInTheDocument()
-    expect(view.getByText("Documentation Registry")).toBeInTheDocument()
-    expect(view.getByText("Applications")).toBeInTheDocument()
-
-    const links = view.getAllByRole("link", { name: "Open" })
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/en/console/organization",
-      "/en/portal/documentations",
-      "/en/console/app",
-    ])
+    // Should show 4 dashboard card titles
+    expect(screen.getByText("Current Balance")).toBeInTheDocument()
+    expect(screen.getByText("Spent This Month")).toBeInTheDocument()
+    expect(screen.getByText("Last Invoice")).toBeInTheDocument()
+    expect(screen.getByText("Open Tickets")).toBeInTheDocument()
   })
 })
