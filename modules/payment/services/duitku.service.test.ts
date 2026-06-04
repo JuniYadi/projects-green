@@ -154,15 +154,33 @@ describe("DuitkuService", () => {
   })
 
   describe("verifyCallback", () => {
-    it("should return true for valid signature", async () => {
+    it("should return true for valid signature with correct order (merchantCode+amount+merchantOrderId)", async () => {
+      // Compute expected signature: HMAC-SHA256(M001 + 50000 + inv-123, apiKey)
+      const crypto = await import("crypto")
+      const expectedSig = crypto
+        .createHmac("sha256", "test-api-key-1234567890abcdef")
+        .update("M001" + "50000" + "inv-123")
+        .digest("hex")
+
       const result = await service.verifyCallback({
         merchantCode: "M001",
         amount: "50000",
         merchantOrderId: "inv-123",
-        signature: "valid-signature",
+        signature: expectedSig,
       })
 
-      expect(typeof result).toBe("boolean")
+      expect(result).toBe(true)
+    })
+
+    it("should return false for invalid signature", async () => {
+      const result = await service.verifyCallback({
+        merchantCode: "M001",
+        amount: "50000",
+        merchantOrderId: "inv-123",
+        signature: "invalid-signature",
+      })
+
+      expect(result).toBe(false)
     })
 
     it("should throw error when gateway not configured", async () => {
