@@ -451,3 +451,39 @@ export const backfillEmbeddings = async (batchSize = 50): Promise<{
 
   return { processed, errors }
 }
+
+export const listDocs = async (
+  organizationId: string | null
+): Promise<KnowledgeDocMatch[]> => {
+  const where = organizationId
+    ? {
+        OR: [
+          { organizationId },
+          { organizationId: null },
+        ],
+      }
+    : { organizationId: null }
+
+  const docs = (await prisma.knowledgeDocument.findMany({
+    where,
+    orderBy: { updatedAt: "desc" },
+  })) as KnowledgeDocumentRecord[]
+
+  return docs.map((doc) => ({
+    id: doc.id,
+    organizationId: doc.organizationId,
+    path: doc.path,
+    title: doc.title,
+    purpose: doc.purpose,
+    howTo: doc.howTo,
+    notes: doc.notes,
+    updatedAt: doc.updatedAt.toISOString().slice(0, 10),
+    score: 0,
+  }))
+}
+
+export const deleteDocById = async (id: string): Promise<void> => {
+  await prisma.knowledgeDocument.delete({
+    where: { id },
+  })
+}

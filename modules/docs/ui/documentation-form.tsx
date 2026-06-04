@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,12 +25,38 @@ const initialState: FormState = {
   notesText: "",
 }
 
-export function DocumentationForm() {
+export type DocumentationFormProps = {
+  initialData?: {
+    path: string
+    title: string
+    purpose: string
+    howTo: string[]
+    notes?: string[]
+  } | null
+  onSuccess?: () => void
+}
+
+export function DocumentationForm({ initialData, onSuccess }: DocumentationFormProps = {}) {
   const [form, setForm] = useState<FormState>(initialState)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [savedPath, setSavedPath] = useState<string | null>(null)
+
+  // Reset form when initialData changes (user selects a different doc)
+  useEffect(() => {
+    if (initialData) {
+      setForm({
+        path: initialData.path,
+        title: initialData.title,
+        purpose: initialData.purpose,
+        howToText: initialData.howTo.join("\n"),
+        notesText: (initialData.notes ?? []).join("\n"),
+      })
+    } else {
+      setForm(initialState)
+    }
+  }, [initialData])
 
   const normalizedHowTo = useMemo(
     () =>
@@ -100,6 +126,7 @@ export function DocumentationForm() {
 
       setSubmitMessage("Documentation saved.")
       setSavedPath(payload.path)
+      onSuccess?.()
     } catch {
       setSubmitError("Network error while saving documentation.")
     } finally {

@@ -1,62 +1,184 @@
-import Link from "next/link"
+"use client"
 
-import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useCallback, useEffect, useState } from "react"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  WalletIcon,
+  CurrencyCircleDollarIcon,
+  ReceiptIcon,
+  LifebuoyIcon,
+} from "@phosphor-icons/react"
 
-type ConsolePageProps = {
-  params: Promise<{
-    lang: string
-  }>
+type DashboardCard = {
+  title: string
+  icon: React.ReactNode
+  value: string | null
+  subtitle: string | null
+  loading: boolean
+  error: boolean
 }
 
-export default async function ConsolePage({ params }: ConsolePageProps) {
-  const { lang } = await params
-  const locale = resolveLocaleOrDefault(lang)
-  const entryPoints = [
-    {
-      title: "Tenant Management",
-      href: localizePathname({ pathname: "/console/organization", locale }),
-      description:
-        "Manage roles, invitations, ownership transfers, and organization settings.",
-    },
-    {
-      title: "Documentation Registry",
-      href: localizePathname({ pathname: "/portal/documentations", locale }),
-      description:
-        "Create and maintain contextual UI docs for routes and team workflows.",
-    },
-    {
-      title: "Applications",
-      href: localizePathname({ pathname: "/console/app", locale }),
-      description:
-        "Deploy, manage, and monitor application lifecycle workflows.",
-    },
-  ]
+const initialState: DashboardCard[] = [
+  {
+    title: "Current Balance",
+    icon: <WalletIcon />,
+    value: null,
+    subtitle: null,
+    loading: true,
+    error: false,
+  },
+  {
+    title: "Spent This Month",
+    icon: <CurrencyCircleDollarIcon />,
+    value: null,
+    subtitle: null,
+    loading: true,
+    error: false,
+  },
+  {
+    title: "Last Invoice",
+    icon: <ReceiptIcon />,
+    value: null,
+    subtitle: null,
+    loading: true,
+    error: false,
+  },
+  {
+    title: "Open Tickets",
+    icon: <LifebuoyIcon />,
+    value: null,
+    subtitle: null,
+    loading: true,
+    error: false,
+  },
+]
+
+export default function ConsolePage() {
+  const [cards, setCards] = useState<DashboardCard[]>(initialState)
+
+  const fetchDashboardData = useCallback(async () => {
+    const results = await Promise.allSettled([
+      fetch("/api/billing/account").then((r) => r.json()),
+      fetch("/api/usage").then((r) => r.json()),
+      fetch("/api/billing/invoices?limit=1").then((r) => r.json()),
+      fetch("/api/support-tickets?status=open").then((r) => r.json()),
+    ])
+
+    setCards([
+      {
+        title: "Current Balance",
+        icon: <WalletIcon />,
+        value:
+          results[0].status === "fulfilled" && results[0].value?.ok
+            ? results[0].value.formattedBalance
+            : null,
+        subtitle:
+          results[0].status === "fulfilled" && results[0].value?.ok
+            ? `Account age: ${results[0].value.accountAge}`
+            : null,
+        loading: false,
+        error: results[0].status !== "fulfilled" || !results[0].value?.ok,
+      },
+      {
+        title: "Spent This Month",
+        icon: <CurrencyCircleDollarIcon />,
+        value:
+          results[1].status === "fulfilled" && results[1].value?.success
+            ? `IDR ${Number(results[1].value.data.totalSpend).toLocaleString("id-ID")}`
+            : null,
+        subtitle:
+          results[1].status === "fulfilled" && results[1].value?.success
+            ? `Period: ${results[1].value.data.period}`
+            : null,
+        loading: false,
+        error:
+          results[1].status !== "fulfilled" || !results[1].value?.success,
+      },
+      {
+        title: "Last Invoice",
+        icon: <ReceiptIcon />,
+        value:
+          results[2].status === "fulfilled" &&
+          results[2].value?.ok &&
+          results[2].value.invoices?.length > 0
+            ? `IDR ${results[2].value.invoices[0].totalAmountIdr}`
+            : results[2].status === "fulfilled" && results[2].value?.ok
+              ? "No invoices yet"
+              : null,
+        subtitle:
+          results[2].status === "fulfilled" &&
+          results[2].value?.ok &&
+          results[2].value.invoices?.length > 0
+            ? `Status: ${results[2].value.invoices[0].status}`
+            : null,
+        loading: false,
+        error: results[2].status !== "fulfilled" || !results[2].value?.ok,
+      },
+      {
+        title: "Open Tickets",
+        icon: <LifebuoyIcon />,
+        value:
+          results[3].status === "fulfilled" && results[3].value?.ok
+            ? String(results[3].value.tickets?.length ?? 0)
+            : null,
+        subtitle:
+          results[3].status === "fulfilled" && results[3].value?.ok
+            ? "Awaiting response"
+            : null,
+        loading: false,
+        error:
+          results[3].status !== "fulfilled" || !results[3].value?.ok,
+      },
+    ])
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchDashboardData()
+  }, [fetchDashboardData])
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Console</h1>
         <p className="text-sm text-muted-foreground">
-          Choose a workspace entry point to manage your organization and
-          product.
+          Overview of your organization billing and activity.
         </p>
       </header>
 
-      <section className="grid gap-6 md:grid-cols-3">
-        {entryPoints.map((entry) => (
-          <Card key={entry.title}>
-            <CardHeader>
-              <CardTitle className="text-base">{entry.title}</CardTitle>
+      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {cards.map((card) => (
+          <Card key={card.title}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                {card.title}
+              </CardTitle>
+              {card.icon}
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <p className="text-muted-foreground">{entry.description}</p>
-              <Link
-                href={entry.href}
-                className="font-medium text-primary underline-offset-4 hover:underline"
-              >
-                Open
-              </Link>
+            <CardContent>
+              {card.loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-7 w-28" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ) : card.error ? (
+                <p className="text-sm text-muted-foreground">Unavailable</p>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold">{card.value}</p>
+                  {card.subtitle && (
+                    <p className="text-xs text-muted-foreground">
+                      {card.subtitle}
+                    </p>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         ))}

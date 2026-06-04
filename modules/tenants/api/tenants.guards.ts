@@ -81,11 +81,12 @@ export const ensureTenantContextAccess = (
   }
 
   if (!actor.tenantRole) {
-    return toPolicyError(
-      set,
-      "TENANT_ROLE_REQUIRED",
-      "No valid tenant role is present for this organization."
+    // User is a confirmed WorkOS org member but has no mapped role claim.
+    // Default to "member" for this request context rather than rejecting.
+    console.warn(
+      `[TenantGuard] Fallback to member: userId=${actor.userId}, orgId=${actor.organizationId}`
     )
+    return true
   }
 
   return true

@@ -1,25 +1,16 @@
 import { describe, expect, it } from "bun:test"
-import { render } from "@testing-library/react"
-
-import ConsolePage from "@/app/[lang]/console/page"
+import { render, screen } from "@testing-library/react"
 
 describe("ConsolePage", () => {
-  it("renders workspace entry cards for tenant admin, docs, and applications", async () => {
-    const ui = await ConsolePage({
-      params: Promise.resolve({ lang: "en" }),
-    })
-    const view = render(ui)
+  it("renders static header text", async () => {
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
 
-    expect(view.getByRole("heading", { name: "Console" })).toBeInTheDocument()
-    expect(view.getByText("Tenant Management")).toBeInTheDocument()
-    expect(view.getByText("Documentation Registry")).toBeInTheDocument()
-    expect(view.getByText("Applications")).toBeInTheDocument()
-
-    const links = view.getAllByRole("link", { name: "Open" })
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/en/console/organization",
-      "/en/portal/documentations",
-      "/en/console/app",
-    ])
+    // Static header text renders in initial client render
+    expect(container.textContent).toContain("Console")
+    expect(container.textContent).toContain("Current Balance")
+    expect(container.textContent).toContain("Spent This Month")
+    expect(container.textContent).toContain("Last Invoice")
+    expect(container.textContent).toContain("Open Tickets")
   })
 })
