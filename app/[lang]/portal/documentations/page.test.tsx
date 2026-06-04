@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, waitFor } from "@testing-library/react"
 
 // Mock fetch for the docs list API call
 const mockFetch = mock(
@@ -33,10 +33,10 @@ describe("PortalDocumentationsPage", () => {
 
   it("renders documentation list after loading", async () => {
     const { default: Page } = await import("./page")
-    render(<Page />)
+    const view = render(<Page />)
 
     await waitFor(() => {
-      expect(screen.getByText("Test Doc")).toBeTruthy()
+      expect(view.getByText("Test Doc")).toBeTruthy()
     })
   })
 })
