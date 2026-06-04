@@ -45,17 +45,20 @@ export function DocumentationForm({ initialData, onSuccess }: DocumentationFormP
 
   // Reset form when initialData changes (user selects a different doc)
   useEffect(() => {
-    if (initialData) {
-      setForm({
-        path: initialData.path,
-        title: initialData.title,
-        purpose: initialData.purpose,
-        howToText: initialData.howTo.join("\n"),
-        notesText: (initialData.notes ?? []).join("\n"),
-      })
-    } else {
-      setForm(initialState)
-    }
+    const id = setTimeout(() => {
+      if (initialData) {
+        setForm({
+          path: initialData.path,
+          title: initialData.title,
+          purpose: initialData.purpose,
+          howToText: initialData.howTo.join("\n"),
+          notesText: (initialData.notes ?? []).join("\n"),
+        })
+      } else {
+        setForm(initialState)
+      }
+    }, 0)
+    return () => clearTimeout(id)
   }, [initialData])
 
   const normalizedHowTo = useMemo(
