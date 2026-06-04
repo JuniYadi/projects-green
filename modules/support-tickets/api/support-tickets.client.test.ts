@@ -152,7 +152,9 @@ describe("support tickets client", () => {
           },
         })
       )
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(
+        jsonResponse({ ok: true })
+      )
       .mockResolvedValueOnce(
         jsonResponse({ ok: true, attachment: attachmentFixture })
       )
@@ -185,7 +187,7 @@ describe("support tickets client", () => {
   })
 
   it("throws when upload object request fails", async () => {
-    fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }))
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: false, error: "UPLOAD_FAILED" }, 502))
     const client = createSupportTicketsClient()
 
     await expect(

@@ -103,8 +103,8 @@ describe("SupportTicketCreateScreen", () => {
         })
       }
 
-      if (url === "https://mock-s3.example.com/upload" && method === "PUT") {
-        return new Response(null, { status: 200 })
+      if (url === "/api/support-tickets/attachments/upload" && method === "POST") {
+        return jsonResponse({ ok: true })
       }
 
       if (url === "/api/support-tickets/attachments/register" && method === "POST") {

@@ -1,4 +1,4 @@
-import { Elysia } from "elysia"
+import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
 
@@ -233,6 +233,71 @@ export const createSupportTicketAttachmentRoutes = (
   dependencies: SupportTicketAttachmentRouteDependencies = createDefaultDependencies()
 ) => {
   return new Elysia({ prefix: "/support-tickets" })
+    .post(
+      "/attachments/upload",
+      async ({ body, set }) => {
+        const auth = await dependencies.authenticate()
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        const uploadUrl = String(body.uploadUrl)
+        const mimeType = String(body.mimeType || "application/octet-stream")
+
+        // Validate the uploadUrl references the configured S3 endpoint and bucket
+        const s3Endpoint = (process.env.S3_ENDPOINT || "").trim()
+        const s3Bucket = (process.env.S3_BUCKET || "").trim()
+
+        if (s3Endpoint && s3Bucket) {
+          const expectedPrefix = `${s3Endpoint}/${s3Bucket}`
+          if (!uploadUrl.toLowerCase().startsWith(expectedPrefix.toLowerCase())) {
+            set.status = 403
+            return {
+              ok: false as const,
+              error: "FORBIDDEN" as const,
+              message: "Upload URL does not match configured storage endpoint.",
+            }
+          }
+        }
+
+        try {
+          const fileBuffer = await body.file.arrayBuffer()
+          const response = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "content-type": mimeType },
+            body: fileBuffer,
+          })
+
+          if (!response.ok) {
+            set.status = 502
+            return {
+              ok: false as const,
+              error: "UPLOAD_FAILED" as const,
+              message: `S3 upload failed with status ${response.status}`,
+            }
+          }
+
+          return {
+            ok: true as const,
+          }
+        } catch (error) {
+          console.error("[Attachment Upload Proxy Error]:", error)
+          set.status = 502
+          return {
+            ok: false as const,
+            error: "UPLOAD_FAILED" as const,
+            message: error instanceof Error ? error.message : "Failed to upload to S3",
+          }
+        }
+      },
+      {
+        body: t.Object({
+          uploadUrl: t.String(),
+          mimeType: t.String(),
+          file: t.File(),
+        }),
+      }
+    )
     .post(
       "/attachments/presign",
       createRouteHandler(dependencies, async ({ actor, body }) => {

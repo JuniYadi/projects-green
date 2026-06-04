@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { Elysia } from "elysia"
 
 import { createSupportTicketAttachmentRoutes } from "@/modules/support-tickets/api/support-ticket-attachments.route"
@@ -427,6 +427,195 @@ describe("support ticket attachment routes", () => {
     expect(await response.json()).toMatchObject({
       ok: false,
       error: "UNAUTHORIZED",
+    })
+  })
+
+  describe("POST /attachments/upload", () => {
+    let originalS3Endpoint: string | undefined
+    let originalS3Bucket: string | undefined
+
+    beforeEach(() => {
+      originalS3Endpoint = process.env.S3_ENDPOINT
+      originalS3Bucket = process.env.S3_BUCKET
+      // Clear env vars so URL validation doesn't block test URLs
+      delete process.env.S3_ENDPOINT
+      delete process.env.S3_BUCKET
+    })
+
+    afterEach(() => {
+      process.env.S3_ENDPOINT = originalS3Endpoint
+      process.env.S3_BUCKET = originalS3Bucket
+    })
+
+    it("uploads a file to S3 successfully", async () => {
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = ((async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url === "https://my-s3.example.com/my-bucket/key" && init?.method === "PUT") {
+          return new Response(null, { status: 200 })
+        }
+        return new Response(null, { status: 500 })
+      }) as unknown) as typeof fetch
+
+      const app = createApp({})
+
+      const formData = new FormData()
+      formData.append("file", new File(["test content"], "test.txt", { type: "text/plain" }))
+      formData.append("uploadUrl", "https://my-s3.example.com/my-bucket/key")
+      formData.append("mimeType", "text/plain")
+
+      const response = await app.handle(
+        new Request("http://localhost/support-tickets/attachments/upload", {
+          method: "POST",
+          body: formData,
+        })
+      )
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ ok: true })
+
+      globalThis.fetch = originalFetch
+    })
+
+    it("returns 401 when user is not authenticated", async () => {
+      const app = new Elysia().use(
+        createSupportTicketAttachmentRoutes({
+          authenticate: async () => ({
+            organizationId: "org_1",
+            role: "member",
+            roles: ["member"],
+            user: null,
+          }),
+          getPlatformRole: async () => "none",
+          service: {
+            async createPresignedAttachmentUpload() {
+              throw new Error("should not be called")
+            },
+            async registerAttachment() {
+              throw new Error("should not be called")
+            },
+          },
+        })
+      )
+
+      const formData = new FormData()
+      formData.append("file", new File(["test"], "test.txt", { type: "text/plain" }))
+      formData.append("uploadUrl", "https://my-s3.example.com/my-bucket/key")
+      formData.append("mimeType", "text/plain")
+
+      const response = await app.handle(
+        new Request("http://localhost/support-tickets/attachments/upload", {
+          method: "POST",
+          body: formData,
+        })
+      )
+
+      expect(response.status).toBe(401)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: "UNAUTHORIZED",
+      })
+    })
+
+    it("returns 502 when S3 upload fails", async () => {
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = ((async () => {
+        return new Response(null, { status: 403 })
+      }) as unknown) as typeof fetch
+
+      const app = createApp({})
+
+      const formData = new FormData()
+      formData.append("file", new File(["test"], "test.txt", { type: "text/plain" }))
+      formData.append("uploadUrl", "https://my-s3.example.com/my-bucket/key")
+      formData.append("mimeType", "text/plain")
+
+      const response = await app.handle(
+        new Request("http://localhost/support-tickets/attachments/upload", {
+          method: "POST",
+          body: formData,
+        })
+      )
+
+      expect(response.status).toBe(502)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: "UPLOAD_FAILED",
+      })
+
+      globalThis.fetch = originalFetch
+    })
+
+    it("returns 502 on network error", async () => {
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = ((async () => {
+        throw new Error("Connection refused")
+      }) as unknown) as typeof fetch
+
+      const app = createApp({})
+
+      const formData = new FormData()
+      formData.append("file", new File(["test"], "test.txt", { type: "text/plain" }))
+      formData.append("uploadUrl", "https://my-s3.example.com/my-bucket/key")
+      formData.append("mimeType", "text/plain")
+
+      const response = await app.handle(
+        new Request("http://localhost/support-tickets/attachments/upload", {
+          method: "POST",
+          body: formData,
+        })
+      )
+
+      expect(response.status).toBe(502)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: "UPLOAD_FAILED",
+      })
+
+      globalThis.fetch = originalFetch
+    })
+
+    it("returns 403 when uploadUrl does not match configured S3 endpoint", async () => {
+      const app = new Elysia().use(
+        createSupportTicketAttachmentRoutes({
+          authenticate: async () => ({
+            organizationId: "org_1",
+            role: "member",
+            roles: ["member"],
+            user: { id: "user_1", email: "user@example.com" },
+          }),
+          getPlatformRole: async () => "none",
+          service: {
+            async createPresignedAttachmentUpload() {
+              throw new Error("should not be called")
+            },
+            async registerAttachment() {
+              throw new Error("should not be called")
+            },
+          },
+        })
+      )
+
+      process.env.S3_ENDPOINT = "https://my-s3.example.com"
+      process.env.S3_BUCKET = "my-bucket"
+
+      const formData = new FormData()
+      formData.append("file", new File(["test"], "test.txt", { type: "text/plain" }))
+      formData.append("uploadUrl", "https://evil.com/malicious-key")
+      formData.append("mimeType", "text/plain")
+
+      const response = await app.handle(
+        new Request("http://localhost/support-tickets/attachments/upload", {
+          method: "POST",
+          body: formData,
+        })
+      )
+
+      expect(response.status).toBe(403)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: "FORBIDDEN",
+      })
     })
   })
 })
