@@ -42,14 +42,19 @@ jobs:
             echo "${key}=${value}" >> $GITHUB_ENV
           done
 
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: bun-deps-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            bun-deps-${{ runner.os }}-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Generate Prisma client
         run: bun run db:generate
-
-      - name: Run tests
-        run: bun run test --timeout=30000 --max-concurrency=10
 
       - name: Run tests with coverage
         run: bun run test:coverage --timeout=30000 --max-concurrency=10

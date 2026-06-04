@@ -26,13 +26,13 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - `bun run test:coverage`: Run tests with text + lcov output in `coverage/`.
 - `bun run prisma:migrate:dev` / `bun run prisma:generate`: Apply DB migrations and refresh Prisma client.
 
-**4 PILLARS VALIDATION (HARD REQUIREMENT):**
+**3 PILLARS VALIDATION (HARD REQUIREMENT):**
 Must pass before opening a PR. **NOT** per-edit — run only when explicitly instructed to open a PR (saves tokens during local work):
 1. `bun run lint` — 0 errors
 2. `bun run typecheck` — 0 errors
 3. `bun run test` — all tests pass
-4. `bun run test:coverage` — line coverage acceptable
-5. `bun run build` — production build succeeds
+
+Build and coverage are CI-only (handled by `typecheck-build.yml` and `coverage-codecov.yml`).
 
 **NEVER open PR if any pillar fails. Do NOT run these during local development — only when the user asks you to open a PR.**
 

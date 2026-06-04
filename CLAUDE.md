@@ -21,15 +21,15 @@ All commands use **bun** (never npm/yarn — prevents lockfile conflicts):
 
 Run a single test file: `bun test path/to/file.test.ts`
 
-## Validation Requirements (4 Pillars)
+## Validation Requirements (3 Pillars)
 
 **HARD REQUIREMENT:** Must pass before opening a PR. **NOT** per-edit — run only when explicitly instructed to open a PR (saves tokens during local work):
 
 1. `bun run lint` — 0 errors
 2. `bun run typecheck` — 0 errors
 3. `bun run test` — all tests pass
-4. `bun run test:coverage` — line coverage ≥ 85% (target di codecov.yml)
-5. `bun run build` — production build succeeds
+
+Build and coverage are CI-only (handled by `typecheck-build.yml` and `coverage-codecov.yml`).
 
 **Never open PR if any pillar fails. Do NOT run these during local development — only when the user asks you to open a PR.**
 
@@ -114,4 +114,4 @@ Env-var based with `FEATURE_*` prefix, checked via `isFeatureEnabled()` from `li
 - **KISS**: prefer straightforward implementations; avoid over-engineering
 - **Prisma Types — Use Generated Only**: never declare manual model types, delegates, or enum aliases. Import from `@prisma/client` instead (resolves via `node_modules/.prisma/client/`). See AGENTS.md for details and examples.
 - **DTO at API Boundary**: every route handler response must go through a DTO (`*.dto.ts` + `toDTO` mapper). Internal service-to-service calls use Prisma types directly. See AGENTS.md for the layer-by-layer breakdown.
-- **4 Pillars**: lint, typecheck, test, coverage, and build MUST pass before any commit/PR
+- **3 Pillars**: lint, typecheck, and test MUST pass before any commit/PR
