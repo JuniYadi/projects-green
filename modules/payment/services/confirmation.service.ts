@@ -1,8 +1,17 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import type { PrismaClient } from "@prisma/client"
+import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import Decimal = Prisma.Decimal
 
 export class ConfirmationService {
+  private billingTransactions: BillingTransactionService
+
+  constructor(billingTransactions?: BillingTransactionService) {
+    this.billingTransactions =
+      billingTransactions ?? new BillingTransactionService(prisma as unknown as PrismaClient)
+  }
+
   async create(input: {
     invoiceId: string
     organizationId: string
@@ -76,12 +85,32 @@ export class ConfirmationService {
   async approve(id: string, adminUserId: string) {
     const confirmation = await prisma.paymentConfirmation.findUnique({
       where: { id },
-      include: { invoice: true },
+      include: { invoice: { include: { billingAccount: true } } },
     })
 
     if (!confirmation) throw new Error("Confirmation not found")
     if (confirmation.status !== "PENDING") throw new Error("Confirmation already processed")
 
+    const invoice = confirmation.invoice
+    const amount = confirmation.amount
+
+    if (!invoice?.billingAccount?.organizationId) {
+      throw new Error("Billing account not found for invoice")
+    }
+
+    // Credit balance via BillingTransactionService (idempotent)
+    await this.billingTransactions.creditBalance({
+      organizationId: invoice.billingAccount.organizationId,
+      amount: new Decimal(amount),
+      currency: invoice.billingAccount.currency,
+      source: "TOPUP",
+      reason: "Manual payment confirmed",
+      idempotencyKey: `manual:${id}`,
+      invoiceId: invoice.id,
+      metadata: { confirmedBy: adminUserId, confirmationId: id },
+    })
+
+    // Mark confirmation as approved
     await prisma.paymentConfirmation.update({
       where: { id },
       data: {
@@ -91,46 +120,13 @@ export class ConfirmationService {
       },
     })
 
-    const invoice = confirmation.invoice
-    const amount = confirmation.amount
-
-    // Find billing account by invoice's billingAccountId
-    const account = await prisma.billingAccount.findUnique({
-      where: { id: invoice.billingAccountId },
-    })
-
-    if (!account) {
-      throw new Error("Billing account not found")
-    }
-
-    const newBalance = account.balance.plus(amount)
-
-    await prisma.billingAdjustment.create({
-      data: {
-        billingAccountId: account.id,
-        adjustmentType: "CREDIT",
-        amount: new Decimal(amount),
-        currency: "IDR",
-        reason: "Manual payment confirmed",
-        metadataJson: {
-          reference: `PAYMENT_CONFIRM_${id}`,
-          source: "manual_bank_transfer",
-        },
-      },
-    })
-
-    await prisma.billingAccount.update({
-      where: { id: account.id },
-      data: {
-        balance: newBalance,
-      },
-    })
-
+    // Mark invoice as paid
     await prisma.invoice.update({
       where: { id: confirmation.invoiceId },
       data: { status: "PAID" },
     })
 
+    // Audit log
     await prisma.paymentAuditLog.create({
       data: {
         action: "PAYMENT_APPROVED",

@@ -23,6 +23,7 @@ export const createAdminSettingsRoutes = () =>
         data: {
           expiryDays: parseInt(process.env.DEFAULT_PAYMENT_EXPIRY_DAYS || "7"),
           autoApproveThreshold: parseInt(process.env.AUTO_APPROVE_THRESHOLD || "0"),
+          manualTransferUniqueCodeEnabled: process.env.MANUAL_TRANSFER_UNIQUE_CODE_ENABLED !== "false",
         },
       }
     })
@@ -39,8 +40,9 @@ export const createAdminSettingsRoutes = () =>
         return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
       }
 
-      const { expiryDays } = body as {
+      const { expiryDays, manualTransferUniqueCodeEnabled } = body as {
         expiryDays?: number
+        manualTransferUniqueCodeEnabled?: boolean
       }
 
       if (expiryDays !== undefined && (expiryDays < 1 || expiryDays > 30)) {

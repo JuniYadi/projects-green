@@ -13,6 +13,13 @@ export class PaymentService {
       billingTransactions ?? new BillingTransactionService(prisma as unknown as PrismaClient)
   }
 
+  /**
+   * Generate a 3-digit unique code for manual transfer verification.
+   */
+  private generateUniqueCode(): number {
+    return Math.floor(Math.random() * 999) + 1
+  }
+
   async createTopupInvoice(input: {
     organizationId: string
     amount: number
@@ -49,6 +56,22 @@ export class PaymentService {
     // Generate invoice number using UUID to avoid race condition
     const invoiceNumber = `TOP-${crypto.randomUUID().split("-")[0].toUpperCase()}`
 
+    // Generate unique code for manual transfer if enabled
+    const uniqueCodeEnabled = process.env.MANUAL_TRANSFER_UNIQUE_CODE_ENABLED !== "false"
+    let uniqueCode: number | undefined
+    let finalAmount = amount
+    let metadata: Record<string, unknown> | undefined
+
+    if (paymentMethod === "MANUAL_BANK" && uniqueCodeEnabled) {
+      uniqueCode = this.generateUniqueCode()
+      finalAmount = amount + uniqueCode
+      metadata = {
+        baseAmount: amount,
+        uniqueCode,
+        finalAmount,
+      }
+    }
+
     const invoice = await prisma.invoice.create({
       data: {
         billingAccountId: account.id,
@@ -58,11 +81,12 @@ export class PaymentService {
         gatewayId,
         dueDate,
         status: "OPEN",
-        subtotalAmount: amount,
-        totalAmount: amount,
+        subtotalAmount: finalAmount,
+        totalAmount: finalAmount,
         currency: account.currency,
         periodStart: now,
         periodEnd: dueDate,
+        metadataJson: metadata as Record<string, unknown> | undefined,
       },
     })
 
