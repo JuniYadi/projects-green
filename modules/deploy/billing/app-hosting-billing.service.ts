@@ -214,11 +214,12 @@ export class AppHostingBillingService {
     const elapsed = Date.now() - graceStartedAt.getTime()
     if (elapsed < GRACE_PERIOD_MS) return { suspended: false }
 
-    // Grace expired — suspend the app
+    // Grace expired — mark as suspended in billing metadata
+    // Note: StackStatus enum doesn't include SUSPENDED, so we track billing suspension
+    // in metadataJson. The runtime layer checks billingState before allowing operations.
     await this.prisma.applicationStack.update({
       where: { id: input.stackId },
       data: {
-        status: "SUSPENDED",
         metadataJson: {
           ...meta,
           billingState: "SUSPENDED",

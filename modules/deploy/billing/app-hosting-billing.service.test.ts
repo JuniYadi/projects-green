@@ -402,7 +402,6 @@ describe("AppHostingBillingService", () => {
       mockPrisma.applicationStack.findUnique.mockResolvedValue(stack)
       mockPrisma.applicationStack.update.mockResolvedValue({
         ...stack,
-        status: "SUSPENDED",
       })
 
       const result = await service.checkGraceAndSuspend({ stackId: "stack_1" })
@@ -412,7 +411,6 @@ describe("AppHostingBillingService", () => {
         expect.objectContaining({
           where: { id: "stack_1" },
           data: expect.objectContaining({
-            status: "SUSPENDED",
             metadataJson: expect.objectContaining({
               billingState: "SUSPENDED",
             }),
