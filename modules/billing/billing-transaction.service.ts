@@ -80,6 +80,11 @@ export class BillingTransactionService {
       // Create or reuse current-month service invoice
       const invoice = await this.ensureMonthlyServiceInvoice(tx, account.id, account.currency)
 
+      // Guard: reject adding lines to finalized/paid invoices
+      if (invoice.status !== "DRAFT") {
+        throw new Error("INVOICE_ALREADY_FINALIZED")
+      }
+
       // Add invoice line
       const line = await tx.invoiceLine.create({
         data: {

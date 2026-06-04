@@ -391,6 +391,82 @@ export class BillingCycleService {
     }
   }
 
+  /**
+   * Finalize monthly service invoices for the previous month.
+   * Transitions DRAFT service invoices to PAID status and locks them.
+   * Should be called by cron at month end.
+   */
+  async finalizeServiceInvoices(): Promise<{ finalized: number }> {
+    const now = new Date()
+    const periodStart = this.getPeriodStart(now)
+    const periodEnd = this.getPeriodEnd(now)
+
+    const invoices = await this.prisma.invoice.findMany({
+      where: {
+        type: "SERVICE",
+        status: "DRAFT",
+        periodStart: { gte: periodStart },
+        periodEnd: { lte: periodEnd },
+      },
+    })
+
+    if (invoices.length === 0) {
+      console.info("[BillingCycle] No DRAFT service invoices to finalize.")
+      return { finalized: 0 }
+    }
+
+    const nowDate = new Date()
+    const result = await this.prisma.invoice.updateMany({
+      where: {
+        id: { in: invoices.map((inv) => inv.id) },
+        status: "DRAFT", // safety: only update DRAFT
+      },
+      data: {
+        status: "PAID",
+        issuedAt: nowDate,
+        paidAt: nowDate,
+      },
+    })
+
+    console.info(
+      `[BillingCycle] Finalized ${result.count} service invoice(s) for period ${periodStart.toISOString().slice(0, 7)}`,
+    )
+
+    // Send email notifications for finalized invoices
+    if (this.emailService) {
+      for (const invoice of invoices) {
+        try {
+          const account = await this.prisma.billingAccount.findUnique({
+            where: { id: invoice.billingAccountId },
+          })
+          if (!account?.organizationId) continue
+
+          const adminEmail = await this.resolveOrgAdminEmail(account.organizationId)
+          if (!adminEmail) continue
+
+          await this.emailService.sendInvoiceCreated(
+            {
+              id: invoice.id,
+              invoiceNumber: invoice.invoiceNumber,
+              totalAmount: Number(invoice.totalAmount.toString()),
+              currency: invoice.currency,
+              status: "paid",
+              periodStart: invoice.periodStart.toISOString(),
+              periodEnd: invoice.periodEnd.toISOString(),
+              issuedAt: nowDate.toISOString(),
+              dueAt: null,
+            },
+            adminEmail,
+          )
+        } catch (err) {
+          console.error("[BillingCycle] Failed to send finalization email:", err)
+        }
+      }
+    }
+
+    return { finalized: result.count }
+  }
+
   // ─── Period helpers ─────────────────────────────────────────────────────
 
   /**

@@ -75,6 +75,70 @@ describe("BillingCycleService", () => {
     mockUsageLedger.generateRatedUsage.mockImplementation(async () => [])
   })
 
+  describe("finalizeServiceInvoices", () => {
+    it("returns 0 when no DRAFT service invoices exist for the previous month", async () => {
+      mockPrisma.invoice.findMany.mockImplementation(async () => [])
+
+      const service = new BillingCycleService(
+        mockPrisma as unknown as PrismaClient,
+        mockUsageLedger as unknown as UsageLedgerService,
+      )
+      const result = await service.finalizeServiceInvoices()
+
+      expect(result.finalized).toBe(0)
+    })
+
+    it("finalizes DRAFT service invoices as PAID and sets timestamps", async () => {
+      const mockInvoice = {
+        id: "svc-inv-1",
+        billingAccountId: "ba-1",
+        invoiceNumber: "SVC-202606-0001",
+        type: "SERVICE",
+        status: "DRAFT" as const,
+        currency: "IDR",
+        totalAmount: new Decimal(150000),
+        periodStart: new Date("2026-06-01"),
+        periodEnd: new Date("2026-06-30"),
+      }
+
+      mockPrisma.invoice.findMany.mockImplementation(async () => [mockInvoice])
+      mockPrisma.invoice.updateMany.mockImplementation(async () => ({
+        count: 1,
+      }))
+
+      const service = new BillingCycleService(
+        mockPrisma as unknown as PrismaClient,
+        mockUsageLedger as unknown as UsageLedgerService,
+      )
+      const result = await service.finalizeServiceInvoices()
+
+      expect(result.finalized).toBe(1)
+      expect(mockPrisma.invoice.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: "DRAFT" }),
+          data: expect.objectContaining({
+            status: "PAID",
+          }),
+        }),
+      )
+    })
+
+    it("does not finalize non-DRAFT invoices", async () => {
+      mockPrisma.invoice.findMany.mockImplementation(async () => [])
+      mockPrisma.invoice.updateMany.mockImplementation(async () => ({
+        count: 0,
+      }))
+
+      const service = new BillingCycleService(
+        mockPrisma as unknown as PrismaClient,
+        mockUsageLedger as unknown as UsageLedgerService,
+      )
+      const result = await service.finalizeServiceInvoices()
+
+      expect(result.finalized).toBe(0)
+    })
+  })
+
   describe("processMonthlyBilling", () => {
     it("returns empty result when no active subscriptions exist", async () => {
       mockPrisma.billingSubscription.findMany.mockImplementation(
