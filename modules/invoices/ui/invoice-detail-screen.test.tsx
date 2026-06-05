@@ -136,4 +136,27 @@ describe("InvoiceDetailScreen", () => {
       expect(view.getAllByText("Canceled").length).toBeGreaterThan(0)
     })
   })
+
+  it("shows loading skeleton initially", () => {
+    // Don't resolve fetch — component starts in loading state
+    globalThis.fetch = mock(() => new Promise(() => {})) as unknown as typeof fetch
+
+    const view = render(<InvoiceDetailScreen invoiceId="inv_1" lang="en" />)
+
+    expect(view.getByTestId("invoice-detail-skeleton")).toBeTruthy()
+  })
+
+  it("shows error state when API returns error", async () => {
+    // Return 404 with no message so the generic fallback is used
+    globalThis.fetch = mock(async () => {
+      return new Response(
+        JSON.stringify({ ok: false, error: "NOT_FOUND" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      )
+    }) as unknown as typeof fetch
+
+    const view = render(<InvoiceDetailScreen invoiceId="inv_1" lang="en" />)
+
+    expect(await view.findByText(/unable to load/i)).toBeTruthy()
+  })
 })

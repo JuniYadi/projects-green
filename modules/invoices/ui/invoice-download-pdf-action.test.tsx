@@ -100,4 +100,23 @@ describe("InvoiceDownloadPdfAction", () => {
       expect(view.getByText("Invoice PDF is unavailable.")).toBeTruthy()
     })
   })
+
+  it("shows downloading state while fetch is in progress", async () => {
+    // Don't resolve fetch yet — keep it pending
+    globalThis.fetch = mock(() => new Promise(() => {})) as unknown as typeof fetch
+
+    const view = render(
+      <InvoiceDownloadPdfAction
+        invoiceId="inv_1"
+        invoiceNumber="INV-001"
+      />
+    )
+
+    fireEvent.click(view.getByRole("button", { name: /download pdf/i }))
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: /preparing pdf/i })).toBeTruthy()
+      expect(view.getByRole("button")).toBeDisabled()
+    })
+  })
 })

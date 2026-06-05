@@ -18,7 +18,7 @@ import {
 
 export function InvoiceDetailSkeleton() {
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-6" data-testid="invoice-detail-skeleton">
       {/* 1. Invoice Actions card */}
       <Card>
         <CardHeader className="pb-3">
