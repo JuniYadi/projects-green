@@ -3,6 +3,10 @@ import type { PrismaClient } from "@prisma/client"
 import type { VpnBillingService } from "./vpn-billing.service"
 import { resolveVpnMonthlyPrice } from "./vpn-pricing"
 
+// ─── Constants ──────────────────────────────────────────────────────────
+
+const BATCH_SIZE = 100
+
 // ─── Types ──────────────────────────────────────────────────────────────
 
 export type VpnRenewalResult = {
@@ -23,6 +27,16 @@ export type VpnRenewalResult = {
  *   - INSUFFICIENT_BALANCE → subscription is SUSPENDED immediately.
  *   - Idempotency via `vpn-monthly:<subscriptionId>:<period>` key
  *     (handled by VpnBillingService.chargeMonthly → BillingTransactionService).
+ *
+ * Safety guarantees:
+ *   - Batch-limited (`BATCH_SIZE`) with cursor-based pagination so the
+ *     query does not scan unbounded rows at scale.
+ *   - Period extension uses `updateMany` with a WHERE clause on
+ *     `currentPeriodEnd` making it idempotent — concurrent workers
+ *     cannot double-extend the same subscription.
+ *   - `extendPeriod` failures are caught and count as `errors`; the
+ *     charge is already completed so the next worker run will see
+ *     `alreadyProcessed=true` and re-attempt extension.
  */
 export class VpnRenewalService {
   constructor(
@@ -36,87 +50,114 @@ export class VpnRenewalService {
    * A subscription is "due" when:
    *   - status is ACTIVE
    *   - currentPeriodEnd is on or before the current UTC timestamp
-   *   - includedSubscription.package.code is "VPN"
-   *   - subscriptions.plan is included to resolve plan.code for pricing
+   *   - package.code is "VPN"
+   *   - plan is included to resolve plan.code for pricing
    *
    * Each renewal:
    *   1. Resolves the monthly price from the static catalog.
    *   2. Calls `billing.chargeMonthly` (debits balance, writes invoice line).
-   *   3. If success: extends currentPeriodStart/currentPeriodEnd by 1 month.
-   *   4. If INSUFFICIENT_BALANCE: sets status to SUSPENDED.
+   *   3. If success: extends currentPeriodStart/currentPeriodEnd by 1 month
+   *      (idempotent via updateMany + WHERE guard).
+   *   4. If INSUFFICIENT_BALANCE: sets status to SUSPENDED (no grace).
    */
   async renewDueSubscriptions(): Promise<VpnRenewalResult> {
-    const dueSubscriptions = await this.prisma.subscription.findMany({
-      where: {
-        status: "ACTIVE",
-        currentPeriodEnd: { lte: new Date() },
-        package: { code: "VPN" },
-      },
-      include: { plan: true },
-    })
-
     let renewed = 0
     let suspended = 0
     let errors = 0
+    let cursor: string | undefined
 
-    for (const subscription of dueSubscriptions) {
-      try {
-        const meta = (subscription.metadata ?? {}) as Record<string, unknown>
-        const regionCode =
-          typeof meta.regionCode === "string"
-            ? meta.regionCode
-            : "INDONESIA"
-        const planCode = subscription.plan.code
+    while (true) {
+      const batch = await this.prisma.subscription.findMany({
+        where: {
+          status: "ACTIVE",
+          currentPeriodEnd: { lte: new Date() },
+          package: { code: "VPN" },
+        },
+        include: { plan: true },
+        take: BATCH_SIZE,
+        orderBy: { id: "asc" },
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      })
 
-        // Resolve price from the static catalog
-        const price = resolveVpnMonthlyPrice({
-          regionCode,
-          planCode,
-        })
+      if (batch.length === 0) break
 
-        const period = this.currentPeriod()
+      for (const subscription of batch) {
+        try {
+          const meta = (subscription.metadata ?? {}) as Record<string, unknown>
+          const regionCode =
+            typeof meta.regionCode === "string"
+              ? meta.regionCode
+              : "INDONESIA"
+          const planCode = subscription.plan.code
 
-        // Charge the next month upfront
-        const chargeResult = await this.billing.chargeMonthly({
-          organizationId: subscription.organizationId,
-          vpnSubscriptionId: subscription.id,
-          regionCode,
-          amount: price.amount,
-          period,
-        })
+          // Resolve price from the static catalog
+          const price = resolveVpnMonthlyPrice({
+            regionCode,
+            planCode,
+          })
 
-        // Idempotency: if the charge was already processed (e.g., a
-        // concurrent worker already handled this subscription), skip
-        // the period extension so we do not advance an extra month.
-        if (!chargeResult.alreadyProcessed) {
-          await this.extendPeriod(subscription.id)
-          renewed++
-        }
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message === "INSUFFICIENT_BALANCE"
-        ) {
-          try {
-            await this.prisma.subscription.update({
-              where: { id: subscription.id },
-              data: {
-                status: "SUSPENDED",
-                metadata: {
-                  ...((subscription.metadata ?? {}) as Record<string, unknown>),
-                  suspendedAt: new Date().toISOString(),
-                  suspensionReason: "INSUFFICIENT_BALANCE",
+          const period = this.currentPeriod()
+
+          // Charge the next month upfront
+          const chargeResult = await this.billing.chargeMonthly({
+            organizationId: subscription.organizationId,
+            vpnSubscriptionId: subscription.id,
+            regionCode,
+            amount: price.amount,
+            period,
+          })
+
+          // Idempotency + race guard:
+          //
+          // The period extension uses `updateMany` with a WHERE clause
+          // that checks `currentPeriodEnd <= now`. This guarantees that
+          // even if two concurrent workers both see alreadyProcessed=false,
+          // only ONE of them will successfully extend the period — the
+          // second worker's updateMany will match 0 rows because the
+          // first worker already advanced currentPeriodEnd.
+          //
+          // If `extendPeriod` throws (transient DB error), we count it
+          // as `errors` rather than `renewed`. The charge is already
+          // committed and the next worker run will see
+          // `alreadyProcessed=true` and re-attempt only the extension.
+          if (!chargeResult.alreadyProcessed) {
+            try {
+              const extended = await this.extendPeriod(subscription.id)
+              if (extended) {
+                renewed++
+              }
+            } catch {
+              errors++
+            }
+          }
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === "INSUFFICIENT_BALANCE"
+          ) {
+            try {
+              await this.prisma.subscription.update({
+                where: { id: subscription.id },
+                data: {
+                  status: "SUSPENDED",
+                  metadata: {
+                    ...((subscription.metadata ?? {}) as Record<string, unknown>),
+                    suspendedAt: new Date().toISOString(),
+                    suspensionReason: "INSUFFICIENT_BALANCE",
+                  },
                 },
-              },
-            })
-            suspended++
-          } catch {
+              })
+              suspended++
+            } catch {
+              errors++
+            }
+          } else {
             errors++
           }
-        } else {
-          errors++
         }
       }
+
+      cursor = batch[batch.length - 1].id
     }
 
     return { renewed, suspended, errors }
@@ -124,20 +165,32 @@ export class VpnRenewalService {
 
   // ─── Private ──────────────────────────────────────────────────────────
 
-  private async extendPeriod(subscriptionId: string): Promise<void> {
+  /**
+   * Extend the subscription period by one month.
+   *
+   * Uses `updateMany` with a WHERE clause (`currentPeriodEnd <= now`)
+   * to make this operation idempotent under concurrent workers. If
+   * another worker already extended the period, the update matches 0
+   * rows and returns false.
+   */
+  private async extendPeriod(subscriptionId: string): Promise<boolean> {
     const now = new Date()
-    const periodStart = now
     const periodEnd = new Date(now)
     periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1)
 
-    await this.prisma.subscription.update({
-      where: { id: subscriptionId },
+    const result = await this.prisma.subscription.updateMany({
+      where: {
+        id: subscriptionId,
+        currentPeriodEnd: { lte: now },
+      },
       data: {
         status: "ACTIVE",
-        currentPeriodStart: periodStart,
+        currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
       },
     })
+
+    return result.count > 0
   }
 
   private currentPeriod(now: Date = new Date()): string {

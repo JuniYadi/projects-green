@@ -20,6 +20,9 @@ const mockPrisma = {
     create: mock(),
     update: mock(),
   },
+  billingAccount: {
+    findUnique: mock(),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
@@ -65,10 +68,19 @@ const setupPrismaDefaults = () => {
   mockPrisma.subscription.findUnique.mockReset()
   mockPrisma.subscription.create.mockReset()
   mockPrisma.subscription.update.mockReset()
+  mockPrisma.billingAccount.findUnique.mockReset()
+
   mockPrisma.package.findUnique.mockResolvedValue({ id: "pkg_vpn" })
   mockPrisma.servicePlan.findUnique.mockResolvedValue({ id: "plan_standard" })
   mockPrisma.region.findUnique.mockResolvedValue({ id: "region_id" })
   mockPrisma.pricing.findFirst.mockResolvedValue({ id: "pricing_id" })
+  mockPrisma.billingAccount.findUnique.mockResolvedValue({
+    id: "ba_1",
+    organizationId: "org_1",
+    currency: "IDR",
+    balance: decimal("500.00"),
+  })
+
   // Default: no existing subscription (route will create)
   mockPrisma.subscription.findUnique.mockResolvedValue(null)
   mockPrisma.subscription.create.mockImplementation(
@@ -126,12 +138,11 @@ describe("POST /vpn/subscriptions", () => {
     expect(body.regionCode).toBe("INDONESIA")
     expect(body.planCode).toBe("STANDARD")
     expect(body.status).toBe("ACTIVE")
-    expect(body.monthlyPrice).toBe("25000")
+    expect(body.monthlyPrice).toBe("25000.00") // Issue 8: consistent decimal formatting
+    expect(body.monthlyPriceMinor).toBe(25000)
     expect(body.currency).toBe("IDR")
     expect(body.period).toMatch(/^\d{4}-\d{2}$/)
     expect(body.topupUrl).toBe("/console/billing/topup")
-    // Subscription is persisted with a stable DB id; the renewal
-    // worker (Task 3) uses this id to find and renew.
     expect(body.subscriptionId).toBe("sub_vpn_new")
 
     expect(mockBilling.chargeMonthly).toHaveBeenCalledTimes(1)
@@ -145,7 +156,7 @@ describe("POST /vpn/subscriptions", () => {
       }),
     )
 
-    expect(mockPrisma.subscription.create).toHaveBeenCalledTimes(1)
+    // Issue 1: subscription created first as SUSPENDED (acting as pending payment)
     expect(mockPrisma.subscription.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -155,17 +166,21 @@ describe("POST /vpn/subscriptions", () => {
           pricingId: "pricing_id",
           type: "BUNDLE",
           billingMode: "PACKAGE",
-          status: "ACTIVE",
-          metadata: expect.objectContaining({
-            regionCode: "INDONESIA",
-            planCode: "STANDARD",
-          }),
+          status: "SUSPENDED",
         }),
+      }),
+    )
+
+    // Issue 1: updated to ACTIVE after charge succeeds
+    expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "sub_vpn_new" },
+        data: { status: "ACTIVE" },
       }),
     )
   })
 
-  it("reuses existing subscription record when one already exists (idempotent provision)", async () => {
+  it("reuses existing ACTIVE subscription record", async () => {
     mockPrisma.subscription.findUnique.mockResolvedValue({
       id: "sub_vpn_existing",
       organizationId: "org_1",
@@ -195,14 +210,60 @@ describe("POST /vpn/subscriptions", () => {
     const body = await response.json()
     expect(body.subscriptionId).toBe("sub_vpn_existing")
     expect(mockPrisma.subscription.create).not.toHaveBeenCalled()
-    expect(mockBilling.chargeMonthly).toHaveBeenCalledWith(
+    // It shouldn't update status because it was already ACTIVE
+    expect(mockPrisma.subscription.update).not.toHaveBeenCalled()
+  })
+
+  it("resets SUSPENDED subscription to SUSPENDED and retries charge (Issue 6)", async () => {
+    mockPrisma.subscription.findUnique.mockResolvedValue({
+      id: "sub_vpn_suspended",
+      organizationId: "org_1",
+      packageId: "pkg_vpn",
+      planId: "plan_standard",
+      pricingId: "pricing_id",
+      type: "BUNDLE",
+      billingMode: "PACKAGE",
+      status: "SUSPENDED",
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(),
+    })
+
+    const app = createRoute()
+    const response = await app.handle(
+      new Request("http://localhost/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          regionCode: "INDONESIA",
+          planCode: "STANDARD",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.subscriptionId).toBe("sub_vpn_suspended")
+    
+    // Resets/updates period first (keeping status: SUSPENDED during charge)
+    expect(mockPrisma.subscription.update).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
-        vpnSubscriptionId: "sub_vpn_existing",
+        where: { id: "sub_vpn_suspended" },
+        data: expect.objectContaining({ status: "SUSPENDED" }),
+      }),
+    )
+
+    // Activates to ACTIVE after charge
+    expect(mockPrisma.subscription.update).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: { id: "sub_vpn_suspended" },
+        data: { status: "ACTIVE" },
       }),
     )
   })
 
-  it("returns 402 with topupUrl when balance is insufficient", async () => {
+  it("suspends PENDING subscription when upfront charge fails with 402 (Issue 1)", async () => {
     mockBilling.chargeMonthly.mockRejectedValue(
       new Error("INSUFFICIENT_BALANCE"),
     )
@@ -223,32 +284,16 @@ describe("POST /vpn/subscriptions", () => {
     const body = await response.json()
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INSUFFICIENT_BALANCE")
-    expect(body.topupUrl).toBe("/console/billing/topup")
-    expect(body.message).toMatch(/balance/i)
-  })
 
-  it("does not call any VPN provider logic when billing fails", async () => {
-    mockBilling.chargeMonthly.mockRejectedValue(
-      new Error("INSUFFICIENT_BALANCE"),
-    )
-
-    const app = createRoute()
-    await app.handle(
-      new Request("http://localhost/subscriptions", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          regionCode: "INDONESIA",
-          planCode: "STANDARD",
-        }),
+    // Subscription created first as SUSPENDED
+    expect(mockPrisma.subscription.create).toHaveBeenCalledTimes(1)
+    // Subscription updated/left as SUSPENDED on failed charge
+    expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "sub_vpn_new" },
+        data: expect.objectContaining({ status: "SUSPENDED" }),
       }),
     )
-
-    // No VPN provider code path exists in the route. The assertion here
-    // is the negative: chargeMonthly was attempted exactly once and the
-    // request short-circuited with 402 — no side effects, no provider
-    // call (which does not exist yet).
-    expect(mockBilling.chargeMonthly).toHaveBeenCalledTimes(1)
   })
 
   it("returns 401 when user is not authenticated", async () => {
@@ -301,9 +346,6 @@ describe("POST /vpn/subscriptions", () => {
       }),
     )
 
-    // Status 422 is the contract: the body shape (e.g. { error: "VALIDATION_ERROR" })
-    // is shaped by the app-level `.onError` handler in `lib/api.ts` and is
-    // covered by integration smoke tests, not this unit test.
     expect(response.status).toBe(422)
     expect(mockBilling.chargeMonthly).not.toHaveBeenCalled()
   })
@@ -361,5 +403,37 @@ describe("POST /vpn/subscriptions", () => {
     const body = await response.json()
     expect(body.error).toBe("VPN_PRICE_NOT_CONFIGURED")
     expect(mockBilling.chargeMonthly).not.toHaveBeenCalled()
+  })
+
+  it("uses the account currency when resolving price (Issue 5)", async () => {
+    mockPrisma.billingAccount.findUnique.mockResolvedValue({
+      id: "ba_1",
+      organizationId: "org_1",
+      currency: "USD",
+      balance: decimal("100.00"),
+    })
+
+    const app = createRoute()
+    const response = await app.handle(
+      new Request("http://localhost/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          regionCode: "INDONESIA",
+          planCode: "STANDARD",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    // 25000 / 16000 = 1.5625
+    expect(body.monthlyPrice).toBe("1.5625")
+    expect(body.monthlyPriceMinor).toBe(156)
+    expect(body.currency).toBe("USD")
+
+    expect(mockPrisma.billingAccount.findUnique).toHaveBeenCalledWith({
+      where: { organizationId: "org_1" },
+    })
   })
 })

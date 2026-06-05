@@ -117,11 +117,24 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         }
 
         // ── Resolve price from the static catalog ───────────────────
+        // We first fetch the billing account to resolve the price using
+        // the account's locked currency (IDR/USD) per Issue 5.
+        const account = await prisma.billingAccount.findUnique({
+          where: { organizationId: auth.organizationId },
+        })
+        if (!account) {
+          return toServerError(
+            set,
+            "No billing account found for this organization. Please contact support.",
+          )
+        }
+
         let price
         try {
           price = resolveVpnMonthlyPrice({
             regionCode: body.regionCode,
             planCode: body.planCode,
+            currency: account.currency as "IDR" | "USD",
           })
         } catch (error) {
           if (error instanceof VpnPriceNotConfiguredError) {
@@ -162,12 +175,18 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         const periodEnd = new Date(now)
         periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1)
 
-        let vpnSubscriptionId: string
+        let vpnSubscriptionId: string | undefined
+        let isNewOrSuspended = false
+
         try {
           // Find or create the Subscription record first so we can use
           // its stable DB id for the idempotency key. The route is the
           // sole owner of VPN subscription creation; the renewal worker
           // (Task 3) is the sole owner of period extension.
+          //
+          // Issue 6 Fix: we check for status !== "ACTIVE". If the subscription
+          // is suspended, we reset it to "SUSPENDED" (pending activation)
+          // and try charging again.
           const existing = await prisma.subscription.findUnique({
             where: {
               organizationId_packageId_planId: {
@@ -177,27 +196,44 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
               },
             },
           })
-          const subscription = existing
-            ? existing
-            : await prisma.subscription.create({
-                data: {
-                  organizationId: auth.organizationId,
-                  packageId: refs.packageId,
-                  planId: refs.planId,
-                  pricingId: refs.pricingId,
-                  type: "BUNDLE",
-                  billingMode: "PACKAGE",
-                  status: "ACTIVE",
-                  currentPeriodStart: now,
-                  currentPeriodEnd: periodEnd,
-                  metadata: {
-                    regionCode: body.regionCode,
-                    regionId: refs.regionId,
-                    planCode: body.planCode,
-                  },
+
+          if (existing && existing.status === "ACTIVE") {
+            vpnSubscriptionId = existing.id
+          } else if (existing && existing.status === "SUSPENDED") {
+            await prisma.subscription.update({
+              where: { id: existing.id },
+              data: {
+                status: "SUSPENDED", // Keep SUSPENDED (pending activation)
+                currentPeriodStart: now,
+                currentPeriodEnd: periodEnd,
+              },
+            })
+            vpnSubscriptionId = existing.id
+            isNewOrSuspended = true
+          } else {
+            // Issue 1 Fix: Create with status: "SUSPENDED" to avoid
+            // orphaned ACTIVE records on billing failure (402).
+            const subscription = await prisma.subscription.create({
+              data: {
+                organizationId: auth.organizationId,
+                packageId: refs.packageId,
+                planId: refs.planId,
+                pricingId: refs.pricingId,
+                type: "BUNDLE",
+                billingMode: "PACKAGE",
+                status: "SUSPENDED",
+                currentPeriodStart: now,
+                currentPeriodEnd: periodEnd,
+                metadata: {
+                  regionCode: body.regionCode,
+                  regionId: refs.regionId,
+                  planCode: body.planCode,
                 },
-              })
-          vpnSubscriptionId = subscription.id
+              },
+            })
+            vpnSubscriptionId = subscription.id
+            isNewOrSuspended = true
+          }
 
           await billing.chargeMonthly({
             organizationId: auth.organizationId,
@@ -206,7 +242,36 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
             amount: price.amount,
             period,
           })
+
+          // Charge succeeded -> activate subscription
+          if (isNewOrSuspended && vpnSubscriptionId) {
+            await prisma.subscription.update({
+              where: { id: vpnSubscriptionId },
+              data: { status: "ACTIVE" },
+            })
+          }
         } catch (error) {
+          // Issue 1 Fix: Ensure the subscription is left as SUSPENDED if charge fails
+          if (isNewOrSuspended && vpnSubscriptionId) {
+            try {
+              await prisma.subscription.update({
+                where: { id: vpnSubscriptionId },
+                data: {
+                  status: "SUSPENDED",
+                  metadata: {
+                    regionCode: body.regionCode,
+                    regionId: refs.regionId,
+                    planCode: body.planCode,
+                    suspendedAt: new Date().toISOString(),
+                    suspensionReason: "INITIAL_CHARGE_FAILED",
+                  },
+                },
+              })
+            } catch (cleanupError) {
+              console.error("[VpnRoute] Failed to suspend subscription after failed charge:", cleanupError)
+            }
+          }
+
           if (
             error instanceof Error &&
             error.message === "INSUFFICIENT_BALANCE"
@@ -233,6 +298,13 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         }
 
         // ── Success: return subscription DTO ────────────────────────
+        // Issue 8 Fix: format monthlyPrice to consistent decimal places and
+        // provide monthlyPriceMinor.
+        const formattedPrice = price.amount.toFixed(price.currency === "USD" ? 4 : 2)
+        const priceMinor = price.currency === "USD"
+          ? Math.round(Number(price.amount) * 100)
+          : Math.round(Number(price.amount))
+
         return {
           ok: true as const,
           subscriptionId: vpnSubscriptionId,
@@ -240,7 +312,8 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           regionCode: body.regionCode,
           planCode: body.planCode,
           status: "ACTIVE" as const,
-          monthlyPrice: price.amount.toString(),
+          monthlyPrice: formattedPrice,
+          monthlyPriceMinor: priceMinor,
           currency: price.currency,
           period,
           topupUrl: TOPUP_URL,
