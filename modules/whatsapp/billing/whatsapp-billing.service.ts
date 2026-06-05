@@ -75,54 +75,58 @@ export class WhatsappBillingService {
   /**
    * Consume monthly allowance or charge overage from balance.
    *
-   * - If allowance is sufficient: decrement allowance, no balance change.
-   * - If allowance is partially sufficient: consume remaining allowance,
-   *   then charge overage messages immediately.
-   * - If allowance is exhausted: charge all messages as overage.
-   * - If balance is insufficient for overage: throw INSUFFICIENT_BALANCE.
+   * Phase 1 — Atomic allowance consumption (DB-enforced via updateMany with
+   *   WHERE quotaBaseOut >= messageCount). Eliminates the read-check-update
+   *   race window entirely.
+   * Phase 2 — Re-read current state and validate billing account exists
+   *   BEFORE any allowance mutation.
+   * Phase 3 — Charge overage FIRST, then zero remaining allowance.
+   *   This ordering guarantees: if the charge fails (INSUFFICIENT_BALANCE),
+   *   NO allowance state has been changed — the caller can retry safely.
    *
    * WhatsApp has NO grace period — reject immediately if balance insufficient.
    */
   async consumeAllowanceOrChargeOverage(
     input: OverageInput,
   ): Promise<WhatsappBillingDecision> {
+    // ── Phase 1: Atomic allowance consumption ──────────────────────────
+    const atomicResult = await this.prisma.whatsappDevice.updateMany({
+      where: { id: input.deviceId, quotaBaseOut: { gte: input.messageCount } },
+      data: { quotaBaseOut: { decrement: input.messageCount } },
+    })
+
+    if (atomicResult.count > 0) {
+      const updatedDevice = await this.prisma.whatsappDevice.findUnique({
+        where: { id: input.deviceId },
+        select: { quotaBaseOut: true },
+      })
+      return {
+        kind: "ALLOWANCE",
+        remainingAllowance: updatedDevice?.quotaBaseOut ?? 0,
+      }
+    }
+
+    // ── Phase 2: Re-read current state & validate ─────────────────────
     const device = await this.prisma.whatsappDevice.findUnique({
       where: { id: input.deviceId },
     })
     if (!device) throw new Error("WHATSAPP_DEVICE_NOT_FOUND")
 
-    const allowance = device.quotaBaseOut ?? 0
+    const currentAllowance = device.quotaBaseOut ?? 0
+    const overageCount = input.messageCount - Math.max(currentAllowance, 0)
 
-    // Case 1: Full allowance covers the message(s)
-    if (allowance >= input.messageCount) {
-      const updated = await this.prisma.whatsappDevice.update({
-        where: { id: input.deviceId },
-        data: { quotaBaseOut: allowance - input.messageCount },
-      })
-      return { kind: "ALLOWANCE", remainingAllowance: updated.quotaBaseOut }
-    }
-
-    // Case 2: Partial allowance + overage needed
-    const overageCount = input.messageCount - Math.max(allowance, 0)
-
-    if (allowance > 0) {
-      // Zero out remaining allowance
-      await this.prisma.whatsappDevice.update({
-        where: { id: input.deviceId },
-        data: { quotaBaseOut: 0 },
-      })
-    }
-
-    // Charge overage via billing foundation
-    const amount = input.unitPrice.times(overageCount)
-
+    // Validate billing account BEFORE any state mutation
     const account = await this.prisma.billingAccount.findUnique({
       where: { organizationId: input.organizationId },
     })
     if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
 
-    // This will throw INSUFFICIENT_BALANCE if balance < amount
-    // WhatsApp does NOT enter grace — reject immediately
+    // ── Phase 3: Charge overage FIRST, then mutate state ──────────────
+    const amount = input.unitPrice.times(overageCount)
+
+    // This will throw INSUFFICIENT_BALANCE if balance < amount.
+    // Because we haven't mutated allowance state yet, a failed charge
+    // means the caller can retry safely with no side effects.
     const result = await this.transactions.debitServiceBalance({
       organizationId: input.organizationId,
       amount,
@@ -143,10 +147,33 @@ export class WhatsappBillingService {
       },
     })
 
+    // Only now (charge succeeded) zero out remaining allowance
+    if (currentAllowance > 0) {
+      await this.prisma.whatsappDevice.update({
+        where: { id: input.deviceId },
+        data: { quotaBaseOut: 0 },
+      })
+    }
+
     return {
       kind: "OVERAGE_CHARGED",
       charged: amount,
       adjustmentId: result.adjustmentId,
     }
+  }
+
+  /**
+   * Restore consumed allowance (e.g., after Meta API failure).
+   * Best-effort: if another message consumed allowance concurrently,
+   * the restore may overshoot. Acceptable because:
+   * 1. Worst case is a slightly higher allowance this period
+   * 2. The monthly reset caps it anyway
+   * 3. The alternative (lost allowance + failed message) is worse
+   */
+  async restoreAllowance(deviceId: string, amount: number): Promise<void> {
+    await this.prisma.whatsappDevice.update({
+      where: { id: deviceId },
+      data: { quotaBaseOut: { increment: amount } },
+    })
   }
 }

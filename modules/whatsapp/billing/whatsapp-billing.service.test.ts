@@ -18,6 +18,7 @@ mock.module("@/lib/prisma", () => ({
     whatsappDevice: {
       findUnique: mock(),
       update: mock(),
+      updateMany: mock(),
     },
   },
 }))
@@ -39,6 +40,7 @@ const mockPrisma = prisma as unknown as {
   whatsappDevice: {
     findUnique: any
     update: any
+    updateMany: any
   }
 }
 
@@ -102,6 +104,7 @@ describe("WhatsappBillingService", () => {
     mockPrisma.billingAccount.findUnique.mockClear()
     mockPrisma.whatsappDevice.findUnique.mockClear()
     mockPrisma.whatsappDevice.update.mockClear()
+    mockPrisma.whatsappDevice.updateMany.mockClear()
     mockBillingTransactionService.debitServiceBalance.mockClear()
     mockBillingTransactionService.debitBalance.mockClear()
     mockBillingTransactionService.creditBalance.mockClear()
@@ -231,8 +234,10 @@ describe("WhatsappBillingService", () => {
     it("consumes allowance without debiting balance when allowance is sufficient", async () => {
       const device = whatsappDevice({ quotaBaseOut: 100 })
 
-      mockPrisma.whatsappDevice.findUnique.mockResolvedValue(device)
-      mockPrisma.whatsappDevice.update.mockResolvedValue({
+      // Atomic update succeeds (allowance >= 1)
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 1 })
+      // Follow-up read to get remaining allowance
+      mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
         ...device,
         quotaBaseOut: 99,
       })
@@ -247,6 +252,13 @@ describe("WhatsappBillingService", () => {
 
       expect(result.kind).toBe("ALLOWANCE")
       expect((result as { remainingAllowance: number }).remainingAllowance).toBe(99)
+
+      expect(mockPrisma.whatsappDevice.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "device_1", quotaBaseOut: { gte: 1 } },
+          data: { quotaBaseOut: { decrement: 1 } },
+        }),
+      )
       expect(mockBillingTransactionService.debitServiceBalance).not.toHaveBeenCalled()
       expect(mockBillingTransactionService.debitBalance).not.toHaveBeenCalled()
     })
@@ -255,6 +267,9 @@ describe("WhatsappBillingService", () => {
       const device = whatsappDevice({ quotaBaseOut: 0 })
       const account = billingAccount({ balance: decimal("100.00") })
 
+      // Atomic update fails (quotaBaseOut=0 < 1)
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
+      // Re-read gets current allowance
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue(device)
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockResolvedValue({
@@ -281,6 +296,9 @@ describe("WhatsappBillingService", () => {
         expect(result.adjustmentId).toBe("adj_overage_1")
       }
 
+      // Allowance was already 0, so no update to zero it
+      expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalled()
+
       expect(mockBillingTransactionService.debitServiceBalance).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "org_1",
@@ -300,6 +318,7 @@ describe("WhatsappBillingService", () => {
       const device = whatsappDevice({ quotaBaseOut: 0 })
       const account = billingAccount({ balance: decimal("5.00") })
 
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue(device)
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
@@ -315,17 +334,19 @@ describe("WhatsappBillingService", () => {
           idempotencyKey: "wa-message:req_003",
         }),
       ).rejects.toThrow("INSUFFICIENT_BALANCE")
+
+      // Verify NO state mutation happened — charge failed before allowance was touched
+      expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalled()
     })
 
     it("charges partial allowance + overage when allowance partially covers", async () => {
       const device = whatsappDevice({ quotaBaseOut: 3 })
       const account = billingAccount({ balance: decimal("100.00") })
 
+      // Atomic update fails (3 < 10)
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
+      // Re-read gets current allowance
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue(device)
-      mockPrisma.whatsappDevice.update.mockResolvedValue({
-        ...device,
-        quotaBaseOut: 0,
-      })
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockResolvedValue({
         billingAccountId: "ba_1",
@@ -350,6 +371,7 @@ describe("WhatsappBillingService", () => {
         expect(result.charged.toString()).toBe("70")
       }
 
+      // After successful charge, allowance is zeroed
       expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device_1" },
@@ -359,6 +381,9 @@ describe("WhatsappBillingService", () => {
     })
 
     it("throws WHATSAPP_DEVICE_NOT_FOUND when device missing", async () => {
+      // Atomic update fails (no matching device, or allowance < 1)
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
+      // Re-read returns null — device doesn't exist
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue(null)
 
       await expect(
@@ -375,6 +400,9 @@ describe("WhatsappBillingService", () => {
     it("does not create grace state for WhatsApp (no grace period)", async () => {
       const device = whatsappDevice({ quotaBaseOut: 0 })
 
+      // Atomic update fails
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
+      // Device exists but billing account missing
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue(device)
       mockPrisma.billingAccount.findUnique.mockResolvedValue(null)
 
@@ -386,8 +414,27 @@ describe("WhatsappBillingService", () => {
           unitPrice: decimal("10.00"),
           idempotencyKey: "wa-message:req_006",
         }),
-      ).rejects.toThrow()
+      ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
+
+      // Verify NO state mutation happened (allowance not zeroed, no debit)
       expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalled()
+      expect(mockBillingTransactionService.debitServiceBalance).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("restoreAllowance", () => {
+    it("increments quotaBaseOut by the given amount", async () => {
+      mockPrisma.whatsappDevice.update.mockResolvedValue({
+        ...whatsappDevice(),
+        quotaBaseOut: 104,
+      })
+
+      await service.restoreAllowance("device_1", 4)
+
+      expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith({
+        where: { id: "device_1" },
+        data: { quotaBaseOut: { increment: 4 } },
+      })
     })
   })
 })
