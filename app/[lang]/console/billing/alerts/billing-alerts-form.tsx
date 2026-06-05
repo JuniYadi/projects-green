@@ -36,21 +36,25 @@ function loadPreferences(): AlertPreferences {
   if (typeof window === "undefined") return defaultPreferences
 
   try {
-    // Migrate old key if present
     const oldStored = localStorage.getItem(OLD_STORAGE_KEY)
     if (oldStored) {
       try {
+        const parsed = JSON.parse(oldStored)
         localStorage.setItem(STORAGE_KEY, oldStored)
         localStorage.removeItem(OLD_STORAGE_KEY)
-        return { ...defaultPreferences, ...JSON.parse(oldStored) }
+        return { ...defaultPreferences, ...parsed }
       } catch {
-        // Fall through on parsing errors
+        localStorage.removeItem(OLD_STORAGE_KEY)
       }
     }
 
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
-      return { ...defaultPreferences, ...JSON.parse(stored) }
+      try {
+        return { ...defaultPreferences, ...JSON.parse(stored) }
+      } catch {
+        localStorage.removeItem(STORAGE_KEY)
+      }
     }
   } catch (e) {
     console.warn("Failed to parse stored alert preferences:", e)

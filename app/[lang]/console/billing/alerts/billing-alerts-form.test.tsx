@@ -65,4 +65,21 @@ describe("BillingAlertsForm localStorage key and migration", () => {
     const oldStored = localStorage.getItem(OLD_STORAGE_KEY)
     expect(oldStored).toBeNull()
   })
+
+  it("handles malformed legacy JSON gracefully", () => {
+    localStorage.setItem(OLD_STORAGE_KEY, "{ invalid json }")
+    const view = render(<BillingAlertsForm />)
+    const checkbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
+    expect(checkbox.getAttribute("aria-checked")).toBe("false")
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+    expect(localStorage.getItem(OLD_STORAGE_KEY)).toBeNull()
+  })
+
+  it("handles malformed new JSON gracefully", () => {
+    localStorage.setItem(STORAGE_KEY, "{ invalid json }")
+    const view = render(<BillingAlertsForm />)
+    const checkbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
+    expect(checkbox.getAttribute("aria-checked")).toBe("false")
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
 })
