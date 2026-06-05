@@ -143,6 +143,49 @@ describe("GET /account - JIT upsert", () => {
     expect(typeof body.accountAge).toBe("string")
   })
 
+  it("reports accountAge as today for freshly created account", async () => {
+    const mockAccount = {
+      id: "acc-3",
+      organizationId: "org_789",
+      balance: new Decimal(100_000),
+      currency: "IDR",
+      createdAt: new Date(), // today = diffDays === 0
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.accountAge).toBe("today")
+  })
+
+  it("reports accountAge as 1 day for yesterday-created account", async () => {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    const mockAccount = {
+      id: "acc-4",
+      organizationId: "org_789",
+      balance: new Decimal(100_000),
+      currency: "IDR",
+      createdAt: yesterday,
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.accountAge).toBe("1 day")
+  })
+
   it("reports isPositive=false and isAboveWarn=false for zero balance", async () => {
     const mockAccount = {
       id: "acc-2",
@@ -165,6 +208,7 @@ describe("GET /account - JIT upsert", () => {
     expect(body.balanceIdr).toBe("0.00")
   })
 })
+
 
 // Test schema validation
 describe("billingSchemas", () => {
