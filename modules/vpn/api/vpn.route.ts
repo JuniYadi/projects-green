@@ -1,5 +1,4 @@
 import { Elysia, t } from "elysia"
-import { randomUUID } from "crypto"
 
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { prisma } from "@/lib/prisma"
@@ -8,6 +7,10 @@ import {
   VpnPriceNotConfiguredError,
   resolveVpnMonthlyPrice,
 } from "../billing/vpn-pricing"
+import {
+  VpnSubscriptionRefsNotFoundError,
+  resolveVpnSubscriptionRefs,
+} from "../billing/vpn-subscription-refs"
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -132,11 +135,70 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           throw error
         }
 
-        // ── Billing gate: debit balance upfront ─────────────────────
-        const vpnSubscriptionId = `vpn_sub_${randomUUID()}`
-        const period = currentPeriod()
-
+        // ── Resolve subscription FK refs (Package/ServicePlan/Pricing) ──
+        // Done BEFORE the charge so a misconfigured (plan, region) returns
+        // 422 without debiting the customer's balance.
+        let refs
         try {
+          refs = await resolveVpnSubscriptionRefs(prisma, {
+            planCode: body.planCode,
+            regionCode: body.regionCode,
+          })
+        } catch (error) {
+          if (error instanceof VpnSubscriptionRefsNotFoundError) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VPN_PRICE_NOT_CONFIGURED" as const,
+              message: error.message,
+            }
+          }
+          throw error
+        }
+
+        // ── Billing gate: debit balance upfront ─────────────────────
+        const period = currentPeriod()
+        const now = new Date()
+        const periodEnd = new Date(now)
+        periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1)
+
+        let vpnSubscriptionId: string
+        try {
+          // Find or create the Subscription record first so we can use
+          // its stable DB id for the idempotency key. The route is the
+          // sole owner of VPN subscription creation; the renewal worker
+          // (Task 3) is the sole owner of period extension.
+          const existing = await prisma.subscription.findUnique({
+            where: {
+              organizationId_packageId_planId: {
+                organizationId: auth.organizationId,
+                packageId: refs.packageId,
+                planId: refs.planId,
+              },
+            },
+          })
+          const subscription = existing
+            ? existing
+            : await prisma.subscription.create({
+                data: {
+                  organizationId: auth.organizationId,
+                  packageId: refs.packageId,
+                  planId: refs.planId,
+                  pricingId: refs.pricingId,
+                  type: "BUNDLE",
+                  billingMode: "PACKAGE",
+                  status: "ACTIVE",
+                  currentPeriodStart: now,
+                  currentPeriodEnd: periodEnd,
+                  metadata: {
+                    regionCode: body.regionCode,
+                    regionId: refs.regionId,
+                    planCode: body.planCode,
+                  },
+                },
+              })
+          vpnSubscriptionId = subscription.id
+
           await billing.chargeMonthly({
             organizationId: auth.organizationId,
             vpnSubscriptionId,

@@ -3,12 +3,26 @@ import { Prisma } from "@prisma/client"
 
 // ─── Mocks ──────────────────────────────────────────────────────────────
 //
-// Per AGENTS.md: never mock a sibling service module. We mock only the
-// `vpnBilling` dep (injected via the route factory) so the test stays
-// free of cross-file mock pollution. The default `VpnBillingService`
-// inside the route is NOT constructed at module load — it is built
-// lazily by the factory only when no `billing` dep is provided, so
-// importing this file does not require a live DATABASE_URL.
+// Per AGENTS.md: never mock a sibling service module. We mock only
+// `@/lib/prisma` (a leaf dependency) and inject the `billing` dep
+// (route-level abstraction). The default `VpnBillingService` inside
+// the route is NOT constructed at module load — it is built lazily
+// by the factory only when no `billing` dep is provided, so importing
+// this file does not require a live DATABASE_URL.
+
+const mockPrisma = {
+  package: { findUnique: mock() },
+  servicePlan: { findUnique: mock() },
+  region: { findUnique: mock() },
+  pricing: { findFirst: mock() },
+  subscription: {
+    findUnique: mock(),
+    create: mock(),
+    update: mock(),
+  },
+}
+
+mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 import { createVpnRoutes } from "./vpn.route"
 
@@ -43,7 +57,40 @@ const createRoute = (
     billing,
   })
 
+const setupPrismaDefaults = () => {
+  mockPrisma.package.findUnique.mockReset()
+  mockPrisma.servicePlan.findUnique.mockReset()
+  mockPrisma.region.findUnique.mockReset()
+  mockPrisma.pricing.findFirst.mockReset()
+  mockPrisma.subscription.findUnique.mockReset()
+  mockPrisma.subscription.create.mockReset()
+  mockPrisma.subscription.update.mockReset()
+  mockPrisma.package.findUnique.mockResolvedValue({ id: "pkg_vpn" })
+  mockPrisma.servicePlan.findUnique.mockResolvedValue({ id: "plan_standard" })
+  mockPrisma.region.findUnique.mockResolvedValue({ id: "region_id" })
+  mockPrisma.pricing.findFirst.mockResolvedValue({ id: "pricing_id" })
+  // Default: no existing subscription (route will create)
+  mockPrisma.subscription.findUnique.mockResolvedValue(null)
+  mockPrisma.subscription.create.mockImplementation(
+    async (args: { data: Record<string, unknown> }) => ({
+      id: "sub_vpn_new",
+      ...args.data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }),
+  )
+  mockPrisma.subscription.update.mockImplementation(
+    async (args: { where: { id: string }; data: Record<string, unknown> }) => ({
+      id: args.where.id,
+      ...args.data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }),
+  )
+}
+
 beforeEach(() => {
+  setupPrismaDefaults()
   mockBilling.chargeMonthly.mockReset()
   // Default: billing succeeds with a STANDARD Indonesia price (25,000 IDR)
   mockBilling.chargeMonthly.mockResolvedValue({
@@ -60,7 +107,7 @@ beforeEach(() => {
 // ─── Tests ──────────────────────────────────────────────────────────────
 
 describe("POST /vpn/subscriptions", () => {
-  it("provisions vpn after monthly charge succeeds", async () => {
+  it("provisions vpn after monthly charge succeeds and persists a Subscription record", async () => {
     const app = createRoute()
     const response = await app.handle(
       new Request("http://localhost/subscriptions", {
@@ -83,18 +130,74 @@ describe("POST /vpn/subscriptions", () => {
     expect(body.currency).toBe("IDR")
     expect(body.period).toMatch(/^\d{4}-\d{2}$/)
     expect(body.topupUrl).toBe("/console/billing/topup")
-    // A subscription id is returned but the route does not persist
-    // anything in MVP — that is the renewal worker's job (Task 3).
-    expect(typeof body.subscriptionId).toBe("string")
-    expect(body.subscriptionId.startsWith("vpn_sub_")).toBe(true)
+    // Subscription is persisted with a stable DB id; the renewal
+    // worker (Task 3) uses this id to find and renew.
+    expect(body.subscriptionId).toBe("sub_vpn_new")
 
     expect(mockBilling.chargeMonthly).toHaveBeenCalledTimes(1)
     expect(mockBilling.chargeMonthly).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: "org_1",
+        vpnSubscriptionId: "sub_vpn_new",
         regionCode: "INDONESIA",
         amount: decimal("25000"),
         period: expect.stringMatching(/^\d{4}-\d{2}$/),
+      }),
+    )
+
+    expect(mockPrisma.subscription.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.subscription.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          organizationId: "org_1",
+          packageId: "pkg_vpn",
+          planId: "plan_standard",
+          pricingId: "pricing_id",
+          type: "BUNDLE",
+          billingMode: "PACKAGE",
+          status: "ACTIVE",
+          metadata: expect.objectContaining({
+            regionCode: "INDONESIA",
+            planCode: "STANDARD",
+          }),
+        }),
+      }),
+    )
+  })
+
+  it("reuses existing subscription record when one already exists (idempotent provision)", async () => {
+    mockPrisma.subscription.findUnique.mockResolvedValue({
+      id: "sub_vpn_existing",
+      organizationId: "org_1",
+      packageId: "pkg_vpn",
+      planId: "plan_standard",
+      pricingId: "pricing_id",
+      type: "BUNDLE",
+      billingMode: "PACKAGE",
+      status: "ACTIVE",
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(),
+    })
+
+    const app = createRoute()
+    const response = await app.handle(
+      new Request("http://localhost/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          regionCode: "INDONESIA",
+          planCode: "STANDARD",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.subscriptionId).toBe("sub_vpn_existing")
+    expect(mockPrisma.subscription.create).not.toHaveBeenCalled()
+    expect(mockBilling.chargeMonthly).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vpnSubscriptionId: "sub_vpn_existing",
       }),
     )
   })
@@ -227,6 +330,28 @@ describe("POST /vpn/subscriptions", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           regionCode: "MARS",
+          planCode: "STANDARD",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(422)
+    const body = await response.json()
+    expect(body.error).toBe("VPN_PRICE_NOT_CONFIGURED")
+    expect(mockBilling.chargeMonthly).not.toHaveBeenCalled()
+  })
+
+  it("returns 422 with VPN_PRICE_NOT_CONFIGURED when seed refs are missing", async () => {
+    // Plan exists in the static catalog but the DB Package row is gone.
+    mockPrisma.package.findUnique.mockResolvedValue(null)
+
+    const app = createRoute()
+    const response = await app.handle(
+      new Request("http://localhost/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
       }),
