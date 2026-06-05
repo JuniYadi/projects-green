@@ -221,6 +221,9 @@ export class AppHostingBillingService {
     // Grace expired — mark as suspended in billing metadata
     // Note: StackStatus enum doesn't include SUSPENDED, so we track billing suspension
     // in metadataJson. The runtime layer checks billingState before allowing operations.
+    // TODO: Trigger actual runtime teardown (stop container, revoke tokens) here or via
+    // a separate process. Currently the container continues running but the billing gate
+    // blocks new deploys and the worker stops charging during SUSPENDED state.
     await this.prisma.applicationStack.update({
       where: { id: input.stackId },
       data: {
@@ -278,21 +281,20 @@ export class AppHostingBillingService {
   // ─── Private ──────────────────────────────────────────────────────────
 
   private async enterGrace(stackId: string) {
-    const stack = await this.prisma.applicationStack.findUnique({
-      where: { id: stackId },
-    })
-    if (!stack) return
-
-    const meta = (stack.metadataJson ?? {}) as Record<string, unknown>
-    await this.prisma.applicationStack.update({
-      where: { id: stackId },
-      data: {
-        metadataJson: {
-          ...meta,
-          billingState: "PAYMENT_GRACE",
-          billingGraceStartedAt: new Date().toISOString(),
-        },
-      },
-    })
+    // Atomic update: set billingState to PAYMENT_GRACE only if not already set.
+    // This prevents TOCTOU race conditions from concurrent chargePaygRuntimeHour calls.
+    // If another call already entered grace, this is a no-op (the where clause won't match).
+    const now = new Date().toISOString()
+    await this.prisma.$executeRaw`
+      UPDATE "ApplicationStack"
+      SET "metadataJson" =
+        CASE
+          WHEN "metadataJson" IS NULL THEN ${JSON.stringify({ billingState: "PAYMENT_GRACE", billingGraceStartedAt: now })}::jsonb
+          WHEN "metadataJson"->>'billingState' IS DISTINCT FROM 'PAYMENT_GRACE' THEN
+            "metadataJson" || ${JSON.stringify({ billingState: "PAYMENT_GRACE", billingGraceStartedAt: now })}::jsonb
+          ELSE "metadataJson"
+        END
+      WHERE "id" = ${stackId}
+    `
   }
 }

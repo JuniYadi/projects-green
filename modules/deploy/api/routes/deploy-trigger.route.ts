@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
@@ -11,7 +12,7 @@ import { BillingTransactionService } from "@/modules/billing/billing-transaction
 export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
   .post(
     "/trigger/:stackId",
-    async ({ params, set }) => {
+    async ({ params, body, set }) => {
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
@@ -48,30 +49,49 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "FORBIDDEN", message: "Access denied" }
       }
 
+      // Reject deploy for SUSPENDED stacks (billing-level block)
+      const stackMeta = (stack.metadataJson ?? {}) as Record<string, unknown>
+      if (stackMeta.billingState === "SUSPENDED") {
+        set.status = 402
+        return {
+          ok: false,
+          error: "STACK_SUSPENDED",
+          message: "This stack is suspended due to payment issues. Please top up your balance.",
+          topupUrl: "/console/billing/topup",
+        }
+      }
+
       // Billing gate: check balance before deploy for PAYG stacks
-      const billingMode = (stack as Record<string, unknown>).billingMode
-      if (billingMode === "PAYG" && stack.resourcePlanId === "payg") {
-        const hourlyCost = (stack as Record<string, unknown>).hourlyCost
-        if (hourlyCost) {
-          const transactions = new BillingTransactionService(prisma)
-          const billingService = new AppHostingBillingService(prisma, transactions)
-          try {
-            await billingService.assertCanStartPayg({
-              organizationId: auth.organizationId,
-              hourlyCost: new (await import("@prisma/client")).Prisma.Decimal(String(hourlyCost)),
-            })
-          } catch (error) {
-            if (error instanceof Error && error.message === "INSUFFICIENT_PAYG_BUFFER") {
-              set.status = 402
-              return {
-                ok: false,
-                error: "INSUFFICIENT_PAYG_BUFFER",
-                message: "Your balance must cover at least 24 hours of runtime before deploying PAYG apps.",
-                topupUrl: "/console/billing/topup",
-              }
-            }
-            throw error
+      if (stack.billingMode === "PAYG" && stack.resourcePlanId === "payg") {
+        const hourlyCost = stack.hourlyCost
+        if (!hourlyCost) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "MISSING_HOURLY_COST",
+            message: "PAYG stack is missing hourly cost configuration.",
           }
+        }
+
+        const transactions = new BillingTransactionService(prisma)
+        const billingService = new AppHostingBillingService(prisma, transactions)
+        try {
+          await billingService.assertCanStartPayg({
+            organizationId: auth.organizationId,
+            hourlyCost: new Prisma.Decimal(String(hourlyCost)),
+            bufferHours: body.paygBufferHours,
+          })
+        } catch (error) {
+          if (error instanceof Error && error.message === "INSUFFICIENT_PAYG_BUFFER") {
+            set.status = 402
+            return {
+              ok: false,
+              error: "INSUFFICIENT_PAYG_BUFFER",
+              message: "Your balance must cover the configured runtime buffer before deploying PAYG apps.",
+              topupUrl: "/console/billing/topup",
+            }
+          }
+          throw error
         }
       }
 
@@ -85,6 +105,9 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
     {
       params: t.Object({
         stackId: t.String(),
+      }),
+      body: t.Object({
+        paygBufferHours: t.Optional(t.Number()),
       }),
     }
   )
@@ -125,6 +148,44 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
       if (stack.organizationId !== auth.organizationId) {
         set.status = 403
         return { ok: false, error: "FORBIDDEN", message: "Access denied" }
+      }
+
+      // Reject rollback for SUSPENDED stacks
+      const rollbackMeta = (stack.metadataJson ?? {}) as Record<string, unknown>
+      if (rollbackMeta.billingState === "SUSPENDED") {
+        set.status = 402
+        return {
+          ok: false,
+          error: "STACK_SUSPENDED",
+          message: "This stack is suspended due to payment issues. Please top up your balance.",
+          topupUrl: "/console/billing/topup",
+        }
+      }
+
+      // Billing gate for PAYG rollback — same check as deploy trigger
+      if (stack.billingMode === "PAYG" && stack.resourcePlanId === "payg") {
+        const hourlyCost = stack.hourlyCost
+        if (hourlyCost) {
+          const transactions = new BillingTransactionService(prisma)
+          const billingService = new AppHostingBillingService(prisma, transactions)
+          try {
+            await billingService.assertCanStartPayg({
+              organizationId: auth.organizationId,
+              hourlyCost: new Prisma.Decimal(String(hourlyCost)),
+            })
+          } catch (error) {
+            if (error instanceof Error && error.message === "INSUFFICIENT_PAYG_BUFFER") {
+              set.status = 402
+              return {
+                ok: false,
+                error: "INSUFFICIENT_PAYG_BUFFER",
+                message: "Your balance must cover at least 24 hours of runtime before rolling back PAYG apps.",
+                topupUrl: "/console/billing/topup",
+              }
+            }
+            throw error
+          }
+        }
       }
 
       const result = await rollbackDeployment({

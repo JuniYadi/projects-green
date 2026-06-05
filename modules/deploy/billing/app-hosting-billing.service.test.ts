@@ -19,6 +19,7 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    $executeRaw: vi.fn(),
   },
 }))
 
@@ -35,6 +36,7 @@ const mockPrisma = prisma as unknown as {
     findUnique: ReturnType<typeof vi.fn>
     update: ReturnType<typeof vi.fn>
   }
+  $executeRaw: ReturnType<typeof vi.fn>
 }
 
 function decimal(value: string) {
@@ -82,6 +84,7 @@ describe("AppHostingBillingService", () => {
     mockPrisma.billingAccount.findUnique.mockReset()
     mockPrisma.applicationStack.findUnique.mockReset()
     mockPrisma.applicationStack.update.mockReset()
+    mockPrisma.$executeRaw.mockReset()
     mockBillingTransactionService.debitServiceBalance.mockReset()
     mockBillingTransactionService.debitBalance.mockReset()
     mockBillingTransactionService.creditBalance.mockReset()
@@ -326,16 +329,35 @@ describe("AppHostingBillingService", () => {
 
       expect(result.graceEntered).toBe(true)
       expect(result.alreadyProcessed).toBe(true)
-      expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: "stack_1" },
-          data: expect.objectContaining({
-            metadataJson: expect.objectContaining({
-              billingState: "PAYMENT_GRACE",
-            }),
-          }),
-        }),
+      expect(mockPrisma.$executeRaw).toHaveBeenCalled()
+    })
+
+    it("does not overwrite existing PAYMENT_GRACE state on re-entry", async () => {
+      // Stack already in grace from a previous call
+      const stack = applicationStack({
+        metadataJson: {
+          billingState: "PAYMENT_GRACE",
+          billingGraceStartedAt: new Date(Date.now() - 60_000).toISOString(),
+        },
+      })
+      const account = billingAccount({ balance: decimal("0.00") })
+      mockPrisma.applicationStack.findUnique.mockResolvedValue(stack)
+      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
+        new Error("INSUFFICIENT_BALANCE"),
       )
+      mockPrisma.$executeRaw.mockResolvedValue(0)
+
+      const result = await service.chargePaygRuntimeHour({
+        organizationId: "org_1",
+        stackId: "stack_1",
+        hourlyCost: decimal("5.00"),
+        occurredAt: new Date("2026-06-04T11:00:00Z"),
+      })
+
+      expect(result.graceEntered).toBe(true)
+      // $executeRaw is called but the SQL CASE prevents overwriting existing grace state
+      expect(mockPrisma.$executeRaw).toHaveBeenCalled()
     })
 
     it("throws BILLING_ACCOUNT_NOT_FOUND when account missing", async () => {

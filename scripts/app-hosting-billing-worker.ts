@@ -10,6 +10,7 @@
  */
 
 import { Prisma } from "@prisma/client"
+import { unlinkSync } from "fs"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { AppHostingBillingService } from "@/modules/deploy/billing/app-hosting-billing.service"
@@ -103,8 +104,47 @@ async function checkGraceSuspension(
   return { suspended }
 }
 
+async function acquireLock(): Promise<boolean> {
+  // Simple file-based lock to prevent concurrent worker runs.
+  // In production, use a distributed lock (e.g., Redis SETNX, Postgres advisory lock).
+  const lockPath = "/tmp/app-hosting-billing-worker.lock"
+  try {
+    const file = Bun.file(lockPath)
+    if (await file.exists()) {
+      const content = await file.text()
+      const pid = parseInt(content.trim(), 10)
+      if (!isNaN(pid)) {
+        try {
+          process.kill(pid, 0) // Check if process is alive
+          console.info(`[app-hosting-billing] another worker is running (pid=${pid}), skipping`)
+          return false
+        } catch {
+          // Process doesn't exist — stale lock, safe to take over
+        }
+      }
+    }
+    await Bun.write(lockPath, String(process.pid))
+    return true
+  } catch {
+    // If lock file operations fail, proceed anyway (best-effort)
+    return true
+  }
+}
+
+function releaseLock() {
+  try {
+    unlinkSync("/tmp/app-hosting-billing-worker.lock")
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+
 async function main() {
   console.info("[app-hosting-billing] worker started")
+
+  if (!(await acquireLock())) {
+    process.exit(0)
+  }
 
   const transactions = new BillingTransactionService(prisma)
   const billingService = new AppHostingBillingService(prisma, transactions)
@@ -122,9 +162,11 @@ async function main() {
   )
 
   console.info("[app-hosting-billing] worker completed")
+  releaseLock()
 }
 
 main().catch((error) => {
   console.error("[app-hosting-billing] worker failed:", error)
+  releaseLock()
   process.exit(1)
 })
