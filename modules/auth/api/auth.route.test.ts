@@ -345,7 +345,7 @@ describe("authRoutes", () => {
         body: JSON.stringify({ email: "user@example.com" }),
       })
     )
-    const body = (await response.json()) as { ok: boolean; error: string }
+    const body = (await response.json()) as { ok: boolean; error: string; message?: string }
     expect(response.status).toBe(500)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INTERNAL_SERVER_ERROR")
@@ -380,7 +380,7 @@ describe("authRoutes", () => {
         body: JSON.stringify({ email: "user@example.com", code: "123456" }),
       })
     )
-    const body = (await response.json()) as { ok: boolean; message: string }
+    const body = (await response.json()) as { ok: boolean; message: string; error?: string }
     expect(response.status).toBe(500)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INTERNAL_SERVER_ERROR")
@@ -449,7 +449,7 @@ describe("authRoutes", () => {
         body: JSON.stringify({ email: "user@example.com", code: "123456" }),
       })
     )
-    const body = (await response.json()) as { ok: boolean; message: string }
+    const body = (await response.json()) as { ok: boolean; message: string; error?: string }
     expect(response.status).toBe(500)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INTERNAL_SERVER_ERROR")
@@ -526,7 +526,7 @@ describe("authRoutes", () => {
         }),
       })
     )
-    const body = (await response.json()) as { ok: boolean; message: string }
+    const body = (await response.json()) as { ok: boolean; message: string; error?: string }
     expect(response.status).toBe(500)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INTERNAL_SERVER_ERROR")
@@ -601,7 +601,7 @@ describe("authRoutes", () => {
         }),
       })
     )
-    const body = (await response.json()) as { ok: boolean; message: string }
+    const body = (await response.json()) as { ok: boolean; message: string; error?: string }
     expect(response.status).toBe(500)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INTERNAL_SERVER_ERROR")
@@ -721,7 +721,7 @@ describe("authRoutes", () => {
         }),
       })
     )
-    const body = (await response.json()) as { ok: boolean; message: string }
+    const body = (await response.json()) as { ok: boolean; message: string; error?: string }
     expect(response.status).toBe(500)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INTERNAL_SERVER_ERROR")
@@ -835,7 +835,7 @@ describe("authRoutes", () => {
         }),
       })
     )
-    const body = (await response.json()) as { ok: boolean; message: string }
+    const body = (await response.json()) as { ok: boolean; message: string; error?: string }
     expect(response.status).toBe(500)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INTERNAL_SERVER_ERROR")

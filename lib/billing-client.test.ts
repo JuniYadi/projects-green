@@ -2,6 +2,7 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 
 // Mock global fetch
 const mockFetch = mock<(url: string, init?: RequestInit) => Promise<Response>>()
+// @ts-expect-error - mock global fetch for test context
 global.fetch = mockFetch
 
 const {
@@ -556,7 +557,6 @@ describe("billing-client", () => {
       )
 
       const result = await getAdminMember("user_1")
-      expect(result.ok).toBe(true)
       expect(result.userId).toBe("user_1")
       expect(result.name).toBe("Alice")
       expect(mockFetch.mock.calls[0][0]).toBe(

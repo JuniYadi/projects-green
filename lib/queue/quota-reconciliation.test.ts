@@ -15,7 +15,8 @@ class QueueMock {
     name: string,
     data: Record<string, unknown>,
     opts?: Record<string, unknown>
-  ): Promise<unknown> {
+  ): Promise<any> {
+    // @ts-expect-error - mock queue implementation details
     return queueAddMock(name, data, opts)
   }
 
@@ -311,9 +312,8 @@ describe("enqueueQuotaReconciliation", () => {
     const after = new Date()
 
     expect(queueAddMock).toHaveBeenCalledTimes(1)
-    const calls = queueAddMock.mock.calls
-    const firstCall = calls[0]
-    const callArg = (firstCall ? firstCall[1] : undefined) as Record<string, unknown> | undefined
+    // @ts-expect-error - mock queue call arg resolution
+    const callArg = queueAddMock.mock.calls[0]?.[1] as Record<string, unknown> | undefined
 
     expect(callArg).toBeDefined()
     expect(callArg!.organizationId).toBe("org-now")
