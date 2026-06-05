@@ -15,7 +15,7 @@ class QueueMock {
     name: string,
     data: Record<string, unknown>,
     opts?: Record<string, unknown>
-  ): Promise<any> {
+  ): Promise<unknown> {
     // @ts-expect-error - mock queue implementation details
     return queueAddMock(name, data, opts)
   }
