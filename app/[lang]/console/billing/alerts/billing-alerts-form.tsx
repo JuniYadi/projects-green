@@ -21,7 +21,8 @@ type AlertPreferences = {
   invoiceReminderEnabled: boolean
 }
 
-const STORAGE_KEY = "billing-alert-preferences"
+const STORAGE_KEY = "notify-limits"
+const OLD_STORAGE_KEY = "billing-alert-preferences"
 
 const defaultPreferences: AlertPreferences = {
   balanceThresholdEnabled: false,
@@ -35,6 +36,18 @@ function loadPreferences(): AlertPreferences {
   if (typeof window === "undefined") return defaultPreferences
 
   try {
+    // Migrate old key if present
+    const oldStored = localStorage.getItem(OLD_STORAGE_KEY)
+    if (oldStored) {
+      try {
+        localStorage.setItem(STORAGE_KEY, oldStored)
+        localStorage.removeItem(OLD_STORAGE_KEY)
+        return { ...defaultPreferences, ...JSON.parse(oldStored) }
+      } catch {
+        // Fall through on parsing errors
+      }
+    }
+
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       return { ...defaultPreferences, ...JSON.parse(stored) }
