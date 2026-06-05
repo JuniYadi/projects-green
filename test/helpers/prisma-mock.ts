@@ -64,6 +64,16 @@ export class TestDecimal {
     return Array.from(String(Math.abs(this.#value)).replace(".", ""), Number)
   }
 
+  plus(value: number | string | TestDecimal) {
+    const other = value instanceof TestDecimal ? value.#value : Number(value)
+    return new TestDecimal(this.#value + other)
+  }
+
+  minus(value: number | string | TestDecimal) {
+    const other = value instanceof TestDecimal ? value.#value : Number(value)
+    return new TestDecimal(this.#value - other)
+  }
+
   gt(value: number | string | TestDecimal) {
     const other = value instanceof TestDecimal ? value.#value : Number(value)
     return this.#value > other

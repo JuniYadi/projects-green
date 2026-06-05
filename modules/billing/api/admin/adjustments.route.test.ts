@@ -268,4 +268,51 @@ describe("AdminAdjustmentsRoute", () => {
     const body = await response.json()
     expect(body.pagination.limit).toBe(100)
   })
+
+  it("filters by startDate and endDate", async () => {
+    mockFindMany.mockResolvedValueOnce([])
+    mockCount.mockResolvedValueOnce(0)
+
+    const app = new Elysia()
+      .use(
+        createAdminAdjustmentsRoutes({
+          authenticate: async () => defaultAuth as MockAuthContext,
+          getPlatformRole: mockPlatformRole,
+          isAdmin: mockIsAdmin,
+        })
+      )
+      .compile()
+
+    const response = await app.handle(
+      new Request(
+        "http://localhost/admin/adjustments?startDate=2024-01-01&endDate=2024-01-31",
+        { method: "GET" }
+      )
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(mockFindMany).toHaveBeenCalled()
+  })
+
+  it("returns 422 for invalid type in query", async () => {
+    const app = new Elysia()
+      .use(
+        createAdminAdjustmentsRoutes({
+          authenticate: async () => defaultAuth as MockAuthContext,
+          getPlatformRole: mockPlatformRole,
+          isAdmin: mockIsAdmin,
+        })
+      )
+      .compile()
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/adjustments?type=INVALID_TYPE", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(422)
+  })
 })

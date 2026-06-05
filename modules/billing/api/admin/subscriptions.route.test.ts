@@ -324,5 +324,32 @@ describe("AdminSubscriptionRoute", () => {
       expect(body.ok).toBe(true)
       expect(body.subscription.allocatedConfig).toEqual({ devices: 10 })
     })
+
+    it("returns 500 on database error", async () => {
+      mockFindUnique.mockRejectedValueOnce(new Error("Database error"))
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions/sub-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "SUSPENDED" }),
+        })
+      )
+
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
   })
 })

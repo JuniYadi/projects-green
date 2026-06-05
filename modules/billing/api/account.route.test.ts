@@ -101,6 +101,69 @@ describe("GET /account - JIT upsert", () => {
 
     expect(response.status).toBe(403)
   })
+
+  it("returns 500 on ensureBillingAccountForOrg error", async () => {
+    mockEnsureBillingAccountForOrg.mockRejectedValueOnce(
+      new Error("DB_CONNECTION_ERROR")
+    )
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(500)
+    const body = await response.json()
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+  })
+
+  it("includes formattedBalance, isAboveWarn, isPositive, and accountAge fields", async () => {
+    const mockAccount = {
+      id: "acc-1",
+      organizationId: "org_123",
+      balance: new Decimal(500000),
+      currency: "USD",
+      createdAt: new Date("2026-05-01"),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(body.formattedBalance).toBeDefined()
+    expect(typeof body.formattedBalance).toBe("string")
+    expect(body.formattedBalance).toContain("IDR")
+    expect(body.isAboveWarn).toBe(true)
+    expect(body.isPositive).toBe(true)
+    expect(body.accountAge).toBeDefined()
+    expect(typeof body.accountAge).toBe("string")
+  })
+
+  it("reports isPositive=false and isAboveWarn=false for zero balance", async () => {
+    const mockAccount = {
+      id: "acc-2",
+      organizationId: "org_456",
+      balance: new Decimal(0),
+      currency: "IDR",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.isPositive).toBe(false)
+    expect(body.isAboveWarn).toBe(false)
+    expect(body.balanceIdr).toBe("0.00")
+  })
 })
 
 // Test schema validation

@@ -158,5 +158,61 @@ describe("SubscriptionsRoute", () => {
         dailyPerDevice: 100,
       })
     })
+
+    it("returns empty subscriptions when billingAccount is found but tenantId is null", async () => {
+      mockFindBillingAccount.mockResolvedValueOnce({ tenantId: null })
+
+      const app = new Elysia()
+        .use(
+          createBillingSubscriptionsRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1" },
+              organizationId: "org-1",
+            } as MockAuthContext),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/subscriptions", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.subscriptions).toEqual([])
+      // Should not have called findMany
+      expect(mockFindMany).not.toHaveBeenCalled()
+    })
+
+    it("returns 500 on database error", async () => {
+      mockFindBillingAccount.mockRejectedValueOnce(
+        new Error("Database connection failed")
+      )
+
+      const app = new Elysia()
+        .use(
+          createBillingSubscriptionsRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1" },
+              organizationId: "org-1",
+            } as MockAuthContext),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/subscriptions", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
   })
 })

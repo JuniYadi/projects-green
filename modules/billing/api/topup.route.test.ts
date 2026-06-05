@@ -364,4 +364,137 @@ describe("TopupRoute", () => {
       expect(body.type).toBe("CREDIT")
     })
   })
+
+  describe("POST /topup — transaction callback coverage", () => {
+    function makeMockTransactionWithCallback() {
+      mockTransaction.mockImplementation(async (cb: (tx: any) => any) => {
+        const tx = {
+          billingAccount: {
+            findUnique: mockFindUnique,
+            update: mockUpdate,
+          },
+          billingAdjustment: {
+            create: mockCreate,
+          },
+        }
+        return cb(tx)
+      })
+    }
+
+    it("executes transaction callback body on successful topup", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+        balance: new Decimal("100000.00"),
+        currency: "IDR",
+      })
+      mockUpdate.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+        balance: new Decimal("150000.00"),
+        currency: "IDR",
+      })
+      mockCreate.mockResolvedValueOnce({
+        id: "adj-1",
+        billingAccountId: "acc-1",
+        adjustmentType: "CREDIT",
+        amount: new Decimal("50000"),
+        currency: "IDR",
+        reason: "Topup via manual_bank_transfer",
+      })
+
+      makeMockTransactionWithCallback()
+
+      const app = new Elysia()
+        .use(
+          createBillingTopupRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1" },
+              organizationId: "org-1",
+            } as MockAuthContext),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/topup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.adjustmentId).toBe("adj-1")
+      expect(body.newBalanceIdr).toBe("150000.00")
+      expect(mockFindUnique).toHaveBeenCalled()
+      expect(mockUpdate).toHaveBeenCalled()
+      expect(mockCreate).toHaveBeenCalled()
+    })
+
+    it("throws NOT_FOUND from transaction callback when account missing", async () => {
+      mockFindUnique.mockResolvedValueOnce(null)
+
+      makeMockTransactionWithCallback()
+
+      const app = new Elysia()
+        .use(
+          createBillingTopupRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1" },
+              organizationId: "org-1",
+            } as MockAuthContext),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/topup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+        })
+      )
+
+      expect(response.status).toBe(404)
+      const body = await response.json()
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("throws BALANCE_LIMIT_EXCEEDED from transaction callback", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+        balance: new Decimal("999999999.00"),
+        currency: "IDR",
+      })
+
+      makeMockTransactionWithCallback()
+
+      const app = new Elysia()
+        .use(
+          createBillingTopupRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1" },
+              organizationId: "org-1",
+            } as MockAuthContext),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/topup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+        })
+      )
+
+      expect(response.status).toBe(400)
+      const body = await response.json()
+      expect(body.error).toBe("BALANCE_LIMIT_EXCEEDED")
+    })
+  })
 })
