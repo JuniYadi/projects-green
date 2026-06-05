@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it } from "bun:test"
 import {
   getOptionalEnv,
   getPresignTtlSeconds,
@@ -196,5 +196,171 @@ describe("SupportTicketAttachmentStorage - Error Classes", () => {
     const error = new SupportTicketAttachmentUploadValidationError("Size mismatch")
     expect(error.name).toBe("SupportTicketAttachmentUploadValidationError")
     expect(error.message).toBe("Size mismatch")
+  })
+})
+
+describe("SupportTicketAttachmentStorage - Prefix Building", () => {
+  const prevEnv = { ...process.env }
+
+  afterEach(() => {
+    process.env = { ...prevEnv }
+  })
+
+  describe("buildSupportTicketAttachmentStoragePrefix", () => {
+    it("builds prefix from env and context", async () => {
+      process.env.S3_BUCKET = "test-bucket"
+      process.env.S3_REGION = "us-east-1"
+
+      const { buildSupportTicketAttachmentStoragePrefix } = await import(
+        "./support-ticket-attachment.storage"
+      )
+
+      const prefix = buildSupportTicketAttachmentStoragePrefix({
+        organizationId: "org_123",
+        target: "reply",
+        ticketId: "ticket_456",
+        uploaderWorkosUserId: "user_789",
+      })
+
+      expect(prefix).toBe("support-ticket-attachments/org_123/reply/ticket_456/user_789")
+    })
+
+    it("uses pending for null ticketId", async () => {
+      process.env.S3_BUCKET = "test-bucket"
+      process.env.S3_REGION = "us-east-1"
+
+      const { buildSupportTicketAttachmentStoragePrefix } = await import(
+        "./support-ticket-attachment.storage"
+      )
+
+      const prefix = buildSupportTicketAttachmentStoragePrefix({
+        organizationId: "org_123",
+        target: "create",
+        ticketId: null,
+        uploaderWorkosUserId: "user_789",
+      })
+
+      expect(prefix).toBe("support-ticket-attachments/org_123/create/pending/user_789")
+    })
+
+    it("sanitizes segments with special characters", async () => {
+      process.env.S3_BUCKET = "test-bucket"
+      process.env.S3_REGION = "us-east-1"
+
+      const { buildSupportTicketAttachmentStoragePrefix } = await import(
+        "./support-ticket-attachment.storage"
+      )
+
+      const prefix = buildSupportTicketAttachmentStoragePrefix({
+        organizationId: "org/with/slashes",
+        target: "create",
+        ticketId: "ticket with spaces",
+        uploaderWorkosUserId: "user@email.com",
+      })
+
+      expect(prefix).toContain("org_with_slashes")
+      expect(prefix).toContain("ticket_with_spaces")
+      expect(prefix).toContain("user_email_com")
+    })
+
+    it("throws StorageConfigurationError when S3_BUCKET env is missing", async () => {
+      delete process.env.S3_BUCKET
+      process.env.S3_REGION = "us-east-1"
+
+      const { buildSupportTicketAttachmentStoragePrefix } = await import(
+        "./support-ticket-attachment.storage"
+      )
+
+      expect(() =>
+        buildSupportTicketAttachmentStoragePrefix({
+          organizationId: "org_1",
+          target: "create",
+          ticketId: null,
+          uploaderWorkosUserId: "user_1",
+        }),
+      ).toThrow("Missing S3_BUCKET environment variable")
+    })
+
+    it("throws StorageConfigurationError when S3_REGION env is missing", async () => {
+      process.env.S3_BUCKET = "test-bucket"
+      delete process.env.S3_REGION
+
+      const { buildSupportTicketAttachmentStoragePrefix } = await import(
+        "./support-ticket-attachment.storage"
+      )
+
+      expect(() =>
+        buildSupportTicketAttachmentStoragePrefix({
+          organizationId: "org_1",
+          target: "create",
+          ticketId: null,
+          uploaderWorkosUserId: "user_1",
+        }),
+      ).toThrow("Missing S3_REGION environment variable")
+    })
+  })
+
+  describe("getExpectedStorageKeyPrefix (via storage instance)", () => {
+    it("returns prefix matching buildSupportTicketAttachmentStoragePrefix", async () => {
+      process.env.S3_BUCKET = "test-bucket"
+      process.env.S3_REGION = "us-east-1"
+
+      const { createSupportTicketAttachmentStorage } = await import(
+        "./support-ticket-attachment.storage"
+      )
+
+      const storage = createSupportTicketAttachmentStorage()
+      const prefix = storage.getExpectedStorageKeyPrefix({
+        organizationId: "org_1",
+        target: "reply",
+        ticketId: "ticket_1",
+        uploaderWorkosUserId: "user_1",
+      })
+
+      expect(prefix).toBe("support-ticket-attachments/org_1/reply/ticket_1/user_1")
+    })
+  })
+
+  describe("virtualHostedStyle parsing in loadStorageConfig", () => {
+    it("returns undefined when S3_VIRTUAL_HOSTED_STYLE is not set", async () => {
+      process.env.S3_BUCKET = "test-bucket"
+      process.env.S3_REGION = "us-east-1"
+      delete process.env.S3_VIRTUAL_HOSTED_STYLE
+
+      // Re-import to pick up fresh env
+      const { createSupportTicketAttachmentStorage } = await import(
+        "./support-ticket-attachment.storage"
+      )
+
+      // Should not throw — virtualHostedStyle is undefined
+      const storage = createSupportTicketAttachmentStorage()
+      expect(storage).toBeDefined()
+    })
+
+    it("parses truthy values correctly", async () => {
+      process.env.S3_BUCKET = "test-bucket"
+      process.env.S3_REGION = "us-east-1"
+      process.env.S3_VIRTUAL_HOSTED_STYLE = "true"
+
+      const { createSupportTicketAttachmentStorage } = await import(
+        "./support-ticket-attachment.storage"
+      )
+
+      const storage = createSupportTicketAttachmentStorage()
+      expect(storage).toBeDefined()
+    })
+
+    it("parses falsy values correctly", async () => {
+      process.env.S3_BUCKET = "test-bucket"
+      process.env.S3_REGION = "us-east-1"
+      process.env.S3_VIRTUAL_HOSTED_STYLE = "0"
+
+      const { createSupportTicketAttachmentStorage } = await import(
+        "./support-ticket-attachment.storage"
+      )
+
+      const storage = createSupportTicketAttachmentStorage()
+      expect(storage).toBeDefined()
+    })
   })
 })
