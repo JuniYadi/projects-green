@@ -35,10 +35,10 @@ import { WhatsappBillingService } from "./whatsapp-billing.service"
 import { prisma } from "@/lib/prisma"
 
 const mockPrisma = prisma as unknown as {
-  billingAccount: { findUnique: ReturnType<typeof vi.fn> }
+  billingAccount: { findUnique: any }
   whatsappDevice: {
-    findUnique: ReturnType<typeof vi.fn>
-    update: ReturnType<typeof vi.fn>
+    findUnique: any
+    update: any
   }
 }
 
