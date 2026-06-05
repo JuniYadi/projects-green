@@ -661,4 +661,35 @@ describe("tenantsOrganizationRoutes", () => {
     expect(body.organizationId).toBe("org_1")
     expect(mockDeleteTenantOrganization).toHaveBeenCalledWith("org_1")
   })
+
+  it("returns 401 when requireTenantActor fails on update endpoint", async () => {
+    mockRequireTenantActor.mockImplementation(
+      async (set: { status?: number }) => {
+        set.status = 401
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          policyCode: "NO_SESSION",
+          message: "No active session.",
+        } as unknown as TenantActorContext
+      }
+    )
+
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme Labs" }),
+      })
+    )
+    const body = (await response.json()) as { ok: boolean; error: string }
+
+    expect(response.status).toBe(401)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("UNAUTHORIZED")
+  })
 })

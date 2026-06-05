@@ -369,4 +369,36 @@ describe("tenants-organizations routes", () => {
     expect(body.error).toBe("UNAUTHORIZED")
     expect(mockCreateTenantOrganization).not.toHaveBeenCalled()
   })
+
+  it("returns 401 status when requireTenantActor returns error", async () => {
+    mockRequireTenantActor.mockImplementation(
+      async (set: { status?: number }) => {
+        set.status = 401
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          policyCode: "NO_SESSION",
+          message: "No active session.",
+        } as TenantApiError
+      }
+    )
+
+    const app = await getApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/organizations/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme New" }),
+      })
+    )
+    const body = (await response.json()) as TenantApiError
+
+    expect(response.status).toBe(401)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("UNAUTHORIZED")
+    expect(mockCreateTenantOrganization).not.toHaveBeenCalled()
+  })
 })
