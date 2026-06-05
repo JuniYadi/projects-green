@@ -12,9 +12,10 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 // Shared mock infrastructure for WhatsappBillingService
 // Uses a simple object trick to allow per-test reconfiguration
 const mockWhatsappBilling = {
-  consumeAllowanceOrChargeOverage: mock(async () =>
-    ({ kind: "ALLOWANCE", remainingAllowance: 999 } as const),
-  ),
+  consumeAllowanceOrChargeOverage: mock(async (): Promise<
+    | { kind: "ALLOWANCE"; remainingAllowance: number }
+    | { kind: "OVERAGE_CHARGED"; charged: any; adjustmentId: string }
+  > => ({ kind: "ALLOWANCE", remainingAllowance: 999 })),
 }
 
 mock.module("@/modules/whatsapp/billing/whatsapp-billing.service", () => ({
