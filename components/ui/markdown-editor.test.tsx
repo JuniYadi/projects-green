@@ -299,6 +299,25 @@ describe("MarkdownEditor - preview tab", () => {
     expect(view.getByText("Error loading preview")).toBeTruthy()
   })
 
+  it("shows error message for non-OK response status", async () => {
+    mockFetch.mockReset()
+    mockFetch.mockResolvedValue(
+      new Response(JSON.stringify({ ok: false, error: "RATE_LIMITED" }), {
+        status: 429,
+        headers: { "content-type": "application/json" },
+      })
+    )
+
+    const view = render(<MarkdownEditor />)
+    fireEvent.click(view.getByText("Preview"))
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0))
+    })
+
+    expect(view.getByText("Error loading preview")).toBeTruthy()
+  })
+
   it("shows error message when fetch throws", async () => {
     mockFetch.mockReset()
     mockFetch.mockRejectedValue(new Error("Network error"))

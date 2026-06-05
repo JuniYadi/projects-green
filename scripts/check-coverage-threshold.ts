@@ -59,6 +59,10 @@ const main = async () => {
     process.stderr.write(stderr)
   }
 
+  if (exitCode !== 0) {
+    console.warn(`Note: Test suite had failures (exit code ${exitCode})`)
+  }
+
   const normalized = stripAnsi(`${stdout}\n${stderr}`)
   const lines = normalized.split("\n")
 
@@ -122,6 +126,11 @@ const main = async () => {
       process.exit(1)
     }
     console.warn("Below target but above base - continuing.")
+  }
+
+  // At the end, exit with test failure if tests failed
+  if (exitCode !== 0) {
+    process.exit(exitCode)
   }
 }
 

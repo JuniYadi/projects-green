@@ -1,8 +1,6 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 
-const queueAddMock = mock(async () => ({ id: "job_1" }))
+const queueAddMock = mock(() => Promise.resolve({ id: "job_1" }))
 const queueCloseMock = mock(async () => undefined)
 const queueConstructorMock = mock((...args: unknown[]) => {
   void args
@@ -17,7 +15,7 @@ class QueueMock {
     name: string,
     data: Record<string, unknown>,
     opts?: Record<string, unknown>
-  ) {
+  ): Promise<unknown> {
     return queueAddMock(name, data, opts)
   }
 
@@ -313,15 +311,18 @@ describe("enqueueQuotaReconciliation", () => {
     const after = new Date()
 
     expect(queueAddMock).toHaveBeenCalledTimes(1)
-    const callArg = queueAddMock.mock.calls[0][1]
+    const calls = queueAddMock.mock.calls
+    const firstCall = calls[0]
+    const callArg = (firstCall ? firstCall[1] : undefined) as Record<string, unknown> | undefined
 
-    expect(callArg.organizationId).toBe("org-now")
-    expect(callArg.deviceId).toBe("dev-now")
-    expect(callArg.direction).toBe("IN")
-    expect(callArg.messageId).toBe("msg-now")
+    expect(callArg).toBeDefined()
+    expect(callArg!.organizationId).toBe("org-now")
+    expect(callArg!.deviceId).toBe("dev-now")
+    expect(callArg!.direction).toBe("IN")
+    expect(callArg!.messageId).toBe("msg-now")
 
     // Timestamp should be an ISO string within the test window
-    const parsedTimestamp = new Date(callArg.timestamp).getTime()
+    const parsedTimestamp = new Date(callArg!.timestamp as string).getTime()
     expect(parsedTimestamp).toBeGreaterThanOrEqual(before.getTime())
     expect(parsedTimestamp).toBeLessThanOrEqual(after.getTime())
   })
