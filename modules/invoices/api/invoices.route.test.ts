@@ -112,6 +112,20 @@ describe("invoices routes", () => {
     expect(payload.error).toBe("UNAUTHORIZED")
   })
 
+  it("returns 401 on cancel endpoint when unauthenticated", async () => {
+    const app = createApp({
+      auth: {
+        user: null,
+      },
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", { method: "POST" })
+    )
+
+    expect(response.status).toBe(401)
+  })
+
   it("returns invoice list for authenticated organization", async () => {
     const service = createService()
     const app = createApp({ service })
@@ -167,6 +181,21 @@ describe("invoices routes", () => {
     expect(payload.error).toBe("NOT_FOUND")
   })
 
+  it("returns 500 when invoice detail fails with generic error", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => {
+      throw new Error("database connection lost")
+    })
+
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1")
+    )
+
+    expect(response.status).toBe(500)
+  })
+
   it("returns PDF response with content-type", async () => {
     const app = createApp({})
 
@@ -178,6 +207,54 @@ describe("invoices routes", () => {
     expect(response.headers.get("content-type")).toBe("application/pdf")
     const bytes = await response.arrayBuffer()
     expect(bytes.byteLength).toBeGreaterThan(200)
+  })
+
+  it("returns 401 on pdf endpoint when unauthenticated", async () => {
+    const app = createApp({ auth: { user: null } })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/pdf")
+    )
+
+    expect(response.status).toBe(401)
+  })
+
+  it("returns 422 on pdf endpoint for invalid invoice id", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/%20/pdf")
+    )
+
+    expect(response.status).toBe(422)
+  })
+
+  it("returns 404 on pdf endpoint when invoice not found", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => {
+      throw new InvoiceNotFoundError("inv_missing")
+    })
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_missing/pdf")
+    )
+
+    expect(response.status).toBe(404)
+  })
+
+  it("returns 500 on pdf endpoint when generic error occurs", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => {
+      throw new Error("pdf generation failed")
+    })
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/pdf")
+    )
+
+    expect(response.status).toBe(500)
   })
 
   it("returns validation envelope for invalid invoice id params", async () => {
@@ -303,6 +380,18 @@ describe("invoices routes", () => {
 
     const response = await app.handle(new Request("http://localhost/invoices"))
     expect(response.status).toBe(403)
+  })
+
+  it("returns all invoices for super admin without organization", async () => {
+    const service = createService()
+    const app = createApp({
+      service,
+      platformRole: "super_admin",
+      auth: { organizationId: null },
+    })
+
+    const response = await app.handle(new Request("http://localhost/invoices"))
+    expect(response.status).toBe(200)
   })
 
   it("returns 500 when list invoices fails", async () => {
@@ -479,6 +568,50 @@ describe("invoices routes", () => {
       )
 
       expect(response.status).toBe(404)
+    })
+
+    it("returns 401 on notify endpoints when unauthenticated", async () => {
+      const app = createApp({ auth: { user: null } })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+        })
+      )
+
+      expect(response.status).toBe(401)
+    })
+
+    it("returns 422 when recipient email missing and user has no email", async () => {
+      const app = createApp({
+        auth: { user: { id: "user_1", email: null } },
+      })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      )
+
+      expect(response.status).toBe(422)
+    })
+
+    it("returns 500 on notify when service throws generic error", async () => {
+      const service = createService()
+      service.getInvoiceDetail = mock(async () => {
+        throw new Error("service unavailable")
+      })
+      const app = createApp({ service })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+        })
+      )
+
+      expect(response.status).toBe(500)
     })
 
     it("cancelled endpoint works without body using default email", async () => {
