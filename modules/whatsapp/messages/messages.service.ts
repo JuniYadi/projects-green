@@ -11,6 +11,8 @@ import { QuotaGateService } from "@/modules/billing/quota-gate.service"
 import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
 import { MessageCostService } from "@/modules/billing/message-cost.service"
 import { USAGE_CATEGORY_WHATSAPP_OUT } from "@/modules/billing/constants"
+import { WhatsappBillingService } from "@/modules/whatsapp/billing/whatsapp-billing.service"
+import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import {
   InsufficientBalanceError,
   QuotaExceededError,
@@ -59,22 +61,29 @@ export const messageService: MessageService = {
     const quotaGate = new QuotaGateService(prisma)
     const usageLedger = new UsageLedgerService(prisma)
     const messageCostService = new MessageCostService(prisma)
+    const whatsappBilling = new WhatsappBillingService(prisma, new BillingTransactionService(prisma))
 
-    // 1. Check balance against estimated message cost (PGREEN-049)
-    const balanceCheck = await messageCostService.checkBalanceForMessage({
+    // 1. Check WhatsApp allowance or charge overage BEFORE Meta API call
+    const unitPrice = await messageCostService.estimateMessageCost({
       organizationId,
       messageType: "text",
       deviceId,
     })
 
-    if (!balanceCheck.sufficient) {
-      throw new InsufficientBalanceError(
-        balanceCheck.required,
-        balanceCheck.available,
-      )
+    try {
+      await whatsappBilling.consumeAllowanceOrChargeOverage({
+        organizationId,
+        deviceId: device.id,
+        messageCount: 1,
+        unitPrice,
+        idempotencyKey: `wa-message:${jobId}`,
+      })
+    } catch (err) {
+      if (err instanceof Error && err.message === "INSUFFICIENT_BALANCE") {
+        throw new InsufficientBalanceError(unitPrice, new Prisma.Decimal(0))
+      }
+      throw err
     }
-
-    const estimatedCost = balanceCheck.required
 
     // 2. Check quota (QuotaGateService) — for outbound messages
     let quotaCheckResult
@@ -189,20 +198,9 @@ export const messageService: MessageService = {
         })
       }
 
-      // 6. Deduct balance for the sent message (PGREEN-049 fix)
-      if (waMessageId && estimatedCost.gt(0)) {
-        try {
-          await balanceGate.deductBalance(
-            organizationId,
-            estimatedCost,
-            `WhatsApp message: ${jobId}`,
-            { messageId: jobId, deviceId: device.id, phoneNumber },
-          )
-        } catch (err) {
-          console.error("[messageService] Failed to deduct balance:", err)
-          // Message already sent — don't block, log for async repair
-        }
-      }
+      // NOTE: Balance deduction is handled upfront by
+      // WhatsappBillingService.consumeAllowanceOrChargeOverage.
+      // No separate deduction needed here.
     }
 
     // Legacy quota service — deduct from old quota table

@@ -9,6 +9,30 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 // level that allows the real quota service to behave as needed per test.
 // ---------------------------------------------------------------------------
 
+// Shared mock infrastructure for WhatsappBillingService
+// Uses a simple object trick to allow per-test reconfiguration
+const mockWhatsappBilling = {
+  consumeAllowanceOrChargeOverage: mock(async () =>
+    ({ kind: "ALLOWANCE", remainingAllowance: 999 } as const),
+  ),
+}
+
+mock.module("@/modules/whatsapp/billing/whatsapp-billing.service", () => ({
+  WhatsappBillingService: class {
+    readonly consumeAllowanceOrChargeOverage =
+      mockWhatsappBilling.consumeAllowanceOrChargeOverage
+  },
+}))
+
+mock.module("@/modules/billing/billing-transaction.service", () => ({
+  BillingTransactionService: class {
+    constructor() {}
+    creditBalance = mock(async () => ({ alreadyProcessed: false }))
+    debitBalance = mock(async () => ({ alreadyProcessed: false }))
+    debitServiceBalance = mock(async () => ({ alreadyProcessed: false }))
+  },
+}))
+
 const mockTx = {
   whatsappDevice: {
     findFirst: mock(async () => null),
@@ -150,6 +174,10 @@ describe("messageService", () => {
     mockTx.billingAccount.findUnique.mockClear()
     mockTx.billingAccount.update.mockClear()
     mockTx.billingAdjustment.create.mockClear()
+    mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockClear()
+    mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockImplementation(
+      async () => ({ kind: "ALLOWANCE", remainingAllowance: 999 } as const),
+    )
     mockDeviceClient.sendMessage.mockClear()
     mockEnqueue.mockClear()
 
@@ -227,62 +255,11 @@ describe("messageService", () => {
       expect(mockPrisma.whatsappDevice.findFirst).toHaveBeenCalled()
     })
 
-    it("throws InsufficientBalanceError when balance is zero or negative", async () => {
-      // With billing integration: if balance is 0, throws InsufficientBalanceError
-      // Even with legacy quota available, balance check should fail first
-      mockPrisma.subscription.findFirst.mockResolvedValue({
-        planId: "plan-1",
-        plan: { resources: {} },
-      } as any)
-      mockPrisma.pricing.findFirst.mockResolvedValue({
-        id: "price-1",
-        planId: "plan-1",
-        regionId: "reg-1",
-        type: "PAYG",
-        billingMode: "PAYG",
-        basePriceIdr: { toString: () => "0" },
-        monthlyCapIdr: null,
-        unitRateCpu: null,
-        unitRateMem: null,
-        unitRateMessage: { toString: () => "150", gt: () => true },
-        isActive: true,
-        servicePlan: { code: "STANDARD", packageId: "WHATSAPP", resources: {} },
-        region: { code: "GLOBAL" },
-      } as any)
-      mockPrisma.billingAccount.findUnique.mockResolvedValue({
-        id: "ba-1",
-        organizationId: "tenant-1",
-        balance: { toFixed: () => "0.00", gte: () => false, gt: () => false },
-      } as any)
-
-      await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
-    })
-
-    it("throws InsufficientBalanceError when balance is below estimated cost (PGREEN-049)", async () => {
-      mockPrisma.subscription.findFirst.mockResolvedValue({
-        planId: "plan-1",
-        plan: { resources: {} },
-      } as any)
-      mockPrisma.pricing.findFirst.mockResolvedValue({
-        id: "price-1",
-        planId: "plan-1",
-        regionId: "reg-1",
-        type: "PAYG",
-        billingMode: "PAYG",
-        basePriceIdr: { toString: () => "0" },
-        monthlyCapIdr: null,
-        unitRateCpu: null,
-        unitRateMem: null,
-        unitRateMessage: { toString: () => "500", gt: () => true },
-        isActive: true,
-        servicePlan: { code: "STANDARD", packageId: "WHATSAPP", resources: {} },
-        region: { code: "GLOBAL" },
-      } as any)
-      mockPrisma.billingAccount.findUnique.mockResolvedValue({
-        id: "ba-1",
-        organizationId: "tenant-1",
-        balance: { toFixed: () => "100.00", gte: (val: number) => 100 >= val, gt: () => true },
-      } as any)
+    it("throws InsufficientBalanceError when allowance exhausted and balance is insufficient", async () => {
+      // Simulate allowance exhausted + overage fails due to insufficient balance
+      mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockRejectedValue(
+        new Error("INSUFFICIENT_BALANCE"),
+      )
 
       await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
     })
@@ -301,38 +278,17 @@ describe("messageService", () => {
       expect(mockPrisma.$transaction).toHaveBeenCalled()
     })
 
-    it("deducts balance after successful send when estimated cost > 0 (PGREEN-049 fix)", async () => {
-      // Set up subscription + pricing so estimated cost > 0
-      mockPrisma.subscription.findFirst.mockResolvedValue({
-        planId: "plan-1",
-        plan: { resources: {} },
-      } as any)
-      mockPrisma.pricing.findFirst.mockResolvedValue({
-        id: "price-1",
-        planId: "plan-1",
-        regionId: "reg-1",
-        type: "PAYG",
-        billingMode: "PAYG",
-        basePriceIdr: { toString: () => "0" },
-        monthlyCapIdr: null,
-        unitRateCpu: null,
-        unitRateMem: null,
-        unitRateMessage: { toString: () => "150", gt: () => true },
-        isActive: true,
-        servicePlan: { code: "STANDARD", packageId: "WHATSAPP", resources: {} },
-        region: { code: "GLOBAL" },
-      } as any)
-
-      // Balance check needs billingAccount on the outer prisma
-      mockPrisma.billingAccount.findUnique.mockResolvedValue({
-        id: "ba-1",
-        balance: { toFixed: () => "1000.00", gte: () => true, gt: () => true },
-      } as any)
-
+    it("calls WhatsApp billing allowance check before Meta API", async () => {
       await sendMessageTestHelper({ organizationId: "org-1", deviceId: "device-1" })
 
-      // Balance deduction goes through $transaction via deductBalance
-      expect(mockTx.billingAccount.update).toHaveBeenCalled()
+      // Verify billing was checked before the Meta API call
+      expect(mockWhatsappBilling.consumeAllowanceOrChargeOverage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-1",
+          deviceId: "device-1",
+          messageCount: 1,
+        }),
+      )
     })
 
     it("creates message record in database", async () => {
@@ -439,6 +395,64 @@ describe("messageService", () => {
       } as any)
 
       await expect(sendMessageTestHelper()).rejects.toThrow(InsufficientQuotaError)
+    })
+
+    // ── WhatsApp Billing Integration Tests ────────────────────────────────
+
+    it("sends message within allowance (no balance change)", async () => {
+      // Default mock returns ALLOWANCE — no balance charge
+      mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockResolvedValue({
+        kind: "ALLOWANCE",
+        remainingAllowance: 999,
+      })
+
+      const result = await sendMessageTestHelper()
+
+      expect(result.status).toBe("sent")
+      expect(result.waMessageId).toBe("wa-msg-123")
+      // Meta API was called (billing didn't block it)
+      expect(mockDeviceClient.sendMessage).toHaveBeenCalled()
+    })
+
+    it("sends message after overage charge succeeds", async () => {
+      // Simulate allowance exhausted — overage charged
+      mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockResolvedValue({
+        kind: "OVERAGE_CHARGED",
+        charged: { toString: () => "10" } as any,
+        adjustmentId: "adj-over-1",
+      })
+
+      const result = await sendMessageTestHelper()
+
+      expect(result.status).toBe("sent")
+      expect(mockDeviceClient.sendMessage).toHaveBeenCalled()
+    })
+
+    it("does not call Meta API when overage balance is insufficient", async () => {
+      // Simulate allowance exhausted + insufficient balance
+      mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockRejectedValue(
+        new Error("INSUFFICIENT_BALANCE"),
+      )
+
+      await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
+
+      // Meta API should NOT be called — billing rejection happens before external call
+      expect(mockDeviceClient.sendMessage).not.toHaveBeenCalled()
+    })
+
+    it("returns INSUFFICIENT_BALANCE error message for overage reject", async () => {
+      mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockRejectedValue(
+        new Error("INSUFFICIENT_BALANCE"),
+      )
+
+      try {
+        await sendMessageTestHelper()
+        // Should not reach here
+        expect(true).toBe(false)
+      } catch (err) {
+        expect(err).toBeInstanceOf(Error)
+        expect((err as Error).message).toContain("Insufficient balance")
+      }
     })
   })
 
