@@ -121,6 +121,8 @@ export type DeployEnvironmentState = {
   customDomain: string
   envVars: EnvVar[]
   resourcePlanId: ResourcePlanId
+  billingMode?: "PAYG" | "PACKAGE"
+  paygBufferHours?: number
   cpu?: number
   memory?: number
 }

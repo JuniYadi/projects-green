@@ -159,11 +159,14 @@ model ApplicationStack {
   buildCommand           String?
   dockerfileDetected     Boolean        @default(false)
   resourcePlanId         String?
+  billingMode            String?        @default("PAYG")
+  hourlyCost             Decimal?       @db.Decimal(10, 4)
   cpu                    Int?
   memory                 Int?
   customDomain           String?
   subdomain              String?
   envVarsJson            Json           @default("[]")
+  metadataJson           Json?
   lastDeployedAt         DateTime?
   lastDeployStatus       StackStatus?
   createdAt              DateTime       @default(now())

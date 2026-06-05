@@ -8,8 +8,10 @@ describe("PayAsYouGoSelector", () => {
       <PayAsYouGoSelector
         cpu={500}
         memory={1024}
+        bufferHours={24}
         onCpuChange={mock()}
         onMemoryChange={mock()}
+        onBufferHoursChange={mock()}
       />
     )
 
@@ -22,8 +24,10 @@ describe("PayAsYouGoSelector", () => {
       <PayAsYouGoSelector
         cpu={100}
         memory={256}
+        bufferHours={24}
         onCpuChange={mock()}
         onMemoryChange={mock()}
+        onBufferHoursChange={mock()}
       />
     )
 
@@ -36,12 +40,62 @@ describe("PayAsYouGoSelector", () => {
       <PayAsYouGoSelector
         cpu={100}
         memory={256}
+        bufferHours={24}
         onCpuChange={mock()}
         onMemoryChange={mock()}
+        onBufferHoursChange={mock()}
       />
     )
 
     const sliders = view.container.querySelectorAll('[data-slot="slider"]')
     expect(sliders.length).toBe(2)
+  })
+
+  it("renders default buffer hours of 24", () => {
+    const view = render(
+      <PayAsYouGoSelector
+        cpu={500}
+        memory={1024}
+        bufferHours={24}
+        onCpuChange={mock()}
+        onMemoryChange={mock()}
+        onBufferHoursChange={mock()}
+      />
+    )
+
+    const input = view.getByLabelText("Runtime buffer (hours)") as HTMLInputElement
+    expect(input.value).toBe("24")
+  })
+
+  it("renders required balance when hourly cost is provided", () => {
+    const view = render(
+      <PayAsYouGoSelector
+        cpu={500}
+        memory={1024}
+        bufferHours={48}
+        hourlyCost={10}
+        onCpuChange={mock()}
+        onMemoryChange={mock()}
+        onBufferHoursChange={mock()}
+      />
+    )
+
+    expect(view.getByText("Required balance")).toBeInTheDocument()
+    expect(view.getByText(/480/)).toBeInTheDocument()
+  })
+
+  it("does not render required balance when hourly cost is not provided", () => {
+    const view = render(
+      <PayAsYouGoSelector
+        cpu={500}
+        memory={1024}
+        bufferHours={24}
+        onCpuChange={mock()}
+        onMemoryChange={mock()}
+        onBufferHoursChange={mock()}
+      />
+    )
+
+    expect(view.queryByText("Required balance")).not.toBeInTheDocument()
   })
 })

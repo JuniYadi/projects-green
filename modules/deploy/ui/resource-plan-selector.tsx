@@ -7,18 +7,24 @@ type ResourcePlanSelectorProps = {
   selectedPlanId: ResourcePlanId
   cpu?: number
   memory?: number
+  bufferHours?: number
+  hourlyCost?: number
   onChange: (value: ResourcePlanId) => void
   onCpuChange?: (value: number) => void
   onMemoryChange?: (value: number) => void
+  onBufferHoursChange?: (value: number) => void
 }
 
 export function ResourcePlanSelector({
   selectedPlanId,
   cpu,
   memory,
+  bufferHours,
+  hourlyCost,
   onChange,
   onCpuChange,
   onMemoryChange,
+  onBufferHoursChange,
 }: ResourcePlanSelectorProps) {
   return (
     <div className="space-y-4">
@@ -56,12 +62,16 @@ export function ResourcePlanSelector({
         cpu !== undefined &&
         memory !== undefined &&
         onCpuChange &&
-        onMemoryChange && (
+        onMemoryChange &&
+        onBufferHoursChange && (
           <PayAsYouGoSelector
             cpu={cpu}
             memory={memory}
+            bufferHours={bufferHours ?? 24}
+            hourlyCost={hourlyCost}
             onCpuChange={onCpuChange}
             onMemoryChange={onMemoryChange}
+            onBufferHoursChange={onBufferHoursChange}
           />
         )}
     </div>

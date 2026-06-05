@@ -77,6 +77,8 @@ export const environmentStepSchema = z
     customDomain: z.string().trim(),
     envVars: z.array(envVarSchema),
     resourcePlanId: z.enum(["starter", "pro", "payg"]),
+    billingMode: z.enum(["PAYG", "PACKAGE"]).default("PAYG"),
+    paygBufferHours: z.number().min(24).max(720).default(24),
     cpu: z.number().min(100).max(2000).optional(),
     memory: z.number().min(256).max(4096).optional(),
   })
