@@ -677,6 +677,70 @@ describe("invoices routes", () => {
 
       expect(response.status).toBe(422)
     })
+
+    it("returns 403 on notify endpoints when organization is missing", async () => {
+      const app = createApp({
+        auth: {
+          user: { id: "user_1", email: "owner@example.com" },
+          organizationId: null,
+        },
+      })
+
+      const res = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+        }),
+      )
+
+      expect(res.status).toBe(403)
+    })
+  })
+
+  it("cancel does not send email when user has no email address", async () => {
+    const mockEmailService: InvoiceEmailService = {
+      sendInvoiceCreated: mock(async () => {}),
+      sendPaymentReminder: mock(async () => {}),
+      sendInvoicePaid: mock(async () => {}),
+      sendInvoiceOverdue: mock(async () => {}),
+      sendInvoiceCancelled: mock(async () => {}),
+    }
+    // Use super_admin platformRole to bypass all permission checks
+    const app = createApp({
+      auth: {
+        user: { id: "user_1", email: null },
+      },
+      platformRole: "super_admin",
+      emailService: mockEmailService,
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", {
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    // Email should NOT be sent when user has no email address
+    expect(mockEmailService.sendInvoiceCancelled).not.toHaveBeenCalled()
+  })
+
+  it("returns invoice detail with null organization when billing account not found", async () => {
+    const app = createApp({
+      getOrganizationIdByBillingAccount: async () => null,
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1"),
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      invoice: { id: string }
+      organization: unknown
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.organization).toBeNull()
   })
 
   it("uses default dependencies when none provided", async () => {
