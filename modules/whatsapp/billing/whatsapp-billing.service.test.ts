@@ -1,29 +1,34 @@
-import { describe, expect, it, vi, beforeEach } from "bun:test"
+import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 
 // ─── Mocks ──────────────────────────────────────────────────────────────
 
 const mockBillingTransactionService = {
-  creditBalance: vi.fn(),
-  debitBalance: vi.fn(),
-  debitServiceBalance: vi.fn(),
+  creditBalance: mock(),
+  debitBalance: mock(),
+  debitServiceBalance: mock(),
 }
 
-vi.mock("@/lib/prisma", () => ({
+mock.module("@/lib/prisma", () => ({
   prisma: {
     billingAccount: {
-      findUnique: vi.fn(),
+      findUnique: mock(),
     },
     whatsappDevice: {
-      findUnique: vi.fn(),
-      update: vi.fn(),
+      findUnique: mock(),
+      update: mock(),
     },
   },
 }))
 
-vi.mock("@/modules/billing/billing-transaction.service", () => ({
-  BillingTransactionService: vi.fn().mockImplementation(() => mockBillingTransactionService),
+mock.module("@/modules/billing/billing-transaction.service", () => ({
+  BillingTransactionService: class {
+    constructor() {}
+    creditBalance = mock()
+    debitBalance = mock()
+    debitServiceBalance = mock()
+  },
 }))
 
 import { WhatsappBillingService } from "./whatsapp-billing.service"
@@ -94,17 +99,18 @@ describe("WhatsappBillingService", () => {
   let service: WhatsappBillingService
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockPrisma.billingAccount.findUnique.mockReset()
-    mockPrisma.whatsappDevice.findUnique.mockReset()
-    mockPrisma.whatsappDevice.update.mockReset()
-    mockBillingTransactionService.debitServiceBalance.mockReset()
-    mockBillingTransactionService.debitBalance.mockReset()
-    mockBillingTransactionService.creditBalance.mockReset()
+    mockPrisma.billingAccount.findUnique.mockClear()
+    mockPrisma.whatsappDevice.findUnique.mockClear()
+    mockPrisma.whatsappDevice.update.mockClear()
+    mockBillingTransactionService.debitServiceBalance.mockClear()
+    mockBillingTransactionService.debitBalance.mockClear()
+    mockBillingTransactionService.creditBalance.mockClear()
 
+    // Recreate with fresh mocks
+    const MockTxService = mockBillingTransactionService
     service = new WhatsappBillingService(
       mockPrisma as unknown as PrismaClient,
-      mockBillingTransactionService as never,
+      MockTxService as never,
     )
   })
 
