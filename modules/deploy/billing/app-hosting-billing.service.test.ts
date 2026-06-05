@@ -225,6 +225,24 @@ describe("AppHostingBillingService", () => {
         }),
       ).rejects.toThrow("INSUFFICIENT_PAYG_BUFFER")
     })
+
+    it("rejects zero hourly cost", async () => {
+      await expect(
+        service.assertCanStartPayg({
+          organizationId: "org_1",
+          hourlyCost: decimal("0"),
+        }),
+      ).rejects.toThrow("INVALID_HOURLY_COST")
+    })
+
+    it("rejects negative hourly cost", async () => {
+      await expect(
+        service.assertCanStartPayg({
+          organizationId: "org_1",
+          hourlyCost: decimal("-5"),
+        }),
+      ).rejects.toThrow("INVALID_HOURLY_COST")
+    })
   })
 
   describe("chargePaygRuntimeHour", () => {
@@ -307,6 +325,7 @@ describe("AppHostingBillingService", () => {
       })
 
       expect(result.graceEntered).toBe(true)
+      expect(result.alreadyProcessed).toBe(true)
       expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "stack_1" },

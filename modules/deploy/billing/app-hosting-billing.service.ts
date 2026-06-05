@@ -86,6 +86,10 @@ export class AppHostingBillingService {
     hourlyCost: Prisma.Decimal
     bufferHours?: number
   }): Promise<AppHostingChargeQuote> {
+    if (input.hourlyCost.lte(0)) {
+      throw new Error("INVALID_HOURLY_COST")
+    }
+
     const account = await this.prisma.billingAccount.findUnique({
       where: { organizationId: input.organizationId },
     })
@@ -148,7 +152,7 @@ export class AppHostingBillingService {
           balanceAfter: account.balance,
           amount: input.hourlyCost,
           currency: account.currency,
-          alreadyProcessed: false,
+          alreadyProcessed: true, // Mark as processed - we attempted to charge and handled gracefully
           graceEntered: true,
         }
       }

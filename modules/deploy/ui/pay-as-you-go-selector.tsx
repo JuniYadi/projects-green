@@ -90,7 +90,10 @@ export function PayAsYouGoSelector({
         <div className="rounded-md border bg-background p-3">
           <p className="text-xs text-muted-foreground">Required balance</p>
           <p className="text-sm font-medium">
-            {requiredBalance.toLocaleString()} (hourly cost × {bufferHours}h)
+            {hourlyCost !== undefined && (
+              <span>{hourlyCost.toLocaleString()} × {bufferHours}h = </span>
+            )}
+            {requiredBalance.toLocaleString()}
           </p>
         </div>
       )}
