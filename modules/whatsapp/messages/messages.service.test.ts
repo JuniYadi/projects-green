@@ -16,12 +16,14 @@ const mockWhatsappBilling = {
     | { kind: "ALLOWANCE"; remainingAllowance: number }
     | { kind: "OVERAGE_CHARGED"; charged: any; adjustmentId: string }
   > => ({ kind: "ALLOWANCE", remainingAllowance: 999 })),
+  restoreAllowance: mock(async () => {}),
 }
 
 mock.module("@/modules/whatsapp/billing/whatsapp-billing.service", () => ({
   WhatsappBillingService: class {
     readonly consumeAllowanceOrChargeOverage =
       mockWhatsappBilling.consumeAllowanceOrChargeOverage
+    readonly restoreAllowance = mockWhatsappBilling.restoreAllowance
   },
 }))
 
@@ -176,6 +178,7 @@ describe("messageService", () => {
     mockTx.billingAccount.update.mockClear()
     mockTx.billingAdjustment.create.mockClear()
     mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockClear()
+    mockWhatsappBilling.restoreAllowance.mockClear()
     mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockImplementation(
       async () => ({ kind: "ALLOWANCE", remainingAllowance: 999 } as const),
     )
@@ -454,6 +457,43 @@ describe("messageService", () => {
         expect(err).toBeInstanceOf(Error)
         expect((err as Error).message).toContain("Insufficient balance")
       }
+    })
+
+    it("restores allowance when Meta API fails after allowance was consumed", async () => {
+      mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockResolvedValue({
+        kind: "ALLOWANCE",
+        remainingAllowance: 999,
+      })
+      mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
+
+      await sendMessageTestHelper()
+
+      expect(mockWhatsappBilling.restoreAllowance).toHaveBeenCalledWith(
+        "device-1",
+        1,
+      )
+    })
+
+    it("logs warning but does not restore balance when overage charged + Meta API fails", async () => {
+      const consoleWarnSpy = mock(() => {})
+      const origWarn = console.warn
+      console.warn = consoleWarnSpy
+
+      mockWhatsappBilling.consumeAllowanceOrChargeOverage.mockResolvedValue({
+        kind: "OVERAGE_CHARGED",
+        charged: { toString: () => "10" } as any,
+        adjustmentId: "adj-over-1",
+      })
+      mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
+
+      await sendMessageTestHelper()
+
+      // restoreAllowance should NOT be called for overage
+      expect(mockWhatsappBilling.restoreAllowance).not.toHaveBeenCalled()
+      // But a warning should be logged
+      expect(consoleWarnSpy).toHaveBeenCalled()
+
+      console.warn = origWarn
     })
   })
 
