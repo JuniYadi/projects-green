@@ -1152,4 +1152,93 @@ describe("supportTicketService", () => {
 
     expect(session).toBeNull()
   })
+
+  it("rejects getTicketThread when user cannot read ticket", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    // User from different org cannot read
+    await expect(
+      service.getTicketThread({
+        actor: { organizationId: "org_other", workosUserId: "user_stranger" },
+        ticketId: "ticket_1",
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("rejects transitionStatus when access denied", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.transitionStatus({
+        ticketId: "ticket_1",
+        nextStatus: "in_progress",
+        actor: { organizationId: "org_other", workosUserId: "user_stranger" },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("rejects addReply when user cannot create a public reply", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.addReply({
+        actor: { organizationId: "org_other", workosUserId: "user_stranger" },
+        reply: {
+          ticketId: "ticket_1",
+          authorWorkosUserId: "user_stranger",
+          body: "I should not be able to reply",
+        },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("wipes secure form when super admin closes ticket via updateTicket", async () => {
+    const { repository, tickets } = createRepositoryStub()
+    tickets.set("ticket_1", {
+      ...baseTicket,
+      secureForm: "sensitive_data",
+    })
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const updated = await service.updateTicket({
+      actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+      ticketId: "ticket_1",
+      data: { status: "closed" },
+    })
+
+    expect(updated.status).toBe("closed")
+    expect(updated.secureForm).toBeNull()
+  })
+
+  it("returns false from deleteTicket when repository returns false", async () => {
+    const { repository } = createRepositoryStub()
+    repository.deleteTicket = async () => false as never
+
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const result = await service.deleteTicket({
+      actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+      ticketId: "ticket_1",
+    })
+
+    expect(result).toBe(false)
+  })
 })
