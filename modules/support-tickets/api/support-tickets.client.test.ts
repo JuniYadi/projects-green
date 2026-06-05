@@ -197,4 +197,144 @@ describe("support tickets client", () => {
       })
     ).rejects.toThrow("Attachment upload failed.")
   })
+
+  it("lists admin tickets", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ok: true, tickets: [ticketFixture, { ...ticketFixture, id: "ticket_2" }] })
+    )
+    const client = createSupportTicketsClient()
+
+    const tickets = await client.listAdminTickets()
+
+    expect(tickets).toHaveLength(2)
+    expect(tickets[0]?.id).toBe("ticket_1")
+    expect(tickets[1]?.id).toBe("ticket_2")
+    expect(fetchMock).toHaveBeenCalledWith("/api/support-tickets/admin", undefined)
+  })
+
+  it("throws error on admin tickets failure", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("upstream error", { status: 500 }))
+    const client = createSupportTicketsClient()
+
+    await expect(client.listAdminTickets()).rejects.toThrow(
+      "Unable to load support tickets."
+    )
+  })
+
+  it("creates admin ticket with custom organization", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ok: true, ticket: ticketFixture })
+    )
+    const client = createSupportTicketsClient()
+
+    const ticket = await client.createAdminTicket({
+      organizationId: "org_custom",
+      subject: "Admin ticket",
+      department: "technical",
+      priority: "high",
+    })
+
+    expect(ticket.id).toBe("ticket_1")
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      body: expect.stringContaining("org_custom"),
+    })
+  })
+
+  it("throws error on admin ticket creation failure", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ok: false }, 403)
+    )
+    const client = createSupportTicketsClient()
+
+    await expect(
+      client.createAdminTicket({
+        organizationId: "org_custom",
+        subject: "Admin ticket",
+        department: "technical",
+        priority: "high",
+      })
+    ).rejects.toThrow("Unable to create support ticket.")
+  })
+
+  it("updates admin ticket with PUT", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ok: true, ticket: ticketFixture })
+    )
+    const client = createSupportTicketsClient()
+
+    const ticket = await client.updateAdminTicket("ticket_1", {
+      department: "billing",
+      priority: "low",
+      status: "in_progress",
+    })
+
+    expect(ticket.id).toBe("ticket_1")
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "PUT",
+      body: expect.stringContaining("billing"),
+    })
+  })
+
+  it("deletes admin ticket with DELETE", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ok: true })
+    )
+    const client = createSupportTicketsClient()
+
+    const result = await client.deleteAdminTicket("ticket_1")
+
+    expect(result).toBe(true)
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "DELETE",
+    })
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/api/support-tickets/admin/ticket_1")
+  })
+
+  it("lists admin organizations", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        ok: true,
+        organizations: [
+          { id: "org_1", name: "Org 1" },
+          { id: "org_2", name: "Org 2" },
+        ],
+      })
+    )
+    const client = createSupportTicketsClient()
+
+    const orgs = await client.listAdminOrganizations()
+
+    expect(orgs).toHaveLength(2)
+    expect(orgs[0]?.name).toBe("Org 1")
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/support-tickets/admin/organizations",
+      undefined
+    )
+  })
+
+  it("throws error on admin organizations failure", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("upstream error", { status: 500 }))
+    const client = createSupportTicketsClient()
+
+    await expect(client.listAdminOrganizations()).rejects.toThrow(
+      "Unable to load organizations."
+    )
+  })
+
+  it("preserves API error message on admin ticket creation", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ok: false, message: "Custom admin error" }, 403)
+    )
+    const client = createSupportTicketsClient()
+
+    await expect(
+      client.createAdminTicket({
+        organizationId: "org_custom",
+        subject: "Admin ticket",
+        department: "technical",
+        priority: "high",
+      })
+    ).rejects.toThrow("Custom admin error")
+  })
 })
