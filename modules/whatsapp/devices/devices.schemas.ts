@@ -61,6 +61,7 @@ export type DeviceListItem = {
   environment: DeviceEnvironment
   balance: number
   quotaBase: number
+  quotaBaseOut: number
   dailyLimitMessage: number
   whatsappBusinessAccountId: string | null
   whatsappPhoneId: string | null
