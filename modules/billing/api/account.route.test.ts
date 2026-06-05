@@ -207,6 +207,72 @@ describe("GET /account - JIT upsert", () => {
     expect(body.isAboveWarn).toBe(false)
     expect(body.balanceIdr).toBe("0.00")
   })
+
+  it("reports isAboveWarn=false for low positive balance below threshold", async () => {
+    const mockAccount = {
+      id: "acc-5",
+      organizationId: "org_111",
+      balance: new Decimal(5000), // below MINIMUM_BALANCE_WARN_IDR (10_000)
+      currency: "IDR",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.isPositive).toBe(true)
+    expect(body.isAboveWarn).toBe(false)
+    expect(body.balanceIdr).toBe("5000.00")
+  })
+
+  it("reports formattedBalance with IDR locale format for large numbers", async () => {
+    const mockAccount = {
+      id: "acc-6",
+      organizationId: "org_222",
+      balance: new Decimal(9999999),
+      currency: "IDR",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.formattedBalance).toContain("IDR")
+    expect(body.balanceIdr).toBe("9999999.00")
+  })
+
+  it("reports accountAge with N days format for accounts older than 1 day", async () => {
+    const threeDaysAgo = new Date()
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+
+    const mockAccount = {
+      id: "acc-7",
+      organizationId: "org_333",
+      balance: new Decimal(100_000),
+      currency: "IDR",
+      createdAt: threeDaysAgo,
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.accountAge).toBe("3 days")
+  })
 })
 
 

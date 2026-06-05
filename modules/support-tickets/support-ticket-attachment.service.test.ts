@@ -473,4 +473,41 @@ describe("support ticket attachment service", () => {
       }),
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadMismatchError)
   })
+
+  it("rejects register when verifyUploadedObject throws validation error from validation module", async () => {
+    const deps = createDeps()
+    const service = createSupportTicketAttachmentService({
+      ...deps,
+      storage: {
+        ...deps.storage,
+        async verifyUploadedObject() {
+          throw new SupportTicketAttachmentValidationError(
+            "MIME_EXTENSION_MISMATCH",
+            "MIME type does not match extension",
+          )
+        },
+      },
+    })
+
+    const upload = await service.createPresignedAttachmentUpload({
+      actor: { organizationId: "org_1", workosUserId: "user_requester" },
+      target: "create",
+      fileName: "issue.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 512,
+    })
+
+    await expect(
+      service.registerAttachment({
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+        target: "create",
+        id: upload.attachmentId,
+        fileName: "issue.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+        storageBucket: upload.storageBucket,
+        storageKey: upload.storageKey,
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAttachmentValidationError)
+  })
 })

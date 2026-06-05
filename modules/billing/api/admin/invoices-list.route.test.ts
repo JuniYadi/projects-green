@@ -194,5 +194,47 @@ describe("AdminInvoicesListRoute", () => {
       expect(body.ok).toBe(false)
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
     })
+
+    it("returns 422 for invalid status query parameter", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminInvoicesListRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices?status=INVALID")
+      )
+
+      expect(response.status).toBe(422)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+    })
+
+    it("returns 422 for invalid page query parameter", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminInvoicesListRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices?page=0")
+      )
+
+      expect(response.status).toBe(422)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+    })
   })
 })
