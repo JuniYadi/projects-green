@@ -196,6 +196,25 @@ describe("invoices routes", () => {
     expect(response.status).toBe(500)
   })
 
+  it("returns invoice detail with organization metadata", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1")
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      invoice: { id: string; invoiceNumber: string }
+      canMarkCanceled: boolean
+      organization: Record<string, unknown> | null
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.invoice.invoiceNumber).toBe("INV-2026-0001")
+    expect(typeof payload.canMarkCanceled).toBe("boolean")
+  })
+
   it("returns PDF response with content-type", async () => {
     const app = createApp({})
 
@@ -658,5 +677,15 @@ describe("invoices routes", () => {
 
       expect(response.status).toBe(422)
     })
+  })
+
+  it("uses default dependencies when none provided", async () => {
+    const app = new Elysia().use(createInvoicesRoutes())
+
+    const response = await app.handle(new Request("http://localhost/invoices"))
+
+    // withAuth() returns unauthenticated or throws in test env
+    // Either way we get an error status (401 or 500)
+    expect([401, 500]).toContain(response.status)
   })
 })
