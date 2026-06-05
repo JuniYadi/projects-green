@@ -32,6 +32,7 @@
     "test:auth:cookie": "bun run scripts/test-api-auth-cookie.ts",
     "test:auth:static-key": "bun run scripts/test-api-auth-static-key.ts",
     "create:api-key": "bun run scripts/create-api-key.ts",
+    "worker:vpn-renewal": "bun run scripts/vpn-renewal-worker.ts",
     "worker:opensearch-ingest": "bun run scripts/opensearch-ingest-worker.ts"
   },
   "dependencies": {
