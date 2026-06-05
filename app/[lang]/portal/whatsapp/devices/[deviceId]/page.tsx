@@ -65,6 +65,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
     environment: string
     balance: number
     quotaBase: number
+    quotaBaseOut: number
     dailyLimitMessage: number
     organizationId: string
     businessId: string | null
@@ -155,6 +156,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
           deviceId={device.id}
           initialBalance={device.balance}
           initialQuotaBase={device.quotaBase}
+          initialQuotaBaseOut={device.quotaBaseOut}
           initialDailyLimitMessage={device.dailyLimitMessage}
         />
 
