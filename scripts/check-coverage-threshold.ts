@@ -1,7 +1,7 @@
 import { Glob } from "bun"
 
-const COVERAGE_THRESHOLD = 80
-const LINE_THRESHOLD = 80
+const COVERAGE_THRESHOLD = 85
+const LINE_THRESHOLD = 85
 
 const EXCLUDED_DIR_PATTERNS = ["whatsapp", "test/", "modules/deploy/"]
 
@@ -60,7 +60,7 @@ const main = async () => {
   }
 
   if (exitCode !== 0) {
-    process.exit(exitCode)
+    console.warn(`Note: Test suite had failures (exit code ${exitCode})`)
   }
 
   const normalized = stripAnsi(`${stdout}\n${stderr}`)
@@ -109,7 +109,7 @@ const main = async () => {
   )
 
   // Base threshold - fail if below this
-  const BASE_THRESHOLD = 70
+  const BASE_THRESHOLD = 80
 
   if (
     functionCoverage < COVERAGE_THRESHOLD ||
@@ -126,6 +126,11 @@ const main = async () => {
       process.exit(1)
     }
     console.warn("Below target but above base - continuing.")
+  }
+
+  // At the end, exit with test failure if tests failed
+  if (exitCode !== 0) {
+    process.exit(exitCode)
   }
 }
 

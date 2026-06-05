@@ -272,6 +272,40 @@ describe("TopupRoute", () => {
       expect(body.error).toBe("BALANCE_LIMIT_EXCEEDED")
     })
 
+    it("returns 500 for generic database error", async () => {
+      mockTransaction.mockResolvedValueOnce(
+        Promise.reject(new Error("CONNECTION_TIMEOUT"))
+      )
+
+      const app = new Elysia()
+        .use(
+          createBillingTopupRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1" },
+              organizationId: "org-1",
+            } as MockAuthContext),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/topup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: 50000,
+            paymentMethod: "manual_bank_transfer",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+      expect(body.message).toBe("Unable to process topup right now.")
+    })
+
     it("returns 200 with adjustment response on valid topup", async () => {
       const mockUpdatedAccount = {
         id: "acc-1",
