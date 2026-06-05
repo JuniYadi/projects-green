@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 import {
   createSupportTicketAttachmentService,
@@ -13,6 +13,28 @@ import {
 } from "@/modules/support-tickets/support-ticket-attachment.storage"
 import { SupportTicketAttachmentValidationError } from "@/modules/support-tickets/support-ticket-attachment.validation"
 import type { SupportTicket } from "@/modules/support-tickets/support-ticket.types"
+
+// Stateful mock prisma for lazy repository tests
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockLazySessions = new Map<string, any>()
+
+const mockSessionCreate = mock()
+const mockSessionFindUnique = mock()
+const mockSessionUpdate = mock()
+const mockTicketFindUnique = mock()
+
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    supportTicketAttachmentUploadSession: {
+      create: mockSessionCreate,
+      findUnique: mockSessionFindUnique,
+      update: mockSessionUpdate,
+    },
+    supportTicket: {
+      findUnique: mockTicketFindUnique,
+    },
+  },
+}))
 
 const baseTicket: SupportTicket = {
   id: "ticket_1",
@@ -509,5 +531,238 @@ describe("support ticket attachment service", () => {
         storageKey: upload.storageKey,
       }),
     ).rejects.toBeInstanceOf(SupportTicketAttachmentValidationError)
+  })
+
+  it("rejects register when upload session is not found", async () => {
+    const deps = createDeps()
+    const service = createSupportTicketAttachmentService(deps)
+
+    const upload = await service.createPresignedAttachmentUpload({
+      actor: { organizationId: "org_1", workosUserId: "user_requester" },
+      target: "create",
+      fileName: "issue.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 512,
+    })
+
+    await expect(
+      service.registerAttachment({
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+        target: "create",
+        id: "nonexistent-session",
+        fileName: "issue.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+        storageBucket: upload.storageBucket,
+        storageKey: upload.storageKey,
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadExpiredError)
+  })
+
+  it("rejects register when upload session is already consumed", async () => {
+    const deps = createDeps()
+    const origGetById = deps.repository.getUploadSessionById
+    deps.repository.getUploadSessionById = async (id: string) => {
+      const session = await origGetById(id)
+      if (!session) return null
+      return { ...session, consumedAt: new Date() }
+    }
+
+    const service = createSupportTicketAttachmentService(deps)
+
+    const upload = await service.createPresignedAttachmentUpload({
+      actor: { organizationId: "org_1", workosUserId: "user_requester" },
+      target: "create",
+      fileName: "issue.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 512,
+    })
+
+    await expect(
+      service.registerAttachment({
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+        target: "create",
+        id: upload.attachmentId,
+        fileName: "issue.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+        storageBucket: upload.storageBucket,
+        storageKey: upload.storageKey,
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadExpiredError)
+  })
+
+  it("rejects register when session storage bucket does not match", async () => {
+    const deps = createDeps()
+    const origGetById = deps.repository.getUploadSessionById
+    deps.repository.getUploadSessionById = async (id: string) => {
+      const session = await origGetById(id)
+      if (!session) return null
+      return { ...session, storageBucket: "wrong-bucket" }
+    }
+
+    const service = createSupportTicketAttachmentService(deps)
+
+    const upload = await service.createPresignedAttachmentUpload({
+      actor: { organizationId: "org_1", workosUserId: "user_requester" },
+      target: "create",
+      fileName: "issue.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 512,
+    })
+
+    await expect(
+      service.registerAttachment({
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+        target: "create",
+        id: upload.attachmentId,
+        fileName: "issue.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+        storageBucket: upload.storageBucket,
+        storageKey: upload.storageKey,
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadMismatchError)
+  })
+
+  describe("lazy repository", () => {
+    beforeEach(() => {
+      mockLazySessions.clear()
+      mockSessionCreate.mockClear()
+      mockSessionFindUnique.mockClear()
+      mockSessionUpdate.mockClear()
+      mockTicketFindUnique.mockClear()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockSessionCreate.mockImplementation(async (args: any) => {
+        const record = {
+          id: args.data.id,
+          organizationId: args.data.organizationId,
+          uploaderWorkosUserId: args.data.uploaderWorkosUserId,
+          target: args.data.target,
+          ticketId: args.data.ticketId,
+          fileName: args.data.fileName,
+          mimeType: args.data.mimeType,
+          sizeBytes: args.data.sizeBytes,
+          checksumSha256: args.data.checksumSha256 ?? null,
+          storageKey: args.data.storageKey,
+          storageBucket: args.data.storageBucket,
+          expiresAt: args.data.expiresAt,
+          registeredAt: null,
+          consumedAt: null,
+          consumedTicketId: null,
+          consumedReplyId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        mockLazySessions.set(record.id, { ...record })
+        return record
+      })
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockSessionFindUnique.mockImplementation(async (args: any) => {
+        const session = mockLazySessions.get(args.where.id)
+        return session ? { ...session } : null
+      })
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockSessionUpdate.mockImplementation(async (args: any) => {
+        const existing = mockLazySessions.get(args.where.id)
+        if (!existing) throw new Error("Session not found")
+        const updated = { ...existing, ...args.data, updatedAt: new Date() }
+        mockLazySessions.set(args.where.id, updated)
+        return updated
+      })
+
+      mockTicketFindUnique.mockResolvedValue(null)
+    })
+
+    it("uses lazy repository for create presign", async () => {
+      const { storage } = createDeps()
+      const service = createSupportTicketAttachmentService({ storage })
+
+      const result = await service.createPresignedAttachmentUpload({
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+        target: "create",
+        fileName: "lazy-test.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+      })
+
+      expect(result.attachmentId).toBeDefined()
+      expect(result.uploadUrl).toBe("https://example.com/upload")
+      expect(mockSessionCreate).toHaveBeenCalledTimes(1)
+    })
+
+    it("uses lazy repository for reply presign", async () => {
+      const mockPrismaTicket = {
+        id: "ticket_1",
+        ticketNumber: "TCK-9001",
+        organizationId: "org_1",
+        requesterWorkosUserId: "user_r",
+        assignedAgentWorkosUserId: "user_a",
+        department: "TECHNICAL" as const,
+        priority: "MEDIUM" as const,
+        service: "DEPLOY" as const,
+        status: "OPEN" as const,
+        subject: "Test ticket",
+        description: "A description",
+        secureForm: null,
+        attachmentsJson: null,
+        createdAt: new Date("2026-06-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-01T00:00:00.000Z"),
+        resolvedAt: null,
+        closedAt: null,
+      }
+      mockTicketFindUnique.mockResolvedValue(mockPrismaTicket)
+
+      const { storage } = createDeps()
+      const service = createSupportTicketAttachmentService({ storage })
+
+      const result = await service.createPresignedAttachmentUpload({
+        actor: { organizationId: null, workosUserId: "user_r" },
+        target: "reply",
+        ticketId: "ticket_1",
+        fileName: "reply-lazy.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+      })
+
+      expect(result.attachmentId).toBeDefined()
+      expect(result.storageKey).toContain("reply/ticket_1")
+      // createUploadSession called once
+      expect(mockSessionCreate).toHaveBeenCalledTimes(1)
+    })
+
+    it("uses lazy repository for register", async () => {
+      const { storage } = createDeps()
+      const service = createSupportTicketAttachmentService({ storage })
+
+      const upload = await service.createPresignedAttachmentUpload({
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+        target: "create",
+        fileName: "register-lazy.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+      })
+
+      expect(upload.attachmentId).toBeDefined()
+      expect(mockSessionCreate).toHaveBeenCalledTimes(1)
+
+      const attachment = await service.registerAttachment({
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+        target: "create",
+        id: upload.attachmentId,
+        fileName: "register-lazy.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+        storageBucket: upload.storageBucket,
+        storageKey: upload.storageKey,
+      })
+
+      expect(attachment.id).toBe(upload.attachmentId)
+      // createUploadSession + markUploadSessionRegistered
+      expect(mockSessionUpdate).toHaveBeenCalledTimes(1)
+    })
   })
 })
