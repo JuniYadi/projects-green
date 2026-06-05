@@ -4,6 +4,7 @@ import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 
 import { createAdminBillingRoutes } from "./adjust.route"
 import { NegativeBalanceError } from "../../types"
+import type { PlatformAccessRole } from "@/lib/platform-role"
 import {
   MockAuthContext,
   defaultAuth,
@@ -662,6 +663,135 @@ describe("AdminAdjustRoute", () => {
       expect(response.status).toBe(400)
       const body = await response.json()
       expect(body.error).toBe("BALANCE_LIMIT_EXCEEDED")
+    })
+  })
+
+  describe("POST /admin/adjust — default admin checks", () => {
+    function makeMockTransactionWithCallback() {
+      mockTransaction.mockImplementation(async (cb: (tx: any) => any) => {
+        const tx = {
+          billingAccount: {
+            findUnique: mockFindUnique,
+            update: mockUpdate,
+          },
+          billingAdjustment: {
+            create: mockCreate,
+          },
+        }
+        return cb(tx)
+      })
+    }
+
+    it("allows CREDIT when default isAdmin with super_admin", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+        balance: new Decimal("50000.00"),
+      })
+      mockUpdate.mockResolvedValueOnce({ id: "acc-1", balance: new Decimal("100000.00") })
+      mockCreate.mockResolvedValueOnce({
+        id: "adj-1",
+        billingAccountId: "acc-1",
+        adjustmentType: "CREDIT",
+        amount: new Decimal("50000"),
+        currency: "IDR",
+        reason: "Credit",
+      })
+
+      makeMockTransactionWithCallback()
+
+      const app = new Elysia()
+        .use(
+          createAdminBillingRoutes({
+            authenticate: async () => ({
+              user: { id: "admin-1" },
+              organizationId: "org-1",
+              role: "admin",
+            } as unknown as MockAuthContext),
+            getPlatformRole: async () => "super_admin" as PlatformAccessRole,
+            // No isAdmin override
+          })
+        )
+        .compile()
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/adjust", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ organizationId: "550e8400-e29b-41d4-a716-446655440000", type: "CREDIT", amount: 50000, reason: "Credit" }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+    })
+
+    it("allows DEBIT when default isAdmin with org role owner", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+        balance: new Decimal("100000.00"),
+      })
+      mockUpdate.mockResolvedValueOnce({ id: "acc-1", balance: new Decimal("50000.00") })
+      mockCreate.mockResolvedValueOnce({
+        id: "adj-2",
+        billingAccountId: "acc-1",
+        adjustmentType: "DEBIT",
+        amount: new Decimal("50000"),
+        currency: "IDR",
+        reason: "Debit",
+      })
+
+      makeMockTransactionWithCallback()
+
+      const app = new Elysia()
+        .use(
+          createAdminBillingRoutes({
+            authenticate: async () => ({
+              user: { id: "owner-1" },
+              organizationId: "org-1",
+              role: "owner",
+            } as unknown as MockAuthContext),
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            // No isAdmin override
+          })
+        )
+        .compile()
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/adjust", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ organizationId: "550e8400-e29b-41d4-a716-446655440000", type: "DEBIT", amount: 50000, reason: "Debit" }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+    })
+
+    it("returns 403 when default isAdmin and user is member", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminBillingRoutes({
+            authenticate: async () => ({
+              user: { id: "member-1" },
+              organizationId: "org-1",
+              role: "member",
+            } as unknown as MockAuthContext),
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            // No isAdmin override
+          })
+        )
+        .compile()
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/adjust", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ organizationId: "550e8400-e29b-41d4-a716-446655440000", type: "CREDIT", amount: 50000, reason: "Unauthorized" }),
+        })
+      )
+
+      expect(res.status).toBe(403)
     })
   })
 })

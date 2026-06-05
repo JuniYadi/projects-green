@@ -315,4 +315,85 @@ describe("AdminAdjustmentsRoute", () => {
 
     expect(response.status).toBe(422)
   })
+
+  it("uses default isAdmin with super_admin platform role", async () => {
+    mockFindMany.mockResolvedValueOnce([])
+    mockCount.mockResolvedValueOnce(0)
+
+    const app = new Elysia()
+      .use(
+        createAdminAdjustmentsRoutes({
+          authenticate: async () => ({
+            user: { id: "admin-1" },
+            organizationId: "org-1",
+            role: "admin",
+            roles: ["admin"],
+          } as unknown as MockAuthContext),
+          getPlatformRole: async () => "super_admin" as PlatformAccessRole,
+          // No isAdmin override — uses the default which returns true for super_admin
+        })
+      )
+      .compile()
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/adjustments", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it("uses default isAdmin with org owner role", async () => {
+    mockFindMany.mockResolvedValueOnce([])
+    mockCount.mockResolvedValueOnce(0)
+
+    const app = new Elysia()
+      .use(
+        createAdminAdjustmentsRoutes({
+          authenticate: async () => ({
+            user: { id: "owner-1" },
+            organizationId: "org-1",
+            role: "owner",
+            roles: ["owner"],
+          } as unknown as MockAuthContext),
+          getPlatformRole: async () => "none" as PlatformAccessRole,
+          // No isAdmin override — uses the default which checks orgRole for non-super_admin
+        })
+      )
+      .compile()
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/adjustments", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it("returns 403 when using default isAdmin and user is not admin", async () => {
+    const app = new Elysia()
+      .use(
+        createAdminAdjustmentsRoutes({
+          authenticate: async () => ({
+            user: { id: "member-1" },
+            organizationId: "org-1",
+            role: "member",
+            roles: ["member"],
+          } as unknown as MockAuthContext),
+          getPlatformRole: async () => "none" as PlatformAccessRole,
+          // No isAdmin override — uses the default which returns false for "member"
+        })
+      )
+      .compile()
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/adjustments", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(403)
+  })
 })
