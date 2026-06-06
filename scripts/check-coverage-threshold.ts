@@ -5,12 +5,13 @@ const LINE_THRESHOLD = 90
 
 const EXCLUDED_DIR_PATTERNS = ["whatsapp", "test/", "modules/deploy/"]
 
-const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "")
+export const stripAnsi = (value: string) =>
+  value.replace(/\x1b\[[0-9;]*m/g, "")
 
 const isExcludedTestFile = (filePath: string): boolean =>
   EXCLUDED_DIR_PATTERNS.some((pattern) => filePath.includes(pattern))
 
-const collectTestFiles = (): string[] => {
+export const collectTestFiles = (): string[] => {
   const files: string[] = []
   for (const pattern of ["**/*.test.ts", "**/*.test.tsx"]) {
     const glob = new Glob(pattern)
@@ -19,6 +20,78 @@ const collectTestFiles = (): string[] => {
     }
   }
   return files.filter((f) => !isExcludedTestFile(f))
+}
+
+export const streamAndCollect = async (
+  stream: ReadableStream<Uint8Array>,
+  onChunk: (chunk: string) => void
+) => {
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  let output = ""
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+
+    const chunk = decoder.decode(value, { stream: true })
+    output += chunk
+    onChunk(chunk)
+  }
+
+  const tail = decoder.decode()
+  if (tail) {
+    output += tail
+    onChunk(tail)
+  }
+
+  return output
+}
+
+export const collectCoverageSummary = (output: string) => {
+  const normalized = stripAnsi(output)
+  const lines = normalized.split("\n")
+
+  let totalFunctions = 0
+  let totalLines = 0
+  let fileCount = 0
+
+  for (const line of lines) {
+    if (
+      line.includes("|") &&
+      !line.includes("% Funcs") &&
+      line.includes("All files") === false
+    ) {
+      const columns = line.split("|").map((c) => c.trim()).filter(Boolean)
+      if (columns.length >= 3) {
+        const funcCov = Number(columns[1])
+        const lineCov = Number(columns[2])
+        const filename = columns[0]
+
+        if (
+          filename.includes("whatsapp") ||
+          filename.includes("test/") ||
+          filename.includes("modules/deploy/")
+        ) {
+          continue
+        }
+
+        if (Number.isFinite(funcCov) && Number.isFinite(lineCov)) {
+          totalFunctions += funcCov
+          totalLines += lineCov
+          fileCount++
+        }
+      }
+    }
+  }
+
+  return {
+    functionCoverage: fileCount > 0 ? totalFunctions / fileCount : 0,
+    lineCoverage: fileCount > 0 ? totalLines / fileCount : 0,
+    fileCount,
+  }
 }
 
 const main = async () => {
@@ -46,63 +119,22 @@ const main = async () => {
   )
 
   const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
+    streamAndCollect(proc.stdout, (chunk) => {
+      process.stdout.write(chunk)
+    }),
+    streamAndCollect(proc.stderr, (chunk) => {
+      process.stderr.write(chunk)
+    }),
     proc.exited,
   ])
-
-  if (stdout) {
-    process.stdout.write(stdout)
-  }
-
-  if (stderr) {
-    process.stderr.write(stderr)
-  }
 
   if (exitCode !== 0) {
     console.warn(`Note: Test suite had failures (exit code ${exitCode})`)
   }
 
-  const normalized = stripAnsi(`${stdout}\n${stderr}`)
-  const lines = normalized.split("\n")
-
-  // Parse per-file coverage, exclude WhatsApp files from analysis
-  let totalFunctions = 0
-  let totalLines = 0
-  let fileCount = 0
-
-  for (const line of lines) {
-    if (
-      line.includes("|") &&
-      !line.includes("% Funcs") &&
-      line.includes("All files") === false
-    ) {
-      const columns = line.split("|").map((c) => c.trim()).filter(Boolean)
-      if (columns.length >= 3) {
-        const funcCov = Number(columns[1])
-        const lineCov = Number(columns[2])
-        const filename = columns[0]
-
-        // Skip WhatsApp, test, and deploy files
-        if (
-          filename.includes("whatsapp") ||
-          filename.includes("test/") ||
-          filename.includes("modules/deploy/")
-        ) {
-          continue
-        }
-
-        if (Number.isFinite(funcCov) && Number.isFinite(lineCov)) {
-          totalFunctions += funcCov
-          totalLines += lineCov
-          fileCount++
-        }
-      }
-    }
-  }
-
-  const functionCoverage = fileCount > 0 ? totalFunctions / fileCount : 0
-  const lineCoverage = fileCount > 0 ? totalLines / fileCount : 0
+  const { functionCoverage, lineCoverage } = collectCoverageSummary(
+    `${stdout}\n${stderr}`
+  )
 
   console.log(
     `\nCoverage (excluding whatsapp/test/deploy): functions ${functionCoverage.toFixed(2)}%, lines ${lineCoverage.toFixed(2)}%`
@@ -134,7 +166,9 @@ const main = async () => {
   }
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+if (import.meta.main) {
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}

@@ -59,15 +59,6 @@ jobs:
       - name: Run tests with coverage
         run: bun run test:coverage --timeout=30000 --max-concurrency=10
 
-      - name: Filter lcov for CodeCov
-        run: |
-          # Remove whatsapp, test, and deploy files from lcov.info before upload
-          grep -v "^SF:.*/whatsapp/" coverage/lcov.info | \
-          grep -v "^SF:.*/test/" | \
-          grep -v "^SF:.*/modules/deploy/" > coverage/lcov.filtered.info
-          echo "Filtered $(wc -l < coverage/lcov.filtered.info) lines from lcov"
-          mv coverage/lcov.filtered.info coverage/lcov.info
-
       - name: Verify LCOV output exists
         run: |
           test -f coverage/lcov.info
