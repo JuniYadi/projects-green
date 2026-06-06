@@ -1355,4 +1355,6 @@ export const __testables = {
   fromInventory,
   checkForBlockedFrameworks,
   buildDetectorRuleHints,
+  enforceRuntimeMappings,
+  inferFrameworkEcosystem,
 }

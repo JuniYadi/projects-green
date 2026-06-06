@@ -568,3 +568,185 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
     expect(result.warnings.some((w) => w.includes("truncated"))).toBe(true)
   })
 })
+
+describe("enforceRuntimeMappings", () => {
+  it("returns suggested runtimes when no mappings exist", async () => {
+    const { enforceRuntimeMappings } = __testables
+
+    const mockPrisma = {
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const suggestedRuntimes = [
+      {
+        id: "node" as const,
+        kind: "runtime" as const,
+        requiredFor: "app_runtime" as const,
+        confidence: 0.9,
+        reason: "Node detected",
+      },
+    ]
+
+    const result = await enforceRuntimeMappings(
+      "nextjs",
+      "14",
+      suggestedRuntimes,
+      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+    )
+
+    expect(result.enforced).toEqual(suggestedRuntimes)
+    expect(result.appliedMappings).toEqual([])
+  })
+
+  it("overrides runtime version when mapping exists", async () => {
+    const { enforceRuntimeMappings } = __testables
+
+    const mockPrisma = {
+      runtimeMapping: {
+        findMany: async () => [
+          {
+            id: "mapping-1",
+            frameworkId: "laravel",
+            frameworkVersion: "10",
+            runtimeId: "php",
+            runtimeVersion: "8.2",
+            buildVersion: null,
+            isActive: true,
+            priority: 10,
+          },
+        ],
+      },
+    }
+
+    const suggestedRuntimes = [
+      {
+        id: "php" as const,
+        kind: "runtime" as const,
+        requiredFor: "app_runtime" as const,
+        confidence: 0.9,
+        reason: "PHP detected",
+      },
+    ]
+
+    const result = await enforceRuntimeMappings(
+      "laravel",
+      "10",
+      suggestedRuntimes,
+      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+    )
+
+    expect(result.enforced).toHaveLength(1)
+    expect(result.enforced[0].id).toBe("php")
+    expect(result.enforced[0].confidence).toBe(1.0)
+    expect(result.enforced[0].reason).toContain("Enforced by RuntimeMapping")
+    expect(result.appliedMappings).toContain("php 8.2")
+  })
+
+  it("adds new runtime when mapping exists but not in suggested", async () => {
+    const { enforceRuntimeMappings } = __testables
+
+    const mockPrisma = {
+      runtimeMapping: {
+        findMany: async () => [
+          {
+            id: "mapping-1",
+            frameworkId: "laravel",
+            frameworkVersion: "10",
+            runtimeId: "node",
+            runtimeVersion: "20",
+            buildVersion: null,
+            isActive: true,
+            priority: 10,
+          },
+        ],
+      },
+    }
+
+    const suggestedRuntimes = [
+      {
+        id: "php" as const,
+        kind: "runtime" as const,
+        requiredFor: "app_runtime" as const,
+        confidence: 0.9,
+        reason: "PHP detected",
+      },
+    ]
+
+    const result = await enforceRuntimeMappings(
+      "laravel",
+      "10",
+      suggestedRuntimes,
+      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+    )
+
+    expect(result.enforced).toHaveLength(2)
+    expect(result.enforced.map((r) => r.id)).toContain("php")
+    expect(result.enforced.map((r) => r.id)).toContain("node")
+    expect(result.appliedMappings).toContain("node 20")
+  })
+
+  it("uses wildcard mapping when exact version not found", async () => {
+    const { enforceRuntimeMappings } = __testables
+
+    const mockPrisma = {
+      runtimeMapping: {
+        findMany: async () => [
+          {
+            id: "mapping-1",
+            frameworkId: "laravel",
+            frameworkVersion: null, // wildcard
+            runtimeId: "php",
+            runtimeVersion: "8.1",
+            buildVersion: null,
+            isActive: true,
+            priority: 5,
+          },
+        ],
+      },
+    }
+
+    const suggestedRuntimes = [
+      {
+        id: "php" as const,
+        kind: "runtime" as const,
+        requiredFor: "app_runtime" as const,
+        confidence: 0.9,
+        reason: "PHP detected",
+      },
+    ]
+
+    const result = await enforceRuntimeMappings(
+      "laravel",
+      "11", // Different version than mapping
+      suggestedRuntimes,
+      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+    )
+
+    expect(result.enforced).toHaveLength(1)
+    expect(result.appliedMappings).toContain("php 8.1")
+  })
+})
+
+describe("inferFrameworkEcosystem", () => {
+  it("returns correct ecosystem for known frameworks", () => {
+    const { inferFrameworkEcosystem } = __testables
+
+    expect(inferFrameworkEcosystem("laravel")).toBe("php")
+    expect(inferFrameworkEcosystem("nextjs")).toBe("node")
+    expect(inferFrameworkEcosystem("react")).toBe("node")
+    expect(inferFrameworkEcosystem("django")).toBe("python")
+    expect(inferFrameworkEcosystem("rails")).toBe("ruby")
+    expect(inferFrameworkEcosystem("spring")).toBe("java")
+    expect(inferFrameworkEcosystem("echo")).toBe("go")
+    expect(inferFrameworkEcosystem("actix")).toBe("rust")
+  })
+
+  it("returns unknown for unrecognized frameworks", () => {
+    const { inferFrameworkEcosystem } = __testables
+
+    expect(inferFrameworkEcosystem("custom-framework")).toBe("unknown")
+    expect(inferFrameworkEcosystem("")).toBe("unknown")
+  })
+})
