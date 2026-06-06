@@ -145,7 +145,8 @@ enum DeploySource {
   MANUAL
 }
 
-
+// DetectorRule is used by the AI framework detection engine to store
+// governance rules that influence classification and build recommendations.
 model DetectorRule {
   id               String   @id @default(cuid())
   name             String

@@ -371,13 +371,13 @@ const resolveOffset = (cursor: string | undefined) => {
     return 0
   }
 
-  if (/^\d+$/.test(trimmed)) {
-    return Number(trimmed)
-  }
-
   try {
     return fromBase64UrlJson(trimmed).offset
   } catch {
+    // Fallback for legacy numeric cursors or invalid formats
+    if (/^\d+$/.test(trimmed)) {
+      return Number(trimmed)
+    }
     return 0
   }
 }
@@ -409,8 +409,19 @@ const comparePushedAtDesc = (
   const leftTime = Date.parse(left.pushedAt)
   const rightTime = Date.parse(right.pushedAt)
 
-  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+  const leftIsNaN = Number.isNaN(leftTime)
+  const rightIsNaN = Number.isNaN(rightTime)
+
+  if (leftIsNaN && rightIsNaN) {
     return left.fullName.localeCompare(right.fullName)
+  }
+
+  if (leftIsNaN) {
+    return 1
+  }
+
+  if (rightIsNaN) {
+    return -1
   }
 
   if (leftTime === rightTime) {
@@ -478,7 +489,10 @@ const createInstallationToken = async (installationId: bigint | number) => {
     if (cached) {
       const encryptedData = parseEncryptedField(cached)
       if (encryptedData) {
-        return decrypt(encryptedData, getEncryptionKey())
+        const decrypted = decrypt(encryptedData, getEncryptionKey())
+        if (decrypted && decrypted.trim()) {
+          return decrypted
+        }
       }
     }
   } catch (error) {
@@ -499,6 +513,8 @@ const createInstallationToken = async (installationId: bigint | number) => {
 
   try {
     const encrypted = encrypt(result.token, getEncryptionKey())
+    // Token caching is best-effort to optimize performance.
+    // If it fails, the service will still return the newly generated token.
     await redis.set(
       cacheKey,
       serializeEncryptedField(encrypted),

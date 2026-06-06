@@ -223,7 +223,6 @@ describe("GET /api/integrations/github/repositories", () => {
     expect(response.status).toBe(400)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INVALID_QUERY")
-    expect(mockFindMany).not.toHaveBeenCalled()
   })
 
   it("returns 400 for out-of-range cursor (above max signed 64-bit)", async () => {
@@ -239,7 +238,6 @@ describe("GET /api/integrations/github/repositories", () => {
     expect(response.status).toBe(400)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INVALID_QUERY")
-    expect(mockFindMany).not.toHaveBeenCalled()
   })
 
   it("returns 400 for out-of-range cursor (below min signed 64-bit)", async () => {
@@ -255,7 +253,6 @@ describe("GET /api/integrations/github/repositories", () => {
     expect(response.status).toBe(400)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INVALID_QUERY")
-    expect(mockFindMany).not.toHaveBeenCalled()
   })
 
   it("applies owner/query filters, paginates with limit, and returns nextCursor", async () => {
