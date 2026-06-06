@@ -973,9 +973,12 @@ export const readRepoFile = async (
   // GitHub Contents API has a 1MB limit for file content
   const MAX_CONTENT_SIZE = 1_000_000 // 1MB in bytes
   if (data.size > MAX_CONTENT_SIZE) {
-    throw new GithubApiError(
-      `File "${input.filePath}" exceeds 1MB limit (${data.size} bytes). Use Git Trees API for large files.`
-    )
+    return {
+      content: `// File too large to read (${data.size} bytes) — truncated`,
+      path: data.path,
+      sha: data.sha,
+      size: data.size,
+    }
   }
 
   const content = Buffer.from(data.content, "base64").toString("utf8")
