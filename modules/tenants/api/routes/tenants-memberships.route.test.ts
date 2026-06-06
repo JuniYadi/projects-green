@@ -192,8 +192,7 @@ describe("tenants-memberships routes", () => {
 
     it("returns 401 status when requireTenantActor fails", async () => {
       mockRequireTenantActor.mockImplementation(
-        async (...args: unknown[]) => {
-          const set = args[0] as { status?: number }
+        ((set: { status?: number }) => {
           set.status = 401
           return {
             ok: false,
@@ -201,7 +200,7 @@ describe("tenants-memberships routes", () => {
             policyCode: "NO_SESSION",
             message: "No active session.",
           } as TenantApiError
-        }
+        }) as any
       )
 
       const app = await getApp()

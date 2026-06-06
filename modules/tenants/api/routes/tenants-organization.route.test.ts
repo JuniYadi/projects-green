@@ -92,7 +92,7 @@ describe("tenantsOrganizationRoutes", () => {
     mockDeleteTenantOrganization.mockClear()
 
     mockRequireTenantActor.mockImplementation(
-      async (_set: { status?: number }) => ({
+      async () => ({
         userId: "user_1",
         organizationId: "org_1",
         platformRole: "none",
@@ -666,8 +666,7 @@ describe("tenantsOrganizationRoutes", () => {
 
   it("returns 401 when requireTenantActor fails on update endpoint", async () => {
     mockRequireTenantActor.mockImplementation(
-      async (...args: unknown[]) => {
-        const set = args[0] as { status?: number }
+      ((set: { status?: number }) => {
         set.status = 401
         return {
           ok: false,
@@ -675,7 +674,7 @@ describe("tenantsOrganizationRoutes", () => {
           policyCode: "NO_SESSION",
           message: "No active session.",
         } as unknown as TenantActorContext
-      }
+      }) as any
     )
 
     const app = await createApp()
