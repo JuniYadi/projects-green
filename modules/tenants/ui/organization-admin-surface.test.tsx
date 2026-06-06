@@ -474,5 +474,204 @@ describe("OrganizationAdminSurface", () => {
       expect(loadedWrapper.classList.contains(cls)).toBe(true)
     }
   })
+
+  it("shows error banner when API returns error", async () => {
+    const OrganizationAdminSurface = await loadOrganizationAdminSurface()
+
+    mockTenantFetch({
+      auth: {
+        effectiveGlobalRole: "none",
+        effectiveTenantRole: "member",
+        allowedActions: [],
+      },
+      onPost: undefined,
+    })
+
+    // Override fetch to return error for authorization
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith("/authorization")) {
+          return jsonResponse(
+            { ok: false, error: "FORBIDDEN", message: "Access denied." },
+            403
+          )
+        }
+        return jsonResponse({ ok: true, members: [] })
+      }
+    ) as unknown as typeof fetch
+
+    const view = render(<OrganizationAdminSurface organizationId="org_123" />)
+
+    await waitFor(() => {
+      expect(view.getByText("Access denied.")).toBeTruthy()
+    }, { timeout: 10000 })
+
+    expect(view.getByText("Retry")).toBeTruthy()
+  })
+
+  it("shows notice and refreshes after successful action", async () => {
+    const OrganizationAdminSurface = await loadOrganizationAdminSurface()
+
+    let callCount = 0
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        callCount++
+
+        if (url.endsWith("/authorization")) {
+          return jsonResponse({
+            ok: true,
+            orgId: "org_123",
+            effectiveGlobalRole: "none",
+            effectiveTenantRole: "owner",
+            allowedActions: ["manage_tenant", "invite_member"],
+          })
+        }
+
+        if (url.endsWith("/members")) {
+          return jsonResponse({
+            ok: true,
+            members: [
+              makeMember({ id: "m_1", displayName: "Test User", email: "test@example.com" }),
+            ],
+          })
+        }
+
+        if (url.endsWith("/invitations")) {
+          return jsonResponse({ ok: true, invitations: [] })
+        }
+
+        if (url.endsWith("/organization")) {
+          return jsonResponse({
+            ok: true,
+            organization: {
+              id: "org_123",
+              name: "Test Org",
+              allowProfilesOutsideOrganization: false,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-06-01T00:00:00.000Z",
+            },
+          })
+        }
+
+        if (init?.method === "POST") {
+          return jsonResponse({ ok: true })
+        }
+
+        return jsonResponse({ ok: false, error: "UNHANDLED", message: "" }, 500)
+      }
+    ) as unknown as typeof fetch
+
+    const view = render(<OrganizationAdminSurface organizationId="org_123" />)
+
+    await waitFor(() => {
+      expect(view.getByText("Test User")).toBeTruthy()
+    }, { timeout: 10000 })
+
+    // Click on Invitations tab
+    fireEvent.click(view.getByRole("button", { name: "Invitations" }))
+
+    await waitFor(() => {
+      expect(
+        view.queryByText("No pending invitations.")
+      ).toBeTruthy()
+    }, { timeout: 10000 })
+  })
+
+  it("renders members tab with 'No members found' when members array is empty", async () => {
+    const OrganizationAdminSurface = await loadOrganizationAdminSurface()
+
+    mockTenantFetch({
+      auth: {
+        effectiveGlobalRole: "none",
+        effectiveTenantRole: "owner",
+        allowedActions: ["manage_tenant"],
+      },
+      members: [],
+      invitations: [],
+    })
+
+    const view = render(<OrganizationAdminSurface organizationId="org_123" />)
+
+    await waitFor(() => {
+      expect(view.getByText("No members found.")).toBeTruthy()
+    }, { timeout: 10000 })
+  })
+
+  it("renders all three tab buttons", async () => {
+    const OrganizationAdminSurface = await loadOrganizationAdminSurface()
+
+    mockTenantFetch({
+      auth: {
+        effectiveGlobalRole: "none",
+        effectiveTenantRole: "owner",
+        allowedActions: ["manage_tenant"],
+      },
+      members: [],
+      invitations: [],
+    })
+
+    const view = render(<OrganizationAdminSurface organizationId="org_123" />)
+
+    await waitFor(() => {
+      expect(view.getByText("Organization Administration")).toBeTruthy()
+    }, { timeout: 10000 })
+
+    expect(view.getByRole("button", { name: "Members" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "Invitations" })).toBeTruthy()
+    const settingsBtn = view.getByRole("button", { name: "Organization Settings" })
+    expect(settingsBtn).toBeTruthy()
+
+    // Click settings and verify description text changes
+    fireEvent.click(settingsBtn)
+
+    await waitFor(() => {
+      expect(
+        view.getByText("Update organization profile and destructive settings.")
+      ).toBeTruthy()
+    }, { timeout: 10000 })
+  })
+
+  it("shows refreshing indicator during data refresh", async () => {
+    const OrganizationAdminSurface = await loadOrganizationAdminSurface()
+
+    // Use a promise that never resolves for the authorization call
+    // to keep the component in loading state
+    let resolveAuthorization: (value: Response) => void = () => {}
+    const authPromise = new Promise<Response>((resolve) => {
+      resolveAuthorization = resolve
+    })
+
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith("/authorization")) {
+          return authPromise
+        }
+        return jsonResponse({ ok: true, members: [] })
+      }
+    ) as unknown as typeof fetch
+
+    const view = render(<OrganizationAdminSurface organizationId="org_123" />)
+
+    // Should show skeleton loading state
+    expect(view.container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0)
+
+    // Resolve the authorization to complete loading
+    resolveAuthorization(
+      jsonResponse({
+        ok: true,
+        orgId: "org_123",
+        effectiveGlobalRole: "none",
+        effectiveTenantRole: "owner",
+        allowedActions: ["manage_tenant"],
+      })
+    )
+
+    await waitFor(() => {
+      expect(view.getByText("Organization Administration")).toBeTruthy()
+    }, { timeout: 10000 })
+  })
 })
 

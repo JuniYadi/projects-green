@@ -9,6 +9,19 @@ import Decimal = Prisma.Decimal
 
 import { UsageLedgerService } from "./usage-ledger.service"
 
+// ─── Mock WorkOS before billing-cycle import ────────────────────────────────
+const mockListOrgMemberships = mock()
+const mockGetUser = mock()
+
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  getWorkOS: () => ({
+    userManagement: {
+      listOrganizationMemberships: mockListOrgMemberships,
+      getUser: mockGetUser,
+    },
+  }),
+}))
+
 // Module under test
 const { BillingCycleService } = await import("./billing-cycle.service")
 
@@ -355,6 +368,214 @@ describe("BillingCycleService", () => {
 
       expect(result.processed).toBe(1)
       expect(result.invoices).toHaveLength(1)
+    })
+
+    it("sends email notification when emailService is provided", async () => {
+      mockPrisma.billingSubscription.findMany.mockImplementation(async () => [
+        {
+          id: "sub-1",
+          billingAccountId: "ba-1",
+          billingAccount: {
+            id: "ba-1",
+            organizationId: "tenant-1",
+            balance: new Decimal(500000),
+          },
+        },
+      ])
+
+      mockUsageLedger.generateRatedUsage.mockImplementation(async () => [
+        {
+          subscriptionId: "sub-1",
+          category: "WHATSAPP_MESSAGE_OUT",
+          rawAmountIdr: new Decimal(25000),
+          cappedAmountIdr: new Decimal(25000),
+          meterType: "usage",
+          meterValue: 25000,
+        },
+      ])
+
+      mockPrisma.billingAccount.findUnique.mockImplementation(async () => ({
+        id: "ba-1",
+        balance: {
+          gte: () => true,
+          minus: () => new Decimal(475000),
+        },
+      }))
+
+      mockPrisma.$transaction.mockImplementation(async (fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>) =>
+        fn(mockPrisma),
+      )
+
+      // Mock WorkOS to return admin email
+      mockListOrgMemberships.mockResolvedValueOnce({
+        data: [
+          {
+            userId: "user-admin-1",
+            role: { slug: "user_admin" },
+          },
+        ],
+      })
+      mockGetUser.mockResolvedValueOnce({ email: "admin@example.com" })
+
+      const mockEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+      }
+
+      const service = new BillingCycleService(
+        mockPrisma as unknown as PrismaClient,
+        mockUsageLedger as unknown as UsageLedgerService,
+        mockEmailService as any,
+      )
+      const result = await service.processMonthlyBilling()
+
+      // Email notifications are fire-and-forget; drain microtasks to let them resolve
+      await new Promise((resolve) => setTimeout(resolve, 10))
+
+      expect(result.processed).toBe(1)
+      expect(mockEmailService.sendInvoiceCreated).toHaveBeenCalledTimes(1)
+      expect(mockListOrgMemberships).toHaveBeenCalledWith({
+        organizationId: "tenant-1",
+        statuses: ["active"],
+      })
+      expect(mockGetUser).toHaveBeenCalledWith("user-admin-1")
+    })
+
+    it("skips email when admin not found in org memberships", async () => {
+      mockPrisma.billingSubscription.findMany.mockImplementation(async () => [
+        {
+          id: "sub-1",
+          billingAccountId: "ba-1",
+          billingAccount: {
+            id: "ba-1",
+            organizationId: "tenant-1",
+            balance: new Decimal(500000),
+          },
+        },
+      ])
+
+      mockUsageLedger.generateRatedUsage.mockImplementation(async () => [
+        {
+          subscriptionId: "sub-1",
+          category: "WHATSAPP_MESSAGE_OUT",
+          rawAmountIdr: new Decimal(25000),
+          cappedAmountIdr: new Decimal(25000),
+          meterType: "usage",
+          meterValue: 25000,
+        },
+      ])
+
+      mockPrisma.billingAccount.findUnique.mockImplementation(async () => ({
+        id: "ba-1",
+        balance: {
+          gte: () => true,
+          minus: () => new Decimal(475000),
+        },
+      }))
+
+      mockPrisma.$transaction.mockImplementation(async (fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>) =>
+        fn(mockPrisma),
+      )
+
+      // No admin/owner in memberships
+      mockListOrgMemberships.mockResolvedValueOnce({
+        data: [
+          {
+            userId: "user-member-1",
+            role: { slug: "user_member" },
+          },
+        ],
+      })
+
+      const mockEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+      }
+
+      const service = new BillingCycleService(
+        mockPrisma as unknown as PrismaClient,
+        mockUsageLedger as unknown as UsageLedgerService,
+        mockEmailService as any,
+      )
+      const result = await service.processMonthlyBilling()
+
+      expect(result.processed).toBe(1)
+      // Email should not be sent since no admin found
+      expect(mockEmailService.sendInvoiceCreated).not.toHaveBeenCalled()
+    })
+
+    it("sends no email when subscription has no organizationId", async () => {
+      mockPrisma.billingSubscription.findMany.mockImplementation(async () => [
+        {
+          id: "sub-1",
+          billingAccountId: "ba-1",
+          billingAccount: {
+            id: "ba-1",
+            organizationId: null,
+            balance: new Decimal(500000),
+          },
+        },
+      ])
+
+      const mockEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+      }
+
+      const service = new BillingCycleService(
+        mockPrisma as unknown as PrismaClient,
+        mockUsageLedger as unknown as UsageLedgerService,
+        mockEmailService as any,
+      )
+      const result = await service.processMonthlyBilling()
+
+      // Subscription with no org should be SKIPPED before email
+      expect(result.skipped).toBe(1)
+      expect(mockEmailService.sendInvoiceCreated).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("finalizeServiceInvoices with email", () => {
+    it("sends email when finalizing invoices", async () => {
+      const mockInvoice = {
+        id: "svc-inv-1",
+        billingAccountId: "ba-1",
+        invoiceNumber: "SVC-202606-0001",
+        type: "SERVICE",
+        status: "DRAFT" as const,
+        currency: "IDR",
+        totalAmount: new Decimal(150000),
+        periodStart: new Date("2026-06-01"),
+        periodEnd: new Date("2026-06-30"),
+      }
+
+      mockPrisma.invoice.findMany.mockImplementation(async () => [mockInvoice])
+      mockPrisma.invoice.updateMany.mockImplementation(async () => ({ count: 1 }))
+
+      mockPrisma.billingAccount.findUnique.mockImplementation(async () => ({
+        organizationId: "tenant-1",
+      }))
+
+      mockListOrgMemberships.mockResolvedValueOnce({
+        data: [
+          {
+            userId: "user-admin-1",
+            role: { slug: "user_admin" },
+          },
+        ],
+      })
+      mockGetUser.mockResolvedValueOnce({ email: "admin@example.com" })
+
+      const mockEmailService = {
+        sendInvoiceCreated: mock(async () => {}),
+      }
+
+      const service = new BillingCycleService(
+        mockPrisma as unknown as PrismaClient,
+        mockUsageLedger as unknown as UsageLedgerService,
+        mockEmailService as any,
+      )
+      const result = await service.finalizeServiceInvoices()
+
+      expect(result.finalized).toBe(1)
+      expect(mockEmailService.sendInvoiceCreated).toHaveBeenCalledTimes(1)
     })
   })
 })

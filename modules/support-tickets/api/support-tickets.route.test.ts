@@ -18,6 +18,13 @@ const mockListOrganizationMemberships = mock(async () => ({
   ],
 }))
 
+const mockListOrganizations = mock(async () => ({
+  data: [
+    { id: "org_1", name: "Org 1" },
+    { id: "org_2", name: "Org 2" },
+  ],
+}))
+
 mock.module("@workos-inc/authkit-nextjs", () => {
   return {
     withAuth: async () => ({
@@ -36,6 +43,7 @@ mock.module("@workos-inc/authkit-nextjs", () => {
       },
       organizations: {
         getOrganization: async () => ({ id: "org_1", name: "Org 1" }),
+        listOrganizations: mockListOrganizations,
       },
     }),
   }
@@ -295,6 +303,7 @@ describe("support ticket routes", () => {
           },
           organizations: {
             getOrganization: mockGetOrganization,
+            listOrganizations: async () => ({ data: [] }),
           },
         }),
       }
@@ -776,5 +785,330 @@ describe("support ticket routes", () => {
     expect(json.ok).toBe(true)
     expect(json.thread.replies).toHaveLength(1)
     expect(json.thread.replies[0]!.isInternalNote).toBe(false)
+  })
+
+  it("returns 401 when user is not authenticated", async () => {
+    const app = new Elysia().use(
+      createSupportTicketRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+          user: null,
+        }),
+        getPlatformRole: async () => "none",
+        service: {
+          async listTickets() { throw new Error("should not reach") },
+          async createTicket() { throw new Error("should not reach") },
+          async getTicketThread() { throw new Error("should not reach") },
+          async addReply() { throw new Error("should not reach") },
+          async transitionStatus() { throw new Error("should not reach") },
+        } as Partial<SupportTicketService> as SupportTicketService,
+        emailService: {
+          async sendTicketCreated() {},
+          async sendTicketReplied() {},
+          async sendTicketClosed() {},
+        },
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "UNAUTHORIZED",
+    })
+  })
+
+  it("returns 403 when user has no organization context", async () => {
+    const app = new Elysia().use(
+      createSupportTicketRoutes({
+        authenticate: async () => ({
+          organizationId: null,
+          role: null,
+          roles: null,
+          user: {
+            id: "user_1",
+            email: "user@example.com",
+          },
+        }),
+        getPlatformRole: async () => "none",
+        service: {
+          async listTickets() { throw new Error("should not reach") },
+          async createTicket() { throw new Error("should not reach") },
+          async getTicketThread() { throw new Error("should not reach") },
+          async addReply() { throw new Error("should not reach") },
+          async transitionStatus() { throw new Error("should not reach") },
+        } as Partial<SupportTicketService> as SupportTicketService,
+        emailService: {
+          async sendTicketCreated() {},
+          async sendTicketReplied() {},
+          async sendTicketClosed() {},
+        },
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "TENANT_CONTEXT_REQUIRED",
+    })
+  })
+
+  it("maps content unavailable error to 503", async () => {
+    const { SupportTicketContentUnavailableError: ContentUnavailableError } = await import(
+      "@/modules/support-tickets/support-ticket.service"
+    )
+
+    const app = new Elysia().use(
+      createSupportTicketRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+          user: {
+            id: "user_1",
+            email: "user@example.com",
+          },
+        }),
+        getPlatformRole: async () => "none",
+        service: {
+          async listTickets() {
+            throw new ContentUnavailableError()
+          },
+        } as Partial<SupportTicketService> as SupportTicketService,
+        emailService: {
+          async sendTicketCreated() {},
+          async sendTicketReplied() {},
+          async sendTicketClosed() {},
+        },
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "CONTENT_UNAVAILABLE",
+    })
+  })
+
+  it("returns 422 with field errors for invalid input", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: "",
+          department: "invalid_dept",
+          priority: "medium",
+        }),
+      })
+    )
+
+    expect(response.status).toBe(422)
+    const text = await response.text()
+    expect(text).toBeTruthy()
+  })
+
+  it("lists organizations when super admin requests admin/organizations", async () => {
+    const app = createAdminApp({}, "super_admin")
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/admin/organizations", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const json = await response.json() as Record<string, unknown>
+    expect(json.ok).toBe(true)
+    expect(json.organizations).toBeDefined()
+  })
+
+  it("rethrows unknown errors from toErrorResponse", async () => {
+    const app = new Elysia().use(
+      createSupportTicketRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+          user: {
+            id: "user_1",
+            email: "user@example.com",
+          },
+        }),
+        getPlatformRole: async () => "none",
+        service: {
+          async listTickets() {
+            throw new TypeError("Something unexpected")
+          },
+        } as Partial<SupportTicketService> as SupportTicketService,
+        emailService: {
+          async sendTicketCreated() {},
+          async sendTicketReplied() {},
+          async sendTicketClosed() {},
+        },
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets", {
+        method: "GET",
+      })
+    )
+
+    // Unknown errors are re-thrown — Elysia converts them to 500
+    expect(response.status).toBe(500)
+  })
+
+  it("handles admin/organizations error gracefully", async () => {
+    const mockFailListOrg = mock(async () => {
+      throw new Error("WorkOS API failure")
+    })
+
+    mock.module("@workos-inc/authkit-nextjs", () => {
+      return {
+        withAuth: async () => ({
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+          user: {
+            id: "user_admin",
+            email: "admin@example.com",
+          },
+        }),
+        getWorkOS: () => ({
+          userManagement: {
+            getUser: mockGetUser,
+            listOrganizationMemberships: mockListOrganizationMemberships,
+          },
+          organizations: {
+            getOrganization: async () => ({ id: "org_1", name: "Org 1" }),
+            listOrganizations: mockFailListOrg,
+          },
+        }),
+      }
+    })
+
+    const app = createAdminApp({}, "super_admin")
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/admin/organizations", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(500)
+    const json = await response.json() as Record<string, unknown>
+    expect(json.error).toBe("INTERNAL_SERVER_ERROR")
+  })
+
+  it("creates ticket without requester email", async () => {
+    const app = new Elysia().use(
+      createSupportTicketRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+          user: {
+            id: "user_noemail",
+            email: null,
+          },
+        }),
+        getPlatformRole: async () => "none",
+        service: {
+          async listTickets() { return [] },
+          async createTicket() { return baseTicket },
+          async getTicketThread() { return { ticket: baseTicket, replies: [] } },
+          async addReply() { return { id: "reply_1", ticketId: "ticket_1", authorWorkosUserId: "user_1", body: "Ok", secureForm: null, isInternalNote: false, attachmentMetadata: [], createdAt: new Date(), updatedAt: new Date() } },
+          async transitionStatus() { return baseTicket },
+        } as Partial<SupportTicketService> as SupportTicketService,
+        emailService: {
+          async sendTicketCreated() {},
+          async sendTicketReplied() {},
+          async sendTicketClosed() {},
+        },
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          subject: "No email test",
+          department: "technical",
+          priority: "medium",
+        }),
+      })
+    )
+
+    expect(response.status).toBe(201)
+  })
+
+  it("handles resolveRequesterEmail failure gracefully in close", async () => {
+    const mockFailGetUser = mock(async () => {
+      throw new Error("WorkOS user service down")
+    })
+
+    mock.module("@workos-inc/authkit-nextjs", () => {
+      return {
+        withAuth: async () => ({
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+          user: {
+            id: "user_1",
+            email: "user@example.com",
+          },
+        }),
+        getWorkOS: () => ({
+          userManagement: {
+            getUser: mockFailGetUser,
+            listOrganizationMemberships: mockListOrganizationMemberships,
+          },
+          organizations: {
+            getOrganization: async () => ({ id: "org_1", name: "Org 1" }),
+            listOrganizations: async () => ({ data: [] }),
+          },
+        }),
+      }
+    })
+
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1/close", {
+        method: "POST",
+      })
+    )
+
+    // The close should still succeed even if resolveRequesterEmail fails
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      ticket: { status: "closed" },
+    })
   })
 })

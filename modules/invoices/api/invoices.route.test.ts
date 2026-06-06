@@ -112,6 +112,20 @@ describe("invoices routes", () => {
     expect(payload.error).toBe("UNAUTHORIZED")
   })
 
+  it("returns 401 on cancel endpoint when unauthenticated", async () => {
+    const app = createApp({
+      auth: {
+        user: null,
+      },
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", { method: "POST" })
+    )
+
+    expect(response.status).toBe(401)
+  })
+
   it("returns invoice list for authenticated organization", async () => {
     const service = createService()
     const app = createApp({ service })
@@ -167,6 +181,40 @@ describe("invoices routes", () => {
     expect(payload.error).toBe("NOT_FOUND")
   })
 
+  it("returns 500 when invoice detail fails with generic error", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => {
+      throw new Error("database connection lost")
+    })
+
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1")
+    )
+
+    expect(response.status).toBe(500)
+  })
+
+  it("returns invoice detail with organization metadata", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1")
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      invoice: { id: string; invoiceNumber: string }
+      canMarkCanceled: boolean
+      organization: Record<string, unknown> | null
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.invoice.invoiceNumber).toBe("INV-2026-0001")
+    expect(typeof payload.canMarkCanceled).toBe("boolean")
+  })
+
   it("returns PDF response with content-type", async () => {
     const app = createApp({})
 
@@ -178,6 +226,54 @@ describe("invoices routes", () => {
     expect(response.headers.get("content-type")).toBe("application/pdf")
     const bytes = await response.arrayBuffer()
     expect(bytes.byteLength).toBeGreaterThan(200)
+  })
+
+  it("returns 401 on pdf endpoint when unauthenticated", async () => {
+    const app = createApp({ auth: { user: null } })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/pdf")
+    )
+
+    expect(response.status).toBe(401)
+  })
+
+  it("returns 422 on pdf endpoint for invalid invoice id", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/%20/pdf")
+    )
+
+    expect(response.status).toBe(422)
+  })
+
+  it("returns 404 on pdf endpoint when invoice not found", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => {
+      throw new InvoiceNotFoundError("inv_missing")
+    })
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_missing/pdf")
+    )
+
+    expect(response.status).toBe(404)
+  })
+
+  it("returns 500 on pdf endpoint when generic error occurs", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => {
+      throw new Error("pdf generation failed")
+    })
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/pdf")
+    )
+
+    expect(response.status).toBe(500)
   })
 
   it("returns validation envelope for invalid invoice id params", async () => {
@@ -303,6 +399,18 @@ describe("invoices routes", () => {
 
     const response = await app.handle(new Request("http://localhost/invoices"))
     expect(response.status).toBe(403)
+  })
+
+  it("returns all invoices for super admin without organization", async () => {
+    const service = createService()
+    const app = createApp({
+      service,
+      platformRole: "super_admin",
+      auth: { organizationId: null },
+    })
+
+    const response = await app.handle(new Request("http://localhost/invoices"))
+    expect(response.status).toBe(200)
   })
 
   it("returns 500 when list invoices fails", async () => {
@@ -481,6 +589,114 @@ describe("invoices routes", () => {
       expect(response.status).toBe(404)
     })
 
+    it("returns 401 on notify endpoints when unauthenticated", async () => {
+      const app = createApp({ auth: { user: null } })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+        })
+      )
+
+      expect(response.status).toBe(401)
+    })
+
+    it("returns 422 when recipient email missing and user has no email", async () => {
+      const app = createApp({
+        auth: { user: { id: "user_1", email: null } },
+      })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      )
+
+      expect(response.status).toBe(422)
+    })
+
+    it("returns 422 on notify/paid when recipient email missing and user has no email", async () => {
+      const app = createApp({
+        auth: { user: { id: "user_1", email: null } },
+      })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/paid", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      )
+
+      expect(response.status).toBe(422)
+    })
+
+    it("returns 422 on notify/reminder when recipient email missing and user has no email", async () => {
+      const app = createApp({
+        auth: { user: { id: "user_1", email: null } },
+      })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/reminder", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      )
+
+      expect(response.status).toBe(422)
+    })
+
+    it("returns 422 on notify/overdue when recipient email missing and user has no email", async () => {
+      const app = createApp({
+        auth: { user: { id: "user_1", email: null } },
+      })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/overdue", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      )
+
+      expect(response.status).toBe(422)
+    })
+
+    it("returns 422 on notify/cancelled when recipient email missing and user has no email", async () => {
+      const app = createApp({
+        auth: { user: { id: "user_1", email: null } },
+      })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/cancelled", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      )
+
+      expect(response.status).toBe(422)
+    })
+
+    it("returns 500 on notify when service throws generic error", async () => {
+      const service = createService()
+      service.getInvoiceDetail = mock(async () => {
+        throw new Error("service unavailable")
+      })
+      const app = createApp({ service })
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+        })
+      )
+
+      expect(response.status).toBe(500)
+    })
+
     it("cancelled endpoint works without body using default email", async () => {
       const mockEmailService: InvoiceEmailService = {
         sendInvoiceCreated: mock(async () => {}),
@@ -525,5 +741,293 @@ describe("invoices routes", () => {
 
       expect(response.status).toBe(422)
     })
+
+    it("returns 403 on notify endpoints when organization is missing", async () => {
+      const app = createApp({
+        auth: {
+          user: { id: "user_1", email: "owner@example.com" },
+          organizationId: null,
+        },
+      })
+
+      const res = await app.handle(
+        new Request("http://localhost/invoices/inv_1/notify/created", {
+          method: "POST",
+        }),
+      )
+
+      expect(res.status).toBe(403)
+    })
+  })
+
+  it("cancel does not send email when user has no email address", async () => {
+    const mockEmailService: InvoiceEmailService = {
+      sendInvoiceCreated: mock(async () => {}),
+      sendPaymentReminder: mock(async () => {}),
+      sendInvoicePaid: mock(async () => {}),
+      sendInvoiceOverdue: mock(async () => {}),
+      sendInvoiceCancelled: mock(async () => {}),
+    }
+    // Use super_admin platformRole to bypass all permission checks
+    const app = createApp({
+      auth: {
+        user: { id: "user_1", email: null },
+      },
+      platformRole: "super_admin",
+      emailService: mockEmailService,
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", {
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    // Email should NOT be sent when user has no email address
+    expect(mockEmailService.sendInvoiceCancelled).not.toHaveBeenCalled()
+  })
+
+  it("returns invoice detail with null organization when billing account not found", async () => {
+    const app = createApp({
+      getOrganizationIdByBillingAccount: async () => null,
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1"),
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      invoice: { id: string }
+      organization: unknown
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.organization).toBeNull()
+  })
+
+  it("uses default dependencies when none provided", async () => {
+    const app = new Elysia().use(createInvoicesRoutes())
+
+    const response = await app.handle(new Request("http://localhost/invoices"))
+
+    // withAuth() returns unauthenticated or throws in test env
+    // Either way we get an error status (401 or 500)
+    expect([401, 500]).toContain(response.status)
+  })
+
+  it("cancel succeeds despite email service rejection", async () => {
+    const mockEmailService: InvoiceEmailService = {
+      sendInvoiceCreated: mock(async () => {}),
+      sendPaymentReminder: mock(async () => {}),
+      sendInvoicePaid: mock(async () => {}),
+      sendInvoiceOverdue: mock(async () => {}),
+      sendInvoiceCancelled: mock(async () => {
+        throw new Error("Email service unreachable")
+      }),
+    }
+    const app = createApp({
+      platformRole: "super_admin",
+      emailService: mockEmailService,
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", {
+        method: "POST",
+      }),
+    )
+
+    // Cancel should succeed even if the email send fails
+    expect(response.status).toBe(200)
+  })
+
+  it("notify/created succeeds despite email service rejection", async () => {
+    const mockEmailService: InvoiceEmailService = {
+      sendInvoiceCreated: mock(async () => {
+        throw new Error("Email service unreachable")
+      }),
+      sendPaymentReminder: mock(async () => {}),
+      sendInvoicePaid: mock(async () => {}),
+      sendInvoiceOverdue: mock(async () => {}),
+      sendInvoiceCancelled: mock(async () => {}),
+    }
+    const app = createApp({ emailService: mockEmailService })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/notify/created", {
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it("notify/paid succeeds despite email service rejection", async () => {
+    const mockEmailService: InvoiceEmailService = {
+      sendInvoiceCreated: mock(async () => {}),
+      sendPaymentReminder: mock(async () => {}),
+      sendInvoicePaid: mock(async () => {
+        throw new Error("Email service unreachable")
+      }),
+      sendInvoiceOverdue: mock(async () => {}),
+      sendInvoiceCancelled: mock(async () => {}),
+    }
+    const app = createApp({ emailService: mockEmailService })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/notify/paid", {
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it("notify/reminder succeeds despite email service rejection", async () => {
+    const mockEmailService: InvoiceEmailService = {
+      sendInvoiceCreated: mock(async () => {}),
+      sendPaymentReminder: mock(async () => {
+        throw new Error("Email service unreachable")
+      }),
+      sendInvoicePaid: mock(async () => {}),
+      sendInvoiceOverdue: mock(async () => {}),
+      sendInvoiceCancelled: mock(async () => {}),
+    }
+    const app = createApp({ emailService: mockEmailService })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/notify/reminder", {
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it("notify/overdue succeeds despite email service rejection", async () => {
+    const mockEmailService: InvoiceEmailService = {
+      sendInvoiceCreated: mock(async () => {}),
+      sendPaymentReminder: mock(async () => {}),
+      sendInvoicePaid: mock(async () => {}),
+      sendInvoiceOverdue: mock(async () => {
+        throw new Error("Email service unreachable")
+      }),
+      sendInvoiceCancelled: mock(async () => {}),
+    }
+    const app = createApp({ emailService: mockEmailService })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/notify/overdue", {
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it("notify/cancelled succeeds despite email service rejection", async () => {
+    const mockEmailService: InvoiceEmailService = {
+      sendInvoiceCreated: mock(async () => {}),
+      sendPaymentReminder: mock(async () => {}),
+      sendInvoicePaid: mock(async () => {}),
+      sendInvoiceOverdue: mock(async () => {}),
+      sendInvoiceCancelled: mock(async () => {
+        throw new Error("Email service unreachable")
+      }),
+    }
+    const app = createApp({ emailService: mockEmailService })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/notify/cancelled", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason: "Test reason" }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it("returns canMarkCanceled false for paid invoice in detail", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => ({
+      ...invoiceDetail,
+      status: "paid" as const,
+    }))
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1"),
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      canMarkCanceled: boolean
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.canMarkCanceled).toBe(false)
+  })
+
+  it("returns canMarkCanceled false for canceled invoice in detail", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => ({
+      ...invoiceDetail,
+      status: "canceled" as const,
+    }))
+    const app = createApp({ service })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1"),
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      canMarkCanceled: boolean
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.canMarkCanceled).toBe(false)
+  })
+
+  it("returns 422 on notify/paid for invalid body email", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/notify/paid", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ recipientEmail: "not-an-email" }),
+      }),
+    )
+
+    expect(response.status).toBe(422)
+  })
+
+  it("returns 422 on notify/reminder for invalid body email", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/notify/reminder", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ recipientEmail: "not-an-email" }),
+      }),
+    )
+
+    expect(response.status).toBe(422)
+  })
+
+  it("returns 422 on notify/overdue for invalid body email", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/notify/overdue", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ recipientEmail: "not-an-email" }),
+      }),
+    )
+
+    expect(response.status).toBe(422)
   })
 })

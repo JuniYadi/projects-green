@@ -227,6 +227,94 @@ describe("invoiceEmailService", () => {
         emailService.sendInvoiceCreated(mockInvoice, "user@example.com"),
       ).rejects.toThrow("Failed to send invoice created notification")
     })
+
+    it("sendPaymentReminder throws on sendMail failure", async () => {
+      mockSendMail.mockImplementation(async () => {
+        throw new Error("SMTP timeout")
+      })
+      mockRender.mockImplementation(async () => "<html>Test</html>")
+
+      await expect(
+        emailService.sendPaymentReminder(mockInvoice, "user@example.com"),
+      ).rejects.toThrow("Failed to send payment reminder notification")
+    })
+
+    it("sendPaymentReminder throws on render failure", async () => {
+      mockSendMail.mockImplementation(async () => ({ messageId: "test" }))
+      mockRender.mockImplementation(async () => {
+        throw new Error("Reminder render failed")
+      })
+
+      await expect(
+        emailService.sendPaymentReminder(mockInvoice, "user@example.com"),
+      ).rejects.toThrow("Failed to send payment reminder notification")
+    })
+
+    it("sendInvoicePaid throws on sendMail failure", async () => {
+      mockSendMail.mockImplementation(async () => {
+        throw new Error("SMTP disconnected")
+      })
+      mockRender.mockImplementation(async () => "<html>Paid</html>")
+
+      await expect(
+        emailService.sendInvoicePaid(mockInvoice, "user@example.com"),
+      ).rejects.toThrow("Failed to send invoice paid notification")
+    })
+
+    it("sendInvoicePaid throws on render failure", async () => {
+      mockSendMail.mockImplementation(async () => ({ messageId: "test" }))
+      mockRender.mockImplementation(async () => {
+        throw new Error("Paid render failed")
+      })
+
+      await expect(
+        emailService.sendInvoicePaid(mockInvoice, "user@example.com"),
+      ).rejects.toThrow("Failed to send invoice paid notification")
+    })
+
+    it("sendInvoiceOverdue throws on sendMail failure", async () => {
+      mockSendMail.mockImplementation(async () => {
+        throw new Error("SMTP refused")
+      })
+      mockRender.mockImplementation(async () => "<html>Overdue</html>")
+
+      await expect(
+        emailService.sendInvoiceOverdue(mockInvoice, "user@example.com"),
+      ).rejects.toThrow("Failed to send invoice overdue notification")
+    })
+
+    it("sendInvoiceOverdue throws on render failure", async () => {
+      mockSendMail.mockImplementation(async () => ({ messageId: "test" }))
+      mockRender.mockImplementation(async () => {
+        throw new Error("Overdue render failed")
+      })
+
+      await expect(
+        emailService.sendInvoiceOverdue(mockInvoice, "user@example.com"),
+      ).rejects.toThrow("Failed to send invoice overdue notification")
+    })
+
+    it("sendInvoiceCancelled throws on sendMail failure", async () => {
+      mockSendMail.mockImplementation(async () => {
+        throw new Error("SMTP error")
+      })
+      mockRender.mockImplementation(async () => "<html>Cancelled</html>")
+
+      await expect(
+        emailService.sendInvoiceCancelled(mockInvoice, "user@example.com"),
+      ).rejects.toThrow("Failed to send invoice cancelled notification")
+    })
+
+    it("sendInvoiceCancelled throws on render failure", async () => {
+      mockSendMail.mockImplementation(async () => ({ messageId: "test" }))
+      mockRender.mockImplementation(async () => {
+        throw new Error("Cancelled render failed")
+      })
+
+      await expect(
+        emailService.sendInvoiceCancelled(mockInvoice, "user@example.com"),
+      ).rejects.toThrow("Failed to send invoice cancelled notification")
+    })
   })
 
   describe("transporter creation", () => {

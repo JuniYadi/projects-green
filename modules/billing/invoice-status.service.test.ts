@@ -100,6 +100,28 @@ describe("InvoiceStatusManager", () => {
       expect(result.issued).toBe(0)
       expect(mockUpdate).not.toHaveBeenCalled()
     })
+
+    it("handles invoices with unknown status mapping", async () => {
+      const now = new Date()
+      mockFindMany.mockResolvedValueOnce([
+        {
+          id: "inv-unknown",
+          invoiceNumber: "INV-999",
+          totalAmount: { toNumber: () => 50 },
+          currency: "USD",
+          status: "SOME_UNKNOWN_STATUS",
+          periodStart: now,
+          periodEnd: now,
+          issuedAt: null,
+          dueAt: null,
+          billingAccount: { organizationId: "org-1" },
+        },
+      ])
+      mockUpdate.mockResolvedValue({})
+
+      const result = await manager.issueDraftInvoices()
+      expect(result.issued).toBe(1)
+    })
   })
 
   describe("markOverdueInvoices", () => {
@@ -288,6 +310,36 @@ describe("InvoiceStatusManager", () => {
 
       expect(result.sent).toBe(0)
       expect(mockUpdate).not.toHaveBeenCalled()
+    })
+
+    it("handles sendPaymentReminders gracefully when no admin email resolved", async () => {
+      // This tests the path where resolveOrgAdminEmail returns null
+      // (either via WorkOS returning no admin, or WorkOS import failure caught by the try/catch)
+      const now = new Date()
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 2)
+
+      mockFindMany.mockResolvedValueOnce([
+        {
+          id: "inv-no-admin",
+          invoiceNumber: "INV-007",
+          totalAmount: { toNumber: () => 700 },
+          currency: "USD",
+          status: "ISSUED",
+          periodStart: now,
+          periodEnd: now,
+          issuedAt: now,
+          dueAt: dueDate,
+          billingAccount: { organizationId: "org-no-admin" },
+          metadataJson: null,
+        },
+      ])
+      mockUpdate.mockResolvedValue({})
+
+      const result = await manager.sendPaymentReminders()
+
+      // sent counts the attempt, not the successful email delivery
+      expect(result.sent).toBe(1)
     })
   })
 })

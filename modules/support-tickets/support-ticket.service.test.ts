@@ -810,4 +810,683 @@ describe("supportTicketService", () => {
       })
     ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
   })
+
+  it("creates ticket without description and secureForm", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+      ticketNumberFactory: () => "TCK-MINIMAL",
+    })
+
+    const ticket = await service.createTicket({
+      organizationId: "org_1",
+      requesterWorkosUserId: "user_requester",
+      department: "account",
+      priority: "low",
+      subject: "Minimal",
+    })
+
+    expect(ticket.subject).toBe("Minimal")
+    expect(ticket.secureForm).toBeNull()
+  })
+
+  it("lists tickets for organization via listTickets", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const tickets = await service.listTickets({
+      actor: { organizationId: "org_1", workosUserId: "user_requester" },
+    })
+
+    expect(tickets.length).toBeGreaterThanOrEqual(1)
+    expect(tickets[0]!.organizationId).toBe("org_1")
+  })
+
+  it("transitions to resolved status", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const result = await service.transitionStatus({
+      ticketId: "ticket_1",
+      nextStatus: "resolved",
+      actor: {
+        canManageTickets: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+    })
+
+    expect(result.status).toBe("resolved")
+    expect(result.resolvedAt).not.toBeNull()
+    expect(result.closedAt).toBeNull()
+  })
+
+  it("transitions to in_progress from open (non-terminal)", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const result = await service.transitionStatus({
+      ticketId: "ticket_1",
+      nextStatus: "in_progress",
+      actor: {
+        canManageTickets: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+    })
+
+    expect(result.status).toBe("in_progress")
+    expect(result.resolvedAt).toBeNull()
+    expect(result.closedAt).toBeNull()
+  })
+
+  it("rejects listAllTickets for non-super-admin", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.listAllTickets({
+        actor: { organizationId: "org_1", workosUserId: "user_normal" },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("rejects updateTicket for non-super-admin", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.updateTicket({
+        actor: { organizationId: "org_1", workosUserId: "user_normal" },
+        ticketId: "ticket_1",
+        data: { department: "billing" },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("rejects deleteTicket for non-super-admin", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.deleteTicket({
+        actor: { organizationId: "org_1", workosUserId: "user_normal" },
+        ticketId: "ticket_1",
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("rejects deleteTicket when ticket not found for super admin", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.deleteTicket({
+        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        ticketId: "nonexistent",
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
+  })
+
+  it("returns null from getAttachmentSession when attachment not found", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const session = await service.getAttachmentSession!({ // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      actor: { organizationId: "org_1", workosUserId: "user_requester" },
+      attachmentId: "nonexistent_attachment",
+    })
+
+    expect(session).toBeNull()
+  })
+
+  it("encrypts secureForm on createTicket and decrypts on retrieval", async () => {
+    const cipher = createSupportTicketContentCipher({
+      key: "base64:bjY4kQV6Dj6MimVz5Zt2JYhjpQf8j2uZMQvNclTBIw4=",
+    })
+
+    // A repository that stores encrypted values
+    const encryptedTicket: SupportTicket = {
+      ...baseTicket,
+      secureForm: cipher.encrypt("Sensitive data"),
+    }
+    const encTickets = new Map<string, SupportTicket>([
+      [encryptedTicket.id, encryptedTicket],
+    ])
+
+    const encRepository: SupportTicketRepository = {
+      async createUploadSession() { throw new Error("n/a") },
+      async getUploadSessionById() { return null },
+      async markUploadSessionRegistered() { throw new Error("n/a") },
+      async createTicket() { return encryptedTicket },
+      async listTicketsByOrganization() { return [...encTickets.values()] },
+      async getTicketById(id) { return encTickets.get(id) ?? null },
+      async getTicketThread(input) {
+        const t = encTickets.get(input.ticketId)
+        return t ? { ticket: t, replies: [] } : null
+      },
+      async updateTicketStatus() { throw new Error("n/a") },
+      async listAllTickets() { return [] },
+      async updateTicket() { throw new Error("n/a") },
+      async deleteTicket() { return true },
+      async createReply() { throw new Error("n/a") },
+    }
+
+    const service = createSupportTicketService({
+      contentCipher: cipher,
+      repository: encRepository,
+    })
+
+    const ticket = await service.createTicket({
+      organizationId: "org_1",
+      requesterWorkosUserId: "user_requester",
+      department: "technical",
+      priority: "medium",
+      subject: "Secure ticket",
+      secureForm: "Sensitive data",
+    })
+
+    expect(ticket.secureForm).toBe("Sensitive data")
+  })
+
+  it("returns plain error when toSafeContentError receives non-encryption error", async () => {
+    const original = new Error("some random error")
+    // We import the service module to access toSafeContentError indirectly
+    // by triggering a non-cipher error in createTicket
+    const { repository } = createRepositoryStub()
+    const failRepo: SupportTicketRepository = {
+      ...repository,
+      async createTicket() {
+        throw new Error("repository failure")
+      },
+    }
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository: failRepo,
+    })
+
+    await expect(
+      service.createTicket({
+        organizationId: "org_1",
+        requesterWorkosUserId: "user_requester",
+        department: "technical",
+        priority: "medium",
+        subject: "Will fail",
+      }),
+    ).rejects.toThrow("repository failure")
+  })
+
+  it("handles reply with encrypted content", async () => {
+    const cipher = createSupportTicketContentCipher({
+      key: "base64:bjY4kQV6Dj6MimVz5Zt2JYhjpQf8j2uZMQvNclTBIw4=",
+    })
+
+    const encReply: SupportTicketThread["replies"][number] = {
+      id: "reply_enc",
+      ticketId: "ticket_1",
+      authorWorkosUserId: "user_agent",
+      body: cipher.encrypt("Encrypted reply body"),
+      secureForm: cipher.encrypt("Secret note"),
+      isInternalNote: false,
+      attachmentMetadata: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    const tickets = new Map<string, SupportTicket>([[baseTicket.id, baseTicket]])
+    const encRepository: SupportTicketRepository = {
+      async createUploadSession() { throw new Error("n/a") },
+      async getUploadSessionById() { return null },
+      async markUploadSessionRegistered() { throw new Error("n/a") },
+      async createTicket() { return baseTicket },
+      async listTicketsByOrganization() { return [baseTicket] },
+      async getTicketById(id) { return tickets.get(id) ?? null },
+      async getTicketThread(input) {
+        const t = tickets.get(input.ticketId)
+        return t ? { ticket: t, replies: [encReply] } : null
+      },
+      async updateTicketStatus() { return baseTicket },
+      async listAllTickets() { return [baseTicket] },
+      async updateTicket() { return baseTicket },
+      async deleteTicket() { return true },
+      async createReply() { return encReply },
+    }
+
+    const service = createSupportTicketService({
+      contentCipher: cipher,
+      repository: encRepository,
+    })
+
+    const reply = await service.addReply({
+      actor: {
+        canManageTickets: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+      reply: {
+        ticketId: "ticket_1",
+        authorWorkosUserId: "user_agent",
+        body: "Plain reply",
+        secureForm: null,
+      },
+    })
+
+    expect(reply.body).toBe("Encrypted reply body")
+    expect(reply.secureForm).toBe("Secret note")
+  })
+
+  it("rejects addReply for unauthorized user", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.addReply({
+        actor: { organizationId: "org_2", workosUserId: "user_other" },
+        reply: {
+          ticketId: "ticket_1",
+          authorWorkosUserId: "user_other",
+          body: "Unauthorized reply",
+        },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("rejects addReply when ticket not found", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.addReply({
+        actor: { organizationId: "org_1", workosUserId: "user_agent", canManageTickets: true },
+        reply: {
+          ticketId: "nonexistent",
+          authorWorkosUserId: "user_agent",
+          body: "Reply to missing ticket",
+        },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
+  })
+
+  it("handles unauthenticated getAttachmentSession gracefully", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const session = await service.getAttachmentSession!({ // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      actor: { organizationId: "org_1", workosUserId: "user_requester" },
+      attachmentId: "att_1",
+    })
+
+    expect(session).toBeNull()
+  })
+
+  it("rejects getTicketThread when user cannot read ticket", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    // User from different org cannot read
+    await expect(
+      service.getTicketThread({
+        actor: { organizationId: "org_other", workosUserId: "user_stranger" },
+        ticketId: "ticket_1",
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("rejects transitionStatus when access denied", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.transitionStatus({
+        ticketId: "ticket_1",
+        nextStatus: "in_progress",
+        actor: { organizationId: "org_other", workosUserId: "user_stranger" },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("rejects addReply when user cannot create a public reply", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.addReply({
+        actor: { organizationId: "org_other", workosUserId: "user_stranger" },
+        reply: {
+          ticketId: "ticket_1",
+          authorWorkosUserId: "user_stranger",
+          body: "I should not be able to reply",
+        },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+  })
+
+  it("wipes secure form when super admin closes ticket via updateTicket", async () => {
+    const { repository, tickets } = createRepositoryStub()
+    tickets.set("ticket_1", {
+      ...baseTicket,
+      secureForm: "sensitive_data",
+    })
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const updated = await service.updateTicket({
+      actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+      ticketId: "ticket_1",
+      data: { status: "closed" },
+    })
+
+    expect(updated.status).toBe("closed")
+    expect(updated.secureForm).toBeNull()
+  })
+
+  it("returns false from deleteTicket when repository returns false", async () => {
+    const { repository } = createRepositoryStub()
+    repository.deleteTicket = async () => false as never
+
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const result = await service.deleteTicket({
+      actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+      ticketId: "ticket_1",
+    })
+
+    expect(result).toBe(false)
+  })
+
+  it("generates default ticket numbers in TCK-TIMESTAMP-RANDOM format", async () => {
+    const { repository } = createRepositoryStub()
+    // Do NOT inject ticketNumberFactory — use the default factory
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const ticket = await service.createTicket({
+      organizationId: "org_1",
+      requesterWorkosUserId: "user_requester",
+      department: "technical",
+      priority: "medium",
+      subject: "Default factory test",
+    })
+
+    // Default format: TCK-{8 digits}-{6 uppercase alphanum}
+    expect(ticket.ticketNumber).toMatch(/^TCK-\d{8}-[A-Z0-9]{6}$/)
+  })
+
+  it("throws NotFoundError on transitionStatus for missing ticket", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.transitionStatus({
+        ticketId: "nonexistent",
+        nextStatus: "closed",
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
+  })
+
+  it("throws NotFoundError on updateTicket for missing ticket", async () => {
+    const { repository } = createRepositoryStub()
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    await expect(
+      service.updateTicket({
+        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        ticketId: "nonexistent",
+        data: { department: "billing" },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
+  })
+
+  it("throws ContentUnavailableError when listTickets decryption fails", async () => {
+    const { SupportTicketDecryptionError: DecryptionError } = await import(
+      "@/modules/support-tickets/support-ticket-content-cipher"
+    )
+    const brokenCipher: SupportTicketContentCipher = {
+      encrypt(value) {
+        return value
+      },
+      decrypt() {
+        throw new DecryptionError()
+      },
+    }
+
+    const { repository } = createRepositoryStub()
+    // Make the stored ticket have encrypted-looking content to trigger decryption
+    const encryptedTicket: SupportTicket = {
+      ...baseTicket,
+      subject: "stenc.v1.encrypted",
+    }
+    const tickets = new Map<string, SupportTicket>([
+      [encryptedTicket.id, encryptedTicket],
+    ])
+    const repo: SupportTicketRepository = {
+      ...repository,
+      async listTicketsByOrganization() {
+        return [...tickets.values()]
+      },
+      async getTicketById(id) {
+        return tickets.get(id) ?? null
+      },
+      async getTicketThread(input) {
+        const t = tickets.get(input.ticketId)
+        return t ? { ticket: t, replies: [] } : null
+      },
+    }
+
+    const service = createSupportTicketService({
+      contentCipher: brokenCipher,
+      repository: repo,
+    })
+
+    await expect(
+      service.listTickets({
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketContentUnavailableError)
+  })
+
+  it("throws ContentUnavailableError when addReply decryption fails", async () => {
+    const { SupportTicketCiphertextFormatError: CiphertextFormatError } = await import(
+      "@/modules/support-tickets/support-ticket-content-cipher"
+    )
+
+    const brokenCipher: SupportTicketContentCipher = {
+      encrypt(_value) {
+        // Return stenc.v1.-prefixed value so isSupportTicketEncryptedPayload triggers decrypt
+        return "stenc.v1.iv.authTag.ciphertext"
+      },
+      decrypt() {
+        throw new CiphertextFormatError()
+      },
+    }
+
+    const { repository } = createRepositoryStub()
+
+    const service = createSupportTicketService({
+      contentCipher: brokenCipher,
+      repository,
+    })
+
+    // encryptReplyContent encrypts secureForm, then decryptReplyContent decrypts it
+    await expect(
+      service.addReply({
+        actor: {
+          canManageTickets: true,
+          organizationId: "org_1",
+          workosUserId: "user_agent",
+        },
+        reply: {
+          ticketId: "ticket_1",
+          authorWorkosUserId: "user_agent",
+          body: "Test reply",
+          secureForm: "sensitive data", // This triggers encryption then decryption
+        },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketContentUnavailableError)
+  })
+
+  it("throws ContentUnavailableError when listAllTickets decryption fails", async () => {
+    const { SupportTicketEncryptionConfigurationError: ConfigError } = await import(
+      "@/modules/support-tickets/support-ticket-content-cipher"
+    )
+    const brokenCipher: SupportTicketContentCipher = {
+      encrypt(value) {
+        return value
+      },
+      decrypt() {
+        throw new ConfigError("key configuration error")
+      },
+    }
+
+    const { repository } = createRepositoryStub()
+    const encryptedTicket: SupportTicket = {
+      ...baseTicket,
+      subject: "stenc.v1.needs-decrypt",
+    }
+    const tickets = new Map<string, SupportTicket>([
+      [encryptedTicket.id, encryptedTicket],
+    ])
+    const repo: SupportTicketRepository = {
+      ...repository,
+      async listAllTickets() {
+        return [...tickets.values()]
+      },
+      async getTicketById(id) {
+        return tickets.get(id) ?? null
+      },
+    }
+
+    const service = createSupportTicketService({
+      contentCipher: brokenCipher,
+      repository: repo,
+    })
+
+    await expect(
+      service.listAllTickets({
+        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+      }),
+    ).rejects.toBeInstanceOf(SupportTicketContentUnavailableError)
+  })
+
+  it("wipes secure form on transitionStatus to resolved then to closed", async () => {
+    const { repository, tickets } = createRepositoryStub()
+    tickets.set("ticket_1", {
+      ...baseTicket,
+      secureForm: "sensitive_credentials",
+    })
+
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository,
+    })
+
+    const resolved = await service.transitionStatus({
+      ticketId: "ticket_1",
+      nextStatus: "resolved",
+      actor: {
+        canManageTickets: true,
+        organizationId: "org_1",
+        workosUserId: "user_agent",
+      },
+    })
+
+    expect(resolved.status).toBe("resolved")
+    expect(resolved.resolvedAt).not.toBeNull()
+    expect(resolved.closedAt).toBeNull()
+
+    const closed = await service.transitionStatus({
+      ticketId: "ticket_1",
+      nextStatus: "closed",
+      actor: {
+        organizationId: "org_1",
+        workosUserId: "user_requester",
+      },
+    })
+
+    expect(closed.status).toBe("closed")
+    expect(closed.closedAt).not.toBeNull()
+  })
+
+  it("uses lazy default content cipher when not injected", async () => {
+    const originalKey = process.env.SUPPORT_TICKET_CONTENT_ENCRYPTION_KEY
+    process.env.SUPPORT_TICKET_CONTENT_ENCRYPTION_KEY = "base64:bjY4kQV6Dj6MimVz5Zt2JYhjpQf8j2uZMQvNclTBIw4="
+
+    try {
+      const { repository } = createRepositoryStub()
+      // Do NOT inject contentCipher — uses createLazyDefaultContentCipher
+      const service = createSupportTicketService({ repository })
+
+      const ticket = await service.createTicket({
+        organizationId: "org_1",
+        requesterWorkosUserId: "user_requester",
+        department: "technical",
+        priority: "medium",
+        subject: "Lazy cipher test",
+        secureForm: "secret data",
+      })
+
+      expect(ticket.status).toBe("open")
+      expect(ticket.secureForm).toBe("secret data")
+      expect(ticket.subject).toBe("Lazy cipher test")
+    } finally {
+      process.env.SUPPORT_TICKET_CONTENT_ENCRYPTION_KEY = originalKey
+    }
+  })
 })

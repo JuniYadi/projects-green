@@ -56,6 +56,7 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
       sendInvitation: mockSendInvitation,
     },
   }),
+  withAuth: mock(async () => ({ user: null })),
 }))
 
 const {

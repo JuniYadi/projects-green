@@ -34,7 +34,9 @@ const loadApp = async () => {
 }
 
 describe("tenantsAuthorizationRoutes", () => {
-  beforeEach(() => {
+  let app: Awaited<ReturnType<typeof loadApp>>
+
+  beforeEach(async () => {
     actorContext = {
       userId: "user_123",
       organizationId: "org_123",
@@ -52,11 +54,11 @@ describe("tenantsAuthorizationRoutes", () => {
       void args
       return contextAccessResponse
     })
+
+    app = await loadApp()
   })
 
   it("returns allowed action matrix for owner/admin/member/super_admin", async () => {
-    const app = await loadApp()
-
     const scenarios: Array<{
       label: string
       actor: MockActor
@@ -151,8 +153,6 @@ describe("tenantsAuthorizationRoutes", () => {
   })
 
   it("returns context policy error when org scope is invalid", async () => {
-    const app = await loadApp()
-
     contextAccessResponse = {
       ok: false,
       error: "FORBIDDEN",
@@ -180,5 +180,27 @@ describe("tenantsAuthorizationRoutes", () => {
     expect(body.error).toBe("FORBIDDEN")
     expect(body.policyCode).toBe("TENANT_CONTEXT_MISMATCH")
     expect(mockEnsureTenantContextAccess).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns 401 when requireTenantActor fails", async () => {
+    mockRequireTenantActor.mockImplementation(async (...args: unknown[]) => {
+      const set = args[0] as { status?: number }
+      set.status = 401
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        policyCode: "NO_SESSION",
+        message: "No active session.",
+      } as TenantApiError
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_123/authorization")
+    )
+    expect(response.status).toBe(401)
+
+    const body = (await response.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("UNAUTHORIZED")
   })
 })

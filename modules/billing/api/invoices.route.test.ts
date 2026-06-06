@@ -151,6 +151,32 @@ describe("InvoicesRoute", () => {
         currency: "IDR",
       })
     })
+
+    it("returns 500 on database error for list", async () => {
+      mockFindUnique.mockRejectedValueOnce(new Error("Database error"))
+
+      const app = new Elysia()
+        .use(
+          createBillingInvoicesRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1" },
+              organizationId: "org-1",
+            } as MockAuthContext),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
   })
 
   describe("GET /invoices/:id", () => {
@@ -290,6 +316,32 @@ describe("InvoicesRoute", () => {
         status: "PENDING",
         totalAmountIdr: "299000.00",
       })
+    })
+
+    it("returns 500 on database error for detail", async () => {
+      mockFindUnique.mockRejectedValueOnce(new Error("Database error"))
+
+      const app = new Elysia()
+        .use(
+          createBillingInvoicesRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1" },
+              organizationId: "org-1",
+            } as MockAuthContext),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv-1", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
     })
   })
 })

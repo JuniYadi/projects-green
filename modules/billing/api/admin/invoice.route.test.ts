@@ -310,5 +310,59 @@ describe("AdminInvoiceRoute", () => {
       const body = await response.json()
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
     })
+
+    it("returns 422 for invalid status value in body", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "DRAFT" }),
+        })
+      )
+
+      expect(response.status).toBe(422)
+      const body = await response.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
+    })
+
+    it("returns 500 when update fails after successful find", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "inv-1",
+        status: "DRAFT",
+      })
+      mockUpdate.mockRejectedValueOnce(new Error("Update failed"))
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "ISSUED" }),
+        })
+      )
+
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
   })
 })

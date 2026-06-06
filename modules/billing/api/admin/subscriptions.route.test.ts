@@ -3,6 +3,7 @@ import { Elysia } from "elysia"
 
 import { createAdminSubscriptionRoutes } from "./subscriptions.route"
 import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
+import type { PlatformAccessRole } from "@/lib/platform-role"
 import {
   type MockAuthContext,
   defaultAuth,
@@ -323,6 +324,137 @@ describe("AdminSubscriptionRoute", () => {
       const body = await response.json()
       expect(body.ok).toBe(true)
       expect(body.subscription.allocatedConfig).toEqual({ devices: 10 })
+    })
+
+    it("returns 500 on database error", async () => {
+      mockFindUnique.mockRejectedValueOnce(new Error("Database error"))
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions/sub-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "SUSPENDED" }),
+        })
+      )
+
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
+
+    it("allows update when default isAdmin with super_admin", async () => {
+      mockFindUnique
+        .mockResolvedValueOnce({ id: "sub-1" })
+        .mockResolvedValueOnce({
+          id: "sub-1",
+          planId: "plan-1",
+          status: "SUSPENDED",
+          allocatedConfig: null,
+          currentPeriodEnd: new Date("2026-06-30"),
+          plan: { code: "STANDARD", resources: {} },
+          pricing: { billingMode: "SUBSCRIPTION", type: "STANDARD", basePriceIdr: new Decimal("100000"), region: { code: "GLOBAL" }, servicePlan: { code: "S", packageId: "pkg-1" } },
+          package: { code: "NON_WHATSAPP" },
+        })
+      mockUpdate.mockResolvedValueOnce({ id: "sub-1", status: "SUSPENDED" })
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => ({
+              user: { id: "admin-1" },
+              organizationId: "org-1",
+              role: "admin",
+            } as unknown as MockAuthContext),
+            getPlatformRole: async () => "super_admin" as PlatformAccessRole,
+            // No isAdmin override
+          })
+        )
+        .compile()
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/subscriptions/sub-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "SUSPENDED" }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+    })
+
+    it("allows update when default isAdmin with org role owner", async () => {
+      mockFindUnique
+        .mockResolvedValueOnce({ id: "sub-2" })
+        .mockResolvedValueOnce({
+          id: "sub-2",
+          planId: "plan-1",
+          status: "ACTIVE",
+          allocatedConfig: null,
+          currentPeriodEnd: new Date("2026-06-30"),
+          plan: { code: "STANDARD", resources: {} },
+          pricing: { billingMode: "SUBSCRIPTION", type: "STANDARD", basePriceIdr: new Decimal("100000"), region: { code: "GLOBAL" }, servicePlan: { code: "S", packageId: "pkg-1" } },
+          package: { code: "NON_WHATSAPP" },
+        })
+      mockUpdate.mockResolvedValueOnce({ id: "sub-2", status: "SUSPENDED" })
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => ({
+              user: { id: "owner-1" },
+              organizationId: "org-1",
+              role: "owner",
+            } as unknown as MockAuthContext),
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+          })
+        )
+        .compile()
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/subscriptions/sub-2", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "SUSPENDED" }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+    })
+
+    it("returns 403 when default isAdmin and user is member", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => ({
+              user: { id: "member-1" },
+              organizationId: "org-1",
+              role: "member",
+            } as unknown as MockAuthContext),
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+          })
+        )
+        .compile()
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/subscriptions/sub-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "SUSPENDED" }),
+        })
+      )
+
+      expect(res.status).toBe(403)
     })
   })
 })

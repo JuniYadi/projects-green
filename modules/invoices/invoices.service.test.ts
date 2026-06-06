@@ -219,6 +219,54 @@ describe("invoice service", () => {
     expect(detail.lineItems[0]?.amount).toBe(0)
   })
 
+  it("uses fallback description for all line types when trimmed description is empty", async () => {
+    const allLines = [
+      { lineType: "SUBSCRIPTION" as const, expected: "Subscription charge" },
+      { lineType: "METERED" as const, expected: "Metered usage" },
+      { lineType: "ADJUSTMENT" as const, expected: "Adjustment" },
+      { lineType: "TAX" as const, expected: "Tax" },
+      { lineType: "CREDIT" as const, expected: "Credit" },
+    ]
+
+    for (const { lineType, expected } of allLines) {
+      const record = {
+        ...detailRecord,
+        lines: [
+          {
+            id: `line_${lineType}`,
+            invoiceId: "inv_1",
+            lineType,
+            description: "",
+            quantity: 1,
+            unitPrice: 10,
+            amount: 10,
+            currency: "USD",
+            periodStart: null,
+            periodEnd: null,
+            metadataJson: null,
+            createdAt: new Date("2026-05-02T00:00:00.000Z"),
+            updatedAt: new Date("2026-05-02T00:00:00.000Z"),
+          },
+        ],
+      }
+
+      const service = createInvoiceService({
+        repository: {
+          listByOrganization: async () => [],
+          findByIdForOrganization: async () => record,
+          updateStatusByIdForOrganization: async () => undefined,
+        },
+      })
+
+      const detail = await service.getInvoiceDetail({
+        organizationId: "org_1",
+        invoiceId: "inv_1",
+      })
+
+      expect(detail.lineItems[0]?.description).toBe(expected)
+    }
+  })
+
   it("cancels invoice successfully", async () => {
     let currentStatus: "OPEN" | "VOID" = "OPEN"
 
@@ -244,5 +292,27 @@ describe("invoice service", () => {
     })
 
     expect(result.status).toBe("canceled")
+  })
+
+  it("throws not found when cancel re-fetch returns null after update", async () => {
+    let callCount = 0
+
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [],
+        findByIdForOrganization: async () => {
+          callCount++
+          if (callCount === 1) {
+            return detailRecord
+          }
+          return null
+        },
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+
+    await expect(
+      service.cancelInvoice({ organizationId: "org_1", invoiceId: "inv_1" })
+    ).rejects.toBeInstanceOf(InvoiceNotFoundError)
   })
 })

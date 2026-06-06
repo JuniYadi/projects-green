@@ -174,6 +174,31 @@ describe("tenants-invitations routes", () => {
       expect(body.error).toBe("UNAUTHORIZED")
     })
 
+    it("returns 401 status when requireTenantActor fails", async () => {
+      mockRequireTenantActor.mockImplementation(
+        ((set: { status?: number }) => {
+          set.status = 401
+          return {
+            ok: false,
+            error: "UNAUTHORIZED",
+            policyCode: "NO_SESSION",
+            message: "No active session.",
+          } as TenantApiError
+        }) as any
+      )
+
+      const app = await getApp()
+
+      const response = await app.handle(
+        new Request("http://localhost/tenants/org_1/invitations")
+      )
+      const body = (await response.json()) as TenantApiError
+
+      expect(response.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
     it("returns context mismatch", async () => {
       const app = await getApp()
       mockEnsureTenantContextAccess.mockImplementation(

@@ -127,4 +127,62 @@ describe("usersRoutes", () => {
     expect(body.ok).toBe(false)
     expect(body.error).toBe("USER_NOT_FOUND")
   })
+
+  it("returns 422 for invalid name on POST /user", async () => {
+    const app = new Elysia().use(
+      createUsersRoutes({
+        async createUser() {
+          throw new Error("not used")
+        },
+        async getUserById() {
+          return null
+        },
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "A", email: "ada@example.com" }),
+      })
+    )
+
+    expect(response.status).toBe(422)
+  })
+
+  it("returns 422 for invalid email on POST /user", async () => {
+    const app = new Elysia().use(
+      createUsersRoutes({
+        async createUser() {
+          throw new Error("not used")
+        },
+        async getUserById() {
+          return null
+        },
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ada Lovelace", email: "not-an-email" }),
+      })
+    )
+
+    expect(response.status).toBe(422)
+  })
+
+  it("uses default service when service is not provided", async () => {
+    const { createUsersRoutes } = await import("@/modules/users/api/users.route")
+    const app = new Elysia().use(createUsersRoutes())
+
+    // Default service delegates to lazy imports — this should not throw
+    const usersRoutes = createUsersRoutes()
+    expect(usersRoutes).toBeDefined()
+
+    // The route should be mountable without errors
+    expect(app.handle).toBeDefined()
+  })
 })

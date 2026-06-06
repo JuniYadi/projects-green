@@ -101,7 +101,180 @@ describe("GET /account - JIT upsert", () => {
 
     expect(response.status).toBe(403)
   })
+
+  it("returns 500 on ensureBillingAccountForOrg error", async () => {
+    mockEnsureBillingAccountForOrg.mockRejectedValueOnce(
+      new Error("DB_CONNECTION_ERROR")
+    )
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(500)
+    const body = await response.json()
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+  })
+
+  it("includes formattedBalance, isAboveWarn, isPositive, and accountAge fields", async () => {
+    const mockAccount = {
+      id: "acc-1",
+      organizationId: "org_123",
+      balance: new Decimal(500000),
+      currency: "USD",
+      createdAt: new Date("2026-05-01"),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(body.formattedBalance).toBeDefined()
+    expect(typeof body.formattedBalance).toBe("string")
+    expect(body.formattedBalance).toContain("IDR")
+    expect(body.isAboveWarn).toBe(true)
+    expect(body.isPositive).toBe(true)
+    expect(body.accountAge).toBeDefined()
+    expect(typeof body.accountAge).toBe("string")
+  })
+
+  it("reports accountAge as today for freshly created account", async () => {
+    const mockAccount = {
+      id: "acc-3",
+      organizationId: "org_789",
+      balance: new Decimal(100_000),
+      currency: "IDR",
+      createdAt: new Date(), // today = diffDays === 0
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.accountAge).toBe("today")
+  })
+
+  it("reports accountAge as 1 day for yesterday-created account", async () => {
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    const mockAccount = {
+      id: "acc-4",
+      organizationId: "org_789",
+      balance: new Decimal(100_000),
+      currency: "IDR",
+      createdAt: yesterday,
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.accountAge).toBe("1 day")
+  })
+
+  it("reports isPositive=false and isAboveWarn=false for zero balance", async () => {
+    const mockAccount = {
+      id: "acc-2",
+      organizationId: "org_456",
+      balance: new Decimal(0),
+      currency: "IDR",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.isPositive).toBe(false)
+    expect(body.isAboveWarn).toBe(false)
+    expect(body.balanceIdr).toBe("0.00")
+  })
+
+  it("reports isAboveWarn=false for low positive balance below threshold", async () => {
+    const mockAccount = {
+      id: "acc-5",
+      organizationId: "org_111",
+      balance: new Decimal(5000), // below MINIMUM_BALANCE_WARN_IDR (10_000)
+      currency: "IDR",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.isPositive).toBe(true)
+    expect(body.isAboveWarn).toBe(false)
+    expect(body.balanceIdr).toBe("5000.00")
+  })
+
+  it("reports formattedBalance with IDR locale format for large numbers", async () => {
+    const mockAccount = {
+      id: "acc-6",
+      organizationId: "org_222",
+      balance: new Decimal(9999999),
+      currency: "IDR",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.formattedBalance).toContain("IDR")
+    expect(body.balanceIdr).toBe("9999999.00")
+  })
+
+  it("reports accountAge with N days format for accounts older than 1 day", async () => {
+    const threeDaysAgo = new Date()
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+
+    const mockAccount = {
+      id: "acc-7",
+      organizationId: "org_333",
+      balance: new Decimal(100_000),
+      currency: "IDR",
+      createdAt: threeDaysAgo,
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.accountAge).toBe("3 days")
+  })
 })
+
 
 // Test schema validation
 describe("billingSchemas", () => {
