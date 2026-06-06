@@ -59,61 +59,9 @@ const mockWithAuth = mock(
   })
 )
 
-const mockFindMany = mock(async () => [
-  {
-    id: "repo_conn_1",
-    githubRepositoryId: BigInt(101),
-    fullName: "acme/api",
-    repoName: "api",
-    ownerLogin: "acme",
-    defaultBranch: "main",
-    isPrivate: true,
-    lastSyncedAt: new Date("2026-05-16T10:00:00.000Z"),
-    installation: {
-      githubInstallationId: BigInt(9001),
-    },
-  },
-  {
-    id: "repo_conn_2",
-    githubRepositoryId: BigInt(102),
-    fullName: "acme/web",
-    repoName: "web",
-    ownerLogin: "acme",
-    defaultBranch: "main",
-    isPrivate: false,
-    lastSyncedAt: new Date("2026-05-16T11:00:00.000Z"),
-    installation: {
-      githubInstallationId: BigInt(9001),
-    },
-  },
-  {
-    id: "repo_conn_3",
-    githubRepositoryId: BigInt(103),
-    fullName: "acme/worker",
-    repoName: "worker",
-    ownerLogin: "acme",
-    defaultBranch: "main",
-    isPrivate: true,
-    lastSyncedAt: new Date("2026-05-16T12:00:00.000Z"),
-    installation: {
-      githubInstallationId: BigInt(9001),
-    },
-  },
-])
-
 mock.module("@workos-inc/authkit-nextjs", () => {
   return {
     withAuth: mockWithAuth,
-  }
-})
-
-mock.module("@/lib/prisma", () => {
-  return {
-    prisma: {
-      githubRepositoryConnection: {
-        findMany: mockFindMany,
-      },
-    },
   }
 })
 
@@ -129,7 +77,6 @@ describe("GET /api/integrations/github/repositories", () => {
     mockGithubServiceAssertEnabled.mockClear()
     mockCreateGithubService.mockClear()
     mockWithAuth.mockClear()
-    mockFindMany.mockClear()
 
     mockGithubServiceAssertEnabled.mockImplementation(() => {})
     mockListRepositoriesForActor.mockImplementation(async () => ({
