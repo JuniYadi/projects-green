@@ -43,9 +43,10 @@ const makeInvitation = (
 })
 
 const mockRequireTenantActor = mock(
-  async (): Promise<TenantActorContext | TenantApiError> => ({
-    ...defaultActor,
-  })
+  async (set?: { status?: number }): Promise<TenantActorContext | TenantApiError> => {
+    void set
+    return { ...defaultActor }
+  }
 )
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(

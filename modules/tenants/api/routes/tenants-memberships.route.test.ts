@@ -72,7 +72,10 @@ const mockDeleteTenantMembershipSafely = mock(
 )
 
 const mockRequireTenantActor = mock(
-  async (): Promise<MockActor | TenantApiError> => ({ ...defaultActor })
+  async (set?: { status?: number }): Promise<MockActor | TenantApiError> => {
+    void set
+    return { ...defaultActor }
+  }
 )
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(

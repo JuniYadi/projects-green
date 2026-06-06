@@ -34,7 +34,7 @@ const loadApp = async () => {
 }
 
 describe("tenantsAuthorizationRoutes", () => {
-  let app: Elysia
+  let app: Awaited<ReturnType<typeof loadApp>>
 
   beforeEach(async () => {
     actorContext = {
