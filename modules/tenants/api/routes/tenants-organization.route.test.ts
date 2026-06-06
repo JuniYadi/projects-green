@@ -33,17 +33,12 @@ const createOrganization = (): MockOrganization => ({
   updatedAt: "2026-01-02T00:00:00.000Z",
 })
 
-const mockRequireTenantActor = mock(
-  async (set?: { status?: number }): Promise<TenantActorContext> => {
-    void set
-    return {
-      userId: "user_1",
-      organizationId: "org_1",
-      platformRole: "none" as const,
-      tenantRole: "owner" as const,
-    }
-  }
-)
+const mockRequireTenantActor = mock(async () => ({
+  userId: "user_1",
+  organizationId: "org_1",
+  platformRole: "none" as const,
+  tenantRole: "owner" as const,
+}))
 
 const mockEnsureTenantContextAccess = mock((): true => true)
 const mockCanManageTenant = mock((): boolean => true)
@@ -96,12 +91,14 @@ describe("tenantsOrganizationRoutes", () => {
     mockUpdateTenantOrganization.mockClear()
     mockDeleteTenantOrganization.mockClear()
 
-    mockRequireTenantActor.mockImplementation(async () => ({
-      userId: "user_1",
-      organizationId: "org_1",
-      platformRole: "none",
-      tenantRole: "owner",
-    }))
+    mockRequireTenantActor.mockImplementation(
+      async (_set: { status?: number }) => ({
+        userId: "user_1",
+        organizationId: "org_1",
+        platformRole: "none",
+        tenantRole: "owner",
+      })
+    )
     mockEnsureTenantContextAccess.mockImplementation((): true => true)
     mockCanManageTenant.mockImplementation((): boolean => true)
     mockCanTransferOwnership.mockImplementation((): boolean => true)
@@ -669,7 +666,8 @@ describe("tenantsOrganizationRoutes", () => {
 
   it("returns 401 when requireTenantActor fails on update endpoint", async () => {
     mockRequireTenantActor.mockImplementation(
-      async (set: { status?: number }) => {
+      async (...args: unknown[]) => {
+        const set = args[0] as { status?: number }
         set.status = 401
         return {
           ok: false,

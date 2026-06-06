@@ -37,8 +37,7 @@ const makeBootstrapMembership = (
 })
 
 const mockRequireTenantActor = mock(
-  async (set?: { status?: number }): Promise<MockActor | TenantApiError> => {
-    void set
+  async (): Promise<MockActor | TenantApiError> => {
     return { ...defaultActor }
   }
 )
@@ -503,7 +502,8 @@ describe("tenants-bootstrap routes", () => {
 
   it("returns 401 status when requireTenantActor fails on GET", async () => {
     mockRequireTenantActor.mockImplementation(
-      async (set?: { status?: number }) => {
+      async (...args: unknown[]) => {
+        const set = args[0] as { status?: number }
         set.status = 401
         return {
           ok: false,

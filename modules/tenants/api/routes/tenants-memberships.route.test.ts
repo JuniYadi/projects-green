@@ -72,10 +72,7 @@ const mockDeleteTenantMembershipSafely = mock(
 )
 
 const mockRequireTenantActor = mock(
-  async (set?: { status?: number }): Promise<MockActor | TenantApiError> => {
-    void set
-    return { ...defaultActor }
-  }
+  async (): Promise<MockActor | TenantApiError> => ({ ...defaultActor })
 )
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(
@@ -195,7 +192,8 @@ describe("tenants-memberships routes", () => {
 
     it("returns 401 status when requireTenantActor fails", async () => {
       mockRequireTenantActor.mockImplementation(
-        async (set: { status?: number }) => {
+        async (...args: unknown[]) => {
+          const set = args[0] as { status?: number }
           set.status = 401
           return {
             ok: false,

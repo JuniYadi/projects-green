@@ -373,7 +373,8 @@ describe("tenants-organizations routes", () => {
 
   it("returns 401 status when requireTenantActor returns error", async () => {
     mockRequireTenantActor.mockImplementation(
-      async (set?: { status?: number }) => {
+      async (...args: unknown[]) => {
+        const set = args[0] as { status?: number }
         set.status = 401
         return {
           ok: false,

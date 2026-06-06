@@ -43,10 +43,9 @@ const makeInvitation = (
 })
 
 const mockRequireTenantActor = mock(
-  async (set?: { status?: number }): Promise<TenantActorContext | TenantApiError> => {
-    void set
-    return { ...defaultActor }
-  }
+  async (): Promise<TenantActorContext | TenantApiError> => ({
+    ...defaultActor,
+  })
 )
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(
@@ -113,7 +112,7 @@ const resetAllMocks = () => {
   mockResendTenantInvitation.mockReset()
 
   mockRequireTenantActor.mockImplementation(
-    async (): Promise<TenantActorContext | TenantApiError> => ({
+    async (_set: { status?: number }): Promise<TenantActorContext | TenantApiError> => ({
       ...defaultActor,
     })
   )
@@ -162,7 +161,7 @@ describe("tenants-invitations routes", () => {
     it("returns unauthorized when actor is not signed in", async () => {
       const app = await getApp()
       mockRequireTenantActor.mockImplementation(
-        async (): Promise<TenantActorContext | TenantApiError> =>
+        async (_set: { status?: number }): Promise<TenantActorContext | TenantApiError> =>
           toUnauthorizedError()
       )
 
@@ -177,7 +176,8 @@ describe("tenants-invitations routes", () => {
 
     it("returns 401 status when requireTenantActor fails", async () => {
       mockRequireTenantActor.mockImplementation(
-        async (set: { status?: number }) => {
+        async (...args: unknown[]) => {
+          const set = args[0] as { status?: number }
           set.status = 401
           return {
             ok: false,
