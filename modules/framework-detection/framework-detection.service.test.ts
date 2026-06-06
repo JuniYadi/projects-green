@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 
@@ -222,10 +222,15 @@ describe("detectFrameworkFromGithubApi", () => {
         size: 100,
       }),
       resolveWithAiToolCalling: async () => ({
-        primaryFrameworkId: "nextjs",
-        confidence: 0.95,
-        requiredRuntimeIds: ["node"],
-        reasoning: ["next dependency found in package.json"],
+        decision: {
+          primaryFrameworkId: "nextjs",
+          confidence: 0.95,
+          requiredRuntimeIds: ["node"],
+          reasoning: ["next dependency found in package.json"],
+        },
+        toolCalls: [
+          { toolCallId: "tc-1", toolName: "read_repo_file", input: { filePath: "package.json" }, output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" } },
+        ],
       }),
       prisma: mockPrisma,
     }
@@ -423,10 +428,16 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
         truncated: false,
       }),
       resolveWithAiToolCalling: async () => ({
-        primaryFrameworkId: "nextjs",
-        confidence: 0.9,
-        requiredRuntimeIds: ["node"],
-        reasoning: ["next dependency found"],
+        decision: {
+          primaryFrameworkId: "nextjs",
+          confidence: 0.9,
+          requiredRuntimeIds: ["node"],
+          reasoning: ["next dependency found"],
+        },
+        toolCalls: [
+          { toolCallId: "tc-1", toolName: "list_repo_files", input: {}, output: { files: ["package.json", "next.config.mjs"] } },
+          { toolCallId: "tc-2", toolName: "read_repo_file", input: { filePath: "package.json" }, output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" } },
+        ],
       }),
       prisma: mockPrisma,
     }
@@ -548,10 +559,13 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
         truncated: true, // Truncated
       }),
       resolveWithAiToolCalling: async () => ({
-        primaryFrameworkId: "nextjs",
-        confidence: 0.8,
-        requiredRuntimeIds: ["node"],
-        reasoning: ["partial listing"],
+        decision: {
+          primaryFrameworkId: "nextjs",
+          confidence: 0.8,
+          requiredRuntimeIds: ["node"],
+          reasoning: ["partial listing"],
+        },
+        toolCalls: [],
       }),
       prisma: mockPrisma,
     }
@@ -566,6 +580,67 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
     )
 
     expect(result.warnings.some((w) => w.includes("truncated"))).toBe(true)
+  })
+
+  it("captures tool calls in inspection log audit trail", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: mock(() => ({})),
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["package.json", "next.config.mjs"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => ({
+        decision: {
+          primaryFrameworkId: "nextjs",
+          confidence: 0.9,
+          requiredRuntimeIds: ["node"],
+          reasoning: ["next dependency found"],
+        },
+        toolCalls: [
+          { toolCallId: "tc-1", toolName: "list_repo_files", input: {}, output: { files: ["package.json", "next.config.mjs"] } },
+          { toolCallId: "tc-2", toolName: "read_repo_file", input: { filePath: "package.json" }, output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" } },
+        ],
+      }),
+      prisma: mockPrisma,
+    }
+
+    await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    // Verify tool calls are captured in the audit log
+    expect(mockPrisma.inspectionLog.create).toHaveBeenCalledTimes(1)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const logCall = (mockPrisma.inspectionLog.create as any).mock.calls[0]?.[0]
+    expect(logCall.data.toolCalls).toHaveLength(2)
+    expect(logCall.data.toolCalls[0]).toEqual({
+      toolCallId: "tc-1",
+      toolName: "list_repo_files",
+      input: {},
+      output: { files: ["package.json", "next.config.mjs"] },
+    })
+    expect(logCall.data.toolCalls[1]).toEqual({
+      toolCallId: "tc-2",
+      toolName: "read_repo_file",
+      input: { filePath: "package.json" },
+      output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" },
+    })
   })
 })
 

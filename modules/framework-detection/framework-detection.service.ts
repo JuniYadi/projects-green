@@ -47,6 +47,19 @@ export type GithubApiDetectionInput = {
   subdir?: string
 }
 
+export type ToolCallRecord = {
+  toolCallId: string
+  toolName: string
+  input: unknown
+  output?: unknown
+  error?: string
+}
+
+export type AiDecisionResult = {
+  decision: AiDecision
+  toolCalls: ToolCallRecord[]
+}
+
 export type GithubApiDetectorDependencies = {
   listFiles?: (input: ListRepoFilesInput) => Promise<{ files: string[]; truncated: boolean }>
   readFile?: (input: ReadRepoFileInput) => Promise<{ content: string; path: string; sha: string; size: number }>
@@ -54,7 +67,7 @@ export type GithubApiDetectorDependencies = {
     input: GithubApiDetectionInput,
     fileList: string[],
     detectorRules: DetectorRuleRecord[]
-  ) => Promise<AiDecision>
+  ) => Promise<AiDecisionResult>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prisma?: any
 }
@@ -796,7 +809,7 @@ const resolveWithAiToolCalling = async (
   fileList: string[],
   detectorRules: DetectorRuleRecord[],
   dependencies: GithubApiDetectorDependencies
-): Promise<AiDecision> => {
+): Promise<AiDecisionResult> => {
   const apiKey = process.env.OPENAI_API_KEY
 
   if (!apiKey) {
@@ -883,6 +896,18 @@ const resolveWithAiToolCalling = async (
     stopWhen: stepCountIs(15), // Allow multiple tool calls
   })
 
+  // Map tool calls to audit-friendly records, matching with results
+  const toolCalls: ToolCallRecord[] = result.toolCalls.map((tc) => {
+    const toolResult = result.toolResults.find((tr) => tr.toolCallId === tc.toolCallId)
+    return {
+      toolCallId: tc.toolCallId,
+      toolName: tc.toolName,
+      input: tc.input,
+      output: toolResult?.output,
+      error: 'error' in tc && tc.error ? String(tc.error) : undefined,
+    }
+  })
+
   // Parse the final text response as JSON
   const finalText = result.text
   try {
@@ -890,7 +915,7 @@ const resolveWithAiToolCalling = async (
     const jsonMatch = finalText.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]) as AiDecision
-      return parsed
+      return { decision: parsed, toolCalls }
     }
   } catch {
     // Fall through to error
@@ -1222,12 +1247,15 @@ export const detectFrameworkFromGithubApi = async (
   // 3. Run AI agent with tool calling
   const startTime = Date.now()
   let aiDecision: AiDecision
+  let capturedToolCalls: ToolCallRecord[] = []
 
   try {
     const resolver = dependencies.resolveWithAiToolCalling ?? (
       (inp, files, rules) => resolveWithAiToolCalling(inp, files, rules, dependencies)
     )
-    aiDecision = await resolver(input, fileList, detectorRules)
+    const resolverResult = await resolver(input, fileList, detectorRules)
+    aiDecision = resolverResult.decision
+    capturedToolCalls = resolverResult.toolCalls
   } catch (error) {
     const durationMs = Date.now() - startTime
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -1312,7 +1340,7 @@ export const detectFrameworkFromGithubApi = async (
         detectedFramework: frameworkId,
         confidence: aiDecision.confidence,
         enforcedRuntimes,
-        toolCalls: [], // Tool calls are captured within the AI resolver
+        toolCalls: capturedToolCalls,
         reasoning: aiDecision.reasoning,
         warnings,
         durationMs,
