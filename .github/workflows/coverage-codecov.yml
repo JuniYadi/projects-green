@@ -65,10 +65,19 @@ jobs:
           echo "Found LCOV report at coverage/lcov.info"
           ls -lh coverage/lcov.info
 
+      - name: Filter lcov for CodeCov
+        run: |
+          # Remove whatsapp, test, and deploy files from lcov.info before upload
+          grep -v "^SF:.*/whatsapp/" coverage/lcov.info | \
+          grep -v "^SF:.*/test/" | \
+          grep -v "^SF:.*/modules/deploy/" > coverage/lcov.filtered.info
+          echo "Filtered $(wc -l < coverage/lcov.filtered.info) lines from lcov"
+          ls -lh coverage/lcov.filtered.info
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: coverage/lcov.info
+          files: coverage/lcov.filtered.info
           flags: unit
           name: bun-test-coverage
           fail_ci_if_error: false
