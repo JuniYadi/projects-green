@@ -20,6 +20,7 @@ import {
   BuildingsIcon,
   CaretLeftIcon,
   CreditCardIcon,
+  CrosshairIcon,
   GaugeIcon,
   LifebuoyIcon,
   Lightning,
@@ -140,6 +141,18 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+      {
+        title: "Detector Control",
+        url: localizePathname({
+          pathname: "/portal/admin/app-hosting/detector",
+          locale,
+        }),
+        icon: <CrosshairIcon />,
+        isActive: startsWithRoute(
+          path,
+          "/portal/admin/app-hosting/detector"
+        ),
       },
     ],
   },

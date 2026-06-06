@@ -169,3 +169,35 @@ export function toRuntimeMappingDTO(
     priority: mapping.priority,
   }
 }
+
+// --- Detector Rule DTO ---
+
+export type DetectorRuleDTO = {
+  id: string
+  name: string
+  description: string | null
+  patternJson: unknown
+  implicationsJson: unknown
+  confidenceWeight: number
+  isActive: boolean
+  priority: number
+  createdAt: Date
+  updatedAt: Date
+}
+
+export function toDetectorRuleDTO(
+  rule: Prisma.DetectorRuleGetPayload<object>
+): DetectorRuleDTO {
+  return {
+    id: rule.id,
+    name: rule.name,
+    description: rule.description,
+    patternJson: rule.patternJson,
+    implicationsJson: rule.implicationsJson,
+    confidenceWeight: rule.confidenceWeight,
+    isActive: rule.isActive,
+    priority: rule.priority,
+    createdAt: rule.createdAt,
+    updatedAt: rule.updatedAt,
+  }
+}

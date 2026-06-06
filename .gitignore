@@ -64,3 +64,4 @@ docs/
 !.crew/artifacts/.gitkeep
 !.crew/graphs/.gitkeep
 plan.md
+.llm-wiki/

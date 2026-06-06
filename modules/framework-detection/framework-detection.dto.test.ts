@@ -8,6 +8,7 @@ import {
   toDetectionResultDTO,
   toInspectionLogDTO,
   toRuntimeMappingDTO,
+  toDetectorRuleDTO,
 } from "@/modules/framework-detection/framework-detection.dto"
 import type {
   DetectedFramework,
@@ -246,6 +247,58 @@ describe("framework-detection.dto", () => {
 
       expect(result.frameworkVersion).toBeNull()
       expect(result.buildVersion).toBeNull()
+    })
+  })
+
+  describe("toDetectorRuleDTO", () => {
+    it("maps DetectorRule to DTO", () => {
+      const input: Prisma.DetectorRuleGetPayload<object> = {
+        id: "rule-1",
+        name: "Laravel Artisan Rule",
+        description: "Detect Laravel by artisan file",
+        patternJson: { files: ["artisan"] },
+        implicationsJson: { framework: "laravel", impact: "HINT" },
+        confidenceWeight: 0.9,
+        isActive: true,
+        priority: 10,
+        createdAt: new Date("2026-01-01"),
+        updatedAt: new Date("2026-01-02"),
+      }
+
+      const result = toDetectorRuleDTO(input)
+
+      expect(result).toEqual({
+        id: "rule-1",
+        name: "Laravel Artisan Rule",
+        description: "Detect Laravel by artisan file",
+        patternJson: { files: ["artisan"] },
+        implicationsJson: { framework: "laravel", impact: "HINT" },
+        confidenceWeight: 0.9,
+        isActive: true,
+        priority: 10,
+        createdAt: new Date("2026-01-01"),
+        updatedAt: new Date("2026-01-02"),
+      })
+    })
+
+    it("handles null description", () => {
+      const input: Prisma.DetectorRuleGetPayload<object> = {
+        id: "rule-2",
+        name: "Block Rule",
+        description: null,
+        patternJson: { files: ["blocked.txt"] },
+        implicationsJson: { impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: false,
+        priority: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      const result = toDetectorRuleDTO(input)
+
+      expect(result.description).toBeNull()
+      expect(result.isActive).toBe(false)
     })
   })
 })
