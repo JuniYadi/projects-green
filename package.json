@@ -7,6 +7,7 @@
     "dev": "next dev --turbopack --port 3300",
     "build": "next build",
     "start": "next start",
+    "serve": "local-to-pub --port 3300 --uri pgreen",
     "test": "bun test",
     "test:coverage": "bun run scripts/check-coverage-threshold.ts",
     "lint": "eslint",
@@ -15,6 +16,7 @@
     "worker:github": "bun run scripts/github-worker.ts",
     "worker:billing": "bun run scripts/billing-cron.ts",
     "worker:app-hosting-billing": "bun run scripts/app-hosting-billing-worker.ts",
+    "worker:whatsapp-billing": "bun run scripts/whatsapp-monthly-billing-worker.ts",
     "worker:deploy-monitor": "bun run scripts/deploy-monitor-worker.ts",
     "db:generate": "bun --bun prisma generate",
     "db:migrate:dev": "bun --bun prisma migrate dev",
@@ -31,6 +33,7 @@
     "test:auth:cookie": "bun run scripts/test-api-auth-cookie.ts",
     "test:auth:static-key": "bun run scripts/test-api-auth-static-key.ts",
     "create:api-key": "bun run scripts/create-api-key.ts",
+    "worker:vpn-renewal": "bun run scripts/vpn-renewal-worker.ts",
     "worker:opensearch-ingest": "bun run scripts/opensearch-ingest-worker.ts"
   },
   "dependencies": {

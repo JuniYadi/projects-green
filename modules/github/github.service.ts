@@ -1,5 +1,12 @@
-import { createPrivateKey, sign } from "node:crypto"
+import { createHash, createPrivateKey, sign } from "node:crypto"
 
+import { redis } from "@/lib/redis"
+import {
+  decrypt,
+  encrypt,
+  parseEncryptedField,
+  serializeEncryptedField,
+} from "@/lib/encryption"
 import {
   FEATURE_FLAG_KEYS,
   isFeatureEnabled,
@@ -20,6 +27,7 @@ import type {
 const GITHUB_API_BASE_URL = "https://api.github.com"
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
+const TOKEN_CACHE_TTL_SECONDS = 55 * 60 // 55 minutes
 
 export class GithubIntegrationDisabledError extends Error {
   constructor() {
@@ -172,6 +180,11 @@ const getRequiredEnv = (name: string) => {
   }
 
   return value
+}
+
+const getEncryptionKey = () => {
+  const secret = getRequiredEnv("APP_SECRET")
+  return createHash("sha256").update(secret).digest()
 }
 
 const toBase64Url = (input: string | Buffer) => {
@@ -358,11 +371,11 @@ const resolveOffset = (cursor: string | undefined) => {
     return 0
   }
 
-  if (/^\d+$/.test(trimmed)) {
-    return Number(trimmed)
+  try {
+    return fromBase64UrlJson(trimmed).offset
+  } catch {
+    return 0
   }
-
-  return fromBase64UrlJson(trimmed).offset
 }
 
 const normalizeOwnerFilter = (value: string | undefined) => {
@@ -392,8 +405,19 @@ const comparePushedAtDesc = (
   const leftTime = Date.parse(left.pushedAt)
   const rightTime = Date.parse(right.pushedAt)
 
-  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+  const leftIsNaN = Number.isNaN(leftTime)
+  const rightIsNaN = Number.isNaN(rightTime)
+
+  if (leftIsNaN && rightIsNaN) {
     return left.fullName.localeCompare(right.fullName)
+  }
+
+  if (leftIsNaN) {
+    return 1
+  }
+
+  if (rightIsNaN) {
+    return -1
   }
 
   if (leftTime === rightTime) {
@@ -407,24 +431,13 @@ const filterRepositories = (
   repositories: GithubRepositoryListItem[],
   query: GithubRepositoryListQuery
 ) => {
-  const ownerFilter = normalizeOwnerFilter(query.ownerId)
   const searchFilter = normalizeQueryFilter(query.query)
 
+  if (!searchFilter) {
+    return repositories
+  }
+
   return repositories.filter((repository) => {
-    if (ownerFilter) {
-      const ownerMatch =
-        repository.owner.toLowerCase() === ownerFilter ||
-        String(repository.installationId) === ownerFilter
-
-      if (!ownerMatch) {
-        return false
-      }
-    }
-
-    if (!searchFilter) {
-      return true
-    }
-
     const haystacks = [
       repository.fullName,
       repository.name,
@@ -465,6 +478,23 @@ const dedupeRepositories = (repositories: GithubRepositoryListItem[]) => {
 }
 
 const createInstallationToken = async (installationId: bigint | number) => {
+  const cacheKey = `github:iat:${installationId}`
+
+  try {
+    const cached = await redis.get(cacheKey)
+    if (cached) {
+      const encryptedData = parseEncryptedField(cached)
+      if (encryptedData) {
+        const decrypted = decrypt(encryptedData, getEncryptionKey())
+        if (decrypted && decrypted.trim()) {
+          return decrypted
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Failed to retrieve GitHub token from cache", error)
+  }
+
   const { appId, privateKeyPem } = getGithubAppAuth()
   const appJwt = createGithubAppJwt({
     appId,
@@ -476,6 +506,20 @@ const createInstallationToken = async (installationId: bigint | number) => {
     method: "POST",
     token: appJwt,
   })
+
+  try {
+    const encrypted = encrypt(result.token, getEncryptionKey())
+    // Token caching is best-effort to optimize performance.
+    // If it fails, the service will still return the newly generated token.
+    await redis.set(
+      cacheKey,
+      serializeEncryptedField(encrypted),
+      "EX",
+      TOKEN_CACHE_TTL_SECONDS
+    )
+  } catch (error) {
+    console.error("Failed to cache GitHub token", error)
+  }
 
   return result.token
 }
@@ -583,8 +627,25 @@ export const createGithubRepositoryService = (
       }
     }
 
+    const ownerFilter = normalizeOwnerFilter(query.ownerId)
+    const targetInstallations = ownerFilter
+      ? installations.filter(
+          (inst) =>
+            inst.accountLogin.toLowerCase() === ownerFilter ||
+            String(inst.targetId ?? "") === ownerFilter ||
+            String(inst.githubInstallationId) === ownerFilter
+        )
+      : installations
+
+    if (!targetInstallations.length) {
+      return {
+        items: [],
+        nextCursor: null,
+      }
+    }
+
     const repositoriesByInstallation = await Promise.all(
-      installations.map(async (installation) => {
+      targetInstallations.map(async (installation) => {
         const token = await dependencies.createInstallationAccessToken(
           installation.githubInstallationId
         )
@@ -595,31 +656,8 @@ export const createGithubRepositoryService = (
 
     const repositories = dedupeRepositories(repositoriesByInstallation.flat())
       .sort(comparePushedAtDesc)
-      .filter((repository) => {
-        const ownerFilter = normalizeOwnerFilter(query.ownerId)
 
-        if (!ownerFilter) {
-          return true
-        }
-
-        const matchesOwner = repository.owner.toLowerCase() === ownerFilter
-        if (matchesOwner) {
-          return true
-        }
-
-        return installations.some((installation) => {
-          return (
-            installation.githubInstallationId === repository.installationId &&
-            (installation.accountLogin.toLowerCase() === ownerFilter ||
-              String(installation.targetId ?? "") === ownerFilter)
-          )
-        })
-      })
-
-    const filtered = filterRepositories(repositories, {
-      ...query,
-      ownerId: undefined,
-    })
+    const filtered = filterRepositories(repositories, query)
 
     return paginateRepositories(filtered, query)
   },
@@ -807,4 +845,148 @@ export const syncGithubInstallation = async ({
 
     return installationRecord
   })
+}
+
+// --- Repository Inspection Tools for AI Detector ---
+
+export type GithubRepoTreeItem = {
+  path: string
+  mode: string
+  type: string // "blob" or "tree"
+  sha: string
+  size?: number
+  url: string
+}
+
+export type GithubRepoContent = {
+  name: string
+  path: string
+  content: string // Base64-encoded content
+  encoding: string // "base64"
+  sha: string
+  size: number
+  url: string
+}
+
+export type ListRepoFilesInput = {
+  installationId: number
+  owner: string
+  repo: string
+  ref?: string // branch, tag, or commit SHA (defaults to default branch)
+  path?: string // subdirectory to list (recursive from this path)
+}
+
+export type ReadRepoFileInput = {
+  installationId: number
+  owner: string
+  repo: string
+  filePath: string
+  ref?: string // branch, tag, or commit SHA
+}
+
+/**
+ * List all files in a repository using the GitHub Trees API.
+ * Returns a flat list of file paths relative to the repo root.
+ */
+export const listRepoFiles = async (
+  input: ListRepoFilesInput
+): Promise<{ files: string[]; truncated: boolean }> => {
+  const token = await createInstallationToken(input.installationId)
+  const ref = input.ref ?? "HEAD"
+
+  // First, get the tree SHA for the ref
+  let treeSha: string | undefined
+
+  try {
+    const refData = await githubRequest<{
+      object?: { sha?: string; type?: string }
+    }>({
+      path: `/repos/${input.owner}/${input.repo}/git/ref/heads/${ref}`,
+      token,
+    })
+    treeSha = refData.object?.sha
+  } catch {
+    // Fallback: try as a direct SHA or tag
+    try {
+      const commitData = await githubRequest<{ sha?: string }>({
+        path: `/repos/${input.owner}/${input.repo}/git/commits/${ref}`,
+        token,
+      })
+      treeSha = commitData.sha
+    } catch {
+      // Fall through to error below
+    }
+  }
+
+  if (!treeSha) {
+    throw new GithubApiError(
+      `Unable to resolve ref "${ref}" for ${input.owner}/${input.repo}.`
+    )
+  }
+
+  // Get the recursive tree
+  const treeData = await githubRequest<{ tree?: GithubRepoTreeItem[]; truncated?: boolean }>({
+    path: `/repos/${input.owner}/${input.repo}/git/trees/${treeSha}?recursive=1`,
+    token,
+  })
+
+  const allItems = treeData.tree ?? []
+  const prefix = input.path ? `${input.path.replace(/\/$/, "")}/` : ""
+
+  const files = allItems
+    .filter((item) => item.type === "blob")
+    .map((item) => item.path)
+    .filter((filePath) => {
+      if (!prefix) return true
+      return filePath.startsWith(prefix)
+    })
+    .map((filePath) => (prefix ? filePath.slice(prefix.length) : filePath))
+    .filter((filePath) => !filePath.startsWith("../") && filePath.length > 0)
+
+  return {
+    files,
+    truncated: treeData.truncated ?? false,
+  }
+}
+
+/**
+ * Read a single file from a repository using the GitHub Contents API.
+ * Returns the decoded file content.
+ */
+export const readRepoFile = async (
+  input: ReadRepoFileInput
+): Promise<{ content: string; path: string; sha: string; size: number }> => {
+  const token = await createInstallationToken(input.installationId)
+  const ref = input.ref ? `?ref=${encodeURIComponent(input.ref)}` : ""
+
+  const data = await githubRequest<GithubRepoContent>({
+    path: `/repos/${input.owner}/${input.repo}/contents/${input.filePath}${ref}`,
+    token,
+  })
+
+  if (data.encoding !== "base64") {
+    throw new GithubApiError(
+      `Unexpected encoding "${data.encoding}" for file "${input.filePath}".`
+    )
+  }
+
+  // GitHub Contents API has a 1MB limit for file content
+  const MAX_CONTENT_SIZE = 1_000_000 // 1MB in bytes
+  if (data.size > MAX_CONTENT_SIZE) {
+    return {
+      content: `// File too large to read (${data.size} bytes) — truncated`,
+      path: data.path,
+      sha: data.sha,
+      size: data.size,
+    }
+  }
+
+  const content = Buffer.from(data.content, "base64").toString("utf8")
+
+  return {
+    content,
+    path: data.path,
+    sha: data.sha,
+    size: data.size,
+  }
 }

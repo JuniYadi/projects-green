@@ -249,20 +249,34 @@ export function StepSource({
                       Connected
                     </span>
                   )}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="shadow-sm font-medium border-border"
-                    disabled={isConnectingGithub}
-                    onClick={onConnectGithub}
-                  >
-                    {isConnectingGithub
-                      ? "Redirecting..."
-                      : githubConnectionStatus === "connected"
-                        ? "Reconnect GitHub"
-                        : "Connect GitHub"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="shadow-sm font-medium border-border"
+                      disabled={isConnectingGithub}
+                      onClick={onConnectGithub}
+                    >
+                      {isConnectingGithub
+                        ? "Redirecting..."
+                        : githubConnectionStatus === "connected"
+                          ? "Add Account"
+                          : "Connect GitHub"}
+                    </Button>
+                    {githubConnectionStatus === "connected" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="p-2 h-8 w-8"
+                        onClick={() => onOwnerSelect(selectedOwnerId)}
+                        title="Refresh list"
+                      >
+                        <ArrowRight className="w-4 h-4 rotate-[-90deg]" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
 

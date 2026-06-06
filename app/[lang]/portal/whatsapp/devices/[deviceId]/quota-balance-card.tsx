@@ -28,6 +28,7 @@ type QuotaBalanceCardProps = {
   deviceId: string
   initialBalance: number
   initialQuotaBase: number
+  initialQuotaBaseOut: number
   initialDailyLimitMessage: number
 }
 
@@ -58,6 +59,7 @@ export function QuotaBalanceCard({
   deviceId,
   initialBalance,
   initialQuotaBase,
+  initialQuotaBaseOut,
   initialDailyLimitMessage,
 }: QuotaBalanceCardProps) {
   const [editing, setEditing] = useState(false)
@@ -226,9 +228,14 @@ export function QuotaBalanceCard({
           ) : (
             <>
               <InfoRow
-                label="Quota Base"
-                value={initialQuotaBase.toLocaleString()}
+                label="Monthly Allowance"
+                value={`${initialQuotaBaseOut.toLocaleString()} / ${initialQuotaBase.toLocaleString()}`}
               />
+              {initialQuotaBaseOut === 0 && initialQuotaBase > 0 && (
+                <div className="flex items-center gap-2 rounded-md bg-amber-50 p-2 text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  <span className="font-medium">Monthly allowance exhausted — overage charges apply</span>
+                </div>
+              )}
               <InfoRow
                 label="Daily Limit"
                 value={initialDailyLimitMessage.toLocaleString()}

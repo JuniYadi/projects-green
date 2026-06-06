@@ -63,3 +63,4 @@ docs/
 !.crew/graphs/
 !.crew/artifacts/.gitkeep
 !.crew/graphs/.gitkeep
+plan.md

@@ -21,7 +21,8 @@ type AlertPreferences = {
   invoiceReminderEnabled: boolean
 }
 
-const STORAGE_KEY = "billing-alert-preferences"
+const STORAGE_KEY = "notify-limits"
+const OLD_STORAGE_KEY = "billing-alert-preferences"
 
 const defaultPreferences: AlertPreferences = {
   balanceThresholdEnabled: false,
@@ -35,9 +36,25 @@ function loadPreferences(): AlertPreferences {
   if (typeof window === "undefined") return defaultPreferences
 
   try {
+    const oldStored = localStorage.getItem(OLD_STORAGE_KEY)
+    if (oldStored) {
+      try {
+        const parsed = JSON.parse(oldStored)
+        localStorage.setItem(STORAGE_KEY, oldStored)
+        localStorage.removeItem(OLD_STORAGE_KEY)
+        return { ...defaultPreferences, ...parsed }
+      } catch {
+        localStorage.removeItem(OLD_STORAGE_KEY)
+      }
+    }
+
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
-      return { ...defaultPreferences, ...JSON.parse(stored) }
+      try {
+        return { ...defaultPreferences, ...JSON.parse(stored) }
+      } catch {
+        localStorage.removeItem(STORAGE_KEY)
+      }
     }
   } catch (e) {
     console.warn("Failed to parse stored alert preferences:", e)

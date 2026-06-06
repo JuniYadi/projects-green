@@ -13,6 +13,32 @@ class MockGithubIntegrationDisabledError extends Error {
   }
 }
 
+const mockListRepositoriesForActor = mock(async () => ({
+  items: [
+    {
+      repositoryId: 101,
+      fullName: "acme/api",
+      name: "api",
+      owner: "acme",
+      installationId: 9001,
+      defaultBranch: "main",
+      private: true,
+      pushedAt: "2026-05-16T10:00:00.000Z",
+    },
+    {
+      repositoryId: 102,
+      fullName: "acme/web",
+      name: "web",
+      owner: "acme",
+      installationId: 9001,
+      defaultBranch: "main",
+      private: false,
+      pushedAt: "2026-05-16T11:00:00.000Z",
+    },
+  ],
+  nextCursor: "102",
+}))
+
 const mockGithubServiceAssertEnabled = mock(() => {})
 const mockCreateGithubService = mock(() => ({
   getFeatureStatus: () => ({
@@ -21,6 +47,7 @@ const mockCreateGithubService = mock(() => ({
     enabled: true,
   }),
   assertEnabled: mockGithubServiceAssertEnabled,
+  listRepositoriesForActor: mockListRepositoriesForActor,
 }))
 
 const mockWithAuth = mock(
@@ -32,61 +59,9 @@ const mockWithAuth = mock(
   })
 )
 
-const mockFindMany = mock(async () => [
-  {
-    id: "repo_conn_1",
-    githubRepositoryId: BigInt(101),
-    fullName: "acme/api",
-    repoName: "api",
-    ownerLogin: "acme",
-    defaultBranch: "main",
-    isPrivate: true,
-    lastSyncedAt: new Date("2026-05-16T10:00:00.000Z"),
-    installation: {
-      githubInstallationId: BigInt(9001),
-    },
-  },
-  {
-    id: "repo_conn_2",
-    githubRepositoryId: BigInt(102),
-    fullName: "acme/web",
-    repoName: "web",
-    ownerLogin: "acme",
-    defaultBranch: "main",
-    isPrivate: false,
-    lastSyncedAt: new Date("2026-05-16T11:00:00.000Z"),
-    installation: {
-      githubInstallationId: BigInt(9001),
-    },
-  },
-  {
-    id: "repo_conn_3",
-    githubRepositoryId: BigInt(103),
-    fullName: "acme/worker",
-    repoName: "worker",
-    ownerLogin: "acme",
-    defaultBranch: "main",
-    isPrivate: true,
-    lastSyncedAt: new Date("2026-05-16T12:00:00.000Z"),
-    installation: {
-      githubInstallationId: BigInt(9001),
-    },
-  },
-])
-
 mock.module("@workos-inc/authkit-nextjs", () => {
   return {
     withAuth: mockWithAuth,
-  }
-})
-
-mock.module("@/lib/prisma", () => {
-  return {
-    prisma: {
-      githubRepositoryConnection: {
-        findMany: mockFindMany,
-      },
-    },
   }
 })
 
@@ -102,9 +77,33 @@ describe("GET /api/integrations/github/repositories", () => {
     mockGithubServiceAssertEnabled.mockClear()
     mockCreateGithubService.mockClear()
     mockWithAuth.mockClear()
-    mockFindMany.mockClear()
 
     mockGithubServiceAssertEnabled.mockImplementation(() => {})
+    mockListRepositoriesForActor.mockImplementation(async () => ({
+      items: [
+        {
+          repositoryId: 101,
+          fullName: "acme/api",
+          name: "api",
+          owner: "acme",
+          installationId: 9001,
+          defaultBranch: "main",
+          private: true,
+          pushedAt: "2026-05-16T10:00:00.000Z",
+        },
+        {
+          repositoryId: 102,
+          fullName: "acme/web",
+          name: "web",
+          owner: "acme",
+          installationId: 9001,
+          defaultBranch: "main",
+          private: false,
+          pushedAt: "2026-05-16T11:00:00.000Z",
+        },
+      ],
+      nextCursor: "102",
+    }))
     mockCreateGithubService.mockImplementation(() => ({
       getFeatureStatus: () => ({
         feature: "github_app_integration" as const,
@@ -112,6 +111,7 @@ describe("GET /api/integrations/github/repositories", () => {
         enabled: true,
       }),
       assertEnabled: mockGithubServiceAssertEnabled,
+      listRepositoriesForActor: mockListRepositoriesForActor,
     }))
     mockWithAuth.mockImplementation(async () => ({
       user: { id: "user_123" },
@@ -157,12 +157,12 @@ describe("GET /api/integrations/github/repositories", () => {
     expect(body.error).toBe("UNAUTHORIZED")
   })
 
-  it("returns 400 for invalid cursor", async () => {
+  it("returns 400 when limit is invalid", async () => {
     const route =
       await import("@/app/api/integrations/github/repositories/route")
     const response = await route.GET(
       new NextRequest(
-        "http://localhost/api/integrations/github/repositories?cursor=bad_cursor"
+        "http://localhost/api/integrations/github/repositories?limit=not_a_number"
       )
     )
     const body = (await response.json()) as { ok: boolean; error: string }
@@ -170,39 +170,6 @@ describe("GET /api/integrations/github/repositories", () => {
     expect(response.status).toBe(400)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INVALID_QUERY")
-    expect(mockFindMany).not.toHaveBeenCalled()
-  })
-
-  it("returns 400 for out-of-range cursor (above max signed 64-bit)", async () => {
-    const route =
-      await import("@/app/api/integrations/github/repositories/route")
-    const response = await route.GET(
-      new NextRequest(
-        "http://localhost/api/integrations/github/repositories?cursor=9223372036854775808"
-      )
-    )
-    const body = (await response.json()) as { ok: boolean; error: string }
-
-    expect(response.status).toBe(400)
-    expect(body.ok).toBe(false)
-    expect(body.error).toBe("INVALID_QUERY")
-    expect(mockFindMany).not.toHaveBeenCalled()
-  })
-
-  it("returns 400 for out-of-range cursor (below min signed 64-bit)", async () => {
-    const route =
-      await import("@/app/api/integrations/github/repositories/route")
-    const response = await route.GET(
-      new NextRequest(
-        "http://localhost/api/integrations/github/repositories?cursor=-9223372036854775809"
-      )
-    )
-    const body = (await response.json()) as { ok: boolean; error: string }
-
-    expect(response.status).toBe(400)
-    expect(body.ok).toBe(false)
-    expect(body.error).toBe("INVALID_QUERY")
-    expect(mockFindMany).not.toHaveBeenCalled()
   })
 
   it("applies owner/query filters, paginates with limit, and returns nextCursor", async () => {
@@ -233,7 +200,7 @@ describe("GET /api/integrations/github/repositories", () => {
     expect(body.ok).toBe(true)
     expect(body.items).toEqual([
       {
-        id: "repo_conn_1",
+        id: "101",
         repositoryId: "101",
         fullName: "acme/api",
         name: "api",
@@ -244,7 +211,7 @@ describe("GET /api/integrations/github/repositories", () => {
         syncedAt: "2026-05-16T10:00:00.000Z",
       },
       {
-        id: "repo_conn_2",
+        id: "102",
         repositoryId: "102",
         fullName: "acme/web",
         name: "web",
@@ -256,39 +223,17 @@ describe("GET /api/integrations/github/repositories", () => {
       },
     ])
     expect(body.nextCursor).toBe("102")
-    expect(mockFindMany).toHaveBeenCalledWith({
-      where: {
-        githubRepositoryId: { gt: BigInt(100) },
-        OR: [
-          { fullName: { contains: "api", mode: "insensitive" } },
-          { repoName: { contains: "api", mode: "insensitive" } },
-        ],
-        installation: {
-          status: "active",
-          workosUserId: "user_123",
-          organizationId: "org_123",
-          accountLogin: "acme",
-        },
+    expect(mockListRepositoriesForActor).toHaveBeenCalledWith(
+      {
+        userId: "user_123",
+        organizationId: "org_123",
       },
-      select: {
-        id: true,
-        githubRepositoryId: true,
-        fullName: true,
-        repoName: true,
-        ownerLogin: true,
-        defaultBranch: true,
-        isPrivate: true,
-        installation: {
-          select: {
-            githubInstallationId: true,
-          },
-        },
-        lastSyncedAt: true,
-      },
-      orderBy: {
-        githubRepositoryId: "asc",
-      },
-      take: 3,
-    })
+      {
+        limit: 2,
+        cursor: "100",
+        ownerId: "acme",
+        query: "api",
+      }
+    )
   })
 })

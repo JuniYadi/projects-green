@@ -1,7 +1,6 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { NextRequest, NextResponse } from "next/server"
 
-import { prisma } from "@/lib/prisma"
 import {
   createGithubService,
   GithubIntegrationDisabledError,
@@ -13,20 +12,6 @@ export const dynamic = "force-dynamic"
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
 const githubService = createGithubService()
-
-type RepositoryRow = {
-  id: string
-  githubRepositoryId: bigint
-  fullName: string
-  repoName: string
-  ownerLogin: string
-  defaultBranch: string | null
-  isPrivate: boolean
-  installation: {
-    githubInstallationId: bigint
-  }
-  lastSyncedAt: Date | null
-}
 
 const parseLimit = (value: string | null) => {
   if (!value) {
@@ -40,28 +25,6 @@ const parseLimit = (value: string | null) => {
   }
 
   return Math.min(parsed, MAX_LIMIT)
-}
-
-const parseCursor = (value: string | null) => {
-  if (!value) {
-    return null
-  }
-
-  if (!/^-?[0-9]+$/.test(value)) {
-    return null
-  }
-
-  const bigIntValue = BigInt(value)
-
-  // Validate that the value is within signed 64-bit integer range
-  const MIN_INT64 = BigInt("-9223372036854775808")
-  const MAX_INT64 = BigInt("9223372036854775807")
-
-  if (bigIntValue < MIN_INT64 || bigIntValue > MAX_INT64) {
-    return null
-  }
-
-  return bigIntValue
 }
 
 export const GET = async (request: NextRequest) => {
@@ -96,12 +59,8 @@ export const GET = async (request: NextRequest) => {
   }
 
   const limit = parseLimit(request.nextUrl.searchParams.get("limit"))
-  const cursor = parseCursor(request.nextUrl.searchParams.get("cursor"))
 
-  if (
-    !limit ||
-    (request.nextUrl.searchParams.get("cursor") !== null && cursor === null)
-  ) {
+  if (!limit) {
     return NextResponse.json(
       {
         ok: false as const,
@@ -117,63 +76,32 @@ export const GET = async (request: NextRequest) => {
   const queryRaw = request.nextUrl.searchParams.get("query")
   const query = queryRaw?.trim() || null
 
-  const records = (await prisma.githubRepositoryConnection.findMany({
-    where: {
-      ...(cursor ? { githubRepositoryId: { gt: cursor } } : {}),
-      ...(query
-        ? {
-            OR: [
-              { fullName: { contains: query, mode: "insensitive" } },
-              { repoName: { contains: query, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-      installation: {
-        status: "active",
-        workosUserId: auth.user.id,
-        organizationId: auth.organizationId ?? null,
-        ...(ownerId ? { accountLogin: ownerId } : {}),
-      },
+  const result = await githubService.listRepositoriesForActor(
+    {
+      userId: auth.user.id,
+      organizationId: auth.organizationId ?? null,
     },
-    select: {
-      id: true,
-      githubRepositoryId: true,
-      fullName: true,
-      repoName: true,
-      ownerLogin: true,
-      defaultBranch: true,
-      isPrivate: true,
-      lastSyncedAt: true,
-      installation: {
-        select: {
-          githubInstallationId: true,
-        },
-      },
-    },
-    orderBy: {
-      githubRepositoryId: "asc",
-    },
-    take: limit + 1,
-  })) as RepositoryRow[]
-
-  const hasNextPage = records.length > limit
-  const pageItems = hasNextPage ? records.slice(0, limit) : records
+    {
+      limit,
+      cursor: request.nextUrl.searchParams.get("cursor") || undefined,
+      ownerId: ownerId || undefined,
+      query: query || undefined,
+    }
+  )
 
   return NextResponse.json({
     ok: true as const,
-    items: pageItems.map((record) => ({
-      id: record.id,
-      repositoryId: record.githubRepositoryId.toString(),
-      fullName: record.fullName,
-      name: record.repoName,
-      owner: record.ownerLogin,
-      installationId: record.installation.githubInstallationId.toString(),
-      defaultBranch: record.defaultBranch,
-      private: record.isPrivate,
-      syncedAt: record.lastSyncedAt?.toISOString() ?? null,
+    items: result.items.map((item) => ({
+      id: item.repositoryId.toString(),
+      repositoryId: item.repositoryId.toString(),
+      fullName: item.fullName,
+      name: item.name,
+      owner: item.owner,
+      installationId: item.installationId.toString(),
+      defaultBranch: item.defaultBranch,
+      private: item.private,
+      syncedAt: item.pushedAt,
     })),
-    nextCursor: hasNextPage
-      ? (pageItems[pageItems.length - 1]?.githubRepositoryId.toString() ?? null)
-      : null,
+    nextCursor: result.nextCursor,
   })
 }

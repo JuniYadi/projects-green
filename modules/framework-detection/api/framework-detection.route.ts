@@ -1,10 +1,16 @@
 import { Elysia } from "elysia"
 import { z } from "zod"
 
-import { detectFrameworkFromGitRepo } from "@/modules/framework-detection/framework-detection.service"
+import {
+  detectFrameworkFromGitRepo,
+  detectFrameworkFromGithubApi,
+} from "@/modules/framework-detection/framework-detection.service"
+import { toDetectionResultDTO } from "@/modules/framework-detection/framework-detection.dto"
 import type { DetectionResult } from "@/modules/framework-detection/framework-detection.types"
 
-const detectionRequestSchema = z.object({
+// --- Git Clone Mode (Legacy) ---
+
+const gitDetectionRequestSchema = z.object({
   repoUrl: z.url("repoUrl must be a valid URL."),
   ref: z.string().trim().min(1).optional(),
   subdir: z.string().trim().min(1).optional(),
@@ -24,41 +30,98 @@ type DetectFrameworkFunction = (input: {
   scanTimeoutMs?: number
 }) => Promise<DetectionResult>
 
+// --- GitHub API Mode ---
+
+const githubApiDetectionRequestSchema = z.object({
+  installationId: z.number().int().positive(),
+  owner: z.string().trim().min(1),
+  repo: z.string().trim().min(1),
+  ref: z.string().trim().min(1).optional(),
+  subdir: z.string().trim().min(1).optional(),
+})
+
+type DetectFrameworkFromGithubApiFunction = (input: {
+  installationId: number
+  owner: string
+  repo: string
+  ref?: string
+  subdir?: string
+}) => Promise<DetectionResult>
+
+// --- Routes ---
+
 export const createFrameworkDetectionRoutes = (
-  detectFramework: DetectFrameworkFunction = detectFrameworkFromGitRepo
+  detectFramework: DetectFrameworkFunction = detectFrameworkFromGitRepo,
+  detectFrameworkFromApi: DetectFrameworkFromGithubApiFunction = detectFrameworkFromGithubApi
 ) =>
-  new Elysia().post("/framework-detection", async ({ body, set }) => {
-    const parsed = detectionRequestSchema.safeParse(body)
+  new Elysia()
+    // Git Clone Mode (Legacy)
+    .post("/framework-detection", async ({ body, set }) => {
+      const parsed = gitDetectionRequestSchema.safeParse(body)
 
-    if (!parsed.success) {
-      set.status = 400
-      return {
-        ok: false as const,
-        error: "INVALID_PAYLOAD" as const,
-        message: "Invalid framework detection payload.",
-        fieldErrors: z.flattenError(parsed.error).fieldErrors,
+      if (!parsed.success) {
+        set.status = 400
+        return {
+          ok: false as const,
+          error: "INVALID_PAYLOAD" as const,
+          message: "Invalid framework detection payload.",
+          fieldErrors: z.flattenError(parsed.error).fieldErrors,
+        }
       }
-    }
 
-    try {
-      const result = await detectFramework(parsed.data)
+      try {
+        const result = await detectFramework(parsed.data)
 
-      return {
-        ok: true as const,
-        ...result,
+        return {
+          ok: true as const,
+          ...toDetectionResultDTO(result),
+        }
+      } catch (error) {
+        set.status = 422
+
+        return {
+          ok: false as const,
+          error: "DETECTION_FAILED" as const,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to detect frameworks for this repository.",
+        }
       }
-    } catch (error) {
-      set.status = 422
+    })
+    // GitHub API Mode (AI-First with Tool Calling)
+    .post("/framework-detection/github", async ({ body, set }) => {
+      const parsed = githubApiDetectionRequestSchema.safeParse(body)
 
-      return {
-        ok: false as const,
-        error: "DETECTION_FAILED" as const,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unable to detect frameworks for this repository.",
+      if (!parsed.success) {
+        set.status = 400
+        return {
+          ok: false as const,
+          error: "INVALID_PAYLOAD" as const,
+          message: "Invalid GitHub API detection payload.",
+          fieldErrors: z.flattenError(parsed.error).fieldErrors,
+        }
       }
-    }
-  })
+
+      try {
+        const result = await detectFrameworkFromApi(parsed.data)
+
+        return {
+          ok: true as const,
+          ...toDetectionResultDTO(result),
+        }
+      } catch (error) {
+        set.status = 422
+
+        return {
+          ok: false as const,
+          error: "DETECTION_FAILED" as const,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to detect frameworks for this repository.",
+        }
+      }
+    })
 
 export const frameworkDetectionRoutes = createFrameworkDetectionRoutes()

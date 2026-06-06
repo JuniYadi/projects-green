@@ -1,10 +1,15 @@
-import { beforeEach, describe, expect, it } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 
-import { detectFrameworkFromGitRepo } from "@/modules/framework-detection/framework-detection.service"
+import {
+  detectFrameworkFromGitRepo,
+  detectFrameworkFromGithubApi,
+  __testables,
+} from "@/modules/framework-detection/framework-detection.service"
 import type { FrameworkDetectionInput } from "@/modules/framework-detection/framework-detection.types"
 import type { DetectorDependencies } from "@/modules/framework-detection/framework-detection.service"
+import type { GithubApiDetectorDependencies } from "@/modules/framework-detection/framework-detection.service"
 
 const writeRepoFiles = async (
   rootPath: string,
@@ -170,5 +175,653 @@ describe("detectFrameworkFromGitRepo", () => {
     expect(
       result.warnings.some((warning) => warning.includes("AI fallback skipped"))
     ).toBe(true)
+  })
+})
+
+describe("detectFrameworkFromGithubApi", () => {
+  beforeEach(() => {
+    delete process.env.OPENAI_API_KEY
+    delete process.env.AI_DETECTOR_MODEL
+  })
+
+  it("detects Next.js via GitHub API tools", async () => {
+    const mockFiles = [
+      "package.json",
+      "next.config.mjs",
+      "app/page.tsx",
+      "bun.lock",
+    ]
+
+    const mockFileContents: Record<string, string> = {
+      "package.json": JSON.stringify({
+        dependencies: {
+          next: "16.1.0",
+          react: "19.0.0",
+        },
+      }),
+    }
+
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: async () => ({}),
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({ files: mockFiles, truncated: false }),
+      readFile: async ({ filePath }) => ({
+        content: mockFileContents[filePath] ?? "",
+        path: filePath,
+        sha: "abc123",
+        size: 100,
+      }),
+      resolveWithAiToolCalling: async () => ({
+        decision: {
+          primaryFrameworkId: "nextjs",
+          confidence: 0.95,
+          requiredRuntimeIds: ["node"],
+          reasoning: ["next dependency found in package.json"],
+        },
+        toolCalls: [
+          { toolCallId: "tc-1", toolName: "read_repo_file", input: { filePath: "package.json" }, output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" } },
+        ],
+      }),
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    expect(result.primaryFramework?.id).toBe("nextjs")
+    expect(result.requiredDependencies).toContainEqual(
+      expect.objectContaining({
+        id: "node",
+      })
+    )
+    expect(result.evidence).toContainEqual(
+      expect.objectContaining({
+        type: "ai",
+        value: "tool-calling-detection",
+      })
+    )
+  })
+
+  it("blocks WordPress via DetectorRule", async () => {
+    // Test the checkForBlockedFrameworks logic directly
+    const { checkForBlockedFrameworks } = __testables
+
+    const detectorRules = [
+      {
+        id: "rule-1",
+        name: "Block WordPress",
+        description: "WordPress is not supported",
+        patternJson: { files: ["wp-config.php"] },
+        implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 100,
+      },
+    ]
+
+    const result = checkForBlockedFrameworks(
+      ["wp-config.php", "wp-admin/index.php"],
+      detectorRules
+    )
+
+    expect(result.blocked).toBe(true)
+    expect(result.rule?.name).toBe("Block WordPress")
+    expect(result.matchedFiles).toContain("wp-config.php")
+  })
+})
+
+describe("checkForBlockedFrameworks", () => {
+  it("returns not blocked when no BLOCK rules match", () => {
+    const { checkForBlockedFrameworks } = __testables
+
+    const rules = [
+      {
+        id: "rule-1",
+        name: "Hint Laravel",
+        description: null,
+        patternJson: { files: ["artisan"] },
+        implicationsJson: { framework: "laravel", impact: "HINT" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 10,
+      },
+    ]
+
+    const result = checkForBlockedFrameworks(["artisan", "composer.json"], rules)
+
+    expect(result.blocked).toBe(false)
+  })
+
+  it("returns blocked when a BLOCK rule matches", () => {
+    const { checkForBlockedFrameworks } = __testables
+
+    const rules = [
+      {
+        id: "rule-1",
+        name: "Block WordPress",
+        description: null,
+        patternJson: { files: ["wp-config.php"] },
+        implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 100,
+      },
+    ]
+
+    const result = checkForBlockedFrameworks(
+      ["wp-config.php", "wp-includes/functions.php"],
+      rules
+    )
+
+    expect(result.blocked).toBe(true)
+    expect(result.rule?.id).toBe("rule-1")
+    expect(result.matchedFiles).toEqual(["wp-config.php"])
+  })
+
+  it("respects priority when multiple BLOCK rules match", () => {
+    const { checkForBlockedFrameworks } = __testables
+
+    const rules = [
+      {
+        id: "rule-1",
+        name: "Low Priority Block",
+        description: null,
+        patternJson: { files: ["wp-config.php"] },
+        implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 10,
+      },
+      {
+        id: "rule-2",
+        name: "High Priority Block",
+        description: null,
+        patternJson: { files: ["wp-config.php"] },
+        implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 100,
+      },
+    ]
+
+    const result = checkForBlockedFrameworks(["wp-config.php"], rules)
+
+    expect(result.blocked).toBe(true)
+    expect(result.rule?.name).toBe("High Priority Block")
+  })
+})
+
+describe("buildDetectorRuleHints", () => {
+  it("returns hint for no rules", () => {
+    const { buildDetectorRuleHints } = __testables
+
+    const result = buildDetectorRuleHints([])
+
+    expect(result).toBe("No admin-defined detector rules are active.")
+  })
+
+  it("formats rules correctly", () => {
+    const { buildDetectorRuleHints } = __testables
+
+    const rules = [
+      {
+        id: "rule-1",
+        name: "Laravel Detection",
+        description: "Detect Laravel projects",
+        patternJson: { files: ["artisan", "composer.json"] },
+        implicationsJson: { framework: "laravel", impact: "HINT" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 10,
+      },
+    ]
+
+    const result = buildDetectorRuleHints(rules)
+
+    expect(result).toContain("Admin-defined detector rules")
+    expect(result).toContain("Laravel Detection")
+    expect(result).toContain("artisan, composer.json")
+    expect(result).toContain("framework=laravel")
+  })
+})
+
+describe("detectFrameworkFromGithubApi - error handling", () => {
+  beforeEach(() => {
+    delete process.env.OPENAI_API_KEY
+    delete process.env.AI_DETECTOR_MODEL
+  })
+
+  it("handles inspectionLog.create failure gracefully", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: async () => {
+          throw new Error("Database connection failed")
+        },
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["package.json", "next.config.mjs"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => ({
+        decision: {
+          primaryFrameworkId: "nextjs",
+          confidence: 0.9,
+          requiredRuntimeIds: ["node"],
+          reasoning: ["next dependency found"],
+        },
+        toolCalls: [
+          { toolCallId: "tc-1", toolName: "list_repo_files", input: {}, output: { files: ["package.json", "next.config.mjs"] } },
+          { toolCallId: "tc-2", toolName: "read_repo_file", input: { filePath: "package.json" }, output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" } },
+        ],
+      }),
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    // Should still return result even if logging fails
+    expect(result.primaryFramework?.id).toBe("nextjs")
+    expect(result.warnings.some((w) => w.includes("Failed to log"))).toBe(true)
+  })
+
+  it("handles blocked framework with logging failure", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [
+          {
+            id: "rule-1",
+            name: "Block WordPress",
+            description: null,
+            patternJson: { files: ["wp-config.php"] },
+            implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+            confidenceWeight: 1.0,
+            isActive: true,
+            priority: 100,
+          },
+        ],
+      },
+      inspectionLog: {
+        create: async () => {
+          throw new Error("Database connection failed")
+        },
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["wp-config.php"],
+        truncated: false,
+      }),
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    // Should still return blocked result even if logging fails
+    expect(result.primaryFramework?.id).toBe("wordpress")
+    expect(result.warnings.some((w) => w.includes("Failed to log"))).toBe(true)
+  })
+
+  it("returns error when AI resolver fails", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: async () => ({}),
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["package.json"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => {
+        throw new Error("AI model unavailable")
+      },
+      prisma: mockPrisma,
+    }
+
+    await expect(
+      detectFrameworkFromGithubApi(
+        {
+          installationId: 12345,
+          owner: "test-org",
+          repo: "test-repo",
+        },
+        dependencies
+      )
+    ).rejects.toThrow("Detection failed: AI model unavailable")
+  })
+
+  it("handles truncated file listing", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: async () => ({}),
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["package.json"],
+        truncated: true, // Truncated
+      }),
+      resolveWithAiToolCalling: async () => ({
+        decision: {
+          primaryFrameworkId: "nextjs",
+          confidence: 0.8,
+          requiredRuntimeIds: ["node"],
+          reasoning: ["partial listing"],
+        },
+        toolCalls: [],
+      }),
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    expect(result.warnings.some((w) => w.includes("truncated"))).toBe(true)
+  })
+
+  it("captures tool calls in inspection log audit trail", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: mock(() => ({})),
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["package.json", "next.config.mjs"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => ({
+        decision: {
+          primaryFrameworkId: "nextjs",
+          confidence: 0.9,
+          requiredRuntimeIds: ["node"],
+          reasoning: ["next dependency found"],
+        },
+        toolCalls: [
+          { toolCallId: "tc-1", toolName: "list_repo_files", input: {}, output: { files: ["package.json", "next.config.mjs"] } },
+          { toolCallId: "tc-2", toolName: "read_repo_file", input: { filePath: "package.json" }, output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" } },
+        ],
+      }),
+      prisma: mockPrisma,
+    }
+
+    await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    // Verify tool calls are captured in the audit log
+    expect(mockPrisma.inspectionLog.create).toHaveBeenCalledTimes(1)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const logCall = (mockPrisma.inspectionLog.create as any).mock.calls[0]?.[0]
+    expect(logCall.data.toolCalls).toHaveLength(2)
+    expect(logCall.data.toolCalls[0]).toEqual({
+      toolCallId: "tc-1",
+      toolName: "list_repo_files",
+      input: {},
+      output: { files: ["package.json", "next.config.mjs"] },
+    })
+    expect(logCall.data.toolCalls[1]).toEqual({
+      toolCallId: "tc-2",
+      toolName: "read_repo_file",
+      input: { filePath: "package.json" },
+      output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" },
+    })
+  })
+})
+
+describe("enforceRuntimeMappings", () => {
+  it("returns suggested runtimes when no mappings exist", async () => {
+    const { enforceRuntimeMappings } = __testables
+
+    const mockPrisma = {
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const suggestedRuntimes = [
+      {
+        id: "node" as const,
+        kind: "runtime" as const,
+        requiredFor: "app_runtime" as const,
+        confidence: 0.9,
+        reason: "Node detected",
+      },
+    ]
+
+    const result = await enforceRuntimeMappings(
+      "nextjs",
+      "14",
+      suggestedRuntimes,
+      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+    )
+
+    expect(result.enforced).toEqual(suggestedRuntimes)
+    expect(result.appliedMappings).toEqual([])
+  })
+
+  it("overrides runtime version when mapping exists", async () => {
+    const { enforceRuntimeMappings } = __testables
+
+    const mockPrisma = {
+      runtimeMapping: {
+        findMany: async () => [
+          {
+            id: "mapping-1",
+            frameworkId: "laravel",
+            frameworkVersion: "10",
+            runtimeId: "php",
+            runtimeVersion: "8.2",
+            buildVersion: null,
+            isActive: true,
+            priority: 10,
+          },
+        ],
+      },
+    }
+
+    const suggestedRuntimes = [
+      {
+        id: "php" as const,
+        kind: "runtime" as const,
+        requiredFor: "app_runtime" as const,
+        confidence: 0.9,
+        reason: "PHP detected",
+      },
+    ]
+
+    const result = await enforceRuntimeMappings(
+      "laravel",
+      "10",
+      suggestedRuntimes,
+      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+    )
+
+    expect(result.enforced).toHaveLength(1)
+    expect(result.enforced[0].id).toBe("php")
+    expect(result.enforced[0].confidence).toBe(1.0)
+    expect(result.enforced[0].reason).toContain("Enforced by RuntimeMapping")
+    expect(result.appliedMappings).toContain("php 8.2")
+  })
+
+  it("adds new runtime when mapping exists but not in suggested", async () => {
+    const { enforceRuntimeMappings } = __testables
+
+    const mockPrisma = {
+      runtimeMapping: {
+        findMany: async () => [
+          {
+            id: "mapping-1",
+            frameworkId: "laravel",
+            frameworkVersion: "10",
+            runtimeId: "node",
+            runtimeVersion: "20",
+            buildVersion: null,
+            isActive: true,
+            priority: 10,
+          },
+        ],
+      },
+    }
+
+    const suggestedRuntimes = [
+      {
+        id: "php" as const,
+        kind: "runtime" as const,
+        requiredFor: "app_runtime" as const,
+        confidence: 0.9,
+        reason: "PHP detected",
+      },
+    ]
+
+    const result = await enforceRuntimeMappings(
+      "laravel",
+      "10",
+      suggestedRuntimes,
+      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+    )
+
+    expect(result.enforced).toHaveLength(2)
+    expect(result.enforced.map((r) => r.id)).toContain("php")
+    expect(result.enforced.map((r) => r.id)).toContain("node")
+    expect(result.appliedMappings).toContain("node 20")
+  })
+
+  it("uses wildcard mapping when exact version not found", async () => {
+    const { enforceRuntimeMappings } = __testables
+
+    const mockPrisma = {
+      runtimeMapping: {
+        findMany: async () => [
+          {
+            id: "mapping-1",
+            frameworkId: "laravel",
+            frameworkVersion: null, // wildcard
+            runtimeId: "php",
+            runtimeVersion: "8.1",
+            buildVersion: null,
+            isActive: true,
+            priority: 5,
+          },
+        ],
+      },
+    }
+
+    const suggestedRuntimes = [
+      {
+        id: "php" as const,
+        kind: "runtime" as const,
+        requiredFor: "app_runtime" as const,
+        confidence: 0.9,
+        reason: "PHP detected",
+      },
+    ]
+
+    const result = await enforceRuntimeMappings(
+      "laravel",
+      "11", // Different version than mapping
+      suggestedRuntimes,
+      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+    )
+
+    expect(result.enforced).toHaveLength(1)
+    expect(result.appliedMappings).toContain("php 8.1")
+  })
+})
+
+describe("inferFrameworkEcosystem", () => {
+  it("returns correct ecosystem for known frameworks", () => {
+    const { inferFrameworkEcosystem } = __testables
+
+    expect(inferFrameworkEcosystem("laravel")).toBe("php")
+    expect(inferFrameworkEcosystem("nextjs")).toBe("node")
+    expect(inferFrameworkEcosystem("react")).toBe("node")
+    expect(inferFrameworkEcosystem("django")).toBe("python")
+    expect(inferFrameworkEcosystem("rails")).toBe("ruby")
+    expect(inferFrameworkEcosystem("spring")).toBe("java")
+    expect(inferFrameworkEcosystem("echo")).toBe("go")
+    expect(inferFrameworkEcosystem("actix")).toBe("rust")
+  })
+
+  it("returns unknown for unrecognized frameworks", () => {
+    const { inferFrameworkEcosystem } = __testables
+
+    expect(inferFrameworkEcosystem("custom-framework")).toBe("unknown")
+    expect(inferFrameworkEcosystem("")).toBe("unknown")
   })
 })
