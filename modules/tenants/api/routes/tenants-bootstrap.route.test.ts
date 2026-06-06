@@ -510,7 +510,7 @@ describe("tenants-bootstrap routes", () => {
           policyCode: "NO_SESSION",
           message: "No active session.",
         } as TenantApiError
-      }) as any
+      }) as unknown as typeof mockRequireTenantActor
     )
 
     const app = await getApp()

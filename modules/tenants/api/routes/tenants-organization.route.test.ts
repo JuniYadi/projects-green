@@ -674,7 +674,7 @@ describe("tenantsOrganizationRoutes", () => {
           policyCode: "NO_SESSION",
           message: "No active session.",
         } as unknown as TenantActorContext
-      }) as any
+      }) as unknown as typeof mockRequireTenantActor
     )
 
     const app = await createApp()

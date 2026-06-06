@@ -30,9 +30,9 @@ const mockInvoice = {
   discountAmount: new Decimal("0.00"),
   totalAmount: new Decimal("100000.00"),
   currency: "IDR",
-  issuedAt: null,
+  issuedAt: null as Date | null,
   dueAt: new Date("2026-06-15"),
-  paidAt: null,
+  paidAt: null as Date | null,
   createdAt: new Date("2026-06-01"),
 }
 

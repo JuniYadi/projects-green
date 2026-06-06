@@ -5,7 +5,7 @@
 import { describe, it, expect, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-const mockListOrganizations = mock<(...args: unknown[]) => unknown>(async () => ({
+const mockListOrganizations = mock(async () => ({
   organizations: [
     {
       id: "org_1",
@@ -27,13 +27,7 @@ const mockListOrganizations = mock<(...args: unknown[]) => unknown>(async () => 
   listMetadata: undefined,
 }))
 
-mock.module("@/modules/admin/admin.service", () => ({
-  listAdminOrganizations: mockListOrganizations,
-  createAdminOrganization: mockCreateAdminOrganization,
-  listAdminOrganizationMembers: mockListAdminOrganizationMembers,
-}))
-
-const mockCreateAdminOrganization = mock<(...args: unknown[]) => unknown>(async () => ({
+const mockCreateAdminOrganization = mock(async () => ({
   id: "new_org_1",
   name: "New Org",
   domains: [],
@@ -43,11 +37,17 @@ const mockCreateAdminOrganization = mock<(...args: unknown[]) => unknown>(async 
   updatedAt: "2025-01-01T00:00:00.000Z",
 }))
 
-const mockListAdminOrganizationMembers = mock<(...args: unknown[]) => unknown>(async () => ({
+const mockListAdminOrganizationMembers = mock(async () => ({
   data: [{ id: "user-1", email: "user@example.com" }],
 }))
 
-const mockRequireSuperAdmin = mock<(...args: unknown[]) => unknown>(async (set: unknown) => {
+mock.module("@/modules/admin/admin.service", () => ({
+  listAdminOrganizations: mockListOrganizations,
+  createAdminOrganization: mockCreateAdminOrganization,
+  listAdminOrganizationMembers: mockListAdminOrganizationMembers,
+}))
+
+const mockRequireSuperAdmin = mock(async (set: unknown) => {
   ;(set as { status?: number | string }).status = 401
   return {
     ok: false as const,

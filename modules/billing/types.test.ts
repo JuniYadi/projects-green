@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test"
-import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
+import { Prisma } from "@prisma/client"
+import { TestDecimal } from "@/test/helpers/prisma-mock"
 import {
   InsufficientBalanceError,
   NegativeBalanceError,
@@ -18,8 +19,8 @@ import {
 describe("billing error classes", () => {
   it("InsufficientBalanceError", () => {
     const err = new InsufficientBalanceError(
-      new Decimal("50000"),
-      new Decimal("30000")
+      new TestDecimal("50000") as unknown as Prisma.Decimal,
+      new TestDecimal("30000") as unknown as Prisma.Decimal
     )
     expect(err).toBeInstanceOf(Error)
     expect(err.name).toBe("InsufficientBalanceError")

@@ -33,7 +33,7 @@ const mockPrisma = {
   },
   invoice: {
     findMany: mock(async () => []),
-    findFirst: mock(async () => null),
+    findFirst: mock(async (): Promise<unknown> => null),
     updateMany: mock(async () => ({ count: 1 })),
   },
   platformUserRole: {

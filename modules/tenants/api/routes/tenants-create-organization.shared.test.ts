@@ -217,7 +217,7 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles ConflictException during membership creation", async () => {
     const set = makeSet()
     mockCreateTenantMembership.mockRejectedValueOnce(
-      new ConflictException("Organization already exists")
+      new ConflictException({ message: "Organization already exists", requestID: "req_1" })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -238,7 +238,7 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles UnprocessableEntityException during membership creation", async () => {
     const set = makeSet()
     mockCreateTenantMembership.mockRejectedValueOnce(
-      new UnprocessableEntityException("Invalid role assignment")
+      new UnprocessableEntityException({ message: "Invalid role assignment", requestID: "req_1" })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -259,7 +259,7 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles NotFoundException during membership creation", async () => {
     const set = makeSet()
     mockCreateTenantMembership.mockRejectedValueOnce(
-      new NotFoundException("User or organization not found")
+      new NotFoundException({ message: "User or organization not found", path: "/members", requestID: "req_1" })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -301,7 +301,7 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles ConflictException from createTenantOrganization (top-level)", async () => {
     const set = makeSet()
     mockCreateTenantOrganization.mockRejectedValueOnce(
-      new ConflictException("Organization name taken")
+      new ConflictException({ message: "Organization name taken", requestID: "req_1" })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -322,7 +322,7 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles UnprocessableEntityException from createTenantOrganization (top-level)", async () => {
     const set = makeSet()
     mockCreateTenantOrganization.mockRejectedValueOnce(
-      new UnprocessableEntityException("Invalid org name")
+      new UnprocessableEntityException({ message: "Invalid org name", requestID: "req_1" })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -343,7 +343,7 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles NotFoundException from createTenantOrganization (top-level)", async () => {
     const set = makeSet()
     mockCreateTenantOrganization.mockRejectedValueOnce(
-      new NotFoundException("WorkOS resource missing")
+      new NotFoundException({ message: "WorkOS resource missing", path: "/organizations", requestID: "req_1" })
     )
 
     const result = await createTenantOrganizationWithCreator({
