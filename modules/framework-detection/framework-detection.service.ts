@@ -83,6 +83,8 @@ export type RuntimeMappingRecord = {
 
 const AI_DECISION_SCHEMA = z.object({
   primaryFrameworkId: z.string().trim().min(1),
+  frameworkVersion: z.string().trim().optional(),
+  ecosystem: z.enum(["node", "php", "python", "ruby", "java", "go", "rust", "unknown"]).optional(),
   confidence: z.number().min(0).max(1),
   requiredRuntimeIds: z.array(
     z.enum(["node", "php", "python", "ruby", "java", "go", "rust"])
@@ -733,6 +735,23 @@ const inferFrameworkName = (id: string) => {
   return mapping[id] ?? id
 }
 
+const inferFrameworkEcosystem = (id: string): DetectedFramework["ecosystem"] => {
+  const mapping: Record<string, DetectedFramework["ecosystem"]> = {
+    laravel: "php",
+    nextjs: "node",
+    react: "node",
+    django: "python",
+    flask: "python",
+    rails: "ruby",
+    sinatra: "ruby",
+    spring: "java",
+    echo: "go",
+    actix: "rust",
+  }
+
+  return mapping[id] ?? "unknown"
+}
+
 const mapAiRuntimeToDependency = (
   runtimeId: RuntimeId,
   primary: FrameworkCandidate | null
@@ -1158,20 +1177,26 @@ export const detectFrameworkFromGithubApi = async (
       detail: `Blocked by rule "${blockCheck.rule.name}": matched files ${blockCheck.matchedFiles.join(', ')}`,
     })
 
-    // Log the blocked inspection
-    await prismaClient.inspectionLog.create({
-      data: {
-        installationId: BigInt(input.installationId),
-        repoUrl: `https://github.com/${input.owner}/${input.repo}`,
-        ref: input.ref,
-        detectedFramework: blockedFramework?.framework ?? 'unknown',
-        status: 'blocked',
-        blockedByRuleId: blockCheck.rule.id,
-        toolCalls: [],
-        reasoning: [`Blocked by rule: ${blockCheck.rule.name}`],
-        warnings,
-      },
-    })
+    // Log the blocked inspection (best-effort)
+    try {
+      await prismaClient.inspectionLog.create({
+        data: {
+          installationId: BigInt(input.installationId),
+          repoUrl: `https://github.com/${input.owner}/${input.repo}`,
+          ref: input.ref,
+          detectedFramework: blockedFramework?.framework ?? 'unknown',
+          status: 'blocked',
+          blockedByRuleId: blockCheck.rule.id,
+          toolCalls: [],
+          reasoning: [`Blocked by rule: ${blockCheck.rule.name}`],
+          warnings,
+        },
+      })
+    } catch (logError) {
+      warnings.push(
+        `Failed to log blocked inspection: ${logError instanceof Error ? logError.message : 'unknown error'}`
+      )
+    }
 
     return {
       primaryFramework: {
@@ -1207,25 +1232,35 @@ export const detectFrameworkFromGithubApi = async (
     const durationMs = Date.now() - startTime
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
-    await prismaClient.inspectionLog.create({
-      data: {
-        installationId: BigInt(input.installationId),
-        repoUrl: `https://github.com/${input.owner}/${input.repo}`,
-        ref: input.ref,
-        status: 'error',
-        errorMessage,
-        durationMs,
-        toolCalls: [],
-        reasoning: [],
+    // Log the error (best-effort)
+    try {
+      await prismaClient.inspectionLog.create({
+        data: {
+          installationId: BigInt(input.installationId),
+          repoUrl: `https://github.com/${input.owner}/${input.repo}`,
+          ref: input.ref,
+          status: 'error',
+          errorMessage,
+          durationMs,
+          toolCalls: [],
+          reasoning: [],
         warnings,
       },
     })
+    } catch (logError) {
+      // Audit log failure should not fail the detection
+      warnings.push(
+        `Failed to log error inspection: ${logError instanceof Error ? logError.message : 'unknown error'}`
+      )
+    }
 
     throw new Error(`Detection failed: ${errorMessage}`)
   }
 
   // 4. Build detection result
   const frameworkId = aiDecision.primaryFrameworkId
+  const frameworkVersion = aiDecision.frameworkVersion ?? null
+  const frameworkEcosystem = aiDecision.ecosystem ?? inferFrameworkEcosystem(frameworkId)
   const frameworkName = inferFrameworkName(frameworkId)
 
   evidence.push({
@@ -1245,7 +1280,7 @@ export const detectFrameworkFromGithubApi = async (
   // 5. Enforce RuntimeMappings
   const { enforced: enforcedDependencies, appliedMappings } = await enforceRuntimeMappings(
     frameworkId,
-    null, // TODO: extract version from AI decision if available
+    frameworkVersion,
     requiredDependencies,
     prismaClient
   )
@@ -1260,28 +1295,42 @@ export const detectFrameworkFromGithubApi = async (
 
   const durationMs = Date.now() - startTime
 
-  // 6. Log the inspection
-  await prismaClient.inspectionLog.create({
-    data: {
-      installationId: BigInt(input.installationId),
-      repoUrl: `https://github.com/${input.owner}/${input.repo}`,
-      ref: input.ref,
-      detectedFramework: frameworkId,
-      confidence: aiDecision.confidence,
-      enforcedRuntimes: enforcedDependencies.map((d) => ({ runtimeId: d.id, kind: d.kind })),
-      toolCalls: [], // TODO: capture tool calls from AI response
-      reasoning: aiDecision.reasoning,
-      warnings,
-      durationMs,
-      status: 'success',
-    },
+  // Build enforced runtimes for audit log (with version from mapping)
+  const enforcedRuntimes = enforcedDependencies.map((d) => {
+    const mapping = appliedMappings.find((m) => m.startsWith(d.id))
+    const version = mapping ? mapping.replace(`${d.id} `, '') : 'unknown'
+    return { runtimeId: d.id, version }
   })
+
+  // 7. Log the inspection (best-effort, don't fail detection if logging fails)
+  try {
+    await prismaClient.inspectionLog.create({
+      data: {
+        installationId: BigInt(input.installationId),
+        repoUrl: `https://github.com/${input.owner}/${input.repo}`,
+        ref: input.ref,
+        detectedFramework: frameworkId,
+        confidence: aiDecision.confidence,
+        enforcedRuntimes,
+        toolCalls: [], // Tool calls are captured within the AI resolver
+        reasoning: aiDecision.reasoning,
+        warnings,
+        durationMs,
+        status: 'success',
+      },
+    })
+  } catch (logError) {
+    // Audit log failure should not fail the detection
+    warnings.push(
+      `Failed to log inspection: ${logError instanceof Error ? logError.message : 'unknown error'}`
+    )
+  }
 
   return {
     primaryFramework: {
       id: frameworkId,
       name: frameworkName,
-      ecosystem: 'unknown', // TODO: determine ecosystem from framework
+      ecosystem: frameworkEcosystem,
       confidence: normalizeConfidence(aiDecision.confidence),
       reasons: aiDecision.reasoning,
     },

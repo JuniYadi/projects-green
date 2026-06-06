@@ -395,3 +395,176 @@ describe("buildDetectorRuleHints", () => {
     expect(result).toContain("framework=laravel")
   })
 })
+
+describe("detectFrameworkFromGithubApi - error handling", () => {
+  beforeEach(() => {
+    delete process.env.OPENAI_API_KEY
+    delete process.env.AI_DETECTOR_MODEL
+  })
+
+  it("handles inspectionLog.create failure gracefully", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: async () => {
+          throw new Error("Database connection failed")
+        },
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["package.json", "next.config.mjs"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => ({
+        primaryFrameworkId: "nextjs",
+        confidence: 0.9,
+        requiredRuntimeIds: ["node"],
+        reasoning: ["next dependency found"],
+      }),
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    // Should still return result even if logging fails
+    expect(result.primaryFramework?.id).toBe("nextjs")
+    expect(result.warnings.some((w) => w.includes("Failed to log"))).toBe(true)
+  })
+
+  it("handles blocked framework with logging failure", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [
+          {
+            id: "rule-1",
+            name: "Block WordPress",
+            description: null,
+            patternJson: { files: ["wp-config.php"] },
+            implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+            confidenceWeight: 1.0,
+            isActive: true,
+            priority: 100,
+          },
+        ],
+      },
+      inspectionLog: {
+        create: async () => {
+          throw new Error("Database connection failed")
+        },
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["wp-config.php"],
+        truncated: false,
+      }),
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    // Should still return blocked result even if logging fails
+    expect(result.primaryFramework?.id).toBe("wordpress")
+    expect(result.warnings.some((w) => w.includes("Failed to log"))).toBe(true)
+  })
+
+  it("returns error when AI resolver fails", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: async () => ({}),
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["package.json"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => {
+        throw new Error("AI model unavailable")
+      },
+      prisma: mockPrisma,
+    }
+
+    await expect(
+      detectFrameworkFromGithubApi(
+        {
+          installationId: 12345,
+          owner: "test-org",
+          repo: "test-repo",
+        },
+        dependencies
+      )
+    ).rejects.toThrow("Detection failed: AI model unavailable")
+  })
+
+  it("handles truncated file listing", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: async () => ({}),
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["package.json"],
+        truncated: true, // Truncated
+      }),
+      resolveWithAiToolCalling: async () => ({
+        primaryFrameworkId: "nextjs",
+        confidence: 0.8,
+        requiredRuntimeIds: ["node"],
+        reasoning: ["partial listing"],
+      }),
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    expect(result.warnings.some((w) => w.includes("truncated"))).toBe(true)
+  })
+})
