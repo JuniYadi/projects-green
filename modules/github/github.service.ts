@@ -846,3 +846,147 @@ export const syncGithubInstallation = async ({
     return installationRecord
   })
 }
+
+// --- Repository Inspection Tools for AI Detector ---
+
+export type GithubRepoTreeItem = {
+  path: string
+  mode: string
+  type: string // "blob" or "tree"
+  sha: string
+  size?: number
+  url: string
+}
+
+export type GithubRepoContent = {
+  name: string
+  path: string
+  content: string // Base64-encoded content
+  encoding: string // "base64"
+  sha: string
+  size: number
+  url: string
+}
+
+export type ListRepoFilesInput = {
+  installationId: number
+  owner: string
+  repo: string
+  ref?: string // branch, tag, or commit SHA (defaults to default branch)
+  path?: string // subdirectory to list (recursive from this path)
+}
+
+export type ReadRepoFileInput = {
+  installationId: number
+  owner: string
+  repo: string
+  filePath: string
+  ref?: string // branch, tag, or commit SHA
+}
+
+/**
+ * List all files in a repository using the GitHub Trees API.
+ * Returns a flat list of file paths relative to the repo root.
+ */
+export const listRepoFiles = async (
+  input: ListRepoFilesInput
+): Promise<{ files: string[]; truncated: boolean }> => {
+  const token = await createInstallationToken(input.installationId)
+  const ref = input.ref ?? "HEAD"
+
+  // First, get the tree SHA for the ref
+  let treeSha: string | undefined
+
+  try {
+    const refData = await githubRequest<{
+      object?: { sha?: string; type?: string }
+    }>({
+      path: `/repos/${input.owner}/${input.repo}/git/ref/heads/${ref}`,
+      token,
+    })
+    treeSha = refData.object?.sha
+  } catch {
+    // Fallback: try as a direct SHA or tag
+    try {
+      const commitData = await githubRequest<{ sha?: string }>({
+        path: `/repos/${input.owner}/${input.repo}/git/commits/${ref}`,
+        token,
+      })
+      treeSha = commitData.sha
+    } catch {
+      // Fall through to error below
+    }
+  }
+
+  if (!treeSha) {
+    throw new GithubApiError(
+      `Unable to resolve ref "${ref}" for ${input.owner}/${input.repo}.`
+    )
+  }
+
+  // Get the recursive tree
+  const treeData = await githubRequest<{ tree?: GithubRepoTreeItem[]; truncated?: boolean }>({
+    path: `/repos/${input.owner}/${input.repo}/git/trees/${treeSha}?recursive=1`,
+    token,
+  })
+
+  const allItems = treeData.tree ?? []
+  const prefix = input.path ? `${input.path.replace(/\/$/, "")}/` : ""
+
+  const files = allItems
+    .filter((item) => item.type === "blob")
+    .map((item) => item.path)
+    .filter((filePath) => {
+      if (!prefix) return true
+      return filePath.startsWith(prefix)
+    })
+    .map((filePath) => (prefix ? filePath.slice(prefix.length) : filePath))
+    .filter((filePath) => !filePath.startsWith("../") && filePath.length > 0)
+
+  return {
+    files,
+    truncated: treeData.truncated ?? false,
+  }
+}
+
+/**
+ * Read a single file from a repository using the GitHub Contents API.
+ * Returns the decoded file content.
+ */
+export const readRepoFile = async (
+  input: ReadRepoFileInput
+): Promise<{ content: string; path: string; sha: string; size: number }> => {
+  const token = await createInstallationToken(input.installationId)
+  const ref = input.ref ? `?ref=${encodeURIComponent(input.ref)}` : ""
+
+  const data = await githubRequest<GithubRepoContent>({
+    path: `/repos/${input.owner}/${input.repo}/contents/${input.filePath}${ref}`,
+    token,
+  })
+
+  if (data.encoding !== "base64") {
+    throw new GithubApiError(
+      `Unexpected encoding "${data.encoding}" for file "${input.filePath}".`
+    )
+  }
+
+  // GitHub Contents API has a 1MB limit for file content
+  const MAX_CONTENT_SIZE = 1_000_000 // 1MB in bytes
+  if (data.size > MAX_CONTENT_SIZE) {
+    return {
+      content: `// File too large to read (${data.size} bytes) — truncated`,
+      path: data.path,
+      sha: data.sha,
+      size: data.size,
+    }
+  }
+
+  const content = Buffer.from(data.content, "base64").toString("utf8")
+
+  return {
+    content,
+    path: data.path,
+    sha: data.sha,
+    size: data.size,
+  }
+}

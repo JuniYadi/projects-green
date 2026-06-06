@@ -162,6 +162,45 @@ model DetectorRule {
   @@index([isActive])
 }
 
+model RuntimeMapping {
+  id               String   @id @default(cuid())
+  frameworkId      String   // e.g., "laravel", "nextjs"
+  frameworkVersion String?  // e.g., "10", "14" (null = wildcard for all versions)
+  runtimeId        String   // e.g., "php", "node"
+  runtimeVersion   String   // e.g., "8.2", "20"
+  buildVersion     String?  // e.g., "node-20" for asset build step
+  isActive         Boolean  @default(true)
+  priority         Int      @default(0) // Higher priority wins on conflict
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([frameworkId, frameworkVersion, runtimeId])
+  @@index([frameworkId, isActive])
+}
+
+model InspectionLog {
+  id               String   @id @default(cuid())
+  installationId   BigInt?  // GitHub installation ID (null if git-clone mode)
+  repoUrl          String
+  ref              String?
+  detectedFramework String?
+  confidence       Float?
+  enforcedRuntimes Json?    // Array of {runtimeId, version} after policy enforcement
+  toolCalls        Json?    // Array of {tool, input, output} for AI tool calls
+  reasoning        String[] // AI reasoning steps
+  warnings         String[]
+  durationMs       Int?
+  status           String   @default("success") // success, blocked, error, unsupported
+  blockedByRuleId  String?  // DetectorRule ID if blocked
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+
+  @@index([repoUrl])
+  @@index([detectedFramework])
+  @@index([status])
+  @@index([createdAt])
+}
+
 model ApplicationStack {
   id                     String         @id @default(cuid())
   organizationId         String
