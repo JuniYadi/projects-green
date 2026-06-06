@@ -364,7 +364,7 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
     })
 
     afterEach(() => {
-      process.env = { ...prevEnv }
+      process.env = { ...prevEnv } as NodeJS.ProcessEnv
     })
 
     it("createPresignedUpload returns expected shape and builds storage key", async () => {

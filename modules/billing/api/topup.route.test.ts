@@ -367,7 +367,7 @@ describe("TopupRoute", () => {
 
   describe("POST /topup — transaction callback coverage", () => {
     function makeMockTransactionWithCallback() {
-      mockTransaction.mockImplementation(async (cb: (tx: any) => any) => {
+      mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
         const tx = {
           billingAccount: {
             findUnique: mockFindUnique,

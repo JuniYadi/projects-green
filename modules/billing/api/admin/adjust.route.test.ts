@@ -432,7 +432,7 @@ describe("AdminAdjustRoute", () => {
 
   describe("POST /admin/adjust — transaction callback coverage", () => {
     function makeMockTransactionWithCallback() {
-      mockTransaction.mockImplementation(async (cb: (tx: any) => any) => {
+      mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
         const tx = {
           billingAccount: {
             findUnique: mockFindUnique,
@@ -668,7 +668,7 @@ describe("AdminAdjustRoute", () => {
 
   describe("POST /admin/adjust — default admin checks", () => {
     function makeMockTransactionWithCallback() {
-      mockTransaction.mockImplementation(async (cb: (tx: any) => any) => {
+      mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
         const tx = {
           billingAccount: {
             findUnique: mockFindUnique,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
-const mockFindMany = mock(async () => [])
-const mockFindFirst = mock(async () => null)
+const mockFindMany = mock(async (): Promise<unknown[]> => [])
+const mockFindFirst = mock(async (): Promise<unknown> => null)
 const mockUpdateMany = mock(async () => ({ count: 1 }))
 
 const mockPrisma = {

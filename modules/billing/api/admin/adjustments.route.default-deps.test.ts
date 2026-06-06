@@ -21,8 +21,8 @@ const mockPlatformRoleFindFirst = mock(async () => ({
   role: "super_admin",
 }))
 
-const mockFindMany = mock(async () => [])
-const mockCount = mock(async () => 0)
+const mockFindMany = mock<() => Promise<Array<{ id: string; billingAccountId: string; adjustmentType: string; amount: unknown; currency: string; reason: string; createdByWorkosUserId: string; createdAt: Date; updatedAt: Date; billingAccount: { organizationId: string } }>>>(async () => [])
+const mockCount = mock<() => Promise<number>>(async () => 0)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
