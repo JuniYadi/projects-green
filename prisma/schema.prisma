@@ -145,6 +145,23 @@ enum DeploySource {
   MANUAL
 }
 
+// DetectorRule is used by the AI framework detection engine to store
+// governance rules that influence classification and build recommendations.
+model DetectorRule {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  patternJson      Json     // Match criteria: files, dependencies, etc.
+  implicationsJson Json     // Results: framework, runtime, build hints
+  confidenceWeight Float    @default(1.0)
+  isActive         Boolean  @default(true)
+  priority         Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([isActive])
+}
+
 model ApplicationStack {
   id                     String         @id @default(cuid())
   organizationId         String
