@@ -59,6 +59,12 @@ jobs:
       - name: Run tests with coverage
         run: bun run test:coverage --timeout=30000 --max-concurrency=10
 
+      - name: Verify LCOV output exists
+        run: |
+          test -f coverage/lcov.info
+          echo "Found LCOV report at coverage/lcov.info"
+          ls -lh coverage/lcov.info
+
       - name: Filter lcov for CodeCov
         run: |
           # Remove whatsapp, test, and deploy files from lcov.info before upload
@@ -66,18 +72,12 @@ jobs:
           grep -v "^SF:.*/test/" | \
           grep -v "^SF:.*/modules/deploy/" > coverage/lcov.filtered.info
           echo "Filtered $(wc -l < coverage/lcov.filtered.info) lines from lcov"
-          mv coverage/lcov.filtered.info coverage/lcov.info
-
-      - name: Verify LCOV output exists
-        run: |
-          test -f coverage/lcov.info
-          echo "Found LCOV report at coverage/lcov.info"
-          ls -lh coverage/lcov.info
+          ls -lh coverage/lcov.filtered.info
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: coverage/lcov.info
+          files: coverage/lcov.filtered.info
           flags: unit
           name: bun-test-coverage
           fail_ci_if_error: false

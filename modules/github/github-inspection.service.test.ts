@@ -37,7 +37,7 @@ const {
 
 describe("GitHub Inspection Tools", () => {
   beforeEach(() => {
-    global.fetch = mockFetch
+    global.fetch = mockFetch as unknown as typeof global.fetch
     process.env.GITHUB_APP_ID = "12345"
     process.env.GITHUB_APP_PRIVATE_KEY_BASE64 = validPrivateKeyBase64
     process.env.APP_SECRET = "test-app-secret"
