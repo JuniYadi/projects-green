@@ -1,5 +1,12 @@
-import { createPrivateKey, sign } from "node:crypto"
+import { createHash, createPrivateKey, sign } from "node:crypto"
 
+import { redis } from "@/lib/redis"
+import {
+  decrypt,
+  encrypt,
+  parseEncryptedField,
+  serializeEncryptedField,
+} from "@/lib/encryption"
 import {
   FEATURE_FLAG_KEYS,
   isFeatureEnabled,
@@ -20,6 +27,7 @@ import type {
 const GITHUB_API_BASE_URL = "https://api.github.com"
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
+const TOKEN_CACHE_TTL_SECONDS = 55 * 60 // 55 minutes
 
 export class GithubIntegrationDisabledError extends Error {
   constructor() {
@@ -172,6 +180,11 @@ const getRequiredEnv = (name: string) => {
   }
 
   return value
+}
+
+const getEncryptionKey = () => {
+  const secret = getRequiredEnv("APP_SECRET")
+  return createHash("sha256").update(secret).digest()
 }
 
 const toBase64Url = (input: string | Buffer) => {
@@ -362,7 +375,11 @@ const resolveOffset = (cursor: string | undefined) => {
     return Number(trimmed)
   }
 
-  return fromBase64UrlJson(trimmed).offset
+  try {
+    return fromBase64UrlJson(trimmed).offset
+  } catch {
+    return 0
+  }
 }
 
 const normalizeOwnerFilter = (value: string | undefined) => {
@@ -407,24 +424,13 @@ const filterRepositories = (
   repositories: GithubRepositoryListItem[],
   query: GithubRepositoryListQuery
 ) => {
-  const ownerFilter = normalizeOwnerFilter(query.ownerId)
   const searchFilter = normalizeQueryFilter(query.query)
 
+  if (!searchFilter) {
+    return repositories
+  }
+
   return repositories.filter((repository) => {
-    if (ownerFilter) {
-      const ownerMatch =
-        repository.owner.toLowerCase() === ownerFilter ||
-        String(repository.installationId) === ownerFilter
-
-      if (!ownerMatch) {
-        return false
-      }
-    }
-
-    if (!searchFilter) {
-      return true
-    }
-
     const haystacks = [
       repository.fullName,
       repository.name,
@@ -465,6 +471,20 @@ const dedupeRepositories = (repositories: GithubRepositoryListItem[]) => {
 }
 
 const createInstallationToken = async (installationId: bigint | number) => {
+  const cacheKey = `github:iat:${installationId}`
+
+  try {
+    const cached = await redis.get(cacheKey)
+    if (cached) {
+      const encryptedData = parseEncryptedField(cached)
+      if (encryptedData) {
+        return decrypt(encryptedData, getEncryptionKey())
+      }
+    }
+  } catch (error) {
+    console.error("Failed to retrieve GitHub token from cache", error)
+  }
+
   const { appId, privateKeyPem } = getGithubAppAuth()
   const appJwt = createGithubAppJwt({
     appId,
@@ -476,6 +496,18 @@ const createInstallationToken = async (installationId: bigint | number) => {
     method: "POST",
     token: appJwt,
   })
+
+  try {
+    const encrypted = encrypt(result.token, getEncryptionKey())
+    await redis.set(
+      cacheKey,
+      serializeEncryptedField(encrypted),
+      "EX",
+      TOKEN_CACHE_TTL_SECONDS
+    )
+  } catch (error) {
+    console.error("Failed to cache GitHub token", error)
+  }
 
   return result.token
 }
@@ -583,8 +615,25 @@ export const createGithubRepositoryService = (
       }
     }
 
+    const ownerFilter = normalizeOwnerFilter(query.ownerId)
+    const targetInstallations = ownerFilter
+      ? installations.filter(
+          (inst) =>
+            inst.accountLogin.toLowerCase() === ownerFilter ||
+            String(inst.targetId ?? "") === ownerFilter ||
+            String(inst.githubInstallationId) === ownerFilter
+        )
+      : installations
+
+    if (!targetInstallations.length) {
+      return {
+        items: [],
+        nextCursor: null,
+      }
+    }
+
     const repositoriesByInstallation = await Promise.all(
-      installations.map(async (installation) => {
+      targetInstallations.map(async (installation) => {
         const token = await dependencies.createInstallationAccessToken(
           installation.githubInstallationId
         )
@@ -595,31 +644,8 @@ export const createGithubRepositoryService = (
 
     const repositories = dedupeRepositories(repositoriesByInstallation.flat())
       .sort(comparePushedAtDesc)
-      .filter((repository) => {
-        const ownerFilter = normalizeOwnerFilter(query.ownerId)
 
-        if (!ownerFilter) {
-          return true
-        }
-
-        const matchesOwner = repository.owner.toLowerCase() === ownerFilter
-        if (matchesOwner) {
-          return true
-        }
-
-        return installations.some((installation) => {
-          return (
-            installation.githubInstallationId === repository.installationId &&
-            (installation.accountLogin.toLowerCase() === ownerFilter ||
-              String(installation.targetId ?? "") === ownerFilter)
-          )
-        })
-      })
-
-    const filtered = filterRepositories(repositories, {
-      ...query,
-      ownerId: undefined,
-    })
+    const filtered = filterRepositories(repositories, query)
 
     return paginateRepositories(filtered, query)
   },

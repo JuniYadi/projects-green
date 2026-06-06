@@ -141,7 +141,7 @@ describe("StepSource", () => {
       view.getByText("Successfully connected to your GitHub account.")
     ).toBeTruthy()
 
-    fireEvent.click(view.getByRole("button", { name: "Reconnect GitHub" }))
+    fireEvent.click(view.getByRole("button", { name: "Add Account" }))
     expect(props.onConnectGithub).toHaveBeenCalledTimes(1)
   })
 
