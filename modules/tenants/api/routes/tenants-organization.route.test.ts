@@ -33,12 +33,17 @@ const createOrganization = (): MockOrganization => ({
   updatedAt: "2026-01-02T00:00:00.000Z",
 })
 
-const mockRequireTenantActor = mock(async () => ({
-  userId: "user_1",
-  organizationId: "org_1",
-  platformRole: "none" as const,
-  tenantRole: "owner" as const,
-}))
+const mockRequireTenantActor = mock(
+  async (set?: { status?: number }): Promise<TenantActorContext> => {
+    void set
+    return {
+      userId: "user_1",
+      organizationId: "org_1",
+      platformRole: "none" as const,
+      tenantRole: "owner" as const,
+    }
+  }
+)
 
 const mockEnsureTenantContextAccess = mock((): true => true)
 const mockCanManageTenant = mock((): boolean => true)
