@@ -1,5 +1,6 @@
 import { Elysia } from "elysia"
 import { z } from "zod"
+import { Prisma } from "@prisma/client"
 
 import {
   requireSuperAdmin,
@@ -304,8 +305,8 @@ export const createDetectorAdminRoutes = (deps: DetectorAdminDependencies = {}) 
         } catch (error) {
           // Handle unique constraint violation
           if (
-            error instanceof Error &&
-            error.message.includes("Unique constraint")
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
           ) {
             set.status = 409
             return {
