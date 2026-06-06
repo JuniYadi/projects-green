@@ -2,9 +2,14 @@ import { beforeEach, describe, expect, it } from "bun:test"
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 
-import { detectFrameworkFromGitRepo } from "@/modules/framework-detection/framework-detection.service"
+import {
+  detectFrameworkFromGitRepo,
+  detectFrameworkFromGithubApi,
+  __testables,
+} from "@/modules/framework-detection/framework-detection.service"
 import type { FrameworkDetectionInput } from "@/modules/framework-detection/framework-detection.types"
 import type { DetectorDependencies } from "@/modules/framework-detection/framework-detection.service"
+import type { GithubApiDetectorDependencies } from "@/modules/framework-detection/framework-detection.service"
 
 const writeRepoFiles = async (
   rootPath: string,
@@ -170,5 +175,223 @@ describe("detectFrameworkFromGitRepo", () => {
     expect(
       result.warnings.some((warning) => warning.includes("AI fallback skipped"))
     ).toBe(true)
+  })
+})
+
+describe("detectFrameworkFromGithubApi", () => {
+  beforeEach(() => {
+    delete process.env.OPENAI_API_KEY
+    delete process.env.AI_DETECTOR_MODEL
+  })
+
+  it("detects Next.js via GitHub API tools", async () => {
+    const mockFiles = [
+      "package.json",
+      "next.config.mjs",
+      "app/page.tsx",
+      "bun.lock",
+    ]
+
+    const mockFileContents: Record<string, string> = {
+      "package.json": JSON.stringify({
+        dependencies: {
+          next: "16.1.0",
+          react: "19.0.0",
+        },
+      }),
+    }
+
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [],
+      },
+      inspectionLog: {
+        create: async () => ({}),
+      },
+      runtimeMapping: {
+        findMany: async () => [],
+      },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({ files: mockFiles, truncated: false }),
+      readFile: async ({ filePath }) => ({
+        content: mockFileContents[filePath] ?? "",
+        path: filePath,
+        sha: "abc123",
+        size: 100,
+      }),
+      resolveWithAiToolCalling: async () => ({
+        primaryFrameworkId: "nextjs",
+        confidence: 0.95,
+        requiredRuntimeIds: ["node"],
+        reasoning: ["next dependency found in package.json"],
+      }),
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    expect(result.primaryFramework?.id).toBe("nextjs")
+    expect(result.requiredDependencies).toContainEqual(
+      expect.objectContaining({
+        id: "node",
+      })
+    )
+    expect(result.evidence).toContainEqual(
+      expect.objectContaining({
+        type: "ai",
+        value: "tool-calling-detection",
+      })
+    )
+  })
+
+  it("blocks WordPress via DetectorRule", async () => {
+    // Test the checkForBlockedFrameworks logic directly
+    const { checkForBlockedFrameworks } = __testables
+
+    const detectorRules = [
+      {
+        id: "rule-1",
+        name: "Block WordPress",
+        description: "WordPress is not supported",
+        patternJson: { files: ["wp-config.php"] },
+        implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 100,
+      },
+    ]
+
+    const result = checkForBlockedFrameworks(
+      ["wp-config.php", "wp-admin/index.php"],
+      detectorRules
+    )
+
+    expect(result.blocked).toBe(true)
+    expect(result.rule?.name).toBe("Block WordPress")
+    expect(result.matchedFiles).toContain("wp-config.php")
+  })
+})
+
+describe("checkForBlockedFrameworks", () => {
+  it("returns not blocked when no BLOCK rules match", () => {
+    const { checkForBlockedFrameworks } = __testables
+
+    const rules = [
+      {
+        id: "rule-1",
+        name: "Hint Laravel",
+        description: null,
+        patternJson: { files: ["artisan"] },
+        implicationsJson: { framework: "laravel", impact: "HINT" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 10,
+      },
+    ]
+
+    const result = checkForBlockedFrameworks(["artisan", "composer.json"], rules)
+
+    expect(result.blocked).toBe(false)
+  })
+
+  it("returns blocked when a BLOCK rule matches", () => {
+    const { checkForBlockedFrameworks } = __testables
+
+    const rules = [
+      {
+        id: "rule-1",
+        name: "Block WordPress",
+        description: null,
+        patternJson: { files: ["wp-config.php"] },
+        implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 100,
+      },
+    ]
+
+    const result = checkForBlockedFrameworks(
+      ["wp-config.php", "wp-includes/functions.php"],
+      rules
+    )
+
+    expect(result.blocked).toBe(true)
+    expect(result.rule?.id).toBe("rule-1")
+    expect(result.matchedFiles).toEqual(["wp-config.php"])
+  })
+
+  it("respects priority when multiple BLOCK rules match", () => {
+    const { checkForBlockedFrameworks } = __testables
+
+    const rules = [
+      {
+        id: "rule-1",
+        name: "Low Priority Block",
+        description: null,
+        patternJson: { files: ["wp-config.php"] },
+        implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 10,
+      },
+      {
+        id: "rule-2",
+        name: "High Priority Block",
+        description: null,
+        patternJson: { files: ["wp-config.php"] },
+        implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 100,
+      },
+    ]
+
+    const result = checkForBlockedFrameworks(["wp-config.php"], rules)
+
+    expect(result.blocked).toBe(true)
+    expect(result.rule?.name).toBe("High Priority Block")
+  })
+})
+
+describe("buildDetectorRuleHints", () => {
+  it("returns hint for no rules", () => {
+    const { buildDetectorRuleHints } = __testables
+
+    const result = buildDetectorRuleHints([])
+
+    expect(result).toBe("No admin-defined detector rules are active.")
+  })
+
+  it("formats rules correctly", () => {
+    const { buildDetectorRuleHints } = __testables
+
+    const rules = [
+      {
+        id: "rule-1",
+        name: "Laravel Detection",
+        description: "Detect Laravel projects",
+        patternJson: { files: ["artisan", "composer.json"] },
+        implicationsJson: { framework: "laravel", impact: "HINT" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 10,
+      },
+    ]
+
+    const result = buildDetectorRuleHints(rules)
+
+    expect(result).toContain("Admin-defined detector rules")
+    expect(result).toContain("Laravel Detection")
+    expect(result).toContain("artisan, composer.json")
+    expect(result).toContain("framework=laravel")
   })
 })
