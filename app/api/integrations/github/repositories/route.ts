@@ -27,28 +27,6 @@ const parseLimit = (value: string | null) => {
   return Math.min(parsed, MAX_LIMIT)
 }
 
-const parseCursor = (value: string | null) => {
-  if (!value) {
-    return null
-  }
-
-  if (!/^-?[0-9]+$/.test(value)) {
-    return null
-  }
-
-  const bigIntValue = BigInt(value)
-
-  // Validate that the value is within signed 64-bit integer range
-  const MIN_INT64 = BigInt("-9223372036854775808")
-  const MAX_INT64 = BigInt("9223372036854775807")
-
-  if (bigIntValue < MIN_INT64 || bigIntValue > MAX_INT64) {
-    return null
-  }
-
-  return bigIntValue
-}
-
 export const GET = async (request: NextRequest) => {
   try {
     githubService.assertEnabled()
@@ -81,12 +59,8 @@ export const GET = async (request: NextRequest) => {
   }
 
   const limit = parseLimit(request.nextUrl.searchParams.get("limit"))
-  const cursor = parseCursor(request.nextUrl.searchParams.get("cursor"))
 
-  if (
-    !limit ||
-    (request.nextUrl.searchParams.get("cursor") !== null && cursor === null)
-  ) {
+  if (!limit) {
     return NextResponse.json(
       {
         ok: false as const,

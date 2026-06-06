@@ -374,10 +374,6 @@ const resolveOffset = (cursor: string | undefined) => {
   try {
     return fromBase64UrlJson(trimmed).offset
   } catch {
-    // Fallback for legacy numeric cursors or invalid formats
-    if (/^\d+$/.test(trimmed)) {
-      return Number(trimmed)
-    }
     return 0
   }
 }
