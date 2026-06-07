@@ -825,3 +825,199 @@ describe("inferFrameworkEcosystem", () => {
     expect(inferFrameworkEcosystem("")).toBe("unknown")
   })
 })
+
+describe("evaluateSupportDecision", () => {
+  const baseRules = [
+    {
+      id: "support-laravel-launch",
+      name: "Support Laravel Launch",
+      description: null,
+      patternJson: { frameworkId: "laravel" },
+      implicationsJson: {
+        impact: "LAUNCH",
+        framework: "laravel",
+        minConfidence: 0.8,
+      },
+      confidenceWeight: 1.0,
+      isActive: true,
+      priority: 100,
+    },
+    {
+      id: "support-next-js-launch",
+      name: "Support Next.js Launch",
+      description: null,
+      patternJson: { frameworkId: "nextjs" },
+      implicationsJson: {
+        impact: "LAUNCH",
+        framework: "nextjs",
+        minConfidence: 0.8,
+      },
+      confidenceWeight: 1.0,
+      isActive: true,
+      priority: 100,
+    },
+  ]
+
+  const laravelPrimary = {
+    id: "laravel",
+    name: "Laravel",
+    ecosystem: "php" as const,
+    confidence: 0.95,
+    reasons: ["artisan file exists"],
+  }
+
+  const nextPrimary = {
+    id: "nextjs",
+    name: "Next.js",
+    ecosystem: "node" as const,
+    confidence: 0.95,
+    reasons: ["next dependency found"],
+  }
+
+  it("returns blocked when an evidence entry signals a BLOCK rule match", () => {
+    const { evaluateSupportDecision } = __testables
+
+    const rules = [
+      {
+        id: "block-wordpress",
+        name: "Block WordPress",
+        description: null,
+        patternJson: { files: ["wp-config.php"] },
+        implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 100,
+      },
+    ]
+
+    const decision = evaluateSupportDecision(
+      {
+        primaryFramework: null,
+        confidence: 0,
+        evidence: [
+          {
+            type: "file",
+            value: "blocked",
+            detail: 'Blocked by rule "Block WordPress": matched files wp-config.php',
+          },
+        ],
+      },
+      rules
+    )
+
+    expect(decision.status).toBe("blocked")
+    expect(decision.isLaunchable).toBe(false)
+    expect(decision.message).toContain("Block WordPress")
+  })
+
+  it("returns unsupported when no primary framework is detected", () => {
+    const { evaluateSupportDecision } = __testables
+
+    const decision = evaluateSupportDecision(
+      {
+        primaryFramework: null,
+        confidence: 0,
+        evidence: [],
+      },
+      baseRules
+    )
+
+    expect(decision.status).toBe("unsupported")
+    expect(decision.isLaunchable).toBe(false)
+    expect(decision.message).toMatch(/couldn't verify a supported framework/i)
+  })
+
+  it("returns success when a LAUNCH rule matches and confidence is high", () => {
+    const { evaluateSupportDecision } = __testables
+
+    const decision = evaluateSupportDecision(
+      {
+        primaryFramework: laravelPrimary,
+        confidence: 0.92,
+        evidence: [],
+      },
+      baseRules
+    )
+
+    expect(decision.status).toBe("success")
+    expect(decision.isLaunchable).toBe(true)
+    expect(decision.message).toBe("Ready to deploy.")
+  })
+
+  it("returns low_confidence when a LAUNCH rule matches but confidence is below the threshold", () => {
+    const { evaluateSupportDecision } = __testables
+
+    const decision = evaluateSupportDecision(
+      {
+        primaryFramework: nextPrimary,
+        confidence: 0.6,
+        evidence: [],
+      },
+      baseRules
+    )
+
+    expect(decision.status).toBe("low_confidence")
+    expect(decision.isLaunchable).toBe(false)
+    expect(decision.message).toContain("Next.js")
+    expect(decision.message).toContain("60%")
+  })
+
+  it("returns unsupported when a framework has no LAUNCH rule (React on MVP policy)", () => {
+    const { evaluateSupportDecision } = __testables
+
+    const reactPrimary = {
+      id: "react",
+      name: "React",
+      ecosystem: "node" as const,
+      confidence: 0.9,
+      reasons: ["react dependency found"],
+    }
+
+    const decision = evaluateSupportDecision(
+      {
+        primaryFramework: reactPrimary,
+        confidence: 0.9,
+        evidence: [],
+      },
+      baseRules
+    )
+
+    expect(decision.status).toBe("unsupported")
+    expect(decision.isLaunchable).toBe(false)
+    expect(decision.message).toContain("React")
+    expect(decision.message).toMatch(/laravel, nextjs/)
+  })
+
+  it("uses the implicationsJson minConfidence as the gate (custom threshold)", () => {
+    const { evaluateSupportDecision } = __testables
+
+    const rules = [
+      {
+        id: "strict-laravel",
+        name: "Strict Laravel Launch",
+        description: null,
+        patternJson: { frameworkId: "laravel" },
+        implicationsJson: {
+          impact: "LAUNCH",
+          framework: "laravel",
+          minConfidence: 0.95,
+        },
+        confidenceWeight: 1.0,
+        isActive: true,
+        priority: 100,
+      },
+    ]
+
+    const decision = evaluateSupportDecision(
+      {
+        primaryFramework: laravelPrimary,
+        confidence: 0.9,
+        evidence: [],
+      },
+      rules
+    )
+
+    expect(decision.status).toBe("low_confidence")
+    expect(decision.isLaunchable).toBe(false)
+  })
+})

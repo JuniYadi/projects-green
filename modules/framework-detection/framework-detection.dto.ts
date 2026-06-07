@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client"
 
 import type {
+  DetectionDecision,
   DetectionResult,
   DetectedFramework,
   RequiredDependency,
@@ -31,11 +32,18 @@ export type DetectionEvidenceDTO = {
   detail?: string
 }
 
+export type DetectionDecisionDTO = {
+  status: DetectionDecision["status"]
+  message: string
+  isLaunchable: boolean
+}
+
 export type DetectionResultDTO = {
   primaryFramework: DetectedFrameworkDTO | null
   requiredDependencies: RequiredDependencyDTO[]
   alternatives: DetectedFrameworkDTO[]
   confidence: number
+  decision: DetectionDecisionDTO
   evidence: DetectionEvidenceDTO[]
   warnings: string[]
   source: {
@@ -95,6 +103,11 @@ export function toDetectionResultDTO(
     ),
     alternatives: result.alternatives.map(toDetectedFrameworkDTO),
     confidence: result.confidence,
+    decision: {
+      status: result.decision.status,
+      message: result.decision.message,
+      isLaunchable: result.decision.isLaunchable,
+    },
     evidence: result.evidence.map(toDetectionEvidenceDTO),
     warnings: result.warnings,
     source: result.source,

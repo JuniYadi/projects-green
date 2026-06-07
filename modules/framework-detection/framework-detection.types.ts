@@ -39,11 +39,24 @@ export type DetectionEvidence = {
   detail?: string
 }
 
+export type DetectionDecisionStatus =
+  | "success"
+  | "blocked"
+  | "unsupported"
+  | "low_confidence"
+
+export type DetectionDecision = {
+  status: DetectionDecisionStatus
+  message: string
+  isLaunchable: boolean
+}
+
 export type DetectionResult = {
   primaryFramework: DetectedFramework | null
   requiredDependencies: RequiredDependency[]
   alternatives: DetectedFramework[]
   confidence: number
+  decision: DetectionDecision
   evidence: DetectionEvidence[]
   warnings: string[]
   source: {
