@@ -59,4 +59,13 @@ describe("platform-role", () => {
     findFirstMock.mockResolvedValueOnce({ role: "ADMIN" })
     await expect(getPlatformRoleForUser({ id: "user_1" })).resolves.toBe("none")
   })
+
+  it("returns none on DB failure instead of throwing", async () => {
+    findFirstMock.mockRejectedValueOnce(new Error("DB connection failed"))
+
+    const result = await getPlatformRoleForUser({ id: "user_1" })
+
+    expect(result).toBe("none")
+    expect(findFirstMock).toHaveBeenCalledTimes(1)
+  })
 })

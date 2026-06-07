@@ -67,6 +67,14 @@ mock.module("next/navigation.js", () => {
   })
 })
 
+mock.module("@/lib/platform-role", () => {
+  return {
+    getPlatformRoleForUser: mock(
+      async () => "super_admin"
+    ),
+  }
+})
+
 mock.module("@/components/app-sidebar", () => {
   return {
     AppSidebar: ({
