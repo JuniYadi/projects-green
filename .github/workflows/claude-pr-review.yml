@@ -167,7 +167,7 @@ jobs:
                 <summary>📦 Click to expand and copy full prompt for Local AI Assistant</summary>
 
                 ````markdown
-                You are a senior software engineer executing a local PR review remediation sweep for REPO ${{ github.repository }} PR #${{ github.event.pull_request.number }}. Keep working in same branch with the PR branch and commit after you do the changes.
+                You are a senior software engineer executing a local PR review remediation sweep for REPO ${{ github.repository }} PR #${{ github.event.pull_request.number }}. Keep working in same branch with the PR branch and commit after you do the changes. then push to the same branch. Do NOT open a new PR.
                 Refactor and fix the following specific code locations according to these instructions:
 
                 #### File: [Insert File Path]
