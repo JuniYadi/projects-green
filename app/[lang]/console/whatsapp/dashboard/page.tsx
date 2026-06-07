@@ -176,22 +176,23 @@ export default function WhatsAppDashboardPage() {
     [devices]
   )
 
-  const totalMessagesToday = 0
-
   const totalBalance = React.useMemo(
     () => devices.reduce((sum, d) => sum + Number(d.balance), 0),
     [devices]
   )
 
-  const totalDailyLimit = React.useMemo(
-    () => devices.reduce((sum, d) => sum + d.dailyLimitMessage, 0),
-    [devices]
-  )
+  const quotaInfo = React.useMemo(() => {
+    const totalBase = devices.reduce((sum, d) => sum + d.quotaBase, 0)
+    const totalRemaining = devices.reduce(
+      (sum, d) => sum + d.quotaBaseOut,
+      0,
+    )
+    const totalUsed = Math.max(0, totalBase - totalRemaining)
+    const percent = totalBase > 0 ? Math.round((totalUsed / totalBase) * 100) : 0
+    return { totalBase, totalRemaining, totalUsed, percent }
+  }, [devices])
 
-  const quotaUsed = totalDailyLimit > 0 ? totalMessagesToday : 0
-
-  const quotaPercent =
-    totalDailyLimit > 0 ? Math.round((quotaUsed / totalDailyLimit) * 100) : 0
+  const hasLowBalance = totalBalance > 0 && totalBalance < 10000
 
   const recentConversations = React.useMemo(
     () => conversations.slice(0, 5),
@@ -199,7 +200,7 @@ export default function WhatsAppDashboardPage() {
   )
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
@@ -258,27 +259,7 @@ export default function WhatsAppDashboardPage() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Messages Today
-                    </CardTitle>
-                    <ChatCircle
-                      className="size-4 text-muted-foreground"
-                      weight="fill"
-                    />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {totalMessagesToday}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Inbound + Outbound
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Quota Usage
+                      Monthly Quota
                     </CardTitle>
                     <ChartLine
                       className="size-4 text-muted-foreground"
@@ -287,12 +268,34 @@ export default function WhatsAppDashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {devices.length > 0 ? `${quotaPercent}%` : "--"}
+                      {devices.length > 0 ? `${quotaInfo.percent}%` : "--"}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {devices.length > 0
-                        ? `${quotaUsed} / ${totalDailyLimit} messages`
+                        ? `${quotaInfo.totalUsed.toLocaleString()} / ${quotaInfo.totalBase.toLocaleString()} messages`
                         : "No devices configured"}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Remaining Quota
+                    </CardTitle>
+                    <ChatCircle
+                      className="size-4 text-muted-foreground"
+                      weight="fill"
+                    />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {devices.length > 0
+                        ? quotaInfo.totalRemaining.toLocaleString()
+                        : "--"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Messages remaining this period
                     </p>
                   </CardContent>
                 </Card>
@@ -317,10 +320,14 @@ export default function WhatsAppDashboardPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card
+                  className={
+                    hasLowBalance ? "border-warning" : undefined
+                  }
+                >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Total Balance
+                      Balance
                     </CardTitle>
                     <Lightning
                       className="size-4 text-muted-foreground"
@@ -328,13 +335,21 @@ export default function WhatsAppDashboardPage() {
                     />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-green-600">
+                    <div
+                      className={
+                        hasLowBalance
+                          ? "text-2xl font-bold text-orange-600"
+                          : "text-2xl font-bold text-green-600"
+                      }
+                    >
                       {devices.length > 0
-                        ? `$${totalBalance.toFixed(2)}`
+                        ? `Rp${totalBalance.toLocaleString("id-ID")}`
                         : "--"}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Across all devices
+                      {hasLowBalance
+                        ? "Low balance — consider topping up"
+                        : "Device overage balance"}
                     </p>
                   </CardContent>
                 </Card>
@@ -434,13 +449,13 @@ export default function WhatsAppDashboardPage() {
                           <p className="text-sm font-medium">
                             {device.phoneNumber}
                           </p>
-                          {device.dailyLimitMessage > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              Limit: {device.dailyLimitMessage} msg/day
-                              {Number(device.balance) > 0 &&
-                                ` | Balance: $${Number(device.balance).toFixed(2)}`}
-                            </p>
-                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Quota: {device.quotaBaseOut} / {device.quotaBase} remaining
+                            {device.dailyLimitMessage > 0 &&
+                              ` · ${device.dailyLimitMessage} msg/day`}
+                            {Number(device.balance) > 0 &&
+                              ` · Rp${Number(device.balance).toLocaleString("id-ID")}`}
+                          </p>
                         </div>
                       </div>
                       <DeviceStatusBadge status={device.status} />

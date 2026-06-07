@@ -52,18 +52,14 @@ function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
   return <Badge variant={variant[status]}>{label[status]}</Badge>
 }
 
-// ─── Empty form state ───────────────────────────────────────────────────────
+// ─── Edit form state ───────────────────────────────────────────────────────
 
 type EditFormState = {
   phoneNumber: string
-  quotaBase: number
-  dailyLimitMessage: number
 }
 
 const emptyEditFormState: EditFormState = {
   phoneNumber: "",
-  quotaBase: 1000,
-  dailyLimitMessage: 500,
 }
 
 // ─── Page component ─────────────────────────────────────────────────────────
@@ -123,8 +119,6 @@ export default function WhatsAppDevicesPage() {
     try {
       await whatsappClient.devices.update(editingDevice.id, {
         phoneNumber: editForm.phoneNumber,
-        quotaBase: editForm.quotaBase,
-        dailyLimitMessage: editForm.dailyLimitMessage,
       })
 
       toast.success("Device updated successfully.")
@@ -146,8 +140,6 @@ export default function WhatsAppDevicesPage() {
     setEditingDevice(device)
     setEditForm({
       phoneNumber: device.phoneNumber,
-      quotaBase: device.quotaBase,
-      dailyLimitMessage: device.dailyLimitMessage,
     })
     setEditDialogOpen(true)
   }
@@ -160,7 +152,7 @@ export default function WhatsAppDevicesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
           <p className="text-muted-foreground">
-            Manage your WhatsApp Business devices and connections.
+            View your assigned WhatsApp Business devices.
           </p>
         </div>
 
@@ -168,7 +160,7 @@ export default function WhatsAppDevicesPage() {
           <CardHeader>
             <CardTitle>WhatsApp Devices</CardTitle>
             <CardDescription>
-              Manage your WhatsApp Business devices
+              Your assigned WhatsApp Business devices
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -206,16 +198,16 @@ export default function WhatsAppDevicesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
           <p className="text-muted-foreground">
-            Manage your WhatsApp Business devices and connections.
+            View your assigned WhatsApp Business devices.
           </p>
         </div>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <div>
               <CardTitle>WhatsApp Devices</CardTitle>
               <CardDescription>
-                Manage your WhatsApp Business devices
+                Your assigned WhatsApp Business devices
               </CardDescription>
             </div>
           </CardHeader>
@@ -241,7 +233,8 @@ export default function WhatsAppDevicesPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
         <p className="text-muted-foreground">
-          Manage your WhatsApp Business devices and connections.
+          View your assigned WhatsApp Business devices. Quota and limits are
+          managed by your admin.
         </p>
       </div>
 
@@ -249,16 +242,19 @@ export default function WhatsAppDevicesPage() {
         <CardHeader>
           <CardTitle>WhatsApp Devices</CardTitle>
           <CardDescription>
-            View and update your assigned WhatsApp Business devices
+            Your assigned WhatsApp Business devices
           </CardDescription>
         </CardHeader>
         <CardContent>
           {devices.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Phone className="mb-3 size-10 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                No devices assigned yet. Contact an admin to add a WhatsApp
-                device from the portal.
+              <p className="text-sm font-medium text-muted-foreground">
+                No devices assigned yet
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Your admin will provision a WhatsApp device for your
+                organization. Once assigned, it will appear here.
               </p>
             </div>
           ) : (
@@ -273,30 +269,45 @@ export default function WhatsAppDevicesPage() {
                       <Phone className="size-5 text-primary" weight="fill" />
                     </div>
                     <div>
-                      <p className="font-medium">{device.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {device.phoneNumber}
+                      <p className="font-medium">{device.phoneNumber}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {device.quotaBaseOut} / {device.quotaBase} messages
+                        remaining
+                        {device.dailyLimitMessage > 0 &&
+                          ` · ${device.dailyLimitMessage} msg/day limit`}
+                        {Number(device.balance) > 0 &&
+                          ` · Balance: Rp${Number(device.balance).toLocaleString("id-ID")}`}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <DeviceStatusBadge status={device.status} />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <span className="sr-only">Open menu</span>
-                          <DotsThreeVertical weight="bold" className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => openEditDialog(device)}
-                        >
-                          <PencilSimple className="mr-2 size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {device.status === "ACTIVE" && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <span className="sr-only">Open menu</span>
+                            <DotsThreeVertical
+                              weight="bold"
+                              className="size-4"
+                            />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => openEditDialog(device)}
+                          >
+                            <PencilSimple className="mr-2 size-4" />
+                            Edit Phone Number
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {device.status === "NON_ACTIVE" && (
+                      <p className="text-xs text-muted-foreground">
+                        Device inactive — contact admin
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -312,7 +323,8 @@ export default function WhatsAppDevicesPage() {
           <DialogHeader>
             <DialogTitle>Edit Device</DialogTitle>
             <DialogDescription>
-              Update the device phone number and usage limits.
+              Update the device phone number. Quota and limits are managed by
+              your admin.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -331,52 +343,60 @@ export default function WhatsAppDevicesPage() {
                 aria-required="true"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-balance">Balance</Label>
-              <Input
-                id="edit-balance"
-                value={
-                  editingDevice
-                    ? new Intl.NumberFormat("id-ID", {
-                        style: "currency",
-                        currency: "IDR",
-                        minimumFractionDigits: 0,
-                      }).format(editingDevice.balance)
-                    : ""
-                }
-                disabled
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-quota-base">Quota Base (messages)</Label>
-              <Input
-                id="edit-quota-base"
-                type="number"
-                min={0}
-                value={editForm.quotaBase}
-                onChange={(e) =>
-                  setEditForm({
-                    ...editForm,
-                    quotaBase: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-daily-limit">Daily Limit (messages)</Label>
-              <Input
-                id="edit-daily-limit"
-                type="number"
-                min={0}
-                value={editForm.dailyLimitMessage}
-                onChange={(e) =>
-                  setEditForm({
-                    ...editForm,
-                    dailyLimitMessage: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
+            {editingDevice && (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-balance">
+                    Balance
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      (admin-managed)
+                    </span>
+                  </Label>
+                  <Input
+                    id="edit-balance"
+                    value={new Intl.NumberFormat("id-ID", {
+                      style: "currency",
+                      currency: "IDR",
+                      minimumFractionDigits: 0,
+                    }).format(editingDevice.balance)}
+                    disabled
+                    className="bg-muted/50"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-quota">
+                    Monthly Quota
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      (admin-managed)
+                    </span>
+                  </Label>
+                  <Input
+                    id="edit-quota"
+                    value={`${editingDevice.quotaBaseOut} / ${editingDevice.quotaBase} messages remaining`}
+                    disabled
+                    className="bg-muted/50"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-daily-limit">
+                    Daily Limit
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      (admin-managed)
+                    </span>
+                  </Label>
+                  <Input
+                    id="edit-daily-limit"
+                    value={
+                      editingDevice.dailyLimitMessage > 0
+                        ? `${editingDevice.dailyLimitMessage} messages/day`
+                        : "No limit"
+                    }
+                    disabled
+                    className="bg-muted/50"
+                  />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
