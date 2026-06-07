@@ -25,6 +25,11 @@ const createMockDetectionResult = (
   ],
   alternatives: [],
   confidence: 0.92,
+  decision: {
+    status: "success",
+    message: "Ready to deploy.",
+    isLaunchable: true,
+  },
   evidence: [],
   warnings: [],
   source: {

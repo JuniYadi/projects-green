@@ -15,6 +15,7 @@ import {
   type ReadRepoFileInput,
 } from "@/modules/github/github.service"
 import type {
+  DetectionDecision,
   DetectionEvidence,
   DetectionResult,
   DetectedFramework,
@@ -1016,6 +1017,100 @@ const checkForBlockedFrameworks = (
   return { blocked: false, matchedFiles: [] }
 }
 
+// --- Support Decision Evaluation ---
+
+/**
+ * Evaluates whether the detected framework is launchable under the configured
+ * DetectorRule policy. The function is pure and side-effect free; callers are
+ * responsible for fetching rules and (optionally) attaching a "blocked"
+ * evidence entry before invoking it.
+ *
+ * Decision flow:
+ *  1. If a BLOCK rule has been matched (signaled via evidence), return blocked.
+ *  2. If no primary framework was detected, return unsupported.
+ *  3. If a LAUNCH rule matches the framework id, evaluate the confidence gate.
+ *  4. Otherwise, return unsupported with a message listing the supported set.
+ */
+export const evaluateSupportDecision = (
+  result: Pick<DetectionResult, 'primaryFramework' | 'confidence' | 'evidence'>,
+  rules: DetectorRuleRecord[]
+): DetectionDecision => {
+  const frameworkId = result.primaryFramework?.id
+  const confidence = result.confidence
+
+  // 1. BLOCK (signaled by an evidence entry with value "blocked")
+  const blockedEvidence = result.evidence.find(
+    (entry) => entry.value === 'blocked'
+  )
+
+  if (blockedEvidence) {
+    const blockRule = rules.find(
+      (rule) =>
+        rule.implicationsJson &&
+        (rule.implicationsJson as { impact?: string }).impact === 'BLOCK' &&
+        blockedEvidence.detail?.includes(rule.name)
+    )
+
+    return {
+      status: 'blocked',
+      message: `Deployment blocked by admin rule: ${blockRule?.name ?? 'unknown rule'}`,
+      isLaunchable: false,
+    }
+  }
+
+  if (!frameworkId) {
+    return {
+      status: 'unsupported',
+      message: "We couldn't verify a supported framework in this repository.",
+      isLaunchable: false,
+    }
+  }
+
+  // 2. LAUNCH match
+  const launchRule = rules.find((rule) => {
+    const implications = rule.implicationsJson as
+      | { impact?: string; framework?: string }
+      | null
+    const pattern = rule.patternJson as { frameworkId?: string } | null
+
+    if (implications?.impact !== 'LAUNCH') {
+      return false
+    }
+
+    return (
+      pattern?.frameworkId === frameworkId ||
+      implications?.framework === frameworkId
+    )
+  })
+
+  if (!launchRule) {
+    return {
+      status: 'unsupported',
+      message: `Your framework was detected as ${result.primaryFramework?.name ?? frameworkId}, but we currently only support Laravel and Next.js.`,
+      isLaunchable: false,
+    }
+  }
+
+  const implications = launchRule.implicationsJson as
+    | { minConfidence?: number }
+    | null
+  const minConfidence = implications?.minConfidence ?? 0.8
+
+  if (confidence < minConfidence) {
+    return {
+      status: 'low_confidence',
+      message: `We detected ${result.primaryFramework?.name ?? frameworkId} but with low confidence (${(confidence * 100).toFixed(0)}%). Please verify your repository structure.`,
+      isLaunchable: false,
+    }
+  }
+
+  return {
+    status: 'success',
+    message: 'Ready to deploy.',
+    isLaunchable: true,
+  }
+}
+
 const fromInventory = async (
   input: FrameworkDetectionInput,
   inventory: Inventory,
@@ -1087,11 +1182,28 @@ const fromInventory = async (
     .filter((candidate) => candidate.id !== selected?.id)
     .map(toDetectedFramework)
 
+  // The file-based detector does not have access to DetectorRule policies.
+  // Default to an "unsupported" decision — callers using the GitHub API path
+  // get the full policy evaluation, while file-based callers must opt in via
+  // the `evaluateSupportDecision` helper if they have rules available.
+  const decision: DetectionDecision = primaryFramework
+    ? {
+        status: "unsupported",
+        message: "Policy evaluation is not available for file-based detection.",
+        isLaunchable: false,
+      }
+    : {
+        status: "unsupported",
+        message: "We couldn't verify a supported framework in this repository.",
+        isLaunchable: false,
+      }
+
   return {
     primaryFramework,
     requiredDependencies,
     alternatives,
     confidence: primaryFramework?.confidence ?? 0,
+    decision,
     evidence: inventory.evidence,
     warnings,
     source: {
@@ -1234,6 +1346,11 @@ export const detectFrameworkFromGithubApi = async (
       requiredDependencies: [],
       alternatives: [],
       confidence: 0,
+      decision: {
+        status: 'blocked',
+        message: `Deployment blocked by admin rule: ${blockCheck.rule.name}`,
+        isLaunchable: false,
+      },
       evidence,
       warnings: [...warnings, `Framework blocked by rule: ${blockCheck.rule.name}`],
       source: {
@@ -1354,17 +1471,36 @@ export const detectFrameworkFromGithubApi = async (
     )
   }
 
+  const normalizedConfidence = normalizeConfidence(aiDecision.confidence)
+
+  // 6. Evaluate launchable policy against DetectorRule LAUNCH rules
+  const decision = evaluateSupportDecision(
+    {
+      primaryFramework: {
+        id: frameworkId,
+        name: frameworkName,
+        ecosystem: frameworkEcosystem,
+        confidence: normalizedConfidence,
+        reasons: aiDecision.reasoning,
+      },
+      confidence: normalizedConfidence,
+      evidence,
+    },
+    detectorRules
+  )
+
   return {
     primaryFramework: {
       id: frameworkId,
       name: frameworkName,
       ecosystem: frameworkEcosystem,
-      confidence: normalizeConfidence(aiDecision.confidence),
+      confidence: normalizedConfidence,
       reasons: aiDecision.reasoning,
     },
     requiredDependencies: enforcedDependencies,
     alternatives: [],
-    confidence: normalizeConfidence(aiDecision.confidence),
+    confidence: normalizedConfidence,
+    decision,
     evidence,
     warnings,
     source: {
@@ -1385,4 +1521,5 @@ export const __testables = {
   buildDetectorRuleHints,
   enforceRuntimeMappings,
   inferFrameworkEcosystem,
+  evaluateSupportDecision,
 }

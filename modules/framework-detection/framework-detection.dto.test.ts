@@ -124,6 +124,11 @@ describe("framework-detection.dto", () => {
           },
         ],
         confidence: 0.95,
+        decision: {
+          status: "success",
+          message: "Ready to deploy.",
+          isLaunchable: true,
+        },
         evidence: [
           {
             type: "dependency",
@@ -148,6 +153,11 @@ describe("framework-detection.dto", () => {
       expect(result.alternatives[0].id).toBe("react")
       expect(result.evidence).toHaveLength(1)
       expect(result.source.repoUrl).toBe("https://github.com/org/repo")
+      expect(result.decision).toEqual({
+        status: "success",
+        message: "Ready to deploy.",
+        isLaunchable: true,
+      })
     })
 
     it("handles null primaryFramework", () => {
@@ -156,6 +166,11 @@ describe("framework-detection.dto", () => {
         requiredDependencies: [],
         alternatives: [],
         confidence: 0,
+        decision: {
+          status: "unsupported",
+          message: "We couldn't verify a supported framework in this repository.",
+          isLaunchable: false,
+        },
         evidence: [],
         warnings: ["No framework detected"],
         source: {
@@ -168,6 +183,8 @@ describe("framework-detection.dto", () => {
       expect(result.primaryFramework).toBeNull()
       expect(result.confidence).toBe(0)
       expect(result.warnings).toEqual(["No framework detected"])
+      expect(result.decision.status).toBe("unsupported")
+      expect(result.decision.isLaunchable).toBe(false)
     })
   })
 
