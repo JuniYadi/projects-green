@@ -13,6 +13,7 @@ import type { DeployWizardState } from "@/modules/deploy/deploy.types"
 
 let currentQuery = ""
 const replaceCalls: string[] = []
+let deployStatusResponse = "running"
 
 const updateQueryFromUrl = (url: string) => {
   const parts = url.split("?")
@@ -150,6 +151,7 @@ describe("DeployWizard", () => {
   beforeEach(() => {
     window.sessionStorage.clear()
     currentQuery = ""
+    deployStatusResponse = "running"
     replaceCalls.splice(0)
     globalThis.fetch = mock((input: RequestInfo | URL) => {
       const requestUrl =
@@ -159,6 +161,74 @@ describe("DeployWizard", () => {
             ? input.toString()
             : input.url
       const url = new URL(requestUrl, "http://localhost")
+
+      if (url.pathname === "/api/deploy/submit") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              data: {
+                stackId: "stack-1",
+                stackSlug: "console-next-app",
+                deploymentId: "deploy-1",
+                status: "QUEUED",
+                hourlyCost: "0.0076",
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } }
+          )
+        )
+      }
+
+      if (url.pathname.startsWith("/api/deploy/status/")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              data: {
+                id: "deploy-1",
+                status: deployStatusResponse,
+                attempt: 1,
+                manifestPushed: true,
+                argocdSynced: deployStatusResponse === "running",
+                failureReason:
+                  deployStatusResponse === "failed"
+                    ? "Build failed during health checks."
+                    : null,
+                startedAt: null,
+                completedAt: null,
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } }
+          )
+        )
+      }
+
+      if (url.pathname.startsWith("/api/deploy/events/")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              data: [
+                { id: "prep", label: "Preparing", status: "queued" },
+                { id: "build", label: "Building", status: "building" },
+                { id: "deploy", label: "Deploying", status: "deploying" },
+              ],
+              events: [],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } }
+          )
+        )
+      }
+
+      if (url.pathname.startsWith("/api/deploy/logs/")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true, data: [] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          })
+        )
+      }
 
       if (url.pathname !== "/api/integrations/github/repositories") {
         return Promise.resolve(new Response("Not found", { status: 404 }))
@@ -329,6 +399,7 @@ describe("DeployWizard", () => {
       expect(view.getByText(/Attached Resources/i)).toBeTruthy()
     })
 
+    deployStatusResponse = "failed"
     fireEvent.click(view.getByRole("button", { name: "Deploy Application" }))
 
     await waitFor(
@@ -386,6 +457,7 @@ describe("DeployWizard", () => {
       expect(view.getByText(/Attached Resources/i)).toBeTruthy()
     })
 
+    deployStatusResponse = "failed"
     fireEvent.click(view.getByRole("button", { name: "Deploy Application" }))
 
     await waitFor(
@@ -395,6 +467,7 @@ describe("DeployWizard", () => {
       { timeout: 8000 }
     )
 
+    deployStatusResponse = "running"
     fireEvent.click(view.getByRole("button", { name: "Retry" }))
 
     await waitFor(() => {
