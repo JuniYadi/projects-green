@@ -37,6 +37,7 @@ const mockPrisma = {
   applicationStack: {
     findUniqueOrThrow: mock(() => Promise.resolve(mockStack)),
     findUnique: mock(() => Promise.resolve(mockStack)),
+    create: mock(() => Promise.resolve(mockStack)),
     update: mock(() => Promise.resolve(mockStack)),
   },
   deployment: {
@@ -61,18 +62,24 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const { triggerDeploy } = await import("./deploy-pipeline.service")
+const { triggerDeploy, createOrUpdateStack } = await import("./deploy-pipeline.service")
 
 describe("deploy-pipeline.service", () => {
   beforeEach(() => {
     mockPrisma.applicationStack.findUniqueOrThrow.mockClear()
+    mockPrisma.applicationStack.findUnique.mockClear()
+    mockPrisma.applicationStack.create.mockClear()
+    mockPrisma.applicationStack.update.mockClear()
     mockPrisma.deployment.create.mockClear()
     mockPrisma.deployEvent.create.mockClear()
+    mockPrisma.deploymentLog.create.mockClear()
     mockPrisma.deployment.count.mockClear()
     mockPrisma.$transaction.mockClear()
+    mockPrisma.applicationStack.findUnique.mockResolvedValue(mockStack)
+    mockPrisma.applicationStack.findUniqueOrThrow.mockResolvedValue(mockStack)
   })
 
-  it("triggerDeploy creates deployment and records event", async () => {
+  it("triggerDeploy creates deployment, event, and initial log", async () => {
     const result = await triggerDeploy({
       stackId: "stack-1",
       triggerType: "MANUAL",
@@ -83,5 +90,79 @@ describe("deploy-pipeline.service", () => {
     expect(mockPrisma.$transaction).toHaveBeenCalled()
     expect(mockPrisma.deployment.create).toHaveBeenCalled()
     expect(mockPrisma.deployEvent.create).toHaveBeenCalled()
+    expect(mockPrisma.deploymentLog.create).toHaveBeenCalled()
+  })
+
+  it("triggerDeploy blocks when a deployment is already in progress", async () => {
+    mockPrisma.applicationStack.findUniqueOrThrow.mockResolvedValueOnce({
+      ...mockStack,
+      status: "BUILDING",
+    })
+
+    await expect(
+      triggerDeploy({ stackId: "stack-1", triggerType: "MANUAL" })
+    ).rejects.toThrow("already in progress")
+  })
+
+  it("createOrUpdateStack creates a new stack when none exists", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+
+    await createOrUpdateStack({
+      organizationId: "org-1",
+      name: "my-app",
+      slug: "my-app",
+      repositoryConnectionId: "repo-1",
+      branchName: "main",
+      rootDirectory: "/",
+      framework: "nextjs",
+      buildCommand: "npm run build",
+      dockerfileDetected: false,
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      hourlyCost: "1.5",
+      envVars: [],
+    })
+
+    expect(mockPrisma.applicationStack.create).toHaveBeenCalled()
+    expect(mockPrisma.applicationStack.update).not.toHaveBeenCalled()
+  })
+
+  it("createOrUpdateStack updates an existing idle stack", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+      ...mockStack,
+      status: "IDLE",
+    })
+
+    await createOrUpdateStack({
+      organizationId: "org-1",
+      name: "test-stack",
+      slug: "test-stack",
+      branchName: "main",
+      rootDirectory: "/",
+      dockerfileDetected: false,
+      envVars: [],
+    })
+
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
+    expect(mockPrisma.applicationStack.create).not.toHaveBeenCalled()
+  })
+
+  it("createOrUpdateStack blocks mutation while a deploy is in progress", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+      ...mockStack,
+      status: "DEPLOYING",
+    })
+
+    await expect(
+      createOrUpdateStack({
+        organizationId: "org-1",
+        name: "test-stack",
+        slug: "test-stack",
+        branchName: "main",
+        rootDirectory: "/",
+        dockerfileDetected: false,
+        envVars: [],
+      })
+    ).rejects.toThrow("STACK_DEPLOY_IN_PROGRESS")
   })
 })
