@@ -111,27 +111,35 @@ export const createDeviceService = (options: { prisma?: typeof prisma } = {}): D
     },
 
     async update(id, input, _organizationId) {
-      const existing = await db.whatsappDevice.findUnique({ where: { id } })
-      if (!existing) throw new DeviceNotFoundError(id)
+      const updated = await db.$transaction(async (tx) => {
+        const existing = await tx.whatsappDevice.findUnique({
+          where: { id },
+        })
+        if (!existing) throw new DeviceNotFoundError(id)
 
-      const updated = await db.whatsappDevice.update({
-        where: { id },
-        data: {
-          phoneNumber: input.phoneNumber ?? undefined,
-          status: input.status ?? undefined,
-          token: input.token ?? undefined,
-          quotaBase: input.quotaBase ?? undefined,
-          dailyLimitMessage: input.dailyLimitMessage ?? undefined,
-          callbackUrl: input.callbackUrl || undefined,
-        },
+        return tx.whatsappDevice.update({
+          where: { id },
+          data: {
+            phoneNumber: input.phoneNumber ?? undefined,
+            status: input.status ?? undefined,
+            token: input.token ?? undefined,
+            quotaBase: input.quotaBase ?? undefined,
+            dailyLimitMessage: input.dailyLimitMessage ?? undefined,
+            callbackUrl: input.callbackUrl || undefined,
+          },
+        })
       })
       return _toDeviceDetail(updated as PrismaDeviceFields)
     },
 
     async delete(id) {
-      const existing = await db.whatsappDevice.findUnique({ where: { id } })
-      if (!existing) throw new DeviceNotFoundError(id)
-      await db.whatsappDevice.delete({ where: { id } })
+      await db.$transaction(async (tx) => {
+        const existing = await tx.whatsappDevice.findUnique({
+          where: { id },
+        })
+        if (!existing) throw new DeviceNotFoundError(id)
+        await tx.whatsappDevice.delete({ where: { id } })
+      })
     },
 
     async verify(id, organizationId) {

@@ -39,7 +39,6 @@ export const adminCreateDeviceSchema = createDeviceSchema.extend({
 export type AdminCreateDeviceInput = z.infer<typeof adminCreateDeviceSchema>
 
 export const updateDeviceSchema = z.object({
-  name: z.string().trim().min(1).max(100).optional(),
   phoneNumber: z.string().trim().min(1).max(20).optional(),
   environment: deviceEnvironmentEnum.optional(),
   status: deviceStatusEnum.optional(),

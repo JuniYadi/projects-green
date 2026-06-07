@@ -672,9 +672,6 @@ describe("Admin Devices Routes", () => {
       }
       mockFindUnique.mockImplementation(async () => existingDevice)
 
-      const mockDelete = mock<(...args: any[]) => any>(async () => ({}))
-      // The service delete() uses prisma.whatsappDevice.delete
-      // We need to mock it at the prisma level
       const app = createTestApp()
       const res = await app.handle(
         new Request(`${BASE}/dev-1`, { method: "DELETE" })

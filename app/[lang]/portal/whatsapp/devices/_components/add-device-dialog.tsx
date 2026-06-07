@@ -58,23 +58,25 @@ export function AddDeviceDialog() {
   const [form, setForm] = useState<AddDeviceForm>(emptyForm)
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loadingOrgs, setLoadingOrgs] = useState(false)
+  const [orgsLoaded, setOrgsLoaded] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const loadOrganizations = useCallback(async () => {
-    if (organizations.length > 0) return
+    if (orgsLoaded) return
     setLoadingOrgs(true)
     try {
       const res = await fetch("/api/admin/organizations")
       const body = await res.json()
       if (body.ok) {
         setOrganizations(body.data.organizations)
+        setOrgsLoaded(true)
       }
     } catch {
       toast.error("Failed to load organizations.")
     } finally {
       setLoadingOrgs(false)
     }
-  }, [organizations.length])
+  }, [orgsLoaded])
 
   const handleOpenChange = async (nextOpen: boolean) => {
     if (nextOpen) {

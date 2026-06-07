@@ -129,6 +129,17 @@ export function DeviceActions({
       const data = await response.json()
 
       if (!response.ok || data.ok === false) {
+        if (data.error === "VALIDATION_ERROR") {
+          const fieldMessages = data.fieldErrors
+            ? Object.entries(data.fieldErrors)
+                .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(", ")}`)
+                .join("\n")
+            : ""
+          toast.error(data.message || "Validation failed", {
+            description: fieldMessages || undefined,
+          })
+          return
+        }
         throw new Error(data.message || "Failed to update device")
       }
 
