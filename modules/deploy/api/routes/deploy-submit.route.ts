@@ -98,7 +98,9 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       where: {
         githubRepositoryId: repositoryId,
         enabled: true,
-        organizationId: auth.organizationId,
+        installation: {
+          organizationId: auth.organizationId,
+        },
       },
     })
 
