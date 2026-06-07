@@ -12,6 +12,7 @@ const mockCount = mock<(...args: any[]) => any>(async () => 0)
 const mockFindUnique = mock<(...args: any[]) => any>(async () => null)
 const mockUpdate = mock<(...args: any[]) => any>(async () => ({}))
 const mockCreate = mock<(...args: any[]) => any>(async () => ({}))
+const mockDelete = mock<(...args: any[]) => any>(async () => ({}))
 const mockBillingFindUnique = mock<(...args: any[]) => any>(async () => null)
 const mockBillingCreate = mock<(...args: any[]) => any>(
   async () => ({ id: "ba-1", balance: 0 })
@@ -27,6 +28,7 @@ const mockTransaction = mock<(...args: any[]) => any>(async (fn: (tx: any) => an
       findUnique: mockFindUnique,
       update: mockUpdate,
       create: mockCreate,
+      delete: mockDelete,
     },
     billingAccount: {
       findUnique: mockBillingFindUnique,
@@ -46,6 +48,7 @@ mock.module("@/lib/prisma", () => ({
       findUnique: mockFindUnique,
       update: mockUpdate,
       create: mockCreate,
+      delete: mockDelete,
     },
     billingAccount: {
       findUnique: mockBillingFindUnique,
@@ -132,6 +135,7 @@ describe("Admin Devices Routes", () => {
     mockFindUnique.mockImplementation(async () => null)
     mockUpdate.mockImplementation(async () => ({}))
     mockCreate.mockImplementation(async () => ({ ...defaultDevice }))
+    mockDelete.mockImplementation(async () => ({}))
     mockBillingFindUnique.mockImplementation(async () => null)
     mockBillingCreate.mockImplementation(async () => ({
       id: "ba-1",
@@ -457,6 +461,228 @@ describe("Admin Devices Routes", () => {
       expect(res.status).toBe(500)
       expect(body.ok).toBe(false)
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
+  })
+
+  // ─── PATCH /:id ─────────────────────────────────────────────────────────
+
+  describe("PATCH /:id", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber: "+6289999999999" }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not super admin", async () => {
+      const app = createTestApp(forbiddenContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber: "+6289999999999" }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 422 when payload is invalid", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quotaBase: -1 }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(422)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+    })
+
+    it("returns 404 when device not found", async () => {
+      mockFindUnique.mockImplementation(async () => null)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/nonexistent`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber: "+6289999999999" }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("updates device fields successfully", async () => {
+      const existingDevice = {
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+        status: "ACTIVE",
+        balance: { toString: () => "0", valueOf: () => 0 },
+        quotaBase: { toString: () => "1000", valueOf: () => 1000 },
+        quotaBaseOut: 1000,
+        dailyLimitMessage: 500,
+        whatsappBusinessAccountId: null,
+        whatsappPhoneId: null,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+        callbackUrl: null,
+        expiredAt: null,
+        whatsappProfile: null,
+        features: null,
+      }
+      const updatedDevice = {
+        ...existingDevice,
+        phoneNumber: "+6289999999999",
+        dailyLimitMessage: 1000,
+        updatedAt: new Date("2025-01-15"),
+      }
+
+      mockFindUnique.mockImplementation(async () => existingDevice)
+      mockUpdate.mockImplementation(async () => updatedDevice)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phoneNumber: "+6289999999999",
+            dailyLimitMessage: 1000,
+          }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.device.phoneNumber).toBe("+6289999999999")
+    })
+
+    it("deactivates device via status update", async () => {
+      const existingDevice = {
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+        status: "ACTIVE",
+        balance: { toString: () => "0", valueOf: () => 0 },
+        quotaBase: { toString: () => "1000", valueOf: () => 1000 },
+        quotaBaseOut: 1000,
+        dailyLimitMessage: 0,
+        whatsappBusinessAccountId: null,
+        whatsappPhoneId: null,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+        callbackUrl: null,
+        expiredAt: null,
+        whatsappProfile: null,
+        features: null,
+      }
+      const deactivatedDevice = {
+        ...existingDevice,
+        status: "NON_ACTIVE",
+      }
+
+      mockFindUnique.mockImplementation(async () => existingDevice)
+      mockUpdate.mockImplementation(async () => deactivatedDevice)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "NON_ACTIVE" }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.device.status).toBe("NON_ACTIVE")
+    })
+  })
+
+  // ─── DELETE /:id ────────────────────────────────────────────────────────
+
+  describe("DELETE /:id", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1`, { method: "DELETE" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not super admin", async () => {
+      const app = createTestApp(forbiddenContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1`, { method: "DELETE" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 404 when device not found", async () => {
+      mockFindUnique.mockImplementation(async () => null)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/nonexistent`, { method: "DELETE" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("deletes device successfully", async () => {
+      const existingDevice = {
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+      }
+      mockFindUnique.mockImplementation(async () => existingDevice)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1`, { method: "DELETE" })
+      )
+      const body = await res.json()
+
+      // Since the service uses prisma directly and we mock at module level,
+      // the delete call goes through the mocked prisma
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.message).toBe("Device deleted.")
     })
   })
 

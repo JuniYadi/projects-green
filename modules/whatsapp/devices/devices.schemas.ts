@@ -16,11 +16,21 @@ export type DeviceEnvironment = z.infer<typeof deviceEnvironmentEnum>
 
 // ─── Input schemas ────────────────────────────────────────────────────────────
 
+// E.164 international phone format: +[country code][number], 1-15 digits total
+const e164PhoneRegex = /^\+[1-9]\d{1,14}$/
+
 export const createDeviceSchema = z.object({
   // NOTE: `name` is accepted by the schema for API compatibility but is NOT
   // persisted to the DB — no `name` column exists on `WhatsappDevice`.
   name: z.string().trim().min(1, "Name is required").max(100),
-  phoneNumber: z.string().trim().min(1, "Phone number is required"),
+  phoneNumber: z
+    .string()
+    .trim()
+    .min(1, "Phone number is required")
+    .regex(
+      e164PhoneRegex,
+      "Phone number must be in E.164 format (e.g. +6281234567890)",
+    ),
   environment: deviceEnvironmentEnum.optional().default("LIVE"),
   displayName: z.string().trim().max(120).optional(),
   whatsappBusinessAccountId: z.string().trim().max(64).optional(),
@@ -39,8 +49,16 @@ export const adminCreateDeviceSchema = createDeviceSchema.extend({
 export type AdminCreateDeviceInput = z.infer<typeof adminCreateDeviceSchema>
 
 export const updateDeviceSchema = z.object({
-  name: z.string().trim().min(1).max(100).optional(),
-  phoneNumber: z.string().trim().min(1).max(20).optional(),
+  phoneNumber: z
+    .string()
+    .trim()
+    .min(1)
+    .max(20)
+    .regex(
+      e164PhoneRegex,
+      "Phone number must be in E.164 format (e.g. +6281234567890)",
+    )
+    .optional(),
   environment: deviceEnvironmentEnum.optional(),
   status: deviceStatusEnum.optional(),
   token: z.string().trim().min(1).optional(),

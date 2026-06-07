@@ -22,9 +22,9 @@ function isValidISODate(str: string | undefined): string | undefined {
 
 export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
   .get(
-    "/logs/:logKey/search",
+    "/logs/:deployId/search",
     async ({ params, query, set }) => {
-      const tenantSlug = params.logKey
+      const tenantSlug = params.deployId
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
@@ -60,7 +60,7 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
       return { ok: true, data: result }
     },
     {
-      params: t.Object({ logKey: t.String() }),
+      params: t.Object({ deployId: t.String() }),
       query: t.Optional(
         t.Object({
           q: t.Optional(t.String()),
@@ -76,9 +76,9 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
     }
   )
   .get(
-    "/logs/:logKey/aggregation",
+    "/logs/:deployId/aggregation",
     async ({ params, query, set }) => {
-      const tenantSlug = params.logKey
+      const tenantSlug = params.deployId
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
@@ -108,7 +108,7 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
       return { ok: true, data: result }
     },
     {
-      params: t.Object({ logKey: t.String() }),
+      params: t.Object({ deployId: t.String() }),
       query: t.Optional(
         t.Object({
           from: t.Optional(t.String()),
