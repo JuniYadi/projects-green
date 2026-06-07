@@ -129,6 +129,8 @@ export const createDeviceService = (options: { prisma?: typeof prisma } = {}): D
     },
 
     async delete(id) {
+      const existing = await db.whatsappDevice.findUnique({ where: { id } })
+      if (!existing) throw new DeviceNotFoundError(id)
       await db.whatsappDevice.delete({ where: { id } })
     },
 

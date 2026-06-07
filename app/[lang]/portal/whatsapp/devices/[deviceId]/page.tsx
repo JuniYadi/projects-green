@@ -110,7 +110,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
               Device {device.name && `- ${device.name}`}
             </p>
           </div>
-          <DeviceActions deviceId={device.id} />
+          <DeviceActions deviceId={device.id} deviceStatus={device.status} />
         </div>
       </header>
 

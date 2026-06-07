@@ -10,7 +10,7 @@ import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { adminCreateDeviceSchema, topUpInputSchema } from "../devices.schemas"
+import { adminCreateDeviceSchema, topUpInputSchema, updateDeviceSchema } from "../devices.schemas"
 import { createDeviceService } from "../devices.service"
 import {
   requireSuperAdmin,
@@ -150,6 +150,67 @@ export const createAdminDevicesRoutes = (
       } catch (error) {
         console.error("[AdminDevices] Create error:", error)
         return toServerError(set, "Unable to create device.")
+      }
+    })
+    .patch("/:id", async ({ params: { id }, body, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
+
+      const parsed = updateDeviceSchema.safeParse(body)
+      if (!parsed.success) {
+        set.status = 422
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
+          message: "Please fix the highlighted fields and try again.",
+          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+        }
+      }
+
+      try {
+        const service = createDeviceService()
+        const device = await service.update(id, parsed.data, null)
+        return { ok: true as const, device }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name === "DeviceNotFoundError"
+        ) {
+          set.status = 404
+          return {
+            ok: false as const,
+            error: "NOT_FOUND" as const,
+            message: "Device not found.",
+          }
+        }
+
+        console.error("[AdminDevices] Update error:", error)
+        return toServerError(set, "Unable to update device.")
+      }
+    })
+    .delete("/:id", async ({ params: { id }, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
+
+      try {
+        const service = createDeviceService()
+        await service.delete(id)
+        return { ok: true as const, message: "Device deleted." }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name === "DeviceNotFoundError"
+        ) {
+          set.status = 404
+          return {
+            ok: false as const,
+            error: "NOT_FOUND" as const,
+            message: "Device not found.",
+          }
+        }
+
+        console.error("[AdminDevices] Delete error:", error)
+        return toServerError(set, "Unable to delete device.")
       }
     })
     .post("/:id/top-up", async ({ params: { id }, body, set }: any) => {

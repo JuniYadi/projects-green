@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { StatusBadge, DeviceEmptyState } from "./_components/devices-ui"
+import { AddDeviceDialog } from "./_components/add-device-dialog"
 
 type DevicesPageProps = {
   params: Promise<{
@@ -87,6 +88,7 @@ export default async function PortalWhatsAppDevicesPage({
                   View and manage WhatsApp devices across all organizations
                 </CardDescription>
               </div>
+              <AddDeviceDialog />
             </div>
           </CardHeader>
           <CardContent>
