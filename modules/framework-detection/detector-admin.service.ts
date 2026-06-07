@@ -251,16 +251,61 @@ export async function generateRuleRecommendations(): Promise<
       return impl?.framework
     })
   )
+  const existingLaunchFrameworks = new Set(
+    existingRules
+      .filter((r) => {
+        const impl = r.implicationsJson as
+          | { impact?: string; framework?: string }
+          | null
+        return impl?.impact === "LAUNCH" && Boolean(impl.framework)
+      })
+      .map((r) => {
+        const impl = r.implicationsJson as { framework?: string } | null
+        return impl?.framework
+      })
+  )
 
-  // Generate recommendations for frameworks with low confidence
-  // that don't already have rules
+  // Generate recommendations for frameworks that:
+  //  - have enough detections to be meaningful
+  //  - don't already have any rule (HINT path) OR have a high-confidence
+  //    trend but no LAUNCH rule (LAUNCH path)
   const recommendations: RuleRecommendation[] = []
   let recId = 0
 
   for (const [fw, group] of frameworkGroups) {
     if (fw === "unknown") continue
-    if (existingFrameworks.has(fw)) continue
     if (group.logs.length < 3) continue // Need enough data
+
+    // LAUNCH promotion: high confidence, supported pattern emerging, but no
+    // existing LAUNCH rule — recommend promoting the framework.
+    if (
+      group.avgConfidence >= 0.8 &&
+      !existingLaunchFrameworks.has(fw)
+    ) {
+      recId++
+      recommendations.push({
+        id: `rec-${recId}`,
+        suggestedName: `Promote ${fw} to Launchable`,
+        suggestedDescription: `Promote ${fw} to LAUNCH status based on ${group.logs.length} high-confidence detections (avg ${(group.avgConfidence * 100).toFixed(0)}%).`,
+        suggestedPatternJson: {
+          frameworkId: fw,
+        },
+        suggestedImplicationsJson: {
+          framework: fw,
+          impact: "LAUNCH",
+          minConfidence: 0.8,
+        },
+        suggestedConfidenceWeight: group.avgConfidence,
+        suggestedPriority: 100,
+        reasoning: `Detected ${fw} with high confidence (${(group.avgConfidence * 100).toFixed(0)}%). Consider promoting this to a supported launchable framework.`,
+        basedOnLogIds: group.logs.map((l) => l.id),
+      })
+      continue
+    }
+
+    // HINT: framework is detected but has no rule at all — recommend a
+    // detection hint rule to improve accuracy.
+    if (existingFrameworks.has(fw)) continue
 
     recId++
     recommendations.push({
