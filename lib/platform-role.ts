@@ -22,14 +22,18 @@ export const getPlatformRoleForUser = async (
     return "none"
   }
 
-  const record = await prisma.platformUserRole.findFirst({
-    where: {
-      OR: [
-        ...(workosUserId ? [{ workosUserId }] : []),
-        ...(email ? [{ email }] : []),
-      ],
-    },
-  })
-
-  return toPlatformAccessRole(record?.role ?? undefined)
+  try {
+    const record = await prisma.platformUserRole.findFirst({
+      where: {
+        OR: [
+          ...(workosUserId ? [{ workosUserId }] : []),
+          ...(email ? [{ email }] : []),
+        ],
+      },
+    })
+    return toPlatformAccessRole(record?.role ?? undefined)
+  } catch {
+    // DB failure: deny access rather than exposing internal errors
+    return "none"
+  }
 }
