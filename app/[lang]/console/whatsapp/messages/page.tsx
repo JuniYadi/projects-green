@@ -311,6 +311,11 @@ export default function WhatsAppMessagesPage() {
     }
   }, [])
 
+  const hasActiveDevice = React.useMemo(
+    () => devices.some((d) => d.status === "ACTIVE"),
+    [devices],
+  )
+
   // ── Derived state ──────────────────────────────────────────────────────
 
   const filteredConversations = React.useMemo(() => {
@@ -381,7 +386,7 @@ export default function WhatsAppMessagesPage() {
   // ─── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
@@ -391,7 +396,7 @@ export default function WhatsAppMessagesPage() {
         </div>
         <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={devices.length > 0 && !hasActiveDevice}>
               <PaperPlaneTilt className="mr-2 size-4" weight="bold" />
               New Message
             </Button>
@@ -437,8 +442,13 @@ export default function WhatsAppMessagesPage() {
                       Auto-select device
                     </SelectItem>
                     {devices.map((device) => (
-                      <SelectItem key={device.id} value={device.id}>
+                      <SelectItem
+                        key={device.id}
+                        value={device.id}
+                        disabled={device.status !== "ACTIVE"}
+                      >
                         {device.phoneNumber}
+                        {device.status !== "ACTIVE" && " (inactive)"}
                       </SelectItem>
                     ))}
                   </SelectContent>
