@@ -53,7 +53,7 @@ Let the customer see balance-in and charges in plain language, without exposing 
 
 ## Backend / API Surfaces
 
-- `modules/billing/api/history.route.ts` / transactions data source (verify exact route).
+- `modules/payment/api/topup.route.ts` — `createPaymentHistoryRoutes()` serves `/payments/history`.
 - `modules/billing/user-labels.ts` — user-facing label mapping (+ test).
 
 ## Console Surface

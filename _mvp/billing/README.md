@@ -96,7 +96,7 @@ Billing is the most mature area in the project. Most backend is real; gaps are m
 - MVP index: [`../../MVP.md`](../../MVP.md)
 - Decision sheet: [`./qna.md`](./qna.md)
 - Use-case library: [`./use-case/`](./use-case/)
-- Design spec (recreated): [`../../docs/superpowers/specs/2026-06-04-billing-payment-balance-foundation-design.md`](../../docs/superpowers/specs/2026-06-04-billing-payment-balance-foundation-design.md)
+- Deep-dive billing spec: [`../../BILLING-and-PAYMENT.md`](../../BILLING-and-PAYMENT.md)
 - Deep-dive reference: [`../../BILLING-and-PAYMENT.md`](../../BILLING-and-PAYMENT.md)
 - Operating use-cases (team guide): [`../../_features/billing-payment-balance-foundation-use-cases.md`](../../_features/billing-payment-balance-foundation-use-cases.md)
 - Duitku integration: [`../../integrations/duitku/`](../../integrations/duitku/)
