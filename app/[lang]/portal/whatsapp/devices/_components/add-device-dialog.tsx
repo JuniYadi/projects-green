@@ -85,9 +85,18 @@ export function AddDeviceDialog() {
     setOpen(nextOpen)
   }
 
+  const e164PhoneRegex = /^\+[1-9]\d{1,14}$/
+
   const handleSubmit = async () => {
     if (!form.organizationId.trim() || !form.phoneNumber.trim()) {
       toast.error("Organization and phone number are required.")
+      return
+    }
+
+    if (!e164PhoneRegex.test(form.phoneNumber.trim())) {
+      toast.error(
+        "Phone number must be in E.164 format (e.g. +6281234567890)",
+      )
       return
     }
 
