@@ -23,13 +23,7 @@ export default async function DetectorGovernancePage({
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/portal/admin">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/portal/admin/app-hosting/detector">
-                App Hosting
-              </BreadcrumbLink>
+              <BreadcrumbLink href="/portal/app">App Hosting</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>

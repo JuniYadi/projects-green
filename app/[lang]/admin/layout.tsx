@@ -15,6 +15,7 @@ import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { ThunderAiHelpDrawer } from "@/modules/docs/ui/thunder-ai-help-drawer"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
+import { getPlatformRoleForUser } from "@/lib/platform-role"
 
 const ONBOARDING_PATH = "/onboarding/organization"
 
@@ -42,6 +43,21 @@ export default async function AdminLayout({
     })
 
     redirect(`${onboardingPath}?next=${encodeURIComponent(adminPath)}`)
+  }
+
+  // Admin surface is super_admin only — same as /portal
+  const platformRole = await getPlatformRoleForUser({
+    id: auth.user.id,
+    email: auth.user.email,
+  })
+
+  if (platformRole !== "super_admin") {
+    const consolePath = localizePathname({
+      pathname: "/console",
+      locale,
+    })
+
+    redirect(consolePath)
   }
 
   const workosUser = await getLatestWorkOSUser(auth.user)
