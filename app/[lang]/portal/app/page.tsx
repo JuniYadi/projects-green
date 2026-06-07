@@ -14,27 +14,27 @@ export default async function ApplicationsPage({
 }: ApplicationsPageProps) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
+
+  // PGREEN-073 — /portal App Hosting is bounded to admin CRUD/support only.
+  // It is NOT a runtime operations cockpit; customer deploy/manage lives in
+  // /console. The supported admin-managed surface for the MVP is detector
+  // governance (rules, runtime mappings, AI recommendations).
   const items = [
     {
-      title: "Deploy",
-      description: "Configure source, build, and initial release settings.",
-      href: localizePathname({ pathname: "/portal/app/deploy", locale }),
-    },
-    {
-      title: "Manage",
+      title: "Detector Control Center",
       description:
-        "Control runtime settings, environment, domains, and scaling behavior.",
-      href: localizePathname({ pathname: "/portal/app/manage", locale }),
+        "Govern detection rules, runtime mappings, and review AI recommendations.",
+      href: localizePathname({ pathname: "/portal/app/detector", locale }),
     },
   ]
 
   return (
     <>
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Applications</h1>
+        <h1 className="text-2xl font-semibold">App Hosting Admin</h1>
         <p className="text-sm text-muted-foreground">
-          Manage your full application lifecycle from setup to runtime
-          operations.
+          Support and configuration surfaces for the App Hosting MVP. Customer
+          deploy and runtime management live in the console.
         </p>
       </header>
 
@@ -55,6 +55,15 @@ export default async function ApplicationsPage({
             </CardContent>
           </Card>
         ))}
+      </section>
+
+      <section className="rounded-xl border border-dashed border-border bg-muted/10 p-4 text-xs text-muted-foreground">
+        <p className="font-medium text-foreground">Out of portal scope</p>
+        <p className="mt-1">
+          Deploying apps and runtime operations (status, scaling, domains,
+          logs) are customer-facing console workflows and are intentionally not
+          exposed here.
+        </p>
       </section>
     </>
   )

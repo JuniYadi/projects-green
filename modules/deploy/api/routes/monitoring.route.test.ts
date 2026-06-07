@@ -1,18 +1,42 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { monitoringRoutes } from "./monitoring.route"
 
-// Mock withAuth to return authenticated user with orgSlug
 const mockWithAuth = mock(async () => ({
   user: {
     id: "user-123",
     email: "test@example.com",
-    metadata: { orgSlug: "test-org" } as Record<string, string>,
   },
+  organizationId: "org-1",
 }))
 
 mock.module("@workos-inc/authkit-nextjs", () => ({
   withAuth: mockWithAuth,
 }))
+
+const mockPrisma = {
+  deployment: {
+    findUnique: mock(async () => ({
+      id: "deploy-123",
+      organizationId: "org-1",
+      status: "RUNNING",
+      attempt: 1,
+      manifestPushed: true,
+      argocdSynced: true,
+      failureReason: null,
+      startedAt: new Date("2026-06-05T10:00:00.000Z"),
+      completedAt: new Date("2026-06-05T10:05:00.000Z"),
+    })),
+  },
+  deploymentLog: {
+    findMany: mock(async () => []),
+  },
+  deployEvent: {
+    findMany: mock(async () => []),
+  },
+}
+
+mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
+
+const { monitoringRoutes } = await import("./monitoring.route")
 
 const buildRequest = (path: string) =>
   new Request(`http://localhost${path}`, {
@@ -21,12 +45,33 @@ const buildRequest = (path: string) =>
     },
   })
 
+const setDeployment = (value: unknown) => {
+  mockPrisma.deployment.findUnique.mockResolvedValue(value as never)
+}
+
 describe("monitoringRoutes", () => {
   beforeEach(() => {
     mockWithAuth.mockClear()
+    mockPrisma.deployment.findUnique.mockClear()
+    mockPrisma.deploymentLog.findMany.mockClear()
+    mockPrisma.deployEvent.findMany.mockClear()
+
+    setDeployment({
+      id: "deploy-123",
+      organizationId: "org-1",
+      status: "RUNNING",
+      attempt: 1,
+      manifestPushed: true,
+      argocdSynced: true,
+      failureReason: null,
+      startedAt: new Date("2026-06-05T10:00:00.000Z"),
+      completedAt: new Date("2026-06-05T10:05:00.000Z"),
+    })
+    mockPrisma.deploymentLog.findMany.mockResolvedValue([] as never)
+    mockPrisma.deployEvent.findMany.mockResolvedValue([] as never)
   })
 
-  it("returns logs for a deployment", async () => {
+  it("returns real logs for a deployment (empty no-data state)", async () => {
     const response = await monitoringRoutes.handle(
       buildRequest("/deploy/logs/deploy-123")
     )
@@ -34,21 +79,46 @@ describe("monitoringRoutes", () => {
     expect(response.status).toBe(200)
     const body = (await response.json()) as { ok: boolean; data: unknown[] }
     expect(body.ok).toBe(true)
-    expect(Array.isArray(body.data)).toBe(true)
+    expect(body.data).toEqual([])
   })
 
-  it("returns events for a deployment", async () => {
+  it("maps persisted logs into log lines", async () => {
+    mockPrisma.deploymentLog.findMany.mockResolvedValueOnce([
+      { id: "l1", scope: "build", status: "BUILDING", message: "compiling" },
+    ] as never)
+
+    const response = await monitoringRoutes.handle(
+      buildRequest("/deploy/logs/deploy-123")
+    )
+
+    const body = (await response.json()) as {
+      data: Array<{ id: string; scope: string; status: string }>
+    }
+    expect(body.data[0]).toEqual({
+      id: "l1",
+      scope: "build",
+      status: "building",
+      message: "compiling",
+    } as never)
+  })
+
+  it("returns canonical timeline + real event stream", async () => {
     const response = await monitoringRoutes.handle(
       buildRequest("/deploy/events/deploy-123")
     )
 
     expect(response.status).toBe(200)
-    const body = (await response.json()) as { ok: boolean; data: unknown[] }
+    const body = (await response.json()) as {
+      ok: boolean
+      data: Array<{ id: string }>
+      events: unknown[]
+    }
     expect(body.ok).toBe(true)
-    expect(Array.isArray(body.data)).toBe(true)
+    expect(body.data.map((item) => item.id)).toEqual(["prep", "build", "deploy"])
+    expect(Array.isArray(body.events)).toBe(true)
   })
 
-  it("returns status for a deployment", async () => {
+  it("returns real status for a deployment", async () => {
     const response = await monitoringRoutes.handle(
       buildRequest("/deploy/status/deploy-123")
     )
@@ -56,27 +126,54 @@ describe("monitoringRoutes", () => {
     expect(response.status).toBe(200)
     const body = (await response.json()) as {
       ok: boolean
-      data: { status: string }
+      data: { status: string; attempt: number }
     }
     expect(body.ok).toBe(true)
-    expect(body.data.status).toBeDefined()
+    expect(body.data.status).toBe("running")
+    expect(body.data.attempt).toBe(1)
   })
 
-  it("returns 403 for logs when orgSlug is missing from metadata", async () => {
-    mockWithAuth.mockResolvedValueOnce({
-      user: {
-        id: "user-123",
-        email: "test@example.com",
-        metadata: {} as Record<string, string>,
-      },
+  it("returns 404 when the deployment does not exist", async () => {
+    setDeployment(null)
+
+    const response = await monitoringRoutes.handle(
+      buildRequest("/deploy/status/missing")
+    )
+
+    expect(response.status).toBe(404)
+    const body = (await response.json()) as { error: string }
+    expect(body.error).toBe("NOT_FOUND")
+  })
+
+  it("returns 403 when the deployment belongs to another org", async () => {
+    setDeployment({
+      id: "deploy-123",
+      organizationId: "org-other",
+      status: "RUNNING",
+      attempt: 1,
+      manifestPushed: true,
+      argocdSynced: true,
+      failureReason: null,
+      startedAt: null,
+      completedAt: null,
     })
 
     const response = await monitoringRoutes.handle(
-      buildRequest("/deploy/logs/deploy-123")
+      buildRequest("/deploy/status/deploy-123")
     )
 
     expect(response.status).toBe(403)
     const body = (await response.json()) as { error: string }
     expect(body.error).toBe("FORBIDDEN")
+  })
+
+  it("rejects unauthenticated requests", async () => {
+    mockWithAuth.mockResolvedValueOnce({ user: null } as never)
+
+    const response = await monitoringRoutes.handle(
+      buildRequest("/deploy/logs/deploy-123")
+    )
+
+    expect(response.status).toBe(401)
   })
 })

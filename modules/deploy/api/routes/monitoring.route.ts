@@ -1,10 +1,28 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
-import { queryLogs } from "../../opensearch/opensearch-log.service"
+import { prisma } from "@/lib/prisma"
+import { getDeployEvents, getDeployLogs } from "../../deploy-event.service"
+import {
+  buildDeployTimelineItems,
+  toDeployEventDTOs,
+  toDeployLogLines,
+  toDeploymentStatusDTO,
+} from "../../deploy-monitor.dto"
 
+/**
+ * PGREEN-072 — Console Monitor/Manage truth path.
+ *
+ * These endpoints return REAL persisted deployment state (status, events,
+ * logs) for the monitor/manage surface. They replace the previous
+ * placeholder responses so the UI reflects honest backend state, including
+ * empty states when no logs/events exist yet.
+ *
+ * Every endpoint enforces auth + organization ownership so a deployment
+ * id cannot leak state across tenants.
+ */
 export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   .get(
-    "/logs/:logKey",
+    "/logs/:deployId",
     async ({ params, set }) => {
       const auth = await withAuth()
       if (!auth.user) {
@@ -12,40 +30,61 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      const userMeta = (auth.user as unknown as { metadata?: Record<string, string> })?.metadata
-      const orgSlug = userMeta?.orgSlug
-
-      if (!orgSlug) {
-        set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Access denied: no organization context" }
-      }
-
-      const result = await queryLogs({
-        tenantSlug: orgSlug,
-        deployId: params.logKey,
-        size: 200,
+      const deployment = await prisma.deployment.findUnique({
+        where: { id: params.deployId },
       })
 
-      return { ok: true, data: result.hits }
+      if (!deployment) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Deployment not found" }
+      }
+
+      if (deployment.organizationId !== auth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied" }
+      }
+
+      const logs = await getDeployLogs(params.deployId)
+      return { ok: true, data: toDeployLogLines(logs) }
     },
     {
       params: t.Object({
-        logKey: t.String(),
+        deployId: t.String(),
       }),
     }
   )
   .get(
     "/events/:deployId",
-    async ({ set }) => {
+    async ({ params, set }) => {
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      // TODO: Look up deploy by ID, return real timeline events
-      // const deployEvents = await prisma.deploymentEvent.findMany({ where: { deployId } })
-      return { ok: true, data: [] } // placeholder
+      const deployment = await prisma.deployment.findUnique({
+        where: { id: params.deployId },
+      })
+
+      if (!deployment) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Deployment not found" }
+      }
+
+      if (deployment.organizationId !== auth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied" }
+      }
+
+      // The deploy timeline renders canonical phases (Preparing → Building →
+      // Deploying) with progress driven by the real deployment status, while
+      // the raw event stream remains available for detail surfaces.
+      const events = await getDeployEvents(params.deployId)
+      return {
+        ok: true,
+        data: buildDeployTimelineItems(),
+        events: toDeployEventDTOs(events),
+      }
     },
     {
       params: t.Object({
@@ -55,16 +94,28 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
   )
   .get(
     "/status/:deployId",
-    async ({ set }) => {
+    async ({ params, set }) => {
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      // TODO: Look up deploy by ID, return real status
-      // const deploy = await prisma.deployment.findUnique({ where: { id: deployId } })
-      return { ok: true, data: { status: "queued", attempt: 1 } } // placeholder
+      const deployment = await prisma.deployment.findUnique({
+        where: { id: params.deployId },
+      })
+
+      if (!deployment) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Deployment not found" }
+      }
+
+      if (deployment.organizationId !== auth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied" }
+      }
+
+      return { ok: true, data: toDeploymentStatusDTO(deployment) }
     },
     {
       params: t.Object({

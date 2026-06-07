@@ -15,16 +15,14 @@ import {
   getMaxUnlockedStep,
   getNextStep,
   getPreviousStep,
-  resolveMonitorStatus,
 } from "@/modules/deploy/deploy.logic"
 import {
   buildInitialBuildState,
-  FAILURE_REASON,
   getDefaultBranchName,
   getDetectionForRepository,
   getRepositoryBranches,
-  shouldDeploymentFailForRepository,
 } from "@/modules/deploy/deploy.mock"
+import type { DeployStatus } from "@/modules/deploy/deploy.types"
 import {
   getEnvironmentValidationMessages,
   isValidCustomDomain,
@@ -158,6 +156,8 @@ function DeployWizardInner() {
     Record<string, Repository>
   >({})
   const [isConnectingGithub, setIsConnectingGithub] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const githubConnectionStatus: GithubConnectionStatus = (() => {
     const status = searchParams.get("github")
@@ -395,25 +395,61 @@ function DeployWizardInner() {
       return
     }
 
-    const timeoutId = window.setTimeout(() => {
-      const nextTick = state.monitor.tick + 1
-      const nextStatus = resolveMonitorStatus(
-        nextTick,
-        state.monitor.shouldFail
-      )
+    const deployId = state.monitor.deployId
+    if (!deployId) {
+      return
+    }
 
-      dispatch({ type: "increment-monitor-tick" })
-      dispatch({ type: "set-monitor-status", payload: nextStatus })
-    }, MONITOR_POLL_INTERVAL_MS)
+    let cancelled = false
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/deploy/status/${deployId}`)
+        if (!response.ok) {
+          throw new Error(`Status request failed with ${response.status}.`)
+        }
+
+        const payload = (await response.json()) as {
+          ok: boolean
+          data?: { status: DeployStatus; failureReason: string | null }
+        }
+
+        if (!payload.ok || !payload.data) {
+          throw new Error("Unable to read deployment status.")
+        }
+
+        if (cancelled) {
+          return
+        }
+
+        const nextStatus = payload.data.status
+        if (nextStatus !== "idle") {
+          dispatch({ type: "set-monitor-status", payload: nextStatus })
+        }
+
+        if (nextStatus === "failed" && payload.data.failureReason) {
+          dispatch({
+            type: "set-monitor",
+            payload: { failureReason: payload.data.failureReason },
+          })
+        }
+      } catch {
+        // Transient polling errors keep the monitor active; the status panel
+        // and logs/timeline components surface their own retryable errors.
+      }
+    }
+
+    void poll()
+    const intervalId = window.setInterval(poll, MONITOR_POLL_INTERVAL_MS)
 
     return () => {
-      window.clearTimeout(timeoutId)
+      cancelled = true
+      window.clearInterval(intervalId)
     }
   }, [
     dispatch,
     state.monitor.isActive,
-    state.monitor.shouldFail,
-    state.monitor.tick,
+    state.monitor.deployId,
     state.step,
   ])
 
@@ -538,22 +574,81 @@ function DeployWizardInner() {
     navigateStep(nextStep)
   }
 
-  const handleEnvironmentDeploy = () => {
-    dispatch({ type: "set-step", payload: "monitor" })
+  const handleEnvironmentDeploy = async () => {
+    if (isSubmitting) {
+      return
+    }
 
-    dispatch({
-      type: "start-monitor",
-      payload: {
-        shouldFail: shouldDeploymentFailForRepository(
-          state.source.repositoryId
-        ),
-        failureReason: shouldDeploymentFailForRepository(
-          state.source.repositoryId
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    const billingMode = state.environment.billingMode ?? "PAYG"
+
+    try {
+      const response = await fetch("/api/deploy/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repositoryId: state.source.repositoryId,
+          name: selectedRepository?.name,
+          branchName: state.source.branchName,
+          rootDirectory: state.source.rootDirectory || "/",
+          framework: state.build.framework || undefined,
+          buildCommand: state.build.buildCommand || undefined,
+          useDockerfile: state.build.useDockerfile,
+          resourcePlanId: state.environment.resourcePlanId,
+          billingMode,
+          cpu: state.environment.cpu,
+          memory: state.environment.memory,
+          paygBufferHours: state.environment.paygBufferHours,
+          customDomain: state.environment.useGeneratedSubdomain
+            ? undefined
+            : state.environment.customDomain.trim() || undefined,
+          envVars: state.environment.envVars.map((item) => ({
+            key: item.key,
+            value: item.value,
+            type: item.type,
+            scope: item.scope,
+          })),
+        }),
+      })
+
+      const payload = (await response.json()) as {
+        ok: boolean
+        error?: string
+        message?: string
+        topupUrl?: string
+        data?: { deploymentId: string; status: DeployStatus | string }
+      }
+
+      if (!response.ok || !payload.ok || !payload.data) {
+        setSubmitError(
+          payload.message ??
+            "Unable to start the deployment. Please review your settings and try again."
         )
-          ? FAILURE_REASON
-          : null,
-      },
-    })
+        return
+      }
+
+      dispatch({ type: "set-step", payload: "monitor" })
+      dispatch({
+        type: "start-monitor",
+        payload: { shouldFail: false, failureReason: null },
+      })
+      dispatch({
+        type: "set-monitor",
+        payload: {
+          deployId: payload.data.deploymentId,
+          status: "queued",
+          isActive: true,
+        },
+      })
+    } catch {
+      setSubmitError(
+        "Network error while starting the deployment. Please try again."
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const renderStep = () => {
@@ -656,6 +751,8 @@ function DeployWizardInner() {
           hasInvalidCustomDomain={hasInvalidCustomDomain}
           validationMessages={environmentValidationMessages}
           canDeploy={environmentValid}
+          isSubmitting={isSubmitting}
+          submitError={submitError}
           sourceType={state.source.sourceType}
           buildState={state.build}
           onEditBuildSettings={() => dispatch({ type: "set-step", payload: "build" })}
@@ -714,7 +811,7 @@ function DeployWizardInner() {
           dispatch({ type: "set-monitor-log-scope", payload: logScope })
         }}
         onRetry={() => {
-          dispatch({ type: "retry-monitor" })
+          void handleEnvironmentDeploy()
         }}
         onEditSettings={() => {
           dispatch({ type: "set-step", payload: "environment" })

@@ -37,6 +37,8 @@ type StepEnvironmentProps = {
   hasInvalidCustomDomain: boolean
   validationMessages: string[]
   canDeploy: boolean
+  isSubmitting?: boolean
+  submitError?: string | null
   onBack: () => void
   onDeploy: () => void
   onDomainToggleChange: (value: boolean) => void
@@ -63,6 +65,8 @@ export function StepEnvironment({
   hasInvalidCustomDomain,
   validationMessages,
   canDeploy,
+  isSubmitting,
+  submitError,
   onBack,
   onDeploy,
   onDomainToggleChange,
@@ -294,6 +298,16 @@ export function StepEnvironment({
             {resourcePlanId === "starter" ? "Starter" : resourcePlanId === "pro" ? "Pro" : "Pay-As-You-Go"} plan.
           </div>
         )}
+
+        {submitError ? (
+          <div
+            className="space-y-1 border border-destructive/20 bg-destructive/5 p-3 rounded-lg text-xs text-destructive"
+            role="alert"
+          >
+            <p className="font-semibold">Unable to start deployment</p>
+            <p>{submitError}</p>
+          </div>
+        ) : null}
       </CardContent>
       <div className="flex items-center justify-between border-t border-border p-4 bg-muted/10 rounded-b-xl">
         <Button
@@ -308,10 +322,10 @@ export function StepEnvironment({
         <Button
           type="button"
           onClick={onDeploy}
-          disabled={!canDeploy}
+          disabled={!canDeploy || isSubmitting}
           className="shadow-sm text-xs font-semibold px-4 h-9 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1"
         >
-          Deploy Application
+          {isSubmitting ? "Starting deploy…" : "Deploy Application"}
           <ArrowRight className="w-3.5 h-3.5" />
         </Button>
       </div>
