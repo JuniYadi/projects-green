@@ -1084,9 +1084,27 @@ export const evaluateSupportDecision = (
   })
 
   if (!launchRule) {
+    // Derive supported frameworks from LAUNCH rules
+    const launchFrameworks = rules
+      .filter(
+        (r) =>
+          (r.implicationsJson as { impact?: string })?.impact === 'LAUNCH'
+      )
+      .map((r) => {
+        const impl = r.implicationsJson as { framework?: string }
+        const pattern = r.patternJson as { frameworkId?: string }
+        return pattern?.frameworkId ?? impl?.framework
+      })
+      .filter(Boolean)
+
+    const supportedList =
+      launchFrameworks.length > 0
+        ? launchFrameworks.join(', ')
+        : 'no frameworks'
+
     return {
       status: 'unsupported',
-      message: `Your framework was detected as ${result.primaryFramework?.name ?? frameworkId}, but we currently only support Laravel and Next.js.`,
+      message: `Your framework was detected as ${result.primaryFramework?.name ?? frameworkId}, but we currently only support ${supportedList}.`,
       isLaunchable: false,
     }
   }
@@ -1111,6 +1129,15 @@ export const evaluateSupportDecision = (
   }
 }
 
+/**
+ * The file-based detector does not have access to DetectorRule policies.
+ * Default to an "unsupported" decision — callers using the GitHub API path
+ * get the full policy evaluation, while file-based callers must opt in via
+ * the `evaluateSupportDecision` helper if they have rules available.
+ *
+ * NOTE: `decision.isLaunchable` will always be `false` for this code path,
+ * regardless of whether a framework was detected.
+ */
 const fromInventory = async (
   input: FrameworkDetectionInput,
   inventory: Inventory,

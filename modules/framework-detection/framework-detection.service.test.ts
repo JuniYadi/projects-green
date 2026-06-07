@@ -985,7 +985,7 @@ describe("evaluateSupportDecision", () => {
     expect(decision.status).toBe("unsupported")
     expect(decision.isLaunchable).toBe(false)
     expect(decision.message).toContain("React")
-    expect(decision.message).toMatch(/Laravel and Next\.js/)
+    expect(decision.message).toMatch(/laravel, nextjs/)
   })
 
   it("uses the implicationsJson minConfidence as the gate (custom threshold)", () => {
