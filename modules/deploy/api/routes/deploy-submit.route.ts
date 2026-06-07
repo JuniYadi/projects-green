@@ -83,25 +83,23 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
 
     // Resolve the repository connection so deploys are pinned to a real,
     // org-accessible private repository (MVP is private-repo first).
-    const repositoryId = (() => {
-      try {
-        return BigInt(body.repositoryId)
-      } catch {
-        return null
-      }
-    })()
-
-    if (repositoryId == null) {
+    const rawRepoId = String(body.repositoryId)
+    if (!/^\d+$/.test(rawRepoId)) {
       set.status = 422
       return {
         ok: false,
         error: "INVALID_REPOSITORY",
-        message: "A valid GitHub repository id is required.",
+        message: "A valid numeric GitHub repository id is required.",
       }
     }
+    const repositoryId = BigInt(rawRepoId)
 
     const connection = await prisma.githubRepositoryConnection.findFirst({
-      where: { githubRepositoryId: repositoryId, enabled: true },
+      where: {
+        githubRepositoryId: repositoryId,
+        enabled: true,
+        organizationId: auth.organizationId,
+      },
     })
 
     if (!connection) {
