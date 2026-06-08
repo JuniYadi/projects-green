@@ -165,10 +165,18 @@ export const fetchFrameworkDetection = async (
 
   const body: FrameworkDetectionResponse = (await response.json()) as FrameworkDetectionResponse
 
-  if (!body.ok || body.primaryFramework === undefined) {
+  if (!body.ok || body.primaryFramework == null) {
     throw new DetectionError(
       "Detection returned an unexpected response.",
       "INVALID_RESPONSE"
+    )
+  }
+
+  const blockedStatuses = ["blocked", "unsupported"]
+  if (blockedStatuses.includes(body.decision.status)) {
+    throw new DetectionError(
+      body.decision.message ?? "Detection is not supported for this repository.",
+      "DETECTION_BLOCKED"
     )
   }
 

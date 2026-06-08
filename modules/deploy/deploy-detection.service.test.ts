@@ -298,4 +298,58 @@ describe("fetchFrameworkDetection", () => {
     const [, options] = mockFetch.mock.calls[0]
     expect(options.signal).toBe(controller.signal)
   })
+
+  it("throws DetectionError when primaryFramework is null", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, ...FAILED_DTO }),
+    })
+
+    try {
+      await fetchFrameworkDetection(INPUT)
+      expect.unreachable("Should have thrown")
+    } catch (err) {
+      expect(err).toBeInstanceOf(DetectionError)
+      expect((err as DetectionError).code).toBe("INVALID_RESPONSE")
+    }
+  })
+
+  it("throws DetectionError when decision status is blocked", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        ...SUCCESS_DTO,
+        decision: { status: "blocked", message: "Repository is private.", isLaunchable: false },
+      }),
+    })
+
+    try {
+      await fetchFrameworkDetection(INPUT)
+      expect.unreachable("Should have thrown")
+    } catch (err) {
+      expect(err).toBeInstanceOf(DetectionError)
+      expect((err as DetectionError).message).toBe("Repository is private.")
+      expect((err as DetectionError).code).toBe("DETECTION_BLOCKED")
+    }
+  })
+
+  it("throws DetectionError when decision status is unsupported", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        ...SUCCESS_DTO,
+        decision: { status: "unsupported", message: "No known framework.", isLaunchable: false },
+      }),
+    })
+
+    try {
+      await fetchFrameworkDetection(INPUT)
+      expect.unreachable("Should have thrown")
+    } catch (err) {
+      expect(err).toBeInstanceOf(DetectionError)
+      expect((err as DetectionError).code).toBe("DETECTION_BLOCKED")
+    }
+  })
 })
