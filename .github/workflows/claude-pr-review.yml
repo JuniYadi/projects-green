@@ -6,6 +6,7 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: write
@@ -59,6 +60,7 @@ jobs:
         run: bun run db:generate
 
       - name: Claude Code Review Loop
+        id: claude-review
         uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
@@ -67,7 +69,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
-          track_progress: true 
+          track_progress: true
+          show_full_output: true
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
             --max-turns 50
@@ -188,3 +191,33 @@ jobs:
 
               STEP 2: Submit the review using the file you just created:
               `gh pr review --request-changes -F review_body.md`
+
+      - name: Verify review was submitted
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          echo "🔍 Checking if Claude submitted a review for PR #${PR_NUMBER}..."
+
+          # Check if any review was submitted by the bot
+          REVIEWS=$(gh api repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" or .user.login == "claude[bot]" or .user.type == "Bot") | {state: .state, submitted_at: .submitted_at}] | length')
+
+          # Check the comment content
+          COMMENT_BODY=$(gh pr view ${PR_NUMBER} --json comments \
+            --jq '[.comments[] | select(.author.login == "claude" or .author.login == "github-actions[bot]") | .body] | last // ""')
+
+          # Detect empty review (just the placeholder text)
+          if echo "$COMMENT_BODY" | grep -q "I'll analyze this and get back to you" && ! echo "$COMMENT_BODY" | grep -qE "(## |### |LGTM|Issues|Review|Summary)"; then
+            echo "::warning::⚠️ Claude's review comment appears empty — only placeholder text found."
+            echo "::warning::This usually means the API proxy (ANTHROPIC_BASE_URL) was slow, causing Claude to exit after only a few turns."
+            echo "::warning::Consider re-triggering the workflow by pushing an empty commit or re-running the job."
+            echo ""
+            echo "📊 Review submission count: ${REVIEWS}"
+            echo "📝 Comment preview: $(echo "$COMMENT_BODY" | head -5)"
+            exit 1
+          fi
+
+          echo "✅ Claude review content verified."
+          echo "📊 Review submissions: ${REVIEWS}"
