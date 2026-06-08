@@ -102,18 +102,39 @@ export const app = new Elysia({ prefix: "/api" })
   .use(vpnRoutes)
   .use(healthRoutes)
   .use(whatsappRoutes)
-  .onError(({ code, error, set }) => {
-    if (code !== "VALIDATION") {
+  .onError(({ code, error, set, request, path }) => {
+    if (code === "VALIDATION") {
+      set.status = 422
+
+      return {
+        ok: false as const,
+        error: "VALIDATION_ERROR" as const,
+        message: "Please fix the highlighted fields and try again.",
+        fieldErrors: toFieldErrors(error),
+      }
+    }
+
+    if (code === "NOT_FOUND") {
       return
     }
 
-    set.status = 422
+    // Log all unhandled errors so they appear in server output
+    console.error(
+      `[elysia] ${request.method} ${path} — ${code}:`,
+      error instanceof Error ? error.stack ?? error.message : error,
+    )
+
+    set.status = 500
 
     return {
       ok: false as const,
-      error: "VALIDATION_ERROR" as const,
-      message: "Please fix the highlighted fields and try again.",
-      fieldErrors: toFieldErrors(error),
+      error: "INTERNAL_SERVER_ERROR" as const,
+      message:
+        process.env.NODE_ENV === "production"
+          ? "An unexpected error occurred."
+          : error instanceof Error
+            ? error.message
+            : "An unexpected error occurred.",
     }
   })
   .get("/health", ({ request }) => {
