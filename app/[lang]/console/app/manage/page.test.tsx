@@ -148,10 +148,9 @@ let cachedPageModule:
 const renderPage = async (query = "") => {
   currentQuery = query
   replaceCalls.splice(0)
+  cachedPageModule = null
 
-  if (!cachedPageModule) {
-    cachedPageModule = await import("@/app/[lang]/console/app/manage/page")
-  }
+  cachedPageModule = await import("@/app/[lang]/console/app/manage/page")
   return render(<cachedPageModule.default />)
 }
 
