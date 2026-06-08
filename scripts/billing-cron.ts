@@ -284,7 +284,7 @@ reminderWorker.on("failed", (job, error) => {
 })
 
 // Register repeatable jobs on startup
-async function registerRepeatableJobs() {
+export async function registerRepeatableJobs() {
   const { Queue } = await import("bullmq")
 
   // Daily: every day at 00:00 UTC
@@ -368,9 +368,11 @@ process.on("SIGINT", () => {
   void shutdown("SIGINT")
 })
 
-// Register repeatable jobs then print ready message
-void registerRepeatableJobs().then(() => {
-  console.info(
-    `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE}`
-  )
-})
+// Auto-register and start only when run as standalone entry point
+if (import.meta.main) {
+  void registerRepeatableJobs().then(() => {
+    console.info(
+      `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE}`
+    )
+  })
+}

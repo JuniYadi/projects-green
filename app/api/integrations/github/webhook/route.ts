@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
-import { enqueueGithubWebhookEvent } from "@/lib/queue/github-events"
+import { GithubEventJob } from "@/modules/github/jobs/github-event.job"
 import {
   createGithubService,
   GithubIntegrationDisabledError,
@@ -48,7 +48,7 @@ const handler = createGithubWebhookHandler({
   },
   queue: {
     async enqueueEventId(eventId) {
-      await enqueueGithubWebhookEvent(eventId)
+      await GithubEventJob.dispatch(eventId)
     },
   },
 })

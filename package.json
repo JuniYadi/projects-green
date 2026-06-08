@@ -13,6 +13,7 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "worker:all": "bun run scripts/workers.ts",
     "worker:github": "bun run scripts/github-worker.ts",
     "worker:billing": "bun run scripts/billing-cron.ts",
     "worker:app-hosting-billing": "bun run scripts/app-hosting-billing-worker.ts",
