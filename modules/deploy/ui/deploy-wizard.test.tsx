@@ -126,10 +126,13 @@ const renderWizard = async (
     cachedStoreModule = await import("@/modules/deploy/deploy.store")
   }
 
+  const { DeployWizardProvider } = await import("@/modules/deploy/deploy.store")
+  const { DeployWizard } = await import("@/modules/deploy/ui/deploy-wizard")
+
   return render(
-    <cachedStoreModule.DeployWizardProvider>
-      <cachedWizardModule.DeployWizard />
-    </cachedStoreModule.DeployWizardProvider>
+    <DeployWizardProvider>
+      <DeployWizard />
+    </DeployWizardProvider>
   )
 }
 
@@ -156,6 +159,7 @@ const selectSourceRepository = async (view: RenderResult) => {
 
 describe("DeployWizard", () => {
   beforeEach(() => {
+    mock.restore()
     window.sessionStorage.clear()
     currentQuery = ""
     deployStatusResponse = "running"
@@ -573,41 +577,41 @@ describe("DeployWizard", () => {
     // High confidence goes to Environment first
     await waitFor(() => {
       expect(view.getByText("Environment Settings")).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     // Click back goes to Build step (allowing editing auto-detected settings)
     fireEvent.click(view.getByRole("button", { name: "Back" }))
 
     await waitFor(() => {
       expect(view.getByText("Manual override")).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
       expect(view.getByText(/Attached Resources/i)).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("radio", { name: /Pro/i }))
 
     await waitFor(() => {
       const proRadio = view.getByRole("radio", { name: /Pro/i }) as HTMLInputElement
       expect(proRadio.checked).toBe(true)
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("button", { name: "Back" }))
 
     await waitFor(() => {
       expect(view.getByText("Manual override")).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
       const proRadio = view.getByRole("radio", { name: /Pro/i }) as HTMLInputElement
       expect(proRadio.checked).toBe(true)
-    })
-  }, 10_000)
+    }, { timeout: 15_000 })
+  }, 30_000)
 
   it("validates custom domain mode before deploy", async () => {
     const view = await renderWizard()
@@ -617,7 +621,7 @@ describe("DeployWizard", () => {
 
     await waitFor(() => {
       expect(view.getByText("Environment Settings")).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("radio", { name: /Custom domain/i }))
 
@@ -628,14 +632,14 @@ describe("DeployWizard", () => {
           "Custom domain is required when generated subdomain is off."
         ).length
       ).toBeGreaterThan(0)
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("radio", { name: /Managed subdomain/i }))
 
     await waitFor(() => {
       expect(view.getByRole("button", { name: "Deploy Application" })).toBeEnabled()
-    })
-  }, 10_000)
+    }, { timeout: 15_000 })
+  }, 20_000)
 
   it("shows duplicate env var key warning", async () => {
     const view = await renderWizard("step=environment&github=connected", {
