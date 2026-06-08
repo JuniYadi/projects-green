@@ -1,9 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  fetchFrameworkDetection,
+  DetectionError,
+} from "@/modules/deploy/deploy-detection.service"
 import {
   DEPLOY_STEP_QUERY_KEY,
   DEPLOY_TEMPLATES,
@@ -17,9 +21,7 @@ import {
   getPreviousStep,
 } from "@/modules/deploy/deploy.logic"
 import {
-  buildInitialBuildState,
   getDefaultBranchName,
-  getDetectionForRepository,
   getRepositoryBranches,
 } from "@/modules/deploy/deploy.mock"
 import type { DeployStatus } from "@/modules/deploy/deploy.types"
@@ -56,6 +58,7 @@ type GithubRepositoryApiItem = {
   owner: string
   defaultBranch?: string
   private: boolean
+  installationId: number
 }
 
 type GithubRepositoriesResponse = {
@@ -90,6 +93,7 @@ const mapGithubRepository = (item: GithubRepositoryApiItem): Repository => {
     name: item.name,
     isPrivate: item.private,
     defaultBranch: item.defaultBranch || undefined,
+    installationId: item.installationId,
   }
 }
 
@@ -158,6 +162,9 @@ function DeployWizardInner() {
   const [isConnectingGithub, setIsConnectingGithub] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isDetecting, setIsDetecting] = useState(false)
+  const [detectionError, setDetectionError] = useState<string | null>(null)
+  const detectionAbortRef = useRef<AbortController | null>(null)
 
   const githubConnectionStatus: GithubConnectionStatus = (() => {
     const status = searchParams.get("github")
@@ -473,12 +480,16 @@ function DeployWizardInner() {
     dispatch({ type: "set-detection", payload: null })
   }
 
-  const handleRepositorySelect = (repositoryId: string) => {
-    const defaultBranchFromApi =
-      repositoryById[repositoryId]?.defaultBranch ?? ""
+  const handleRepositorySelect = async (repositoryId: string) => {
+    const repo = repositoryById[repositoryId]
+    const defaultBranchFromApi = repo?.defaultBranch ?? ""
     const branchName =
       defaultBranchFromApi || getDefaultBranchName(repositoryId)
-    const detectionResult = getDetectionForRepository(repositoryId)
+
+    // Cancel any in-flight detection
+    detectionAbortRef.current?.abort()
+    const controller = new AbortController()
+    detectionAbortRef.current = controller
 
     dispatch({
       type: "set-source",
@@ -490,12 +501,48 @@ function DeployWizardInner() {
       },
     })
 
-    dispatch({ type: "set-detection", payload: detectionResult })
+    setIsDetecting(true)
+    setDetectionError(null)
+    dispatch({ type: "set-detection", payload: null })
+    dispatch({ type: "set-build", payload: null })
 
-    dispatch({
-      type: "set-build",
-      payload: buildInitialBuildState(repositoryId),
-    })
+    if (repo) {
+      try {
+        const detectionResult = await fetchFrameworkDetection(
+          {
+            installationId: repo.installationId,
+            owner: repo.ownerId,
+            repo: repo.name,
+            ref: branchName || undefined,
+            subdir: undefined,
+          },
+          controller.signal
+        )
+
+        if (controller.signal.aborted) return
+
+        dispatch({ type: "set-detection", payload: detectionResult })
+        dispatch({ type: "set-build", payload: detectionResult })
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return
+
+        const message =
+          err instanceof DetectionError
+            ? err.message
+            : "Failed to detect framework. You can configure build settings manually."
+
+        setDetectionError(message)
+        // detection stays null — user can configure build manually
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsDetecting(false)
+        }
+      }
+    } else {
+      setIsDetecting(false)
+    }
+
+    detectionAbortRef.current = null
   }
 
   const handleTemplateSelect = (templateId: DeployTemplateId) => {
@@ -679,6 +726,8 @@ function DeployWizardInner() {
           selectedBranchName={state.source.branchName}
           rootDirectory={state.source.rootDirectory}
           canProceed={sourceValid}
+          isDetecting={isDetecting}
+          detectionError={detectionError}
           onSourceTypeChange={(sourceType) => {
             dispatch({ type: "set-source", payload: { sourceType } })
           }}
@@ -712,6 +761,7 @@ function DeployWizardInner() {
           branch={selectedBranch}
           rootDirectory={state.source.rootDirectory}
           detectionResult={state.detectionResult}
+          isDetecting={isDetecting}
           language={state.build.language}
           framework={state.build.framework}
           buildCommand={state.build.buildCommand}

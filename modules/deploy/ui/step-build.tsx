@@ -27,6 +27,7 @@ type StepBuildProps = {
   branch: Branch | null
   rootDirectory: string
   detectionResult: DetectionResult | null
+  isDetecting: boolean
   language: string
   framework: string
   buildCommand: string
@@ -47,6 +48,7 @@ export function StepBuild({
   branch,
   rootDirectory,
   detectionResult,
+  isDetecting,
   language,
   framework,
   buildCommand,
@@ -58,6 +60,10 @@ export function StepBuild({
   onBuildFieldChange,
 }: StepBuildProps) {
   const detectionStatusMessage = (() => {
+    if (isDetecting) {
+      return "Detecting framework..."
+    }
+
     if (!detectionResult || detectionResult.status === "failed") {
       return "Detection failed. Add manual build settings or enable Dockerfile."
     }
@@ -110,30 +116,38 @@ export function StepBuild({
           <p className="text-xs text-muted-foreground">
             {detectionStatusMessage}
           </p>
-          <dl className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">Detected language</dt>
-              <dd>{detectionResult?.language ?? "Not detected"}</dd>
+
+          {isDetecting ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+              <div className="w-3.5 h-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+              Analyzing repository structure...
             </div>
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">
-                Detected framework
-              </dt>
-              <dd>{detectionResult?.framework ?? "Not detected"}</dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">
-                Detected build command
-              </dt>
-              <dd>{detectionResult?.buildCommand ?? "Not detected"}</dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">
-                Dockerfile detected
-              </dt>
-              <dd>{detectionResult?.dockerfileDetected ? "Yes" : "No"}</dd>
-            </div>
-          </dl>
+          ) : (
+            <dl className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+              <div className="space-y-1">
+                <dt className="font-medium text-foreground">Detected language</dt>
+                <dd>{detectionResult?.language ?? "Not detected"}</dd>
+              </div>
+              <div className="space-y-1">
+                <dt className="font-medium text-foreground">
+                  Detected framework
+                </dt>
+                <dd>{detectionResult?.framework ?? "Not detected"}</dd>
+              </div>
+              <div className="space-y-1">
+                <dt className="font-medium text-foreground">
+                  Detected build command
+                </dt>
+                <dd>{detectionResult?.buildCommand ?? "Not detected"}</dd>
+              </div>
+              <div className="space-y-1">
+                <dt className="font-medium text-foreground">
+                  Dockerfile detected
+                </dt>
+                <dd>{detectionResult?.dockerfileDetected ? "Yes" : "No"}</dd>
+              </div>
+            </dl>
+          )}
         </div>
 
         <div className="space-y-3 border border-border p-3">
