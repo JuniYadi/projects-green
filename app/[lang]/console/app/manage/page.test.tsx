@@ -141,17 +141,12 @@ const installFetch = () => {
   }) as unknown as typeof fetch
 }
 
-let cachedPageModule:
-  | typeof import("@/app/[lang]/console/app/manage/page")
-  | null = null
-
 const renderPage = async (query = "") => {
   currentQuery = query
   replaceCalls.splice(0)
-  cachedPageModule = null
 
-  cachedPageModule = await import("@/app/[lang]/console/app/manage/page")
-  return render(<cachedPageModule.default />)
+  const pageModule = await import("@/app/[lang]/console/app/manage/page")
+  return render(<pageModule.default />)
 }
 
 describe("ManagePage", () => {
