@@ -65,3 +65,6 @@ docs/
 !.crew/graphs/.gitkeep
 plan.md
 .llm-wiki/
+
+# Playwright E2E auth state
+.auth/

@@ -10,33 +10,15 @@ const mockBillingTransactionService = {
   debitServiceBalance: vi.fn(),
 }
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    billingAccount: {
-      findUnique: vi.fn(),
-    },
-    applicationStack: {
-      findUnique: vi.fn(),
-      update: vi.fn(),
-    },
-    $executeRaw: vi.fn(),
-  },
-}))
-
-vi.mock("@/modules/billing/billing-transaction.service", () => ({
-  BillingTransactionService: vi.fn().mockImplementation(() => mockBillingTransactionService),
-}))
-
 import { AppHostingBillingService } from "./app-hosting-billing.service"
-import { prisma } from "@/lib/prisma"
 
-const mockPrisma = prisma as unknown as {
-  billingAccount: { findUnique: ReturnType<typeof vi.fn> }
+const mockPrisma = {
+  billingAccount: { findUnique: vi.fn() },
   applicationStack: {
-    findUnique: ReturnType<typeof vi.fn>
-    update: ReturnType<typeof vi.fn>
-  }
-  $executeRaw: ReturnType<typeof vi.fn>
+    findUnique: vi.fn(),
+    update: vi.fn(),
+  },
+  $executeRaw: vi.fn(),
 }
 
 function decimal(value: string) {

@@ -18,15 +18,6 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
-mock.module("@/modules/billing/billing-transaction.service", () => ({
-  BillingTransactionService: class {
-    constructor() {}
-    creditBalance = mock()
-    debitBalance = mock()
-    debitServiceBalance = mock()
-  },
-}))
-
 import { VpnBillingService } from "./vpn-billing.service"
 import { prisma } from "@/lib/prisma"
 
