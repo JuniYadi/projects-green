@@ -55,8 +55,12 @@ export abstract class BaseJob {
     return this.name
   }
 
-  /** Number of concurrent workers processing this queue. */
-  static readonly concurrency: number = DEFAULTS.concurrency
+  /**
+   * Number of concurrent workers processing this queue.
+   * Note: This controls the Worker's concurrency, NOT the Queue's behavior.
+   * Set via createWorker() — has no effect on enqueue().
+   */
+  static readonly workerConcurrency: number = DEFAULTS.concurrency
 
   /** Max retry attempts for failed jobs. */
   static readonly attempts: number = DEFAULTS.attempts
@@ -148,37 +152,11 @@ export abstract class BaseJob {
    */
   static createWorker(): Worker {
     const connection = getRedisConnection()
-    const name = this.name
 
-    const worker = new Worker(this.queue, this.handle, {
+    return new Worker(this.queue, this.handle, {
       connection,
-      concurrency: this.concurrency,
+      concurrency: this.workerConcurrency,
     })
-
-    worker.on("active", (job) => {
-      console.info(`[${name}] active id=${job.id}`)
-    })
-
-    worker.on("completed", (job) => {
-      console.info(`[${name}] completed id=${job.id}`)
-    })
-
-    worker.on("failed", (job, error) => {
-      if (!job) {
-        console.error(`[${name}] failed — missing job payload`, error)
-        return
-      }
-      console.error(
-        `[${name}] failed id=${job.id} attempts=${job.attemptsMade}`,
-        error,
-      )
-    })
-
-    worker.on("error", (error) => {
-      console.error(`[${name}] worker error`, error)
-    })
-
-    return worker
   }
 
   /**
@@ -188,7 +166,7 @@ export abstract class BaseJob {
   static toWorkerOptions() {
     return {
       connection: getRedisConnection(),
-      concurrency: this.concurrency,
+      concurrency: this.workerConcurrency,
     }
   }
 

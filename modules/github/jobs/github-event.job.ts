@@ -19,7 +19,7 @@ type GithubEventData = {
 
 export class GithubEventJob extends BaseJob {
   static readonly queue = "github-events"
-  static readonly concurrency = 4
+  static readonly workerConcurrency = 4
   static readonly attempts = 5
 
   static async dispatch(eventId: string): Promise<void> {
