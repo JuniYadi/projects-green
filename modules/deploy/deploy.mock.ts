@@ -38,30 +38,35 @@ export const MOCK_REPOSITORIES: Repository[] = [
     ownerId: "owner-pfn",
     name: "console-next-app",
     isPrivate: true,
+    installationId: 12345,
   },
   {
     id: "repo-api-monolith",
     ownerId: "owner-pfn",
     name: "platform-api",
     isPrivate: true,
+    installationId: 12345,
   },
   {
     id: "repo-storefront",
     ownerId: "owner-acme",
     name: "storefront",
     isPrivate: false,
+    installationId: 12345,
   },
   {
     id: "repo-failing-build",
     ownerId: "owner-acme",
     name: "legacy-worker",
     isPrivate: true,
+    installationId: 12345,
   },
   {
     id: "repo-portfolio",
     ownerId: "owner-jane",
     name: "portfolio-site",
     isPrivate: false,
+    installationId: 12345,
   },
 ]
 

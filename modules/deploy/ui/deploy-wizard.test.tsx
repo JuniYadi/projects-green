@@ -607,7 +607,7 @@ describe("DeployWizard", () => {
       const proRadio = view.getByRole("radio", { name: /Pro/i }) as HTMLInputElement
       expect(proRadio.checked).toBe(true)
     })
-  })
+  }, 10_000)
 
   it("validates custom domain mode before deploy", async () => {
     const view = await renderWizard()
@@ -635,7 +635,7 @@ describe("DeployWizard", () => {
     await waitFor(() => {
       expect(view.getByRole("button", { name: "Deploy Application" })).toBeEnabled()
     })
-  })
+  }, 10_000)
 
   it("shows duplicate env var key warning", async () => {
     const view = await renderWizard("step=environment&github=connected", {

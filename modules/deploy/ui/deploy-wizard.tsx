@@ -522,7 +522,15 @@ function DeployWizardInner() {
         if (controller.signal.aborted) return
 
         dispatch({ type: "set-detection", payload: detectionResult })
-        dispatch({ type: "set-build", payload: detectionResult })
+        dispatch({
+          type: "set-build",
+          payload: {
+            language: detectionResult.language ?? "",
+            framework: detectionResult.framework ?? "",
+            buildCommand: detectionResult.buildCommand ?? "",
+            useDockerfile: detectionResult.dockerfileDetected,
+          },
+        })
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
 
