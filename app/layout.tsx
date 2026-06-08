@@ -33,7 +33,7 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={cn("antialiased", fontSans.variable, jetbrainsMono.variable)}
     >
-      <body>
+      <body suppressHydrationWarning>
         <AuthKitProvider>
           <ThemeProvider>
             <TooltipProvider>{children}</TooltipProvider>
