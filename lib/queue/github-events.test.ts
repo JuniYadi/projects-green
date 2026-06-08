@@ -114,7 +114,7 @@ describe("createGithubEventsQueue", () => {
     expect(add).toHaveBeenCalledWith(
       "custom-job",
       { eventId: "evt_1" },
-      { jobId: "github-event:evt_1" }
+      { jobId: "github-event_evt_1" }
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(0)
   })
@@ -137,7 +137,7 @@ describe("createGithubEventsQueue", () => {
     expect(queueAddMock).toHaveBeenCalledWith(
       "process-github-webhook-event",
       { eventId: "evt_owned" },
-      { jobId: "github-event:evt_owned" }
+      { jobId: "github-event_evt_owned" }
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(1)
   })
@@ -156,13 +156,31 @@ describe("enqueueGithubWebhookEvent", () => {
       1,
       "process-github-webhook-event",
       { eventId: "event_a" },
-      { jobId: "github-event:event_a" }
+      { jobId: "github-event_event_a" }
     )
     expect(queueAddMock).toHaveBeenNthCalledWith(
       2,
       "process-github-webhook-event",
       { eventId: "event_b" },
-      { jobId: "github-event:event_b" }
+      { jobId: "github-event_event_b" }
     )
+  })
+
+  it("uses underscores (not colons) in job ids to satisfy BullMQ's validateOptions", async () => {
+    // Regression: BullMQ throws "Custom Id cannot contain :" unless the
+    // jobId splits into exactly 3 colon segments (legacy repeatable format).
+    // We must use a non-colon separator so each id is a single segment.
+    const add = mock(async () => ({ id: "job_safe" }))
+    const queue = createGithubEventsQueue({
+      queue: { add },
+      jobName: "process-github-webhook-event",
+    })
+
+    await queue.enqueue({ eventId: "cmq5h68dp0008eg4cagr9e5zx" })
+    await queue.close()
+
+    const opts = add.mock.calls[0]?.[2] as { jobId: string }
+    expect(opts.jobId).toBe("github-event_cmq5h68dp0008eg4cagr9e5zx")
+    expect(opts.jobId).not.toContain(":")
   })
 })

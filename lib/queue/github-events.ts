@@ -103,7 +103,7 @@ export const createGithubEventsQueue = ({
   return {
     async enqueue(data) {
       await queueClient.add(jobName, data, {
-        jobId: `github-event:${data.eventId}`,
+        jobId: `github-event_${data.eventId}`,
       })
     },
     async close() {
@@ -137,7 +137,7 @@ export const enqueueGithubWebhookEvent = async (eventId: string) => {
     GITHUB_EVENTS_JOB_NAME,
     { eventId },
     {
-      jobId: `github-event:${eventId}`,
+      jobId: `github-event_${eventId}`,
     }
   )
 }

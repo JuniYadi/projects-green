@@ -19,7 +19,7 @@
  *     static readonly concurrency = 4
  *
  *     static async dispatch(eventId: string) {
- *       await this.enqueue({ eventId }, { jobId: `github-event:${eventId}` })
+ *       await this.enqueue({ eventId }, { jobId: `github-event_${eventId}` })
  *     }
  *
  *     static async handle(job: Job<GithubEventData>) {
@@ -84,7 +84,7 @@ export abstract class BaseJob {
    *
    * Example:
    *   static async dispatch(eventId: string) {
-   *     await this.enqueue({ eventId }, { jobId: `github-event:${eventId}` })
+   *     await this.enqueue({ eventId }, { jobId: `github-event_${eventId}` })
    *   }
    */
   static async enqueue<T>(data: T, opts?: JobsOptions): Promise<void> {
