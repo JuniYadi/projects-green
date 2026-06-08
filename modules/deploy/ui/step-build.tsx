@@ -75,9 +75,9 @@ export function StepBuild({
     return "Detection looks good. You can continue or override values."
   })()
 
-  const normalizedLanguage = language.trim()
-  const normalizedFramework = framework.trim()
-  const normalizedBuildCommand = buildCommand.trim()
+  const normalizedLanguage = (language ?? "").trim()
+  const normalizedFramework = (framework ?? "").trim()
+  const normalizedBuildCommand = (buildCommand ?? "").trim()
 
   const needsManualValues = manualOverrideRequired && !useDockerfile
   const missingLanguage = normalizedLanguage.length === 0
