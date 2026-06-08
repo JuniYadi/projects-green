@@ -20,6 +20,8 @@ import { supportTicketRoutes } from "@/modules/support-tickets/api/support-ticke
 import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
 import { usersRoutes } from "@/modules/users/api/users.route"
 import { vpnRoutes } from "@/modules/vpn/api"
+import { healthRoutes } from "@/modules/health/api/health.route"
+import { markStartupComplete } from "@/modules/health/health.service"
 import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.module"
 
 const parseErrorPath = (
@@ -98,25 +100,57 @@ export const app = new Elysia({ prefix: "/api" })
   .use(adminRoutes)
   .use(usersRoutes)
   .use(vpnRoutes)
+  .use(healthRoutes)
   .use(whatsappRoutes)
-  .onError(({ code, error, set }) => {
-    if (code !== "VALIDATION") {
+  .onError(({ code, error, set, request, path }) => {
+    if (code === "VALIDATION") {
+      set.status = 422
+
+      return {
+        ok: false as const,
+        error: "VALIDATION_ERROR" as const,
+        message: "Please fix the highlighted fields and try again.",
+        fieldErrors: toFieldErrors(error),
+      }
+    }
+
+    if (code === "NOT_FOUND") {
       return
     }
 
-    set.status = 422
+    // Log all unhandled errors so they appear in server output
+    console.error(
+      `[elysia] ${request.method} ${path} — ${code}:`,
+      error instanceof Error ? error.stack ?? error.message : error,
+    )
+
+    set.status = 500
 
     return {
       ok: false as const,
-      error: "VALIDATION_ERROR" as const,
-      message: "Please fix the highlighted fields and try again.",
-      fieldErrors: toFieldErrors(error),
+      error: "INTERNAL_SERVER_ERROR" as const,
+      message:
+        process.env.NODE_ENV === "production"
+          ? "An unexpected error occurred."
+          : error instanceof Error
+            ? error.message
+            : "An unexpected error occurred.",
     }
   })
-  .get("/health", () => ({
-    ok: true as const,
-    timestamp: new Date().toISOString(),
-  }))
+  .get("/health", ({ request }) => {
+    const url = new URL(request.url)
+    const base = url.origin
+
+    return {
+      endpoints: [
+        { name: "self", href: `${base}/api/health` },
+        { name: "startup", href: `${base}/api/health/startup` },
+        { name: "liveness", href: `${base}/api/health/liveness` },
+        { name: "readiness", href: `${base}/api/health/readiness` },
+        { name: "healthz", href: `${base}/api/health/healthz` },
+      ],
+    }
+  })
   .post(
     "/echo",
     ({ body }) => ({
@@ -130,5 +164,8 @@ export const app = new Elysia({ prefix: "/api" })
       }),
     }
   )
+
+// Mark startup complete immediately — app is ready to serve requests.
+markStartupComplete()
 
 export type App = typeof app

@@ -2,36 +2,24 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 
 // ---------------------------------------------------------------------------
 // Mock dependencies at the module level BEFORE any service imports.
-// IMPORTANT: We intentionally do NOT mock "@/modules/whatsapp/messages/quota.service"
-// here. Mocking that module would pollute the shared Bun module cache and
-// cause quota.service.test.ts (which tests the real implementation) to receive
-// the mock instead of the real service. Instead we mock @/lib/prisma at a
-// level that allows the real quota service to behave as needed per test.
+// IMPORTANT: We intentionally do NOT mock
+//   @/modules/whatsapp/billing/whatsapp-billing.service  or
+//   @/modules/billing/billing-transaction.service
+// here. Mocking those modules would pollute the shared Bun module cache and
+// cause the respective *.service.test.ts files to receive mocks instead of
+// the real implementations. Instead we mock @/lib/prisma at a level that
+// allows all real services to behave as needed per test.
+//
+// See AGENTS.md: test-guidelines > mock.module — Module Cache Rules
 // ---------------------------------------------------------------------------
 
-// NOTE: We intentionally do NOT mock "@/modules/whatsapp/billing/whatsapp-billing.service"
-// because that module has its own test file (whatsapp-billing.service.test.ts).
-// Mocking it here would pollute the shared Bun module cache and cause that file's
-// tests to receive our mock instead of the real implementation.
-// Instead we mock @/lib/prisma and let the real WhatsappBillingService run.
-
-const mockDebitServiceBalance = mock(async () => ({
-  alreadyProcessed: false,
-  adjustmentId: "adj-1",
-}))
-
-mock.module("@/modules/billing/billing-transaction.service", () => ({
-  BillingTransactionService: class {
-    constructor() {}
-    creditBalance = mock(async () => ({ alreadyProcessed: false }))
-    debitBalance = mock(async () => ({ alreadyProcessed: false }))
-    debitServiceBalance = mockDebitServiceBalance
-  },
-}))
 
 const mockTx = {
   whatsappDevice: {
     findFirst: mock(async () => null),
+    findUnique: mock(async () => null),
+    updateMany: mock(async () => ({ count: 1 })),
+    update: mock(async () => null),
   },
   whatsappDailyCount: {
     findUnique: mock(async () => null),
@@ -47,12 +35,41 @@ const mockTx = {
   billingAccount: {
     findUnique: mock(async () => ({
       id: "ba-1",
-      balance: { toFixed: () => "100000", gte: () => true, gt: () => true, minus: () => ({ toFixed: () => "99950", lt: () => false, gt: () => false }) },
+      balance: {
+        toFixed: () => "100000",
+        gte: () => true,
+        gt: () => true,
+        minus: () => ({
+          toFixed: () => "99950",
+          lt: () => false,
+          gt: () => false,
+        }),
+      },
     })),
-    update: mock(async () => ({ id: "ba-1", balance: { toFixed: () => "99950" } })),
+    update: mock(async () => ({
+      id: "ba-1",
+      balance: { toFixed: () => "99950" },
+    })),
   },
   billingAdjustment: {
+    findFirst: mock(async () => null),
     create: mock(async () => ({ id: "adj-1" })),
+  },
+  invoice: {
+    findFirst: mock(async () => null),
+    count: mock(async () => 0),
+    create: mock(async () => ({
+      id: "inv-1",
+      status: "DRAFT",
+      billingAccountId: "ba-1",
+      currency: "IDR",
+      periodStart: new Date("2026-06-01"),
+      periodEnd: new Date("2026-06-30"),
+    })),
+    update: mock(async () => ({ id: "inv-1" })),
+  },
+  invoiceLine: {
+    create: mock(async () => ({ id: "line-1" })),
   },
 }
 
@@ -60,8 +77,8 @@ const mockPrisma = {
   whatsappDevice: {
     findFirst: mock(async () => null),
     findUnique: mock(async () => null),
-    update: mock(async () => ({})),
     updateMany: mock(async () => ({ count: 1 })),
+    update: mock(async () => null),
   },
   whatsappConversation: {
     findFirst: mock(async () => null),
@@ -98,7 +115,7 @@ const mockPrisma = {
   usageLedger: {
     create: mock(async () => ({ id: "ledger-1" })),
   },
-  $transaction: mock(async (fn: any) => fn(mockTx)),
+  $transaction: mock(async (fn: any) => await fn(mockTx)),
 }
 
 const mockDeviceClient = {
@@ -147,9 +164,12 @@ const sendMessageTestHelper = async (overrides: Record<string, any> = {}) => {
 }
 
 describe("messageService", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all mocks
     mockPrisma.whatsappDevice.findFirst.mockClear()
+    mockPrisma.whatsappDevice.findUnique.mockClear()
+    mockPrisma.whatsappDevice.updateMany.mockClear()
+    mockPrisma.whatsappDevice.update.mockClear()
     mockPrisma.whatsappConversation.findFirst.mockClear()
     mockPrisma.whatsappConversation.create.mockClear()
     mockPrisma.whatsappMessage.create.mockClear()
@@ -164,6 +184,9 @@ describe("messageService", () => {
     mockPrisma.usageLedger.create.mockClear()
     mockPrisma.$transaction.mockClear()
     mockTx.whatsappDevice.findFirst.mockClear()
+    mockTx.whatsappDevice.findUnique.mockClear()
+    mockTx.whatsappDevice.updateMany.mockClear()
+    mockTx.whatsappDevice.update.mockClear()
     mockTx.whatsappDailyCount.findUnique.mockClear()
     mockTx.whatsappDailyCount.upsert.mockClear()
     mockTx.whatsappMonthlyCount.findFirst.mockClear()
@@ -172,17 +195,20 @@ describe("messageService", () => {
     mockTx.whatsappMonthlyCount.upsert.mockClear()
     mockTx.billingAccount.findUnique.mockClear()
     mockTx.billingAccount.update.mockClear()
+    mockTx.billingAdjustment.findFirst.mockClear()
     mockTx.billingAdjustment.create.mockClear()
-    mockPrisma.whatsappDevice.updateMany.mockClear()
-    mockPrisma.whatsappDevice.update.mockClear()
-    mockPrisma.whatsappDevice.findUnique.mockClear()
-    mockDebitServiceBalance.mockClear()
-    mockDebitServiceBalance.mockResolvedValue({
-      alreadyProcessed: false,
-      adjustmentId: "adj-1",
-    })
+    mockTx.invoice.findFirst.mockClear()
+    mockTx.invoice.count.mockClear()
+    mockTx.invoice.create.mockClear()
+    mockTx.invoice.update.mockClear()
+    mockTx.invoiceLine.create.mockClear()
     mockDeviceClient.sendMessage.mockClear()
     mockEnqueue.mockClear()
+
+    // Re-apply prisma mock so other test files cannot pollute the module cache.
+    // ESM live bindings would otherwise make messageService's prisma reference
+    // point to the wrong mock object.
+    mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
     // Default: device with quota 1000, no monthly usage → hasQuota: true
     // (quota service reads prisma.whatsappDevice + prisma.whatsappMonthlyCount)
@@ -210,16 +236,23 @@ describe("messageService", () => {
     mockPrisma.billingAccount.findUnique.mockResolvedValue({
       id: "ba-1",
       organizationId: "tenant-1",
-      balance: { toFixed: () => "100000", gte: () => true, gt: () => true },
+      balance: { toString: () => "100000" },
     } as any)
     mockPrisma.subscription.findFirst.mockResolvedValue(null) // No subscription = no quota gate enforcement
     mockPrisma.usageLedger.create.mockResolvedValue({ id: "ledger-1" } as any)
 
-    // $transaction passthrough
-    mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockTx))
+    // $transaction passthrough — flatten the async callback so callers
+    // don't receive a Promise<Promise<Result>>.
+    mockPrisma.$transaction.mockImplementation(async (fn: any) => await fn(mockTx))
 
     // tx defaults: device found, no existing count → creates new count
     mockTx.whatsappDevice.findFirst.mockResolvedValue(mockDevice as any)
+    mockTx.whatsappDevice.findUnique.mockResolvedValue({
+      ...mockDevice,
+      quotaBaseOut: 1000,
+    } as any)
+    mockTx.whatsappDevice.updateMany.mockResolvedValue({ count: 1 })
+    mockTx.whatsappDevice.update.mockResolvedValue(mockDevice as any)
     mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
     mockTx.whatsappMonthlyCount.create.mockResolvedValue({
       id: "count-1",
@@ -231,15 +264,46 @@ describe("messageService", () => {
     } as any)
     mockTx.billingAccount.findUnique.mockResolvedValue({
       id: "ba-1",
-      balance: { toFixed: () => "100000", gte: () => true, gt: () => true, minus: () => ({ toFixed: () => "99950", lt: () => false, gt: () => false }) },
+      balance: {
+        toFixed: () => "100000",
+        gte: () => true,
+        gt: () => true,
+        minus: () => ({
+          toFixed: () => "99950",
+          lt: () => false,
+          gt: () => false,
+        }),
+      },
     } as any)
     mockTx.billingAccount.update.mockResolvedValue({
       id: "ba-1",
       balance: { toFixed: () => "99950" },
     } as any)
+    mockTx.billingAdjustment.findFirst.mockResolvedValue(null)
     mockTx.billingAdjustment.create.mockResolvedValue({
       id: "adj-1",
     } as any)
+    // Invoice defaults: no existing draft, creates new one
+    mockTx.invoice.findFirst.mockResolvedValue(null)
+    mockTx.invoice.count.mockResolvedValue(0)
+    mockTx.invoice.create.mockResolvedValue({
+      id: "inv-1",
+      status: "DRAFT",
+      billingAccountId: "ba-1",
+      currency: "IDR",
+      periodStart: new Date("2026-06-01"),
+      periodEnd: new Date("2026-06-30"),
+    } as any)
+    mockTx.invoice.update.mockResolvedValue({ id: "inv-1" } as any)
+    mockTx.invoiceLine.create.mockResolvedValue({ id: "line-1" } as any)
+
+    // Default: ALLOWANCE path (prisma.whatsappDevice.updateMany returns count=1)
+    mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 1 })
+    mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
+      id: "device-1",
+      quotaBaseOut: 999,
+    } as any)
+    mockPrisma.whatsappDevice.update.mockResolvedValue(mockDevice as any)
 
     mockDeviceClient.sendMessage.mockResolvedValue({
       providerMessageId: "wa-msg-123",
@@ -265,20 +329,24 @@ describe("messageService", () => {
     })
 
     it("throws InsufficientBalanceError when allowance exhausted and balance is insufficient", async () => {
-      // Allowance exhausted → updateMany returns 0 → real service tries overage
-      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 } as any)
+      // Simulate allowance exhausted + overage fails due to insufficient balance.
+      // Phase 1: updateMany returns 0 (no allowance to consume)
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
+      // Phase 2: device found with 0 allowance
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
-        ...mockDevice,
+        id: "device-1",
         quotaBaseOut: 0,
-        currency: "USD",
       } as any)
-      mockPrisma.billingAccount.findUnique.mockResolvedValue({
+      // Phase 3: debitServiceBalance -> $transaction -> mockTx.
+      // Make billingAccount balance cause INSUFFICIENT_BALANCE in executeMutation.
+      mockTx.billingAccount.findUnique.mockResolvedValue({
         id: "ba-1",
-        organizationId: "org-1",
-        currency: "USD",
-        balance: { toFixed: () => "0" },
+        balance: {
+          minus: () => ({
+            lt: () => true, // balanceAfter < 0 → throws INSUFFICIENT_BALANCE
+          }),
+        },
       } as any)
-      mockDebitServiceBalance.mockRejectedValue(new Error("INSUFFICIENT_BALANCE"))
 
       await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
     })
@@ -298,15 +366,19 @@ describe("messageService", () => {
     })
 
     it("calls WhatsApp billing allowance check before Meta API", async () => {
+      // Verify the real WhatsappBillingService.consumeAllowanceOrChargeOverage
+      // was called. Default setup: updateMany returns { count: 1 } (ALLOWANCE path).
+      // Spy on the prisma call that Phase 1 makes.
       await sendMessageTestHelper({ organizationId: "org-1", deviceId: "device-1" })
 
-      // Verify billing was checked via atomic updateMany on the real service
+      // updateMany with allowance check params was called via the real service
       expect(mockPrisma.whatsappDevice.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             id: "device-1",
+            quotaBaseOut: { gte: 1 },
           }),
-        }),
+        })
       )
     })
 
@@ -419,53 +491,51 @@ describe("messageService", () => {
     // ── WhatsApp Billing Integration Tests ────────────────────────────────
 
     it("sends message within allowance (no balance change)", async () => {
-      // Default beforeEach sets updateMany → count 1 (allowance consumed)
+      // Default mock setup: updateMany returns { count: 1 } → ALLOWANCE path
       const result = await sendMessageTestHelper()
 
       expect(result.status).toBe("sent")
       expect(result.waMessageId).toBe("wa-msg-123")
       expect(mockDeviceClient.sendMessage).toHaveBeenCalled()
-      // No overage charge — debitServiceBalance should NOT be called
-      expect(mockDebitServiceBalance).not.toHaveBeenCalled()
+      // No overage charge — billing adjustment should NOT be created
+      expect(mockTx.billingAdjustment.create).not.toHaveBeenCalled()
     })
 
     it("sends message after overage charge succeeds", async () => {
-      // Allowance exhausted → overage path
-      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 } as any)
+      // Simulate allowance exhausted — overage charged
+      // Phase 1: updateMany returns 0 (no allowance)
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
+      // Phase 2: device has 0 allowance remaining
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
-        ...mockDevice,
+        id: "device-1",
         quotaBaseOut: 0,
-        currency: "USD",
       } as any)
-      mockPrisma.billingAccount.findUnique.mockResolvedValue({
-        id: "ba-1",
-        organizationId: "org-1",
-        currency: "USD",
-        balance: { toFixed: () => "100000" },
-      } as any)
+      // Phase 3: debitServiceBalance goes through $transaction → mockTx.
+      // Default mockTx setup makes it succeed (balance minus lt() returns false).
 
       const result = await sendMessageTestHelper()
 
       expect(result.status).toBe("sent")
       expect(mockDeviceClient.sendMessage).toHaveBeenCalled()
-      expect(mockDebitServiceBalance).toHaveBeenCalled()
+      expect(mockTx.billingAdjustment.create).toHaveBeenCalled()
     })
 
     it("does not call Meta API when overage balance is insufficient", async () => {
-      // Allowance exhausted + insufficient balance
-      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 } as any)
+      // Simulate allowance exhausted + insufficient balance
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
-        ...mockDevice,
+        id: "device-1",
         quotaBaseOut: 0,
-        currency: "USD",
       } as any)
-      mockPrisma.billingAccount.findUnique.mockResolvedValue({
+      // Make debitServiceBalance throw INSUFFICIENT_BALANCE
+      mockTx.billingAccount.findUnique.mockResolvedValue({
         id: "ba-1",
-        organizationId: "org-1",
-        currency: "USD",
-        balance: { toFixed: () => "0" },
+        balance: {
+          minus: () => ({
+            lt: () => true, // balanceAfter < 0 → INSUFFICIENT_BALANCE
+          }),
+        },
       } as any)
-      mockDebitServiceBalance.mockRejectedValue(new Error("INSUFFICIENT_BALANCE"))
 
       await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
 
@@ -474,19 +544,19 @@ describe("messageService", () => {
     })
 
     it("returns INSUFFICIENT_BALANCE error message for overage reject", async () => {
-      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 } as any)
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
-        ...mockDevice,
+        id: "device-1",
         quotaBaseOut: 0,
-        currency: "USD",
       } as any)
-      mockPrisma.billingAccount.findUnique.mockResolvedValue({
+      mockTx.billingAccount.findUnique.mockResolvedValue({
         id: "ba-1",
-        organizationId: "org-1",
-        currency: "USD",
-        balance: { toFixed: () => "0" },
+        balance: {
+          minus: () => ({
+            lt: () => true,
+          }),
+        },
       } as any)
-      mockDebitServiceBalance.mockRejectedValue(new Error("INSUFFICIENT_BALANCE"))
 
       try {
         await sendMessageTestHelper()
@@ -498,19 +568,17 @@ describe("messageService", () => {
     })
 
     it("restores allowance when Meta API fails after allowance was consumed", async () => {
-      // Default: allowance consumed (updateMany → count 1)
+      // Default: ALLOWANCE path (updateMany returns { count: 1 })
       mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
 
       await sendMessageTestHelper()
 
-      // Real service calls prisma.whatsappDevice.update to restore allowance
+      // restoreAllowance calls prisma.whatsappDevice.update with increment
       expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device-1" },
-          data: expect.objectContaining({
-            quotaBaseOut: expect.objectContaining({ increment: 1 }),
-          }),
-        }),
+          data: { quotaBaseOut: { increment: 1 } },
+        })
       )
     })
 
@@ -519,29 +587,23 @@ describe("messageService", () => {
       const origWarn = console.warn
       console.warn = consoleWarnSpy
 
-      // Allowance exhausted → overage path
-      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 } as any)
+      // Overage path
+      mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
-        ...mockDevice,
+        id: "device-1",
         quotaBaseOut: 0,
-        currency: "USD",
-      } as any)
-      mockPrisma.billingAccount.findUnique.mockResolvedValue({
-        id: "ba-1",
-        organizationId: "org-1",
-        currency: "USD",
-        balance: { toFixed: () => "100000" },
       } as any)
       mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
 
       await sendMessageTestHelper()
 
-      // restoreAllowance (prisma update with increment) should NOT be called for overage
-      const updateCalls = mockPrisma.whatsappDevice.update.mock.calls
-      const restoreCalls = updateCalls.filter((call: any) =>
-        call[0]?.data?.quotaBaseOut?.increment !== undefined,
+      // restoreAllowance should NOT be called for overage
+      // (prisma.whatsappDevice.update with increment should NOT be called)
+      expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { quotaBaseOut: { increment: expect.any(Number) } },
+        })
       )
-      expect(restoreCalls).toHaveLength(0)
       // But a warning should be logged
       expect(consoleWarnSpy).toHaveBeenCalled()
 

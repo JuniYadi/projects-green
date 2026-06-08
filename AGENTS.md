@@ -226,6 +226,46 @@ Real-use-case scripts that exercise the API auth flows against a running dev ser
 
 **Important:** These scripts hit the real server. They are not suitable for CI until a dev-server harness is added.
 
+## Playwright E2E Tests (Browser-level)
+
+Browser-based tests live in `e2e/` using Playwright. The app auth uses WorkOS OAuth (external SSO), so testing console features requires authenticated session state.
+
+### Auth approach: `storageState` (manual login once)
+
+1. Run `bun run test:e2e:auth` — opens Chromium headed, you sign in via WorkOS
+2. After login redirects back to the console, Playwright saves cookies + localStorage to `.auth/user.json`
+3. Run `bun run test:e2e:authenticated` — tests use the saved session
+
+The `.auth/` directory is gitignored (each developer generates their own).
+
+### Project structure
+
+| Project | Pattern | Auth |
+|---------|---------|------|
+| `chromium` | `*.spec.ts` (excl. `console.*`) | Public pages only |
+| `authenticated` | `console.*.spec.ts` | Uses `storageState` from `.auth/user.json` |
+| `auth-setup` | `auth.setup.ts` | Interactive login helper |
+
+### Naming convention
+
+- Public page tests: `feature.spec.ts` (e.g. `landing.spec.ts`)
+- Authenticated console tests: `console.<feature>.spec.ts` (e.g. `console.whatsapp-dashboard.spec.ts`)
+
+### Available commands
+
+| Command | What it runs |
+|---------|-------------|
+| `bun run test:e2e` | All tests (authenticated skipped if no auth file) |
+| `bun run test:e2e:auth` | Auth setup — interactive login (headed) |
+| `bun run test:e2e:authenticated` | Only authenticated tests |
+| `bun run test:e2e:public` | Only public-page tests |
+| `bun run test:e2e:all` | Public + authenticated |
+| `bun run test:e2e:ui` | Playwright UI mode |
+
+### CI behavior
+
+Authenticated tests are **excluded** when the `.auth/user.json` file is absent. The config checks `fs.existsSync(AUTH_FILE)` on load — if the file is missing, the `authenticated` project is omitted entirely. Public-page tests always run.
+
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commit style seen in history: `feat: ...`, `fix: ...`, `test: ...`, `chore: ...`, `docs: ...`.
 - Use imperative, scoped summaries (example: `feat: add onboarding flow page`).

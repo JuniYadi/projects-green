@@ -489,6 +489,11 @@ export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
     try {
       await deps.queue.enqueueEventId(event.id)
     } catch (error) {
+      console.error(
+        `[github-webhook] Failed to enqueue event ${event.id} (delivery: ${deliveryId}):`,
+        error instanceof Error ? error.stack ?? error.message : error,
+      )
+
       await deps.store.markEnqueueFailed(event.id, toErrorMessage(error))
 
       return Response.json(
@@ -635,6 +640,11 @@ export const enqueueGithubWebhookEvent = async ({
       eventId: created.id,
     }
   } catch (error) {
+    console.error(
+      `[github-webhook] Failed to enqueue event ${created.id} (delivery: ${deliveryId}):`,
+      error instanceof Error ? error.stack ?? error.message : error,
+    )
+
     await dbClient.githubWebhookEvent.update({
       where: {
         id: created.id,
