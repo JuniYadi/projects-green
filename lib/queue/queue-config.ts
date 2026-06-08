@@ -1,4 +1,4 @@
-import type { ConnectionOptions } from "bullmq"
+import { Queue, type ConnectionOptions } from "bullmq"
 
 const DEFAULT_LOCAL_REDIS_URL = "redis://127.0.0.1:6379"
 const DEFAULT_QUEUE_PREFIX = "pfnapp"
@@ -100,4 +100,45 @@ export const getQueueRuntimeConfig = (): QueueRuntimeConfig => {
     prefix,
     githubEventsQueueName,
   }
+}
+
+// ── Shared Helpers ───────────────────────────────────────────────────────────
+// Use these in job modules instead of per-file getRedisConnection().
+
+/**
+ * Returns the Redis connection options for BullMQ.
+ * Prefer getQueue() for producer-side usage.
+ */
+export const getRedisConnection = (): ConnectionOptions => {
+  return getQueueRuntimeConfig().connection
+}
+
+const queueCache = new Map<string, Queue>()
+
+/**
+ * Returns a cached BullMQ Queue instance for the given name.
+ * Uses the shared Redis connection from QUEUE_PREFIX / REDIS_URL.
+ *
+ * Usage in job modules:
+ *   const queue = getQueue(QUEUE_NAME)
+ *   await queue.add(JOB_NAME, data, opts)
+ */
+export const getQueue = <T = unknown>(name: string): Queue<T> => {
+  const existing = queueCache.get(name)
+  if (existing) {
+    return existing as Queue<T>
+  }
+
+  const { connection, prefix } = getQueueRuntimeConfig()
+  const queue = new Queue<T>(name, { connection, prefix })
+  queueCache.set(name, queue)
+  return queue
+}
+
+/**
+ * Close all cached queues. Call during graceful shutdown.
+ */
+export const closeAllQueues = async (): Promise<void> => {
+  await Promise.all([...queueCache.values()].map((q) => q.close()))
+  queueCache.clear()
 }

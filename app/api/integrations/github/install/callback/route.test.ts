@@ -100,6 +100,8 @@ mock.module("@/modules/github/github-install-state", () => {
   }
 })
 
+const mockGetStateSecret = mock(() => "")
+
 mock.module("@/modules/github/github.service", () => {
   return {
     GithubIntegrationDisabledError: MockGithubIntegrationDisabledError,
@@ -162,7 +164,7 @@ describe("GET /api/integrations/github/install/callback", () => {
     expect(mockWithAuth).toHaveBeenCalledWith({ ensureSignedIn: true })
     expect(mockValidateGithubInstallState).toHaveBeenCalledWith({
       state: "valid",
-      secret: "",
+      secret: expect.any(String),
     })
     expect(mockFetchGithubInstallationDetails).toHaveBeenCalledWith(BigInt(123))
     expect(mockFetchGithubInstallationRepositories).toHaveBeenCalledWith(

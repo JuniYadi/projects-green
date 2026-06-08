@@ -11,15 +11,15 @@ import {
   BILLING_MONTHLY_RESET_QUEUE,
   BILLING_INVOICE_STATUS_QUEUE,
   BILLING_PAYMENT_REMINDER_QUEUE,
-  getBillingRedisConnection,
   type BillingCronJobData,
 } from "@/lib/queue/billing-cron"
+import { getRedisConnection } from "@/lib/queue/queue-config"
 import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
 import { BillingCycleService } from "@/modules/billing/billing-cycle.service"
 import { InvoiceStatusManager } from "@/modules/billing/invoice-status.service"
 import { invoiceEmailService } from "@/modules/invoices/email.service"
 
-const redisConnection = getBillingRedisConnection()
+const redisConnection = getRedisConnection()
 
 /**
  * Daily reset: cleanup old WhatsAppDailyCount rows (> 90 days old).
@@ -38,7 +38,7 @@ async function processDailyReset(): Promise<number> {
 }
 
 /**
- * Monthly reset: cleanup old WhatsAppMonthlyCount rows (> 13 months old).
+ * Monthly reset: cleanup old WhatsAppMonthlyCount rows (> 12 months old).
  */
 async function processMonthlyReset(): Promise<number> {
   const now = new Date()
@@ -284,7 +284,7 @@ reminderWorker.on("failed", (job, error) => {
 })
 
 // Register repeatable jobs on startup
-async function registerRepeatableJobs() {
+export async function registerRepeatableJobs() {
   const { Queue } = await import("bullmq")
 
   // Daily: every day at 00:00 UTC
@@ -368,9 +368,11 @@ process.on("SIGINT", () => {
   void shutdown("SIGINT")
 })
 
-// Register repeatable jobs then print ready message
-void registerRepeatableJobs().then(() => {
-  console.info(
-    `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE}`
-  )
-})
+// Auto-register and start only when run as standalone entry point
+if (import.meta.main) {
+  void registerRepeatableJobs().then(() => {
+    console.info(
+      `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE}`
+    )
+  })
+}

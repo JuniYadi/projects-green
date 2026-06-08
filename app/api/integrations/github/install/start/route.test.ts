@@ -64,6 +64,8 @@ mock.module("@/modules/github/github-install-state", () => {
   }
 })
 
+const mockGetStateSecret = mock(() => "")
+
 mock.module("@/modules/github/github.service", () => {
   return {
     GithubIntegrationDisabledError: MockGithubIntegrationDisabledError,
@@ -164,7 +166,7 @@ describe("GET /api/integrations/github/install/start", () => {
       workosUserId: "user_123",
       organizationId: "org_123",
       returnTo: "/console/app/deploy",
-      secret: "",
+      secret: expect.any(String),
     })
     expect(mockGetGithubInstallUrl).toHaveBeenCalledWith({
       state: "state_token",

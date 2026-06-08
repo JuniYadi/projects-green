@@ -36,9 +36,11 @@ mock.module("@/lib/prisma", () => {
   }
 })
 
-mock.module("@/lib/queue/github-events", () => {
+mock.module("@/modules/github/jobs/github-event.job", () => {
   return {
-    enqueueGithubWebhookEvent: mockEnqueueGithubWebhookEvent,
+    GithubEventJob: {
+      dispatch: mockEnqueueGithubWebhookEvent,
+    },
   }
 })
 
