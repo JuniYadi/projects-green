@@ -204,9 +204,10 @@ describe("authService", () => {
         requestUrl: "http://localhost/auth/magic/verify",
       })
 
-      const call = mockAuthenticateWithMagicAuth.mock.calls.at(-1)?.[0] as
-        | Record<string, unknown>
-        | undefined
+      const calls = mockAuthenticateWithMagicAuth.mock.calls as unknown as Array<
+        Array<Record<string, unknown>>
+      >
+      const call = calls.at(-1)?.[0]
       expect(call && "invitationToken" in call).toBe(false)
     })
 
