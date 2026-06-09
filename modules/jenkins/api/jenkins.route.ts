@@ -69,6 +69,10 @@ export const createJenkinsRoutes = () => {
           set.status = 401
           return { ok: false as const, error: "AUTH_FAILED", message: "Jenkins authentication failed" }
         }
+        console.error(
+          `[jenkins] GET /integrations/jenkins/jobs/:jobName/status —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         set.status = 500
         return { ok: false as const, error: "STATUS_FAILED", message: "Failed to fetch job status" }
       }
@@ -91,6 +95,10 @@ export const createJenkinsRoutes = () => {
           set.status = 502
           return { ok: false as const, error: "API_ERROR", message: `Jenkins API error: ${error.message}` }
         }
+        console.error(
+          `[jenkins] POST /integrations/jenkins/jobs/build —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         set.status = 500
         return { ok: false as const, error: "TRIGGER_FAILED", message: "Failed to trigger Jenkins build" }
       }
