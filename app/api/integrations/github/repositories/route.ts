@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import {
   createGithubService,
   GithubIntegrationDisabledError,
+  GithubReconnectRequiredError,
 } from "@/modules/github/github.service"
 
 export const runtime = "nodejs"
@@ -76,18 +77,38 @@ export const GET = async (request: NextRequest) => {
   const queryRaw = request.nextUrl.searchParams.get("query")
   const query = queryRaw?.trim() || null
 
-  const result = await githubService.listRepositoriesForActor(
-    {
-      userId: auth.user.id,
-      organizationId: auth.organizationId ?? null,
-    },
-    {
-      limit,
-      cursor: request.nextUrl.searchParams.get("cursor") || undefined,
-      ownerId: ownerId || undefined,
-      query: query || undefined,
+  let result: Awaited<
+    ReturnType<typeof githubService.listRepositoriesForActor>
+  >
+
+  try {
+    result = await githubService.listRepositoriesForActor(
+      {
+        userId: auth.user.id,
+        organizationId: auth.organizationId ?? null,
+      },
+      {
+        limit,
+        cursor: request.nextUrl.searchParams.get("cursor") || undefined,
+        ownerId: ownerId || undefined,
+        query: query || undefined,
+      }
+    )
+  } catch (error) {
+    if (error instanceof GithubReconnectRequiredError) {
+      return NextResponse.json(
+        {
+          ok: false as const,
+          error: "GITHUB_RECONNECT_REQUIRED" as const,
+          message:
+            "GitHub access expired or was revoked. Reconnect GitHub to continue.",
+        },
+        { status: 409 }
+      )
     }
-  )
+
+    throw error
+  }
 
   return NextResponse.json({
     ok: true as const,

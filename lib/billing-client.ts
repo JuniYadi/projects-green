@@ -42,8 +42,12 @@ export type InvoiceListItem = {
   id: string
   invoiceNumber: string
   status: string
+  type?: string | null
+  paymentMethod?: string | null
   issuedAt: string | null
   dueAt: string | null
+  createdAt?: string | null
+  dueDate?: string | null
   totalAmountIdr: string
   currency: string
   lines: InvoiceLineItem[]

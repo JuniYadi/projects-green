@@ -184,18 +184,13 @@ export default function WhatsAppContactsPage() {
       return
     }
 
-    if (!formData.contactGroupId) {
-      toast.error("Group is required.")
-      return
-    }
-
     setIsSubmitting(true)
     try {
       await whatsappClient.createContact({
         phoneNumber: formData.phoneNumber,
         name: formData.name,
         email: formData.email,
-        contactGroupId: formData.contactGroupId,
+        contactGroupId: formData.contactGroupId || undefined,
         status: formData.status,
       })
       toast.success("Contact created successfully.")
@@ -218,18 +213,13 @@ export default function WhatsAppContactsPage() {
       return
     }
 
-    if (!formData.contactGroupId) {
-      toast.error("Group is required.")
-      return
-    }
-
     setIsSubmitting(true)
     try {
       await whatsappClient.updateContact(editingContact.id, {
         phoneNumber: formData.phoneNumber,
         name: formData.name,
         email: formData.email,
-        contactGroupId: formData.contactGroupId,
+        contactGroupId: formData.contactGroupId || undefined,
         status: formData.status,
       })
       toast.success("Contact updated successfully.")
@@ -534,7 +524,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-group">Group</Label>
+              <Label htmlFor="add-group">Audience (optional)</Label>
               <Select
                 value={formData.contactGroupId}
                 onValueChange={(value) =>
@@ -542,7 +532,7 @@ export default function WhatsAppContactsPage() {
                 }
               >
                 <SelectTrigger id="add-group" className="w-full">
-                  <SelectValue placeholder="No group" />
+                  <SelectValue placeholder="Default audience" />
                 </SelectTrigger>
                 <SelectContent>
                   {groups.map((group) => (
@@ -645,7 +635,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-group">Group</Label>
+              <Label htmlFor="edit-group">Audience (optional)</Label>
               <Select
                 value={formData.contactGroupId}
                 onValueChange={(value) =>
@@ -653,7 +643,7 @@ export default function WhatsAppContactsPage() {
                 }
               >
                 <SelectTrigger id="edit-group" className="w-full">
-                  <SelectValue placeholder="No group" />
+                  <SelectValue placeholder="Default audience" />
                 </SelectTrigger>
                 <SelectContent>
                   {groups.map((group) => (

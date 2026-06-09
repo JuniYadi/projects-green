@@ -64,6 +64,7 @@ type GithubRepositoryApiItem = {
 type GithubRepositoriesResponse = {
   ok: boolean
   items: GithubRepositoryApiItem[]
+  error?: string
 }
 
 const toOwnerOptions = (repositories: Repository[]) => {
@@ -156,6 +157,8 @@ function DeployWizardInner() {
   const [repositoryOptionsError, setRepositoryOptionsError] = useState<
     string | null
   >(null)
+  const [githubReconnectRequired, setGithubReconnectRequired] =
+    useState(false)
   const [repositoryById, setRepositoryById] = useState<
     Record<string, Repository>
   >({})
@@ -246,6 +249,17 @@ function DeployWizardInner() {
           }
         )
 
+        if (response.status === 409) {
+          const payload = (await response
+            .json()
+            .catch(() => null)) as GithubRepositoriesResponse | null
+          if (payload?.error === "GITHUB_RECONNECT_REQUIRED") {
+            setOwnerOptions([])
+            setGithubReconnectRequired(true)
+            return
+          }
+        }
+
         if (!response.ok) {
           throw new Error(
             `Unable to load repositories. Request failed with ${response.status}.`
@@ -258,6 +272,7 @@ function DeployWizardInner() {
         }
         const mapped = payload.items.map(mapGithubRepository)
 
+        setGithubReconnectRequired(false)
         setOwnerOptions(toOwnerOptions(mapped))
         setRepositoryById((current) => {
           const next = { ...current }
@@ -308,6 +323,17 @@ function DeployWizardInner() {
           }
         )
 
+        if (response.status === 409) {
+          const payload = (await response
+            .json()
+            .catch(() => null)) as GithubRepositoriesResponse | null
+          if (payload?.error === "GITHUB_RECONNECT_REQUIRED") {
+            setRepositoryOptions([])
+            setGithubReconnectRequired(true)
+            return
+          }
+        }
+
         if (!response.ok) {
           throw new Error(
             `Unable to load repositories. Request failed with ${response.status}.`
@@ -320,6 +346,7 @@ function DeployWizardInner() {
         }
         const mapped = payload.items.map(mapGithubRepository)
 
+        setGithubReconnectRequired(false)
         setRepositoryOptions(mapped)
         setRepositoryById((current) => {
           const next = { ...current }
@@ -716,6 +743,7 @@ function DeployWizardInner() {
           templateId={state.source.templateId}
           githubConnectionStatus={githubConnectionStatus}
           isConnectingGithub={isConnectingGithub}
+          githubReconnectRequired={githubReconnectRequired}
           ownerOptionsLoading={ownerOptionsLoading}
           ownerOptionsError={ownerOptionsError}
           repositoryOptionsLoading={

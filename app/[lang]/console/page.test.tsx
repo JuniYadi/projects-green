@@ -1,6 +1,18 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "id" }),
+}))
+
+let invoicesPayload: {
+  ok: boolean
+  invoices: Array<{ id?: string; totalAmountIdr: number; status: string }>
+} = {
+  ok: true,
+  invoices: [{ id: "inv_1", totalAmountIdr: 75000, status: "PAID" }],
+}
+
 const mockFetch = mock((input: string | URL | Request) => {
   const url = input.toString()
   const payload = url.includes("/api/billing/account")
@@ -8,7 +20,7 @@ const mockFetch = mock((input: string | URL | Request) => {
     : url.includes("/api/usage")
       ? { success: true, data: { totalSpend: 125000, period: "June 2026" } }
       : url.includes("/api/billing/invoices")
-        ? { ok: true, invoices: [{ totalAmountIdr: 75000, status: "PAID" }] }
+        ? invoicesPayload
         : { ok: true, tickets: [{ id: "ticket_1" }, { id: "ticket_2" }] }
 
   return Promise.resolve({
@@ -21,6 +33,10 @@ global.fetch = mockFetch as unknown as typeof fetch
 describe("ConsolePage", () => {
   beforeEach(() => {
     mockFetch.mockClear()
+    invoicesPayload = {
+      ok: true,
+      invoices: [{ id: "inv_1", totalAmountIdr: 75000, status: "PAID" }],
+    }
   })
 
   it("renders static header text", async () => {
@@ -43,6 +59,35 @@ describe("ConsolePage", () => {
       expect(container.textContent).toContain("Status: PAID")
       expect(container.textContent).toContain("2")
       expect(container.textContent).toContain("Awaiting response")
+    })
+  })
+
+  it("links Last Invoice to the latest invoice detail and Open Tickets to filtered list", async () => {
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('a[href="/id/console/billing/invoices/inv_1"]'),
+      ).not.toBeNull()
+      expect(
+        container.querySelector(
+          'a[href="/id/console/support-tickets?status=open"]',
+        ),
+      ).not.toBeNull()
+    })
+  })
+
+  it("links Last Invoice to the invoice list when no invoice exists", async () => {
+    invoicesPayload = { ok: true, invoices: [] }
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("No invoices yet")
+      expect(
+        container.querySelector('a[href="/id/console/billing/invoices"]'),
+      ).not.toBeNull()
     })
   })
 })

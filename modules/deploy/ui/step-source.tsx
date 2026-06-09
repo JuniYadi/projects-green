@@ -53,6 +53,7 @@ export type StepSourceProps = {
   templateId?: DeployTemplateId
   githubConnectionStatus: "idle" | "connected" | "error"
   isConnectingGithub: boolean
+  githubReconnectRequired?: boolean
   ownerOptionsLoading: boolean
   ownerOptionsError: string | null
   repositoryOptionsLoading: boolean
@@ -138,6 +139,7 @@ export function StepSource({
   templateId,
   githubConnectionStatus,
   isConnectingGithub,
+  githubReconnectRequired = false,
   ownerOptionsLoading,
   ownerOptionsError,
   repositoryOptionsLoading,
@@ -239,9 +241,11 @@ export function StepSource({
                   <div>
                     <h4 className="text-sm font-semibold">GitHub Integration</h4>
                     <p className="text-xs text-muted-foreground">
-                      {githubConnectionStatus === "connected"
-                        ? "Successfully connected to your GitHub account."
-                        : "Connect your GitHub account to access your repositories."}
+                      {githubReconnectRequired
+                        ? "GitHub access expired or was revoked. Reconnect to continue."
+                        : githubConnectionStatus === "connected"
+                          ? "Successfully connected to your GitHub account."
+                          : "Connect your GitHub account to access your repositories."}
                     </p>
                   </div>
                 </div>
@@ -264,9 +268,11 @@ export function StepSource({
                     >
                       {isConnectingGithub
                         ? "Redirecting..."
-                        : githubConnectionStatus === "connected"
-                          ? "Add Account"
-                          : "Connect GitHub"}
+                        : githubReconnectRequired
+                          ? "Reconnect GitHub"
+                          : githubConnectionStatus === "connected"
+                            ? "Add Account"
+                            : "Connect GitHub"}
                     </Button>
                     {githubConnectionStatus === "connected" && (
                       <Button
@@ -288,6 +294,17 @@ export function StepSource({
                 <div className="mt-3 p-2.5 rounded-lg border border-destructive/20 bg-destructive/5 text-xs text-destructive flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
                   GitHub connection failed. Please try connecting again.
+                </div>
+              )}
+
+              {githubReconnectRequired && (
+                <div
+                  role="alert"
+                  className="mt-3 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  GitHub access expired or was revoked. Reconnect GitHub to
+                  continue listing repositories.
                 </div>
               )}
             </div>
