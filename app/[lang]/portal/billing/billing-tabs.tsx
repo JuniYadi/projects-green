@@ -5,22 +5,16 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OverviewTab } from "./tabs/overview-tab"
 import { UsageTab } from "./tabs/usage-tab"
-import { TopupTab } from "./tabs/topup-tab"
-import { MembersTab } from "./tabs/members-tab"
 import { SubscriptionsTab } from "./tabs/subscriptions-tab"
 import { AdjustmentsTab } from "./tabs/adjustments-tab"
-import { InvoicesTab } from "./tabs/invoices-tab"
 
-type TabValue = "overview" | "usage" | "topup" | "members" | "subscriptions" | "adjustments" | "invoices"
+type TabValue = "overview" | "usage" | "subscriptions" | "adjustments"
 
 const TABS: { value: TabValue; label: string }[] = [
   { value: "overview", label: "Overview" },
   { value: "usage", label: "Usage" },
-  { value: "topup", label: "Topup" },
-  { value: "members", label: "Members" },
   { value: "subscriptions", label: "Subscriptions" },
   { value: "adjustments", label: "Adjustments" },
-  { value: "invoices", label: "Invoices" },
 ]
 
 export function BillingTabs({ lang }: { lang: string }) {
@@ -49,11 +43,8 @@ export function BillingTabs({ lang }: { lang: string }) {
 
       {activeTab === "overview" && <OverviewTab lang={lang} />}
       {activeTab === "usage" && <UsageTab lang={lang} />}
-      {activeTab === "topup" && <TopupTab lang={lang} />}
-      {activeTab === "members" && <MembersTab lang={lang} />}
       {activeTab === "subscriptions" && <SubscriptionsTab />}
       {activeTab === "adjustments" && <AdjustmentsTab />}
-      {activeTab === "invoices" && <InvoicesTab lang={lang} />}
     </div>
   )
 }

@@ -65,10 +65,10 @@ export function GatewaysTab() {
           name: String(formData.get("name") || ""),
           type: String(formData.get("type") || ""),
           config: {
-            merchantCode: "",
-            apiKey: "",
-            sandboxUrl: "",
-            productionUrl: "",
+            merchantCode: String(formData.get("merchantCode") || ""),
+            apiKey: String(formData.get("apiKey") || ""),
+            sandboxUrl: String(formData.get("sandboxUrl") || ""),
+            productionUrl: String(formData.get("productionUrl") || ""),
           },
         }),
       })
@@ -187,6 +187,22 @@ export function GatewaysTab() {
               <label className="space-y-2 text-sm font-medium">
                 <span>Provider type</span>
                 <Input name="type" placeholder="midtrans" required />
+              </label>
+              <label className="space-y-2 text-sm font-medium">
+                <span>Merchant code</span>
+                <Input name="merchantCode" placeholder="M12345" />
+              </label>
+              <label className="space-y-2 text-sm font-medium">
+                <span>API key</span>
+                <Input name="apiKey" type="password" placeholder="Optional" />
+              </label>
+              <label className="space-y-2 text-sm font-medium">
+                <span>Sandbox URL</span>
+                <Input name="sandboxUrl" placeholder="https://sandbox.example.com" />
+              </label>
+              <label className="space-y-2 text-sm font-medium md:col-span-2">
+                <span>Production URL</span>
+                <Input name="productionUrl" placeholder="https://api.example.com" />
               </label>
             </div>
             <div className="mt-4 flex gap-2">

@@ -108,14 +108,14 @@ export function OverviewTab({ lang }: OverviewTabProps) {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-medium">
               <CalendarIcon className="h-4 w-4" />
-              Quick Actions
+              Quick Links
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <Button asChild className="w-full justify-start" size="sm">
-              <Link href={`/${lang}/portal/billing?tab=invoices`}>
+              <Link href={`/${lang}/portal/billing?tab=subscriptions`}>
                 <FileTextIcon className="mr-2 h-4 w-4" />
-                View All Invoices
+                View Subscriptions
               </Link>
             </Button>
             <Button
@@ -124,8 +124,8 @@ export function OverviewTab({ lang }: OverviewTabProps) {
               className="w-full justify-start"
               size="sm"
             >
-              <Link href={`/${lang}/console/organization/members`}>
-                Manage Organization Members
+              <Link href={`/${lang}/portal/billing?tab=usage`}>
+                View Usage
               </Link>
             </Button>
           </CardContent>

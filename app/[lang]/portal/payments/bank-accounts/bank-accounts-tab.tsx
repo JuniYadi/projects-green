@@ -11,8 +11,8 @@ interface BankAccount {
   id: string
   bankName: string
   accountNumber: string
-  accountHolder: string
-  isVerified: boolean
+  accountName: string
+  isActive: boolean
   isDefault: boolean
   createdAt: string
 }
@@ -254,7 +254,7 @@ export function BankAccountsTab() {
                 <span>Account holder</span>
                 <Input
                   name="accountName"
-                  defaultValue={editingAccount.accountHolder}
+                  defaultValue={editingAccount.accountName}
                   required
                 />
               </label>
@@ -291,14 +291,14 @@ export function BankAccountsTab() {
                     <div className="space-y-1">
                       <div className="font-medium">{account.bankName}</div>
                       <div className="text-xs text-muted-foreground">
-                        {account.accountNumber} - {account.accountHolder}
+                        {account.accountNumber} - {account.accountName}
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge
-                          variant={account.isVerified ? "default" : "secondary"}
+                          variant={account.isActive ? "default" : "secondary"}
                           className="text-xs"
                         >
-                          {account.isVerified ? "Verified" : "Pending"}
+                          {account.isActive ? "Active" : "Inactive"}
                         </Badge>
                         {account.isDefault && (
                           <Badge variant="outline" className="text-xs">
