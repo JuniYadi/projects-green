@@ -31,6 +31,7 @@ const STATUS_VARIANTS: Record<PaymentConfirmation["status"], "default" | "second
 
 export function ConfirmationsTab() {
   const [state, setState] = useState<ConfirmationsRequestState>({ status: "loading" })
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null)
 
   const fetchConfirmations = useCallback(async () => {
     try {
@@ -57,6 +58,39 @@ export function ConfirmationsTab() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchConfirmations()
   }, [fetchConfirmations])
+
+  async function reviewConfirmation(id: string, action: "approve" | "reject") {
+    setPendingActionId(`${action}:${id}`)
+    try {
+      const response = await fetch(
+        `/api/portal/payments/confirmations/${id}/${action}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body:
+            action === "reject"
+              ? JSON.stringify({
+                  action: "reject",
+                  reason: "Rejected from portal review",
+                })
+              : undefined,
+        }
+      )
+      const payload = await response.json()
+      if (!response.ok || !payload.ok) {
+        setState({
+          status: "error",
+          message: payload.message || `Failed to ${action} confirmation`,
+        })
+        return
+      }
+      await fetchConfirmations()
+    } catch {
+      setState({ status: "error", message: `Failed to ${action} confirmation` })
+    } finally {
+      setPendingActionId(null)
+    }
+  }
 
   if (state.status === "loading") {
     return (
@@ -93,12 +127,14 @@ export function ConfirmationsTab() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Payment Confirmations</CardTitle>
-          <Button type="button" size="sm">
-            Submit Manual Payment
-          </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+          Manual payment confirmations must be submitted from a customer invoice/top-up flow so the
+          invoice and organization context are known. Use this tab to review pending confirmations.
+        </div>
+
         {confirmations.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             No payment confirmations to review.
@@ -126,7 +162,8 @@ export function ConfirmationsTab() {
                     {confirmation.bankName} - {confirmation.accountNumber}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Submitted: {new Date(confirmation.submittedAt).toLocaleDateString("id-ID")}
+                    Submitted:{" "}
+                    {new Date(confirmation.submittedAt).toLocaleDateString("id-ID")}
                   </div>
                   {confirmation.notes && (
                     <div className="mt-1 text-xs italic text-muted-foreground">
@@ -136,10 +173,25 @@ export function ConfirmationsTab() {
                 </div>
                 {confirmation.status === "pending" && (
                   <div className="flex items-center gap-2">
-                    <Button type="button" size="sm" variant="outline">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={pendingActionId !== null}
+                      onClick={() =>
+                        void reviewConfirmation(confirmation.id, "reject")
+                      }
+                    >
                       Reject
                     </Button>
-                    <Button type="button" size="sm">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={pendingActionId !== null}
+                      onClick={() =>
+                        void reviewConfirmation(confirmation.id, "approve")
+                      }
+                    >
                       Approve
                     </Button>
                   </div>
