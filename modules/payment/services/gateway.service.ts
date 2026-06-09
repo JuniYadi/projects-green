@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client"
+
 import { prisma } from "@/lib/prisma"
 import { EncryptionService } from "./encryption.service"
 import type { DuitkuConfig, PaymentGatewayResponse } from "@/modules/payment/types/payment.types"

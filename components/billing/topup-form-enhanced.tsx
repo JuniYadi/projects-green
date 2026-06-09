@@ -81,7 +81,8 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
             }
           }
         }
-      } catch {
+      } catch (err) {
+        console.error("[topup] Failed to fetch payment methods:", err)
         // Keep conservative defaults (manual only) on failure.
       }
     }

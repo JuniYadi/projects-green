@@ -19,7 +19,7 @@ export type CurrencyDTO = {
   sortOrder: number
 }
 
-type CurrencyRecord = Prisma.CurrencyGetPayload<{}>
+type CurrencyRecord = Prisma.CurrencyGetPayload<object>
 
 export function toCurrencyDTO(currency: CurrencyRecord): CurrencyDTO {
   return {

@@ -91,7 +91,7 @@ export const createTopupRoutes = () =>
             amount,
             email: `${auth.organizationId}@payment.local`,
             customerName: `Org ${auth.organizationId}`,
-            productDetails: `Top Up Balance - ${invoice.invoiceNumber}`,
+            productDetails: `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
             paymentMethod: duitkuMethod,
           })
 

@@ -9,6 +9,7 @@ import {
 } from "@/modules/auth/invite-cookie"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { AppLocale } from "@/lib/i18n/config"
+import { APP_NAME } from "@/lib/app-config"
 import {
   acceptTenantInvitation,
   findTenantInvitationByToken,
@@ -122,7 +123,7 @@ export default async function InvitePage({
           <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <span className="text-xs">A</span>
           </div>
-          Acme Inc.
+          {APP_NAME}
         </a>
 
         {!invitation ? (

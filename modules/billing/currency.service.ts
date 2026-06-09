@@ -1,10 +1,10 @@
 import { Prisma } from "@prisma/client"
-import type { PrismaClient } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { toCurrencyDTO, type CurrencyDTO } from "./currency.dto"
 
-type CurrencyRecord = Prisma.CurrencyGetPayload<{}>
+type CurrencyRecord = Prisma.CurrencyGetPayload<object>
+type CurrencyDb = typeof prisma
 
 export class CurrencyNotFoundError extends Error {
   constructor(code: string) {
@@ -27,10 +27,10 @@ export class BaseCurrencyMissingError extends Error {
  * avoid floating-point drift in a financial context.
  */
 export class CurrencyService {
-  private db: PrismaClient
+  private db: CurrencyDb
 
-  constructor(client?: PrismaClient) {
-    this.db = client ?? (prisma as unknown as PrismaClient)
+  constructor(client?: CurrencyDb) {
+    this.db = client ?? prisma
   }
 
   async list(includeInactive = false): Promise<CurrencyRecord[]> {

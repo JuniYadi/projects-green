@@ -73,7 +73,7 @@ function calculateCostProjection(
   if (paidInvoices.length === 0) return null
 
   const totalSpent = paidInvoices.reduce(
-    (sum, inv) => sum + Number.parseFloat(inv.totalAmountIdr),
+    (sum, inv) => sum + Number(inv.totalAmountIdr),
     0
   )
   const avgMonthly = totalSpent / paidInvoices.length

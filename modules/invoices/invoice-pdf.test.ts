@@ -17,6 +17,9 @@ const invoice: InvoiceDetail = {
   periodStart: "2026-05-01T00:00:00.000Z",
   periodEnd: "2026-05-31T23:59:59.000Z",
   paidAt: null,
+  type: null,
+  paymentMethod: null,
+  manualTransfer: null,
   lineItems: [
     {
       id: "line_1",

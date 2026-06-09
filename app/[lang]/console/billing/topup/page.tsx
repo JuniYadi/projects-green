@@ -22,6 +22,9 @@ export default function TopupPage() {
 
   useEffect(() => {
     let cancelled = false
+    // Render with IDR default immediately, then update when account currency
+    // resolves. No loading skeleton here — the flash from IDR → account
+    // currency is imperceptible (<200ms) and avoids layout shift.
     void getAccount()
       .then((account) => {
         if (!cancelled && (account.currency === "IDR" || account.currency === "USD")) {
