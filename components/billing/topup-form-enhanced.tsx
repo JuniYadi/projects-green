@@ -25,10 +25,11 @@ interface BankAccount {
 
 interface TopupFormEnhancedProps {
   className?: string
+  currency?: "IDR" | "USD"
   onSuccess?: (result: { invoiceId: string; amount: number; paymentMethod: PaymentMethod }) => void
 }
 
-export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedProps) {
+export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: TopupFormEnhancedProps) {
   const router = useRouter()
   const [formState, setFormState] = useState<FormState>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -103,15 +104,15 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
   const isValid = amount >= 10000 && amount <= 100000000
 
   function formatCurrency(value: number): string {
-    return new Intl.NumberFormat("id-ID", {
+    return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID", {
       style: "currency",
-      currency: "IDR",
+      currency,
       minimumFractionDigits: 0,
     }).format(value)
   }
 
   function formatAmount(value: number): string {
-    return new Intl.NumberFormat("id-ID").format(value)
+    return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID").format(value)
   }
 
   function parseFormattedAmount(value: string): number {
@@ -200,7 +201,7 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
       <div className="space-y-6">
         {/* Amount Input */}
         <Field>
-          <FieldLabel>Amount (IDR)</FieldLabel>
+          <FieldLabel>Amount ({currency})</FieldLabel>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {[50000, 100000, 250000, 500000, 1000000].map((preset) => (
               <Button
@@ -239,14 +240,14 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
               className="pr-16"
             />
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-              IDR
+              {currency}
             </span>
           </div>
           {amount > 0 && amount < 10000 && (
-            <p className="mt-1 text-sm text-destructive">Minimum topup is IDR 10,000</p>
+            <p className="mt-1 text-sm text-destructive">Minimum topup is {formatCurrency(10000)}</p>
           )}
           {amount > 100000000 && (
-            <p className="mt-1 text-sm text-destructive">Maximum topup is IDR 100,000,000</p>
+            <p className="mt-1 text-sm text-destructive">Maximum topup is {formatCurrency(100000000)}</p>
           )}
         </Field>
 

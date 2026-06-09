@@ -40,6 +40,14 @@ type WorkOSMembership = {
   } | null
 }
 
+type WorkOSUser = {
+  id: string
+  email?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  profilePictureUrl?: string | null
+}
+
 type WorkOSInvitation = {
   id: string
   email: string
@@ -201,16 +209,37 @@ export const getBootstrapCreatorRoleSlug = () => {
 export const listTenantMemberships = async (
   organizationId: string
 ): Promise<TenantMembershipSummary[]> => {
-  const memberships = await getWorkOS()
-    .userManagement.listOrganizationMemberships({
-      organizationId,
-      statuses: ["active", "inactive", "pending"],
-    })
-    .then((result) => result.autoPagination())
+  const workos = getWorkOS()
 
-  return memberships.map((membership) =>
-    toTenantMembershipSummary(membership as WorkOSMembership)
+  const [memberships, users] = await Promise.all([
+    workos.userManagement
+      .listOrganizationMemberships({
+        organizationId,
+        statuses: ["active", "inactive", "pending"],
+      })
+      .then((result) => result.autoPagination()),
+    workos.userManagement
+      .listUsers({ organizationId })
+      .then((result) => result.autoPagination())
+      .catch(() => [] as WorkOSUser[]),
+  ])
+
+  // listOrganizationMemberships only returns userId, not the hydrated user
+  // profile. Build a lookup from listUsers so members render with email,
+  // name, and avatar instead of the raw user id.
+  const usersById = new Map<string, WorkOSUser>(
+    (users as WorkOSUser[]).map((user) => [user.id, user])
   )
+
+  return memberships.map((membership) => {
+    const typedMembership = membership as WorkOSMembership
+    const user = usersById.get(typedMembership.userId) ?? null
+
+    return toTenantMembershipSummary({
+      ...typedMembership,
+      user: typedMembership.user ?? user,
+    })
+  })
 }
 
 export const getTenantMembershipById = async (

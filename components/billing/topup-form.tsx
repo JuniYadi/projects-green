@@ -10,12 +10,13 @@ import { CheckCircleIcon } from "@phosphor-icons/react"
 
 type TopupFormProps = {
   className?: string
+  currency?: "IDR" | "USD"
   onSuccess?: (result: { adjustmentId: string; newBalanceIdr: string; amountIdr: string }) => void
 }
 
 type FormState = "idle" | "submitting" | "success" | "error"
 
-export function TopupForm({ className, onSuccess }: TopupFormProps) {
+export function TopupForm({ className, currency = "IDR", onSuccess }: TopupFormProps) {
   const [formState, setFormState] = useState<FormState>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successData, setSuccessData] = useState<{ adjustmentId: string; newBalanceIdr: string; amountIdr: string } | null>(null)
@@ -53,11 +54,11 @@ export function TopupForm({ className, onSuccess }: TopupFormProps) {
     }
   }
 
-  function formatCurrency(amountIdr: string): string {
-    const amt = Number.parseFloat(amountIdr)
-    return new Intl.NumberFormat("id-ID", {
+  function formatCurrency(amountValue: string): string {
+    const amt = Number.parseFloat(amountValue)
+    return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID", {
       style: "currency",
-      currency: "IDR",
+      currency,
       minimumFractionDigits: 0,
     }).format(amt)
   }
@@ -102,7 +103,7 @@ export function TopupForm({ className, onSuccess }: TopupFormProps) {
     <form onSubmit={handleSubmit} className={className}>
       <div className="space-y-4">
         <Field>
-          <FieldLabel>Amount (IDR)</FieldLabel>
+          <FieldLabel>Amount ({currency})</FieldLabel>
           <Input
             type="number"
             min={10000}
@@ -114,10 +115,10 @@ export function TopupForm({ className, onSuccess }: TopupFormProps) {
             disabled={formState === "submitting"}
           />
           {amount > 0 && amount < 10000 && (
-            <p className="mt-1 text-sm text-destructive">Minimum topup is IDR 10,000</p>
+            <p className="mt-1 text-sm text-destructive">Minimum topup is {formatCurrency("10000")}</p>
           )}
           {amount > 1000000 && (
-            <p className="mt-1 text-sm text-destructive">Maximum topup is IDR 1,000,000</p>
+            <p className="mt-1 text-sm text-destructive">Maximum topup is {formatCurrency("1000000")}</p>
           )}
         </Field>
 

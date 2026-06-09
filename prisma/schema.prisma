@@ -597,7 +597,7 @@ model BillingAccount {
   id             String               @id @default(cuid())
   organizationId String               @unique
   tenantId       String?
-  currency       String               @default("USD")
+  currency       String               @default("IDR")
   timezone       String               @default("UTC")
   status         BillingAccountStatus @default(ACTIVE)
   balance        Decimal              @default(0) @db.Decimal(12, 2)

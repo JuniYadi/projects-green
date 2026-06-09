@@ -57,9 +57,10 @@ const toServerError = (set: RouteSet, message: string) => {
   }
 }
 
-function formatBalanceIdr(amount: Prisma.Decimal): string {
+function formatBalance(amount: Prisma.Decimal, currency: string): string {
   const num = Number(amount)
-  return `IDR ${num.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const locale = currency === "USD" ? "en-US" : "id-ID"
+  return `${currency} ${num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function daysSince(date: Date): string {
@@ -99,6 +100,7 @@ export const createBillingAccountRoutes = (
         })
 
         const balance = account.balance
+        const currency = account.currency
         const isPositive = balance.gt(0)
         const isAboveWarn = balance.gte(MINIMUM_BALANCE_WARN_IDR)
         const accountAge = daysSince(account.createdAt)
@@ -106,8 +108,9 @@ export const createBillingAccountRoutes = (
         return {
           ok: true as const,
           organizationId: account.organizationId,
+          currency,
           balanceIdr: balance.toFixed(2),
-          formattedBalance: formatBalanceIdr(balance),
+          formattedBalance: formatBalance(balance, currency),
           isAboveWarn,
           isPositive,
           accountAge,

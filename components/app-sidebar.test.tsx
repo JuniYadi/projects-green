@@ -84,7 +84,9 @@ describe("resolveSidebarMenu", () => {
     ])
     expect(projects.find((project) => project.name === "Overview")?.isActive).toBe(true)
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp", "Organization"])
+    // Organization lives in the top-left switcher dropdown, not the sidebar
+    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp"])
+    expect(navMain.map((item) => item.title)).not.toContain("Organization")
     expect(navMain[0]?.isActive).toBe(false)
   })
 
@@ -99,7 +101,7 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp", "Organization"])
+    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp"])
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
       "Billing",
@@ -151,14 +153,14 @@ describe("resolveSidebarMenu", () => {
     ])
   })
 
-  it("marks organization active for console organization routes", () => {
+  it("omits organization from console sidebar navMain (lives in top-left switcher)", () => {
     const { navMain } = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/organization/members",
+      pathname: "/console/organization",
       locale: "en",
     })
 
-    expect(navMain.find((item) => item.title === "Organization")?.isActive).toBe(true)
+    expect(navMain.map((item) => item.title)).not.toContain("Organization")
   })
 
   it("limits portal app hosting context to admin scope", () => {

@@ -11,6 +11,10 @@ const mockListOrganizationMemberships = mock(async () => ({
   autoPagination: mockAutoPagination,
 }))
 const mockGetOrganizationMembership = mock(async () => null)
+const mockListUsersAutoPagination = mock(async () => [])
+const mockListUsers = mock(async () => ({
+  autoPagination: mockListUsersAutoPagination,
+}))
 const mockListInvitations = mock(async () => ({
   autoPagination: mockAutoPagination,
 }))
@@ -40,6 +44,7 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
     userManagement: {
       listOrganizationMemberships: mockListOrganizationMemberships,
       getOrganizationMembership: mockGetOrganizationMembership,
+      listUsers: mockListUsers,
       listInvitations: mockListInvitations,
       sendInvitation: mockSendInvitation,
       getInvitation: mockGetInvitation,

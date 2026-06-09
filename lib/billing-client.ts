@@ -3,6 +3,7 @@
 export type BillingAccount = {
   ok: true
   tenantId: string
+  currency: string
   balanceIdr: string
   formattedBalance: string
   isAboveWarn: boolean
