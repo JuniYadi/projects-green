@@ -100,6 +100,27 @@ export type GithubWebhookHandlerEventStore = {
   markEnqueueFailed: (eventId: string, processError: string) => Promise<void>
 }
 
+export type CreateGithubWebhookEventInputWithMeta = CreateGithubWebhookEventInput & {
+  repositoryFullName: string | null
+  repositoryOwner: string | null
+  repositoryName: string | null
+  ref: string | null
+  branch: string | null
+  commitSha: string | null
+  commitMessage: string | null
+  commitAuthorName: string | null
+  commitAuthorEmail: string | null
+  commitUrl: string | null
+  senderLogin: string | null
+  senderAvatarUrl: string | null
+  repositoryConnectionId: string | null
+  applicationStackId: string | null
+  eventDisposition: string
+  ignoreReason: string | null
+  responseStatus: number | null
+  handlerDurationMs: number | null
+}
+
 export type GithubWebhookQueueProducer = {
   enqueueEventId: (eventId: string) => Promise<void>
 }
@@ -108,6 +129,34 @@ export type GithubWebhookHandlerDeps = {
   webhookSecret: string | null | undefined
   store: GithubWebhookHandlerEventStore
   queue: GithubWebhookQueueProducer
+  normalizePayload?: (payload: unknown) => {
+    githubInstallationId: bigint | null
+    githubRepositoryId: bigint | null
+    repositoryFullName: string | null
+    repositoryOwner: string | null
+    repositoryName: string | null
+    ref: string | null
+    branch: string | null
+    commitSha: string | null
+    commitMessage: string | null
+    commitAuthorName: string | null
+    commitAuthorEmail: string | null
+    commitUrl: string | null
+    senderLogin: string | null
+    senderAvatarUrl: string | null
+  }
+  classifyEvent?: (input: {
+    eventName: string
+    githubInstallationId: bigint | null
+    githubRepositoryId: bigint | null
+    branch: string | null
+  }) => Promise<{
+    eventDisposition: string
+    ignoreReason: string | null
+    repositoryConnectionId: string | null
+    applicationStackId: string | null
+  }>
+  now?: () => number
 }
 
 export type BuildDispatchPayload = {
@@ -368,6 +417,7 @@ export const evaluatePushRules = ({
 
 export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
   return async (request: Request) => {
+    const startedAt = deps.now?.() ?? Date.now()
     const eventName = getHeaderValue(request, "X-GitHub-Event")
     const deliveryId = getHeaderValue(request, "X-GitHub-Delivery")
     const signatureHeader = getHeaderValue(request, "X-Hub-Signature-256")
@@ -440,33 +490,71 @@ export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
       )
     }
 
-    const installation =
-      payload.installation &&
-      typeof payload.installation === "object" &&
-      !Array.isArray(payload.installation)
-        ? (payload.installation as Record<string, unknown>)
-        : null
-    const repository =
-      payload.repository &&
-      typeof payload.repository === "object" &&
-      !Array.isArray(payload.repository)
-        ? (payload.repository as Record<string, unknown>)
-        : null
-    const action =
-      typeof payload.action === "string" && payload.action.trim().length > 0
-        ? payload.action
-        : null
+    const normalizePayload = deps.normalizePayload ?? ((p: unknown) => ({
+      githubInstallationId: null as bigint | null,
+      githubRepositoryId: null as bigint | null,
+      repositoryFullName: null as string | null,
+      repositoryOwner: null as string | null,
+      repositoryName: null as string | null,
+      ref: null as string | null,
+      branch: null as string | null,
+      commitSha: null as string | null,
+      commitMessage: null as string | null,
+      commitAuthorName: null as string | null,
+      commitAuthorEmail: null as string | null,
+      commitUrl: null as string | null,
+      senderLogin: null as string | null,
+      senderAvatarUrl: null as string | null,
+    }))
+
+    const normalized = normalizePayload(payload)
+
+    const classifyEvent = deps.classifyEvent ?? (async () => ({
+      eventDisposition: "tracked",
+      ignoreReason: null,
+      repositoryConnectionId: null,
+      applicationStackId: null,
+    }))
+
+    const classification = await classifyEvent({
+      eventName,
+      githubInstallationId: normalized.githubInstallationId,
+      githubRepositoryId: normalized.githubRepositoryId,
+      branch: normalized.branch,
+    })
+
+    const handlerDurationMs = Math.max(0, (deps.now?.() ?? Date.now()) - startedAt)
 
     let event!: GithubWebhookRecord
     try {
       event = await deps.store.create({
         deliveryId,
         eventName,
-        action,
-        githubInstallationId: toNullableBigInt(installation?.id),
-        githubRepositoryId: toNullableBigInt(repository?.id),
+        action: typeof payload.action === "string" && payload.action.trim().length > 0
+          ? payload.action
+          : null,
+        githubInstallationId: normalized.githubInstallationId,
+        githubRepositoryId: normalized.githubRepositoryId,
         payloadJson: payload,
         payloadSha256: hashPayload(rawBody),
+        repositoryFullName: normalized.repositoryFullName,
+        repositoryOwner: normalized.repositoryOwner,
+        repositoryName: normalized.repositoryName,
+        ref: normalized.ref,
+        branch: normalized.branch,
+        commitSha: normalized.commitSha,
+        commitMessage: normalized.commitMessage,
+        commitAuthorName: normalized.commitAuthorName,
+        commitAuthorEmail: normalized.commitAuthorEmail,
+        commitUrl: normalized.commitUrl,
+        senderLogin: normalized.senderLogin,
+        senderAvatarUrl: normalized.senderAvatarUrl,
+        repositoryConnectionId: classification.repositoryConnectionId,
+        applicationStackId: classification.applicationStackId,
+        eventDisposition: classification.eventDisposition,
+        ignoreReason: classification.ignoreReason,
+        responseStatus: 202,
+        handlerDurationMs,
       })
     } catch (error) {
       if (isUniqueConstraintError(error)) {
