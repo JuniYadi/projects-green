@@ -35,11 +35,44 @@ export class GatewayService {
     return this.toResponse(gateway)
   }
 
+  /**
+   * List active gateways that can settle the given currency. A gateway with an
+   * empty `supportedCurrencies` list is treated as currency-agnostic and is
+   * always included (backwards compatible with rows created before this field
+   * existed).
+   */
+  async listForCurrency(
+    currency: string,
+    options: { type?: string } = {}
+  ): Promise<PaymentGatewayResponse[]> {
+    const gateways = await prisma.paymentGateway.findMany({
+      where: { isActive: true, ...(options.type ? { type: options.type } : {}) },
+      orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
+    })
+
+    return gateways
+      .filter((gw) => {
+        const supported = (gw.supportedCurrencies ?? []) as string[]
+        return supported.length === 0 || supported.includes(currency)
+      })
+      .map((gw) => this.toResponse(gw))
+  }
+
+  /** First active gateway of `type` that can settle `currency`, if any. */
+  async findByTypeForCurrency(
+    type: string,
+    currency: string
+  ): Promise<PaymentGatewayResponse | null> {
+    const gateways = await this.listForCurrency(currency, { type })
+    return gateways[0] ?? null
+  }
+
   async create(input: {
     name: string
     type: string
     config: DuitkuConfig
     isDefault?: boolean
+    supportedCurrencies?: string[]
   }): Promise<PaymentGatewayResponse> {
     if (input.isDefault) {
       await prisma.paymentGateway.updateMany({
@@ -55,6 +88,7 @@ export class GatewayService {
         name: input.name,
         type: input.type,
         config: encryptedConfig,
+        supportedCurrencies: input.supportedCurrencies ?? [],
         isDefault: input.isDefault || false,
         isActive: true,
       },
@@ -67,6 +101,7 @@ export class GatewayService {
     name?: string
     config?: DuitkuConfig
     isDefault?: boolean
+    supportedCurrencies?: string[]
   }): Promise<PaymentGatewayResponse> {
     const existing = await prisma.paymentGateway.findUnique({ where: { id } })
     if (!existing) throw new Error("Gateway not found")
@@ -78,10 +113,12 @@ export class GatewayService {
       })
     }
 
-    const data: Record<string, unknown> = {}
+    const data: Prisma.PaymentGatewayUpdateInput = {}
     if (input.name) data.name = input.name
     if (input.config) data.config = this.encryption.encryptField(JSON.stringify(input.config))
     if (input.isDefault !== undefined) data.isDefault = input.isDefault
+    if (input.supportedCurrencies !== undefined)
+      data.supportedCurrencies = input.supportedCurrencies
 
     const gateway = await prisma.paymentGateway.update({
       where: { id },
@@ -116,6 +153,7 @@ export class GatewayService {
     name: string
     type: string
     config: unknown
+    supportedCurrencies: string[]
     isActive: boolean
     isDefault: boolean
   }): PaymentGatewayResponse {
@@ -139,6 +177,7 @@ export class GatewayService {
       id: gateway.id,
       name: gateway.name,
       type: gateway.type,
+      supportedCurrencies: gateway.supportedCurrencies ?? [],
       isActive: gateway.isActive,
       isDefault: gateway.isDefault,
       config: config || {

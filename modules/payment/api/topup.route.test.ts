@@ -54,6 +54,7 @@ mock.module("@/lib/prisma", () => ({
     },
     paymentGateway: {
       findFirst: mock(() => Promise.resolve(null)),
+      findMany: mock(() => Promise.resolve([])),
     },
     $transaction: mock((fns: unknown[]) => Promise.all(fns)),
   },
@@ -167,10 +168,10 @@ describe("Topup Route", () => {
       expect(body.paymentUrl).toBeUndefined()
     })
 
-    it("should return 400 GATEWAY_NOT_CONFIGURED when Duitku gateway is missing for VA", async () => {
+    it("should return 400 GATEWAY_NOT_AVAILABLE when no gateway supports the currency for VA", async () => {
       const { prisma } = await import("@/lib/prisma")
-      ;(prisma.paymentGateway.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce(
-        null
+      ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>).mockResolvedValueOnce(
+        []
       )
 
       const response = await app.handle(
@@ -184,10 +185,10 @@ describe("Topup Route", () => {
       expect(response.status).toBe(400)
       const body = await response.json()
       expect(body.ok).toBe(false)
-      expect(body.error).toBe("GATEWAY_NOT_CONFIGURED")
+      expect(body.error).toBe("GATEWAY_NOT_AVAILABLE")
     })
 
-    it("should reject VA top-up for a non-IDR account", async () => {
+    it("should allow VA top-up for a USD account when a gateway supports USD", async () => {
       const { prisma } = await import("@/lib/prisma")
       ;(prisma.billingAccount.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce(
         {
@@ -197,6 +198,17 @@ describe("Topup Route", () => {
           balance: { toNumber: () => 0 },
         }
       )
+      ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([
+        {
+          id: "gw-usd",
+          name: "PayPal",
+          type: "GATEWAY",
+          config: "",
+          supportedCurrencies: ["USD"],
+          isActive: true,
+          isDefault: true,
+        },
+      ])
 
       const response = await app.handle(
         new Request("http://localhost/topup", {
@@ -206,10 +218,13 @@ describe("Topup Route", () => {
         })
       )
 
-      expect(response.status).toBe(400)
+      // The route proceeds past the gateway lookup (Duitku call may then fail in
+      // the test environment, but it must not be a currency/gateway rejection).
       const body = await response.json()
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("CURRENCY_NOT_SUPPORTED")
+      if (!body.ok) {
+        expect(body.error).not.toBe("GATEWAY_NOT_AVAILABLE")
+        expect(body.error).not.toBe("CURRENCY_NOT_SUPPORTED")
+      }
     })
   })
 

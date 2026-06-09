@@ -51,6 +51,9 @@ export interface PaymentGatewayResponse {
   id: string
   name: string
   type: string
+  // ISO currency codes this gateway can settle. A gateway is offered when
+  // this list includes the account currency.
+  supportedCurrencies: string[]
   isActive: boolean
   isDefault: boolean
   config: {
@@ -66,6 +69,8 @@ export interface BankAccountResponse {
   bankName: string
   accountNumber: string
   accountName: string
+  // ISO currency code this account receives, e.g. "IDR" or "USD".
+  currency: string
   isActive: boolean
   isDefault: boolean
 }

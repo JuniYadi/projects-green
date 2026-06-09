@@ -89,6 +89,23 @@ export class PaymentService {
         periodStart: now,
         periodEnd: dueDate,
         metadataJson: (metadata ?? Prisma.DbNull) as Prisma.InputJsonValue,
+        // Every invoice must carry at least one line so the detail view and PDF
+        // render a meaningful description / qty / unit price / total.
+        lines: {
+          create: {
+            lineType: "ADJUSTMENT",
+            description:
+              uniqueCode !== undefined
+                ? `Balance Top-Up (includes unique code ${uniqueCode})`
+                : "Balance Top-Up",
+            quantity: new Prisma.Decimal(1),
+            unitPrice: new Prisma.Decimal(finalAmount),
+            amount: new Prisma.Decimal(finalAmount),
+            currency: account.currency,
+            periodStart: now,
+            periodEnd: dueDate,
+          },
+        },
       },
     })
 
@@ -229,6 +246,16 @@ export class PaymentService {
         currency: account.currency,
         periodStart: new Date(),
         periodEnd: dueDate,
+        lines: {
+          create: {
+            lineType: "ADJUSTMENT",
+            description: "Balance Top-Up",
+            quantity: new Prisma.Decimal(1),
+            unitPrice: new Prisma.Decimal(gapAmount),
+            amount: new Prisma.Decimal(gapAmount),
+            currency: account.currency,
+          },
+        },
       },
     })
   }

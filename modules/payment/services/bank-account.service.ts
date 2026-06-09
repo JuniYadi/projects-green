@@ -31,6 +31,7 @@ export class BankAccountService {
     bankName: string
     accountName: string
     accountNumber: string
+    currency?: string
     isDefault?: boolean
   }): Promise<BankAccountResponse> {
     if (input.isDefault) {
@@ -46,6 +47,7 @@ export class BankAccountService {
         bankName: input.bankName,
         accountName: this.encryption.encryptField(input.accountName),
         accountNumber: this.encryption.encryptField(input.accountNumber),
+        currency: input.currency ?? "IDR",
         isDefault: input.isDefault || false,
         isActive: true,
       },
@@ -61,6 +63,7 @@ export class BankAccountService {
       bankName?: string
       accountName?: string
       accountNumber?: string
+      currency?: string
       isDefault?: boolean
       isActive?: boolean
     }
@@ -80,6 +83,7 @@ export class BankAccountService {
     if (input.bankName) data.bankName = input.bankName
     if (input.accountName) data.accountName = this.encryption.encryptField(input.accountName)
     if (input.accountNumber) data.accountNumber = this.encryption.encryptField(input.accountNumber)
+    if (input.currency) data.currency = input.currency
     if (input.isDefault !== undefined) data.isDefault = input.isDefault
     if (input.isActive !== undefined) data.isActive = input.isActive
 
@@ -103,8 +107,12 @@ export class BankAccountService {
     return this.toResponse(updated)
   }
 
-  async getActiveAccounts(): Promise<BankAccountResponse[]> {
-    return this.list({ includeInactive: false })
+  async getActiveAccounts(currency?: string): Promise<BankAccountResponse[]> {
+    const accounts = await prisma.bankAccount.findMany({
+      where: { isActive: true, ...(currency ? { currency } : {}) },
+      orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
+    })
+    return accounts.map((account) => this.toResponse(account))
   }
 
   private toResponse(account: {
@@ -113,6 +121,7 @@ export class BankAccountService {
     bankName: string
     accountName: string
     accountNumber: string
+    currency: string
     isActive: boolean
     isDefault: boolean
   }): BankAccountResponse {
@@ -122,6 +131,7 @@ export class BankAccountService {
       bankName: account.bankName,
       accountName: this.encryption.decryptFieldOptional(account.accountName) || "",
       accountNumber: this.encryption.decryptFieldOptional(account.accountNumber) || "",
+      currency: account.currency,
       isActive: account.isActive,
       isDefault: account.isDefault,
     }

@@ -33,14 +33,15 @@ export const createAdminGatewayRoutes = () =>
         return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
       }
 
-      const { name, type, config, isDefault } = body as {
+      const { name, type, config, isDefault, supportedCurrencies } = body as {
         name: string
         type: string
         config: { merchantCode: string; apiKey: string; sandboxUrl: string; productionUrl: string }
         isDefault?: boolean
+        supportedCurrencies?: string[]
       }
 
-      const gateway = await gatewayService.create({ name, type, config, isDefault })
+      const gateway = await gatewayService.create({ name, type, config, isDefault, supportedCurrencies })
       return { ok: true, data: gateway }
     })
     .put("/:id", async ({ body, params }) => {
@@ -54,13 +55,14 @@ export const createAdminGatewayRoutes = () =>
         return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
       }
 
-      const { name, config, isDefault } = body as {
+      const { name, config, isDefault, supportedCurrencies } = body as {
         name?: string
         config?: { merchantCode: string; apiKey: string; sandboxUrl: string; productionUrl: string }
         isDefault?: boolean
+        supportedCurrencies?: string[]
       }
 
-      const gateway = await gatewayService.update(params.id, { name, config, isDefault })
+      const gateway = await gatewayService.update(params.id, { name, config, isDefault, supportedCurrencies })
       return { ok: true, data: gateway }
     })
     .patch("/:id/toggle", async ({ params }) => {
