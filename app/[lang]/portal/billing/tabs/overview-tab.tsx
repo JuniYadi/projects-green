@@ -170,7 +170,7 @@ export function OverviewTab({ lang }: OverviewTabProps) {
                 </div>
               ))}
               <Button asChild variant="outline" className="w-full">
-                <Link href={`/${lang}/portal/billing?tab=invoices`}>
+                <Link href={`/${lang}/portal/invoices`}>
                   View All Invoices
                 </Link>
               </Button>
