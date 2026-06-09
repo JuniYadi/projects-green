@@ -20,6 +20,14 @@ export const enMessages: AppMessages = {
     createOrganizationError: "Unable to create organization right now.",
     organizationMembersLabel: "Organization members",
     organizationSettingsLabel: "Organization settings",
+    createOrganizationDialogTitle: "Create organization",
+    createOrganizationDialogDescription:
+      "This creates a new organization and assigns you the owner role.",
+    createOrganizationNameLabel: "Organization name",
+    createOrganizationCurrencyLabel: "Billing currency",
+    createOrganizationCurrencyHint:
+      "Set once at creation and locked after the first financial activity. IDR supports automatic payment methods (Virtual Account, QRIS); USD is manual transfer only.",
+    createOrganizationCancelLabel: "Cancel",
   },
   navUser: {
     label: "User menu",

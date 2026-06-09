@@ -18,6 +18,12 @@ export type AppMessages = {
     createOrganizationError: string
     organizationMembersLabel: string
     organizationSettingsLabel: string
+    createOrganizationDialogTitle: string
+    createOrganizationDialogDescription: string
+    createOrganizationNameLabel: string
+    createOrganizationCurrencyLabel: string
+    createOrganizationCurrencyHint: string
+    createOrganizationCancelLabel: string
   }
   navUser: {
     label: string
