@@ -127,6 +127,23 @@ const toInvoiceLineItem = (line: {
   }
 }
 
+const toManualTransfer = (
+  metadataJson: unknown
+): InvoiceDetail["manualTransfer"] => {
+  if (!metadataJson || typeof metadataJson !== "object") return null
+  const meta = metadataJson as Record<string, unknown>
+  const hasFields =
+    meta.baseAmount !== undefined ||
+    meta.uniqueCode !== undefined ||
+    meta.finalAmount !== undefined
+  if (!hasFields) return null
+  return {
+    baseAmount: meta.baseAmount !== undefined ? toNumber(meta.baseAmount) : null,
+    uniqueCode: meta.uniqueCode !== undefined ? toNumber(meta.uniqueCode) : null,
+    finalAmount: meta.finalAmount !== undefined ? toNumber(meta.finalAmount) : null,
+  }
+}
+
 export const toInvoiceDetail = (invoice: InvoiceDetailRecord): InvoiceDetail => {
   return {
     ...toInvoiceListItem(invoice),
@@ -136,6 +153,9 @@ export const toInvoiceDetail = (invoice: InvoiceDetailRecord): InvoiceDetail => 
     periodStart: invoice.periodStart.toISOString(),
     periodEnd: invoice.periodEnd.toISOString(),
     paidAt: invoice.paidAt?.toISOString() ?? null,
+    type: invoice.type ?? null,
+    paymentMethod: invoice.paymentMethod ?? null,
+    manualTransfer: toManualTransfer(invoice.metadataJson),
     lineItems: invoice.lines.map((line) => toInvoiceLineItem(line)),
     billingAccountId: invoice.billingAccountId,
   }

@@ -47,6 +47,13 @@ export type InvoiceDetail = InvoiceListItem & {
   periodStart: string
   periodEnd: string
   paidAt: string | null
+  type: string | null
+  paymentMethod: string | null
+  manualTransfer: {
+    baseAmount: number | null
+    uniqueCode: number | null
+    finalAmount: number | null
+  } | null
   lineItems: InvoiceLineItem[]
   billingAccountId?: string
 }
