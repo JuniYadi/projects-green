@@ -144,7 +144,7 @@ export function AddDeviceDialog() {
           Add Device
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add WhatsApp Device</DialogTitle>
           <DialogDescription>

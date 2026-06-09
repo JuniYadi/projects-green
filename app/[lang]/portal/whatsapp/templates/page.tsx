@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { Plus } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
+import { ErrorBoundary } from "@/components/ui/error-boundary"
 import {
   Card,
   CardContent,
@@ -19,6 +20,7 @@ export default function PortalTemplatesPage() {
   const { templates, loading, error, reload } = useTemplates()
 
   return (
+    <ErrorBoundary>
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
@@ -52,5 +54,6 @@ export default function PortalTemplatesPage() {
         </CardContent>
       </Card>
     </div>
+    </ErrorBoundary>
   )
 }
