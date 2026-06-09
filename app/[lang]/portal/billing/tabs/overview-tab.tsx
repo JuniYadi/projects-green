@@ -82,12 +82,12 @@ export function OverviewTab({ lang }: OverviewTabProps) {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-medium">
               <WalletIcon className="h-4 w-4" />
-              Billing Overview
+              Billing Administration
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Manage organization billing, subscriptions, and payment methods.
+              Review organization billing, subscriptions, usage, and payment administration from the platform surface.
             </p>
             <div className="flex gap-2">
               <Button asChild size="sm">
@@ -124,8 +124,8 @@ export function OverviewTab({ lang }: OverviewTabProps) {
               className="w-full justify-start"
               size="sm"
             >
-              <Link href={`/${lang}/portal/settings/members`}>
-                Manage Members
+              <Link href={`/${lang}/console/organization/members`}>
+                Manage Organization Members
               </Link>
             </Button>
           </CardContent>
@@ -136,12 +136,14 @@ export function OverviewTab({ lang }: OverviewTabProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base font-medium">
             <FileTextIcon className="h-4 w-4" />
-            Recent Invoices
+            Organization Recent Invoices
           </CardTitle>
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No invoices yet</p>
+            <p className="text-sm text-muted-foreground">
+              No organization invoices yet
+            </p>
           ) : (
             <div className="space-y-3">
               {invoices.map((invoice) => (
