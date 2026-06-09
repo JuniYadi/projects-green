@@ -311,25 +311,58 @@ model DeploymentLog {
 }
 
 model GithubWebhookEvent {
-  id                   String    @id @default(cuid())
-  deliveryId           String    @unique
-  eventName            String
-  action               String?
-  githubInstallationId BigInt?
-  githubRepositoryId   BigInt?
-  payloadJson          Json
-  payloadSha256        String
-  signatureValid       Boolean
-  enqueueStatus        String    @default("queued")
-  processStatus        String    @default("pending")
-  processError         String?
-  receivedAt           DateTime  @default(now())
-  processedAt          DateTime?
+  id                     String    @id @default(cuid())
+  deliveryId             String    @unique
+  eventName              String
+  action                 String?
+  githubInstallationId   BigInt?
+  githubRepositoryId     BigInt?
+  repositoryFullName     String?
+  repositoryOwner        String?
+  repositoryName         String?
+  ref                    String?
+  branch                 String?
+  commitSha              String?
+  commitMessage          String?
+  commitAuthorName       String?
+  commitAuthorEmail      String?
+  commitUrl              String?
+  senderLogin            String?
+  senderAvatarUrl        String?
+  repositoryConnectionId String?
+  applicationStackId     String?
+  eventDisposition       String    @default("tracked")
+  ignoreReason           String?
+  responseStatus         Int?
+  handlerDurationMs      Int?
+  payloadJson            Json
+  payloadSha256          String
+  signatureValid         Boolean
+  enqueueStatus          String    @default("queued")
+  processStatus          String    @default("pending")
+  processError           String?
+  receivedAt             DateTime  @default(now())
+  processedAt            DateTime?
+  deletedAt              DateTime?
+  deleteReason           String?
+  permanentDeleteAfter   DateTime?
 
   @@index([eventName])
   @@index([githubInstallationId])
   @@index([githubRepositoryId])
+  @@index([githubInstallationId, githubRepositoryId])
+  @@index([repositoryConnectionId])
+  @@index([applicationStackId])
+  @@index([repositoryFullName])
+  @@index([branch])
+  @@index([commitSha])
+  @@index([senderLogin])
+  @@index([eventDisposition])
+  @@index([eventName, processStatus])
   @@index([processStatus])
+  @@index([deletedAt])
+  @@index([permanentDeleteAfter])
+  @@index([receivedAt(sort: Desc)])
 }
 
 enum SupportTicketDepartment {
