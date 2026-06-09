@@ -88,7 +88,7 @@ export function GithubEventsTable() {
   const [events, setEvents] = useState<GithubEventRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(25)
+  const [pageSize] = useState(25)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -131,6 +131,7 @@ export function GithubEventsTable() {
   }, [page, pageSize, search, eventName, processStatus, deletedState])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadEvents()
   }, [loadEvents])
 

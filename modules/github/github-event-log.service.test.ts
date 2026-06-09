@@ -6,6 +6,17 @@ import {
   restoreGithubWebhookEvent,
 } from "./github-event-log.service"
 
+type FakeEventLogPrisma = {
+  githubWebhookEvent: {
+    findMany: (...args: unknown[]) => Promise<unknown[]>
+    count: (...args: unknown[]) => Promise<number>
+    findUnique: (...args: unknown[]) => Promise<unknown>
+    update: (...args: unknown[]) => Promise<unknown>
+    updateMany: (...args: unknown[]) => Promise<{ count: number }>
+    deleteMany: (...args: unknown[]) => Promise<{ count: number }>
+  }
+}
+
 describe("github event log service", () => {
   it("lists active tracked/error events by default without payloadJson", async () => {
     const calls: unknown[] = []
@@ -16,10 +27,14 @@ describe("github event log service", () => {
           return []
         },
         count: async () => 0,
+        findUnique: async () => null,
+        update: async (args: unknown) => args,
+        updateMany: async () => ({ count: 0 }),
+        deleteMany: async () => ({ count: 0 }),
       },
-    }
+    } as FakeEventLogPrisma
 
-    const result = await listGithubWebhookEvents({ prisma, query: {} })
+    const result = await listGithubWebhookEvents({ prisma: prisma as FakeEventLogPrisma, query: {} })
 
     expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 25 })
     expect(JSON.stringify(calls[0])).toContain("eventDisposition")
@@ -29,9 +44,14 @@ describe("github event log service", () => {
   it("restores soft-deleted events", async () => {
     const prisma = {
       githubWebhookEvent: {
+        findMany: async () => [],
+        count: async () => 0,
+        findUnique: async () => null,
         update: async (args: unknown) => args,
+        updateMany: async () => ({ count: 0 }),
+        deleteMany: async () => ({ count: 0 }),
       },
-    }
+    } as FakeEventLogPrisma
 
     const result = await restoreGithubWebhookEvent({ prisma, id: "event_1" })
 
@@ -51,16 +71,20 @@ describe("github event log service", () => {
     const now = new Date("2026-06-09T00:00:00.000Z")
     const prisma = {
       githubWebhookEvent: {
-        updateMany: async (args: unknown) => {
-          updates.push(args)
-          return { count: 2 }
-        },
+        findMany: async () => [],
+        count: async () => 0,
+        findUnique: async () => null,
+        update: async () => ({}),
         deleteMany: async (args: unknown) => {
           deletes.push(args)
           return { count: 1 }
         },
+        updateMany: async (args: unknown) => {
+          updates.push(args)
+          return { count: 2 }
+        },
       },
-    }
+    } as FakeEventLogPrisma
 
     const result = await cleanupGithubWebhookEvents({ prisma, now })
 

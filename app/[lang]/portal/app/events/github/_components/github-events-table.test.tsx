@@ -48,7 +48,7 @@ describe("GithubEventsTable", () => {
           pageSize: 25,
         },
       })
-    }) as typeof fetch
+    }) as unknown as typeof fetch
 
     const view = render(<GithubEventsTable />)
 

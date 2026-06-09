@@ -312,7 +312,7 @@ model DeploymentLog {
 
 model GithubWebhookEvent {
   id                     String    @id @default(cuid())
-  deliveryId             String    @unique
+  deliveryId           String    @unique
   eventName              String
   action                 String?
   githubInstallationId   BigInt?
@@ -339,7 +339,7 @@ model GithubWebhookEvent {
   payloadSha256          String
   signatureValid         Boolean
   enqueueStatus          String    @default("queued")
-  processStatus          String    @default("pending")
+  processStatus        String    @default("pending")
   processError           String?
   receivedAt             DateTime  @default(now())
   processedAt            DateTime?

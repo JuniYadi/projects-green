@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 
 export type GithubEventDeletedState = "active" | "deleted" | "include_deleted"
 
@@ -24,7 +24,30 @@ export type GithubEventLogQuery = {
   order?: "asc" | "desc"
 }
 
-type EventLogPrisma = Pick<PrismaClient, "githubWebhookEvent">
+type EventLogPrisma = {
+  githubWebhookEvent: {
+    findMany: (args: {
+      where?: Prisma.GithubWebhookEventWhereInput
+      select?: Prisma.GithubWebhookEventSelect
+      orderBy?: Record<string, string>
+      skip?: number
+      take?: number
+    }) => Promise<unknown[]>
+    count: (args: { where?: Prisma.GithubWebhookEventWhereInput }) => Promise<number>
+    findUnique: (args: { where: { id: string } }) => Promise<unknown>
+    update: (args: {
+      where: { id: string }
+      data: Record<string, unknown>
+    }) => Promise<unknown>
+    updateMany: (args: {
+      where: Prisma.GithubWebhookEventWhereInput
+      data: Record<string, unknown>
+    }) => Promise<{ count: number }>
+    deleteMany: (args: {
+      where: Prisma.GithubWebhookEventWhereInput
+    }) => Promise<{ count: number }>
+  }
+}
 
 const listSelect = {
   id: true,
@@ -163,7 +186,7 @@ export const cleanupGithubWebhookEvents = async ({
   prisma,
   now = new Date(),
 }: {
-  prisma: Pick<PrismaClient, "githubWebhookEvent">
+  prisma: EventLogPrisma
   now?: Date
 }) => {
   const softDeleteBefore = new Date(now)

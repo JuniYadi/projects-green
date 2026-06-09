@@ -92,15 +92,6 @@ export type CreateGithubWebhookEventInput = {
   githubRepositoryId: bigint | null
   payloadJson: JsonObject
   payloadSha256: string
-}
-
-export type GithubWebhookHandlerEventStore = {
-  findByDeliveryId: (deliveryId: string) => Promise<GithubWebhookRecord | null>
-  create: (input: CreateGithubWebhookEventInput) => Promise<GithubWebhookRecord>
-  markEnqueueFailed: (eventId: string, processError: string) => Promise<void>
-}
-
-export type CreateGithubWebhookEventInputWithMeta = CreateGithubWebhookEventInput & {
   repositoryFullName: string | null
   repositoryOwner: string | null
   repositoryName: string | null
@@ -119,6 +110,12 @@ export type CreateGithubWebhookEventInputWithMeta = CreateGithubWebhookEventInpu
   ignoreReason: string | null
   responseStatus: number | null
   handlerDurationMs: number | null
+}
+
+export type GithubWebhookHandlerEventStore = {
+  findByDeliveryId: (deliveryId: string) => Promise<GithubWebhookRecord | null>
+  create: (input: CreateGithubWebhookEventInput) => Promise<GithubWebhookRecord>
+  markEnqueueFailed: (eventId: string, processError: string) => Promise<void>
 }
 
 export type GithubWebhookQueueProducer = {
