@@ -130,6 +130,7 @@ export type AuthService = {
     email: string
     code: string
     requestUrl: string
+    invitationToken?: string
   }): Promise<Response>
   completeEmailVerification(input: {
     code: string
@@ -141,11 +142,13 @@ export type AuthService = {
     email: string
     password: string
     requestUrl: string
+    invitationToken?: string
   }): Promise<Response>
   login(input: {
     email: string
     password: string
     requestUrl: string
+    invitationToken?: string
   }): Promise<Response>
 }
 
@@ -167,7 +170,7 @@ export const authService: AuthService = {
       throw error
     }
   },
-  async verifyMagicCode({ email, code, requestUrl }) {
+  async verifyMagicCode({ email, code, requestUrl, invitationToken }) {
     const { clientId, cookiePassword } = getAuthConfig()
 
     try {
@@ -176,6 +179,7 @@ export const authService: AuthService = {
           clientId,
           email,
           code,
+          ...(invitationToken ? { invitationToken } : {}),
           session: {
             sealSession: true,
             cookiePassword,
@@ -243,7 +247,7 @@ export const authService: AuthService = {
       throw error
     }
   },
-  async signup({ name, email, password, requestUrl }) {
+  async signup({ name, email, password, requestUrl, invitationToken }) {
     const { clientId, cookiePassword } = getAuthConfig()
     const { firstName, lastName } = splitName(name)
 
@@ -260,6 +264,7 @@ export const authService: AuthService = {
           clientId,
           email,
           password,
+          ...(invitationToken ? { invitationToken } : {}),
           session: {
             sealSession: true,
             cookiePassword,
@@ -281,7 +286,7 @@ export const authService: AuthService = {
       throw error
     }
   },
-  async login({ email, password, requestUrl }) {
+  async login({ email, password, requestUrl, invitationToken }) {
     const { clientId, cookiePassword } = getAuthConfig()
 
     try {
@@ -290,6 +295,7 @@ export const authService: AuthService = {
           clientId,
           email,
           password,
+          ...(invitationToken ? { invitationToken } : {}),
           session: {
             sealSession: true,
             cookiePassword,

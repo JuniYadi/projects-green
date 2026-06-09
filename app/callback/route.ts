@@ -3,6 +3,35 @@ import { OauthException } from "@workos-inc/node"
 import { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
+import {
+  INVITE_COOKIE_NAME,
+  buildClearInviteCookieHeader,
+} from "@/modules/auth/invite-cookie"
+
+const readInviteTokenFromRequest = (request: NextRequest) => {
+  const value = request.cookies.get(INVITE_COOKIE_NAME)?.value?.trim()
+  return value || undefined
+}
+
+const acceptInviteFromToken = async (invitationToken: string) => {
+  try {
+    const { findTenantInvitationByToken, acceptTenantInvitation } =
+      await import("@/modules/tenants/services/tenant-workos.service")
+
+    const invitation = await findTenantInvitationByToken(invitationToken)
+    if (!invitation || invitation.state !== "pending") {
+      return
+    }
+
+    await acceptTenantInvitation(invitation.id)
+  } catch (error) {
+    console.error(
+      "[auth] /callback invitation accept —",
+      error instanceof Error ? error.stack ?? error.message : error
+    )
+  }
+}
+
 const authHandler = handleAuth({
   onError: async ({ error, request }) => {
     const hasErrorObject =
@@ -73,5 +102,16 @@ const authHandler = handleAuth({
 })
 
 export async function GET(request: NextRequest) {
-  return authHandler(request)
+  const inviteToken = readInviteTokenFromRequest(request)
+  const response = await authHandler(request)
+
+  if (inviteToken) {
+    await acceptInviteFromToken(inviteToken)
+    response.headers.append(
+      "Set-Cookie",
+      buildClearInviteCookieHeader(request.url)
+    )
+  }
+
+  return response
 }

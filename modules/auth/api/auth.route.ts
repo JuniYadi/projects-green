@@ -10,6 +10,24 @@ import {
   InvalidAuthCredentialsError,
   MissingAuthConfigurationError,
 } from "@/modules/auth/auth.service"
+import { INVITE_COOKIE_NAME } from "@/modules/auth/invite-cookie"
+
+const readInviteToken = (request: Request) => {
+  const cookieHeader = request.headers.get("cookie")
+  if (!cookieHeader) {
+    return undefined
+  }
+
+  for (const part of cookieHeader.split(";")) {
+    const [rawName, ...rawValue] = part.trim().split("=")
+    if (rawName === INVITE_COOKIE_NAME) {
+      const value = decodeURIComponent(rawValue.join("=")).trim()
+      return value || undefined
+    }
+  }
+
+  return undefined
+}
 
 const magicRequestSchema = z.object({
   email: z.email("Please enter a valid email address"),
@@ -83,6 +101,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
             email: body.email,
             code: body.code,
             requestUrl: request.url,
+            invitationToken: readInviteToken(request),
           })
         } catch (error) {
           if (error instanceof MissingAuthConfigurationError) {
@@ -192,6 +211,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
             email: body.email,
             password: body.password,
             requestUrl: request.url,
+            invitationToken: readInviteToken(request),
           })
         } catch (error) {
           if (error instanceof MissingAuthConfigurationError) {
@@ -249,6 +269,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
             email: body.email,
             password: body.password,
             requestUrl: request.url,
+            invitationToken: readInviteToken(request),
           })
         } catch (error) {
           if (error instanceof MissingAuthConfigurationError) {

@@ -182,6 +182,34 @@ describe("authService", () => {
       expect(body.ok).toBe(true)
     })
 
+    it("forwards invitationToken when provided", async () => {
+      await authService.verifyMagicCode({
+        email: "user@example.com",
+        code: "123456",
+        requestUrl: "http://localhost/auth/magic/verify",
+        invitationToken: "invitation_token_abc",
+      })
+
+      expect(mockAuthenticateWithMagicAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invitationToken: "invitation_token_abc",
+        })
+      )
+    })
+
+    it("omits invitationToken when not provided", async () => {
+      await authService.verifyMagicCode({
+        email: "user@example.com",
+        code: "123456",
+        requestUrl: "http://localhost/auth/magic/verify",
+      })
+
+      const call = mockAuthenticateWithMagicAuth.mock.calls.at(-1)?.[0] as
+        | Record<string, unknown>
+        | undefined
+      expect(call && "invitationToken" in call).toBe(false)
+    })
+
     it("throws MissingAuthConfigurationError when env is missing", async () => {
       delete process.env.WORKOS_CLIENT_ID
 

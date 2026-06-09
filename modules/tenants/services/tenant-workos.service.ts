@@ -371,6 +371,32 @@ export const getTenantInvitationById = async (
   }
 }
 
+export const findTenantInvitationByToken = async (
+  invitationToken: string
+): Promise<TenantInvitationSummary | null> => {
+  try {
+    const invitation =
+      await getWorkOS().userManagement.findInvitationByToken(invitationToken)
+
+    return toTenantInvitationSummary(invitation as WorkOSInvitation)
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      return null
+    }
+
+    throw error
+  }
+}
+
+export const acceptTenantInvitation = async (
+  invitationId: string
+): Promise<TenantInvitationSummary> => {
+  const invitation =
+    await getWorkOS().userManagement.acceptInvitation(invitationId)
+
+  return toTenantInvitationSummary(invitation as WorkOSInvitation)
+}
+
 export const revokeTenantInvitation = async (
   invitationId: string
 ): Promise<TenantInvitationSummary> => {
