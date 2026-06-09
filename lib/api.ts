@@ -12,6 +12,7 @@ import { knowledgeRoutes } from "@/modules/docs/api/knowledge.route"
 import { deployRoutes } from "@/modules/deploy/api/deploy.route"
 import { frameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
 import { githubRoutes } from "@/modules/github/api/github.route"
+import { githubEventLogRoutes } from "@/modules/github/api/github-event-log.route"
 import { jenkinsRoutes } from "@/modules/jenkins/api/jenkins.route"
 import { invoicesRoutes } from "@/modules/invoices/api/invoices.route"
 import { paymentRoutes, userPaymentRoutes, webhookRoutes } from "@/modules/payment/api"
@@ -87,6 +88,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(deployRoutes)
   .use(frameworkDetectionRoutes)
   .use(githubRoutes)
+  .use(githubEventLogRoutes)
   .use(jenkinsRoutes)
   .use(invoicesRoutes)
   .use(supportTicketRoutes)
