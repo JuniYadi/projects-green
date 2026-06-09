@@ -116,11 +116,6 @@ export const createTopupRoutes = () =>
             error.message.includes("Minimum") ||
             error.message.includes("Maximum"))
 
-        console.error(
-          `[payment] POST /topup —`,
-          error instanceof Error ? error.stack ?? error.message : error
-        )
-
         set.status = isClientError ? 400 : 500
         return {
           ok: false,

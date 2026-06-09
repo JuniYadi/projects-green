@@ -58,11 +58,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
             }
           }
 
-          console.error(
-            `[auth] /auth/magic/request —`,
-            error instanceof Error ? error.stack ?? error.message : error
-          )
-
           set.status = 500
           return {
             ok: false as const,
@@ -112,11 +107,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
             }
           }
 
-          console.error(
-            `[auth] /auth/magic/verify —`,
-            error instanceof Error ? error.stack ?? error.message : error
-          )
-
           set.status = 500
           return {
             ok: false as const,
@@ -165,11 +155,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
               message: error.message,
             }
           }
-
-          console.error(
-            `[auth] /auth/email-verification/complete —`,
-            error instanceof Error ? error.stack ?? error.message : error
-          )
 
           set.status = 500
           return {
@@ -224,11 +209,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
             }
           }
 
-          console.error(
-            `[auth] /auth/signup —`,
-            error instanceof Error ? error.stack ?? error.message : error
-          )
-
           set.status = 500
           return {
             ok: false as const,
@@ -268,11 +248,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
               message: error.message,
             }
           }
-
-          console.error(
-            `[auth] /auth/login —`,
-            error instanceof Error ? error.stack ?? error.message : error
-          )
 
           set.status = 500
           return {

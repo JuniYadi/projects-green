@@ -245,54 +245,67 @@ export const createKnowledgeRoutes = (
       const encoder = new TextEncoder()
       let fullAnswer = ""
 
-      const answerStream = dependencies.streamKnowledgeAnswer({
-        messages: parsed.data.messages,
-        docs,
-      })
+      try {
+        const answerStream = dependencies.streamKnowledgeAnswer({
+          messages: parsed.data.messages,
+          docs,
+        })
 
-      return new Response(
-        new ReadableStream<Uint8Array>({
-          async start(controller) {
-            try {
-              for await (const textDelta of answerStream) {
-                fullAnswer += textDelta
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            async start(controller) {
+              try {
+                for await (const textDelta of answerStream) {
+                  fullAnswer += textDelta
+                  controller.enqueue(
+                    encoder.encode(
+                      toFrame({
+                        type: "delta",
+                        text: textDelta,
+                      })
+                    )
+                  )
+                }
+
                 controller.enqueue(
                   encoder.encode(
                     toFrame({
-                      type: "delta",
-                      text: textDelta,
+                      type: "done",
+                      answer: fullAnswer.trim() || STRICT_KB_FALLBACK_MESSAGE,
+                      citations,
                     })
                   )
                 )
+              } catch {
+                controller.enqueue(
+                  encoder.encode(
+                    toFrame({
+                      type: "error",
+                      message: "Knowledge chat failed while streaming.",
+                    })
+                  )
+                )
+              } finally {
+                controller.close()
               }
+            },
+          }),
+          {
+            headers: STREAM_HEADERS,
+          }
+        )
+      } catch (error) {
+        set.status = 500
 
-              controller.enqueue(
-                encoder.encode(
-                  toFrame({
-                    type: "done",
-                    answer: fullAnswer.trim() || STRICT_KB_FALLBACK_MESSAGE,
-                    citations,
-                  })
-                )
-              )
-            } catch {
-              controller.enqueue(
-                encoder.encode(
-                  toFrame({
-                    type: "error",
-                    message: "Knowledge chat failed while streaming.",
-                  })
-                )
-              )
-            } finally {
-              controller.close()
-            }
-          },
-        }),
-        {
-          headers: STREAM_HEADERS,
+        return {
+          ok: false as const,
+          error: "INTERNAL_SERVER_ERROR" as const,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Knowledge chat failed to initialize.",
         }
-      )
+      }
     },
     {
       body: knowledgeChatBodySchema,
