@@ -12,7 +12,7 @@ describe("ConfirmationsTab", () => {
         return new Response(
           JSON.stringify({
             ok: true,
-            confirmations: [
+            data: [
               {
                 id: "pc-1",
                 amount: 100000,
@@ -51,7 +51,7 @@ describe("ConfirmationsTab", () => {
         return new Response(
           JSON.stringify({
             ok: true,
-            confirmations: [
+            data: [
               {
                 id: "pc-1",
                 amount: 100000,

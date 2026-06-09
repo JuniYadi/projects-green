@@ -12,7 +12,7 @@ describe("BankAccountsTab", () => {
         return new Response(
           JSON.stringify({
             ok: true,
-            bankAccounts: [
+            data: [
               {
                 id: "ba-1",
                 bankName: "BCA",
@@ -51,7 +51,7 @@ describe("BankAccountsTab", () => {
           return new Response(
             JSON.stringify({
               ok: true,
-              bankAccounts: [
+              data: [
                 {
                   id: "ba-1",
                   bankName: "BCA",

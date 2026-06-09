@@ -45,7 +45,7 @@ export function ConfirmationsTab() {
       const payload = await response.json()
 
       if (payload.ok) {
-        setState({ status: "success", data: payload.confirmations || [] })
+        setState({ status: "success", data: payload.data || [] })
       } else {
         setState({ status: "error", message: payload.message || "Failed to load confirmations" })
       }

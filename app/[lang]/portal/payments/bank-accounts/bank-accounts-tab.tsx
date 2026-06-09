@@ -40,7 +40,7 @@ export function BankAccountsTab() {
       const payload = await response.json()
 
       if (payload.ok) {
-        setState({ status: "success", data: payload.bankAccounts || [] })
+        setState({ status: "success", data: payload.data || [] })
       } else {
         setState({ status: "error", message: payload.message || "Failed to load bank accounts" })
       }

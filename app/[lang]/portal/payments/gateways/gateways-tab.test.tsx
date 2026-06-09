@@ -7,7 +7,7 @@ describe("GatewaysTab", () => {
   it("opens a gateway creation form from the empty state action", async () => {
     globalThis.fetch = Object.assign(
       async () =>
-        new Response(JSON.stringify({ ok: true, gateways: [] }), {
+        new Response(JSON.stringify({ ok: true, data: [] }), {
           status: 200,
         }),
       { preconnect: () => {} }
@@ -33,7 +33,7 @@ describe("GatewaysTab", () => {
           return new Response(
             JSON.stringify({
               ok: true,
-              gateways: [
+              data: [
                 {
                   id: "gw-1",
                   name: "Duitku",

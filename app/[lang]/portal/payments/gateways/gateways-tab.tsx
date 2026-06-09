@@ -38,7 +38,7 @@ export function GatewaysTab() {
       const payload = await response.json()
 
       if (payload.ok) {
-        setState({ status: "success", data: payload.gateways || [] })
+        setState({ status: "success", data: payload.data || [] })
       } else {
         setState({ status: "error", message: payload.message || "Failed to load gateways" })
       }
