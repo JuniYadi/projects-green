@@ -1,39 +1,16 @@
-import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { resolveSidebarOrganization } from "@/lib/sidebar-session"
-import { MembersList } from "./members-list"
 
-export default async function MembersPage({
+type PortalSettingsMembersRedirectProps = {
+  params: Promise<{ lang: string }>
+}
+
+export default async function PortalSettingsMembersRedirect({
   params,
-}: Readonly<{
-  params: Promise<{
-    lang: string
-  }>
-}>) {
+}: PortalSettingsMembersRedirectProps) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
-  const auth = await withAuth({ ensureSignedIn: true })
 
-  if (!auth.organizationId) {
-    redirect(localizePathname({ pathname: "/onboarding/organization", locale }))
-  }
-
-  const organization = await resolveSidebarOrganization(auth.organizationId)
-
-  return (
-    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Members</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage membership roles and removals
-          {organization.name && (
-            <> for <span className="font-medium">{organization.name}</span></>
-          )}
-        </p>
-      </header>
-      <MembersList organizationId={auth.organizationId} />
-    </main>
-  )
+  redirect(localizePathname({ pathname: "/console/organization/members", locale }))
 }
