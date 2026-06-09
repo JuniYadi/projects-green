@@ -68,3 +68,4 @@ plan.md
 
 # Playwright E2E auth state
 .auth/
+.worktrees/

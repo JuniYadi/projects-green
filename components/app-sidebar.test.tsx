@@ -126,8 +126,10 @@ describe("resolveSidebarMenu", () => {
     expect(navMain[0]?.items?.map((item) => item.title)).toEqual(["Registry"])
     expect(navMain[0]?.isActive).toBe(true)
 
-    expect(projects.map((project) => project.name)).toContain("Documentation")
     expect(projects.map((project) => project.name)).toContain("Payments")
+    expect(projects.map((project) => project.name)).not.toContain(
+      "Documentation"
+    )
     expect(projects.map((project) => project.name)).not.toContain(
       "Applications"
     )
@@ -136,23 +138,21 @@ describe("resolveSidebarMenu", () => {
     )
   })
 
-  it("returns payment tab navigation with localized query URLs", () => {
+  it("returns portal platform navigation (not payments context) for payments path", () => {
     const { navMain, navMainLabel } = resolveSidebarMenu({
       surface: "portal",
-      pathname: "/portal/payments?tab=bank-accounts",
+      pathname: "/portal/payments",
       locale: "id",
     })
 
-    expect(navMainLabel).toBe("Payments")
-    expect(navMain.map((item) => [item.title, item.url])).toEqual([
-      ["Overview", "/id/portal/payments"],
-      ["Gateways", "/id/portal/payments?tab=gateways"],
-      ["Bank Accounts", "/id/portal/payments?tab=bank-accounts"],
-      ["Confirmations", "/id/portal/payments?tab=confirmations"],
+    // Payments no longer has its own sidebar context — falls back to portal platform nav
+    expect(navMainLabel).not.toBe("Payments")
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Documentation",
+      "Settings",
+      "App Hosting",
+      "WhatsApp",
     ])
-    expect(
-      navMain.find((item) => item.title === "Bank Accounts")?.isActive
-    ).toBe(true)
   })
 
   it("includes thunder AI help trigger link for console sidebar secondary links", () => {

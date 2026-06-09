@@ -5,12 +5,11 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { PlusIcon, CalendarIcon, FileTextIcon } from "@phosphor-icons/react"
+import { CalendarIcon, FileTextIcon, WalletIcon } from "@phosphor-icons/react"
 import Link from "next/link"
 
-import { BalanceCard } from "@/components/billing/balance-card"
-import { getAccount, getSubscriptions, getInvoices } from "@/lib/billing-client"
-import type { BillingAccount, SubscriptionItem, InvoiceListItem } from "@/lib/billing-client"
+import { getInvoices } from "@/lib/billing-client"
+import type { InvoiceListItem } from "@/lib/billing-client"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
 
 type OverviewTabProps = {
@@ -18,8 +17,6 @@ type OverviewTabProps = {
 }
 
 export function OverviewTab({ lang }: OverviewTabProps) {
-  const [account, setAccount] = useState<BillingAccount | null>(null)
-  const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([])
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,29 +24,21 @@ export function OverviewTab({ lang }: OverviewTabProps) {
   useEffect(() => {
     async function loadData() {
       try {
-        const [accountData, subscriptionsData, invoicesData] = await Promise.all([
-          getAccount(),
-          getSubscriptions(),
-          getInvoices(),
-        ])
-        setAccount(accountData)
-        setSubscriptions(subscriptionsData.subscriptions)
-        setInvoices(invoicesData.invoices.slice(0, 3))
+        const invoicesData = await getInvoices()
+        setInvoices(invoicesData.invoices.slice(0, 5))
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load account")
+        setError(err instanceof Error ? err.message : "Failed to load invoices")
       } finally {
         setIsLoading(false)
       }
     }
-
     loadData()
   }, [])
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-3">
-          <Skeleton className="h-32" />
+        <div className="grid gap-4 md:grid-cols-2">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
         </div>
@@ -88,55 +77,55 @@ export function OverviewTab({ lang }: OverviewTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <BalanceCard
-          balanceIdr={account?.balanceIdr ?? "0"}
-          formattedBalance={account?.formattedBalance ?? "IDR 0"}
-          isAboveWarn={account?.isAboveWarn ?? false}
-          accountAge={account?.accountAge}
-        />
-
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-medium">
-              <CalendarIcon className="h-4 w-4" />
-              Billing Info
+              <WalletIcon className="h-4 w-4" />
+              Billing Overview
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Active Subscriptions</span>
-              <span className="font-medium">{subscriptions.length}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Next Billing Date</span>
-              <span className="font-medium">
-                {subscriptions.length > 0 && subscriptions[0].currentPeriodEnd
-                  ? formatDate(subscriptions[0].currentPeriodEnd)
-                  : "N/A"}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Billing Period</span>
-              <span className="font-medium">Monthly</span>
+            <p className="text-sm text-muted-foreground">
+              Manage organization billing, subscriptions, and payment methods.
+            </p>
+            <div className="flex gap-2">
+              <Button asChild size="sm">
+                <Link href={`/${lang}/portal/billing?tab=subscriptions`}>
+                  View Subscriptions
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/${lang}/portal/billing?tab=usage`}>
+                  View Usage
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium">Quick Actions</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base font-medium">
+              <CalendarIcon className="h-4 w-4" />
+              Quick Actions
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button asChild className="w-full justify-start">
-              <Link href={`/${lang}/portal/billing?tab=topup`}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Top Up Balance
+            <Button asChild className="w-full justify-start" size="sm">
+              <Link href={`/${lang}/portal/billing?tab=invoices`}>
+                <FileTextIcon className="mr-2 h-4 w-4" />
+                View All Invoices
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full justify-start">
-              <Link href={`/${lang}/portal/billing?tab=usage`}>
-                View Usage
+            <Button
+              asChild
+              variant="outline"
+              className="w-full justify-start"
+              size="sm"
+            >
+              <Link href={`/${lang}/portal/settings/members`}>
+                Manage Members
               </Link>
             </Button>
           </CardContent>

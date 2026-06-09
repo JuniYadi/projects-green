@@ -12,13 +12,15 @@ export default async function DeployPage({ params }: DeployPageProps) {
   await params
 
   return (
-    <DeployWizardProvider>
-      <LifecyclePageShell
-        title="Deploy Application"
-        description="Build and release your application to Kubernetes."
-      >
-        <DeployWizard />
-      </LifecyclePageShell>
-    </DeployWizardProvider>
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      <DeployWizardProvider>
+        <LifecyclePageShell
+          title="Deploy Application"
+          description="Build and release your application to Kubernetes."
+        >
+          <DeployWizard />
+        </LifecyclePageShell>
+      </DeployWizardProvider>
+    </main>
   )
 }

@@ -31,7 +31,7 @@ export default async function PortalManagePage({
   const appHref = localizePathname({ pathname: "/portal/app", locale })
 
   return (
-    <>
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Runtime management lives in console</h1>
         <p className="text-sm text-muted-foreground">
@@ -69,6 +69,6 @@ export default async function PortalManagePage({
           Back to App Hosting admin
         </Link>
       </p>
-    </>
+    </main>
   )
 }

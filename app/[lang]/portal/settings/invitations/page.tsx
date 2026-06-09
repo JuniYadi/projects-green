@@ -2,7 +2,6 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { SettingsHeader } from "@/modules/tenants/ui/settings-header"
 import { resolveSidebarOrganization } from "@/lib/sidebar-session"
 import { InvitationsView } from "./invitations-view"
 
@@ -24,15 +23,17 @@ export default async function InvitationsPage({
   const organization = await resolveSidebarOrganization(auth.organizationId)
 
   return (
-    <main className="flex flex-1 flex-col pb-10">
-      <SettingsHeader
-        title="Invitations"
-        description="Invite new members and manage pending invitations"
-        organizationName={organization.name ?? undefined}
-      />
-      <div className="p-6">
-        <InvitationsView organizationId={auth.organizationId} />
-      </div>
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold">Invitations</h1>
+        <p className="text-sm text-muted-foreground">
+          Invite new members and manage pending invitations
+          {organization.name && (
+            <> for <span className="font-medium">{organization.name}</span></>
+          )}
+        </p>
+      </header>
+      <InvitationsView organizationId={auth.organizationId} />
     </main>
   )
 }
