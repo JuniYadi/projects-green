@@ -51,9 +51,22 @@ export class GithubConfigurationError extends Error {
 }
 
 export class GithubApiError extends Error {
-  constructor(message: string) {
+  readonly statusCode?: number
+
+  constructor(message: string, statusCode?: number) {
     super(message)
     this.name = "GithubApiError"
+    this.statusCode = statusCode
+  }
+}
+
+export class GithubReconnectRequiredError extends GithubApiError {
+  constructor(
+    message = "GitHub access expired or was revoked. Reconnect GitHub to continue.",
+    statusCode?: number
+  ) {
+    super(message, statusCode)
+    this.name = "GithubReconnectRequiredError"
   }
 }
 
@@ -306,8 +319,15 @@ const fetchJson = async <T>(
     clearTimeout(timeoutId)
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new GithubReconnectRequiredError(
+          "GitHub access expired or was revoked. Reconnect GitHub to continue.",
+          response.status
+        )
+      }
       throw new GithubApiError(
-        `${errorPrefix} GitHub API returned ${response.status}.`
+        `${errorPrefix} GitHub API returned ${response.status}.`,
+        response.status
       )
     }
 
@@ -566,6 +586,15 @@ const createDefaultDependencies = (): GithubDependencies => ({
       return await createInstallationToken(installationId)
     } catch (error) {
       if (error instanceof GithubConfigurationError) {
+        throw error
+      }
+      if (error instanceof GithubReconnectRequiredError) {
+        throw error
+      }
+      if (error instanceof GithubApiError) {
+        if (error.statusCode === 401 || error.statusCode === 403) {
+          throw new GithubReconnectRequiredError(undefined, error.statusCode)
+        }
         throw error
       }
       throw new GithubApiError("Unable to create installation access token.")

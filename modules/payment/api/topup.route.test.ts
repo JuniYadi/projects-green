@@ -41,6 +41,7 @@ mock.module("@/lib/prisma", () => ({
         Promise.resolve({
           id: "ba-123",
           organizationId: "org-123",
+          currency: "IDR",
           balance: { toNumber: () => 0 },
         })
       ),
@@ -50,6 +51,9 @@ mock.module("@/lib/prisma", () => ({
           organizationId: "org-123",
         })
       ),
+    },
+    paymentGateway: {
+      findFirst: mock(() => Promise.resolve(null)),
     },
     $transaction: mock((fns: unknown[]) => Promise.all(fns)),
   },
@@ -161,6 +165,51 @@ describe("Topup Route", () => {
       expect(body.invoice.id).toBe("inv-123")
       expect(body.invoice.paymentMethod).toBe("VA")
       expect(body.paymentUrl).toBeUndefined()
+    })
+
+    it("should return 400 GATEWAY_NOT_CONFIGURED when Duitku gateway is missing for VA", async () => {
+      const { prisma } = await import("@/lib/prisma")
+      ;(prisma.paymentGateway.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce(
+        null
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/topup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+        })
+      )
+
+      expect(response.status).toBe(400)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("GATEWAY_NOT_CONFIGURED")
+    })
+
+    it("should reject VA top-up for a non-IDR account", async () => {
+      const { prisma } = await import("@/lib/prisma")
+      ;(prisma.billingAccount.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce(
+        {
+          id: "ba-123",
+          organizationId: "org-123",
+          currency: "USD",
+          balance: { toNumber: () => 0 },
+        }
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/topup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+        })
+      )
+
+      expect(response.status).toBe(400)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("CURRENCY_NOT_SUPPORTED")
     })
   })
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Plus, ArrowsClockwise } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
@@ -14,9 +14,16 @@ import {
 } from "@/components/ui/card"
 import { useTemplates, useSyncTemplate } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export default function ConsoleTemplatesPage() {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const templatesBasePath = localizePathname({
+    pathname: "/console/whatsapp/templates",
+    locale,
+  })
   const { templates, loading, error, reload } = useTemplates()
   const { sync, syncing } = useSyncTemplate()
 
@@ -31,18 +38,25 @@ export default function ConsoleTemplatesPage() {
     }
 
     let synced = 0
+    let failed = 0
     for (const template of unsynced) {
       try {
         await sync(template.id)
         synced++
       } catch {
-        // individual sync failure is handled by the hook
+        failed++
       }
     }
 
     if (synced > 0) {
       toast.success(`Synced ${synced} template${synced !== 1 ? "s" : ""}.`)
       void reload()
+    }
+
+    if (failed > 0) {
+      toast.error(
+        `Unable to sync ${failed} template${failed !== 1 ? "s" : ""}. Please try again.`,
+      )
     }
   }
 
@@ -81,7 +95,7 @@ export default function ConsoleTemplatesPage() {
               />
               {syncing ? "Syncing..." : "Sync Templates"}
             </Button>
-            <Button onClick={() => router.push("./new")}>
+            <Button onClick={() => router.push(`${templatesBasePath}/new`)}>
               <Plus weight="bold" className="mr-2 size-4" />
               Create Template
             </Button>
@@ -112,8 +126,8 @@ export default function ConsoleTemplatesPage() {
             loading={loading}
             error={error}
             onRetry={() => void reload()}
-            onCreate={() => router.push("./new")}
-            onSelect={(id) => router.push(`./${id}`)}
+            onCreate={() => router.push(`${templatesBasePath}/new`)}
+            onSelect={(id) => router.push(`${templatesBasePath}/${id}`)}
           />
         </CardContent>
       </Card>

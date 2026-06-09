@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -8,6 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  localizePathname,
+  resolveLocaleOrDefault,
+} from "@/lib/i18n/pathname"
 import {
   WalletIcon,
   CurrencyCircleDollarIcon,
@@ -22,6 +28,7 @@ type DashboardCard = {
   subtitle: string | null
   loading: boolean
   error: boolean
+  href: string | null
 }
 
 const initialState: DashboardCard[] = [
@@ -32,6 +39,7 @@ const initialState: DashboardCard[] = [
     subtitle: null,
     loading: true,
     error: false,
+    href: null,
   },
   {
     title: "Spent This Month",
@@ -40,6 +48,7 @@ const initialState: DashboardCard[] = [
     subtitle: null,
     loading: true,
     error: false,
+    href: null,
   },
   {
     title: "Last Invoice",
@@ -48,6 +57,7 @@ const initialState: DashboardCard[] = [
     subtitle: null,
     loading: true,
     error: false,
+    href: null,
   },
   {
     title: "Open Tickets",
@@ -56,11 +66,14 @@ const initialState: DashboardCard[] = [
     subtitle: null,
     loading: true,
     error: false,
+    href: null,
   },
 ]
 
 export default function ConsolePage() {
   const [cards, setCards] = useState<DashboardCard[]>(initialState)
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
 
   const fetchDashboardData = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -84,6 +97,7 @@ export default function ConsolePage() {
             : null,
         loading: false,
         error: results[0].status !== "fulfilled" || !results[0].value?.ok,
+        href: null,
       },
       {
         title: "Spent This Month",
@@ -99,6 +113,7 @@ export default function ConsolePage() {
         loading: false,
         error:
           results[1].status !== "fulfilled" || !results[1].value?.success,
+        href: null,
       },
       {
         title: "Last Invoice",
@@ -119,6 +134,19 @@ export default function ConsolePage() {
             : null,
         loading: false,
         error: results[2].status !== "fulfilled" || !results[2].value?.ok,
+        href:
+          results[2].status === "fulfilled" &&
+          results[2].value?.ok &&
+          results[2].value.invoices?.length > 0 &&
+          results[2].value.invoices[0].id
+            ? localizePathname({
+                pathname: `/console/billing/invoices/${results[2].value.invoices[0].id}`,
+                locale,
+              })
+            : localizePathname({
+                pathname: "/console/billing/invoices",
+                locale,
+              }),
       },
       {
         title: "Open Tickets",
@@ -134,9 +162,13 @@ export default function ConsolePage() {
         loading: false,
         error:
           results[3].status !== "fulfilled" || !results[3].value?.ok,
+        href: localizePathname({
+          pathname: "/console/support-tickets?status=open",
+          locale,
+        }),
       },
     ])
-  }, [])
+  }, [locale])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -153,35 +185,58 @@ export default function ConsolePage() {
       </header>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => (
-          <Card key={card.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                {card.title}
-              </CardTitle>
-              {card.icon}
-            </CardHeader>
-            <CardContent>
-              {card.loading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-7 w-28" />
-                  <Skeleton className="h-4 w-20" />
-                </div>
-              ) : card.error ? (
-                <p className="text-sm text-muted-foreground">Unavailable</p>
-              ) : (
-                <>
-                  <p className="text-2xl font-bold">{card.value}</p>
-                  {card.subtitle && (
-                    <p className="text-xs text-muted-foreground">
-                      {card.subtitle}
-                    </p>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+        {cards.map((card) => {
+          const cardInner = (
+            <Card
+              className={
+                !card.loading && !card.error && card.href
+                  ? "h-full transition-colors hover:border-primary/50 hover:bg-accent/40"
+                  : "h-full"
+              }
+            >
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {card.title}
+                </CardTitle>
+                {card.icon}
+              </CardHeader>
+              <CardContent>
+                {card.loading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-7 w-28" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ) : card.error ? (
+                  <p className="text-sm text-muted-foreground">Unavailable</p>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold">{card.value}</p>
+                    {card.subtitle && (
+                      <p className="text-xs text-muted-foreground">
+                        {card.subtitle}
+                      </p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )
+
+          if (!card.loading && !card.error && card.href) {
+            return (
+              <Link
+                key={card.title}
+                href={card.href}
+                aria-label={card.title}
+                className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                {cardInner}
+              </Link>
+            )
+          }
+
+          return <div key={card.title}>{cardInner}</div>
+        })}
       </section>
     </main>
   )

@@ -83,7 +83,7 @@ export default function InvoiceDetailPage() {
     }).format(amount)
   }
 
-  function formatDate(dateStr: string | null): string {
+  function formatDate(dateStr: string | null | undefined): string {
     if (!dateStr) return "N/A"
     return new Intl.DateTimeFormat("id-ID", {
       day: "numeric",
@@ -169,6 +169,10 @@ export default function InvoiceDetailPage() {
   }
 
   const invoice = data.invoice
+  const isTopUp = invoice.type === "TOP_UP"
+  const issueDate = invoice.issuedAt ?? invoice.createdAt ?? null
+  const dueDate = invoice.dueAt ?? invoice.dueDate ?? null
+  const confirmPaymentHref = `/console/billing/payments/confirm?invoiceId=${invoice.id}`
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -248,11 +252,11 @@ export default function InvoiceDetailPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Issued Date</p>
-              <p className="font-medium">{formatDate(invoice.issuedAt)}</p>
+              <p className="font-medium">{formatDate(issueDate)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Due Date</p>
-              <p className="font-medium">{formatDate(invoice.dueAt)}</p>
+              <p className="font-medium">{formatDate(dueDate)}</p>
             </div>
           </div>
 
@@ -303,8 +307,37 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
 
-          {/* Payment Actions - only for OPEN invoices */}
-          {invoice.status === "OPEN" && account && (
+          {/* Payment Actions - top-up invoices show payment-method instructions */}
+          {invoice.status === "OPEN" && isTopUp && (
+            <div className="border-t pt-4">
+              <h3 className="mb-4 font-medium">Complete Your Top-Up</h3>
+              {invoice.paymentMethod === "MANUAL_BANK" ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Transfer the exact total amount{" "}
+                    <span className="font-medium text-foreground">
+                      {formatCurrency(invoice.totalAmountIdr, invoice.currency)}
+                    </span>{" "}
+                    to the destination bank account, then confirm your payment.
+                  </p>
+                  <Button asChild>
+                    <Link href={confirmPaymentHref}>
+                      <CheckCircleIcon className="mr-2 h-4 w-4" />
+                      Confirm Payment
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Complete your payment through the payment gateway. Your balance
+                  will be updated automatically once the payment is confirmed.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Payment Actions - balance options only for non-top-up OPEN invoices */}
+          {invoice.status === "OPEN" && !isTopUp && account && (
             <div className="border-t pt-4">
               <h3 className="mb-4 font-medium">Payment Options</h3>
               {error && (

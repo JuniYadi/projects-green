@@ -13,6 +13,25 @@ class MockGithubIntegrationDisabledError extends Error {
   }
 }
 
+class MockGithubApiError extends Error {
+  readonly statusCode?: number
+  constructor(message: string, statusCode?: number) {
+    super(message)
+    this.name = "GithubApiError"
+    this.statusCode = statusCode
+  }
+}
+
+class MockGithubReconnectRequiredError extends MockGithubApiError {
+  constructor(
+    message = "GitHub access expired or was revoked. Reconnect GitHub to continue.",
+    statusCode?: number
+  ) {
+    super(message, statusCode)
+    this.name = "GithubReconnectRequiredError"
+  }
+}
+
 const mockListRepositoriesForActor = mock(async () => ({
   items: [
     {
@@ -68,6 +87,7 @@ mock.module("@workos-inc/authkit-nextjs", () => {
 mock.module("@/modules/github/github.service", () => {
   return {
     GithubIntegrationDisabledError: MockGithubIntegrationDisabledError,
+    GithubReconnectRequiredError: MockGithubReconnectRequiredError,
     createGithubService: mockCreateGithubService,
   }
 })
@@ -235,5 +255,32 @@ describe("GET /api/integrations/github/repositories", () => {
         query: "api",
       }
     )
+  })
+
+  it("maps GitHub 401/403 reconnect failures to a 409 reconnect-required response", async () => {
+    mockListRepositoriesForActor.mockImplementation(async () => {
+      throw new MockGithubReconnectRequiredError(
+        "GitHub access expired or was revoked. Reconnect GitHub to continue.",
+        401
+      )
+    })
+
+    const route =
+      await import("@/app/api/integrations/github/repositories/route")
+    const response = await route.GET(
+      new NextRequest(
+        "http://localhost/api/integrations/github/repositories?limit=100"
+      )
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+
+    expect(response.status).toBe(409)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("GITHUB_RECONNECT_REQUIRED")
+    expect(body.message).toContain("Reconnect GitHub")
   })
 })

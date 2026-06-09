@@ -38,6 +38,23 @@ export const createTopupRoutes = () =>
       try {
         let gatewayId: string | undefined
         if (paymentMethod === "VA" || paymentMethod === "QRIS") {
+          // Duitku gateway only supports IDR settlement. Reject non-IDR
+          // accounts with a clear message instead of silently creating an
+          // invoice that cannot be paid through the gateway.
+          const billingAccount = await prisma.billingAccount.findUnique({
+            where: { organizationId: auth.organizationId },
+            select: { currency: true },
+          })
+          if (billingAccount && billingAccount.currency !== "IDR") {
+            set.status = 400
+            return {
+              ok: false,
+              error: "CURRENCY_NOT_SUPPORTED",
+              message:
+                "Virtual Account and QRIS payments are only available for IDR accounts.",
+            }
+          }
+
           const gateway = await gatewayService.findByType("GATEWAY")
           if (!gateway) {
             set.status = 400
@@ -155,6 +172,39 @@ export const createTopupRoutes = () =>
 
       const accounts = await bankAccountService.getActiveAccounts()
       return { ok: true, data: accounts }
+    })
+
+    .get("/methods", async ({ set }) => {
+      const auth = await withAuth()
+      if (!auth.organizationId) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+      }
+
+      const [accounts, gateway, billingAccount] = await Promise.all([
+        bankAccountService.getActiveAccounts(),
+        gatewayService.findByType("GATEWAY"),
+        prisma.billingAccount.findUnique({
+          where: { organizationId: auth.organizationId },
+          select: { currency: true },
+        }),
+      ])
+
+      const currency = billingAccount?.currency ?? "IDR"
+      const manualEnabled = accounts.length > 0
+      // Duitku only settles IDR, so VA/QRIS require an active gateway and an
+      // IDR billing account.
+      const duitkuEnabled = Boolean(gateway) && currency === "IDR"
+
+      return {
+        ok: true,
+        currency,
+        methods: {
+          MANUAL_BANK: manualEnabled,
+          VA: duitkuEnabled,
+          QRIS: duitkuEnabled,
+        },
+      }
     })
 
 export const createPaymentHistoryRoutes = () =>

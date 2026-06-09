@@ -133,7 +133,7 @@ export type CreateContactInput = {
   phoneNumber: string
   name: string
   email: string
-  contactGroupId: string
+  contactGroupId?: string
   status?: ContactStatus
   whatsappDeviceId?: string | null
   dynamicValues?: Record<string, unknown> | null

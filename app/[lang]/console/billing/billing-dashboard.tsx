@@ -20,7 +20,6 @@ import {
   CalendarIcon,
   ChartLineUp,
   WalletIcon,
-  CreditCardIcon,
   BellIcon,
   GaugeIcon,
 } from "@phosphor-icons/react"
@@ -269,24 +268,6 @@ export function BillingDashboard() {
                     <h3 className="font-medium">Usage Dashboard</h3>
                     <p className="text-sm text-muted-foreground">
                       Monitor usage and costs
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/console/billing/payment-methods" className="block">
-            <Card className="transition-colors hover:bg-muted/50">
-              <CardContent className="py-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
-                    <CreditCardIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Payment Methods</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Manage bank accounts
                     </p>
                   </div>
                 </div>

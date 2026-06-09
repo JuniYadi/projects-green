@@ -38,6 +38,35 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
   const [amount, setAmount] = useState<number>(50000)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("MANUAL_BANK")
   const [selectedBankAccount, setSelectedBankAccount] = useState<string>("")
+  const [availableMethods, setAvailableMethods] = useState<
+    Record<PaymentMethod, boolean>
+  >({ MANUAL_BANK: true, VA: false, QRIS: false })
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchMethods() {
+      try {
+        const response = await fetch("/api/payments/topup/methods")
+        const data = await response.json()
+        if (data.ok && data.methods && !cancelled) {
+          setAvailableMethods({
+            MANUAL_BANK: Boolean(data.methods.MANUAL_BANK),
+            VA: Boolean(data.methods.VA),
+            QRIS: Boolean(data.methods.QRIS),
+          })
+        }
+      } catch {
+        // Keep conservative defaults (manual only) on failure.
+      }
+    }
+
+    void fetchMethods()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -118,7 +147,9 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
 
       if (paymentMethod === "MANUAL_BANK") {
         setFormState("success")
-        router.push(`/console/billing/payments/confirm?invoiceId=${result.invoice.id}&amount=${amount}&bankAccountId=${selectedBankAccount}`)
+        // Manual transfer lands on the invoice detail page so the customer can
+        // review the destination account and exact amount before confirming.
+        router.push(`/console/billing/invoices/${result.invoice.id}`)
       } else if (paymentMethod === "VA" || paymentMethod === "QRIS") {
         if (result.paymentUrl) {
           setFormState("submitting")
@@ -138,7 +169,7 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
 
   const selectedBank = bankAccounts.find((b) => b.id === selectedBankAccount)
 
-  const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: React.ElementType; description: string }[] = [
+  const ALL_PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: React.ElementType; description: string }[] = [
     {
       value: "MANUAL_BANK",
       label: "Manual Bank Transfer",
@@ -158,6 +189,11 @@ export function TopupFormEnhanced({ className, onSuccess }: TopupFormEnhancedPro
       description: "Pay with any QRIS-enabled app",
     },
   ]
+
+  // Only show payment methods that are actually enabled/configured.
+  const PAYMENT_METHODS = ALL_PAYMENT_METHODS.filter(
+    (method) => availableMethods[method.value]
+  )
 
   return (
     <form onSubmit={handleSubmit} className={className}>
