@@ -27,7 +27,6 @@ import {
   PaperPlaneTiltIcon,
   ReceiptIcon,
   RocketLaunchIcon,
-  GearSixIcon,
   WalletIcon,
   WhatsappLogoIcon,
 } from "@phosphor-icons/react"
@@ -127,16 +126,10 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     ],
     getNavMain: (path, locale) => [
       {
-        title: "Deploy",
-        url: localizePathname({ pathname: "/portal/app/deploy", locale }),
+        title: "Overview",
+        url: localizePathname({ pathname: "/portal/app", locale }),
         icon: <RocketLaunchIcon />,
-        isActive: path === "/portal/app/deploy",
-      },
-      {
-        title: "Manage",
-        url: localizePathname({ pathname: "/portal/app/manage", locale }),
-        icon: <GaugeIcon />,
-        isActive: startsWithRoute(path, "/portal/app/manage"),
+        isActive: path === "/portal/app",
       },
       {
         title: "Detector Control",
@@ -306,6 +299,12 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       icon: <WhatsappLogoIcon />,
       isActive: startsWithRoute(path, "/console/whatsapp"),
     },
+    {
+      title: "Organization",
+      url: localizePathname({ pathname: "/console/organization", locale }),
+      icon: <BuildingsIcon />,
+      isActive: startsWithRoute(path, "/console/organization"),
+    },
   ],
 })
 
@@ -313,48 +312,6 @@ const buildPortalNavMain = (
   pathname: string,
   locale: AppLocale
 ): AppSidebarNavItem[] => [
-  {
-    title: "Documentation",
-    url: localizePathname({ pathname: "/portal/documentations", locale }),
-    icon: <BookOpenIcon />,
-    isActive: startsWithRoute(pathname, "/portal/documentations"),
-    items: [
-      {
-        title: "Registry",
-        url: localizePathname({ pathname: "/portal/documentations", locale }),
-        isActive: startsWithRoute(pathname, "/portal/documentations"),
-      },
-    ],
-  },
-  {
-    title: "Settings",
-    url: localizePathname({ pathname: "/portal/settings/members", locale }),
-    icon: <GearSixIcon />,
-    isActive: startsWithRoute(pathname, "/portal/settings"),
-    items: [
-      {
-        title: "Members",
-        url: localizePathname({ pathname: "/portal/settings/members", locale }),
-        isActive: startsWithRoute(pathname, "/portal/settings/members"),
-      },
-      {
-        title: "Invitations",
-        url: localizePathname({
-          pathname: "/portal/settings/invitations",
-          locale,
-        }),
-        isActive: startsWithRoute(pathname, "/portal/settings/invitations"),
-      },
-      {
-        title: "Ownership",
-        url: localizePathname({
-          pathname: "/portal/settings/ownership",
-          locale,
-        }),
-        isActive: startsWithRoute(pathname, "/portal/settings/ownership"),
-      },
-    ],
-  },
   {
     title: "App Hosting",
     url: localizePathname({ pathname: "/portal/app", locale }),

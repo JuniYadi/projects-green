@@ -157,6 +157,7 @@ export default function PortalDocumentationsPage() {
                     </TableCell>
                     <TableCell>
                       <Button
+                        aria-label={`Delete ${doc.title}`}
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive"
@@ -178,11 +179,23 @@ export default function PortalDocumentationsPage() {
       </section>
 
       <section className="rounded-lg border border-border p-4 md:p-6">
-        <h2 className="mb-4 text-lg font-semibold">
-          {selectedDoc
-            ? `Edit: ${selectedDoc.title}`
-            : "Create New Entry"}
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">
+            {selectedDoc
+              ? `Edit: ${selectedDoc.title}`
+              : "Create New Entry"}
+          </h2>
+          {selectedDoc && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedDoc(null)}
+            >
+              Create New Entry
+            </Button>
+          )}
+        </div>
         <DocumentationForm initialData={selectedDoc} onSuccess={() => void loadDocs()} />
       </section>
     </main>

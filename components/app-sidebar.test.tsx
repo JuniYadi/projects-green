@@ -84,7 +84,7 @@ describe("resolveSidebarMenu", () => {
     ])
     expect(projects.find((project) => project.name === "Overview")?.isActive).toBe(true)
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp"])
+    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp", "Organization"])
     expect(navMain[0]?.isActive).toBe(false)
   })
 
@@ -99,7 +99,7 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp"])
+    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp", "Organization"])
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
       "Billing",
@@ -118,13 +118,11 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMain.map((item) => item.title)).toEqual([
-      "Documentation",
-      "Settings",
       "App Hosting",
       "WhatsApp",
     ])
-    expect(navMain[0]?.items?.map((item) => item.title)).toEqual(["Registry"])
-    expect(navMain[0]?.isActive).toBe(true)
+    expect(navMain.map((item) => item.title)).not.toContain("Documentation")
+    expect(navMain.map((item) => item.title)).not.toContain("Settings")
 
     expect(projects.map((project) => project.name)).toContain("Payments")
     expect(projects.map((project) => project.name)).not.toContain(
@@ -148,10 +146,32 @@ describe("resolveSidebarMenu", () => {
     // Payments no longer has its own sidebar context — falls back to portal platform nav
     expect(navMainLabel).not.toBe("Payments")
     expect(navMain.map((item) => item.title)).toEqual([
-      "Documentation",
-      "Settings",
       "App Hosting",
       "WhatsApp",
+    ])
+  })
+
+  it("marks organization active for console organization routes", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/organization/members",
+      locale: "en",
+    })
+
+    expect(navMain.find((item) => item.title === "Organization")?.isActive).toBe(true)
+  })
+
+  it("limits portal app hosting context to admin scope", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/app",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("App Hosting")
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Overview",
+      "Detector Control",
     ])
   })
 

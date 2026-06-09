@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 
 // Mock fetch for the docs list API call
 const mockFetch = mock(
@@ -37,6 +37,50 @@ describe("PortalDocumentationsPage", () => {
 
     await waitFor(() => {
       expect(view.getByText("Test Doc")).toBeTruthy()
+    })
+  })
+
+  it("shows the Documentation Registry heading", async () => {
+    const { default: Page } = await import("./page")
+    const view = render(<Page />)
+
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Documentation Registry" })
+      ).toBeTruthy()
+    })
+  })
+
+  it("shows edit heading when a doc row is selected", async () => {
+    const { default: Page } = await import("./page")
+    const view = render(<Page />)
+
+    await waitFor(() => {
+      expect(view.getByText("Test Doc")).toBeTruthy()
+    })
+
+    fireEvent.click(view.getByText("Test Doc"))
+
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Edit: Test Doc" })
+      ).toBeTruthy()
+    })
+  })
+
+  it("calls DELETE when delete button is clicked and confirmed", async () => {
+    const { default: Page } = await import("./page")
+    const view = render(<Page />)
+
+    await waitFor(() => {
+      expect(view.getByText("Test Doc")).toBeTruthy()
+    })
+
+    globalThis.confirm = () => true
+    fireEvent.click(view.getByRole("button", { name: /delete test doc/i }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled()
     })
   })
 })
