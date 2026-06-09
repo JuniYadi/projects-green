@@ -24,6 +24,7 @@ type InvitePageProps = {
 }
 
 type ResolvedInvitation = {
+  id: string
   token: string
   email: string
   organizationName: string | null
@@ -49,6 +50,7 @@ const resolveInvitation = async (
   const expired = new Date(invitation.expiresAt).getTime() < Date.now()
 
   return {
+    id: invitation.id,
     token,
     email: invitation.email,
     organizationName: organization?.name ?? null,
