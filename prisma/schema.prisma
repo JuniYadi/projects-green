@@ -1499,6 +1499,9 @@ model PaymentGateway {
   name      String
   type      String   // "GATEWAY" or "BANK_TRANSFER"
   config    Json     // Encrypted JSON: { merchantCode, apiKey, sandboxUrl, productionUrl }
+  // ISO currency codes this gateway can settle, e.g. ["IDR"], ["USD"], or both.
+  // A gateway is offered when this list includes the account currency.
+  supportedCurrencies String[] @default([])
   isActive  Boolean  @default(false)
   isDefault Boolean  @default(false)
   sortOrder Int      @default(0)
@@ -1518,6 +1521,10 @@ model BankAccount {
   bankName      String   // "Bank Central Asia"
   accountName   String   // AES-256 encrypted
   accountNumber String   // AES-256 encrypted
+  // ISO currency code this account receives, e.g. "IDR" or "USD". An IDR
+  // account cannot accept USD transfers, so it is only offered to matching
+  // account currencies.
+  currency      String   @default("IDR")
   isActive      Boolean  @default(true)
   isDefault     Boolean  @default(false)
   sortOrder     Int      @default(0)
@@ -1529,6 +1536,31 @@ model BankAccount {
 
   @@index([gatewayId, isActive])
   @@index([bankCode])
+  @@index([currency, isActive])
+}
+
+/// Supported billing currencies and their exchange rate against the base
+/// currency (USD). Prices are authored in the base currency; every other
+/// currency is derived by multiplying by `ratePerBase`. Exactly one row must
+/// have `isBase = true` (its `ratePerBase` is 1).
+model Currency {
+  id          String   @id @default(cuid())
+  code        String   @unique // ISO 4217, e.g. "USD", "IDR"
+  name        String   // "US Dollar", "Indonesian Rupiah"
+  symbol      String   // "$", "Rp"
+  isBase      Boolean  @default(false)
+  // Units of this currency per 1 unit of the base currency.
+  // USD (base) = 1, IDR = 18000 when 1 USD = 18,000 IDR.
+  ratePerBase Decimal  @default(1) @db.Decimal(18, 6)
+  // Top-up bounds expressed in THIS currency.
+  minTopup    Decimal  @db.Decimal(18, 2)
+  maxTopup    Decimal  @db.Decimal(18, 2)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
 }
 
 model PaymentConfirmation {
