@@ -36,12 +36,27 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true)
 
-  const [amount, setAmount] = useState<number>(50000)
+  const [amount, setAmount] = useState<number>(0)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("MANUAL_BANK")
   const [selectedBankAccount, setSelectedBankAccount] = useState<string>("")
   const [availableMethods, setAvailableMethods] = useState<
     Record<PaymentMethod, boolean>
   >({ MANUAL_BANK: true, VA: false, QRIS: false })
+  const [currencyConfig, setCurrencyConfig] = useState<{
+    symbol: string
+    ratePerBase: number
+    baseCode: string
+    presets: number[]
+    minTopup: number
+    maxTopup: number
+  }>({
+    symbol: currency === "USD" ? "$" : "Rp",
+    ratePerBase: currency === "USD" ? 1 : 18000,
+    baseCode: "USD",
+    presets: currency === "USD" ? [5, 10, 25, 50, 100] : [90000, 180000, 450000, 900000, 1800000],
+    minTopup: currency === "USD" ? 5 : 90000,
+    maxTopup: currency === "USD" ? 10000 : 180000000,
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -50,12 +65,21 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
       try {
         const response = await fetch("/api/payments/topup/methods")
         const data = await response.json()
-        if (data.ok && data.methods && !cancelled) {
-          setAvailableMethods({
-            MANUAL_BANK: Boolean(data.methods.MANUAL_BANK),
-            VA: Boolean(data.methods.VA),
-            QRIS: Boolean(data.methods.QRIS),
-          })
+        if (data.ok && !cancelled) {
+          if (data.methods) {
+            setAvailableMethods({
+              MANUAL_BANK: Boolean(data.methods.MANUAL_BANK),
+              VA: Boolean(data.methods.VA),
+              QRIS: Boolean(data.methods.QRIS),
+            })
+          }
+          if (data.config) {
+            setCurrencyConfig(data.config)
+            // Default the amount to the first preset for this currency.
+            if (Array.isArray(data.config.presets) && data.config.presets.length > 0) {
+              setAmount(data.config.presets[0])
+            }
+          }
         }
       } catch {
         // Keep conservative defaults (manual only) on failure.
@@ -101,21 +125,30 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
     }
   }, [])
 
-  const isValid = amount >= 10000 && amount <= 100000000
+  const isValid =
+    amount >= currencyConfig.minTopup && amount <= currencyConfig.maxTopup
+
+  const useDecimals = currency === "USD"
 
   function formatCurrency(value: number): string {
     return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID", {
       style: "currency",
       currency,
       minimumFractionDigits: 0,
+      maximumFractionDigits: useDecimals ? 2 : 0,
     }).format(value)
   }
 
   function formatAmount(value: number): string {
-    return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID").format(value)
+    return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID", {
+      maximumFractionDigits: useDecimals ? 2 : 0,
+    }).format(value)
   }
 
   function parseFormattedAmount(value: string): number {
+    if (useDecimals) {
+      return Number.parseFloat(value.replace(/[^\d.]/g, "")) || 0
+    }
     return Number.parseInt(value.replace(/[^\d]/g, ""), 10) || 0
   }
 
@@ -203,7 +236,7 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
         <Field>
           <FieldLabel>Amount ({currency})</FieldLabel>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {[50000, 100000, 250000, 500000, 1000000].map((preset) => (
+            {currencyConfig.presets.map((preset) => (
               <Button
                 key={preset}
                 type="button"
@@ -218,9 +251,7 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
             <Button
               type="button"
               variant={
-                ![50000, 100000, 250000, 500000, 1000000].includes(amount)
-                  ? "default"
-                  : "outline"
+                !currencyConfig.presets.includes(amount) ? "default" : "outline"
               }
               size="sm"
               disabled={formState === "submitting"}
@@ -243,11 +274,21 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
               {currency}
             </span>
           </div>
-          {amount > 0 && amount < 10000 && (
-            <p className="mt-1 text-sm text-destructive">Minimum topup is {formatCurrency(10000)}</p>
+          {amount > 0 && amount < currencyConfig.minTopup && (
+            <p className="mt-1 text-sm text-destructive">
+              Minimum topup is {formatCurrency(currencyConfig.minTopup)}
+            </p>
           )}
-          {amount > 100000000 && (
-            <p className="mt-1 text-sm text-destructive">Maximum topup is {formatCurrency(100000000)}</p>
+          {amount > currencyConfig.maxTopup && (
+            <p className="mt-1 text-sm text-destructive">
+              Maximum topup is {formatCurrency(currencyConfig.maxTopup)}
+            </p>
+          )}
+          {currency !== currencyConfig.baseCode && currencyConfig.ratePerBase > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Exchange rate: 1 {currencyConfig.baseCode} ={" "}
+              {formatCurrency(currencyConfig.ratePerBase)}
+            </p>
           )}
         </Field>
 

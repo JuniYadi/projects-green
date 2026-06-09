@@ -37,6 +37,14 @@ describe("TopupFormEnhanced", () => {
         return jsonResponse({
           ok: true,
           currency: "IDR",
+          config: {
+            symbol: "Rp",
+            ratePerBase: 18000,
+            baseCode: "USD",
+            presets: [90000, 180000, 450000, 900000, 1800000],
+            minTopup: 90000,
+            maxTopup: 180000000,
+          },
           methods: { MANUAL_BANK: true, VA: false, QRIS: false },
         })
       }
@@ -95,6 +103,14 @@ describe("TopupFormEnhanced", () => {
         return jsonResponse({
           ok: true,
           currency: "IDR",
+          config: {
+            symbol: "Rp",
+            ratePerBase: 18000,
+            baseCode: "USD",
+            presets: [90000, 180000, 450000, 900000, 1800000],
+            minTopup: 90000,
+            maxTopup: 180000000,
+          },
           methods: { MANUAL_BANK: true, VA: true, QRIS: true },
         })
       }
