@@ -20,6 +20,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { CreateOrganizationDialog } from "@/components/create-organization-dialog"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 import { getMessages } from "@/lib/i18n/messages"
 import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
@@ -27,6 +28,7 @@ import type { AppSidebarOrganization } from "@/components/app-sidebar"
 import {
   isTenantApiError,
   type TenantApiError,
+  type TenantBillingCurrency,
   type TenantBootstrapMembership,
   type TenantBootstrapResponse,
   type TenantOrganizationCreateResponse,
@@ -60,6 +62,8 @@ export function NavOrganization({
   const [isLoadingMemberships, setIsLoadingMemberships] = useState(true)
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const { locale: pathnameLocale } = getLocaleFromPathname(pathname)
   const activeLocale = (pathnameLocale ?? defaultLocale) as AppLocale
@@ -161,21 +165,17 @@ export function NavOrganization({
     }
   }
 
-  const handleCreateOrganization = async () => {
-    const promptValue = window.prompt(
-      messages.navOrganization.createOrganizationPlaceholder
-    )
-
-    if (promptValue === null) {
-      return
-    }
-
-    const candidateName = promptValue.trim()
+  const handleCreateOrganization = async (input: {
+    name: string
+    currency: TenantBillingCurrency
+  }) => {
+    const candidateName = input.name.trim()
     if (!candidateName) {
-      setActionError(messages.navOrganization.organizationNameRequired)
+      setCreateError(messages.navOrganization.organizationNameRequired)
       return
     }
 
+    setCreateError(null)
     setActionError(null)
     setIsCreating(true)
 
@@ -185,7 +185,10 @@ export function NavOrganization({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: candidateName }),
+        body: JSON.stringify({
+          name: candidateName,
+          currency: input.currency,
+        }),
       })
       const payload = (await response.json().catch(() => null)) as
         | TenantOrganizationCreateResponse
@@ -193,7 +196,7 @@ export function NavOrganization({
         | null
 
       if (!response.ok || !payload || isTenantApiError(payload)) {
-        setActionError(
+        setCreateError(
           payload && isTenantApiError(payload)
             ? payload.message
             : messages.navOrganization.createOrganizationError
@@ -201,9 +204,10 @@ export function NavOrganization({
         return
       }
 
+      setIsCreateDialogOpen(false)
       await handleSwitchOrganization(payload.organizationId)
     } catch {
-      setActionError(messages.navOrganization.createOrganizationError)
+      setCreateError(messages.navOrganization.createOrganizationError)
     } finally {
       setIsCreating(false)
     }
@@ -297,7 +301,8 @@ export function NavOrganization({
               disabled={isCreating || Boolean(switchingOrgId)}
               onSelect={(event) => {
                 event.preventDefault()
-                void handleCreateOrganization()
+                setCreateError(null)
+                setIsCreateDialogOpen(true)
               }}
             >
               {isCreating
@@ -336,6 +341,16 @@ export function NavOrganization({
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+      <CreateOrganizationDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        isCreating={isCreating}
+        error={createError}
+        messages={messages.navOrganization}
+        onSubmit={(input) => {
+          void handleCreateOrganization(input)
+        }}
+      />
     </SidebarMenu>
   )
 }
