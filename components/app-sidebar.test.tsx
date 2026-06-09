@@ -172,7 +172,24 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Overview",
       "Detector Control",
+      "Events",
     ])
+  })
+
+  it("returns app hosting event navigation for github events path", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/app/events/github",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("App Hosting")
+    const events = navMain.find((item) => item.title === "Events")
+    expect(events).toBeDefined()
+    expect(events?.isActive).toBe(true)
+    expect(events?.items?.map((item) => item.title)).toEqual(["GitHub"])
+    expect(events?.items?.[0]?.url).toContain("/portal/app/events/github")
+    expect(events?.items?.[0]?.isActive).toBe(true)
   })
 
   it("includes thunder AI help trigger link for console sidebar secondary links", () => {
