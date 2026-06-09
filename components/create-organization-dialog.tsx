@@ -40,7 +40,6 @@ export function CreateOrganizationDialog({
   messages,
   onSubmit,
 }: CreateOrganizationDialogProps) {
-  const [name, setName] = useState("")
   const [currency, setCurrency] = useState<TenantBillingCurrency>("IDR")
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -48,7 +47,6 @@ export function CreateOrganizationDialog({
       return
     }
     if (!nextOpen) {
-      setName("")
       setCurrency("IDR")
     }
     onOpenChange(nextOpen)
@@ -56,10 +54,8 @@ export function CreateOrganizationDialog({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const candidateName = name.trim()
-    if (!candidateName) {
-      return
-    }
+    const formData = new FormData(event.currentTarget)
+    const candidateName = String(formData.get("name") ?? "").trim()
     onSubmit({ name: candidateName, currency })
   }
 
@@ -80,9 +76,9 @@ export function CreateOrganizationDialog({
               </Label>
               <Input
                 id="create-org-name"
-                value={name}
+                name="name"
+                defaultValue=""
                 placeholder={messages.createOrganizationPlaceholder}
-                onChange={(event) => setName(event.target.value)}
                 disabled={isCreating}
                 autoFocus
                 required
@@ -127,7 +123,7 @@ export function CreateOrganizationDialog({
             >
               {messages.createOrganizationCancelLabel}
             </Button>
-            <Button type="submit" disabled={isCreating || !name.trim()}>
+            <Button type="submit" disabled={isCreating}>
               {isCreating
                 ? messages.creatingOrganizationLabel
                 : messages.createOrganizationActionLabel}

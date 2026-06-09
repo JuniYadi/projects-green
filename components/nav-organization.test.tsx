@@ -239,7 +239,11 @@ describe("NavOrganization", () => {
     const submitButton = await view.findByRole("button", {
       name: "Create organization",
     })
-    expect(submitButton.hasAttribute("disabled")).toBe(true)
+    fireEvent.submit(submitButton.closest("form") as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(view.getByText("Organization name is required.")).toBeTruthy()
+    })
   })
 
   it("shows create API error message", async () => {
