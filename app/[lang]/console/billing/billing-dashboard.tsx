@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 
 import { SubscriptionCard } from "@/components/billing/subscription-card"
 import { InvoiceTable } from "@/components/billing/invoice-table"
@@ -89,6 +90,8 @@ const secondaryLinks = [
 ]
 
 export function BillingDashboard() {
+  const params = useParams()
+  const locale = (params?.lang as string) ?? "en"
   const [data, setData] = useState<DashboardData>({
     account: null,
     subscriptions: null,
@@ -273,7 +276,7 @@ export function BillingDashboard() {
 
         <InvoiceTable
           invoices={data.invoices?.invoices.slice(0, 5) ?? []}
-          lang="en"
+          lang={locale}
           emptyMessage="No invoices yet."
         />
       </section>
