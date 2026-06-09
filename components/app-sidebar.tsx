@@ -414,12 +414,6 @@ const buildPortalProjects = (
   locale: AppLocale
 ): AppSidebarProject[] => [
   {
-    name: "Documentation",
-    url: localizePathname({ pathname: "/portal/documentations", locale }),
-    icon: <BookOpenIcon />,
-    isActive: startsWithRoute(pathname, "/portal/documentations"),
-  },
-  {
     name: "Billing",
     url: localizePathname({ pathname: "/portal/billing", locale }),
     icon: <WalletIcon />,
