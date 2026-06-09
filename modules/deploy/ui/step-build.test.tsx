@@ -35,6 +35,7 @@ const createProps = () => {
       name: "console-next-app",
       isPrivate: true,
       defaultBranch: "main",
+      installationId: 12345,
     },
     branch: {
       id: "branch-1",
@@ -48,6 +49,7 @@ const createProps = () => {
     buildCommand: "bun run build",
     useDockerfile: false,
     manualOverrideRequired: false,
+    isDetecting: false,
     canProceed: true,
     onBack: mock(() => {}),
     onNext: mock(() => {}),

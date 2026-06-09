@@ -56,6 +56,7 @@ const createProps = () => {
         name: "console-next-app",
         isPrivate: true,
         defaultBranch: "main",
+        installationId: 12345,
       },
     ],
     branches: [
@@ -81,6 +82,8 @@ const createProps = () => {
     onCancel: mock(() => {}),
     onNext: mock(() => {}),
     canProceed: false,
+    isDetecting: false,
+    detectionError: null,
   }
 }
 

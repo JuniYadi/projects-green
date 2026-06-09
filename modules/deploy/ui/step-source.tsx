@@ -78,6 +78,8 @@ export type StepSourceProps = {
   onCancel: () => void
   onNext: () => void
   canProceed: boolean
+  isDetecting: boolean
+  detectionError: string | null
 }
 
 // Beautiful Custom SVG Logos for templates
@@ -157,6 +159,8 @@ export function StepSource({
   onCancel,
   onNext,
   canProceed,
+  isDetecting,
+  detectionError,
 }: StepSourceProps) {
   const [repoFilter, setRepoFilter] = useState("")
   const [templateFilter, setTemplateFilter] = useState("")
@@ -411,6 +415,19 @@ export function StepSource({
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* — Framework Detection — */}
+                {selectedRepositoryId && isDetecting && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                    Detecting framework from repository...
+                  </div>
+                )}
+                {selectedRepositoryId && detectionError && (
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-400 mt-2">
+                    {detectionError}
                   </div>
                 )}
 

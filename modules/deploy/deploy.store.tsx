@@ -51,7 +51,7 @@ type DeployWizardAction =
   | { type: "set-step"; payload: DeployStep }
   | { type: "set-source"; payload: Partial<DeploySourceState> }
   | { type: "set-detection"; payload: DetectionResult | null }
-  | { type: "set-build"; payload: Partial<DeployBuildState> }
+  | { type: "set-build"; payload: Partial<DeployBuildState> | null }
   | { type: "set-environment"; payload: Partial<DeployEnvironmentState> }
   | { type: "set-monitor"; payload: Partial<DeployMonitorState> }
   | {
@@ -97,10 +97,9 @@ const deployWizardReducer = (
     case "set-build": {
       return {
         ...state,
-        build: {
-          ...state.build,
-          ...action.payload,
-        },
+        build: action.payload
+          ? { ...state.build, ...action.payload }
+          : { ...DEFAULT_BUILD_STATE },
       }
     }
     case "set-environment": {

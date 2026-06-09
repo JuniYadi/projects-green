@@ -53,7 +53,8 @@ const sampleDeployment = {
 let appsResponse: { ok: boolean; data: unknown[] } = { ok: true, data: [] }
 
 const installFetch = () => {
-  globalThis.fetch = mock((input: RequestInfo | URL) => {
+  globalThis.fetch = mock((input: RequestInfo | URL, init?: RequestInit) => {
+    const requestInit = init
     const requestUrl =
       typeof input === "string"
         ? input
@@ -101,22 +102,51 @@ const installFetch = () => {
       )
     }
 
+    if (
+      url.pathname === "/api/framework-detection/github" &&
+      requestInit?.method === "POST"
+    ) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            primaryFramework: {
+              id: "nextjs",
+              name: "Next.js",
+              ecosystem: "node",
+              confidence: 95,
+              reasons: ["Detected package.json dependencies"],
+            },
+            requiredDependencies: [],
+            alternatives: [],
+            confidence: 95,
+            decision: {
+              status: "success",
+              message: "Detected with high confidence",
+              isLaunchable: true,
+            },
+            evidence: [],
+            warnings: [],
+            source: { repoUrl: "pfn-labs/unknown" },
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }
+        )
+      )
+    }
+
     return Promise.resolve(new Response("Not found", { status: 404 }))
   }) as unknown as typeof fetch
 }
-
-let cachedPageModule:
-  | typeof import("@/app/[lang]/console/app/manage/page")
-  | null = null
 
 const renderPage = async (query = "") => {
   currentQuery = query
   replaceCalls.splice(0)
 
-  if (!cachedPageModule) {
-    cachedPageModule = await import("@/app/[lang]/console/app/manage/page")
-  }
-  return render(<cachedPageModule.default />)
+  const pageModule = await import("@/app/[lang]/console/app/manage/page")
+  return render(<pageModule.default />)
 }
 
 describe("ManagePage", () => {

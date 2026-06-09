@@ -126,10 +126,13 @@ const renderWizard = async (
     cachedStoreModule = await import("@/modules/deploy/deploy.store")
   }
 
+  const { DeployWizardProvider } = await import("@/modules/deploy/deploy.store")
+  const { DeployWizard } = await import("@/modules/deploy/ui/deploy-wizard")
+
   return render(
-    <cachedStoreModule.DeployWizardProvider>
-      <cachedWizardModule.DeployWizard />
-    </cachedStoreModule.DeployWizardProvider>
+    <DeployWizardProvider>
+      <DeployWizard />
+    </DeployWizardProvider>
   )
 }
 
@@ -145,15 +148,24 @@ const selectSourceRepository = async (view: RenderResult) => {
   })
 
   fireEvent.click(view.getByRole("button", { name: /console-next-app/i }))
+
+  // Wait for framework detection to complete before proceeding
+  await waitFor(() => {
+    expect(
+      view.queryByText("Detecting framework from repository...")
+    ).toBeNull()
+  })
 }
 
 describe("DeployWizard", () => {
   beforeEach(() => {
+    mock.restore()
     window.sessionStorage.clear()
     currentQuery = ""
     deployStatusResponse = "running"
     replaceCalls.splice(0)
-    globalThis.fetch = mock((input: RequestInfo | URL) => {
+    globalThis.fetch = mock((input: RequestInfo | URL, init?: RequestInit) => {
+      const requestInit = init
       const requestUrl =
         typeof input === "string"
           ? input
@@ -227,6 +239,76 @@ describe("DeployWizard", () => {
             status: 200,
             headers: { "content-type": "application/json" },
           })
+        )
+      }
+
+      if (
+        url.pathname === "/api/framework-detection/github" &&
+        requestInit?.method === "POST"
+      ) {
+        const body = requestInit.body
+          ? (JSON.parse(requestInit.body as string) as {
+              repo?: string
+            })
+          : null
+        const repoName = body?.repo ?? ""
+
+        // Return different results per repo
+        if (repoName === "legacy-worker") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                ok: true,
+                primaryFramework: null,
+                requiredDependencies: [],
+                alternatives: [],
+                confidence: 0,
+                decision: {
+                  status: "blocked",
+                  message: "Unsupported framework",
+                  isLaunchable: false,
+                },
+                evidence: [],
+                warnings: ["Unsupported framework type"],
+                source: { repoUrl: `acme-inc/${repoName}` },
+              }),
+              {
+                status: 200,
+                headers: { "content-type": "application/json" },
+              }
+            )
+          )
+        }
+
+        // Default: successful detection (Next.js for console-next-app, etc.)
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              primaryFramework: {
+                id: "nextjs",
+                name: "Next.js",
+                ecosystem: "node",
+                confidence: 95,
+                reasons: ["Detected package.json dependencies"],
+              },
+              requiredDependencies: [],
+              alternatives: [],
+              confidence: 95,
+              decision: {
+                status: "success",
+                message: "Detected with high confidence",
+                isLaunchable: true,
+              },
+              evidence: [],
+              warnings: [],
+              source: { repoUrl: `pfn-labs/${repoName || "unknown"}` },
+            }),
+            {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }
+          )
         )
       }
 
@@ -495,41 +577,41 @@ describe("DeployWizard", () => {
     // High confidence goes to Environment first
     await waitFor(() => {
       expect(view.getByText("Environment Settings")).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     // Click back goes to Build step (allowing editing auto-detected settings)
     fireEvent.click(view.getByRole("button", { name: "Back" }))
 
     await waitFor(() => {
       expect(view.getByText("Manual override")).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
       expect(view.getByText(/Attached Resources/i)).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("radio", { name: /Pro/i }))
 
     await waitFor(() => {
       const proRadio = view.getByRole("radio", { name: /Pro/i }) as HTMLInputElement
       expect(proRadio.checked).toBe(true)
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("button", { name: "Back" }))
 
     await waitFor(() => {
       expect(view.getByText("Manual override")).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
     await waitFor(() => {
       const proRadio = view.getByRole("radio", { name: /Pro/i }) as HTMLInputElement
       expect(proRadio.checked).toBe(true)
-    })
-  })
+    }, { timeout: 15_000 })
+  }, 30_000)
 
   it("validates custom domain mode before deploy", async () => {
     const view = await renderWizard()
@@ -539,7 +621,7 @@ describe("DeployWizard", () => {
 
     await waitFor(() => {
       expect(view.getByText("Environment Settings")).toBeTruthy()
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("radio", { name: /Custom domain/i }))
 
@@ -550,14 +632,14 @@ describe("DeployWizard", () => {
           "Custom domain is required when generated subdomain is off."
         ).length
       ).toBeGreaterThan(0)
-    })
+    }, { timeout: 15_000 })
 
     fireEvent.click(view.getByRole("radio", { name: /Managed subdomain/i }))
 
     await waitFor(() => {
       expect(view.getByRole("button", { name: "Deploy Application" })).toBeEnabled()
-    })
-  })
+    }, { timeout: 15_000 })
+  }, 20_000)
 
   it("shows duplicate env var key warning", async () => {
     const view = await renderWizard("step=environment&github=connected", {

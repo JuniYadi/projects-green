@@ -39,6 +39,7 @@ export type Repository = {
   name: string
   isPrivate: boolean
   defaultBranch?: string
+  installationId: number
 }
 
 export type Branch = {

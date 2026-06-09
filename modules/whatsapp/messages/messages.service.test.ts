@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 // See AGENTS.md: test-guidelines > mock.module — Module Cache Rules
 // ---------------------------------------------------------------------------
 
+
 const mockTx = {
   whatsappDevice: {
     findFirst: mock(async () => null),
@@ -212,6 +213,12 @@ describe("messageService", () => {
     // Default: device with quota 1000, no monthly usage → hasQuota: true
     // (quota service reads prisma.whatsappDevice + prisma.whatsappMonthlyCount)
     mockPrisma.whatsappDevice.findFirst.mockResolvedValue(mockDevice as any)
+    mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
+      ...mockDevice,
+      currency: "USD",
+    } as any)
+    mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 1 } as any)
+    mockPrisma.whatsappDevice.update.mockResolvedValue({} as any)
     mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null) // 0 usage
     mockPrisma.whatsappConversation.findFirst.mockResolvedValue(null)
     mockPrisma.whatsappConversation.create.mockResolvedValue({
@@ -489,8 +496,9 @@ describe("messageService", () => {
 
       expect(result.status).toBe("sent")
       expect(result.waMessageId).toBe("wa-msg-123")
-      // Meta API was called (billing didn't block it)
       expect(mockDeviceClient.sendMessage).toHaveBeenCalled()
+      // No overage charge — billing adjustment should NOT be created
+      expect(mockTx.billingAdjustment.create).not.toHaveBeenCalled()
     })
 
     it("sends message after overage charge succeeds", async () => {
@@ -509,6 +517,7 @@ describe("messageService", () => {
 
       expect(result.status).toBe("sent")
       expect(mockDeviceClient.sendMessage).toHaveBeenCalled()
+      expect(mockTx.billingAdjustment.create).toHaveBeenCalled()
     })
 
     it("does not call Meta API when overage balance is insufficient", async () => {
@@ -551,7 +560,6 @@ describe("messageService", () => {
 
       try {
         await sendMessageTestHelper()
-        // Should not reach here
         expect(true).toBe(false)
       } catch (err) {
         expect(err).toBeInstanceOf(Error)
