@@ -349,12 +349,54 @@ describe("createGithubWebhookHandler", () => {
           enqueuedEventIds.push(eventId)
         },
       },
+      normalizePayload: (payload: unknown) => {
+        const root = payload as Record<string, unknown>
+        const installation = root.installation as Record<string, unknown> | undefined
+        const repository = root.repository as Record<string, unknown> | undefined
+        const owner = repository?.owner as Record<string, unknown> | undefined
+        const headCommit = root.head_commit as Record<string, unknown> | undefined
+        const commitAuthor = headCommit?.author as Record<string, unknown> | undefined
+        const sender = root.sender as Record<string, unknown> | undefined
+        const ref = typeof root.ref === "string" ? root.ref : null
+
+        return {
+          githubInstallationId: typeof installation?.id === "number" ? BigInt(installation.id) : null,
+          githubRepositoryId: typeof repository?.id === "number" ? BigInt(repository.id) : null,
+          repositoryFullName: typeof repository?.full_name === "string" ? repository.full_name : null,
+          repositoryOwner: typeof owner?.login === "string" ? owner.login : null,
+          repositoryName: typeof repository?.name === "string" ? repository.name : null,
+          ref,
+          branch: ref?.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : null,
+          commitSha: typeof headCommit?.id === "string" ? headCommit.id : null,
+          commitMessage: typeof headCommit?.message === "string" ? headCommit.message : null,
+          commitAuthorName: typeof commitAuthor?.name === "string" ? commitAuthor.name : null,
+          commitAuthorEmail: typeof commitAuthor?.email === "string" ? commitAuthor.email : null,
+          commitUrl: typeof headCommit?.url === "string" ? headCommit.url : null,
+          senderLogin: typeof sender?.login === "string" ? sender.login : null,
+          senderAvatarUrl: typeof sender?.avatar_url === "string" ? sender.avatar_url : null,
+        }
+      },
     })
     const payload = JSON.stringify({
       action: "created",
       installation: { id: 987654 },
-      repository: { id: 123456, full_name: "acme/service-api" },
+      repository: {
+        id: 123456,
+        full_name: "acme/repo",
+        name: "repo",
+        owner: { login: "acme" },
+      },
       ref: "refs/heads/main",
+      head_commit: {
+        id: "commit_1",
+        message: "feat: test",
+        url: "https://github.com/acme/repo/commit/commit_1",
+        author: { name: "Ada", email: "ada@example.com" },
+      },
+      sender: {
+        login: "octocat",
+        avatar_url: "https://avatars.githubusercontent.com/u/1?v=4",
+      },
     })
 
     const response = await handler(
@@ -380,6 +422,12 @@ describe("createGithubWebhookHandler", () => {
     expect(createCalls[0]?.githubInstallationId).toBe(BigInt(987654))
     expect(createCalls[0]?.githubRepositoryId).toBe(BigInt(123456))
     expect(typeof createCalls[0]?.payloadSha256).toBe("string")
+    expect(createCalls[0]?.repositoryFullName).toBe("acme/repo")
+    expect(createCalls[0]?.branch).toBe("main")
+    expect(createCalls[0]?.commitSha).toBe("commit_1")
+    expect(createCalls[0]?.eventDisposition).toBe("tracked")
+    expect(createCalls[0]?.responseStatus).toBe(202)
+    expect(typeof createCalls[0]?.handlerDurationMs).toBe("number")
     expect(enqueuedEventIds).toEqual(["event_1"])
   })
 

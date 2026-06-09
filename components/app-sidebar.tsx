@@ -25,6 +25,7 @@ import {
   LifebuoyIcon,
   Lightning,
   PaperPlaneTiltIcon,
+  PulseIcon,
   ReceiptIcon,
   RocketLaunchIcon,
   WalletIcon,
@@ -139,6 +140,19 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <CrosshairIcon />,
         isActive: startsWithRoute(path, "/portal/app/detector"),
+      },
+      {
+        title: "Events",
+        url: localizePathname({ pathname: "/portal/app/events/github", locale }),
+        icon: <PulseIcon />,
+        isActive: startsWithRoute(path, "/portal/app/events"),
+        items: [
+          {
+            title: "GitHub",
+            url: localizePathname({ pathname: "/portal/app/events/github", locale }),
+            isActive: startsWithRoute(path, "/portal/app/events/github"),
+          },
+        ],
       },
     ],
   },

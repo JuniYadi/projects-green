@@ -32,6 +32,18 @@ mock.module("@/lib/prisma", () => {
         create: mockCreate,
         update: mockUpdate,
       },
+      githubInstallation: {
+        findUnique: mock(async () => ({ id: "install_1" })),
+      },
+      githubRepositoryConnection: {
+        findUnique: mock(async () => ({
+          id: "repo_conn_1",
+          branchFilters: ["main"],
+        })),
+      },
+      applicationStack: {
+        findFirst: mock(async () => ({ id: "stack_1" })),
+      },
     },
   }
 })
