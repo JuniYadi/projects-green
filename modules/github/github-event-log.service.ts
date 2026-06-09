@@ -34,7 +34,10 @@ type EventLogPrisma = {
       take?: number
     }) => Promise<unknown[]>
     count: (args: { where?: Prisma.GithubWebhookEventWhereInput }) => Promise<number>
-    findUnique: (args: { where: { id: string } }) => Promise<unknown>
+    findUnique: (args: {
+      where: { id: string }
+      select?: Prisma.GithubWebhookEventSelect
+    }) => Promise<unknown>
     update: (args: {
       where: { id: string }
       data: Record<string, unknown>
@@ -164,6 +167,41 @@ export const getGithubWebhookEventDetail = ({
 }) =>
   prisma.githubWebhookEvent.findUnique({
     where: { id },
+    select: {
+      id: true,
+      deliveryId: true,
+      eventName: true,
+      action: true,
+      githubInstallationId: true,
+      githubRepositoryId: true,
+      repositoryFullName: true,
+      repositoryOwner: true,
+      repositoryName: true,
+      ref: true,
+      branch: true,
+      commitSha: true,
+      commitMessage: true,
+      commitAuthorName: true,
+      commitAuthorEmail: true,
+      commitUrl: true,
+      senderLogin: true,
+      senderAvatarUrl: true,
+      repositoryConnectionId: true,
+      applicationStackId: true,
+      eventDisposition: true,
+      ignoreReason: true,
+      responseStatus: true,
+      handlerDurationMs: true,
+      enqueueStatus: true,
+      processStatus: true,
+      processError: true,
+      payloadJson: true,
+      receivedAt: true,
+      processedAt: true,
+      deletedAt: true,
+      deleteReason: true,
+      permanentDeleteAfter: true,
+    },
   })
 
 export const restoreGithubWebhookEvent = ({

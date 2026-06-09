@@ -12,6 +12,11 @@ import {
   restoreGithubWebhookEvent,
   type GithubEventLogQuery,
 } from "@/modules/github/github-event-log.service"
+import {
+  toEventRowDTO,
+  toEventDetailDTO,
+  type GithubEventListDTO,
+} from "./github-event-log.dto"
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
@@ -68,7 +73,13 @@ export const createGithubEventLogRoutes = (
           prisma,
           query: query as GithubEventLogQuery,
         })
-        return { ok: true as const, data: result }
+        const dto: GithubEventListDTO = {
+          items: result.items.map(toEventRowDTO),
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
+        }
+        return { ok: true as const, data: dto }
       },
       { query: listQuerySchema }
     )
@@ -86,14 +97,24 @@ export const createGithubEventLogRoutes = (
         }
       }
 
-      return { ok: true as const, data: event }
+      return { ok: true as const, data: toEventDetailDTO(event) }
     })
     .post("/admin/app/events/github/:id/restore", async ({ params, set }) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
 
+      const existing = await getEvent({ prisma, id: params.id })
+      if (!existing) {
+        set.status = 404
+        return {
+          ok: false as const,
+          error: "NOT_FOUND" as const,
+          message: "GitHub event not found.",
+        }
+      }
+
       const event = await restoreEvent({ prisma, id: params.id })
-      return { ok: true as const, data: event }
+      return { ok: true as const, data: toEventDetailDTO(event) }
     })
 }
 

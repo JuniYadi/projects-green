@@ -344,8 +344,8 @@ export function GithubEventsTable() {
           </DialogHeader>
           {isLoadingDetail ? (
             <Skeleton className="h-64 w-full" />
-          ) : selectedEvent?.payloadJson ? (
-            <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs whitespace-pre">
+          ) : selectedEvent?.payloadJson && typeof selectedEvent.payloadJson === 'object' ? (
+            <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs max-h-[60vh] overflow-auto">
               {JSON.stringify(selectedEvent.payloadJson, null, 2)}
             </pre>
           ) : (
