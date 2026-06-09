@@ -389,6 +389,15 @@ const buildPortalProjects = (
     isActive: startsWithRoute(pathname, "/portal/invoices"),
   },
   {
+    name: "Documentation",
+    url: localizePathname({
+      pathname: "/portal/documentations",
+      locale,
+    }),
+    icon: <BookOpenIcon />,
+    isActive: startsWithRoute(pathname, "/portal/documentations"),
+  },
+  {
     name: "Support Tickets",
     url: localizePathname({ pathname: "/portal/support-tickets", locale }),
     icon: <LifebuoyIcon />,

@@ -125,7 +125,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).not.toContain("Settings")
 
     expect(projects.map((project) => project.name)).toContain("Payments")
-    expect(projects.map((project) => project.name)).not.toContain(
+    expect(projects.map((project) => project.name)).toContain(
       "Documentation"
     )
     expect(projects.map((project) => project.name)).not.toContain(
