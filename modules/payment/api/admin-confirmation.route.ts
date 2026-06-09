@@ -57,16 +57,8 @@ export const createAdminConfirmationRoutes = () =>
         return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
       }
 
-      try {
-        await confirmationService.approve(params.id, auth.user.id)
-        return { ok: true, message: "Payment approved and balance credited" }
-      } catch (error) {
-        return {
-          ok: false,
-          error: "PROCESS_FAILED",
-          message: error instanceof Error ? error.message : "Failed to approve payment",
-        }
-      }
+      await confirmationService.approve(params.id, auth.user.id)
+      return { ok: true, message: "Payment approved and balance credited" }
     })
 
     .post("/:id/reject", async ({ params, body }) => {
@@ -85,14 +77,6 @@ export const createAdminConfirmationRoutes = () =>
         return { ok: false, error: "VALIDATION_ERROR", message: "Invalid action" }
       }
 
-      try {
-        await confirmationService.reject(params.id, auth.user.id, parseResult.data.reason || "")
-        return { ok: true, message: "Payment rejected" }
-      } catch (error) {
-        return {
-          ok: false,
-          error: "PROCESS_FAILED",
-          message: error instanceof Error ? error.message : "Failed to reject payment",
-        }
-      }
+      await confirmationService.reject(params.id, auth.user.id, parseResult.data.reason || "")
+      return { ok: true, message: "Payment rejected" }
     })

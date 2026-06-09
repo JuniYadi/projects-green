@@ -287,6 +287,10 @@ export const createInvoicesRoutes = (
           return toNotFound(set, error.message)
         }
 
+        console.error(
+          `[invoices] GET /invoices/:invoiceId —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         return toServerError(set, "Unable to load invoice detail right now.")
       }
     })
@@ -354,6 +358,10 @@ export const createInvoicesRoutes = (
           return toNotFound(set, error.message)
         }
 
+        console.error(
+          `[invoices] GET /invoices/:invoiceId/pdf —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         return toServerError(set, "Unable to download invoice PDF right now.")
       }
     })
@@ -413,6 +421,10 @@ export const createInvoicesRoutes = (
           return toCancelNotAllowed(set, error.message)
         }
 
+        console.error(
+          `[invoices] POST /invoices/:invoiceId/cancel —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         return toServerError(set, "Unable to cancel invoice right now.")
       }
     })
@@ -473,6 +485,10 @@ export const createInvoicesRoutes = (
           return toNotFound(set, error.message)
         }
 
+        console.error(
+          `[invoices] POST /invoices/:invoiceId/notify/created —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         return toServerError(set, "Unable to send notification right now.")
       }
     })
@@ -533,6 +549,10 @@ export const createInvoicesRoutes = (
           return toNotFound(set, error.message)
         }
 
+        console.error(
+          `[invoices] POST /invoices/:invoiceId/notify/paid —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         return toServerError(set, "Unable to send notification right now.")
       }
     })
@@ -593,6 +613,10 @@ export const createInvoicesRoutes = (
           return toNotFound(set, error.message)
         }
 
+        console.error(
+          `[invoices] POST /invoices/:invoiceId/notify/reminder —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         return toServerError(set, "Unable to send notification right now.")
       }
     })
@@ -653,6 +677,10 @@ export const createInvoicesRoutes = (
           return toNotFound(set, error.message)
         }
 
+        console.error(
+          `[invoices] POST /invoices/:invoiceId/notify/overdue —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         return toServerError(set, "Unable to send notification right now.")
       }
     })
@@ -718,6 +746,10 @@ export const createInvoicesRoutes = (
           return toNotFound(set, error.message)
         }
 
+        console.error(
+          `[invoices] POST /invoices/:invoiceId/notify/cancelled —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
         return toServerError(set, "Unable to send notification right now.")
       }
     })
