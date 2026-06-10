@@ -7,6 +7,7 @@ import { BankAccountService } from "../services/bank-account.service"
 import { DuitkuService } from "../services/duitku.service"
 import { GatewayService } from "../services/gateway.service"
 import { CreateTopupSchema } from "../types/payment.types"
+import { PAYMENT_CONSTANTS } from "../constants"
 import { CurrencyService } from "@/modules/billing/currency.service"
 
 const paymentService = new PaymentService()
@@ -18,7 +19,7 @@ const currencyService = new CurrencyService()
 // Topup quick-pick presets are authored in the base currency (USD) and
 // converted to the account currency at request time so a USD user sees clean
 // USD buttons and an IDR user sees the converted IDR equivalents.
-const BASE_TOPUP_PRESETS = [5, 10, 25, 50, 100]
+const BASE_TOPUP_PRESETS = [10, 25, 50, 100, 250]
 
 function roundPreset(value: number, currencyCode: string): number {
   // Whole-unit currencies (IDR) round to the nearest 1,000; sub-unit
@@ -213,9 +214,8 @@ export const createTopupRoutes = () =>
       const rate = currencyRow?.ratePerBase?.toNumber() ?? (currency === "IDR" ? 18000 : 1)
       const presets = BASE_TOPUP_PRESETS.map((base) => roundPreset(base * rate, currency))
 
-      const minTopup = currencyRow?.minTopup?.toNumber() ?? presets[0]
-      const maxTopup =
-        currencyRow?.maxTopup?.toNumber() ?? presets[presets.length - 1] * 100
+      const minTopup = currencyRow?.minTopup?.toNumber() ?? PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT
+      const maxTopup = currencyRow?.maxTopup?.toNumber() ?? PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT
 
       return {
         ok: true,

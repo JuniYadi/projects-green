@@ -26,7 +26,9 @@ export type ConfirmationStatusValue = (typeof ConfirmationStatus)[keyof typeof C
 
 // Request/Response schemas using Zod
 export const CreateTopupSchema = z.object({
-  amount: z.number().min(10000).max(100000000),
+  // Per-currency limits are enforced in the route/service layer via the
+  // Currency table. This schema only validates shape and sign.
+  amount: z.number().positive(),
   paymentMethod: z.enum(["VA", "QRIS", "MANUAL_BANK"]),
 })
 

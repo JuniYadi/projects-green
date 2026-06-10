@@ -1,6 +1,8 @@
 export const PAYMENT_CONSTANTS = {
-  MIN_TOPUP_AMOUNT: 10000,
-  MAX_TOPUP_AMOUNT: 100000000, // 100 million
+  // Base-currency (USD) minimum — fallback when no per-currency config.
+  MIN_TOPUP_AMOUNT: 10,
+  // Base-currency (USD) maximum — fallback when no per-currency config.
+  MAX_TOPUP_AMOUNT: 10000,
   DEFAULT_EXPIRY_DAYS: 7,
   MAX_EXPIRY_DAYS: 30,
   MIN_EXPIRY_DAYS: 1,

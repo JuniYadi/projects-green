@@ -53,9 +53,9 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
     symbol: currency === "USD" ? "$" : "Rp",
     ratePerBase: currency === "USD" ? 1 : 18000,
     baseCode: "USD",
-    presets: currency === "USD" ? [5, 10, 25, 50, 100] : [90000, 180000, 450000, 900000, 1800000],
-    minTopup: currency === "USD" ? 5 : 90000,
-    maxTopup: currency === "USD" ? 10000 : 180000000,
+    presets: currency === "USD" ? [10, 25, 50, 100, 250] : [180000, 450000, 900000, 1800000, 4500000],
+    minTopup: currency === "USD" ? 10 : 50000,
+    maxTopup: currency === "USD" ? 10000 : 200000000,
   })
 
   useEffect(() => {

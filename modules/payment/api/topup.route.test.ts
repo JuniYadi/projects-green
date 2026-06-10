@@ -84,7 +84,7 @@ describe("Topup Route", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
         })
       )
 
@@ -114,7 +114,7 @@ describe("Topup Route", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
         })
       )
 
@@ -128,7 +128,7 @@ describe("Topup Route", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
         })
       )
 
@@ -141,7 +141,7 @@ describe("Topup Route", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 5000, paymentMethod: "MANUAL_BANK" }),
+          body: JSON.stringify({ amount: 0, paymentMethod: "MANUAL_BANK" }),
         })
       )
 
@@ -156,7 +156,7 @@ describe("Topup Route", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "MANUAL_BANK" }),
+          body: JSON.stringify({ amount: 5000, paymentMethod: "MANUAL_BANK" }),
         })
       )
 
@@ -178,7 +178,7 @@ describe("Topup Route", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
         })
       )
 
@@ -214,7 +214,7 @@ describe("Topup Route", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
         })
       )
 
@@ -352,21 +352,18 @@ describe("CreateTopupSchema", () => {
     expect(result.success).toBe(false)
   })
 
-  it("should reject amount below minimum", async () => {
+  it("should reject zero or negative amounts", async () => {
     const { CreateTopupSchema } = await import("../types/payment.types")
-    const result = CreateTopupSchema.safeParse({
-      amount: 5000,
+    const zero = CreateTopupSchema.safeParse({
+      amount: 0,
       paymentMethod: "VA",
     })
-    expect(result.success).toBe(false)
-  })
+    expect(zero.success).toBe(false)
 
-  it("should reject amount above maximum", async () => {
-    const { CreateTopupSchema } = await import("../types/payment.types")
-    const result = CreateTopupSchema.safeParse({
-      amount: 200000000,
+    const neg = CreateTopupSchema.safeParse({
+      amount: -10,
       paymentMethod: "VA",
     })
-    expect(result.success).toBe(false)
+    expect(neg.success).toBe(false)
   })
 })
