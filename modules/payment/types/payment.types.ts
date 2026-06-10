@@ -4,6 +4,7 @@ export const PaymentMethod = {
   VIRTUAL_ACCOUNT: "VA",
   QRIS: "QRIS",
   MANUAL_BANK: "MANUAL_BANK",
+  PAYPAL: "PAYPAL",
 } as const
 
 export type PaymentMethodType = (typeof PaymentMethod)[keyof typeof PaymentMethod]
@@ -29,7 +30,7 @@ export const CreateTopupSchema = z.object({
   // Per-currency limits are enforced in the route/service layer via the
   // Currency table. This schema only validates shape and sign.
   amount: z.number().positive(),
-  paymentMethod: z.enum(["VA", "QRIS", "MANUAL_BANK"]),
+  paymentMethod: z.enum(["VA", "QRIS", "MANUAL_BANK", "PAYPAL"]),
 })
 
 export const ConfirmPaymentSchema = z.object({

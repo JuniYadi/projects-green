@@ -6,10 +6,14 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { QrCodeIcon, BuildingsIcon, HandCoinsIcon } from "@phosphor-icons/react"
+import {
+  QrCodeIcon,
+  BuildingsIcon,
+  HandCoinsIcon,
+  PaypalLogoIcon,
+} from "@phosphor-icons/react"
 
-type PaymentMethod = "VA" | "QRIS" | "MANUAL_BANK"
+type PaymentMethod = "VA" | "QRIS" | "MANUAL_BANK" | "PAYPAL"
 
 type FormState = "idle" | "submitting" | "success" | "error"
 
@@ -41,7 +45,7 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
   const [selectedBankAccount, setSelectedBankAccount] = useState<string>("")
   const [availableMethods, setAvailableMethods] = useState<
     Record<PaymentMethod, boolean>
-  >({ MANUAL_BANK: true, VA: false, QRIS: false })
+  >({ MANUAL_BANK: true, VA: false, QRIS: false, PAYPAL: false })
   const [currencyConfig, setCurrencyConfig] = useState<{
     symbol: string
     ratePerBase: number
@@ -71,6 +75,7 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
               MANUAL_BANK: Boolean(data.methods.MANUAL_BANK),
               VA: Boolean(data.methods.VA),
               QRIS: Boolean(data.methods.QRIS),
+              PAYPAL: Boolean(data.methods.PAYPAL),
             })
           }
           if (data.config) {
@@ -185,7 +190,11 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
         // Manual transfer lands on the invoice detail page so the customer can
         // review the destination account and exact amount before confirming.
         router.push(`/console/billing/invoices/${result.invoice.id}`)
-      } else if (paymentMethod === "VA" || paymentMethod === "QRIS") {
+      } else if (
+        paymentMethod === "VA" ||
+        paymentMethod === "QRIS" ||
+        paymentMethod === "PAYPAL"
+      ) {
         if (result.paymentUrl) {
           setFormState("submitting")
           setTimeout(() => {
@@ -201,8 +210,6 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
       setFormState("error")
     }
   }
-
-  const selectedBank = bankAccounts.find((b) => b.id === selectedBankAccount)
 
   const ALL_PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: React.ElementType; description: string }[] = [
     {
@@ -222,6 +229,12 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
       label: "QRIS",
       icon: QrCodeIcon,
       description: "Pay with any QRIS-enabled app",
+    },
+    {
+      value: "PAYPAL",
+      label: "PayPal",
+      icon: PaypalLogoIcon,
+      description: "Pay securely with PayPal",
     },
   ]
 
@@ -333,35 +346,36 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
             {isLoadingAccounts ? (
               <Input type="text" value="Loading..." disabled />
             ) : bankAccounts.length > 0 ? (
-              <Select value={selectedBankAccount} onValueChange={setSelectedBankAccount}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select bank account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bankAccounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.bankName} - {account.accountNumber} ({account.accountName})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid gap-3">
+                {bankAccounts.map((account) => (
+                  <label
+                    key={account.id}
+                    className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                      selectedBankAccount === account.id
+                        ? "border-primary bg-primary/5"
+                        : "border-input hover:bg-muted/50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="destinationAccount"
+                      value={account.id}
+                      checked={selectedBankAccount === account.id}
+                      onChange={() => setSelectedBankAccount(account.id)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <p className="font-medium">{account.bankName}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {account.accountNumber} &mdash; {account.accountName}
+                      </p>
+                    </div>
+                  </label>
+                ))}
+              </div>
             ) : (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
                 No bank accounts available. Please contact support.
-              </div>
-            )}
-            {selectedBank && (
-              <div className="mt-2 rounded-md border bg-muted/50 p-3 text-sm">
-                <p className="font-medium">Transfer to:</p>
-                <p className="mt-1">
-                  <span className="text-muted-foreground">Bank:</span> {selectedBank.bankName}
-                </p>
-                <p>
-                  <span className="text-muted-foreground">Account:</span> {selectedBank.accountNumber}
-                </p>
-                <p>
-                  <span className="text-muted-foreground">Name:</span> {selectedBank.accountName}
-                </p>
               </div>
             )}
           </Field>

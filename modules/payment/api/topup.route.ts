@@ -8,6 +8,7 @@ import { DuitkuService } from "../services/duitku.service"
 import { GatewayService } from "../services/gateway.service"
 import { CreateTopupSchema } from "../types/payment.types"
 import { PAYMENT_CONSTANTS } from "../constants"
+import { paypalProvider } from "../providers/paypal.provider"
 import { CurrencyService } from "@/modules/billing/currency.service"
 
 const paymentService = new PaymentService()
@@ -54,17 +55,17 @@ export const createTopupRoutes = () =>
 
       try {
         let gatewayId: string | undefined
+        const billingAccount = await prisma.billingAccount.findUnique({
+          where: { organizationId: auth.organizationId },
+          select: { currency: true },
+        })
+        const currency = billingAccount?.currency ?? "IDR"
+
         if (paymentMethod === "VA" || paymentMethod === "QRIS") {
           // VA/QRIS run through a payment gateway. Only offer a gateway that
           // declares support for the account currency (covers BOTH and
           // ONLY-ONE). This replaces the old hardcoded "Duitku = IDR only"
           // branch with the gateway's own supportedCurrencies list.
-          const billingAccount = await prisma.billingAccount.findUnique({
-            where: { organizationId: auth.organizationId },
-            select: { currency: true },
-          })
-          const currency = billingAccount?.currency ?? "IDR"
-
           const gateway = await gatewayService.findByTypeForCurrency("GATEWAY", currency)
           if (!gateway) {
             set.status = 400
@@ -72,6 +73,19 @@ export const createTopupRoutes = () =>
               ok: false,
               error: "GATEWAY_NOT_AVAILABLE",
               message: `No payment gateway available for ${currency}. Please use manual bank transfer.`,
+            }
+          }
+          gatewayId = gateway.id
+        }
+
+        if (paymentMethod === "PAYPAL") {
+          const gateway = await gatewayService.findByTypeForCurrency("PAYPAL", currency)
+          if (!gateway) {
+            set.status = 400
+            return {
+              ok: false,
+              error: "PAYPAL_NOT_AVAILABLE",
+              message: `PayPal is not available for ${currency}. Please choose another payment method.`,
             }
           }
           gatewayId = gateway.id
@@ -121,6 +135,56 @@ export const createTopupRoutes = () =>
               type: invoice.type,
             },
             paymentUrl: duitkuResult.paymentUrl,
+          }
+        }
+
+        if (paymentMethod === "PAYPAL") {
+          if (!gatewayId) {
+            throw new Error("PayPal gateway not configured")
+          }
+
+          const config = await gatewayService.getDecryptedConfig(gatewayId)
+          if (!config) {
+            throw new Error("PayPal gateway not configured")
+          }
+
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
+          const paypalResult = await paypalProvider.createPayment(
+            {
+              invoiceId: invoice.id,
+              amount,
+              currency,
+              email: `${auth.organizationId}@payment.local`,
+              customerName: `Org ${auth.organizationId}`,
+              productDetails: `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
+              paymentMethod: "paypal",
+              callbackUrl: `${appUrl}/api/webhooks/paypal/callback`,
+              returnUrl: `${appUrl}/console/billing/invoices/${invoice.id}`,
+            },
+            config as unknown as Record<string, string>
+          )
+
+          await prisma.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              metadata: {
+                paypalReference: paypalResult.reference,
+              },
+            },
+          })
+
+          return {
+            ok: true,
+            invoice: {
+              id: invoice.id,
+              amount: invoice.totalAmount?.toNumber() || amount,
+              status: invoice.status,
+              paymentMethod: invoice.paymentMethod,
+              gateway: "paypal",
+              dueDate: invoice.dueDate?.toISOString(),
+              type: invoice.type,
+            },
+            paymentUrl: paypalResult.redirectUrl,
           }
         }
 
@@ -198,9 +262,10 @@ export const createTopupRoutes = () =>
 
       const currency = billingAccount?.currency ?? "IDR"
 
-      const [accounts, gateway, currencyRow, baseCurrency] = await Promise.all([
+      const [accounts, gateway, paypalGateway, currencyRow, baseCurrency] = await Promise.all([
         bankAccountService.getActiveAccounts(currency),
         gatewayService.findByTypeForCurrency("GATEWAY", currency),
+        gatewayService.findByTypeForCurrency("PAYPAL", currency),
         currencyService.findByCode(currency),
         currencyService.getBase().catch(() => null),
       ])
@@ -208,6 +273,7 @@ export const createTopupRoutes = () =>
       const manualEnabled = accounts.length > 0
       // VA/QRIS require a gateway that supports this currency.
       const gatewayEnabled = Boolean(gateway)
+      const paypalEnabled = Boolean(paypalGateway)
 
       // Derive quick-pick presets from base-currency anchors converted into the
       // account currency, so amounts stay meaningful regardless of currency.
@@ -232,6 +298,7 @@ export const createTopupRoutes = () =>
           MANUAL_BANK: manualEnabled,
           VA: gatewayEnabled,
           QRIS: gatewayEnabled,
+          PAYPAL: paypalEnabled,
         },
       }
     })

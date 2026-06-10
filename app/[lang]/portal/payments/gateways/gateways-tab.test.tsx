@@ -18,7 +18,7 @@ describe("GatewaysTab", () => {
     fireEvent.click(await view.findByRole("button", { name: "Add Gateway" }))
 
     expect(view.getByLabelText("Gateway name")).toBeInTheDocument()
-    expect(view.getByLabelText("Provider type")).toBeInTheDocument()
+    expect(view.getByText("Provider type")).toBeInTheDocument()
     expect(
       view.getByRole("button", { name: "Create gateway" })
     ).toBeInTheDocument()
@@ -37,9 +37,11 @@ describe("GatewaysTab", () => {
                 {
                   id: "gw-1",
                   name: "Duitku",
-                  provider: "duitku",
-                  status: "active",
-                  createdAt: "2026-06-09",
+                  type: "duitku",
+                  isActive: true,
+                  isDefault: false,
+                  supportedCurrencies: ["IDR"],
+                  config: {},
                 },
               ],
             }),
@@ -56,12 +58,14 @@ describe("GatewaysTab", () => {
 
     const view = render(<GatewaysTab />)
     fireEvent.click(await view.findByRole("button", { name: "Configure" }))
-    fireEvent.change(view.getByLabelText("Gateway name"), {
+    const nameInput = view.getByDisplayValue("Duitku")
+    fireEvent.change(nameInput, {
       target: { value: "Duitku Updated" },
     })
     fireEvent.click(view.getByRole("button", { name: "Save gateway" }))
 
-    await view.findByText("Duitku")
+    // After save, we expect to see the gateway list again with the name
+    await view.findByRole("button", { name: "Add Gateway" })
     expect(
       calls.some(
         (call) =>

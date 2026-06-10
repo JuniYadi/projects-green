@@ -90,6 +90,66 @@ describe("TopupFormEnhanced", () => {
     )
   })
 
+  it("renders PayPal for USD accounts and redirects to the PayPal URL", async () => {
+    const locationStub = { href: "" } as Location
+    Object.defineProperty(globalThis.window, "location", {
+      configurable: true,
+      value: locationStub,
+    })
+
+    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes("/api/payments/topup/methods")) {
+        return jsonResponse({
+          ok: true,
+          currency: "USD",
+          config: {
+            symbol: "$",
+            ratePerBase: 1,
+            baseCode: "USD",
+            presets: [10, 25, 50, 100, 250],
+            minTopup: 10,
+            maxTopup: 10000,
+          },
+          methods: { MANUAL_BANK: true, VA: false, QRIS: false, PAYPAL: true },
+        })
+      }
+      if (url.includes("/api/payments/topup/bank-accounts")) {
+        return jsonResponse({ ok: true, data: [] })
+      }
+      if (url.includes("/api/payments/topup") && init?.method === "POST") {
+        return jsonResponse({
+          ok: true,
+          invoice: { id: "inv_paypal" },
+          paymentUrl: "https://paypal.test/checkout/inv_paypal",
+        })
+      }
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<TopupFormEnhanced currency="USD" />)
+
+    await waitFor(() => expect(view.getByText("PayPal")).toBeInTheDocument())
+    expect(view.queryByText("Virtual Account")).not.toBeInTheDocument()
+    expect(view.queryByText("QRIS")).not.toBeInTheDocument()
+
+    fireEvent.click(view.getByDisplayValue("PAYPAL"))
+    fireEvent.click(view.getByRole("button", { name: /create invoice/i }))
+
+    await waitFor(
+      () =>
+        expect(locationStub.href).toBe("https://paypal.test/checkout/inv_paypal"),
+      { timeout: 1000 }
+    )
+
+    if (originalLocation) {
+      Object.defineProperty(globalThis.window, "location", {
+        configurable: true,
+        value: originalLocation,
+      })
+    }
+  })
+
   it("redirects to the Duitku payment gateway URL for VA top-up", async () => {
     const locationStub = { href: "" } as Location
     Object.defineProperty(globalThis.window, "location", {

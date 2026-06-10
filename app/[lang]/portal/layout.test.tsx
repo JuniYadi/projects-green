@@ -45,6 +45,11 @@ const mockRedirect = mock((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
 
+const mockGetPlatformAccessForUser = mock(async () => ({
+  exists: true,
+  role: "super_admin" as const,
+}))
+
 mock.module("@workos-inc/authkit-nextjs", () => {
   return createAuthMock({
     withAuth: mockWithAuth,
@@ -69,9 +74,7 @@ mock.module("next/navigation.js", () => {
 
 mock.module("@/lib/platform-role", () => {
   return {
-    getPlatformRoleForUser: mock(
-      async () => "super_admin"
-    ),
+    getPlatformAccessForUser: mockGetPlatformAccessForUser,
   }
 })
 
@@ -146,6 +149,11 @@ describe("PortalLayout", () => {
     mockGetUser.mockClear()
     mockGetOrganization.mockClear()
     mockRedirect.mockClear()
+    mockGetPlatformAccessForUser.mockClear()
+    mockGetPlatformAccessForUser.mockResolvedValue({
+      exists: true,
+      role: "super_admin",
+    })
     mockWithAuth.mockImplementation(async () => ({
       user: {
         id: "user_123",
@@ -178,6 +186,28 @@ describe("PortalLayout", () => {
     expect(view.getByText("Documentation")).toBeInTheDocument()
     expect(view.queryByText("Workspace")).not.toBeInTheDocument()
     expect(view.getByText("Child Content")).toBeInTheDocument()
+  })
+
+  it("redirects customer users to console", async () => {
+    mockGetPlatformAccessForUser.mockResolvedValue({
+      exists: false,
+      role: "none",
+    })
+
+    const layoutModule = await import("@/app/[lang]/portal/layout")
+
+    await expect(
+      layoutModule.default({
+        children: <div>Child Content</div>,
+        params: Promise.resolve({ lang: "en" }),
+      })
+    ).rejects.toThrow("REDIRECT:/en/console")
+
+    expect(mockGetPlatformAccessForUser).toHaveBeenCalledWith({
+      id: "user_123",
+      email: "jane@example.com",
+    })
+    expect(mockRedirect).toHaveBeenCalledWith("/en/console")
   })
 
   it("redirects to onboarding when organization is missing", async () => {
