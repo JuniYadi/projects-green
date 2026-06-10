@@ -1,12 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
-
+import { useParams, useRouter } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
 import {
   Select,
   SelectContent,
@@ -15,8 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MarkdownEditor } from "@/components/ui/markdown-editor"
-import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
 import {
   SUPPORT_TICKET_DEPARTMENT_LABELS,
   SUPPORT_TICKET_DEPARTMENTS,
@@ -40,8 +40,9 @@ type FileWithPreview = {
 const apiClient = createSupportTicketsClient()
 
 export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenProps) {
-  const router = useRouter()
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
+  const router = useRouter()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)

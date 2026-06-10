@@ -14,6 +14,7 @@ mock.module("next/navigation", () => {
   return {
     usePathname: () => "/console/app/manage",
     useSearchParams: () => new URLSearchParams(currentQuery),
+    useParams: () => ({ lang: "en" }),
     useRouter: () => ({
       replace: (url: string) => {
         replaceCalls.push(url)

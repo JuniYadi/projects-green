@@ -10,7 +10,7 @@ type BillingPageProps = {
 
 export const metadata: Metadata = {
   title: "Billing | Console",
-  description: "Manage your billing, subscriptions, and invoices",
+  description: "Manage your billing, subscriptions, and invoices.",
 }
 
 export default async function BillingPage({ params }: BillingPageProps) {

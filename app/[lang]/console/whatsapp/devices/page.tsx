@@ -30,6 +30,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type {
   DeviceListItem,
@@ -65,6 +68,9 @@ const emptyEditFormState: EditFormState = {
 // ─── Page component ─────────────────────────────────────────────────────────
 
 export default function WhatsAppDevicesPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
@@ -150,7 +156,7 @@ export default function WhatsAppDevicesPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.devices.heading}</h1>
           <p className="text-muted-foreground">
             View your assigned WhatsApp Business devices.
           </p>
@@ -196,7 +202,7 @@ export default function WhatsAppDevicesPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.devices.heading}</h1>
           <p className="text-muted-foreground">
             View your assigned WhatsApp Business devices.
           </p>
@@ -231,7 +237,7 @@ export default function WhatsAppDevicesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.devices.heading}</h1>
         <p className="text-muted-foreground">
           View your assigned WhatsApp Business devices. Quota and limits are
           managed by your admin.
@@ -250,7 +256,7 @@ export default function WhatsAppDevicesPage() {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Phone className="mb-3 size-10 text-muted-foreground" />
               <p className="text-sm font-medium text-muted-foreground">
-                No devices assigned yet
+                {messages.console.whatsapp.devices.noDevices}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Your admin will provision a WhatsApp device for your

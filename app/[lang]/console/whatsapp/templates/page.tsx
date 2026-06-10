@@ -14,12 +14,14 @@ import {
 } from "@/components/ui/card"
 import { useTemplates, useSyncTemplate } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export default function ConsoleTemplatesPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const templatesBasePath = localizePathname({
     pathname: "/console/whatsapp/templates",
     locale,
@@ -33,7 +35,7 @@ export default function ConsoleTemplatesPage() {
     )
 
     if (unsynced.length === 0) {
-      toast.info("All templates are already synced.")
+      toast.info(messages.console.whatsapp.templates.allSynced)
       return
     }
 
@@ -70,19 +72,17 @@ export default function ConsoleTemplatesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.templates.heading}</h1>
         <p className="text-muted-foreground">
-          Manage your WhatsApp message templates for pre-approved communications.
+          {messages.console.whatsapp.templates.description}
         </p>
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Message Templates</CardTitle>
-            <CardDescription>
-              Manage your WhatsApp message templates
-            </CardDescription>
+            <CardTitle>{messages.console.whatsapp.templates.cardTitle}</CardTitle>
+            <CardDescription>{messages.console.whatsapp.templates.cardDescription}</CardDescription>
           </div>
           <div className="flex gap-2">
             <Button
@@ -93,11 +93,11 @@ export default function ConsoleTemplatesPage() {
               <ArrowsClockwise
                 className={`mr-2 size-4 ${syncing ? "animate-spin" : ""}`}
               />
-              {syncing ? "Syncing..." : "Sync Templates"}
+              {syncing ? messages.console.whatsapp.templates.syncing : messages.console.whatsapp.templates.syncTemplates}
             </Button>
             <Button onClick={() => router.push(`${templatesBasePath}/new`)}>
               <Plus weight="bold" className="mr-2 size-4" />
-              Create Template
+              {messages.console.whatsapp.templates.createTemplate}
             </Button>
           </div>
         </CardHeader>
@@ -105,19 +105,19 @@ export default function ConsoleTemplatesPage() {
           <div className="mb-6 grid grid-cols-3 gap-4">
             <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold">{templates.length}</p>
-              <p className="text-xs text-muted-foreground">Total Templates</p>
+              <p className="text-xs text-muted-foreground">{messages.console.whatsapp.templates.totalTemplates}</p>
             </div>
             <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold text-green-600">
                 {syncedCount}
               </p>
-              <p className="text-xs text-muted-foreground">Synced</p>
+              <p className="text-xs text-muted-foreground">{messages.console.whatsapp.templates.synced}</p>
             </div>
             <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold text-yellow-600">
                 {notSyncedCount}
               </p>
-              <p className="text-xs text-muted-foreground">Pending Sync</p>
+              <p className="text-xs text-muted-foreground">{messages.console.whatsapp.templates.pendingSync}</p>
             </div>
           </div>
 
