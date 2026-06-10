@@ -41,15 +41,20 @@ import type {
 
 // ─── Status badge ───────────────────────────────────────────────────────────
 
-function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
+type DeviceStatusBadgeProps = {
+  status: DeviceStatus
+  messages: ReturnType<typeof getMessages>
+}
+
+function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
   const variant: Record<DeviceStatus, "success" | "secondary"> = {
     ACTIVE: "success",
     NON_ACTIVE: "secondary",
   }
 
   const label: Record<DeviceStatus, string> = {
-    ACTIVE: "Active",
-    NON_ACTIVE: "Inactive",
+    ACTIVE: messages.console.whatsapp.devices.active,
+    NON_ACTIVE: messages.console.whatsapp.devices.inactive,
   }
 
   return <Badge variant={variant[status]}>{label[status]}</Badge>
@@ -97,7 +102,7 @@ export default function WhatsAppDevicesPage() {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Unable to load WhatsApp devices."
+          : messages.console.whatsapp.devices.unableToLoad
       )
     } finally {
       setIsLoading(false)
@@ -116,7 +121,7 @@ export default function WhatsAppDevicesPage() {
     if (!editingDevice) return
 
     if (!editForm.phoneNumber.trim()) {
-      toast.error("Phone number is required.")
+      toast.error(messages.console.whatsapp.devices.phoneNumberRequired)
       return
     }
 
@@ -127,13 +132,13 @@ export default function WhatsAppDevicesPage() {
         phoneNumber: editForm.phoneNumber,
       })
 
-      toast.success("Device updated successfully.")
+      toast.success(messages.console.whatsapp.devices.updated)
       setEditDialogOpen(false)
       setEditingDevice(null)
       void loadDevices()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to update device."
+        error instanceof Error ? error.message : messages.console.whatsapp.devices.unableToUpdate
       )
     } finally {
       setIsSubmitting(false)
@@ -158,15 +163,15 @@ export default function WhatsAppDevicesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.devices.heading}</h1>
           <p className="text-muted-foreground">
-            View your assigned WhatsApp Business devices.
+            {messages.console.whatsapp.devices.description}
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>WhatsApp Devices</CardTitle>
+            <CardTitle>{messages.console.whatsapp.devices.cardTitle}</CardTitle>
             <CardDescription>
-              Your assigned WhatsApp Business devices
+              {messages.console.whatsapp.devices.cardDescription}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -204,16 +209,16 @@ export default function WhatsAppDevicesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.devices.heading}</h1>
           <p className="text-muted-foreground">
-            View your assigned WhatsApp Business devices.
+            {messages.console.whatsapp.devices.description}
           </p>
         </div>
 
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>WhatsApp Devices</CardTitle>
+              <CardTitle>{messages.console.whatsapp.devices.cardTitle}</CardTitle>
               <CardDescription>
-                Your assigned WhatsApp Business devices
+                {messages.console.whatsapp.devices.cardDescription}
               </CardDescription>
             </div>
           </CardHeader>
@@ -239,16 +244,16 @@ export default function WhatsAppDevicesPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.devices.heading}</h1>
         <p className="text-muted-foreground">
-          View your assigned WhatsApp Business devices. Quota and limits are
+          {messages.console.whatsapp.devices.description} Quota and limits are
           managed by your admin.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>WhatsApp Devices</CardTitle>
+          <CardTitle>{messages.console.whatsapp.devices.cardTitle}</CardTitle>
           <CardDescription>
-            Your assigned WhatsApp Business devices
+            {messages.console.whatsapp.devices.cardDescription}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -259,8 +264,7 @@ export default function WhatsAppDevicesPage() {
                 {messages.console.whatsapp.devices.noDevices}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Your admin will provision a WhatsApp device for your
-                organization. Once assigned, it will appear here.
+                {messages.console.whatsapp.devices.noDevicesDescription}
               </p>
             </div>
           ) : (
@@ -287,12 +291,12 @@ export default function WhatsAppDevicesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <DeviceStatusBadge status={device.status} />
+                    <DeviceStatusBadge status={device.status} messages={messages} />
                     {device.status === "ACTIVE" && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
-                            <span className="sr-only">Open menu</span>
+                            <span className="sr-only">{messages.console.whatsapp.devices.srOpenMenu}</span>
                             <DotsThreeVertical
                               weight="bold"
                               className="size-4"
@@ -304,14 +308,14 @@ export default function WhatsAppDevicesPage() {
                             onClick={() => openEditDialog(device)}
                           >
                             <PencilSimple className="mr-2 size-4" />
-                            Edit Phone Number
+                            {messages.console.whatsapp.devices.editPhoneNumber}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
                     {device.status === "NON_ACTIVE" && (
                       <p className="text-xs text-muted-foreground">
-                        Device inactive — contact admin
+                        {messages.console.whatsapp.devices.notifyAdmin}
                       </p>
                     )}
                   </div>
@@ -327,15 +331,14 @@ export default function WhatsAppDevicesPage() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Device</DialogTitle>
+            <DialogTitle>{messages.console.whatsapp.devices.editDialogTitle}</DialogTitle>
             <DialogDescription>
-              Update the device phone number. Quota and limits are managed by
-              your admin.
+              {messages.console.whatsapp.devices.editDialogDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="edit-phone">Phone Number</Label>
+              <Label htmlFor="edit-phone">{messages.console.whatsapp.devices.phoneNumber}</Label>
               <Input
                 id="edit-phone"
                 value={editForm.phoneNumber}
@@ -406,13 +409,13 @@ export default function WhatsAppDevicesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
+              {messages.console.whatsapp.devices.cancel}
             </Button>
             <Button
               onClick={() => void handleEditDevice()}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Saving..." : "Save Changes"}
+              {isSubmitting ? messages.console.whatsapp.devices.saving : messages.console.whatsapp.devices.saveChanges}
             </Button>
           </DialogFooter>
         </DialogContent>

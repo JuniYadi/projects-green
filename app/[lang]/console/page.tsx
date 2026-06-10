@@ -207,7 +207,7 @@ export default function ConsolePage() {
                     <Skeleton className="h-4 w-20" />
                   </div>
                 ) : card.error ? (
-                  <p className="text-sm text-muted-foreground">Unavailable</p>
+                  <p className="text-sm text-muted-foreground">{messages.console.overview.unavailable}</p>
                 ) : (
                   <>
                     <p className="text-2xl font-bold">{card.value}</p>

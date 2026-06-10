@@ -558,8 +558,8 @@ export default function WhatsAppContactsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                  <SelectItem value="ACTIVE">{messages.console.whatsapp.contacts.activeStatus}</SelectItem>
+                  <SelectItem value="INACTIVE">{messages.console.whatsapp.contacts.inactiveStatus}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -570,13 +570,13 @@ export default function WhatsAppContactsPage() {
               onClick={() => setAddDialogOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {messages.console.whatsapp.contacts.cancel}
             </Button>
             <Button
               onClick={() => void handleAdd()}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Adding..." : "Add Contact"}
+              {isSubmitting ? messages.console.whatsapp.contacts.adding : messages.console.whatsapp.contacts.addContact}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -592,15 +592,15 @@ export default function WhatsAppContactsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Contact</DialogTitle>
+            <DialogTitle>{messages.console.whatsapp.contacts.editDialogTitle}</DialogTitle>
             <DialogDescription>
-              Update contact details.
+              {messages.console.whatsapp.contacts.editDialogDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-phone">
-                Phone Number <span className="text-destructive">*</span>
+                {messages.console.whatsapp.contacts.phoneNumber} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="edit-phone"
@@ -612,7 +612,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-name">Name</Label>
+              <Label htmlFor="edit-name">{messages.console.whatsapp.contacts.name}</Label>
               <Input
                 id="edit-name"
                 value={formData.name}
@@ -623,7 +623,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-email">Email</Label>
+              <Label htmlFor="edit-email">{messages.console.whatsapp.contacts.email}</Label>
               <Input
                 id="edit-email"
                 type="email"
@@ -635,7 +635,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-group">Audience (optional)</Label>
+              <Label htmlFor="edit-group">{messages.console.whatsapp.contacts.audience}</Label>
               <Select
                 value={formData.contactGroupId}
                 onValueChange={(value) =>
@@ -655,7 +655,7 @@ export default function WhatsAppContactsPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-status">Status</Label>
+              <Label htmlFor="edit-status">{messages.console.whatsapp.contacts.status}</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) =>
@@ -669,8 +669,8 @@ export default function WhatsAppContactsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                  <SelectItem value="ACTIVE">{messages.console.whatsapp.contacts.activeStatus}</SelectItem>
+                  <SelectItem value="INACTIVE">{messages.console.whatsapp.contacts.inactiveStatus}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -681,13 +681,13 @@ export default function WhatsAppContactsPage() {
               onClick={() => setEditDialogOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {messages.console.whatsapp.contacts.cancel}
             </Button>
             <Button
               onClick={() => void handleEdit()}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Saving..." : "Save Changes"}
+              {isSubmitting ? messages.console.whatsapp.contacts.saving : messages.console.whatsapp.contacts.saveChanges}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -697,13 +697,9 @@ export default function WhatsAppContactsPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Contact</DialogTitle>
+            <DialogTitle>{messages.console.whatsapp.contacts.deleteDialogTitle}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{" "}
-              <strong>
-                {deletingContact?.name || deletingContact?.phoneNumber}
-              </strong>
-              ? This action cannot be undone.
+              {messages.console.whatsapp.contacts.deleteDialogDescription.replace("{name}", deletingContact?.name || deletingContact?.phoneNumber || "")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -712,14 +708,14 @@ export default function WhatsAppContactsPage() {
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {messages.console.whatsapp.contacts.cancel}
             </Button>
             <Button
               variant="destructive"
               onClick={() => void handleDelete()}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Deleting..." : "Delete"}
+              {isSubmitting ? messages.console.whatsapp.contacts.deleting : messages.console.whatsapp.contacts.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -51,13 +51,13 @@ export default function ConsoleTemplatesPage() {
     }
 
     if (synced > 0) {
-      toast.success(`Synced ${synced} template${synced !== 1 ? "s" : ""}.`)
+      toast.success(messages.console.whatsapp.templates.syncedCount.replace("{count}", String(synced)))
       void reload()
     }
 
     if (failed > 0) {
       toast.error(
-        `Unable to sync ${failed} template${failed !== 1 ? "s" : ""}. Please try again.`,
+        messages.console.whatsapp.templates.syncFailed.replace("{count}", String(failed)),
       )
     }
   }

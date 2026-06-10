@@ -202,6 +202,11 @@ export type AppMessages = {
         unableToUpdate: string
         unableToDelete: string
         retry: string
+        cancel: string
+        adding: string
+        saving: string
+        saveChanges: string
+        deleting: string
       }
       templates: {
         heading: string
@@ -241,6 +246,14 @@ export type AppMessages = {
         updated: string
         unableToUpdate: string
         noDevices: string
+        noDevicesDescription: string
+        unableToLoad: string
+        cancel: string
+        saving: string
+        saveChanges: string
+        notifyAdmin: string
+        srOpenMenu: string
+        editPhoneNumber: string
       }
       messages: {
         heading: string
@@ -291,6 +304,37 @@ export type AppMessages = {
       reply: string
       close: string
       reopen: string
+      titleColumn: string
+      searchPlaceholder: string
+      filterAllStatus: string
+      filterAllDepartments: string
+      filterAllPriority: string
+      noTicketsMatch: string
+      subjectRequired: string
+      unableToCreate: string
+      creatingTicket: string
+      creatingDescription: string
+      ticketDetails: string
+      subjectPlaceholder: string
+      generalMessage: string
+      secureDetails: string
+      messageOptional: string
+      messagePlaceholder: string
+      encrypted: string
+      endToEndSecure: string
+      secureDescription: string
+      secureDetailsOptional: string
+      securePlaceholder: string
+      attachmentsOptional: string
+      categorization: string
+      serviceOptional: string
+      selectDepartment: string
+      selectService: string
+      selectPriority: string
+      none: string
+      submitTicket: string
+      submitting: string
+      cancel: string
     }
     app: {
       deploy: {

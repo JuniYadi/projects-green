@@ -57,7 +57,7 @@ const supportTicketColumns = (messages: ReturnType<typeof getMessages>): ColumnD
   {
     accessorKey: "ticketId",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Ticket ID" />
+      <DataTableColumnHeader column={column} title={messages.console.supportTickets.ticketId} />
     ),
     cell: ({ row }) => (
       <span className="font-medium text-foreground">
@@ -68,7 +68,7 @@ const supportTicketColumns = (messages: ReturnType<typeof getMessages>): ColumnD
   {
     accessorKey: "title",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Title" />
+      <DataTableColumnHeader column={column} title={messages.console.supportTickets.titleColumn} />
     ),
   },
   {
@@ -102,13 +102,13 @@ export function SupportTicketsTable() {
     <DataTable
       columns={supportTicketColumns(messages)}
       data={supportTicketRows}
-      searchPlaceholder="Filter by Ticket ID or Title..."
+      searchPlaceholder={messages.console.supportTickets.searchPlaceholder}
       searchableColumns={["ticketId", "title"]}
       facetFilters={[
         {
           columnId: "status",
-          label: "Status",
-          allLabel: "All status",
+          label: messages.console.supportTickets.status,
+          allLabel: messages.console.supportTickets.filterAllStatus,
           options: [
             { label: messages.console.supportTickets.open, value: "open" },
             { label: messages.console.supportTickets.inProgress, value: "in_progress" },
@@ -118,8 +118,8 @@ export function SupportTicketsTable() {
         },
         {
           columnId: "department",
-          label: "Department",
-          allLabel: "All departments",
+          label: messages.console.supportTickets.department,
+          allLabel: messages.console.supportTickets.filterAllDepartments,
           options: [
             { label: messages.console.supportTickets.billing, value: "billing" },
             { label: messages.console.supportTickets.technical, value: "technical" },
@@ -129,8 +129,8 @@ export function SupportTicketsTable() {
         },
         {
           columnId: "priority",
-          label: "Priority",
-          allLabel: "All priority",
+          label: messages.console.supportTickets.priority,
+          allLabel: messages.console.supportTickets.filterAllPriority,
           options: [
             { label: messages.console.supportTickets.low, value: "Low" },
             { label: messages.console.supportTickets.medium, value: "Medium" },
@@ -140,7 +140,7 @@ export function SupportTicketsTable() {
         },
       ]}
       initialSorting={[{ id: "ticketId", desc: true }]}
-      emptyMessage="No support tickets match your filters."
+      emptyMessage={messages.console.supportTickets.noTicketsMatch}
     />
   )
 }

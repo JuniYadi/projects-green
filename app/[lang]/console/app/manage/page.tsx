@@ -196,7 +196,7 @@ export default function ManagePage() {
               size="sm"
               onClick={handleAppsRetry}
             >
-              Retry
+              {messages.console.app.manage.retry}
             </Button>
           </div>
         ) : apps.length === 0 ? (
@@ -245,7 +245,7 @@ export default function ManagePage() {
                   size="sm"
                   onClick={() => window.location.reload()}
                 >
-                  Retry
+                  {messages.console.app.manage.retry}
                 </Button>
               </div>
             ) : overview ? (
