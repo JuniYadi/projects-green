@@ -298,7 +298,7 @@ export const createTopupRoutes = () =>
       return { ok: true, currency, data: accounts }
     })
 
-    .get("/methods", async ({ set }) => {
+    .get("/methods", async ({ query, set }) => {
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
@@ -314,7 +314,11 @@ export const createTopupRoutes = () =>
         select: { currency: true },
       })
 
-      const currency = billingAccount?.currency ?? "IDR"
+      const requestedCurrency =
+        typeof query.currency === "string" ? query.currency.toUpperCase() : null
+      const accountCurrency = billingAccount?.currency ?? "IDR"
+      const currency =
+        requestedCurrency === accountCurrency ? requestedCurrency : accountCurrency
 
       const [accounts, gateway, paypalGateway, currencyRow, baseCurrency] =
         await Promise.all([

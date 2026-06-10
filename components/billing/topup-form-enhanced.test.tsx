@@ -139,6 +139,10 @@ describe("TopupFormEnhanced", () => {
     const view = render(<TopupFormEnhanced currency="USD" />)
 
     await waitFor(() => expect(view.getByText("PayPal")).toBeInTheDocument())
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/payments/topup/methods?currency=USD",
+      expect.objectContaining({ cache: "no-store" })
+    )
     expect(view.queryByText("Virtual Account")).not.toBeInTheDocument()
     expect(view.queryByText("QRIS")).not.toBeInTheDocument()
 

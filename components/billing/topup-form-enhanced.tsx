@@ -82,7 +82,11 @@ export function TopupFormEnhanced({
 
     async function fetchMethods() {
       try {
-        const response = await fetch("/api/payments/topup/methods")
+        const params = new URLSearchParams({ currency })
+        const response = await fetch(
+          `/api/payments/topup/methods?${params.toString()}`,
+          { cache: "no-store" }
+        )
         const data = await response.json()
         if (data.ok && !cancelled) {
           if (data.methods) {
@@ -115,7 +119,7 @@ export function TopupFormEnhanced({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [currency])
 
   useEffect(() => {
     let cancelled = false
