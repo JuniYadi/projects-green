@@ -75,6 +75,18 @@ export const createTopupRoutes = () =>
         })
         const currency = billingAccount?.currency ?? "IDR"
 
+        if (paymentMethod === "MANUAL_BANK") {
+          const accounts = await bankAccountService.getActiveAccounts(currency)
+          if (accounts.length === 0) {
+            set.status = 400
+            return {
+              ok: false,
+              error: "MANUAL_BANK_NOT_AVAILABLE",
+              message: `Manual bank transfer is not available for ${currency}. Please choose another payment method.`,
+            }
+          }
+        }
+
         if (paymentMethod === "VA" || paymentMethod === "QRIS") {
           // VA/QRIS run through a payment gateway. Only offer a gateway that
           // declares support for the account currency (covers BOTH and
@@ -276,8 +288,14 @@ export const createTopupRoutes = () =>
         }
       }
 
-      const accounts = await bankAccountService.getActiveAccounts()
-      return { ok: true, data: accounts }
+      const billingAccount = await prisma.billingAccount.findUnique({
+        where: { organizationId: auth.organizationId },
+        select: { currency: true },
+      })
+      const currency = billingAccount?.currency ?? "IDR"
+
+      const accounts = await bankAccountService.getActiveAccounts(currency)
+      return { ok: true, currency, data: accounts }
     })
 
     .get("/methods", async ({ set }) => {

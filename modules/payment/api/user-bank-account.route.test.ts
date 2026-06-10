@@ -12,6 +12,10 @@ type BankAccountShape = {
   bankName: string
   accountName: string
   accountNumber: string
+  currency: string
+  supportedCurrencies: string[]
+  swiftCode: string | null
+  bankAddress: string | null
   isActive: boolean
   isDefault: boolean
 }
@@ -57,6 +61,9 @@ const mockBankAccountUpdate: Mock<(args?: unknown) => Promise<any>> = mock(() =>
 const mockBankAccountUpdateMany: Mock<
   (args?: unknown) => Promise<{ count: number }>
 > = mock(() => Promise.resolve({ count: 0 }))
+const mockBillingAccountFindUnique: Mock<
+  (args?: unknown) => Promise<{ currency: string } | null>
+> = mock(() => Promise.resolve({ currency: "IDR" }))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -65,6 +72,9 @@ mock.module("@/lib/prisma", () => ({
       findUnique: mockBankAccountFindUnique,
       update: mockBankAccountUpdate,
       updateMany: mockBankAccountUpdateMany,
+    },
+    billingAccount: {
+      findUnique: mockBillingAccountFindUnique,
     },
     $transaction: mock((fns: unknown[]) => Promise.all(fns)),
   },
@@ -76,6 +86,10 @@ const createAccountFixture = (overrides: Record<string, unknown> = {}) => ({
   bankName: "Bank Central Asia",
   accountName: "Test Account",
   accountNumber: "1234567890",
+  currency: "IDR",
+  supportedCurrencies: ["IDR"],
+  swiftCode: null,
+  bankAddress: null,
   isActive: true,
   isDefault: false,
   ...overrides,
@@ -91,6 +105,8 @@ describe("User Bank Account Routes", () => {
     mockBankAccountFindUnique.mockClear()
     mockBankAccountUpdate.mockClear()
     mockBankAccountUpdateMany.mockClear()
+    mockBillingAccountFindUnique.mockClear()
+    mockBillingAccountFindUnique.mockResolvedValue({ currency: "IDR" })
 
     const { Elysia } = await import("elysia")
     const { createUserBankAccountRoutes } = await import(
@@ -153,6 +169,16 @@ describe("User Bank Account Routes", () => {
       expect(body.accounts).toHaveLength(2)
       expect(body.accounts[0].id).toBe("ba-1")
       expect(body.accounts[1].id).toBe("ba-2")
+      expect(mockBankAccountFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { supportedCurrencies: { has: "IDR" } },
+              { supportedCurrencies: { isEmpty: true }, currency: "IDR" },
+            ],
+          }),
+        })
+      )
     })
   })
 

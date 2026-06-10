@@ -1,6 +1,7 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
+import { prisma } from "@/lib/prisma"
 import { BankAccountService } from "../services/bank-account.service"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 
@@ -64,11 +65,19 @@ export function createUserBankAccountRoutes() {
         return toForbidden(set, "No active organization found.")
       }
 
-      // Bank accounts are platform-level payment configuration
-      const accounts = await bankAccountService.getActiveAccounts()
+      // Bank accounts are platform-level payment configuration, but users
+      // should only see manual transfer destinations matching their billing
+      // currency.
+      const billingAccount = await prisma.billingAccount.findUnique({
+        where: { organizationId: auth.organizationId },
+        select: { currency: true },
+      })
+      const currency = billingAccount?.currency ?? "IDR"
+      const accounts = await bankAccountService.getActiveAccounts(currency)
 
       return {
         ok: true,
+        currency,
         accounts,
       }
     })

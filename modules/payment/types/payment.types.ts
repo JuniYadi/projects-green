@@ -74,8 +74,12 @@ export interface BankAccountResponse {
   bankName: string
   accountNumber: string
   accountName: string
-  // ISO currency code this account receives, e.g. "IDR" or "USD".
+  // Legacy/default ISO currency code for backward compatibility.
   currency: string
+  // ISO currency codes this account can receive, e.g. ["IDR"], ["USD"], or both.
+  supportedCurrencies: string[]
+  swiftCode: string | null
+  bankAddress: string | null
   isActive: boolean
   isDefault: boolean
 }

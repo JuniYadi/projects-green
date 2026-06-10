@@ -23,6 +23,9 @@ interface BankAccount {
   bankName: string
   accountNumber: string
   accountName: string
+  supportedCurrencies?: string[]
+  swiftCode?: string | null
+  bankAddress?: string | null
   isActive: boolean
   isDefault: boolean
 }
@@ -398,6 +401,16 @@ export function TopupFormEnhanced({
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {account.accountNumber} &mdash; {account.accountName}
                       </p>
+                      {account.swiftCode && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          SWIFT/BIC: {account.swiftCode}
+                        </p>
+                      )}
+                      {account.bankAddress && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Bank address: {account.bankAddress}
+                        </p>
+                      )}
                     </div>
                   </label>
                 ))}

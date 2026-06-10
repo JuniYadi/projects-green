@@ -89,9 +89,51 @@ import { createTopupRoutes, createPaymentHistoryRoutes } from "./topup.route"
 describe("Topup Route", () => {
   let app: ReturnType<typeof Elysia.prototype.compile>
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockWithAuth.mockClear()
     mockInvoiceCreate.mockClear()
+
+    const { prisma } = await import("@/lib/prisma")
+    ;(prisma.billingAccount.findUnique as ReturnType<typeof mock>).mockClear()
+    ;(prisma.billingAccount.findUnique as ReturnType<typeof mock>).mockImplementation(
+      () =>
+        Promise.resolve({
+          id: "ba-123",
+          organizationId: "org-123",
+          currency: "IDR",
+          balance: { toNumber: () => 0 },
+        })
+    )
+    ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>).mockClear()
+    ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>).mockImplementation(
+      () => Promise.resolve([])
+    )
+    ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockClear()
+    ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockImplementation(
+      () => Promise.resolve([])
+    )
+    ;(prisma.currency.findUnique as ReturnType<typeof mock>).mockClear()
+    ;(prisma.currency.findUnique as ReturnType<typeof mock>).mockImplementation(
+      () =>
+        Promise.resolve({
+          code: "USD",
+          symbol: "$",
+          ratePerBase: { toNumber: () => 1 },
+          minTopup: { toNumber: () => 10 },
+          maxTopup: { toNumber: () => 10000 },
+        })
+    )
+    ;(prisma.currency.findFirst as ReturnType<typeof mock>).mockClear()
+    ;(prisma.currency.findFirst as ReturnType<typeof mock>).mockImplementation(
+      () =>
+        Promise.resolve({
+          code: "USD",
+          symbol: "$",
+          ratePerBase: { toNumber: () => 1 },
+          minTopup: { toNumber: () => 10 },
+          maxTopup: { toNumber: () => 10000 },
+        })
+    )
 
     app = (
       new Elysia()
@@ -181,6 +223,23 @@ describe("Topup Route", () => {
     })
 
     it("should create invoice and return success for MANUAL_BANK", async () => {
+      const { prisma } = await import("@/lib/prisma")
+      ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([
+        {
+          id: "bank-idr",
+          bankCode: "BCA",
+          bankName: "BCA",
+          accountName: "PT Projects Green",
+          accountNumber: "123456",
+          currency: "IDR",
+          supportedCurrencies: ["IDR"],
+          swiftCode: null,
+          bankAddress: null,
+          isActive: true,
+          isDefault: true,
+        },
+      ])
+
       const response = await app.handle(
         new Request("http://localhost/topup", {
           method: "POST",
@@ -195,6 +254,32 @@ describe("Topup Route", () => {
       expect(body.invoice.id).toBe("inv-123")
       expect(body.invoice.paymentMethod).toBe("VA")
       expect(body.paymentUrl).toBeUndefined()
+    })
+
+    it("should return 400 when manual bank transfer is unavailable for account currency", async () => {
+      const { prisma } = await import("@/lib/prisma")
+      ;(
+        prisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
+        id: "ba-123",
+        organizationId: "org-123",
+        currency: "USD",
+        balance: { toNumber: () => 0 },
+      })
+      ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([])
+
+      const response = await app.handle(
+        new Request("http://localhost/topup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 50, paymentMethod: "MANUAL_BANK" }),
+        })
+      )
+
+      expect(response.status).toBe(400)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("MANUAL_BANK_NOT_AVAILABLE")
     })
 
     it("should return 400 GATEWAY_NOT_AVAILABLE when no gateway supports the currency for VA", async () => {
@@ -309,6 +394,39 @@ describe("Topup Route", () => {
   })
 
   describe("GET /topup/methods", () => {
+    it("should hide manual bank transfer when no bank account supports USD", async () => {
+      const { prisma } = await import("@/lib/prisma")
+      ;(
+        prisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
+        id: "ba-123",
+        organizationId: "org-123",
+        currency: "USD",
+        balance: { toNumber: () => 0 },
+      })
+      ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([])
+
+      const response = await app.handle(
+        new Request("http://localhost/topup/methods")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.currency).toBe("USD")
+      expect(body.methods.MANUAL_BANK).toBe(false)
+      expect(prisma.bankAccount.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { supportedCurrencies: { has: "USD" } },
+              { supportedCurrencies: { isEmpty: true }, currency: "USD" },
+            ],
+          }),
+        })
+      )
+    })
+
     it("should expose PayPal when a lowercase paypal gateway supports USD", async () => {
       const { prisma } = await import("@/lib/prisma")
       ;(
@@ -348,6 +466,44 @@ describe("Topup Route", () => {
   })
 
   describe("GET /topup/bank-accounts", () => {
+    it("should return only bank accounts matching organization currency", async () => {
+      const { prisma } = await import("@/lib/prisma")
+      ;(
+        prisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
+        id: "ba-123",
+        organizationId: "org-123",
+        currency: "USD",
+        balance: { toNumber: () => 0 },
+      })
+      ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([
+        {
+          id: "bank-usd",
+          bankCode: "HSBC",
+          bankName: "HSBC",
+          accountName: "PT Projects Green",
+          accountNumber: "987654",
+          currency: "USD",
+          supportedCurrencies: ["USD", "IDR"],
+          swiftCode: "CENAIDJA",
+          bankAddress: "1 International Plaza, Jakarta",
+          isActive: true,
+          isDefault: true,
+        },
+      ])
+
+      const response = await app.handle(
+        new Request("http://localhost/topup/bank-accounts")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.data).toHaveLength(1)
+      expect(body.data[0].supportedCurrencies).toEqual(["USD", "IDR"])
+      expect(body.data[0].swiftCode).toBe("CENAIDJA")
+    })
+
     it("should return 401 when no organizationId", async () => {
       ;(mockWithAuth as ReturnType<typeof mock>).mockResolvedValueOnce({
         organizationId: null as unknown as string,

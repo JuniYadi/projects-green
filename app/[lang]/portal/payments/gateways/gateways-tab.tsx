@@ -468,7 +468,7 @@ export function GatewaysTab() {
                           onPressedChange={() => handleToggle(gateway)}
                           aria-label={`Toggle ${gateway.name}`}
                         >
-                          {gateway.isActive ? "Active" : "Inactive"}
+                          {gateway.isActive ? "Inactive" : "Active"}
                         </Toggle>
                         <Button
                           type="button"

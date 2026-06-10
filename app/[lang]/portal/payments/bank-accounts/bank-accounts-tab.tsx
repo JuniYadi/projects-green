@@ -13,12 +13,30 @@ interface BankAccount {
   accountNumber: string
   accountName: string
   currency: string
+  supportedCurrencies?: string[]
+  swiftCode?: string | null
+  bankAddress?: string | null
   isActive: boolean
   isDefault: boolean
   createdAt: string
 }
 
 const CURRENCY_OPTIONS = ["IDR", "USD"] as const
+
+function getSupportedCurrencies(formData: FormData): string[] {
+  const selected = formData
+    .getAll("supportedCurrencies")
+    .map((value) => String(value))
+    .filter(Boolean)
+
+  return selected.length > 0 ? selected : ["IDR"]
+}
+
+function getAccountCurrencies(account: BankAccount): string[] {
+  return account.supportedCurrencies?.length
+    ? account.supportedCurrencies
+    : [account.currency || "IDR"]
+}
 
 type BankAccountsRequestState =
   | { status: "loading" }
@@ -71,7 +89,9 @@ export function BankAccountsTab() {
           bankName: String(formData.get("bankName") || ""),
           accountName: String(formData.get("accountName") || ""),
           accountNumber: String(formData.get("accountNumber") || ""),
-          currency: String(formData.get("currency") || "IDR"),
+          supportedCurrencies: getSupportedCurrencies(formData),
+          swiftCode: String(formData.get("swiftCode") || "") || null,
+          bankAddress: String(formData.get("bankAddress") || "") || null,
         }),
       })
       const payload = await response.json()
@@ -109,7 +129,9 @@ export function BankAccountsTab() {
             bankName: String(formData.get("bankName") || ""),
             accountName: String(formData.get("accountName") || ""),
             accountNumber: String(formData.get("accountNumber") || ""),
-            currency: String(formData.get("currency") || "IDR"),
+            supportedCurrencies: getSupportedCurrencies(formData),
+            swiftCode: String(formData.get("swiftCode") || "") || null,
+            bankAddress: String(formData.get("bankAddress") || "") || null,
           }),
         }
       )
@@ -216,19 +238,32 @@ export function BankAccountsTab() {
                 <span>Account holder</span>
                 <Input name="accountName" placeholder="PT Projects Green" required />
               </label>
-              <label className="space-y-2 text-sm font-medium">
-                <span>Currency</span>
-                <select
-                  name="currency"
-                  defaultValue="IDR"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
-                >
+              <fieldset className="space-y-2 text-sm font-medium">
+                <legend>Supported currencies</legend>
+                <div className="flex flex-wrap gap-3 rounded-md border p-3">
                   {CURRENCY_OPTIONS.map((code) => (
-                    <option key={code} value={code}>
+                    <label key={code} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="supportedCurrencies"
+                        value={code}
+                        defaultChecked={code === "IDR"}
+                      />
                       {code}
-                    </option>
+                    </label>
                   ))}
-                </select>
+                </div>
+              </fieldset>
+              <label className="space-y-2 text-sm font-medium">
+                <span>SWIFT/BIC code</span>
+                <Input name="swiftCode" placeholder="CENAIDJA" />
+              </label>
+              <label className="space-y-2 text-sm font-medium md:col-span-2">
+                <span>Bank address</span>
+                <Input
+                  name="bankAddress"
+                  placeholder="Bank branch or registered bank address"
+                />
               </label>
             </div>
             <div className="mt-4 flex gap-2">
@@ -277,19 +312,37 @@ export function BankAccountsTab() {
                   required
                 />
               </label>
-              <label className="space-y-2 text-sm font-medium">
-                <span>Currency</span>
-                <select
-                  name="currency"
-                  defaultValue={editingAccount.currency || "IDR"}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
-                >
+              <fieldset className="space-y-2 text-sm font-medium">
+                <legend>Supported currencies</legend>
+                <div className="flex flex-wrap gap-3 rounded-md border p-3">
                   {CURRENCY_OPTIONS.map((code) => (
-                    <option key={code} value={code}>
+                    <label key={code} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="supportedCurrencies"
+                        value={code}
+                        defaultChecked={getAccountCurrencies(editingAccount).includes(code)}
+                      />
                       {code}
-                    </option>
+                    </label>
                   ))}
-                </select>
+                </div>
+              </fieldset>
+              <label className="space-y-2 text-sm font-medium">
+                <span>SWIFT/BIC code</span>
+                <Input
+                  name="swiftCode"
+                  defaultValue={editingAccount.swiftCode ?? ""}
+                  placeholder="CENAIDJA"
+                />
+              </label>
+              <label className="space-y-2 text-sm font-medium md:col-span-2">
+                <span>Bank address</span>
+                <Input
+                  name="bankAddress"
+                  defaultValue={editingAccount.bankAddress ?? ""}
+                  placeholder="Bank branch or registered bank address"
+                />
               </label>
             </div>
             <div className="mt-4 flex gap-2">
@@ -334,7 +387,7 @@ export function BankAccountsTab() {
                           {account.isActive ? "Active" : "Inactive"}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
-                          {account.currency || "IDR"}
+                          {getAccountCurrencies(account).join(", ")}
                         </Badge>
                         {account.isDefault && (
                           <Badge variant="outline" className="text-xs">

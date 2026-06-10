@@ -1521,10 +1521,15 @@ model BankAccount {
   bankName      String   // "Bank Central Asia"
   accountName   String   // AES-256 encrypted
   accountNumber String   // AES-256 encrypted
-  // ISO currency code this account receives, e.g. "IDR" or "USD". An IDR
-  // account cannot accept USD transfers, so it is only offered to matching
-  // account currencies.
+  // Legacy/default ISO currency code. New filtering uses supportedCurrencies;
+  // keep this for backward compatibility and as the primary display currency.
   currency      String   @default("IDR")
+  // ISO currency codes this account can receive, e.g. ["IDR"], ["USD"],
+  // or both. Manual bank transfer is offered when this list includes the
+  // customer's billing currency.
+  supportedCurrencies String[] @default([])
+  swiftCode     String?
+  bankAddress   String?
   isActive      Boolean  @default(true)
   isDefault     Boolean  @default(false)
   sortOrder     Int      @default(0)
