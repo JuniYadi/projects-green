@@ -5,6 +5,7 @@ import Link from "next/link"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { TopupFormEnhanced } from "@/components/billing/topup-form-enhanced"
 import { getAccount } from "@/lib/billing-client"
 import { ArrowLeftIcon } from "@phosphor-icons/react"
@@ -17,14 +18,44 @@ function formatLimit(value: number, currency: "IDR" | "USD"): string {
   }).format(value)
 }
 
+function TopupFormSkeleton() {
+  return (
+    <div className="space-y-6" aria-label="Loading top up details">
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-24" />
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-9" />
+          ))}
+        </div>
+        <Skeleton className="h-10 w-full" />
+      </div>
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+    </div>
+  )
+}
+
+function ImportantNotesSkeleton() {
+  return (
+    <div className="space-y-2" aria-label="Loading important notes">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Skeleton key={index} className="h-4 w-full" />
+      ))}
+    </div>
+  )
+}
+
 export default function TopupPage() {
   const [currency, setCurrency] = useState<"IDR" | "USD">("IDR")
+  const [isLoadingCurrency, setIsLoadingCurrency] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    // Render with IDR default immediately, then update when account currency
-    // resolves. No loading skeleton here — the flash from IDR → account
-    // currency is imperceptible (<200ms) and avoids layout shift.
     void getAccount()
       .then((account) => {
         if (!cancelled && (account.currency === "IDR" || account.currency === "USD")) {
@@ -33,6 +64,11 @@ export default function TopupPage() {
       })
       .catch(() => {
         // Keep IDR default on failure.
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingCurrency(false)
+        }
       })
     return () => {
       cancelled = true
@@ -62,7 +98,11 @@ export default function TopupPage() {
               <CardTitle className="text-base">Top Up Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <TopupFormEnhanced currency={currency} />
+              {isLoadingCurrency ? (
+                <TopupFormSkeleton />
+              ) : (
+                <TopupFormEnhanced currency={currency} />
+              )}
             </CardContent>
           </Card>
         </div>
@@ -103,12 +143,16 @@ export default function TopupPage() {
               <CardTitle className="text-base">Important Notes</CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                <li>Minimum topup amount is {formatLimit(10000, currency)}</li>
-                <li>Maximum topup amount is {formatLimit(100000000, currency)}</li>
-                <li>Balance will be updated after payment verification</li>
-                <li>For manual transfer, please confirm payment within 24 hours</li>
-              </ul>
+              {isLoadingCurrency ? (
+                <ImportantNotesSkeleton />
+              ) : (
+                <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                  <li>Minimum topup amount is {formatLimit(10000, currency)}</li>
+                  <li>Maximum topup amount is {formatLimit(100000000, currency)}</li>
+                  <li>Balance will be updated after payment verification</li>
+                  <li>For manual transfer, please confirm payment within 24 hours</li>
+                </ul>
+              )}
             </CardContent>
           </Card>
         </div>

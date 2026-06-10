@@ -44,4 +44,39 @@ describe("Billing InvoicesPage", () => {
     expect(view.getByText("All status")).toBeInTheDocument()
     expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
   })
+
+  it("shows separate issued and due date columns", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url === "/api/billing/invoices") {
+        return jsonResponse({
+          ok: true,
+          invoices: [
+            {
+              id: "inv-1",
+              invoiceNumber: "INV-2026-001",
+              status: "OPEN",
+              issuedAt: "2026-05-01T00:00:00.000Z",
+              dueAt: "2026-05-15T00:00:00.000Z",
+              totalAmountIdr: "299000.00",
+              currency: "IDR",
+              lines: [],
+            },
+          ],
+        })
+      }
+
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<InvoicesPage />)
+
+    await waitFor(() =>
+      expect(view.getByRole("columnheader", { name: /issued date/i })).toBeInTheDocument()
+    )
+
+    expect(view.getByRole("columnheader", { name: /due date/i })).toBeInTheDocument()
+    expect(view.queryByRole("columnheader", { name: /period/i })).not.toBeInTheDocument()
+  })
 })
