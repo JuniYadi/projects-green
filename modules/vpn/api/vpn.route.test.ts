@@ -27,6 +27,10 @@ const mockPrisma = {
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  withAuth: mock(async () => validAuth),
+}))
+
 import { createVpnRoutes } from "./vpn.route"
 
 function decimal(value: string) {
@@ -51,6 +55,16 @@ const mockBilling = {
   chargeMonthly: mock(),
 }
 
+const mockOpenVpn = {
+  createClient: mock(),
+  fetchConfig: mock(),
+}
+
+const mockVpnClients = {
+  createActiveClient: mock(),
+  createProvisioningFailure: mock(),
+}
+
 const createRoute = (
   auth: VpnAuthContext = validAuth,
   billing = mockBilling,
@@ -58,6 +72,8 @@ const createRoute = (
   createVpnRoutes({
     authenticate: async () => auth,
     billing,
+    openVpn: mockOpenVpn,
+    vpnClients: mockVpnClients,
   })
 
 const setupPrismaDefaults = () => {
@@ -104,6 +120,17 @@ const setupPrismaDefaults = () => {
 beforeEach(() => {
   setupPrismaDefaults()
   mockBilling.chargeMonthly.mockReset()
+  mockOpenVpn.createClient.mockReset()
+  mockOpenVpn.fetchConfig.mockReset()
+  mockVpnClients.createActiveClient.mockReset()
+  mockVpnClients.createProvisioningFailure.mockReset()
+  mockOpenVpn.createClient.mockResolvedValue(undefined)
+  mockOpenVpn.fetchConfig.mockResolvedValue("client\nsecret\n")
+  mockVpnClients.createActiveClient.mockResolvedValue({ id: "vpn_client_1" })
+  mockVpnClients.createProvisioningFailure.mockResolvedValue({
+    id: "vpn_client_failed",
+    status: "PROVISIONING_FAILED",
+  })
   // Default: billing succeeds with a STANDARD Indonesia price (25,000 IDR)
   mockBilling.chargeMonthly.mockResolvedValue({
     billingAccountId: "ba_1",
@@ -119,6 +146,30 @@ beforeEach(() => {
 // ─── Tests ──────────────────────────────────────────────────────────────
 
 describe("POST /vpn/subscriptions", () => {
+  it("default route factory uses WorkOS auth instead of anonymous auth", async () => {
+    const app = createVpnRoutes({
+      billing: mockBilling,
+      openVpn: mockOpenVpn,
+      vpnClients: mockVpnClients,
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          regionCode: "INDONESIA",
+          planCode: "STANDARD",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(body.organizationId).toBe("org_1")
+  })
+
   it("provisions vpn after monthly charge succeeds and persists a Subscription record", async () => {
     const app = createRoute()
     const response = await app.handle(
@@ -144,6 +195,7 @@ describe("POST /vpn/subscriptions", () => {
     expect(body.period).toMatch(/^\d{4}-\d{2}$/)
     expect(body.topupUrl).toBe("/console/billing/topup")
     expect(body.subscriptionId).toBe("sub_vpn_new")
+    expect(body.vpnClientId).toBe("vpn_client_1")
 
     expect(mockBilling.chargeMonthly).toHaveBeenCalledTimes(1)
     expect(mockBilling.chargeMonthly).toHaveBeenCalledWith(
@@ -171,7 +223,19 @@ describe("POST /vpn/subscriptions", () => {
       }),
     )
 
-    // Issue 1: updated to ACTIVE after charge succeeds
+    expect(mockOpenVpn.createClient).toHaveBeenCalledWith("org_org_1_sub_vpn_new")
+    expect(mockOpenVpn.fetchConfig).toHaveBeenCalledWith("org_org_1_sub_vpn_new")
+    expect(mockVpnClients.createActiveClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org_1",
+        subscriptionId: "sub_vpn_new",
+        clientName: "org_org_1_sub_vpn_new",
+        createdBy: "user-1",
+        ovpnConfig: "client\nsecret\n",
+      }),
+    )
+
+    // Issue 1: updated to ACTIVE after charge and provisioning succeed
     expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "sub_vpn_new" },
@@ -281,6 +345,8 @@ describe("POST /vpn/subscriptions", () => {
     )
 
     expect(response.status).toBe(402)
+    expect(mockOpenVpn.createClient).not.toHaveBeenCalled()
+    expect(mockOpenVpn.fetchConfig).not.toHaveBeenCalled()
     const body = await response.json()
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INSUFFICIENT_BALANCE")
@@ -292,6 +358,38 @@ describe("POST /vpn/subscriptions", () => {
       expect.objectContaining({
         where: { id: "sub_vpn_new" },
         data: expect.objectContaining({ status: "SUSPENDED" }),
+      }),
+    )
+  })
+
+  it("records provisioning failure after billing succeeds when adapter fails", async () => {
+    mockOpenVpn.createClient.mockRejectedValue(new Error("ssh failed"))
+
+    const app = createRoute()
+    const response = await app.handle(
+      new Request("http://localhost/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          regionCode: "INDONESIA",
+          planCode: "STANDARD",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(502)
+    const body = await response.json()
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("VPN_PROVISIONING_FAILED")
+    expect(body.message).not.toContain("ssh failed")
+    expect(mockBilling.chargeMonthly).toHaveBeenCalledTimes(1)
+    expect(mockVpnClients.createProvisioningFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org_1",
+        subscriptionId: "sub_vpn_new",
+        clientName: "org_org_1_sub_vpn_new",
+        createdBy: "user-1",
+        reason: "ssh failed",
       }),
     )
   })
