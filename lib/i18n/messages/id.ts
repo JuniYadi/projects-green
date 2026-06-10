@@ -20,6 +20,14 @@ export const idMessages: AppMessages = {
     createOrganizationError: "Tidak dapat membuat organisasi saat ini.",
     organizationMembersLabel: "Anggota organisasi",
     organizationSettingsLabel: "Pengaturan organisasi",
+    createOrganizationDialogTitle: "Buat organisasi",
+    createOrganizationDialogDescription:
+      "Ini membuat organisasi baru dan menetapkan Anda sebagai pemilik.",
+    createOrganizationNameLabel: "Nama organisasi",
+    createOrganizationCurrencyLabel: "Mata uang penagihan",
+    createOrganizationCurrencyHint:
+      "Ditetapkan sekali saat pembuatan dan dikunci setelah aktivitas keuangan pertama. IDR mendukung metode pembayaran otomatis (Virtual Account, QRIS); USD hanya transfer manual.",
+    createOrganizationCancelLabel: "Batal",
   },
   navUser: {
     label: "Menu pengguna",

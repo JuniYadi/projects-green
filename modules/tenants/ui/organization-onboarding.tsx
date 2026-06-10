@@ -49,6 +49,7 @@ export function OrganizationOnboarding({
   )
   const [isCreating, setIsCreating] = useState(false)
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
+  const [currency, setCurrency] = useState<"IDR" | "USD">("IDR")
 
   const activeMemberships = useMemo(() => {
     return memberships.filter((membership) => membership.status === "active")
@@ -154,7 +155,7 @@ export function OrganizationOnboarding({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: candidateName }),
+        body: JSON.stringify({ name: candidateName, currency }),
       })
       const payload = (await response.json().catch(() => null)) as
         | TenantBootstrapCreateResponse
@@ -211,6 +212,11 @@ export function OrganizationOnboarding({
         <p className="text-sm text-muted-foreground">
           This creates a new organization and assigns you the owner role.
         </p>
+        <p className="text-xs text-muted-foreground">
+          Billing currency is set once at creation and locked after the first
+          financial activity. IDR supports automatic payment methods (Virtual
+          Account, QRIS); USD is manual transfer only.
+        </p>
         <form
           className="flex flex-col gap-3 sm:flex-row"
           onSubmit={(event) => {
@@ -223,6 +229,18 @@ export function OrganizationOnboarding({
             onChange={(event) => setOrganizationName(event.target.value)}
             disabled={isCreating || Boolean(switchingOrgId)}
           />
+          <select
+            value={currency}
+            onChange={(event) =>
+              setCurrency(event.target.value === "USD" ? "USD" : "IDR")
+            }
+            disabled={isCreating || Boolean(switchingOrgId)}
+            aria-label="Billing currency"
+            className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="IDR">IDR</option>
+            <option value="USD">USD</option>
+          </select>
           <Button
             type="submit"
             disabled={isCreating || Boolean(switchingOrgId)}

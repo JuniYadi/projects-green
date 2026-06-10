@@ -161,6 +161,7 @@ describe("BankAccountService", () => {
           bankName: "BCA",
           accountName: "enc_John Doe",
           accountNumber: "enc_123456",
+          currency: "IDR",
           isDefault: false,
           isActive: true,
         },

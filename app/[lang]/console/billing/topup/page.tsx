@@ -1,13 +1,44 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { TopupFormEnhanced } from "@/components/billing/topup-form-enhanced"
+import { getAccount } from "@/lib/billing-client"
 import { ArrowLeftIcon } from "@phosphor-icons/react"
 
+function formatLimit(value: number, currency: "IDR" | "USD"): string {
+  return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+  }).format(value)
+}
+
 export default function TopupPage() {
+  const [currency, setCurrency] = useState<"IDR" | "USD">("IDR")
+
+  useEffect(() => {
+    let cancelled = false
+    // Render with IDR default immediately, then update when account currency
+    // resolves. No loading skeleton here — the flash from IDR → account
+    // currency is imperceptible (<200ms) and avoids layout shift.
+    void getAccount()
+      .then((account) => {
+        if (!cancelled && (account.currency === "IDR" || account.currency === "USD")) {
+          setCurrency(account.currency)
+        }
+      })
+      .catch(() => {
+        // Keep IDR default on failure.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
@@ -31,7 +62,7 @@ export default function TopupPage() {
               <CardTitle className="text-base">Top Up Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <TopupFormEnhanced />
+              <TopupFormEnhanced currency={currency} />
             </CardContent>
           </Card>
         </div>
@@ -73,8 +104,8 @@ export default function TopupPage() {
             </CardHeader>
             <CardContent>
               <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                <li>Minimum topup amount is IDR 10,000</li>
-                <li>Maximum topup amount is IDR 100,000,000</li>
+                <li>Minimum topup amount is {formatLimit(10000, currency)}</li>
+                <li>Maximum topup amount is {formatLimit(100000000, currency)}</li>
                 <li>Balance will be updated after payment verification</li>
                 <li>For manual transfer, please confirm payment within 24 hours</li>
               </ul>

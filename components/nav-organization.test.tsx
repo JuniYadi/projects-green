@@ -7,8 +7,6 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 const mockSwitchToOrganization = mock(async () => {})
 const mockReplace = mock(() => {})
 const mockRefresh = mock(() => {})
-const mockPrompt = mock(() => "Acme New")
-const originalPrompt = window.prompt
 const originalFetch = globalThis.fetch
 let mockPathname = "/en/console/organization"
 let mockSearchParams = new URLSearchParams("tab=members")
@@ -54,7 +52,6 @@ mock.module("next/navigation.js", () => {
 
 describe("NavOrganization", () => {
   afterEach(() => {
-    window.prompt = originalPrompt
     globalThis.fetch = originalFetch
     cleanup()
   })
@@ -63,11 +60,8 @@ describe("NavOrganization", () => {
     mockSwitchToOrganization.mockClear()
     mockReplace.mockClear()
     mockRefresh.mockClear()
-    mockPrompt.mockClear()
-    mockPrompt.mockImplementation(() => "Acme New")
     mockPathname = "/en/console/organization"
     mockSearchParams = new URLSearchParams("tab=members")
-    window.prompt = mockPrompt as unknown as typeof window.prompt
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const path =
         typeof input === "string"
@@ -195,6 +189,14 @@ describe("NavOrganization", () => {
     fireEvent.pointerDown(view.getByRole("button"))
     fireEvent.click(await view.findByText("Create organization"))
 
+    const nameInput = await view.findByLabelText("Organization name")
+    fireEvent.change(nameInput, { target: { value: "Acme New" } })
+
+    const submitButton = await view.findByRole("button", {
+      name: "Create organization",
+    })
+    fireEvent.submit(submitButton.closest("form") as HTMLFormElement)
+
     await waitFor(() => {
       const fetchCalls = (
         globalThis.fetch as unknown as { mock: { calls: unknown[][] } }
@@ -217,7 +219,6 @@ describe("NavOrganization", () => {
   })
 
   it("shows create error when name is blank", async () => {
-    mockPrompt.mockImplementation(() => "   ")
     const view = render(
       <SidebarProvider>
         <NavOrganization
@@ -231,6 +232,14 @@ describe("NavOrganization", () => {
 
     fireEvent.pointerDown(view.getByRole("button"))
     fireEvent.click(await view.findByText("Create organization"))
+
+    const nameInput = await view.findByLabelText("Organization name")
+    fireEvent.change(nameInput, { target: { value: "   " } })
+
+    const submitButton = await view.findByRole("button", {
+      name: "Create organization",
+    })
+    fireEvent.submit(submitButton.closest("form") as HTMLFormElement)
 
     await waitFor(() => {
       expect(view.getByText("Organization name is required.")).toBeTruthy()
@@ -288,6 +297,14 @@ describe("NavOrganization", () => {
 
     fireEvent.pointerDown(view.getByRole("button"))
     fireEvent.click(await view.findByText("Create organization"))
+
+    const nameInput = await view.findByLabelText("Organization name")
+    fireEvent.change(nameInput, { target: { value: "Acme New" } })
+
+    const submitButton = await view.findByRole("button", {
+      name: "Create organization",
+    })
+    fireEvent.submit(submitButton.closest("form") as HTMLFormElement)
 
     await waitFor(() => {
       expect(view.getByText("Creator role missing.")).toBeTruthy()

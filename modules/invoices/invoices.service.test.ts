@@ -24,7 +24,10 @@ const baseInvoice = {
   issuedAt: new Date("2026-05-02T00:00:00.000Z"),
   dueAt: new Date("2026-05-17T00:00:00.000Z"),
   paidAt: null,
+  type: null,
+  paymentMethod: null,
   metadataJson: null,
+  metadata: null,
   createdAt: new Date("2026-05-02T00:00:00.000Z"),
   updatedAt: new Date("2026-05-02T00:00:00.000Z"),
 }
@@ -155,7 +158,10 @@ describe("invoice service", () => {
       issuedAt: null,
       dueAt: null,
       paidAt: null,
+      type: null,
+      paymentMethod: null,
       metadataJson: null,
+      metadata: null,
       createdAt: new Date("2026-05-02T00:00:00.000Z"),
       updatedAt: new Date("2026-05-02T00:00:00.000Z"),
     }

@@ -7,11 +7,27 @@ import { BankAccountService } from "../services/bank-account.service"
 import { DuitkuService } from "../services/duitku.service"
 import { GatewayService } from "../services/gateway.service"
 import { CreateTopupSchema } from "../types/payment.types"
+import { CurrencyService } from "@/modules/billing/currency.service"
 
 const paymentService = new PaymentService()
 const bankAccountService = new BankAccountService()
 const duitkuService = new DuitkuService()
 const gatewayService = new GatewayService()
+const currencyService = new CurrencyService()
+
+// Topup quick-pick presets are authored in the base currency (USD) and
+// converted to the account currency at request time so a USD user sees clean
+// USD buttons and an IDR user sees the converted IDR equivalents.
+const BASE_TOPUP_PRESETS = [5, 10, 25, 50, 100]
+
+function roundPreset(value: number, currencyCode: string): number {
+  // Whole-unit currencies (IDR) round to the nearest 1,000; sub-unit
+  // currencies (USD) keep two decimals.
+  if (currencyCode === "USD") {
+    return Math.round(value * 100) / 100
+  }
+  return Math.round(value / 1000) * 1000
+}
 
 export const createTopupRoutes = () =>
   new Elysia({ prefix: "/topup" })
@@ -38,30 +54,23 @@ export const createTopupRoutes = () =>
       try {
         let gatewayId: string | undefined
         if (paymentMethod === "VA" || paymentMethod === "QRIS") {
-          // Duitku gateway only supports IDR settlement. Reject non-IDR
-          // accounts with a clear message instead of silently creating an
-          // invoice that cannot be paid through the gateway.
+          // VA/QRIS run through a payment gateway. Only offer a gateway that
+          // declares support for the account currency (covers BOTH and
+          // ONLY-ONE). This replaces the old hardcoded "Duitku = IDR only"
+          // branch with the gateway's own supportedCurrencies list.
           const billingAccount = await prisma.billingAccount.findUnique({
             where: { organizationId: auth.organizationId },
             select: { currency: true },
           })
-          if (billingAccount && billingAccount.currency !== "IDR") {
-            set.status = 400
-            return {
-              ok: false,
-              error: "CURRENCY_NOT_SUPPORTED",
-              message:
-                "Virtual Account and QRIS payments are only available for IDR accounts.",
-            }
-          }
+          const currency = billingAccount?.currency ?? "IDR"
 
-          const gateway = await gatewayService.findByType("GATEWAY")
+          const gateway = await gatewayService.findByTypeForCurrency("GATEWAY", currency)
           if (!gateway) {
             set.status = 400
             return {
               ok: false,
-              error: "GATEWAY_NOT_CONFIGURED",
-              message: "Payment gateway not configured",
+              error: "GATEWAY_NOT_AVAILABLE",
+              message: `No payment gateway available for ${currency}. Please use manual bank transfer.`,
             }
           }
           gatewayId = gateway.id
@@ -82,7 +91,7 @@ export const createTopupRoutes = () =>
             amount,
             email: `${auth.organizationId}@payment.local`,
             customerName: `Org ${auth.organizationId}`,
-            productDetails: `Top Up Balance - ${invoice.invoiceNumber}`,
+            productDetails: `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
             paymentMethod: duitkuMethod,
           })
 
@@ -181,28 +190,48 @@ export const createTopupRoutes = () =>
         return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
       }
 
-      const [accounts, gateway, billingAccount] = await Promise.all([
-        bankAccountService.getActiveAccounts(),
-        gatewayService.findByType("GATEWAY"),
-        prisma.billingAccount.findUnique({
-          where: { organizationId: auth.organizationId },
-          select: { currency: true },
-        }),
-      ])
+      const billingAccount = await prisma.billingAccount.findUnique({
+        where: { organizationId: auth.organizationId },
+        select: { currency: true },
+      })
 
       const currency = billingAccount?.currency ?? "IDR"
+
+      const [accounts, gateway, currencyRow, baseCurrency] = await Promise.all([
+        bankAccountService.getActiveAccounts(currency),
+        gatewayService.findByTypeForCurrency("GATEWAY", currency),
+        currencyService.findByCode(currency),
+        currencyService.getBase().catch(() => null),
+      ])
+
       const manualEnabled = accounts.length > 0
-      // Duitku only settles IDR, so VA/QRIS require an active gateway and an
-      // IDR billing account.
-      const duitkuEnabled = Boolean(gateway) && currency === "IDR"
+      // VA/QRIS require a gateway that supports this currency.
+      const gatewayEnabled = Boolean(gateway)
+
+      // Derive quick-pick presets from base-currency anchors converted into the
+      // account currency, so amounts stay meaningful regardless of currency.
+      const rate = currencyRow?.ratePerBase?.toNumber() ?? (currency === "IDR" ? 18000 : 1)
+      const presets = BASE_TOPUP_PRESETS.map((base) => roundPreset(base * rate, currency))
+
+      const minTopup = currencyRow?.minTopup?.toNumber() ?? presets[0]
+      const maxTopup =
+        currencyRow?.maxTopup?.toNumber() ?? presets[presets.length - 1] * 100
 
       return {
         ok: true,
         currency,
+        config: {
+          symbol: currencyRow?.symbol ?? (currency === "IDR" ? "Rp" : "$"),
+          ratePerBase: rate,
+          baseCode: baseCurrency?.code ?? "USD",
+          presets,
+          minTopup,
+          maxTopup,
+        },
         methods: {
           MANUAL_BANK: manualEnabled,
-          VA: duitkuEnabled,
-          QRIS: duitkuEnabled,
+          VA: gatewayEnabled,
+          QRIS: gatewayEnabled,
         },
       }
     })

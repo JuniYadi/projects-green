@@ -24,8 +24,11 @@ export const nameSchema = z
   .min(2, "Organization name must be at least 2 characters.")
   .max(80, "Organization name must be at most 80 characters.")
 
+export const billingCurrencySchema = z.enum(["IDR", "USD"]).default("IDR")
+
 export const bootstrapCreatePayloadSchema = z.object({
   name: nameSchema,
+  currency: billingCurrencySchema,
 })
 
 export const organizationUpdatePayloadSchema = z

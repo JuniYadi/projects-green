@@ -6,13 +6,6 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -69,11 +62,6 @@ type InvoiceDetailRequestState =
       message: string
     }
 
-const PAYMENT_METHODS = [
-  { id: "pm_card_4242", label: "Visa ending in 4242" },
-  { id: "pm_bank_9124", label: "Bank transfer ending in 9124" },
-]
-
 const getErrorMessage = (payload: InvoiceErrorResponse | null) => {
   if (payload?.message) {
     return payload.message
@@ -89,7 +77,6 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
     status: "loading",
   })
   const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false)
-  const [paymentMethodId, setPaymentMethodId] = useState(PAYMENT_METHODS[0].id)
   const [isCancelSheetOpen, setIsCancelSheetOpen] = useState(false)
   const [isCanceling, setIsCanceling] = useState(false)
   const [cancelErrorMessage, setCancelErrorMessage] = useState<string | null>(null)
@@ -409,31 +396,45 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
               <p className="text-xs text-muted-foreground">Invoice Status</p>
               <p className="font-medium">{getInvoiceStatusLabel(invoice.status)}</p>
             </div>
-            <div className="grid gap-2">
-              <p className="text-xs text-muted-foreground">Payment Method</p>
-              <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select payment method" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((method) => (
-                    <SelectItem key={method.id} value={method.id}>
-                      {method.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-              Payment gateway integration is pending. This drawer is ready for
-              gateway intent + confirmation wiring.
-            </p>
+            {invoice.manualTransfer ? (
+              <div className="grid gap-1 rounded-md border bg-muted/40 p-3">
+                <p className="text-xs text-muted-foreground">Amount to transfer</p>
+                <p className="text-base font-semibold">
+                  {formatInvoiceCurrency(
+                    invoice.manualTransfer.finalAmount ?? invoice.totalAmount,
+                    invoice.currency,
+                    locale
+                  )}
+                </p>
+                {invoice.manualTransfer.uniqueCode != null ? (
+                  <p className="text-xs text-muted-foreground">
+                    Includes a unique code of {invoice.manualTransfer.uniqueCode}.
+                    Transfer the exact amount so we can match your payment
+                    automatically.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                After transferring the amount above to the destination account,
+                confirm your payment so we can verify and credit your balance.
+              </p>
+            )}
           </div>
 
           <SheetFooter>
-            <Button type="button" disabled>
-              Confirm Payment (Gateway Pending)
+            <Button
+              type="button"
+              onClick={() => {
+                const amount = invoice.manualTransfer?.finalAmount ?? invoice.totalAmount
+                router.push(
+                  `/console/billing/payments/confirm?invoiceId=${encodeURIComponent(
+                    invoice.id
+                  )}&amount=${Math.round(amount)}`
+                )
+              }}
+            >
+              Confirm Payment
             </Button>
           </SheetFooter>
         </SheetContent>

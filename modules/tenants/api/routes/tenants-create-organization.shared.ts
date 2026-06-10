@@ -4,9 +4,13 @@ import {
   UnprocessableEntityException,
 } from "@workos-inc/node"
 
+import { Prisma } from "@prisma/client"
+
+import { prisma } from "@/lib/prisma"
 import type { RouteSet } from "@/modules/tenants/api/tenants.errors"
 import type {
   TenantApiError,
+  TenantBillingCurrency,
   TenantBootstrapCreateResponse,
   TenantBootstrapMembership,
 } from "@/modules/tenants/contracts/tenant-api.contract"
@@ -116,12 +120,14 @@ export const createTenantOrganizationWithCreator = async (params: {
   set: RouteSet
   userId: string
   organizationName: string
+  currency?: TenantBillingCurrency
   deps: TenantCreateOrganizationDeps
 }): Promise<TenantBootstrapCreateResponse | TenantApiError> => {
   const {
     set,
     userId,
     organizationName,
+    currency = "IDR",
     deps: {
       createTenantOrganization,
       hasBootstrapCreatorRole,
@@ -245,6 +251,31 @@ export const createTenantOrganizationWithCreator = async (params: {
     }
 
     set.status = 201
+
+    // Persist the chosen billing currency by creating the BillingAccount now.
+    // Non-fatal: if this fails, the JIT path will still create the account
+    // later (defaulting to IDR), so org creation should not be rolled back.
+    try {
+      await prisma.billingAccount.upsert({
+        where: { organizationId: organization.id },
+        update: {},
+        create: {
+          organizationId: organization.id,
+          balance: new Prisma.Decimal(0),
+          currency,
+          timezone: "UTC",
+          status: "ACTIVE",
+        },
+      })
+    } catch (billingError) {
+      console.error("createBillingAccount during org bootstrap failed", {
+        organizationId: organization.id,
+        error:
+          billingError instanceof Error
+            ? billingError.message
+            : "Unknown error",
+      })
+    }
 
     return {
       ok: true,

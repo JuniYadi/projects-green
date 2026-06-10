@@ -40,6 +40,8 @@ export type TenantBootstrapResponse = {
   memberships: TenantBootstrapMembership[]
 }
 
+export type TenantBillingCurrency = "IDR" | "USD"
+
 export type TenantBootstrapCreateResponse = {
   ok: true
   organizationId: string

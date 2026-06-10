@@ -25,11 +25,12 @@ export const createAdminBankRoutes = () =>
         return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
       }
 
-      const { bankCode, bankName, accountName, accountNumber, isDefault } = body as {
+      const { bankCode, bankName, accountName, accountNumber, currency, isDefault } = body as {
         bankCode: string
         bankName: string
         accountName: string
         accountNumber: string
+        currency?: string
         isDefault?: boolean
       }
 
@@ -40,6 +41,7 @@ export const createAdminBankRoutes = () =>
         bankName: resolvedBankName,
         accountName,
         accountNumber,
+        currency,
         isDefault,
       })
 
@@ -56,11 +58,12 @@ export const createAdminBankRoutes = () =>
         return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
       }
 
-      const { bankCode, bankName, accountName, accountNumber, isDefault } = body as {
+      const { bankCode, bankName, accountName, accountNumber, currency, isDefault } = body as {
         bankCode?: string
         bankName?: string
         accountName?: string
         accountNumber?: string
+        currency?: string
         isDefault?: boolean
       }
 
@@ -73,6 +76,7 @@ export const createAdminBankRoutes = () =>
         bankName: resolvedBankName || bankName,
         accountName,
         accountNumber,
+        currency,
         isDefault,
       })
 

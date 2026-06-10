@@ -125,7 +125,10 @@ describe("InvoiceDetailScreen", () => {
     fireEvent.click(view.getByText("Pay Invoice"))
 
     await waitFor(() => {
-      expect(view.getByText(/Payment gateway integration is pending/i)).toBeTruthy()
+      expect(view.getByText(/confirm your payment/i)).toBeTruthy()
+      expect(
+        view.getByRole("button", { name: "Confirm Payment" })
+      ).toBeTruthy()
     })
 
     fireEvent.click(view.getByText("Mark Invoice Canceled"))

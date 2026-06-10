@@ -313,12 +313,9 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       icon: <WhatsappLogoIcon />,
       isActive: startsWithRoute(path, "/console/whatsapp"),
     },
-    {
-      title: "Organization",
-      url: localizePathname({ pathname: "/console/organization", locale }),
-      icon: <BuildingsIcon />,
-      isActive: startsWithRoute(path, "/console/organization"),
-    },
+    // Organization is intentionally omitted here. It lives in the top-left
+    // organization switcher dropdown (NavOrganization) to keep a single point
+    // of access and avoid duplicating the entry in the sidebar.
   ],
 })
 

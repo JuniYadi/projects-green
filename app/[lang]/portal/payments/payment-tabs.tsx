@@ -6,14 +6,16 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OverviewTab } from "./overview/overview-tab"
 import { GatewaysTab } from "./gateways/gateways-tab"
 import { BankAccountsTab } from "./bank-accounts/bank-accounts-tab"
+import { CurrenciesTab } from "./currencies/currencies-tab"
 import { ConfirmationsTab } from "./confirmations/confirmations-tab"
 
-type TabValue = "overview" | "gateways" | "bank-accounts" | "confirmations"
+type TabValue = "overview" | "gateways" | "bank-accounts" | "currencies" | "confirmations"
 
 const TABS: { value: TabValue; label: string }[] = [
   { value: "overview", label: "Overview" },
   { value: "gateways", label: "Gateways" },
   { value: "bank-accounts", label: "Bank Accounts" },
+  { value: "currencies", label: "Currencies" },
   { value: "confirmations", label: "Confirmations" },
 ]
 
@@ -46,6 +48,7 @@ export function PaymentTabs({ defaultTab }: { defaultTab?: string }) {
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "gateways" && <GatewaysTab />}
       {activeTab === "bank-accounts" && <BankAccountsTab />}
+      {activeTab === "currencies" && <CurrenciesTab />}
       {activeTab === "confirmations" && <ConfirmationsTab />}
     </div>
   )

@@ -11,8 +11,15 @@ interface PaymentGateway {
   id: string
   name: string
   provider: string
+  supportedCurrencies?: string[]
   status: "active" | "inactive"
   createdAt: string
+}
+
+const CURRENCY_OPTIONS = ["IDR", "USD"] as const
+
+function readSupportedCurrencies(formData: FormData): string[] {
+  return CURRENCY_OPTIONS.filter((code) => formData.get(`currency_${code}`) === "on")
 }
 
 type GatewaysRequestState =
@@ -64,6 +71,7 @@ export function GatewaysTab() {
         body: JSON.stringify({
           name: String(formData.get("name") || ""),
           type: String(formData.get("type") || ""),
+          supportedCurrencies: readSupportedCurrencies(formData),
           config: {
             merchantCode: String(formData.get("merchantCode") || ""),
             apiKey: String(formData.get("apiKey") || ""),
@@ -105,6 +113,7 @@ export function GatewaysTab() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: String(formData.get("name") || ""),
+            supportedCurrencies: readSupportedCurrencies(formData),
             config: {
               merchantCode: String(formData.get("merchantCode") || ""),
               apiKey: String(formData.get("apiKey") || ""),
@@ -204,6 +213,20 @@ export function GatewaysTab() {
                 <span>Production URL</span>
                 <Input name="productionUrl" placeholder="https://api.example.com" />
               </label>
+              <fieldset className="space-y-2 text-sm font-medium md:col-span-2">
+                <span>Supported currencies</span>
+                <div className="flex gap-4">
+                  {CURRENCY_OPTIONS.map((code) => (
+                    <label key={code} className="flex items-center gap-2 font-normal">
+                      <input type="checkbox" name={`currency_${code}`} />
+                      <span>{code}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs font-normal text-muted-foreground">
+                  Leave empty to accept all currencies.
+                </p>
+              </fieldset>
             </div>
             <div className="mt-4 flex gap-2">
               <Button type="submit" size="sm" disabled={isSubmitting}>
@@ -251,6 +274,24 @@ export function GatewaysTab() {
                 <span>Production URL</span>
                 <Input name="productionUrl" placeholder="https://api.example.com" />
               </label>
+              <fieldset className="space-y-2 text-sm font-medium md:col-span-2">
+                <span>Supported currencies</span>
+                <div className="flex gap-4">
+                  {CURRENCY_OPTIONS.map((code) => (
+                    <label key={code} className="flex items-center gap-2 font-normal">
+                      <input
+                        type="checkbox"
+                        name={`currency_${code}`}
+                        defaultChecked={editingGateway.supportedCurrencies?.includes(code)}
+                      />
+                      <span>{code}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs font-normal text-muted-foreground">
+                  Leave empty to accept all currencies.
+                </p>
+              </fieldset>
             </div>
             <div className="mt-4 flex gap-2">
               <Button type="submit" size="sm" disabled={isSubmitting}>
@@ -290,6 +331,11 @@ export function GatewaysTab() {
                           className="text-xs"
                         >
                           {gateway.status}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {gateway.supportedCurrencies && gateway.supportedCurrencies.length > 0
+                            ? gateway.supportedCurrencies.join(", ")
+                            : "All currencies"}
                         </Badge>
                       </div>
                     </div>

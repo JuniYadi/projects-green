@@ -12,10 +12,13 @@ interface BankAccount {
   bankName: string
   accountNumber: string
   accountName: string
+  currency: string
   isActive: boolean
   isDefault: boolean
   createdAt: string
 }
+
+const CURRENCY_OPTIONS = ["IDR", "USD"] as const
 
 type BankAccountsRequestState =
   | { status: "loading" }
@@ -68,6 +71,7 @@ export function BankAccountsTab() {
           bankName: String(formData.get("bankName") || ""),
           accountName: String(formData.get("accountName") || ""),
           accountNumber: String(formData.get("accountNumber") || ""),
+          currency: String(formData.get("currency") || "IDR"),
         }),
       })
       const payload = await response.json()
@@ -105,6 +109,7 @@ export function BankAccountsTab() {
             bankName: String(formData.get("bankName") || ""),
             accountName: String(formData.get("accountName") || ""),
             accountNumber: String(formData.get("accountNumber") || ""),
+            currency: String(formData.get("currency") || "IDR"),
           }),
         }
       )
@@ -211,6 +216,20 @@ export function BankAccountsTab() {
                 <span>Account holder</span>
                 <Input name="accountName" placeholder="PT Projects Green" required />
               </label>
+              <label className="space-y-2 text-sm font-medium">
+                <span>Currency</span>
+                <select
+                  name="currency"
+                  defaultValue="IDR"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                >
+                  {CURRENCY_OPTIONS.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="mt-4 flex gap-2">
               <Button type="submit" size="sm" disabled={isSubmitting}>
@@ -258,6 +277,20 @@ export function BankAccountsTab() {
                   required
                 />
               </label>
+              <label className="space-y-2 text-sm font-medium">
+                <span>Currency</span>
+                <select
+                  name="currency"
+                  defaultValue={editingAccount.currency || "IDR"}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                >
+                  {CURRENCY_OPTIONS.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="mt-4 flex gap-2">
               <Button type="submit" size="sm" disabled={isSubmitting}>
@@ -299,6 +332,9 @@ export function BankAccountsTab() {
                           className="text-xs"
                         >
                           {account.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {account.currency || "IDR"}
                         </Badge>
                         {account.isDefault && (
                           <Badge variant="outline" className="text-xs">

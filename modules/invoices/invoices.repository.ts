@@ -46,7 +46,10 @@ type InvoiceRecord = {
   issuedAt: Date | null
   dueAt: Date | null
   paidAt: Date | null
+  type: string | null
+  paymentMethod: string | null
   metadataJson: unknown
+  metadata: unknown
   createdAt: Date
   updatedAt: Date
 }

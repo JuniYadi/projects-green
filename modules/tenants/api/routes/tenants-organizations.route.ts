@@ -58,6 +58,7 @@ export const createTenantsOrganizationsRoutes = (
         set,
         userId: actorResult.userId,
         organizationName: body.name,
+        currency: body.currency,
         deps: {
           createTenantOrganization,
           hasBootstrapCreatorRole,
