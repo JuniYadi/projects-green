@@ -31,44 +31,46 @@ describe("TopupFormEnhanced", () => {
   })
 
   it("routes manual bank transfer top-up to the invoice detail page", async () => {
-    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input)
-      if (url.includes("/api/payments/topup/methods")) {
-        return jsonResponse({
-          ok: true,
-          currency: "IDR",
-          config: {
-            symbol: "Rp",
-            ratePerBase: 18000,
-            baseCode: "USD",
-            presets: [180000, 450000, 900000, 1800000, 4500000],
-            minTopup: 50000,
-            maxTopup: 200000000,
-          },
-          methods: { MANUAL_BANK: true, VA: false, QRIS: false },
-        })
-      }
-      if (url.includes("/api/payments/topup/bank-accounts")) {
-        return jsonResponse({
-          ok: true,
-          data: [
-            {
-              id: "bank_1",
-              bankCode: "BCA",
-              bankName: "BCA",
-              accountNumber: "123",
-              accountName: "Acme",
-              isActive: true,
-              isDefault: true,
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/payments/topup/methods")) {
+          return jsonResponse({
+            ok: true,
+            currency: "IDR",
+            config: {
+              symbol: "Rp",
+              ratePerBase: 18000,
+              baseCode: "USD",
+              presets: [180000, 450000, 900000, 1800000, 4500000],
+              minTopup: 50000,
+              maxTopup: 200000000,
             },
-          ],
-        })
+            methods: { MANUAL_BANK: true, VA: false, QRIS: false },
+          })
+        }
+        if (url.includes("/api/payments/topup/bank-accounts")) {
+          return jsonResponse({
+            ok: true,
+            data: [
+              {
+                id: "bank_1",
+                bankCode: "BCA",
+                bankName: "BCA",
+                accountNumber: "123",
+                accountName: "Acme",
+                isActive: true,
+                isDefault: true,
+              },
+            ],
+          })
+        }
+        if (url.includes("/api/payments/topup") && init?.method === "POST") {
+          return jsonResponse({ ok: true, invoice: { id: "inv_42" } })
+        }
+        return jsonResponse({ ok: false, message: "Unhandled" }, 500)
       }
-      if (url.includes("/api/payments/topup") && init?.method === "POST") {
-        return jsonResponse({ ok: true, invoice: { id: "inv_42" } })
-      }
-      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
-    }) as unknown as typeof fetch
+    ) as unknown as typeof fetch
 
     const view = render(<TopupFormEnhanced />)
 
@@ -97,35 +99,42 @@ describe("TopupFormEnhanced", () => {
       value: locationStub,
     })
 
-    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input)
-      if (url.includes("/api/payments/topup/methods")) {
-        return jsonResponse({
-          ok: true,
-          currency: "USD",
-          config: {
-            symbol: "$",
-            ratePerBase: 1,
-            baseCode: "USD",
-            presets: [10, 25, 50, 100, 250],
-            minTopup: 10,
-            maxTopup: 10000,
-          },
-          methods: { MANUAL_BANK: true, VA: false, QRIS: false, PAYPAL: true },
-        })
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/payments/topup/methods")) {
+          return jsonResponse({
+            ok: true,
+            currency: "USD",
+            config: {
+              symbol: "$",
+              ratePerBase: 1,
+              baseCode: "USD",
+              presets: [10, 25, 50, 100, 250],
+              minTopup: 10,
+              maxTopup: 10000,
+            },
+            methods: {
+              MANUAL_BANK: true,
+              VA: false,
+              QRIS: false,
+              PAYPAL: true,
+            },
+          })
+        }
+        if (url.includes("/api/payments/topup/bank-accounts")) {
+          return jsonResponse({ ok: true, data: [] })
+        }
+        if (url.includes("/api/payments/topup") && init?.method === "POST") {
+          return jsonResponse({
+            ok: true,
+            invoice: { id: "inv_paypal" },
+            paymentUrl: "https://paypal.test/checkout/inv_paypal",
+          })
+        }
+        return jsonResponse({ ok: false, message: "Unhandled" }, 500)
       }
-      if (url.includes("/api/payments/topup/bank-accounts")) {
-        return jsonResponse({ ok: true, data: [] })
-      }
-      if (url.includes("/api/payments/topup") && init?.method === "POST") {
-        return jsonResponse({
-          ok: true,
-          invoice: { id: "inv_paypal" },
-          paymentUrl: "https://paypal.test/checkout/inv_paypal",
-        })
-      }
-      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
-    }) as unknown as typeof fetch
+    ) as unknown as typeof fetch
 
     const view = render(<TopupFormEnhanced currency="USD" />)
 
@@ -138,7 +147,9 @@ describe("TopupFormEnhanced", () => {
 
     await waitFor(
       () =>
-        expect(locationStub.href).toBe("https://paypal.test/checkout/inv_paypal"),
+        expect(locationStub.href).toBe(
+          "https://paypal.test/checkout/inv_paypal"
+        ),
       { timeout: 1000 }
     )
 
@@ -157,35 +168,37 @@ describe("TopupFormEnhanced", () => {
       value: locationStub,
     })
 
-    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input)
-      if (url.includes("/api/payments/topup/methods")) {
-        return jsonResponse({
-          ok: true,
-          currency: "IDR",
-          config: {
-            symbol: "Rp",
-            ratePerBase: 18000,
-            baseCode: "USD",
-            presets: [180000, 450000, 900000, 1800000, 4500000],
-            minTopup: 50000,
-            maxTopup: 200000000,
-          },
-          methods: { MANUAL_BANK: true, VA: true, QRIS: true },
-        })
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/payments/topup/methods")) {
+          return jsonResponse({
+            ok: true,
+            currency: "IDR",
+            config: {
+              symbol: "Rp",
+              ratePerBase: 18000,
+              baseCode: "USD",
+              presets: [180000, 450000, 900000, 1800000, 4500000],
+              minTopup: 50000,
+              maxTopup: 200000000,
+            },
+            methods: { MANUAL_BANK: true, VA: true, QRIS: true },
+          })
+        }
+        if (url.includes("/api/payments/topup/bank-accounts")) {
+          return jsonResponse({ ok: true, data: [] })
+        }
+        if (url.includes("/api/payments/topup") && init?.method === "POST") {
+          return jsonResponse({
+            ok: true,
+            invoice: { id: "inv_99" },
+            paymentUrl: "https://duitku.test/pay/inv_99",
+          })
+        }
+        return jsonResponse({ ok: false, message: "Unhandled" }, 500)
       }
-      if (url.includes("/api/payments/topup/bank-accounts")) {
-        return jsonResponse({ ok: true, data: [] })
-      }
-      if (url.includes("/api/payments/topup") && init?.method === "POST") {
-        return jsonResponse({
-          ok: true,
-          invoice: { id: "inv_99" },
-          paymentUrl: "https://duitku.test/pay/inv_99",
-        })
-      }
-      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
-    }) as unknown as typeof fetch
+    ) as unknown as typeof fetch
 
     const view = render(<TopupFormEnhanced />)
 
@@ -197,8 +210,7 @@ describe("TopupFormEnhanced", () => {
     fireEvent.click(view.getByRole("button", { name: /create invoice/i }))
 
     await waitFor(
-      () =>
-        expect(locationStub.href).toBe("https://duitku.test/pay/inv_99"),
+      () => expect(locationStub.href).toBe("https://duitku.test/pay/inv_99"),
       { timeout: 1000 }
     )
 

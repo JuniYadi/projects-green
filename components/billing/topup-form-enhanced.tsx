@@ -30,10 +30,18 @@ interface BankAccount {
 interface TopupFormEnhancedProps {
   className?: string
   currency?: "IDR" | "USD"
-  onSuccess?: (result: { invoiceId: string; amount: number; paymentMethod: PaymentMethod }) => void
+  onSuccess?: (result: {
+    invoiceId: string
+    amount: number
+    paymentMethod: PaymentMethod
+  }) => void
 }
 
-export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: TopupFormEnhancedProps) {
+export function TopupFormEnhanced({
+  className,
+  currency = "IDR",
+  onSuccess,
+}: TopupFormEnhancedProps) {
   const router = useRouter()
   const [formState, setFormState] = useState<FormState>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -41,7 +49,8 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true)
 
   const [amount, setAmount] = useState<number>(0)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("MANUAL_BANK")
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>("MANUAL_BANK")
   const [selectedBankAccount, setSelectedBankAccount] = useState<string>("")
   const [availableMethods, setAvailableMethods] = useState<
     Record<PaymentMethod, boolean>
@@ -57,7 +66,10 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
     symbol: currency === "USD" ? "$" : "Rp",
     ratePerBase: currency === "USD" ? 1 : 18000,
     baseCode: "USD",
-    presets: currency === "USD" ? [10, 25, 50, 100, 250] : [180000, 450000, 900000, 1800000, 4500000],
+    presets:
+      currency === "USD"
+        ? [10, 25, 50, 100, 250]
+        : [180000, 450000, 900000, 1800000, 4500000],
     minTopup: currency === "USD" ? 10 : 50000,
     maxTopup: currency === "USD" ? 10000 : 200000000,
   })
@@ -81,7 +93,10 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
           if (data.config) {
             setCurrencyConfig(data.config)
             // Default the amount to the first preset for this currency.
-            if (Array.isArray(data.config.presets) && data.config.presets.length > 0) {
+            if (
+              Array.isArray(data.config.presets) &&
+              data.config.presets.length > 0
+            ) {
               setAmount(data.config.presets[0])
             }
           }
@@ -108,7 +123,9 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
         const data = await response.json()
         if (data.ok && !cancelled) {
           setBankAccounts(data.data || [])
-          const defaultAccount = data.data?.find((b: BankAccount) => b.isDefault)
+          const defaultAccount = data.data?.find(
+            (b: BankAccount) => b.isDefault
+          )
           if (defaultAccount) {
             setSelectedBankAccount(defaultAccount.id)
           } else if (data.data?.length > 0) {
@@ -202,16 +219,25 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
           }, 150)
         } else {
           setFormState("success")
-          router.push(`/console/billing/invoices/${result.invoice.id}?payment=pending`)
+          router.push(
+            `/console/billing/invoices/${result.invoice.id}?payment=pending`
+          )
         }
       }
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Topup failed. Please try again.")
+      setErrorMessage(
+        err instanceof Error ? err.message : "Topup failed. Please try again."
+      )
       setFormState("error")
     }
   }
 
-  const ALL_PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: React.ElementType; description: string }[] = [
+  const ALL_PAYMENT_METHODS: {
+    value: PaymentMethod
+    label: string
+    icon: React.ElementType
+    description: string
+  }[] = [
     {
       value: "MANUAL_BANK",
       label: "Manual Bank Transfer",
@@ -284,7 +310,7 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
               disabled={formState === "submitting"}
               className="pr-16"
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">
               {currency}
             </span>
           </div>
@@ -298,12 +324,13 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
               Maximum topup is {formatCurrency(currencyConfig.maxTopup)}
             </p>
           )}
-          {currency !== currencyConfig.baseCode && currencyConfig.ratePerBase > 0 && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Exchange rate: 1 {currencyConfig.baseCode} ={" "}
-              {formatCurrency(currencyConfig.ratePerBase)}
-            </p>
-          )}
+          {currency !== currencyConfig.baseCode &&
+            currencyConfig.ratePerBase > 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Exchange rate: 1 {currencyConfig.baseCode} ={" "}
+                {formatCurrency(currencyConfig.ratePerBase)}
+              </p>
+            )}
         </Field>
 
         {/* Payment Method Selection */}
@@ -332,7 +359,9 @@ export function TopupFormEnhanced({ className, currency = "IDR", onSuccess }: To
                     <method.icon className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">{method.label}</span>
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{method.description}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {method.description}
+                  </p>
                 </div>
               </label>
             ))}

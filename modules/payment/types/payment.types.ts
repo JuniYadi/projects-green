@@ -7,7 +7,8 @@ export const PaymentMethod = {
   PAYPAL: "PAYPAL",
 } as const
 
-export type PaymentMethodType = (typeof PaymentMethod)[keyof typeof PaymentMethod]
+export type PaymentMethodType =
+  (typeof PaymentMethod)[keyof typeof PaymentMethod]
 
 export const InvoiceType = {
   TOP_UP: "TOP_UP",
@@ -23,7 +24,8 @@ export const ConfirmationStatus = {
   REJECTED: "REJECTED",
 } as const
 
-export type ConfirmationStatusValue = (typeof ConfirmationStatus)[keyof typeof ConfirmationStatus]
+export type ConfirmationStatusValue =
+  (typeof ConfirmationStatus)[keyof typeof ConfirmationStatus]
 
 // Request/Response schemas using Zod
 export const CreateTopupSchema = z.object({

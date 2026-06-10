@@ -37,7 +37,11 @@ export const createTopupRoutes = () =>
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required",
+        }
       }
 
       const parseResult = CreateTopupSchema.safeParse(body)
@@ -66,7 +70,10 @@ export const createTopupRoutes = () =>
           // declares support for the account currency (covers BOTH and
           // ONLY-ONE). This replaces the old hardcoded "Duitku = IDR only"
           // branch with the gateway's own supportedCurrencies list.
-          const gateway = await gatewayService.findByTypeForCurrency("GATEWAY", currency)
+          const gateway = await gatewayService.findByTypeForCurrency(
+            "GATEWAY",
+            currency
+          )
           if (!gateway) {
             set.status = 400
             return {
@@ -79,7 +86,10 @@ export const createTopupRoutes = () =>
         }
 
         if (paymentMethod === "PAYPAL") {
-          const gateway = await gatewayService.findByTypeForCurrency("PAYPAL", currency)
+          const gateway = await gatewayService.findByTypeForCurrency(
+            "PAYPAL",
+            currency
+          )
           if (!gateway) {
             set.status = 400
             return {
@@ -156,7 +166,8 @@ export const createTopupRoutes = () =>
               currency,
               email: `${auth.organizationId}@payment.local`,
               customerName: `Org ${auth.organizationId}`,
-              productDetails: `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
+              productDetails:
+                `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
               paymentMethod: "paypal",
               callbackUrl: `${appUrl}/api/webhooks/paypal/callback`,
               returnUrl: `${appUrl}/console/billing/invoices/${invoice.id}`,
@@ -209,14 +220,17 @@ export const createTopupRoutes = () =>
 
         console.error(
           `[payment] POST /topup —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
 
         set.status = isClientError ? 400 : 500
         return {
           ok: false,
           error: isClientError ? "CLIENT_ERROR" : "INTERNAL_ERROR",
-          message: error instanceof Error ? error.message : "An unexpected error occurred",
+          message:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred",
         }
       }
     })
@@ -225,10 +239,17 @@ export const createTopupRoutes = () =>
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required",
+        }
       }
 
-      const invoice = await paymentService.getInvoiceForUser(params.id, auth.organizationId)
+      const invoice = await paymentService.getInvoiceForUser(
+        params.id,
+        auth.organizationId
+      )
 
       if (!invoice) {
         return { ok: false, error: "NOT_FOUND", message: "Invoice not found" }
@@ -241,7 +262,11 @@ export const createTopupRoutes = () =>
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required",
+        }
       }
 
       const accounts = await bankAccountService.getActiveAccounts()
@@ -252,7 +277,11 @@ export const createTopupRoutes = () =>
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required",
+        }
       }
 
       const billingAccount = await prisma.billingAccount.findUnique({
@@ -262,13 +291,14 @@ export const createTopupRoutes = () =>
 
       const currency = billingAccount?.currency ?? "IDR"
 
-      const [accounts, gateway, paypalGateway, currencyRow, baseCurrency] = await Promise.all([
-        bankAccountService.getActiveAccounts(currency),
-        gatewayService.findByTypeForCurrency("GATEWAY", currency),
-        gatewayService.findByTypeForCurrency("PAYPAL", currency),
-        currencyService.findByCode(currency),
-        currencyService.getBase().catch(() => null),
-      ])
+      const [accounts, gateway, paypalGateway, currencyRow, baseCurrency] =
+        await Promise.all([
+          bankAccountService.getActiveAccounts(currency),
+          gatewayService.findByTypeForCurrency("GATEWAY", currency),
+          gatewayService.findByTypeForCurrency("PAYPAL", currency),
+          currencyService.findByCode(currency),
+          currencyService.getBase().catch(() => null),
+        ])
 
       const manualEnabled = accounts.length > 0
       // VA/QRIS require a gateway that supports this currency.
@@ -277,11 +307,16 @@ export const createTopupRoutes = () =>
 
       // Derive quick-pick presets from base-currency anchors converted into the
       // account currency, so amounts stay meaningful regardless of currency.
-      const rate = currencyRow?.ratePerBase?.toNumber() ?? (currency === "IDR" ? 18000 : 1)
-      const presets = BASE_TOPUP_PRESETS.map((base) => roundPreset(base * rate, currency))
+      const rate =
+        currencyRow?.ratePerBase?.toNumber() ?? (currency === "IDR" ? 18000 : 1)
+      const presets = BASE_TOPUP_PRESETS.map((base) =>
+        roundPreset(base * rate, currency)
+      )
 
-      const minTopup = currencyRow?.minTopup?.toNumber() ?? PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT
-      const maxTopup = currencyRow?.maxTopup?.toNumber() ?? PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT
+      const minTopup =
+        currencyRow?.minTopup?.toNumber() ?? PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT
+      const maxTopup =
+        currencyRow?.maxTopup?.toNumber() ?? PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT
 
       return {
         ok: true,
@@ -308,10 +343,16 @@ export const createPaymentHistoryRoutes = () =>
     const auth = await withAuth()
     if (!auth.organizationId) {
       set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Organization required",
+      }
     }
 
-    const invoices = await paymentService.getInvoicesForOrganization(auth.organizationId)
+    const invoices = await paymentService.getInvoicesForOrganization(
+      auth.organizationId
+    )
 
     return { ok: true, data: invoices }
   })

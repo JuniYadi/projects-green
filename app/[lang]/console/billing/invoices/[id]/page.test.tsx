@@ -129,6 +129,10 @@ describe("Billing InvoiceDetailPage", () => {
         })
       }
 
+      if (url === "/api/payments/bank-accounts") {
+        return jsonResponse({ ok: true, accounts: [] })
+      }
+
       return jsonResponse({ ok: false, message: "Unhandled" }, 500)
     }) as unknown as typeof fetch
 
