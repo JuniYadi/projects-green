@@ -17,6 +17,16 @@ const duitkuService = new DuitkuService()
 const gatewayService = new GatewayService()
 const currencyService = new CurrencyService()
 
+const PAYPAL_GATEWAY_TYPES = ["paypal", "PAYPAL"]
+
+async function findPayPalGatewayForCurrency(currency: string) {
+  for (const type of PAYPAL_GATEWAY_TYPES) {
+    const gateway = await gatewayService.findByTypeForCurrency(type, currency)
+    if (gateway) return gateway
+  }
+  return null
+}
+
 // Topup quick-pick presets are authored in the base currency (USD) and
 // converted to the account currency at request time so a USD user sees clean
 // USD buttons and an IDR user sees the converted IDR equivalents.
@@ -86,10 +96,7 @@ export const createTopupRoutes = () =>
         }
 
         if (paymentMethod === "PAYPAL") {
-          const gateway = await gatewayService.findByTypeForCurrency(
-            "PAYPAL",
-            currency
-          )
+          const gateway = await findPayPalGatewayForCurrency(currency)
           if (!gateway) {
             set.status = 400
             return {
@@ -295,7 +302,7 @@ export const createTopupRoutes = () =>
         await Promise.all([
           bankAccountService.getActiveAccounts(currency),
           gatewayService.findByTypeForCurrency("GATEWAY", currency),
-          gatewayService.findByTypeForCurrency("PAYPAL", currency),
+          findPayPalGatewayForCurrency(currency),
           currencyService.findByCode(currency),
           currencyService.getBase().catch(() => null),
         ])

@@ -56,6 +56,29 @@ mock.module("@/lib/prisma", () => ({
       findFirst: mock(() => Promise.resolve(null)),
       findMany: mock(() => Promise.resolve([])),
     },
+    bankAccount: {
+      findMany: mock(() => Promise.resolve([])),
+    },
+    currency: {
+      findUnique: mock(() =>
+        Promise.resolve({
+          code: "USD",
+          symbol: "$",
+          ratePerBase: { toNumber: () => 1 },
+          minTopup: { toNumber: () => 10 },
+          maxTopup: { toNumber: () => 10000 },
+        })
+      ),
+      findFirst: mock(() =>
+        Promise.resolve({
+          code: "USD",
+          symbol: "$",
+          ratePerBase: { toNumber: () => 1 },
+          minTopup: { toNumber: () => 10 },
+          maxTopup: { toNumber: () => 10000 },
+        })
+      ),
+    },
     $transaction: mock((fns: unknown[]) => Promise.all(fns)),
   },
 }))
@@ -282,6 +305,45 @@ describe("Topup Route", () => {
       expect(response.status).toBe(200)
       const body = await response.json()
       expect(body.ok).toBe(true)
+    })
+  })
+
+  describe("GET /topup/methods", () => {
+    it("should expose PayPal when a lowercase paypal gateway supports USD", async () => {
+      const { prisma } = await import("@/lib/prisma")
+      ;(
+        prisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
+        id: "ba-123",
+        organizationId: "org-123",
+        currency: "USD",
+        balance: { toNumber: () => 0 },
+      })
+      ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: "gw-paypal",
+            name: "PayPal",
+            type: "paypal",
+            config: "",
+            supportedCurrencies: ["USD"],
+            isActive: true,
+            isDefault: true,
+          },
+        ])
+
+      const response = await app.handle(
+        new Request("http://localhost/topup/methods")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.currency).toBe("USD")
+      expect(body.methods.PAYPAL).toBe(true)
+      expect(body.methods.VA).toBe(false)
+      expect(body.methods.QRIS).toBe(false)
     })
   })
 
