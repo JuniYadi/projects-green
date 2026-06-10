@@ -165,6 +165,107 @@ describe("TopupFormEnhanced", () => {
     }
   })
 
+  it("selects the first available gateway method when manual bank is unavailable", async () => {
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/payments/topup/methods")) {
+          return jsonResponse({
+            ok: true,
+            currency: "IDR",
+            config: {
+              symbol: "Rp",
+              ratePerBase: 18000,
+              baseCode: "USD",
+              presets: [180000, 450000],
+              minTopup: 50000,
+              maxTopup: 200000000,
+            },
+            methods: {
+              MANUAL_BANK: false,
+              VA: true,
+              QRIS: true,
+              PAYPAL: false,
+            },
+          })
+        }
+        if (url.includes("/api/payments/topup/bank-accounts")) {
+          return jsonResponse({ ok: true, data: [] })
+        }
+        if (url.includes("/api/payments/topup") && init?.method === "POST") {
+          return jsonResponse({
+            ok: true,
+            invoice: { id: "inv_gateway" },
+            paymentUrl: "https://gateway.test/pay/inv_gateway",
+          })
+        }
+        return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+      }
+    ) as unknown as typeof fetch
+
+    const view = render(<TopupFormEnhanced />)
+
+    await waitFor(() =>
+      expect(view.getByDisplayValue("VA")).toBeChecked()
+    )
+    expect(view.queryByText("Manual Bank Transfer")).not.toBeInTheDocument()
+    expect(
+      view.queryByText("No bank accounts available. Please contact support.")
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(view.getByRole("button", { name: /create invoice/i }))
+
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "/api/payments/topup",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ amount: 180000, paymentMethod: "VA" }),
+        })
+      )
+    )
+  })
+
+  it("disables invoice creation when no payment methods are available", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes("/api/payments/topup/methods")) {
+        return jsonResponse({
+          ok: true,
+          currency: "IDR",
+          config: {
+            symbol: "Rp",
+            ratePerBase: 18000,
+            baseCode: "USD",
+            presets: [180000, 450000],
+            minTopup: 50000,
+            maxTopup: 200000000,
+          },
+          methods: {
+            MANUAL_BANK: false,
+            VA: false,
+            QRIS: false,
+            PAYPAL: false,
+          },
+        })
+      }
+      if (url.includes("/api/payments/topup/bank-accounts")) {
+        return jsonResponse({ ok: true, data: [] })
+      }
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<TopupFormEnhanced />)
+
+    await waitFor(() =>
+      expect(
+        view.getByText(/No payment methods are available/i)
+      ).toBeInTheDocument()
+    )
+    expect(view.getByRole("button", { name: /create invoice/i })).toBeDisabled()
+    expect(view.queryByText("Manual Bank Transfer")).not.toBeInTheDocument()
+  })
+
   it("redirects to the Duitku payment gateway URL for VA top-up", async () => {
     const locationStub = { href: "" } as Location
     Object.defineProperty(globalThis.window, "location", {

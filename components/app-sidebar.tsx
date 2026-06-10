@@ -22,6 +22,7 @@ import {
   CreditCardIcon,
   CrosshairIcon,
   GaugeIcon,
+  GlobeIcon,
   LifebuoyIcon,
   Lightning,
   PaperPlaneTiltIcon,
@@ -157,6 +158,26 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     ],
   },
   {
+    context: "vpn",
+    matches: (path) => startsWithRoute(path, "/portal/vpn"),
+    navMainLabel: "VPN",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "VPN Clients",
+        url: localizePathname({ pathname: "/portal/vpn", locale }),
+        icon: <GlobeIcon />,
+        isActive: path === "/portal/vpn",
+      },
+    ],
+  },
+  {
     context: "whatsapp",
     matches: (path) => startsWithRoute(path, "/portal/whatsapp"),
     navMainLabel: "WhatsApp",
@@ -192,6 +213,26 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
 
 
 const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
+  {
+    context: "vpn",
+    matches: (path) => startsWithRoute(path, "/console/vpn"),
+    navMainLabel: "VPN",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Console",
+        url: localizePathname({ pathname: "/console", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "VPN Access",
+        url: localizePathname({ pathname: "/console/vpn", locale }),
+        icon: <GlobeIcon />,
+        isActive: path === "/console/vpn",
+      },
+    ],
+  },
   {
     context: "applications",
     matches: (path) => startsWithRoute(path, "/console/app"),
@@ -319,6 +360,17 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
   ],
 })
 
+const getConsoleHubMenu = (path: string, locale: AppLocale) => {
+  const menu = getHubMenu(path, locale)
+  menu.projects.splice(2, 0, {
+    name: "VPN",
+    url: localizePathname({ pathname: "/console/vpn", locale }),
+    icon: <GlobeIcon />,
+    isActive: path === "/console/vpn",
+  })
+  return menu
+}
+
 const buildPortalNavMain = (
   pathname: string,
   locale: AppLocale
@@ -334,6 +386,12 @@ const buildPortalNavMain = (
     url: localizePathname({ pathname: "/portal/whatsapp/devices", locale }),
     icon: <WhatsappLogoIcon />,
     isActive: startsWithRoute(pathname, "/portal/whatsapp"),
+  },
+  {
+    title: "VPN",
+    url: localizePathname({ pathname: "/portal/vpn", locale }),
+    icon: <GlobeIcon />,
+    isActive: startsWithRoute(pathname, "/portal/vpn"),
   },
 ]
 
@@ -392,6 +450,12 @@ const buildPortalProjects = (
     url: localizePathname({ pathname: PAYMENTS_PATH, locale }),
     icon: <CreditCardIcon />,
     isActive: startsWithRoute(pathname, PAYMENTS_PATH),
+  },
+  {
+    name: "VPN",
+    url: localizePathname({ pathname: "/portal/vpn", locale }),
+    icon: <GlobeIcon />,
+    isActive: startsWithRoute(pathname, "/portal/vpn"),
   },
   {
     name: "Invoices",
@@ -465,7 +529,7 @@ export const resolveSidebarMenu = ({
   }
 
   return {
-    ...getHubMenu(pathname, locale),
+    ...getConsoleHubMenu(pathname, locale),
     navMainLabel: "Platform",
   }
 }

@@ -32,10 +32,17 @@ type RouteSet = {
 }
 
 type VpnBillingLike = Pick<VpnBillingService, "chargeMonthly">
-type OpenVpnLike = Pick<OpenVpnSshAdapter, "createClient" | "fetchConfig">
+type OpenVpnLike = Pick<
+  OpenVpnSshAdapter,
+  "createClient" | "fetchConfig" | "revokeClient" | "healthCheck"
+>
 type VpnClientServiceLike = Pick<
   VpnClientService,
-  "createActiveClient" | "createProvisioningFailure"
+  | "createActiveClient"
+  | "createProvisioningFailure"
+  | "getActiveClientsForOrganization"
+  | "getDownloadForOrganization"
+  | "markRevoked"
 >
 
 type VpnRouteDeps = {
@@ -84,6 +91,27 @@ const toServerError = (set: RouteSet, message: string) => {
   }
 }
 
+const isAdminAuth = (auth: VpnAuthContext): boolean => {
+  const roles = new Set([auth.role, ...(auth.roles ?? [])].filter(Boolean))
+  return ["admin", "owner", "super_admin", "user_admin", "user_owner"].some(
+    (role) => roles.has(role),
+  )
+}
+
+const requireAuth = async (
+  authenticate: () => Promise<VpnAuthContext>,
+  set: RouteSet,
+): Promise<VpnAuthContext | ReturnType<typeof toUnauthorized> | ReturnType<typeof toForbidden>> => {
+  const auth = await authenticate()
+
+  if (!auth.user) return toUnauthorized(set)
+  if (!auth.organizationId) {
+    return toForbidden(set, "No active organization found for VPN provisioning.")
+  }
+
+  return auth
+}
+
 const currentPeriod = (now: Date = new Date()): string => {
   const year = now.getUTCFullYear()
   const month = String(now.getUTCMonth() + 1).padStart(2, "0")
@@ -130,6 +158,69 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
   const vpnClients = deps.vpnClients ?? defaultVpnClients()
 
   return new Elysia()
+    .get("/status", async ({ set }) => {
+      const auth = await requireAuth(authenticate, set)
+      if (!auth.user || !auth.organizationId) return auth
+
+      const clients = await vpnClients.getActiveClientsForOrganization(
+        auth.organizationId,
+      )
+
+      return {
+        ok: true as const,
+        clients: clients.map((client) => ({
+          id: client.id,
+          clientName: client.clientName,
+          status: client.status,
+          regionCode: client.regionCode,
+          currentPeriodStart: client.currentPeriodStart.toISOString(),
+          currentPeriodEnd: client.currentPeriodEnd.toISOString(),
+        })),
+      }
+    })
+    .get("/clients/:clientId/download", async ({ params, set }) => {
+      const auth = await requireAuth(authenticate, set)
+      if (!auth.user || !auth.organizationId) return auth
+
+      const download = await vpnClients.getDownloadForOrganization({
+        organizationId: auth.organizationId,
+        clientId: params.clientId,
+      })
+
+      return new Response(download.content, {
+        headers: {
+          "content-type": "application/x-openvpn-profile; charset=utf-8",
+          "content-disposition": `attachment; filename="${download.fileName}"`,
+        },
+      })
+    })
+    .post("/clients/:clientId/revoke", async ({ params, set }) => {
+      const auth = await requireAuth(authenticate, set)
+      if (!auth.user || !auth.organizationId) return auth
+
+      const revoked = await vpnClients.markRevoked({
+        organizationId: auth.organizationId,
+        clientId: params.clientId,
+      })
+      await openVpn.revokeClient(revoked.clientName)
+
+      return {
+        ok: true as const,
+        clientId: revoked.id,
+        status: revoked.status,
+      }
+    })
+    .get("/admin/health", async ({ set }) => {
+      const auth = await requireAuth(authenticate, set)
+      if (!auth.user || !auth.organizationId) return auth
+      if (!isAdminAuth(auth)) {
+        return toForbidden(set, "You are not allowed to inspect VPN health.")
+      }
+
+      const health = await openVpn.healthCheck()
+
+      return { ok: true as const, health }
+    })
     .post(
       "/subscriptions",
       async ({ body, set }) => {

@@ -56,7 +56,7 @@ describe("resolveSidebarMenu", () => {
     ).toBe(true)
     expect(
       billingMenu.projects.map((project) => project.name)
-    ).toEqual(["Overview", "Billing", "Support Tickets"])
+    ).toEqual(["Overview", "Billing", "VPN", "Support Tickets"])
 
     expect(
       supportMenu.projects.find((project) => project.name === "Support Tickets")
@@ -64,7 +64,7 @@ describe("resolveSidebarMenu", () => {
     ).toBe(true)
     expect(
       supportMenu.projects.map((project) => project.name)
-    ).toEqual(["Overview", "Billing", "Support Tickets"])
+    ).toEqual(["Overview", "Billing", "VPN", "Support Tickets"])
   })
 
   it("returns hub context when on /console page", () => {
@@ -80,6 +80,7 @@ describe("resolveSidebarMenu", () => {
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
       "Billing",
+      "VPN",
       "Support Tickets",
     ])
     expect(projects.find((project) => project.name === "Overview")?.isActive).toBe(true)
@@ -105,6 +106,7 @@ describe("resolveSidebarMenu", () => {
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
       "Billing",
+      "VPN",
       "Support Tickets",
     ])
     expect(
@@ -122,6 +124,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "App Hosting",
       "WhatsApp",
+      "VPN",
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
     expect(navMain.map((item) => item.title)).not.toContain("Settings")
@@ -150,6 +153,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "App Hosting",
       "WhatsApp",
+      "VPN",
     ])
   })
 

@@ -58,11 +58,16 @@ const mockBilling = {
 const mockOpenVpn = {
   createClient: mock(),
   fetchConfig: mock(),
+  revokeClient: mock(),
+  healthCheck: mock(),
 }
 
 const mockVpnClients = {
   createActiveClient: mock(),
   createProvisioningFailure: mock(),
+  getActiveClientsForOrganization: mock(),
+  getDownloadForOrganization: mock(),
+  markRevoked: mock(),
 }
 
 const createRoute = (
@@ -122,11 +127,38 @@ beforeEach(() => {
   mockBilling.chargeMonthly.mockReset()
   mockOpenVpn.createClient.mockReset()
   mockOpenVpn.fetchConfig.mockReset()
+  mockOpenVpn.revokeClient.mockReset()
+  mockOpenVpn.healthCheck.mockReset()
   mockVpnClients.createActiveClient.mockReset()
   mockVpnClients.createProvisioningFailure.mockReset()
+  mockVpnClients.getActiveClientsForOrganization.mockReset()
+  mockVpnClients.getDownloadForOrganization.mockReset()
+  mockVpnClients.markRevoked.mockReset()
   mockOpenVpn.createClient.mockResolvedValue(undefined)
   mockOpenVpn.fetchConfig.mockResolvedValue("client\nsecret\n")
+  mockOpenVpn.revokeClient.mockResolvedValue(undefined)
+  mockOpenVpn.healthCheck.mockResolvedValue({ ok: true, output: "active" })
   mockVpnClients.createActiveClient.mockResolvedValue({ id: "vpn_client_1" })
+  mockVpnClients.getActiveClientsForOrganization.mockResolvedValue([
+    {
+      id: "vpn_client_1",
+      organizationId: "org_1",
+      clientName: "org_org_1_sub_vpn_new",
+      status: "ACTIVE",
+      regionCode: "INDONESIA",
+      currentPeriodStart: new Date("2026-06-01T00:00:00.000Z"),
+      currentPeriodEnd: new Date("2026-07-01T00:00:00.000Z"),
+    },
+  ])
+  mockVpnClients.getDownloadForOrganization.mockResolvedValue({
+    fileName: "org_org_1_sub_vpn_new.ovpn",
+    content: "client\nsecret\n",
+  })
+  mockVpnClients.markRevoked.mockResolvedValue({
+    id: "vpn_client_1",
+    clientName: "org_org_1_sub_vpn_new",
+    status: "REVOKED",
+  })
   mockVpnClients.createProvisioningFailure.mockResolvedValue({
     id: "vpn_client_failed",
     status: "PROVISIONING_FAILED",
@@ -144,6 +176,92 @@ beforeEach(() => {
 })
 
 // ─── Tests ──────────────────────────────────────────────────────────────
+
+describe("GET /vpn/status", () => {
+  it("returns active VPN clients for the authenticated organization without config content", async () => {
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/status"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toEqual({
+      ok: true,
+      clients: [
+        {
+          id: "vpn_client_1",
+          clientName: "org_org_1_sub_vpn_new",
+          status: "ACTIVE",
+          regionCode: "INDONESIA",
+          currentPeriodStart: "2026-06-01T00:00:00.000Z",
+          currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+    })
+    expect(JSON.stringify(body)).not.toContain("secret")
+    expect(mockVpnClients.getActiveClientsForOrganization).toHaveBeenCalledWith(
+      "org_1",
+    )
+  })
+})
+
+describe("GET /vpn/clients/:clientId/download", () => {
+  it("returns ovpn as an attachment for the owning organization", async () => {
+    const app = createRoute()
+    const response = await app.handle(
+      new Request("http://localhost/clients/vpn_client_1/download"),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toContain("application/x-openvpn-profile")
+    expect(response.headers.get("content-disposition")).toBe(
+      'attachment; filename="org_org_1_sub_vpn_new.ovpn"',
+    )
+    expect(await response.text()).toBe("client\nsecret\n")
+    expect(mockVpnClients.getDownloadForOrganization).toHaveBeenCalledWith({
+      organizationId: "org_1",
+      clientId: "vpn_client_1",
+    })
+  })
+})
+
+describe("POST /vpn/clients/:clientId/revoke", () => {
+  it("revokes the OpenVPN client and marks metadata revoked", async () => {
+    const app = createRoute()
+    const response = await app.handle(
+      new Request("http://localhost/clients/vpn_client_1/revoke", {
+        method: "POST",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toEqual({ ok: true, clientId: "vpn_client_1", status: "REVOKED" })
+    expect(mockOpenVpn.revokeClient).toHaveBeenCalledWith("org_org_1_sub_vpn_new")
+    expect(mockVpnClients.markRevoked).toHaveBeenCalledWith({
+      organizationId: "org_1",
+      clientId: "vpn_client_1",
+    })
+  })
+})
+
+describe("GET /vpn/admin/health", () => {
+  it("returns OpenVPN server health for portal admins", async () => {
+    const app = createRoute({ ...validAuth, role: "admin", roles: ["admin"] })
+    const response = await app.handle(new Request("http://localhost/admin/health"))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, health: { ok: true, output: "active" } })
+    expect(mockOpenVpn.healthCheck).toHaveBeenCalledTimes(1)
+  })
+
+  it("forbids non-admin health checks", async () => {
+    const app = createRoute({ ...validAuth, role: "member", roles: ["member"] })
+    const response = await app.handle(new Request("http://localhost/admin/health"))
+
+    expect(response.status).toBe(403)
+    expect(mockOpenVpn.healthCheck).not.toHaveBeenCalled()
+  })
+})
 
 describe("POST /vpn/subscriptions", () => {
   it("default route factory uses WorkOS auth instead of anonymous auth", async () => {

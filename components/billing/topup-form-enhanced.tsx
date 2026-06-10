@@ -40,6 +40,38 @@ interface TopupFormEnhancedProps {
   }) => void
 }
 
+const ALL_PAYMENT_METHODS: {
+  value: PaymentMethod
+  label: string
+  icon: React.ElementType
+  description: string
+}[] = [
+  {
+    value: "MANUAL_BANK",
+    label: "Manual Bank Transfer",
+    icon: BuildingsIcon,
+    description: "Transfer to our bank account manually",
+  },
+  {
+    value: "VA",
+    label: "Virtual Account",
+    icon: HandCoinsIcon,
+    description: "Pay via bank virtual account",
+  },
+  {
+    value: "QRIS",
+    label: "QRIS",
+    icon: QrCodeIcon,
+    description: "Pay with any QRIS-enabled app",
+  },
+  {
+    value: "PAYPAL",
+    label: "PayPal",
+    icon: PaypalLogoIcon,
+    description: "Pay securely with PayPal",
+  },
+]
+
 export function TopupFormEnhanced({
   className,
   currency = "IDR",
@@ -90,11 +122,20 @@ export function TopupFormEnhanced({
         const data = await response.json()
         if (data.ok && !cancelled) {
           if (data.methods) {
-            setAvailableMethods({
+            const nextMethods: Record<PaymentMethod, boolean> = {
               MANUAL_BANK: Boolean(data.methods.MANUAL_BANK),
               VA: Boolean(data.methods.VA),
               QRIS: Boolean(data.methods.QRIS),
               PAYPAL: Boolean(data.methods.PAYPAL),
+            }
+            setAvailableMethods(nextMethods)
+            setPaymentMethod((current) => {
+              if (nextMethods[current]) return current
+              return (
+                ALL_PAYMENT_METHODS.find(
+                  (method) => nextMethods[method.value]
+                )?.value ?? current
+              )
             })
           }
           if (data.config) {
@@ -185,7 +226,7 @@ export function TopupFormEnhanced({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!isValid) return
+    if (!isValid || !availableMethods[paymentMethod]) return
 
     setFormState("submitting")
     setErrorMessage(null)
@@ -239,42 +280,11 @@ export function TopupFormEnhanced({
     }
   }
 
-  const ALL_PAYMENT_METHODS: {
-    value: PaymentMethod
-    label: string
-    icon: React.ElementType
-    description: string
-  }[] = [
-    {
-      value: "MANUAL_BANK",
-      label: "Manual Bank Transfer",
-      icon: BuildingsIcon,
-      description: "Transfer to our bank account manually",
-    },
-    {
-      value: "VA",
-      label: "Virtual Account",
-      icon: HandCoinsIcon,
-      description: "Pay via bank virtual account",
-    },
-    {
-      value: "QRIS",
-      label: "QRIS",
-      icon: QrCodeIcon,
-      description: "Pay with any QRIS-enabled app",
-    },
-    {
-      value: "PAYPAL",
-      label: "PayPal",
-      icon: PaypalLogoIcon,
-      description: "Pay securely with PayPal",
-    },
-  ]
-
   // Only show payment methods that are actually enabled/configured.
   const PAYMENT_METHODS = ALL_PAYMENT_METHODS.filter(
     (method) => availableMethods[method.value]
   )
+  const hasPaymentMethods = PAYMENT_METHODS.length > 0
 
   return (
     <form onSubmit={handleSubmit} className={className}>
@@ -344,7 +354,8 @@ export function TopupFormEnhanced({
         <Field>
           <FieldLabel>Payment Method</FieldLabel>
           <div className="grid gap-3">
-            {PAYMENT_METHODS.map((method) => (
+            {hasPaymentMethods ? (
+              PAYMENT_METHODS.map((method) => (
               <label
                 key={method.value}
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
@@ -371,12 +382,18 @@ export function TopupFormEnhanced({
                   </p>
                 </div>
               </label>
-            ))}
+              ))
+            ) : (
+              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                No payment methods are available for {currency}. Please contact
+                support.
+              </div>
+            )}
           </div>
         </Field>
 
         {/* Bank Account Selection (for Manual Bank Transfer) */}
-        {paymentMethod === "MANUAL_BANK" && (
+        {paymentMethod === "MANUAL_BANK" && availableMethods.MANUAL_BANK && (
           <Field>
             <FieldLabel>Destination Account</FieldLabel>
             {isLoadingAccounts ? (
@@ -428,7 +445,7 @@ export function TopupFormEnhanced({
         )}
 
         {/* Summary */}
-        {isValid && (
+        {isValid && hasPaymentMethods && (
           <div className="rounded-lg border bg-muted/30 p-4">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Top Up Amount</span>
@@ -446,7 +463,9 @@ export function TopupFormEnhanced({
         <Button
           type="submit"
           className="w-full"
-          disabled={!isValid || formState === "submitting"}
+          disabled={
+            !isValid || !hasPaymentMethods || formState === "submitting"
+          }
         >
           {formState === "submitting" ? "Processing..." : "Create Invoice"}
         </Button>

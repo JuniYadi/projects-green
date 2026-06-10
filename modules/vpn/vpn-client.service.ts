@@ -2,7 +2,10 @@ import type { Prisma, PrismaClient } from "@prisma/client"
 
 import { decryptWithAppKey, encryptWithAppKey } from "@/lib/whatsapp/crypto"
 
-type VpnClientDelegate = Pick<PrismaClient["vpnClient"], "create" | "findFirst" | "update">
+type VpnClientDelegate = Pick<
+  PrismaClient["vpnClient"],
+  "create" | "findFirst" | "findMany" | "update"
+>
 
 type VpnClientPrisma = {
   vpnClient: VpnClientDelegate
@@ -87,6 +90,18 @@ export class VpnClientService {
         createdBy: input.createdBy ?? null,
         metadataJson: { failureReason: input.reason },
       },
+    })
+  }
+
+  async getActiveClientsForOrganization(
+    organizationId: string,
+  ): Promise<VpnClientRecord[]> {
+    return this.prisma.vpnClient.findMany({
+      where: {
+        organizationId,
+        status: "ACTIVE",
+      },
+      orderBy: { createdAt: "desc" },
     })
   }
 
