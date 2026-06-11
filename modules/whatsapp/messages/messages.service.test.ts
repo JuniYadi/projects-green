@@ -105,7 +105,7 @@ const mockPrisma = {
       balance: { toString: () => "100000" },
     })),
   },
-  subscription: {
+  serviceSubscription: {
     findFirst: mock(async () => null),
     findUnique: mock(async () => null),
   },

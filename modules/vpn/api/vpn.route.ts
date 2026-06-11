@@ -268,7 +268,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           throw error
         }
 
-        // ── Resolve subscription FK refs (Package/ServicePlan/Pricing) ──
+        // ── Resolve subscription FK refs (ServicePackage/ServicePlan/ServicePricing) ──
         // Done BEFORE the charge so a misconfigured (plan, region) returns
         // 422 without debiting the customer's balance.
         let refs

@@ -140,7 +140,7 @@ export const createTopupRoutes = () =>
           })
 
           await prisma.$transaction([
-            prisma.invoice.update({
+            prisma.billingInvoice.update({
               where: { id: invoice.id },
               data: {
                 metadata: {
@@ -194,7 +194,7 @@ export const createTopupRoutes = () =>
             config as unknown as Record<string, string>
           )
 
-          await prisma.invoice.update({
+          await prisma.billingInvoice.update({
             where: { id: invoice.id },
             data: {
               metadata: {

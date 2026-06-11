@@ -384,12 +384,12 @@ export class BillingSeeder extends BaseSeeder {
     this.log("Seeding regions...")
 
     for (const region of regions) {
-      const existing = await this.prisma.region.findUnique({
+      const existing = await this.prisma.serviceRegion.findUnique({
         where: { code: region.code },
       })
 
       if (existing) {
-        await this.prisma.region.update({
+        await this.prisma.serviceRegion.update({
           where: { code: region.code },
           data: {
             name: region.name,
@@ -399,7 +399,7 @@ export class BillingSeeder extends BaseSeeder {
         })
         this.trackUpdated()
       } else {
-        await this.prisma.region.create({ data: region })
+        await this.prisma.serviceRegion.create({ data: region })
         this.trackCreated()
       }
     }
@@ -409,18 +409,18 @@ export class BillingSeeder extends BaseSeeder {
     this.log("Seeding packages...")
 
     for (const pkg of packages) {
-      const existing = await this.prisma.package.findUnique({
+      const existing = await this.prisma.servicePackage.findUnique({
         where: { code: pkg.code as ServiceType },
       })
 
       if (existing) {
-        await this.prisma.package.update({
+        await this.prisma.servicePackage.update({
           where: { code: pkg.code as ServiceType },
           data: { name: pkg.name, description: pkg.description },
         })
         this.trackUpdated()
       } else {
-        await this.prisma.package.create({
+        await this.prisma.servicePackage.create({
           data: { ...pkg, code: pkg.code as ServiceType },
         })
         this.trackCreated()
@@ -432,16 +432,16 @@ export class BillingSeeder extends BaseSeeder {
     this.log("Seeding plans...")
 
     for (const plan of plans) {
-      const pkg = await this.prisma.package.findUnique({
+      const pkg = await this.prisma.servicePackage.findUnique({
         where: { code: plan.packageCode as ServiceType },
       })
 
       if (!pkg) {
         this.warn(
-          `Package ${plan.packageCode} not found, skipping plan ${plan.code}`,
+          `ServicePackage ${plan.packageCode} not found, skipping plan ${plan.code}`,
         )
         this.trackError(
-          `Package ${plan.packageCode} not found for plan ${plan.code}`,
+          `ServicePackage ${plan.packageCode} not found for plan ${plan.code}`,
         )
         continue
       }
@@ -479,12 +479,12 @@ export class BillingSeeder extends BaseSeeder {
       // Find plan by compound key: packageCode_planCode
       const pkgCode = planCode.split("_")[0]
       const plCode = planCode.replace(`${pkgCode}_`, "")
-      const pkg = await this.prisma.package.findUnique({
+      const pkg = await this.prisma.servicePackage.findUnique({
         where: { code: pkgCode as ServiceType },
       })
 
       if (!pkg) {
-        this.warn(`Package ${pkgCode} not found, skipping pricing`)
+        this.warn(`ServicePackage ${pkgCode} not found, skipping pricing`)
         this.trackSkipped()
         continue
       }
@@ -495,23 +495,23 @@ export class BillingSeeder extends BaseSeeder {
 
       if (!foundPlan) {
         this.warn(
-          `Plan ${plCode} in package ${pkgCode} not found, skipping pricing`,
+          `Plan ${plCode} in servicePackage ${pkgCode} not found, skipping pricing`,
         )
         this.trackSkipped()
         continue
       }
 
-      const region = await this.prisma.region.findUnique({
+      const region = await this.prisma.serviceRegion.findUnique({
         where: { code: regionCode },
       })
 
       if (!region) {
-        this.warn(`Region ${regionCode} not found, skipping pricing`)
+        this.warn(`ServiceRegion ${regionCode} not found, skipping pricing`)
         this.trackSkipped()
         continue
       }
 
-      const existing = await this.prisma.pricing.findFirst({
+      const existing = await this.prisma.servicePricing.findFirst({
         where: {
           planId: foundPlan.id,
           regionId: region.id,
@@ -533,13 +533,13 @@ export class BillingSeeder extends BaseSeeder {
       }
 
       if (existing) {
-        await this.prisma.pricing.update({
+        await this.prisma.servicePricing.update({
           where: { id: existing.id },
           data,
         })
         this.trackUpdated()
       } else {
-        await this.prisma.pricing.create({ data })
+        await this.prisma.servicePricing.create({ data })
         this.trackCreated()
       }
     }

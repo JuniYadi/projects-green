@@ -148,7 +148,7 @@ export const createAdminSubscriptionRoutes = (
 
         // Validate pricing belongs to plan if both are being updated
         if (updateData.pricingId && updateData.planId) {
-          const pricing = await prisma.pricing.findUnique({
+          const pricing = await prisma.servicePricing.findUnique({
             where: { id: updateData.pricingId },
             select: { planId: true },
           })
@@ -157,7 +157,7 @@ export const createAdminSubscriptionRoutes = (
             return {
               ok: false as const,
               error: "VALIDATION_ERROR",
-              message: "Pricing does not belong to the specified plan.",
+              message: "ServicePricing does not belong to the specified plan.",
             }
           }
         }

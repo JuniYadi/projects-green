@@ -130,7 +130,7 @@ export const createAdminInvoicesListRoutes = (
       const skip = (page - 1) * limit
 
       try {
-        const where: Prisma.InvoiceWhereInput = {}
+        const where: Prisma.BillingInvoiceWhereInput = {}
         if (status) where.status = status
         if (organizationId) {
           where.billingAccount = { organizationId }

@@ -43,10 +43,10 @@ export class BalanceGateService {
     return (await this.getBalance(organizationId)).gte(MINIMUM_BALANCE_WARN_IDR);
   }
 
-  // ─── Pricing lookup ─────────────────────────────────────────────────────────
+  // ─── ServicePricing lookup ──────────────────────────────────────────────────
 
   /**
-   * Find the active Pricing record for a given plan+region+type+billingMode.
+   * Find the active ServicePricing record for a given plan+region+type+billingMode.
    */
   async findPricing(opts: {
     planId: string;
@@ -54,7 +54,7 @@ export class BalanceGateService {
     type: SubscriptionType;
     billingMode: BillingMode;
   }): Promise<PricingLookup> {
-    const row = await this.prisma.pricing.findFirst({
+    const row = await this.prisma.servicePricing.findFirst({
       where: {
         planId: opts.planId,
         regionId: opts.regionId,
@@ -320,7 +320,7 @@ export class BalanceGateService {
   }
 
   /**
-   * For PACKAGE/BUNDLE subscriptions: deduct the fixed basePriceIdr from Pricing table.
+   * For PACKAGE/BUNDLE subscriptions: deduct the fixed basePriceIdr from ServicePricing table.
    */
   async chargePackage(
     organizationId: string,
@@ -379,7 +379,7 @@ export class BalanceGateService {
             adjustmentType: "DEBIT",
             amount,
             currency: "IDR",
-            reason: `Package charge: ${sub.pricing.servicePlan.code} (${sub.pricing.region.code})`,
+            reason: `ServicePackage charge: ${sub.pricing.servicePlan.code} (${sub.pricing.region.code})`,
             metadataJson: {
               subscriptionId,
               pricingId: sub.pricingId,

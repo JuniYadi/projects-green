@@ -16,7 +16,7 @@ const mockFindUnique = mock()
 const mockUpdate = mock()
 
 const mockPrismaClient = {
-  invoice: {
+  billingInvoice: {
     findUnique: mockFindUnique,
     update: mockUpdate,
   },

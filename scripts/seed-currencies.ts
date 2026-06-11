@@ -129,7 +129,7 @@ async function seedCurrencies() {
   let skipped = 0
 
   for (const currency of currencies) {
-    const existing = await prisma.currency.findUnique({
+    const existing = await prisma.paymentCurrency.findUnique({
       where: { code: currency.code },
     })
 
@@ -154,7 +154,7 @@ async function seedCurrencies() {
         baseChanged ||
         orderChanged
       ) {
-        await prisma.currency.update({
+        await prisma.paymentCurrency.update({
           where: { code: currency.code },
           data: {
             name: currency.name,
@@ -172,7 +172,7 @@ async function seedCurrencies() {
         skipped++
       }
     } else {
-      await prisma.currency.create({ data: currency })
+      await prisma.paymentCurrency.create({ data: currency })
       created++
     }
   }

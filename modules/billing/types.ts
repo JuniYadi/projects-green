@@ -27,7 +27,7 @@ export class PricingNotFoundError extends Error {
     billingMode: string,
   ) {
     super(
-      `No active Pricing found for plan=${planId} region=${regionId} type=${type} billingMode=${billingMode}`,
+      `No active ServicePricing found for plan=${planId} region=${regionId} type=${type} billingMode=${billingMode}`,
     );
     this.name = "PricingNotFoundError";
   }

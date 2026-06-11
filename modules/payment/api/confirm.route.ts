@@ -30,7 +30,7 @@ export const createConfirmRoutes = () =>
       const { bankAccountId, amount, paymentDateTime, senderBankName, senderName, senderAccount, screenshotUrl, notes } = parseResult.data
 
       // Look up invoice to determine correct organizationId
-      const invoice = await prisma.invoice.findFirst({
+      const invoice = await prisma.billingInvoice.findFirst({
         where: { id: params.id, status: "OPEN" },
       })
 

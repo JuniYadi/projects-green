@@ -4,7 +4,7 @@ import type { PrismaClient } from "@prisma/client"
 
 const mockPrisma = {
   $transaction: vi.fn(),
-  currency: {
+  paymentCurrency: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
     findFirst: vi.fn(),
@@ -63,24 +63,24 @@ describe("CurrencyService", () => {
 
   beforeEach(() => {
     mockPrisma.$transaction.mockClear()
-    mockPrisma.currency.findMany.mockClear()
-    mockPrisma.currency.findUnique.mockClear()
-    mockPrisma.currency.findFirst.mockClear()
-    mockPrisma.currency.create.mockClear()
-    mockPrisma.currency.update.mockClear()
-    mockPrisma.currency.updateMany.mockClear()
+    mockPrisma.paymentCurrency.findMany.mockClear()
+    mockPrisma.paymentCurrency.findUnique.mockClear()
+    mockPrisma.paymentCurrency.findFirst.mockClear()
+    mockPrisma.paymentCurrency.create.mockClear()
+    mockPrisma.paymentCurrency.update.mockClear()
+    mockPrisma.paymentCurrency.updateMany.mockClear()
     service = new CurrencyService(mockPrisma as unknown as PrismaClient)
   })
 
   describe("getByCode", () => {
     it("returns the currency when found", async () => {
-      mockPrisma.currency.findUnique.mockResolvedValue(IDR)
+      mockPrisma.paymentCurrency.findUnique.mockResolvedValue(IDR)
       const result = await service.getByCode("IDR")
       expect(result.code).toBe("IDR")
     })
 
     it("throws CurrencyNotFoundError when missing", async () => {
-      mockPrisma.currency.findUnique.mockResolvedValue(null)
+      mockPrisma.paymentCurrency.findUnique.mockResolvedValue(null)
       await expect(service.getByCode("EUR")).rejects.toBeInstanceOf(
         CurrencyNotFoundError
       )
@@ -89,13 +89,13 @@ describe("CurrencyService", () => {
 
   describe("getBase", () => {
     it("returns the base currency", async () => {
-      mockPrisma.currency.findFirst.mockResolvedValue(USD)
+      mockPrisma.paymentCurrency.findFirst.mockResolvedValue(USD)
       const base = await service.getBase()
       expect(base.isBase).toBe(true)
     })
 
     it("throws BaseCurrencyMissingError when none configured", async () => {
-      mockPrisma.currency.findFirst.mockResolvedValue(null)
+      mockPrisma.paymentCurrency.findFirst.mockResolvedValue(null)
       await expect(service.getBase()).rejects.toBeInstanceOf(
         BaseCurrencyMissingError
       )
@@ -106,11 +106,11 @@ describe("CurrencyService", () => {
     it("returns the same amount when from === to", async () => {
       const result = await service.convert(100, "USD", "USD")
       expect(result.toNumber()).toBe(100)
-      expect(mockPrisma.currency.findUnique).not.toHaveBeenCalled()
+      expect(mockPrisma.paymentCurrency.findUnique).not.toHaveBeenCalled()
     })
 
     it("converts base USD to IDR using the rate", async () => {
-      mockPrisma.currency.findUnique.mockImplementation(({ where }) =>
+      mockPrisma.paymentCurrency.findUnique.mockImplementation(({ where }) =>
         Promise.resolve(where.code === "USD" ? USD : IDR)
       )
       // 10 USD * (18000 / 1) = 180000 IDR
@@ -119,7 +119,7 @@ describe("CurrencyService", () => {
     })
 
     it("converts IDR to USD using the rate", async () => {
-      mockPrisma.currency.findUnique.mockImplementation(({ where }) =>
+      mockPrisma.paymentCurrency.findUnique.mockImplementation(({ where }) =>
         Promise.resolve(where.code === "USD" ? USD : IDR)
       )
       // 180000 IDR / 18000 * 1 = 10 USD
@@ -130,13 +130,13 @@ describe("CurrencyService", () => {
 
   describe("toBase / fromBase", () => {
     it("toBase divides by the rate", async () => {
-      mockPrisma.currency.findUnique.mockResolvedValue(IDR)
+      mockPrisma.paymentCurrency.findUnique.mockResolvedValue(IDR)
       const result = await service.toBase(180000, "IDR")
       expect(result.toNumber()).toBe(10)
     })
 
     it("fromBase multiplies by the rate", async () => {
-      mockPrisma.currency.findUnique.mockResolvedValue(IDR)
+      mockPrisma.paymentCurrency.findUnique.mockResolvedValue(IDR)
       const result = await service.fromBase(10, "IDR")
       expect(result.toNumber()).toBe(180000)
     })
@@ -145,7 +145,7 @@ describe("CurrencyService", () => {
   describe("create", () => {
     it("pins ratePerBase to 1 when creating a base currency and unsets others", async () => {
       const tx = {
-        currency: {
+        paymentCurrency: {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
           create: vi.fn().mockImplementation(({ data }) => Promise.resolve(data)),
         },
@@ -162,7 +162,7 @@ describe("CurrencyService", () => {
         maxTopup: 10000,
       })
 
-      expect(tx.currency.updateMany).toHaveBeenCalledWith({
+      expect(tx.paymentCurrency.updateMany).toHaveBeenCalledWith({
         where: { isBase: true },
         data: { isBase: false },
       })
@@ -172,7 +172,7 @@ describe("CurrencyService", () => {
 
     it("stores the provided rate for a non-base currency", async () => {
       const tx = {
-        currency: {
+        paymentCurrency: {
           updateMany: vi.fn(),
           create: vi.fn().mockImplementation(({ data }) => Promise.resolve(data)),
         },
@@ -188,7 +188,7 @@ describe("CurrencyService", () => {
         maxTopup: 180000000,
       })
 
-      expect(tx.currency.updateMany).not.toHaveBeenCalled()
+      expect(tx.paymentCurrency.updateMany).not.toHaveBeenCalled()
       expect((result.ratePerBase as Prisma.Decimal).toNumber()).toBe(18000)
     })
   })
@@ -196,7 +196,7 @@ describe("CurrencyService", () => {
   describe("update", () => {
     it("ignores rate edits on the base currency", async () => {
       const tx = {
-        currency: {
+        paymentCurrency: {
           findUnique: vi.fn().mockResolvedValue(USD),
           updateMany: vi.fn(),
           update: vi.fn().mockImplementation(({ data }) => Promise.resolve(data)),
@@ -210,7 +210,7 @@ describe("CurrencyService", () => {
 
     it("throws CurrencyNotFoundError when the row is missing", async () => {
       const tx = {
-        currency: {
+        paymentCurrency: {
           findUnique: vi.fn().mockResolvedValue(null),
           updateMany: vi.fn(),
           update: vi.fn(),

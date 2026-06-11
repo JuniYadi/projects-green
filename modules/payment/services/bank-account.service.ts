@@ -28,7 +28,7 @@ export class BankAccountService {
     options: { includeInactive?: boolean } = {}
   ): Promise<BankAccountResponse[]> {
     const where = options.includeInactive ? {} : { isActive: true }
-    const accounts = await prisma.bankAccount.findMany({
+    const accounts = await prisma.paymentBankAccount.findMany({
       where,
       orderBy: [
         { isDefault: "desc" },
@@ -41,14 +41,14 @@ export class BankAccountService {
   }
 
   async findById(id: string): Promise<BankAccountResponse | null> {
-    const account = await prisma.bankAccount.findUnique({ where: { id } })
+    const account = await prisma.paymentBankAccount.findUnique({ where: { id } })
     if (!account) return null
     return this.toResponse(account)
   }
 
   async create(input: BankAccountInput): Promise<BankAccountResponse> {
     if (input.isDefault) {
-      await prisma.bankAccount.updateMany({
+      await prisma.paymentBankAccount.updateMany({
         where: { isDefault: true },
         data: { isDefault: false },
       })
@@ -56,7 +56,7 @@ export class BankAccountService {
 
     const supportedCurrencies = this.resolveSupportedCurrencies(input)
 
-    const account = await prisma.bankAccount.create({
+    const account = await prisma.paymentBankAccount.create({
       data: {
         bankCode: input.bankCode,
         bankName: input.bankName,
@@ -78,17 +78,17 @@ export class BankAccountService {
     id: string,
     input: Partial<BankAccountInput> & { isActive?: boolean }
   ): Promise<BankAccountResponse> {
-    const existing = await prisma.bankAccount.findUnique({ where: { id } })
+    const existing = await prisma.paymentBankAccount.findUnique({ where: { id } })
     if (!existing) throw new Error("Bank account not found")
 
     if (input.isDefault && !existing.isDefault) {
-      await prisma.bankAccount.updateMany({
+      await prisma.paymentBankAccount.updateMany({
         where: { isDefault: true, id: { not: id } },
         data: { isDefault: false },
       })
     }
 
-    const data: Prisma.BankAccountUpdateInput = {}
+    const data: Prisma.PaymentBankAccountUpdateInput = {}
     if (input.bankCode) data.bankCode = input.bankCode
     if (input.bankName) data.bankName = input.bankName
     if (input.accountName) {
@@ -110,7 +110,7 @@ export class BankAccountService {
     if (input.isDefault !== undefined) data.isDefault = input.isDefault
     if (input.isActive !== undefined) data.isActive = input.isActive
 
-    const account = await prisma.bankAccount.update({
+    const account = await prisma.paymentBankAccount.update({
       where: { id },
       data,
     })
@@ -119,10 +119,10 @@ export class BankAccountService {
   }
 
   async toggle(id: string): Promise<BankAccountResponse> {
-    const account = await prisma.bankAccount.findUnique({ where: { id } })
+    const account = await prisma.paymentBankAccount.findUnique({ where: { id } })
     if (!account) throw new Error("Bank account not found")
 
-    const updated = await prisma.bankAccount.update({
+    const updated = await prisma.paymentBankAccount.update({
       where: { id },
       data: { isActive: !account.isActive },
     })
@@ -131,7 +131,7 @@ export class BankAccountService {
   }
 
   async getActiveAccounts(currency?: string): Promise<BankAccountResponse[]> {
-    const accounts = await prisma.bankAccount.findMany({
+    const accounts = await prisma.paymentBankAccount.findMany({
       where: currency
         ? {
             isActive: true,

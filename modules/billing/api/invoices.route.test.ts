@@ -13,7 +13,7 @@ const mockPrismaClient = {
   billingAccount: {
     findUnique: mockFindUnique,
   },
-  invoice: {
+  billingInvoice: {
     findMany: mockFindMany,
     findFirst: mockFindFirst,
   },

@@ -840,8 +840,6 @@ model BillingInvoice {
   @@index([billingAccountId, status])
   @@index([subscriptionId, periodStart])
   @@index([billingRunId])
-}
-
   @@map("Invoice")
 }
 
@@ -866,8 +864,6 @@ model BillingInvoiceLine {
 
   @@index([invoiceId])
   @@index([lineType])
-}
-
   @@map("InvoiceLine")
 }
 
@@ -952,7 +948,7 @@ model BillingAuditLog {
 
 // ─── Billing Models ──────────────────────────────────────────────────────────
 
-model Region {
+model ServiceRegion {
   id        String   @id @default(cuid())
   code      String   @unique
   name      String
@@ -962,12 +958,13 @@ model Region {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pricings  Pricing[]
+  pricings  ServicePricing[]
 
+  @@map("Region")
   @@index([isActive])
 }
 
-model Package {
+model ServicePackage {
   id          String       @id @default(cuid())
   code        ServiceType @unique
   name        String
@@ -979,6 +976,7 @@ model Package {
   plans          ServicePlan[]
   subscriptions ServiceSubscription[]
 
+  @@map("Package")
   @@index([code])
 }
 
@@ -992,15 +990,15 @@ model ServicePlan {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  package       Package        @relation(fields: [packageId], references: [id])
-  pricings      Pricing[]
+  package       ServicePackage        @relation(fields: [packageId], references: [id])
+  pricings      ServicePricing[]
   subscriptions ServiceSubscription[]
 
   @@unique([packageId, code])
   @@index([packageId])
 }
 
-model Pricing {
+model ServicePricing {
   id              String           @id @default(cuid())
   planId          String
   regionId        String
@@ -1016,9 +1014,10 @@ model Pricing {
   updatedAt       DateTime        @updatedAt
 
   servicePlan ServicePlan  @relation(fields: [planId], references: [id])
-  region        Region          @relation(fields: [regionId], references: [id])
+  region        ServiceRegion          @relation(fields: [regionId], references: [id])
   subscriptions ServiceSubscription[]
 
+  @@map("Pricing")
   @@unique([planId, regionId, type, billingMode])
   @@index([planId])
   @@index([regionId])
@@ -1040,9 +1039,9 @@ model ServiceSubscription {
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
-  package      Package      @relation(fields: [packageId], references: [id])
-  plan         ServicePlan  @relation(fields: [planId], references: [id])
-  pricing      Pricing      @relation(fields: [pricingId], references: [id])
+  package      ServicePackage @relation(fields: [packageId], references: [id])
+  plan         ServicePlan    @relation(fields: [planId], references: [id])
+  pricing      ServicePricing @relation(fields: [pricingId], references: [id])
   usageLedgers BillingUsageLedger[]
   vpnClients   VpnClient[]
 
@@ -1568,13 +1567,13 @@ model PaymentGateway {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  bankAccounts BankAccount[]
+  bankAccounts PaymentBankAccount[]
   invoices     BillingInvoice[]
 
   @@index([type, isActive])
 }
 
-model BankAccount {
+model PaymentBankAccount {
   id            String   @id @default(cuid())
   gatewayId     String?
   bankCode      String   // "BCA", "MANDIRI", "BRI", "BNI"
@@ -1599,6 +1598,7 @@ model BankAccount {
   gateway             PaymentGateway?          @relation(fields: [gatewayId], references: [id])
   paymentConfirmations PaymentConfirmation[]
 
+  @@map("BankAccount")
   @@index([gatewayId, isActive])
   @@index([bankCode])
   @@index([currency, isActive])
@@ -1608,7 +1608,7 @@ model BankAccount {
 /// currency (USD). Prices are authored in the base currency; every other
 /// currency is derived by multiplying by `ratePerBase`. Exactly one row must
 /// have `isBase = true` (its `ratePerBase` is 1).
-model Currency {
+model PaymentCurrency {
   id          String   @id @default(cuid())
   code        String   @unique // ISO 4217, e.g. "USD", "IDR"
   name        String   // "US Dollar", "Indonesian Rupiah"
@@ -1625,6 +1625,7 @@ model Currency {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@map("Currency")
   @@index([isActive])
 }
 
@@ -1647,7 +1648,7 @@ model PaymentConfirmation {
   updatedAt       DateTime  @updatedAt
 
   invoice     BillingInvoice @relation(fields: [invoiceId], references: [id])
-  bankAccount BankAccount  @relation(fields: [bankAccountId], references: [id])
+  bankAccount PaymentBankAccount  @relation(fields: [bankAccountId], references: [id])
 
   @@index([invoiceId])
   @@index([bankAccountId])

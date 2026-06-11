@@ -98,7 +98,7 @@ export class UsageLedgerService {
         ...(category ? { category } : {}),
       },
       include: {
-        serviceSubscription: true,
+        subscription: true,
       },
       orderBy: {
         createdAt: "asc",
@@ -152,7 +152,7 @@ export class UsageLedgerService {
       const key = `${entry.subscriptionId}::${entry.category ?? ""}`
       const existing = groups.get(key)
 
-      const monthlyCapIdr = entry.serviceSubscription.pricing?.monthlyCapIdr
+      const monthlyCapIdr = entry.subscription?.pricing?.monthlyCapIdr
       const entryAmount = entry.amountIdr ?? new Decimal(0)
 
       if (existing) {
@@ -221,7 +221,7 @@ export class UsageLedgerService {
         ...(category ? { category } : {}),
       },
       include: {
-        serviceSubscription: true,
+        subscription: true,
       },
       orderBy: {
         createdAt: "asc",

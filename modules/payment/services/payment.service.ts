@@ -132,7 +132,7 @@ export class PaymentService {
   }
 
   async getActiveBankAccounts() {
-    const accounts = await prisma.bankAccount.findMany({
+    const accounts = await prisma.paymentBankAccount.findMany({
       where: { isActive: true },
       orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }],
     })

@@ -63,7 +63,7 @@ export const SUBSCRIPTION_TYPE_LABELS: Record<SubscriptionType, string> = {
 }
 
 export const BILLING_MODE_LABELS: Record<BillingMode, string> = {
-  PACKAGE: "Package",
+  PACKAGE: "ServicePackage",
   PAYG: "Pay-as-you-go",
   CUSTOM: "Custom",
 }

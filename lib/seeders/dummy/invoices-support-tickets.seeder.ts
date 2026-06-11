@@ -486,7 +486,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
           seedScope: this.scopeCode,
           seedInvoice: invoiceNumber,
         },
-      } satisfies Omit<Prisma.InvoiceUncheckedCreateInput, "id">
+      } satisfies Omit<Prisma.BillingInvoiceUncheckedCreateInput, "id">
 
       if (existingInvoice) {
         await this.prisma.billingInvoice.update({

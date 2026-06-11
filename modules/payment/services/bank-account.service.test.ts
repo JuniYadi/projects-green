@@ -19,7 +19,7 @@ const mockBankAccountUpdateMany = mock<
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    bankAccount: {
+    paymentBankAccount: {
       findMany: mockBankAccountFindMany,
       findUnique: mockBankAccountFindUnique,
       create: mockBankAccountCreate,

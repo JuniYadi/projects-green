@@ -113,7 +113,7 @@ export class CurrencySeeder extends BaseSeeder {
     this.log("Seeding currencies...")
 
     for (const currency of currencies) {
-      const existing = await this.prisma.currency.findUnique({
+      const existing = await this.prisma.paymentCurrency.findUnique({
         where: { code: currency.code },
       })
 
@@ -137,7 +137,7 @@ export class CurrencySeeder extends BaseSeeder {
           baseChanged ||
           orderChanged
         ) {
-          await this.prisma.currency.update({
+          await this.prisma.paymentCurrency.update({
             where: { code: currency.code },
             data: {
               name: currency.name,
@@ -155,7 +155,7 @@ export class CurrencySeeder extends BaseSeeder {
           this.trackSkipped()
         }
       } else {
-        await this.prisma.currency.create({ data: currency })
+        await this.prisma.paymentCurrency.create({ data: currency })
         this.trackCreated()
       }
     }
