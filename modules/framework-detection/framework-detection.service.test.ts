@@ -205,10 +205,10 @@ describe("detectFrameworkFromGithubApi", () => {
       detectorRule: {
         findMany: async () => [],
       },
-      inspectionLog: {
+      detectorInspectionLog: {
         create: async () => ({}),
       },
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [],
       },
     }
@@ -407,17 +407,17 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
     delete process.env.AI_DETECTOR_MODEL
   })
 
-  it("handles inspectionLog.create failure gracefully", async () => {
+  it("handles detectorInspectionLog.create failure gracefully", async () => {
     const mockPrisma = {
       detectorRule: {
         findMany: async () => [],
       },
-      inspectionLog: {
+      detectorInspectionLog: {
         create: async () => {
           throw new Error("Database connection failed")
         },
       },
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [],
       },
     }
@@ -472,12 +472,12 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
           },
         ],
       },
-      inspectionLog: {
+      detectorInspectionLog: {
         create: async () => {
           throw new Error("Database connection failed")
         },
       },
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [],
       },
     }
@@ -509,10 +509,10 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
       detectorRule: {
         findMany: async () => [],
       },
-      inspectionLog: {
+      detectorInspectionLog: {
         create: async () => ({}),
       },
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [],
       },
     }
@@ -545,10 +545,10 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
       detectorRule: {
         findMany: async () => [],
       },
-      inspectionLog: {
+      detectorInspectionLog: {
         create: async () => ({}),
       },
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [],
       },
     }
@@ -587,10 +587,10 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
       detectorRule: {
         findMany: async () => [],
       },
-      inspectionLog: {
+      detectorInspectionLog: {
         create: mock(() => ({})),
       },
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [],
       },
     }
@@ -625,9 +625,9 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
     )
 
     // Verify tool calls are captured in the audit log
-    expect(mockPrisma.inspectionLog.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.detectorInspectionLog.create).toHaveBeenCalledTimes(1)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const logCall = (mockPrisma.inspectionLog.create as any).mock.calls[0]?.[0]
+    const logCall = (mockPrisma.detectorInspectionLog.create as any).mock.calls[0]?.[0]
     expect(logCall.data.toolCalls).toHaveLength(2)
     expect(logCall.data.toolCalls[0]).toEqual({
       toolCallId: "tc-1",
@@ -649,7 +649,7 @@ describe("enforceRuntimeMappings", () => {
     const { enforceRuntimeMappings } = __testables
 
     const mockPrisma = {
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [],
       },
     }
@@ -668,7 +668,7 @@ describe("enforceRuntimeMappings", () => {
       "nextjs",
       "14",
       suggestedRuntimes,
-      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+      mockPrisma as unknown as { detectorRuntimeMapping: { findMany: () => Promise<unknown[]> } }
     )
 
     expect(result.enforced).toEqual(suggestedRuntimes)
@@ -679,7 +679,7 @@ describe("enforceRuntimeMappings", () => {
     const { enforceRuntimeMappings } = __testables
 
     const mockPrisma = {
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [
           {
             id: "mapping-1",
@@ -709,7 +709,7 @@ describe("enforceRuntimeMappings", () => {
       "laravel",
       "10",
       suggestedRuntimes,
-      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+      mockPrisma as unknown as { detectorRuntimeMapping: { findMany: () => Promise<unknown[]> } }
     )
 
     expect(result.enforced).toHaveLength(1)
@@ -723,7 +723,7 @@ describe("enforceRuntimeMappings", () => {
     const { enforceRuntimeMappings } = __testables
 
     const mockPrisma = {
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [
           {
             id: "mapping-1",
@@ -753,7 +753,7 @@ describe("enforceRuntimeMappings", () => {
       "laravel",
       "10",
       suggestedRuntimes,
-      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+      mockPrisma as unknown as { detectorRuntimeMapping: { findMany: () => Promise<unknown[]> } }
     )
 
     expect(result.enforced).toHaveLength(2)
@@ -766,7 +766,7 @@ describe("enforceRuntimeMappings", () => {
     const { enforceRuntimeMappings } = __testables
 
     const mockPrisma = {
-      runtimeMapping: {
+      detectorRuntimeMapping: {
         findMany: async () => [
           {
             id: "mapping-1",
@@ -796,7 +796,7 @@ describe("enforceRuntimeMappings", () => {
       "laravel",
       "11", // Different version than mapping
       suggestedRuntimes,
-      mockPrisma as unknown as { runtimeMapping: { findMany: () => Promise<unknown[]> } }
+      mockPrisma as unknown as { detectorRuntimeMapping: { findMany: () => Promise<unknown[]> } }
     )
 
     expect(result.enforced).toHaveLength(1)

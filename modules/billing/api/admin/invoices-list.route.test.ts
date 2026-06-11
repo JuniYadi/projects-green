@@ -16,7 +16,7 @@ const mockFindMany = mock()
 const mockCount = mock()
 
 const mockPrismaClient = {
-  invoice: {
+  billingInvoice: {
     findMany: mockFindMany,
     count: mockCount,
   },

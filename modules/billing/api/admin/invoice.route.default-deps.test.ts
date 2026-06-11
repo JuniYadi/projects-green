@@ -44,7 +44,7 @@ mock.module("@/lib/prisma", () => ({
     platformUserRole: {
       findFirst: mockPlatformRoleFindFirst,
     },
-    invoice: {
+    billingInvoice: {
       findUnique: mockFindUnique,
       update: mockUpdate,
     },

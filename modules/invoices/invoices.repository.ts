@@ -140,7 +140,7 @@ export type InvoiceRepository = {
 }
 
 const getInvoiceDelegate = (): InvoiceDelegate => {
-  const delegate = (prisma as unknown as { invoice?: InvoiceDelegate }).invoice
+  const delegate = (prisma as unknown as { billingInvoice?: InvoiceDelegate }).billingInvoice
 
   if (!delegate) {
     throw new Error("Invoice delegate is not available on Prisma client.")

@@ -129,7 +129,7 @@ export const createInvoicePaymentRoutes = () =>
 
       try {
         // Get invoice details
-        const invoice = await prisma.invoice.findFirst({
+        const invoice = await prisma.billingInvoice.findFirst({
           where: { id: invoiceId, status: "OPEN", billingAccount: { organizationId } },
         })
 

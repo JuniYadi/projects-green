@@ -44,9 +44,9 @@ const mockCurrency = {
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    currency: mockCurrency,
+    paymentCurrency: mockCurrency,
     $transaction: mock((cb: (tx: unknown) => unknown) =>
-      cb({ currency: mockCurrency })
+      cb({ paymentCurrency: mockCurrency })
     ),
   },
 }))

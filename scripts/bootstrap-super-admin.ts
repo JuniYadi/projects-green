@@ -1,4 +1,4 @@
-import { PrismaClient, PlatformRole } from "@prisma/client"
+import { PrismaClient, AuthPlatformRole } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { createHash } from "crypto"
 
@@ -33,8 +33,8 @@ const bootstrapSuperAdmin = async (options: BootstrapOptions = {}) => {
     return
   }
 
-  const existingSuperAdmins = await prisma.platformUserRole.findMany({
-    where: { role: PlatformRole.SUPER_ADMIN },
+  const existingSuperAdmins = await prisma.authPlatformUserRole.findMany({
+    where: { role: AuthPlatformRole.SUPER_ADMIN },
   })
 
   if (existingSuperAdmins.length > 0) {
@@ -60,7 +60,7 @@ const entries: Array<{ email?: string; workosUserId: string }> = emails.map((ema
   }
 
   for (const entry of entries) {
-    const platformUserRole = await prisma.platformUserRole.upsert({
+    const platformUserRole = await prisma.authPlatformUserRole.upsert({
       where: {
         ...(entry.email ? { email: entry.email } : { workosUserId: entry.workosUserId! }),
       },
@@ -68,7 +68,7 @@ const entries: Array<{ email?: string; workosUserId: string }> = emails.map((ema
       create: {
         email: entry.email ?? undefined,
         workosUserId: entry.workosUserId ?? undefined,
-        role: PlatformRole.SUPER_ADMIN,
+        role: AuthPlatformRole.SUPER_ADMIN,
       },
     })
 

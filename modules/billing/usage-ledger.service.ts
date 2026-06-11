@@ -37,7 +37,7 @@ export class UsageLedgerService {
     metadata: Prisma.InputJsonValue | null
     createdAt: Date
   }> {
-    return this.prisma.usageLedger.create({
+    return this.prisma.billingUsageLedger.create({
       data: {
         organizationId: params.organizationId,
         subscriptionId: params.subscriptionId,
@@ -53,7 +53,7 @@ export class UsageLedgerService {
     organizationId: string,
     period: string,
   ): Promise<{ category: string | null; totalIdr: Decimal }[]> {
-    const result = await this.prisma.usageLedger.groupBy({
+    const result = await this.prisma.billingUsageLedger.groupBy({
       by: ["category"],
       where: {
         organizationId,
@@ -91,7 +91,7 @@ export class UsageLedgerService {
       createdAt: Date
     }[]
   > {
-    return this.prisma.usageLedger.findMany({
+    return this.prisma.billingUsageLedger.findMany({
       where: {
         organizationId,
         period,
@@ -107,7 +107,7 @@ export class UsageLedgerService {
   }
 
   async getTotalSpend(organizationId: string, period: string): Promise<Decimal> {
-    const result = await this.prisma.usageLedger.aggregate({
+    const result = await this.prisma.billingUsageLedger.aggregate({
       where: {
         organizationId,
         period,
@@ -124,7 +124,7 @@ export class UsageLedgerService {
     organizationId: string,
     period: string,
   ): Promise<RatedUsage[]> {
-    const entries = await this.prisma.usageLedger.findMany({
+    const entries = await this.prisma.billingUsageLedger.findMany({
       where: {
         organizationId,
         period,
@@ -152,7 +152,7 @@ export class UsageLedgerService {
       const key = `${entry.subscriptionId}::${entry.category ?? ""}`
       const existing = groups.get(key)
 
-      const monthlyCapIdr = entry.subscription.pricing?.monthlyCapIdr
+      const monthlyCapIdr = entry.subscription?.pricing?.monthlyCapIdr
       const entryAmount = entry.amountIdr ?? new Decimal(0)
 
       if (existing) {
@@ -211,7 +211,7 @@ export class UsageLedgerService {
       createdAt: Date
     }[]
   > {
-    return this.prisma.usageLedger.findMany({
+    return this.prisma.billingUsageLedger.findMany({
       where: {
         organizationId,
         createdAt: {
@@ -236,7 +236,7 @@ export class UsageLedgerService {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
-    const entries = await this.prisma.usageLedger.findMany({
+    const entries = await this.prisma.billingUsageLedger.findMany({
       where: {
         organizationId,
         createdAt: {

@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { toCurrencyDTO, type CurrencyDTO } from "./currency.dto"
 
-type CurrencyRecord = Prisma.CurrencyGetPayload<object>
+type CurrencyRecord = Prisma.PaymentCurrencyGetPayload<object>
 type CurrencyDb = typeof prisma
 
 export class CurrencyNotFoundError extends Error {
@@ -34,10 +34,10 @@ export class CurrencyService {
   }
 
   async list(includeInactive = false): Promise<CurrencyRecord[]> {
-    const where: Prisma.CurrencyWhereInput = includeInactive
+    const where: Prisma.PaymentCurrencyWhereInput = includeInactive
       ? {}
       : { isActive: true }
-    return this.db.currency.findMany({
+    return this.db.paymentCurrency.findMany({
       where,
       orderBy: [{ isBase: "desc" }, { sortOrder: "asc" }, { code: "asc" }],
     })
@@ -49,7 +49,7 @@ export class CurrencyService {
   }
 
   async findByCode(code: string): Promise<CurrencyRecord | null> {
-    return this.db.currency.findUnique({ where: { code } })
+    return this.db.paymentCurrency.findUnique({ where: { code } })
   }
 
   async getByCode(code: string): Promise<CurrencyRecord> {
@@ -59,7 +59,7 @@ export class CurrencyService {
   }
 
   async getBase(): Promise<CurrencyRecord> {
-    const base = await this.db.currency.findFirst({ where: { isBase: true } })
+    const base = await this.db.paymentCurrency.findFirst({ where: { isBase: true } })
     if (!base) throw new BaseCurrencyMissingError()
     return base
   }
@@ -118,12 +118,12 @@ export class CurrencyService {
     const isBase = input.isBase ?? false
     return this.db.$transaction(async (tx) => {
       if (isBase) {
-        await tx.currency.updateMany({
+        await tx.paymentCurrency.updateMany({
           where: { isBase: true },
           data: { isBase: false },
         })
       }
-      return tx.currency.create({
+      return tx.paymentCurrency.create({
         data: {
           code: input.code.toUpperCase(),
           name: input.name,
@@ -153,18 +153,18 @@ export class CurrencyService {
     }
   ): Promise<CurrencyRecord> {
     return this.db.$transaction(async (tx) => {
-      const existing = await tx.currency.findUnique({ where: { id } })
+      const existing = await tx.paymentCurrency.findUnique({ where: { id } })
       if (!existing) throw new CurrencyNotFoundError(id)
 
       const promotingToBase = input.isBase === true && !existing.isBase
       if (promotingToBase) {
-        await tx.currency.updateMany({
+        await tx.paymentCurrency.updateMany({
           where: { isBase: true, id: { not: id } },
           data: { isBase: false },
         })
       }
 
-      const data: Prisma.CurrencyUpdateInput = {}
+      const data: Prisma.PaymentCurrencyUpdateInput = {}
       if (input.name !== undefined) data.name = input.name
       if (input.symbol !== undefined) data.symbol = input.symbol
       if (input.isBase !== undefined) data.isBase = input.isBase
@@ -181,14 +181,14 @@ export class CurrencyService {
         data.ratePerBase = new Prisma.Decimal(input.ratePerBase)
       }
 
-      return tx.currency.update({ where: { id }, data })
+      return tx.paymentCurrency.update({ where: { id }, data })
     })
   }
 
   async toggle(id: string): Promise<CurrencyRecord> {
-    const existing = await this.db.currency.findUnique({ where: { id } })
+    const existing = await this.db.paymentCurrency.findUnique({ where: { id } })
     if (!existing) throw new CurrencyNotFoundError(id)
-    return this.db.currency.update({
+    return this.db.paymentCurrency.update({
       where: { id },
       data: { isActive: !existing.isActive },
     })

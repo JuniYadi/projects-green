@@ -211,7 +211,7 @@ export class BillingCycleService {
     }
 
     // ── Check for existing OPEN invoices (previous unpaid) ────────────────
-    const existingOpenInvoices = await this.prisma.invoice.findMany({
+    const existingOpenInvoices = await this.prisma.billingInvoice.findMany({
       where: {
         billingAccountId: subscription.billingAccountId,
         status: "OPEN",
@@ -221,7 +221,7 @@ export class BillingCycleService {
     // ── Create invoice + lines in a transaction ───────────────────────────
     const result = await this.prisma.$transaction(async (tx) => {
       // Create invoice
-      const invoice = await tx.invoice.create({
+      const invoice = await tx.billingInvoice.create({
         data: {
           billingAccountId: subscription.billingAccountId,
           subscriptionId: subscription.id,
@@ -239,7 +239,7 @@ export class BillingCycleService {
 
       // Create invoice lines from rated usage
       for (const usage of ratedUsage) {
-        await tx.invoiceLine.create({
+        await tx.billingInvoiceLine.create({
           data: {
             invoiceId: invoice.id,
             lineType: "METERED" as const,
@@ -276,14 +276,14 @@ export class BillingCycleService {
           data: { balance: account.balance.minus(totalDue) },
         })
 
-        await tx.invoice.update({
+        await tx.billingInvoice.update({
           where: { id: invoice.id },
           data: { status: "PAID", paidAt: new Date(), issuedAt: new Date() },
         })
 
         // Also mark previous unpaid invoices as PAID
         if (existingOpenInvoices.length > 0) {
-          await tx.invoice.updateMany({
+          await tx.billingInvoice.updateMany({
             where: {
               id: { in: existingOpenInvoices.map((inv) => inv.id) },
             },
@@ -404,7 +404,7 @@ export class BillingCycleService {
     const periodStart = this.getPeriodStart(now)
     const periodEnd = this.getPeriodEnd(now)
 
-    const invoices = await this.prisma.invoice.findMany({
+    const invoices = await this.prisma.billingInvoice.findMany({
       where: {
         type: "SERVICE",
         status: "DRAFT",
@@ -419,7 +419,7 @@ export class BillingCycleService {
     }
 
     const nowDate = new Date()
-    const result = await this.prisma.invoice.updateMany({
+    const result = await this.prisma.billingInvoice.updateMany({
       where: {
         id: { in: invoices.map((inv) => inv.id) },
         status: "DRAFT", // safety: only update DRAFT

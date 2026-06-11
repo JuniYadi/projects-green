@@ -5,7 +5,7 @@ import { UsageLedgerService } from "./usage-ledger.service"
 
 // Properly typed mock Prisma client
 interface MockedPrisma {
-  usageLedger: {
+  billingUsageLedger: {
     create: ReturnType<typeof vi.fn>
     findMany: ReturnType<typeof vi.fn>
     groupBy: ReturnType<typeof vi.fn>
@@ -14,7 +14,7 @@ interface MockedPrisma {
 }
 
 const createMockPrisma = (): MockedPrisma => ({
-  usageLedger: {
+  billingUsageLedger: {
     create: vi.fn(),
     findMany: vi.fn(),
     groupBy: vi.fn(),
@@ -44,7 +44,7 @@ const mockEntries = [
     amountIdr: new Decimal(1000),
     metadata: null,
     createdAt: new Date("2026-05-30T10:00:00Z"),
-    subscription: { id: "sub-1" },
+    serviceSubscription: { id: "sub-1" },
   },
   {
     id: "ledger-2",
@@ -55,7 +55,7 @@ const mockEntries = [
     amountIdr: new Decimal(500),
     metadata: null,
     createdAt: new Date("2026-05-30T11:00:00Z"),
-    subscription: { id: "sub-1" },
+    serviceSubscription: { id: "sub-1" },
   },
 ]
 
@@ -75,7 +75,7 @@ const mockLedgerEntriesWithSubscription = [
     subscriptionId: "sub-1",
     category: "WHATSAPP_MESSAGE_OUT",
     amountIdr: new Decimal(2000),
-    subscription: mockSubscriptionWithCap,
+    serviceSubscription: mockSubscriptionWithCap,
     createdAt: new Date(),
   },
   {
@@ -83,7 +83,7 @@ const mockLedgerEntriesWithSubscription = [
     subscriptionId: "sub-1",
     category: "WHATSAPP_MESSAGE_OUT",
     amountIdr: new Decimal(2000),
-    subscription: mockSubscriptionWithCap,
+    serviceSubscription: mockSubscriptionWithCap,
     createdAt: new Date(),
   },
   {
@@ -91,7 +91,7 @@ const mockLedgerEntriesWithSubscription = [
     subscriptionId: "sub-2",
     category: "VPN_BANDWIDTH",
     amountIdr: new Decimal(3000),
-    subscription: mockSubscriptionNoCap,
+    serviceSubscription: mockSubscriptionNoCap,
     createdAt: new Date(),
   },
 ]
@@ -108,7 +108,7 @@ describe("UsageLedgerService", () => {
 
   describe("recordUsage", () => {
     it("creates ledger entry with all fields", async () => {
-      ;(mockPrisma.usageLedger.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockEntry)
+      ;(mockPrisma.billingUsageLedger.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockEntry)
 
       await service.recordUsage({
         organizationId: "org-1",
@@ -121,7 +121,7 @@ describe("UsageLedgerService", () => {
         },
       })
 
-      expect(mockPrisma.usageLedger.create).toHaveBeenCalledWith({
+      expect(mockPrisma.billingUsageLedger.create).toHaveBeenCalledWith({
         data: {
           organizationId: "org-1",
           subscriptionId: "sub-1",
@@ -140,7 +140,7 @@ describe("UsageLedgerService", () => {
         amountIdr: new Decimal(500),
         metadata: null,
       }
-      ;(mockPrisma.usageLedger.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce(createdEntry)
+      ;(mockPrisma.billingUsageLedger.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce(createdEntry)
 
       const result = await service.recordUsage({
         organizationId: "org-1",
@@ -160,7 +160,7 @@ describe("UsageLedgerService", () => {
 
   describe("getSpendByCategory", () => {
     it("returns grouped totals sorted by totalIdr desc", async () => {
-      ;(mockPrisma.usageLedger.groupBy as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      ;(mockPrisma.billingUsageLedger.groupBy as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
         { category: "WHATSAPP_MESSAGE_OUT", _sum: { amountIdr: new Decimal(5000) } },
         { category: "WHATSAPP_MESSAGE_IN", _sum: { amountIdr: new Decimal(3000) } },
         { category: "APP_HOSTING_CPU", _sum: { amountIdr: new Decimal(2000) } },
@@ -178,7 +178,7 @@ describe("UsageLedgerService", () => {
     })
 
     it("returns empty array when no records", async () => {
-      ;(mockPrisma.usageLedger.groupBy as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+      ;(mockPrisma.billingUsageLedger.groupBy as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
 
       const results = await service.getSpendByCategory("org-1", "2026-05")
 
@@ -188,34 +188,34 @@ describe("UsageLedgerService", () => {
 
   describe("getLedgerEntries", () => {
     it("returns entries filtered by category", async () => {
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockEntries)
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockEntries)
 
       const results = await service.getLedgerEntries("org-1", "2026-05", "WHATSAPP_MESSAGE_OUT")
 
       expect(results).toHaveLength(2)
-      expect(mockPrisma.usageLedger.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.billingUsageLedger.findMany).toHaveBeenCalledWith({
         where: {
           organizationId: "org-1",
           period: "2026-05",
           category: "WHATSAPP_MESSAGE_OUT",
         },
-        include: { subscription: true },
+        include: { serviceSubscription: true },
         orderBy: { createdAt: "asc" },
       })
     })
 
     it("returns all entries when no category filter", async () => {
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockEntries)
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockEntries)
 
       const results = await service.getLedgerEntries("org-1", "2026-05")
 
       expect(results).toHaveLength(2)
-      expect(mockPrisma.usageLedger.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.billingUsageLedger.findMany).toHaveBeenCalledWith({
         where: {
           organizationId: "org-1",
           period: "2026-05",
         },
-        include: { subscription: true },
+        include: { serviceSubscription: true },
         orderBy: { createdAt: "asc" },
       })
     })
@@ -223,14 +223,14 @@ describe("UsageLedgerService", () => {
 
   describe("getTotalSpend", () => {
     it("returns sum of amountIdr", async () => {
-      ;(mockPrisma.usageLedger.aggregate as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(mockPrisma.billingUsageLedger.aggregate as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         _sum: { amountIdr: new Decimal(15000) },
       })
 
       const result = await service.getTotalSpend("org-1", "2026-05")
 
       expect(result.toNumber()).toBe(15000)
-      expect(mockPrisma.usageLedger.aggregate).toHaveBeenCalledWith({
+      expect(mockPrisma.billingUsageLedger.aggregate).toHaveBeenCalledWith({
         where: {
           organizationId: "org-1",
           period: "2026-05",
@@ -240,7 +240,7 @@ describe("UsageLedgerService", () => {
     })
 
     it("returns Decimal(0) when no records", async () => {
-      ;(mockPrisma.usageLedger.aggregate as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(mockPrisma.billingUsageLedger.aggregate as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         _sum: { amountIdr: null },
       })
 
@@ -252,7 +252,7 @@ describe("UsageLedgerService", () => {
 
   describe("generateRatedUsage", () => {
     it("groups by subscriptionId + category", async () => {
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
         mockLedgerEntriesWithSubscription,
       )
 
@@ -274,13 +274,13 @@ describe("UsageLedgerService", () => {
     })
 
     it("caps amount when raw > cap", async () => {
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
         {
           id: "ledger-1",
           subscriptionId: "sub-1",
           category: "WHATSAPP_MESSAGE_OUT",
           amountIdr: new Decimal(6000),
-          subscription: mockSubscriptionWithCap,
+          serviceSubscription: mockSubscriptionWithCap,
           createdAt: new Date(),
         },
       ])
@@ -296,13 +296,13 @@ describe("UsageLedgerService", () => {
     })
 
     it("returns rawAmountIdr when no cap set", async () => {
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
         {
           id: "ledger-1",
           subscriptionId: "sub-2",
           category: "VPN_BANDWIDTH",
           amountIdr: new Decimal(3000),
-          subscription: mockSubscriptionNoCap,
+          serviceSubscription: mockSubscriptionNoCap,
           createdAt: new Date(),
         },
       ])
@@ -328,15 +328,15 @@ describe("UsageLedgerService", () => {
           amountIdr: new Decimal(1000),
           metadata: null,
           createdAt: new Date("2026-06-01"),
-          subscription: { id: "sub-1" },
+          serviceSubscription: { id: "sub-1" },
         },
       ]
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(entries)
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(entries)
 
       const results = await service.getUsageByDateRange("org-1", "2026-06-01", "2026-06-30")
 
       expect(results).toHaveLength(1)
-      expect(mockPrisma.usageLedger.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.billingUsageLedger.findMany).toHaveBeenCalledWith({
         where: {
           organizationId: "org-1",
           createdAt: {
@@ -344,17 +344,17 @@ describe("UsageLedgerService", () => {
             lte: new Date("2026-06-30"),
           },
         },
-        include: { subscription: true },
+        include: { serviceSubscription: true },
         orderBy: { createdAt: "asc" },
       })
     })
 
     it("filters by category when provided", async () => {
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
 
       await service.getUsageByDateRange("org-1", "2026-06-01", "2026-06-30", "whatsapp")
 
-      expect(mockPrisma.usageLedger.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.billingUsageLedger.findMany).toHaveBeenCalledWith({
         where: {
           organizationId: "org-1",
           createdAt: {
@@ -363,13 +363,13 @@ describe("UsageLedgerService", () => {
           },
           category: "whatsapp",
         },
-        include: { subscription: true },
+        include: { serviceSubscription: true },
         orderBy: { createdAt: "asc" },
       })
     })
 
     it("returns empty array when no entries", async () => {
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
 
       const results = await service.getUsageByDateRange("org-1", "2026-06-01", "2026-06-30")
 
@@ -411,7 +411,7 @@ describe("UsageLedgerService", () => {
           createdAt: new Date("2026-06-02T10:00:00Z"),
         },
       ]
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(entries)
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(entries)
 
       const results = await service.getDailyUsageTrend("org-1", 30)
 
@@ -423,7 +423,7 @@ describe("UsageLedgerService", () => {
     })
 
     it("returns empty array when no entries", async () => {
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
 
       const results = await service.getDailyUsageTrend("org-1", 30)
 
@@ -431,11 +431,11 @@ describe("UsageLedgerService", () => {
     })
 
     it("uses default 30 days when not specified", async () => {
-      ;(mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+      ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
 
       await service.getDailyUsageTrend("org-1")
 
-      const call = (mockPrisma.usageLedger.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const call = (mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0]
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
       expect(call.where.createdAt.gte).toBeInstanceOf(Date)

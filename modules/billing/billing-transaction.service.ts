@@ -92,7 +92,7 @@ export class BillingTransactionService {
       }
 
       // Add invoice line
-      const line = await tx.invoiceLine.create({
+      const line = await tx.billingInvoiceLine.create({
         data: {
           invoiceId: invoice.id,
           lineType: input.line.lineType === "SUBSCRIPTION" ? "SUBSCRIPTION" : "METERED",
@@ -111,7 +111,7 @@ export class BillingTransactionService {
       })
 
       // Update invoice totals
-      await tx.invoice.update({
+      await tx.billingInvoice.update({
         where: { id: invoice.id },
         data: {
           subtotalAmount: { increment: input.amount },
@@ -247,7 +247,7 @@ export class BillingTransactionService {
     )
 
     // Look for existing DRAFT service invoice for this period
-    const existing = await tx.invoice.findFirst({
+    const existing = await tx.billingInvoice.findFirst({
       where: {
         billingAccountId,
         type: "SERVICE",
@@ -260,14 +260,14 @@ export class BillingTransactionService {
 
     // Generate invoice number: SVC-YYYYMM-NNNN
     const periodStr = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}`
-    const count = await tx.invoice.count({
+    const count = await tx.billingInvoice.count({
       where: {
         invoiceNumber: { startsWith: `SVC-${periodStr}` },
       },
     })
     const invoiceNumber = `SVC-${periodStr}-${String(count + 1).padStart(4, "0")}`
 
-    return tx.invoice.create({
+    return tx.billingInvoice.create({
       data: {
         billingAccountId,
         invoiceNumber,

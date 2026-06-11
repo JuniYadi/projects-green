@@ -22,7 +22,7 @@ mock.module("@/lib/prisma", () => ({
     billingAccount: {
       findUnique: mockFindUnique,
     },
-    subscription: {
+    serviceSubscription: {
       findMany: mockFindMany,
     },
   },

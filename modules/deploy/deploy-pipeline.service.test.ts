@@ -40,18 +40,18 @@ const mockPrisma = {
     create: mock(() => Promise.resolve(mockStack)),
     update: mock(() => Promise.resolve(mockStack)),
   },
-  deployment: {
+  applicationDeployment: {
     create: mock(() => Promise.resolve(mockDeployment)),
     findUniqueOrThrow: mock(() => Promise.resolve(mockDeployment)),
     findUnique: mock(() => Promise.resolve(mockDeployment)),
     update: mock(() => Promise.resolve(mockDeployment)),
     count: mock(() => Promise.resolve(0)),
   },
-  deployEvent: {
+  applicationDeployEvent: {
     create: mock(() => Promise.resolve({ id: "evt-1" })),
     findMany: mock(() => Promise.resolve([])),
   },
-  deploymentLog: {
+  applicationDeploymentLog: {
     create: mock(() => Promise.resolve({ id: "log-1" })),
     findMany: mock(() => Promise.resolve([])),
   },
@@ -70,10 +70,10 @@ describe("deploy-pipeline.service", () => {
     mockPrisma.applicationStack.findUnique.mockClear()
     mockPrisma.applicationStack.create.mockClear()
     mockPrisma.applicationStack.update.mockClear()
-    mockPrisma.deployment.create.mockClear()
-    mockPrisma.deployEvent.create.mockClear()
-    mockPrisma.deploymentLog.create.mockClear()
-    mockPrisma.deployment.count.mockClear()
+    mockPrisma.applicationDeployment.create.mockClear()
+    mockPrisma.applicationDeployEvent.create.mockClear()
+    mockPrisma.applicationDeploymentLog.create.mockClear()
+    mockPrisma.applicationDeployment.count.mockClear()
     mockPrisma.$transaction.mockClear()
     mockPrisma.applicationStack.findUnique.mockResolvedValue(mockStack)
     mockPrisma.applicationStack.findUniqueOrThrow.mockResolvedValue(mockStack)
@@ -88,9 +88,9 @@ describe("deploy-pipeline.service", () => {
     expect(result).toHaveProperty("deploymentId")
     expect(result.status).toBe("QUEUED")
     expect(mockPrisma.$transaction).toHaveBeenCalled()
-    expect(mockPrisma.deployment.create).toHaveBeenCalled()
-    expect(mockPrisma.deployEvent.create).toHaveBeenCalled()
-    expect(mockPrisma.deploymentLog.create).toHaveBeenCalled()
+    expect(mockPrisma.applicationDeployment.create).toHaveBeenCalled()
+    expect(mockPrisma.applicationDeployEvent.create).toHaveBeenCalled()
+    expect(mockPrisma.applicationDeploymentLog.create).toHaveBeenCalled()
   })
 
   it("triggerDeploy blocks when a deployment is already in progress", async () => {

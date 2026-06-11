@@ -16,10 +16,10 @@ const mockPrismaClient = {
     findMany: mockFindMany,
     findFirst: mockFindFirst,
   },
-  subscription: {
+  serviceSubscription: {
     findMany: mockFindManySubscription,
   },
-  usageLedger: {
+  billingUsageLedger: {
     findMany: mockFindManyUsage,
   },
 }

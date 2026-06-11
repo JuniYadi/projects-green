@@ -5,7 +5,7 @@ const mockFindFirst = mock(async (): Promise<unknown> => null)
 const mockUpdateMany = mock(async () => ({ count: 1 }))
 
 const mockPrisma = {
-  invoice: {
+  billingInvoice: {
     findMany: mockFindMany,
     findFirst: mockFindFirst,
     updateMany: mockUpdateMany,

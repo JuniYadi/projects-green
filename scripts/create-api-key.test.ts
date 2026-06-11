@@ -4,7 +4,7 @@ const mockCreate = mock(async () => ({ id: "key_1" }))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    apiKey: { create: mockCreate },
+    authApiKey: { create: mockCreate },
   },
 }))
 
@@ -40,7 +40,7 @@ describe("create-api-key script", () => {
     expect(hash.length).toBeGreaterThan(0)
   })
 
-  it("creates an ApiKey with correct fields", async () => {
+  it("creates an AuthApiKey with correct fields", async () => {
     const { generateRawApiKey } = await import("@/lib/whatsapp/crypto")
     const { hash } = await generateRawApiKey("test_")
 

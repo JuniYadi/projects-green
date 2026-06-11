@@ -19,12 +19,12 @@ export class VpnSubscriptionRefsNotFoundError extends Error {
 }
 
 /**
- * Resolve the Package / ServicePlan / Pricing / Region IDs for a
+ * Resolve the ServicePackage / ServicePlan / ServicePricing / ServiceRegion IDs for a
  * (planCode, regionCode) VPN combination. The seed data already
- * contains a `Package(code: "VPN")`, plans `STANDARD` and
+ * contains a `ServicePackage(code: "VPN")`, plans `STANDARD` and
  * `PROFESSIONAL`, and pricings for `INDONESIA` and `SINGAPORE`.
  *
- * The Pricing `basePriceIdr` is `0` for VPN today (the static
+ * The ServicePricing `basePriceIdr` is `0` for VPN today (the static
  * `resolveVpnMonthlyPrice` catalog is the source of truth for actual
  * prices), but the record itself is required for the Subscription
  * model's foreign-key constraints.
@@ -33,12 +33,12 @@ export async function resolveVpnSubscriptionRefs(
   prisma: PrismaClient,
   input: { planCode: string; regionCode: string },
 ): Promise<VpnSubscriptionRefs> {
-  const pkg = await prisma.package.findUnique({
+  const pkg = await prisma.servicePackage.findUnique({
     where: { code: "VPN" },
   })
   if (!pkg) {
     throw new VpnSubscriptionRefsNotFoundError(
-      "Package with code 'VPN' not found — did you run the billing seed?",
+      "ServicePackage with code 'VPN' not found — did you run the billing seed?",
     )
   }
 
@@ -53,16 +53,16 @@ export async function resolveVpnSubscriptionRefs(
     )
   }
 
-  const region = await prisma.region.findUnique({
+  const region = await prisma.serviceRegion.findUnique({
     where: { code: input.regionCode },
   })
   if (!region) {
     throw new VpnSubscriptionRefsNotFoundError(
-      `Region not found: ${input.regionCode}`,
+      `ServiceRegion not found: ${input.regionCode}`,
     )
   }
 
-  const pricing = await prisma.pricing.findFirst({
+  const pricing = await prisma.servicePricing.findFirst({
     where: {
       planId: plan.id,
       regionId: region.id,
@@ -70,7 +70,7 @@ export async function resolveVpnSubscriptionRefs(
   })
   if (!pricing) {
     throw new VpnSubscriptionRefsNotFoundError(
-      `Pricing not found for plan=${input.planCode} region=${input.regionCode}`,
+      `ServicePricing not found for plan=${input.planCode} region=${input.regionCode}`,
     )
   }
 

@@ -551,7 +551,7 @@ const whatsappBillingInterval = setInterval(async () => {
       if (devices.length === 0) break
 
       const orgIds = [...new Set(devices.map((d) => d.organizationId))]
-      const subscriptions = await prisma.subscription.findMany({
+      const subscriptions = await prisma.serviceSubscription.findMany({
         where: {
           organizationId: { in: orgIds },
           package: { code: "WHATSAPP" },

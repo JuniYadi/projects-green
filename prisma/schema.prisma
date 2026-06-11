@@ -6,14 +6,16 @@ datasource db {
   provider = "postgresql"
 }
 
-enum ApiKeyEnvironment {
+enum AuthApiKeyEnvironment {
   SANDBOX
   LIVE
+  @@map("ApiKeyEnvironment")
 }
 
-enum PlatformRole {
+enum AuthPlatformRole {
   NONE
   SUPER_ADMIN
+  @@map("PlatformRole")
 }
 
 model User {
@@ -24,32 +26,36 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
-model PlatformUserRole {
-  id           String       @id @default(cuid())
-  workosUserId String       @unique
-  email        String?      @unique
-  role         PlatformRole @default(NONE)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+model AuthPlatformUserRole {
+  id           String          @id @default(cuid())
+  workosUserId String          @unique
+  email        String?         @unique
+  role         AuthPlatformRole @default(NONE)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("PlatformUserRole")
 }
 
-model ApiKey {
-  id          String         @id @default(cuid())
-  name        String
+model AuthApiKey {
+  id             String              @id @default(cuid())
+  name           String
   organizationId String
-  keyHash     String
-  environment ApiKeyEnvironment @default(SANDBOX)
-  scopes      String[]
-  active      Boolean        @default(true)
-  expiresAt   DateTime?
-  createdBy   String?
-  lastUsedAt  DateTime?
-  lastUsedIp  String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  keyHash        String
+  environment    AuthApiKeyEnvironment @default(SANDBOX)
+  scopes         String[]
+  active         Boolean             @default(true)
+  expiresAt      DateTime?
+  createdBy      String?
+  lastUsedAt     DateTime?
+  lastUsedIp     String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@map("ApiKey")
 }
 
-model KnowledgeDocument {
+model DocsKnowledgeDocument {
   id                    String   @id @default(cuid())
   organizationId        String?
   path                  String
@@ -63,6 +69,7 @@ model KnowledgeDocument {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  @@map("KnowledgeDocument")
   @@index([organizationId, path])
   @@index([organizationId, updatedAt(sort: Desc)])
   @@index([updatedAt(sort: Desc)])
@@ -162,8 +169,8 @@ model DetectorRule {
   @@index([isActive])
 }
 
-model RuntimeMapping {
-  id               String   @id @default(cuid())
+model DetectorRuntimeMapping {
+  id               String   @id(map: "DRM_pkey") @default(cuid())
   frameworkId      String   // e.g., "laravel", "nextjs"
   frameworkVersion String?  // e.g., "10", "14" (null = wildcard for all versions)
   runtimeId        String   // e.g., "php", "node"
@@ -174,12 +181,13 @@ model RuntimeMapping {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  @@unique([frameworkId, frameworkVersion, runtimeId])
-  @@index([frameworkId, isActive])
+  @@unique([frameworkId, frameworkVersion, runtimeId], map: "DRM_frameworkId_frameworkVersion_runtimeId_key")
+  @@index([frameworkId, isActive], map: "DRM_frameworkId_isActive_idx")
+  @@map("RuntimeMapping")
 }
 
-model InspectionLog {
-  id               String   @id @default(cuid())
+model DetectorInspectionLog {
+  id               String   @id(map: "DetectorInspectionLog_pkey") @default(cuid())
   installationId   BigInt?  // GitHub installation ID (null if git-clone mode)
   repoUrl          String
   ref              String?
@@ -195,10 +203,11 @@ model InspectionLog {
   errorMessage     String?
   createdAt        DateTime @default(now())
 
-  @@index([repoUrl])
-  @@index([detectedFramework])
-  @@index([status])
-  @@index([createdAt])
+  @@index([repoUrl], map: "DetectorInspectionLog_repoUrl_idx")
+  @@index([detectedFramework], map: "DetectorInspectionLog_detectedFramework_idx")
+  @@index([status], map: "DetectorInspectionLog_status_idx")
+  @@index([createdAt], map: "DetectorInspectionLog_createdAt_idx")
+  @@map("InspectionLog")
 }
 
 model ApplicationStack {
@@ -228,7 +237,7 @@ model ApplicationStack {
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
-  deployments          Deployment[]
+  deployments          ApplicationDeployment[]
   repositoryConnection GithubRepositoryConnection? @relation(fields: [repositoryConnectionId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, slug])
@@ -237,7 +246,7 @@ model ApplicationStack {
   @@index([status])
 }
 
-model Deployment {
+model ApplicationDeployment {
   id               String       @id @default(cuid())
   stackId          String
   organizationId   String
@@ -259,17 +268,18 @@ model Deployment {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  stack  ApplicationStack @relation(fields: [stackId], references: [id], onDelete: Cascade)
-  events DeployEvent[]
-  logs   DeploymentLog[]
+  stack  ApplicationStack           @relation(fields: [stackId], references: [id], onDelete: Cascade)
+  events ApplicationDeployEvent[]
+  logs   ApplicationDeploymentLog[]
 
+  @@map("Deployment")
   @@index([stackId])
   @@index([organizationId])
   @@index([status])
   @@index([createdAt(sort: Desc)])
 }
 
-enum DeployEventType {
+enum ApplicationDeployEventType {
   QUEUED
   BUILD_STARTED
   MANIFEST_PUSHED
@@ -281,22 +291,23 @@ enum DeployEventType {
   ROLLBACK_COMPLETED
 }
 
-model DeployEvent {
-  id           String           @id @default(cuid())
+model ApplicationDeployEvent {
+  id           String                   @id @default(cuid())
   deploymentId String
-  type         DeployEventType
+  type         ApplicationDeployEventType
   message      String?
   metadataJson Json?
-  createdAt    DateTime         @default(now())
+  createdAt    DateTime                 @default(now())
 
-  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  deployment ApplicationDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
+  @@map("DeployEvent")
   @@index([deploymentId])
   @@index([type])
   @@index([createdAt(sort: Desc)])
 }
 
-model DeploymentLog {
+model ApplicationDeploymentLog {
   id           String   @id @default(cuid())
   deploymentId String
   scope        String   @default("runtime")
@@ -304,8 +315,9 @@ model DeploymentLog {
   message      String
   timestamp    DateTime @default(now())
 
-  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  deployment ApplicationDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
+  @@map("DeploymentLog")
   @@index([deploymentId])
   @@index([timestamp(sort: Desc)])
 }
@@ -427,7 +439,7 @@ enum MeterAggregation {
   COUNT
 }
 
-enum InvoiceStatus {
+enum BillingInvoiceStatus {
   DRAFT
   ISSUED
   OPEN
@@ -438,7 +450,7 @@ enum InvoiceStatus {
   UNCOLLECTIBLE
 }
 
-enum InvoiceLineType {
+enum BillingInvoiceLineType {
   SUBSCRIPTION
   METERED
   ADJUSTMENT
@@ -446,7 +458,7 @@ enum InvoiceLineType {
   CREDIT
 }
 
-enum InvoiceLineSourceType {
+enum BillingInvoiceLineSourceType {
   RATED_USAGE
   ADJUSTMENT
   MANUAL
@@ -621,9 +633,9 @@ model BillingAccount {
   updatedAt      DateTime             @updatedAt
 
   subscriptions BillingSubscription[]
-  usageEvents   UsageEvent[]
-  ratedUsage    RatedUsage[]
-  invoices      Invoice[]
+  usageEvents   BillingUsageEvent[]
+  ratedUsage    BillingRatedUsage[]
+  invoices      BillingInvoice[]
   adjustments   BillingAdjustment[]
   runs          BillingRun[]
   auditLogs     BillingAuditLog[]
@@ -642,16 +654,16 @@ model BillingSubscription {
   updatedAt        DateTime                  @updatedAt
 
   billingAccount BillingAccount        @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  versions       SubscriptionVersion[]
-  usageEvents    UsageEvent[]
-  invoices       Invoice[]
+  versions       ServiceSubscriptionVersion[]
+  usageEvents    BillingUsageEvent[]
+  invoices       BillingInvoice[]
 
   @@unique([billingAccountId, externalKey])
   @@index([billingAccountId, status])
 }
 
-model SubscriptionVersion {
-  id             String    @id @default(cuid())
+model ServiceSubscriptionVersion {
+  id             String    @id(map: "ServiceSubscriptionVersion_pkey") @default(cuid())
   subscriptionId String
   planVersionId  String
   version        Int
@@ -663,15 +675,16 @@ model SubscriptionVersion {
   updatedAt      DateTime  @updatedAt
 
   subscription BillingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  planVersion  PlanVersion         @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
-  ratedUsage   RatedUsage[]
+  planVersion  BillingPlanTier     @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  ratedUsage   BillingRatedUsage[]
 
-  @@unique([subscriptionId, version])
-  @@index([subscriptionId, effectiveFrom(sort: Desc)])
-  @@index([planVersionId])
+  @@unique([subscriptionId, version], map: "ServiceSubscriptionVersion_subscriptionId_version_key")
+  @@index([subscriptionId, effectiveFrom(sort: Desc)], map: "ServiceSubscriptionVersion_subscriptionId_effectiveFrom_idx")
+  @@index([planVersionId], map: "ServiceSubscriptionVersion_planVersionId_idx")
+  @@map("SubscriptionVersion")
 }
 
-model Plan {
+model BillingPlan {
   id           String   @id @default(cuid())
   code         String   @unique
   name         String
@@ -681,10 +694,12 @@ model Plan {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  versions PlanVersion[]
+  versions BillingPlanTier[]
+
+  @@map("Plan")
 }
 
-model PlanVersion {
+model BillingPlanTier {
   id            String        @id @default(cuid())
   planId        String
   version       Int
@@ -695,15 +710,16 @@ model PlanVersion {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  plan                 Plan                  @relation(fields: [planId], references: [id], onDelete: Cascade)
-  subscriptionVersions SubscriptionVersion[]
-  meterPrices          MeterPrice[]
+  plan                 BillingPlan                 @relation(fields: [planId], references: [id], onDelete: Cascade)
+  subscriptionVersions ServiceSubscriptionVersion[]
+  meterPrices          BillingMeterPrice[]
 
   @@unique([planId, version])
   @@index([planId, effectiveFrom(sort: Desc)])
+  @@map("PlanVersion")
 }
 
-model Meter {
+model BillingMeter {
   id           String           @id @default(cuid())
   code         String           @unique
   name         String
@@ -715,13 +731,14 @@ model Meter {
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
-  meterPrices MeterPrice[]
-  usageEvents UsageEvent[]
+  meterPrices BillingMeterPrice[]
+  usageEvents BillingUsageEvent[]
 
   @@index([eventName])
+  @@map("Meter")
 }
 
-model MeterPrice {
+model BillingMeterPrice {
   id            String    @id @default(cuid())
   meterId       String
   planVersionId String
@@ -734,15 +751,16 @@ model MeterPrice {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  meter       Meter        @relation(fields: [meterId], references: [id], onDelete: Cascade)
-  planVersion PlanVersion  @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
-  ratedUsage  RatedUsage[]
+  meter       BillingMeter         @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  planVersion BillingPlanTier      @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  ratedUsage  BillingRatedUsage[]
 
   @@unique([meterId, planVersionId, effectiveFrom])
   @@index([meterId, planVersionId])
+  @@map("MeterPrice")
 }
 
-model UsageEvent {
+model BillingUsageEvent {
   id               String   @id @default(cuid())
   billingAccountId String
   subscriptionId   String?
@@ -757,16 +775,17 @@ model UsageEvent {
 
   billingAccount BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   subscription   BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  meter          Meter                @relation(fields: [meterId], references: [id], onDelete: Restrict)
-  ratedUsage     RatedUsage?
+  meter          BillingMeter         @relation(fields: [meterId], references: [id], onDelete: Restrict)
+  ratedUsage     BillingRatedUsage?
 
   @@unique([billingAccountId, idempotencyKey])
   @@index([billingAccountId, eventTimestamp])
   @@index([subscriptionId, meterId, eventTimestamp])
   @@index([meterId, eventTimestamp])
+  @@map("UsageEvent")
 }
 
-model RatedUsage {
+model BillingRatedUsage {
   id                    String   @id @default(cuid())
   usageEventId          String   @unique
   billingAccountId      String
@@ -780,27 +799,28 @@ model RatedUsage {
   ratedAt               DateTime @default(now())
   createdAt             DateTime @default(now())
 
-  usageEvent          UsageEvent           @relation(fields: [usageEventId], references: [id], onDelete: Cascade)
+  usageEvent          BillingUsageEvent    @relation(fields: [usageEventId], references: [id], onDelete: Cascade)
   billingAccount      BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  subscriptionVersion SubscriptionVersion? @relation(fields: [subscriptionVersionId], references: [id], onDelete: SetNull)
-  meterPrice          MeterPrice?          @relation(fields: [meterPriceId], references: [id], onDelete: SetNull)
-  invoiceLine         InvoiceLine?         @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
+  subscriptionVersion ServiceSubscriptionVersion? @relation(fields: [subscriptionVersionId], references: [id], onDelete: SetNull)
+  meterPrice          BillingMeterPrice?   @relation(fields: [meterPriceId], references: [id], onDelete: SetNull)
+  invoiceLine         BillingInvoiceLine?  @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
 
   @@index([billingAccountId, ratedAt])
   @@index([invoiceLineId])
   @@index([subscriptionVersionId])
+  @@map("RatedUsage")
 }
 
-model Invoice {
-  id               String        @id @default(cuid())
+model BillingInvoice {
+  id               String              @id @default(cuid())
   billingAccountId String
   subscriptionId   String?
   billingRunId     String?
-  invoiceNumber    String        @unique
+  invoiceNumber    String              @unique
   periodStart      DateTime
   periodEnd        DateTime
   currency         String
-  status           InvoiceStatus @default(DRAFT)
+  status           BillingInvoiceStatus @default(DRAFT)
   subtotalAmount   Decimal       @default(0) @db.Decimal(18, 6)
   taxAmount        Decimal       @default(0) @db.Decimal(18, 6)
   discountAmount   Decimal       @default(0) @db.Decimal(18, 6)
@@ -822,7 +842,7 @@ model Invoice {
   subscription         BillingSubscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   billingRun           BillingRun?              @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
   gateway              PaymentGateway?          @relation(fields: [gatewayId], references: [id])
-  lines                InvoiceLine[]
+  lines                BillingInvoiceLine[]
   adjustments          BillingAdjustment[]
   paymentConfirmations PaymentConfirmation[]
 
@@ -830,12 +850,13 @@ model Invoice {
   @@index([billingAccountId, status])
   @@index([subscriptionId, periodStart])
   @@index([billingRunId])
+  @@map("Invoice")
 }
 
-model InvoiceLine {
-  id           String          @id @default(cuid())
+model BillingInvoiceLine {
+  id           String               @id @default(cuid())
   invoiceId    String
-  lineType     InvoiceLineType
+  lineType     BillingInvoiceLineType
   description  String
   quantity     Decimal         @db.Decimal(18, 6)
   unitPrice    Decimal         @db.Decimal(18, 6)
@@ -847,27 +868,29 @@ model InvoiceLine {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  invoice    Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  sources    InvoiceLineSource[]
-  ratedUsage RatedUsage[]
+  invoice    BillingInvoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  sources    BillingInvoiceLineSource[]
+  ratedUsage BillingRatedUsage[]
 
   @@index([invoiceId])
   @@index([lineType])
+  @@map("InvoiceLine")
 }
 
-model InvoiceLineSource {
-  id            String                @id @default(cuid())
+model BillingInvoiceLineSource {
+  id            String                     @id @default(cuid())
   invoiceLineId String
-  sourceType    InvoiceLineSourceType
+  sourceType    BillingInvoiceLineSourceType
   sourceId      String
   amount        Decimal               @db.Decimal(18, 6)
   metadataJson  Json?
   createdAt     DateTime              @default(now())
 
-  invoiceLine InvoiceLine @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
+  invoiceLine BillingInvoiceLine @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
 
   @@unique([invoiceLineId, sourceType, sourceId])
   @@index([sourceType, sourceId])
+  @@map("InvoiceLineSource")
 }
 
 model BillingAdjustment {
@@ -885,7 +908,7 @@ model BillingAdjustment {
   updatedAt             DateTime              @updatedAt
 
   billingAccount BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  invoice        Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoice        BillingInvoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   @@index([billingAccountId, createdAt(sort: Desc)])
   @@index([invoiceId])
@@ -906,7 +929,7 @@ model BillingRun {
   updatedAt        DateTime         @updatedAt
 
   billingAccount BillingAccount?   @relation(fields: [billingAccountId], references: [id], onDelete: SetNull)
-  invoices       Invoice[]
+  invoices       BillingInvoice[]
   auditLogs      BillingAuditLog[]
 
   @@unique([billingAccountId, runType, periodStart, periodEnd])
@@ -935,7 +958,7 @@ model BillingAuditLog {
 
 // ─── Billing Models ──────────────────────────────────────────────────────────
 
-model Region {
+model ServiceRegion {
   id        String   @id @default(cuid())
   code      String   @unique
   name      String
@@ -945,12 +968,13 @@ model Region {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pricings  Pricing[]
+  pricings  ServicePricing[]
 
+  @@map("Region")
   @@index([isActive])
 }
 
-model Package {
+model ServicePackage {
   id          String       @id @default(cuid())
   code        ServiceType @unique
   name        String
@@ -960,8 +984,9 @@ model Package {
   updatedAt   DateTime    @updatedAt
 
   plans          ServicePlan[]
-  subscriptions Subscription[]
+  subscriptions ServiceSubscription[]
 
+  @@map("Package")
   @@index([code])
 }
 
@@ -975,15 +1000,15 @@ model ServicePlan {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  package       Package        @relation(fields: [packageId], references: [id])
-  pricings      Pricing[]
-  subscriptions Subscription[]
+  package       ServicePackage        @relation(fields: [packageId], references: [id])
+  pricings      ServicePricing[]
+  subscriptions ServiceSubscription[]
 
   @@unique([packageId, code])
   @@index([packageId])
 }
 
-model Pricing {
+model ServicePricing {
   id              String           @id @default(cuid())
   planId          String
   regionId        String
@@ -999,16 +1024,17 @@ model Pricing {
   updatedAt       DateTime        @updatedAt
 
   servicePlan ServicePlan  @relation(fields: [planId], references: [id])
-  region        Region          @relation(fields: [regionId], references: [id])
-  subscriptions Subscription[]
+  region        ServiceRegion          @relation(fields: [regionId], references: [id])
+  subscriptions ServiceSubscription[]
 
+  @@map("Pricing")
   @@unique([planId, regionId, type, billingMode])
   @@index([planId])
   @@index([regionId])
 }
 
-model Subscription {
-  id                  String                   @id @default(cuid())
+model ServiceSubscription {
+  id                  String                   @id(map: "ServiceSubscription_pkey") @default(cuid())
   organizationId      String                   @map("tenantId")
   packageId           String
   planId              String
@@ -1023,15 +1049,16 @@ model Subscription {
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
 
-  package      Package      @relation(fields: [packageId], references: [id])
-  plan         ServicePlan  @relation(fields: [planId], references: [id])
-  pricing      Pricing      @relation(fields: [pricingId], references: [id])
-  usageLedgers UsageLedger[]
+  package      ServicePackage @relation(fields: [packageId], references: [id])
+  plan         ServicePlan    @relation(fields: [planId], references: [id])
+  pricing      ServicePricing @relation(fields: [pricingId], references: [id])
+  usageLedgers BillingUsageLedger[]
   vpnClients   VpnClient[]
 
-  @@unique([organizationId, packageId, planId], map: "Subscription_tenantId_packageId_planId_key")
-  @@index([organizationId, status], map: "Subscription_tenantId_status_idx")
-  @@index([packageId])
+  @@unique([organizationId, packageId, planId], map: "ServiceSubscription_tenantId_packageId_planId_key")
+  @@index([organizationId, status], map: "ServiceSubscription_tenantId_status_idx")
+  @@index([packageId], map: "ServiceSubscription_packageId_idx")
+  @@map("Subscription")
 }
 
 model VpnClient {
@@ -1051,7 +1078,7 @@ model VpnClient {
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
-  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscription ServiceSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
   @@unique([provider, clientName])
   @@index([organizationId, status])
@@ -1059,7 +1086,7 @@ model VpnClient {
   @@index([currentPeriodEnd])
 }
 
-model UsageLedger {
+model BillingUsageLedger {
   id             String    @id @default(cuid())
   organizationId String    @map("tenantId")
   subscriptionId String
@@ -1069,11 +1096,12 @@ model UsageLedger {
   metadata       Json?
   createdAt      DateTime  @default(now())
 
-  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  subscription ServiceSubscription @relation(fields: [subscriptionId], references: [id])
 
   @@index([organizationId, period], map: "UsageLedger_tenantId_period_idx")
   @@index([organizationId, category])
   @@index([subscriptionId])
+  @@map("UsageLedger")
 }
 
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────
@@ -1549,13 +1577,13 @@ model PaymentGateway {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  bankAccounts BankAccount[]
-  invoices     Invoice[]
+  bankAccounts PaymentBankAccount[]
+  invoices     BillingInvoice[]
 
   @@index([type, isActive])
 }
 
-model BankAccount {
+model PaymentBankAccount {
   id            String   @id @default(cuid())
   gatewayId     String?
   bankCode      String   // "BCA", "MANDIRI", "BRI", "BNI"
@@ -1580,6 +1608,7 @@ model BankAccount {
   gateway             PaymentGateway?          @relation(fields: [gatewayId], references: [id])
   paymentConfirmations PaymentConfirmation[]
 
+  @@map("BankAccount")
   @@index([gatewayId, isActive])
   @@index([bankCode])
   @@index([currency, isActive])
@@ -1589,7 +1618,7 @@ model BankAccount {
 /// currency (USD). Prices are authored in the base currency; every other
 /// currency is derived by multiplying by `ratePerBase`. Exactly one row must
 /// have `isBase = true` (its `ratePerBase` is 1).
-model Currency {
+model PaymentCurrency {
   id          String   @id @default(cuid())
   code        String   @unique // ISO 4217, e.g. "USD", "IDR"
   name        String   // "US Dollar", "Indonesian Rupiah"
@@ -1606,6 +1635,7 @@ model Currency {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@map("Currency")
   @@index([isActive])
 }
 
@@ -1627,8 +1657,8 @@ model PaymentConfirmation {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  invoice     Invoice      @relation(fields: [invoiceId], references: [id])
-  bankAccount BankAccount  @relation(fields: [bankAccountId], references: [id])
+  invoice     BillingInvoice @relation(fields: [invoiceId], references: [id])
+  bankAccount PaymentBankAccount  @relation(fields: [bankAccountId], references: [id])
 
   @@index([invoiceId])
   @@index([bankAccountId])

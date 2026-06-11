@@ -28,7 +28,7 @@ export class QuotaGateService {
       resources: WhatsAppPlanResources
     }
   }> {
-    const subscription = await this.prisma.subscription.findFirst({
+    const subscription = await this.prisma.serviceSubscription.findFirst({
       where: {
         organizationId,
         package: { code: "WHATSAPP" },

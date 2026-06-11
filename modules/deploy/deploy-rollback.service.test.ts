@@ -27,13 +27,13 @@ const mockPrisma = {
     findUniqueOrThrow: mock(() => Promise.resolve(mockStack)),
     update: mock(() => Promise.resolve(mockStack)),
   },
-  deployment: {
+  applicationDeployment: {
     findUniqueOrThrow: mock(() => Promise.resolve(mockTargetDeployment)),
     create: mock(() => Promise.resolve(mockRollbackDeployment)),
     findMany: mock(() => Promise.resolve([mockTargetDeployment])),
     count: mock(() => Promise.resolve(0)),
   },
-  deployEvent: {
+  applicationDeployEvent: {
     create: mock(() => Promise.resolve({ id: "evt-1" })),
   },
   $transaction: mock((fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
@@ -49,8 +49,8 @@ const { rollbackDeployment, getRollbackOptions } = await import(
 
 describe("deploy-rollback.service", () => {
   beforeEach(() => {
-    mockPrisma.deployment.create.mockClear()
-    mockPrisma.deployEvent.create.mockClear()
+    mockPrisma.applicationDeployment.create.mockClear()
+    mockPrisma.applicationDeployEvent.create.mockClear()
     mockPrisma.$transaction.mockClear()
   })
 
@@ -63,12 +63,12 @@ describe("deploy-rollback.service", () => {
     expect(result).toHaveProperty("deploymentId")
     expect(result.status).toBe("QUEUED")
     expect(mockPrisma.$transaction).toHaveBeenCalled()
-    expect(mockPrisma.deployment.create).toHaveBeenCalled()
-    expect(mockPrisma.deployEvent.create).toHaveBeenCalled()
+    expect(mockPrisma.applicationDeployment.create).toHaveBeenCalled()
+    expect(mockPrisma.applicationDeployEvent.create).toHaveBeenCalled()
   })
 
   it("rollbackDeployment fails for non-running target", async () => {
-    mockPrisma.deployment.findUniqueOrThrow.mockResolvedValueOnce({
+    mockPrisma.applicationDeployment.findUniqueOrThrow.mockResolvedValueOnce({
       ...mockTargetDeployment,
       status: "FAILED",
     })

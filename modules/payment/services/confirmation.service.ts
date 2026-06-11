@@ -28,7 +28,7 @@ export class ConfirmationService {
   }) {
     const { invoiceId, data } = input
 
-    const invoice = await prisma.invoice.findFirst({
+    const invoice = await prisma.billingInvoice.findFirst({
       where: { id: invoiceId, status: "OPEN" },
     })
 
@@ -126,7 +126,7 @@ export class ConfirmationService {
       })
 
       // Mark invoice as paid
-      await tx.invoice.update({
+      await tx.billingInvoice.update({
         where: { id: confirmation.invoiceId },
         data: { status: "PAID" },
       })

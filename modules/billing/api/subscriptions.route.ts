@@ -80,7 +80,7 @@ export const createBillingSubscriptionsRoutes = (
         }
 
         // Fetch all active subscriptions for the organization tenant.
-        const subscriptions = await prisma.subscription.findMany({
+        const subscriptions = await prisma.serviceSubscription.findMany({
           where: { organizationId: billingAccount.tenantId },
           include: {
             plan: { select: { code: true, resources: true } },

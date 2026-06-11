@@ -51,7 +51,7 @@ export const createWebhookRoutes = () =>
       if (resultCode === "00") {
         try {
           // Look up invoice and billing account to get organizationId before crediting
-          const invoice = await prisma.invoice.findUnique({
+          const invoice = await prisma.billingInvoice.findUnique({
             where: { id: merchantOrderId },
           })
 

@@ -2,7 +2,7 @@ import { createWorkOS } from "@workos-inc/node"
 import type { User } from "@workos-inc/node"
 
 import { prisma } from "@/lib/prisma"
-import type { ApiKeyEnvironment } from "@prisma/client"
+import type { AuthApiKeyEnvironment } from "@prisma/client"
 import { hashApiKey } from "@/lib/whatsapp/crypto"
 import type { PlatformScope } from "./types"
 
@@ -117,7 +117,7 @@ export const resolveApiKey = async (
     return null
   }
 
-  let environment: ApiKeyEnvironment = "LIVE"
+  let environment: AuthApiKeyEnvironment = "LIVE"
   let normalizedKey = rawKey
 
   if (rawKey.startsWith(API_KEY_PREFIXES.SANDBOX)) {
@@ -130,7 +130,7 @@ export const resolveApiKey = async (
   const salt = API_KEY_HASH_SALT()
   const keyHash = await hashApiKey(normalizedKey, salt)
 
-  const apiKey = await prisma.apiKey.findFirst({
+  const apiKey = await prisma.authApiKey.findFirst({
     where: {
       keyHash,
       environment: environment,
@@ -141,7 +141,7 @@ export const resolveApiKey = async (
 
   if (!apiKey) return null
 
-  prisma.apiKey
+  prisma.authApiKey
     .update({
       where: { id: apiKey.id },
       data: {
@@ -156,7 +156,7 @@ export const resolveApiKey = async (
     keyId: apiKey.id,
     keyName: apiKey.name,
     organizationId: apiKey.organizationId,
-    environment: apiKey.environment as ApiKeyEnvironment,
+    environment: apiKey.environment as AuthApiKeyEnvironment,
     scopes: apiKey.scopes as string[],
   }
 }

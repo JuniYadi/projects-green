@@ -268,7 +268,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           throw error
         }
 
-        // ── Resolve subscription FK refs (Package/ServicePlan/Pricing) ──
+        // ── Resolve subscription FK refs (ServicePackage/ServicePlan/ServicePricing) ──
         // Done BEFORE the charge so a misconfigured (plan, region) returns
         // 422 without debiting the customer's balance.
         let refs
@@ -309,7 +309,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           // Issue 6 Fix: we check for status !== "ACTIVE". If the subscription
           // is suspended, we reset it to "SUSPENDED" (pending activation)
           // and try charging again.
-          const existing = await prisma.subscription.findUnique({
+          const existing = await prisma.serviceSubscription.findUnique({
             where: {
               organizationId_packageId_planId: {
                 organizationId: auth.organizationId,
@@ -326,7 +326,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
             // Skip the no-op status update. Only refresh period if stale.
             const periodStale = existing.currentPeriodEnd < now
             if (periodStale) {
-              await prisma.subscription.update({
+              await prisma.serviceSubscription.update({
                 where: { id: existing.id },
                 data: {
                   currentPeriodStart: now,
@@ -339,7 +339,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           } else {
             // Issue 1 Fix: Create with status: "SUSPENDED" to avoid
             // orphaned ACTIVE records on billing failure (402).
-            const subscription = await prisma.subscription.create({
+            const subscription = await prisma.serviceSubscription.create({
               data: {
                 organizationId: auth.organizationId,
                 packageId: refs.packageId,
@@ -412,7 +412,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
 
           // Charge and provisioning succeeded -> activate subscription
           if (isNewOrSuspended && vpnSubscriptionId) {
-            await prisma.subscription.update({
+            await prisma.serviceSubscription.update({
               where: { id: vpnSubscriptionId },
               data: { status: "ACTIVE" },
             })
@@ -421,7 +421,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           // Issue 1 Fix: Ensure the subscription is left as SUSPENDED if charge fails
           if (isNewOrSuspended && vpnSubscriptionId) {
             try {
-              await prisma.subscription.update({
+              await prisma.serviceSubscription.update({
                 where: { id: vpnSubscriptionId },
                 data: {
                   status: "SUSPENDED",

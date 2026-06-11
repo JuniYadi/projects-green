@@ -99,7 +99,7 @@ export async function triggerDeploy(params: {
   triggerType?: "MANUAL" | "GITHUB" | "TEMPLATE"
 }) {
   // Count previous non-rollback deployments to set attempt number
-  const previousAttempts = await prisma.deployment.count({
+  const previousAttempts = await prisma.applicationDeployment.count({
     where: { stackId: params.stackId, rollbackOfId: null },
   })
 
@@ -113,7 +113,7 @@ export async function triggerDeploy(params: {
       throw new Error("A deployment is already in progress for this stack")
     }
 
-    const newDeployment = await tx.deployment.create({
+    const newDeployment = await tx.applicationDeployment.create({
       data: {
         stackId: params.stackId,
         organizationId: stack.organizationId,
@@ -127,7 +127,7 @@ export async function triggerDeploy(params: {
       },
     })
 
-    await tx.deployEvent.create({
+    await tx.applicationDeployEvent.create({
       data: {
         deploymentId: newDeployment.id,
         type: "QUEUED",
@@ -136,7 +136,7 @@ export async function triggerDeploy(params: {
       },
     })
 
-    await tx.deploymentLog.create({
+    await tx.applicationDeploymentLog.create({
       data: {
         deploymentId: newDeployment.id,
         scope: "build",

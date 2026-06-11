@@ -9,7 +9,7 @@ const mockApiKeyUpdate = mock(async (): Promise<any> => ({}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    apiKey: {
+    authApiKey: {
       findFirst: mockApiKeyFindFirst,
       update: mockApiKeyUpdate,
     },

@@ -6,7 +6,7 @@
  *   bun run scripts/create-api-key.ts --name "My Key" --environment SANDBOX --organizationId org_xxx
  *
  * The raw key is printed ONCE to stdout and never stored. The hash is
- * written to the ApiKey table in the database.
+ * written to the AuthApiKey table in the database.
  */
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
@@ -51,7 +51,7 @@ async function main() {
   const prefix = environment === "SANDBOX" ? "test_" : "live_"
   const { raw, hash } = await generateRawApiKey(prefix)
 
-  await prisma.apiKey.create({
+  await prisma.authApiKey.create({
     data: {
       name: name!,
       keyHash: hash,

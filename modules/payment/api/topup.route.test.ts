@@ -56,10 +56,10 @@ mock.module("@/lib/prisma", () => ({
       findFirst: mock(() => Promise.resolve(null)),
       findMany: mock(() => Promise.resolve([])),
     },
-    bankAccount: {
+    paymentBankAccount: {
       findMany: mock(() => Promise.resolve([])),
     },
-    currency: {
+    paymentCurrency: {
       findUnique: mock(() =>
         Promise.resolve({
           code: "USD",
@@ -108,12 +108,12 @@ describe("Topup Route", () => {
     ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>).mockImplementation(
       () => Promise.resolve([])
     )
-    ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockClear()
-    ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockImplementation(
+    ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockClear()
+    ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockImplementation(
       () => Promise.resolve([])
     )
-    ;(prisma.currency.findUnique as ReturnType<typeof mock>).mockClear()
-    ;(prisma.currency.findUnique as ReturnType<typeof mock>).mockImplementation(
+    ;(prisma.paymentCurrency.findUnique as ReturnType<typeof mock>).mockClear()
+    ;(prisma.paymentCurrency.findUnique as ReturnType<typeof mock>).mockImplementation(
       () =>
         Promise.resolve({
           code: "USD",
@@ -123,8 +123,8 @@ describe("Topup Route", () => {
           maxTopup: { toNumber: () => 10000 },
         })
     )
-    ;(prisma.currency.findFirst as ReturnType<typeof mock>).mockClear()
-    ;(prisma.currency.findFirst as ReturnType<typeof mock>).mockImplementation(
+    ;(prisma.paymentCurrency.findFirst as ReturnType<typeof mock>).mockClear()
+    ;(prisma.paymentCurrency.findFirst as ReturnType<typeof mock>).mockImplementation(
       () =>
         Promise.resolve({
           code: "USD",
@@ -224,7 +224,7 @@ describe("Topup Route", () => {
 
     it("should create invoice and return success for MANUAL_BANK", async () => {
       const { prisma } = await import("@/lib/prisma")
-      ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([
+      ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([
         {
           id: "bank-idr",
           bankCode: "BCA",
@@ -266,7 +266,7 @@ describe("Topup Route", () => {
         currency: "USD",
         balance: { toNumber: () => 0 },
       })
-      ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([])
+      ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([])
 
       const response = await app.handle(
         new Request("http://localhost/topup", {
@@ -380,7 +380,7 @@ describe("Topup Route", () => {
       }
       const { prisma } = await import("@/lib/prisma")
       ;(
-        prisma.invoice.findFirst as ReturnType<typeof mock>
+        prisma.billingInvoice.findFirst as ReturnType<typeof mock>
       ).mockResolvedValueOnce(mockInvoice)
 
       const response = await app.handle(
@@ -404,7 +404,7 @@ describe("Topup Route", () => {
         currency: "USD",
         balance: { toNumber: () => 0 },
       })
-      ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([])
+      ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([])
 
       const response = await app.handle(
         new Request("http://localhost/topup/methods")
@@ -415,7 +415,7 @@ describe("Topup Route", () => {
       expect(body.ok).toBe(true)
       expect(body.currency).toBe("USD")
       expect(body.methods.MANUAL_BANK).toBe(false)
-      expect(prisma.bankAccount.findMany).toHaveBeenCalledWith(
+      expect(prisma.paymentBankAccount.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             OR: [
@@ -476,7 +476,7 @@ describe("Topup Route", () => {
         currency: "USD",
         balance: { toNumber: () => 0 },
       })
-      ;(prisma.bankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([
+      ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([
         {
           id: "bank-usd",
           bankCode: "HSBC",

@@ -24,7 +24,7 @@ const mockEmbedDocument = mock(async () => new Float32Array(1536).fill(0))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    knowledgeDocument: {
+    docsKnowledgeDocument: {
       findFirst: mockFindFirst,
       create: mockCreate,
       update: mockUpdate,

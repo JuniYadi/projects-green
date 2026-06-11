@@ -10,7 +10,7 @@ export type PlatformAccess = {
 const toPlatformAccessRole = (
   role: string | null | undefined
 ): PlatformAccessRole => {
-  if (role === "SUPER_ADMIN") {
+  if (role === "SUPER_ADMIN" || role === "AUTH_SUPER_ADMIN") {
     return "super_admin"
   }
 
@@ -28,7 +28,7 @@ export const getPlatformAccessForUser = async (
   }
 
   try {
-    const record = await prisma.platformUserRole.findFirst({
+    const record = await prisma.authPlatformUserRole.findFirst({
       where: {
         OR: [
           ...(workosUserId ? [{ workosUserId }] : []),

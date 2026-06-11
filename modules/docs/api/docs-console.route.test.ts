@@ -23,7 +23,7 @@ const mockFindMany = mock(() =>
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    knowledgeDocument: {
+    docsKnowledgeDocument: {
       findMany: mockFindMany,
     },
   },

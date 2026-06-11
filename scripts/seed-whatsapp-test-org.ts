@@ -1,5 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient, PlatformRole, WhatsappDeviceStatus } from "@prisma/client"
+import { PrismaClient, AuthPlatformRole, WhatsappDeviceStatus } from "@prisma/client"
 import { getWorkOS } from "@workos-inc/authkit-nextjs"
 
 const DATABASE_URL = process.env.DATABASE_URL?.trim()
@@ -64,29 +64,29 @@ Environment:
 // ─── Core seed functions ──────────────────────────────────────────────────────
 
 const createSuperAdmin = async () => {
-  const existing = await prisma.platformUserRole.findFirst({
+  const existing = await prisma.authPlatformUserRole.findFirst({
     where: { email: DEFAULT_TEST_DATA.superAdminEmail },
   })
 
   if (existing) {
-    if (existing.role === PlatformRole.SUPER_ADMIN) {
+    if (existing.role === AuthPlatformRole.SUPER_ADMIN) {
       console.log(`Super admin ${DEFAULT_TEST_DATA.superAdminEmail} already exists`)
       return existing
     }
 
-    const updated = await prisma.platformUserRole.update({
+    const updated = await prisma.authPlatformUserRole.update({
       where: { id: existing.id },
-      data: { role: PlatformRole.SUPER_ADMIN },
+      data: { role: AuthPlatformRole.SUPER_ADMIN },
     })
     console.log(`Promoted to super admin: ${DEFAULT_TEST_DATA.superAdminEmail}`)
     return updated
   }
 
-  const created = await prisma.platformUserRole.create({
+  const created = await prisma.authPlatformUserRole.create({
     data: {
       email: DEFAULT_TEST_DATA.superAdminEmail,
       workosUserId: DEFAULT_TEST_DATA.superAdminUserId,
-      role: PlatformRole.SUPER_ADMIN,
+      role: AuthPlatformRole.SUPER_ADMIN,
     },
   })
 
@@ -307,7 +307,7 @@ const removeTestData = async () => {
     where: { organizationId: DEFAULT_TEST_DATA.organizationId },
   })
 
-  await prisma.platformUserRole.deleteMany({
+  await prisma.authPlatformUserRole.deleteMany({
     where: { email: DEFAULT_TEST_DATA.superAdminEmail },
   })
 
@@ -329,7 +329,7 @@ const removeTestData = async () => {
  * real WorkOS org we create here, with roleSlug=`user_admin`, which is
  * enough to satisfy the auth plugin's "first active org wins" rule.
  * The `requireTenantAdmin` guard still succeeds because the seed user
- * is also a `super_admin` (via `PlatformUserRole`), which short-circuits
+ * is also a `super_admin` (via `AuthPlatformUserRole`), which short-circuits
  * the tenant role check.
  *
  * If WorkOS is unreachable in the current environment (e.g. CI without

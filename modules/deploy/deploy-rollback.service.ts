@@ -6,7 +6,7 @@ export async function rollbackDeployment(params: {
 }) {
   // Wrap in transaction for atomicity
   const rollbackDeployment = await prisma.$transaction(async (tx) => {
-    const targetDeployment = await tx.deployment.findUniqueOrThrow({
+    const targetDeployment = await tx.applicationDeployment.findUniqueOrThrow({
       where: { id: params.targetDeploymentId },
     })
 
@@ -23,12 +23,12 @@ export async function rollbackDeployment(params: {
     })
 
     // Count previous non-rollback deployments to set attempt number
-    const previousAttempts = await tx.deployment.count({
+    const previousAttempts = await tx.applicationDeployment.count({
       where: { stackId: params.stackId, rollbackOfId: null },
     })
 
     // Create rollback deployment
-    const rollback = await tx.deployment.create({
+    const rollback = await tx.applicationDeployment.create({
       data: {
         stackId: params.stackId,
         organizationId: currentStack.organizationId,
@@ -43,7 +43,7 @@ export async function rollbackDeployment(params: {
       },
     })
 
-    await tx.deployEvent.create({
+    await tx.applicationDeployEvent.create({
       data: {
         deploymentId: rollback.id,
         type: "ROLLBACK_STARTED",
@@ -67,7 +67,7 @@ export async function rollbackDeployment(params: {
 }
 
 export async function getRollbackOptions(stackId: string) {
-  return prisma.deployment.findMany({
+  return prisma.applicationDeployment.findMany({
     where: {
       stackId,
       status: "RUNNING",

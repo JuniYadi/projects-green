@@ -26,7 +26,7 @@ const defaultDeps: AdminMembersRouteDeps = {
   authenticate: () => withAuth(),
   getPlatformRole: getPlatformRoleForUser,
   isAdmin: (actor) => {
-    // super_admin from PlatformUserRole table bypasses auth.role entirely
+    // super_admin from AuthPlatformUserRole table bypasses auth.role entirely
     if (actor.platformRole === "super_admin") return true
     // tenant-level admin/owner check requires auth.role to be present
     return actor.orgRole === "admin" || actor.orgRole === "owner"
@@ -152,7 +152,7 @@ export const createAdminMembersRoutes = (
         const organizationIds = billingAccountsWithOrg.map((ba) => ba.organizationId)
 
         // Get all subscriptions for these organizations
-        const subscriptions = await prisma.subscription.findMany({
+        const subscriptions = await prisma.serviceSubscription.findMany({
           where: {
             organizationId: { in: organizationIds },
           },
@@ -168,7 +168,7 @@ export const createAdminMembersRoutes = (
 
         // Get current month usage ledger
         const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM format
-        const usageLedger = await prisma.usageLedger.findMany({
+        const usageLedger = await prisma.billingUsageLedger.findMany({
           where: {
             organizationId: { in: organizationIds },
             period: currentMonth,
@@ -280,7 +280,7 @@ export const createAdminMembersRoutes = (
         const orgId = billingAccount.organizationId
 
         // Get subscriptions
-        const subscriptions = await prisma.subscription.findMany({
+        const subscriptions = await prisma.serviceSubscription.findMany({
           where: { organizationId: orgId },
           include: {
             package: { select: { code: true } },
@@ -290,7 +290,7 @@ export const createAdminMembersRoutes = (
 
         // Get current month usage
         const currentMonth = new Date().toISOString().slice(0, 7)
-        const usageLedger = await prisma.usageLedger.findMany({
+        const usageLedger = await prisma.billingUsageLedger.findMany({
           where: {
             organizationId: orgId,
             period: currentMonth,

@@ -1,24 +1,24 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { PlatformRole, type PlatformUserRole } from "@prisma/client"
+import { AuthPlatformRole, type AuthPlatformUserRole } from "@prisma/client"
 
-const baseSuperAdminRecord: PlatformUserRole = {
+const baseSuperAdminRecord: AuthPlatformUserRole = {
   id: "pur_1",
   email: "admin@example.com",
   workosUserId: "user_123",
-  role: PlatformRole.SUPER_ADMIN,
+  role: AuthPlatformRole.SUPER_ADMIN,
   createdAt: new Date("2026-06-04T00:00:00.000Z"),
   updatedAt: new Date("2026-06-04T00:00:00.000Z"),
 }
 
-const mockFindMany = mock(async () => [] as PlatformUserRole[])
-const mockFindFirst = mock(async () => null as PlatformUserRole | null)
+const mockFindMany = mock(async () => [] as AuthPlatformUserRole[])
+const mockFindFirst = mock(async () => null as AuthPlatformUserRole | null)
 const mockCreate = mock(async () => baseSuperAdminRecord)
 const mockUpdate = mock(async () => baseSuperAdminRecord)
 const mockDelete = mock(async () => ({ id: "pur_1" }))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    platformUserRole: {
+    authPlatformUserRole: {
       findMany: mockFindMany,
       findFirst: mockFindFirst,
       create: mockCreate,
@@ -91,7 +91,7 @@ describe("admin-role operations", () => {
     const rows = await listSuperAdmins()
 
     expect(mockFindMany).toHaveBeenCalledWith({
-      where: { role: PlatformRole.SUPER_ADMIN },
+      where: { role: AuthPlatformRole.SUPER_ADMIN },
       orderBy: { createdAt: "asc" },
     })
     expect(rows).toHaveLength(1)
@@ -107,7 +107,7 @@ describe("admin-role operations", () => {
       data: {
         email: "admin@example.com",
         workosUserId: "bootstrap:258d8dc916db8cea",
-        role: PlatformRole.SUPER_ADMIN,
+        role: AuthPlatformRole.SUPER_ADMIN,
       },
     })
   })
@@ -116,14 +116,14 @@ describe("admin-role operations", () => {
     mockFindFirst.mockResolvedValue({
       ...baseSuperAdminRecord,
       email: null,
-      role: PlatformRole.NONE,
+      role: AuthPlatformRole.NONE,
     })
 
     await addSuperAdmin({ workosUserId: " user_123 " })
 
     expect(mockUpdate).toHaveBeenCalledWith({
       where: { id: "pur_1" },
-      data: { role: PlatformRole.SUPER_ADMIN },
+      data: { role: AuthPlatformRole.SUPER_ADMIN },
     })
   })
 

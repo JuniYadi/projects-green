@@ -133,15 +133,15 @@ async function seedRegions() {
   let updated = 0
 
   for (const region of regions) {
-    const existing = await prisma.region.findUnique({ where: { code: region.code } })
+    const existing = await prisma.serviceRegion.findUnique({ where: { code: region.code } })
     if (existing) {
-      await prisma.region.update({
+      await prisma.serviceRegion.update({
         where: { code: region.code },
         data: { name: region.name, country: region.country, flag: region.flag },
       })
       updated++
     } else {
-      await prisma.region.create({ data: region })
+      await prisma.serviceRegion.create({ data: region })
       created++
     }
   }
@@ -155,15 +155,15 @@ async function seedPackages() {
   let updated = 0
 
   for (const pkg of packages) {
-    const existing = await prisma.package.findUnique({ where: { code: pkg.code as ServiceType } })
+    const existing = await prisma.servicePackage.findUnique({ where: { code: pkg.code as ServiceType } })
     if (existing) {
-      await prisma.package.update({
+      await prisma.servicePackage.update({
         where: { code: pkg.code as ServiceType },
         data: { name: pkg.name, description: pkg.description },
       })
       updated++
     } else {
-      await prisma.package.create({ data: { ...pkg, code: pkg.code as ServiceType } })
+      await prisma.servicePackage.create({ data: { ...pkg, code: pkg.code as ServiceType } })
       created++
     }
   }
@@ -177,7 +177,7 @@ async function seedPlans() {
   let updated = 0
 
   for (const plan of plans) {
-    const pkg = await prisma.package.findUnique({ where: { code: plan.packageCode as any } })
+    const pkg = await prisma.servicePackage.findUnique({ where: { code: plan.packageCode as any } })
     if (!pkg) {
       console.error(`  ⚠️ Package ${plan.packageCode} not found, skipping plan ${plan.code}`)
       continue
@@ -220,9 +220,10 @@ async function seedPricings() {
     const [planCode, regionCode] = [pricing.planCode, pricing.regionCode]
 
     // Find plan by compound key: packageCode_planCode (e.g., "APP_HOSTING_STARTER")
-    const pkgCode = planCode.split("_")[0]
-    const plCode = planCode.replace(`${pkgCode}_`, "")
-    const pkg = await prisma.package.findUnique({ where: { code: pkgCode as ServiceType } })
+    // Package codes may contain underscores (e.g. APP_HOSTING), so we match known prefixes
+    const pkgCode = getPackageCode(planCode)
+    const plCode = planCode.slice(pkgCode.length + 1) // +1 for the underscore
+    const pkg = await prisma.servicePackage.findUnique({ where: { code: pkgCode as ServiceType } })
     if (!pkg) {
       console.error(`  ⚠️ Package ${pkgCode} not found, skipping pricing`)
       skipped++
@@ -236,14 +237,14 @@ async function seedPricings() {
       continue
     }
 
-    const region = await prisma.region.findUnique({ where: { code: regionCode } })
+    const region = await prisma.serviceRegion.findUnique({ where: { code: regionCode } })
     if (!region) {
       console.error(`  ⚠️ Region ${regionCode} not found, skipping pricing`)
       skipped++
       continue
     }
 
-    const existing = await prisma.pricing.findFirst({
+    const existing = await prisma.servicePricing.findFirst({
       where: {
         planId: foundPlan.id,
         regionId: region.id,
@@ -266,12 +267,12 @@ const data: any = {
     }
 
     if (existing) {
-      await prisma.pricing.update({
+      await prisma.servicePricing.update({
         where: { id: existing.id },
         data,
       })
     } else {
-      await prisma.pricing.create({ data })
+      await prisma.servicePricing.create({ data })
       created++
     }
   }
@@ -312,6 +313,22 @@ async function seedBillingAccounts() {
   }
 
   console.log(`  ✅ Billing accounts: ${created} created, ${updated} found`)
+}
+
+/**
+ * Extract the package code from a compound plan code.
+ * Package codes may contain underscores (e.g. APP_HOSTING), so we match
+ * known prefixes rather than naively splitting on the first underscore.
+ */
+function getPackageCode(planCode: string): string {
+  const packageCodes: ServiceType[] = ["APP_HOSTING", "VPN", "WHATSAPP"]
+  for (const pkg of packageCodes) {
+    if (planCode.startsWith(pkg + "_")) {
+      return pkg
+    }
+  }
+  // Fallback: split on first underscore (for backward compatibility)
+  return planCode.split("_")[0]
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────

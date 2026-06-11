@@ -120,7 +120,7 @@ export const messageService: MessageService = {
     }
 
     // 3. Find active WhatsApp subscription for usage recording
-    const subscription = await prisma.subscription.findFirst({
+    const subscription = await prisma.serviceSubscription.findFirst({
       where: {
         organizationId,
         package: { code: "WHATSAPP" },

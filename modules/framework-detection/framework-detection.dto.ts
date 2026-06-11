@@ -133,7 +133,7 @@ export type InspectionLogDTO = {
 }
 
 export function toInspectionLogDTO(
-  log: Prisma.InspectionLogGetPayload<object>
+  log: Prisma.DetectorInspectionLogGetPayload<object>
 ): InspectionLogDTO {
   return {
     id: log.id,
@@ -169,7 +169,7 @@ export type RuntimeMappingDTO = {
 }
 
 export function toRuntimeMappingDTO(
-  mapping: Prisma.RuntimeMappingGetPayload<object>
+  mapping: Prisma.DetectorRuntimeMappingGetPayload<object>
 ): RuntimeMappingDTO {
   return {
     id: mapping.id,

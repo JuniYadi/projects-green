@@ -1,5 +1,5 @@
 /**
- * Seed script for generating embeddings for existing KnowledgeDocuments.
+ * Seed script for generating embeddings for existing DocsKnowledgeDocuments.
  *
  * Usage: bun run scripts/seed-embeddings.ts [--dry-run] [--limit=N] [--org=<orgId>]
  *
@@ -34,7 +34,7 @@ async function main() {
     where.organizationId = orgId
   }
 
-  const total = await prisma.knowledgeDocument.count({ where })
+  const total = await prisma.docsKnowledgeDocument.count({ where })
   console.log(`\nFound ${total} documents to process`)
 
   if (total === 0) {
@@ -43,7 +43,7 @@ async function main() {
   }
 
   if (DRY_RUN) {
-    const docs = await prisma.knowledgeDocument.findMany({
+    const docs = await prisma.docsKnowledgeDocument.findMany({
       where,
       take: limit ?? 10,
       select: { id: true, path: true, title: true },
@@ -65,7 +65,7 @@ async function main() {
   let hasMore = true
 
   while (hasMore) {
-    const docs = await prisma.knowledgeDocument.findMany({
+    const docs = await prisma.docsKnowledgeDocument.findMany({
       where,
       take: 50,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
@@ -94,7 +94,7 @@ async function main() {
           notes: doc.notes,
         })
 
-        await prisma.knowledgeDocument.update({
+        await prisma.docsKnowledgeDocument.update({
           where: { id: doc.id },
           data: { embedding },
         })
