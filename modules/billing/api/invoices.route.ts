@@ -134,7 +134,7 @@ export const createBillingInvoicesRoutes = (
         }
 
         // Fetch invoices for this billing account
-        const invoices = await prisma.invoice.findMany({
+        const invoices = await prisma.billingInvoice.findMany({
           where: { billingAccountId: account.id },
           include: {
             lines: true,
@@ -204,7 +204,7 @@ export const createBillingInvoicesRoutes = (
         }
 
         // Fetch invoice
-        const invoice = await prisma.invoice.findFirst({
+        const invoice = await prisma.billingInvoice.findFirst({
           where: {
             id,
             billingAccountId: account.id,

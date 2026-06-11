@@ -190,7 +190,7 @@ describe("framework-detection.dto", () => {
 
   describe("toInspectionLogDTO", () => {
     it("maps InspectionLog to DTO", () => {
-      const input: Prisma.InspectionLogGetPayload<object> = {
+      const input: Prisma.DetectorInspectionLogGetPayload<object> = {
         id: "log-123",
         installationId: BigInt(12345),
         repoUrl: "https://github.com/org/repo",
@@ -219,7 +219,7 @@ describe("framework-detection.dto", () => {
 
   describe("toRuntimeMappingDTO", () => {
     it("maps RuntimeMapping to DTO", () => {
-      const input: Prisma.RuntimeMappingGetPayload<object> = {
+      const input: Prisma.DetectorRuntimeMappingGetPayload<object> = {
         id: "mapping-1",
         frameworkId: "laravel",
         frameworkVersion: "10",
@@ -247,7 +247,7 @@ describe("framework-detection.dto", () => {
     })
 
     it("handles null frameworkVersion", () => {
-      const input: Prisma.RuntimeMappingGetPayload<object> = {
+      const input: Prisma.DetectorRuntimeMappingGetPayload<object> = {
         id: "mapping-2",
         frameworkId: "nextjs",
         frameworkVersion: null,

@@ -8,7 +8,7 @@ export class InvoiceExpirationService {
       overdueThreshold.getHours() - PAYMENT_CONSTANTS.DEFAULT_EXPIRY_DAYS * 24
     )
 
-    const result = await prisma.invoice.updateMany({
+    const result = await prisma.billingInvoice.updateMany({
       where: {
         status: "OPEN",
         createdAt: { lt: overdueThreshold },
@@ -23,7 +23,7 @@ export class InvoiceExpirationService {
     const threshold = new Date()
     threshold.setHours(threshold.getHours() + hoursUntilExpiry)
 
-    return prisma.invoice.findMany({
+    return prisma.billingInvoice.findMany({
       where: {
         status: "OPEN",
         dueDate: { lte: threshold },

@@ -137,7 +137,7 @@ export const createAdminInvoicesListRoutes = (
         }
 
         const [invoices, total] = await Promise.all([
-          prisma.invoice.findMany({
+          prisma.billingInvoice.findMany({
             where,
             include: {
               billingAccount: { select: { organizationId: true } },
@@ -146,7 +146,7 @@ export const createAdminInvoicesListRoutes = (
             skip,
             take: limit,
           }),
-          prisma.invoice.count({ where }),
+          prisma.billingInvoice.count({ where }),
         ])
 
         return {

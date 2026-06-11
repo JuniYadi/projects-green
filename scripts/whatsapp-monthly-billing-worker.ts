@@ -70,7 +70,7 @@ async function chargeMonthlyBases(): Promise<{
     // Batch: preload subscriptions for all orgs in this batch
     // (avoids N+1 queries where N = device count)
     const orgIds = [...new Set(devices.map((d) => d.organizationId))]
-    const subscriptions = await prisma.subscription.findMany({
+    const subscriptions = await prisma.serviceSubscription.findMany({
       where: {
         organizationId: { in: orgIds },
         package: { code: "WHATSAPP" },

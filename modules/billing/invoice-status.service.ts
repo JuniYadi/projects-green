@@ -66,7 +66,7 @@ export class InvoiceStatusManager {
     const threshold = new Date()
     threshold.setDate(threshold.getDate() - ISSUE_THRESHOLD_DAYS)
 
-    const invoices = await this.prisma.invoice.findMany({
+    const invoices = await this.prisma.billingInvoice.findMany({
       where: {
         status: "DRAFT",
         createdAt: { lt: threshold },
@@ -77,7 +77,7 @@ export class InvoiceStatusManager {
     let issued = 0
 
     for (const invoice of invoices) {
-      await this.prisma.invoice.update({
+      await this.prisma.billingInvoice.update({
         where: { id: invoice.id },
         data: {
           status: "ISSUED",
@@ -100,7 +100,7 @@ export class InvoiceStatusManager {
     const overdueThreshold = new Date()
     overdueThreshold.setDate(overdueThreshold.getDate() - OVERDUE_GRACE_DAYS)
 
-    const invoices = await this.prisma.invoice.findMany({
+    const invoices = await this.prisma.billingInvoice.findMany({
       where: {
         status: "ISSUED",
         dueAt: { lt: overdueThreshold },
@@ -111,7 +111,7 @@ export class InvoiceStatusManager {
     let overdue = 0
 
     for (const invoice of invoices) {
-      await this.prisma.invoice.update({
+      await this.prisma.billingInvoice.update({
         where: { id: invoice.id },
         data: { status: "OVERDUE" },
       })
@@ -132,7 +132,7 @@ export class InvoiceStatusManager {
     const threshold = new Date()
     threshold.setDate(threshold.getDate() + PAYMENT_REMINDER_DAYS)
 
-    const invoices = await this.prisma.invoice.findMany({
+    const invoices = await this.prisma.billingInvoice.findMany({
       where: {
         status: "ISSUED",
         dueAt: {
@@ -159,7 +159,7 @@ export class InvoiceStatusManager {
       if (this.emailService && invoice.billingAccount?.organizationId) {
         const reminderCount = ((metadata.reminderCount as number) ?? 0) + 1
 
-        await this.prisma.invoice.update({
+        await this.prisma.billingInvoice.update({
           where: { id: invoice.id },
           data: {
             metadataJson: {

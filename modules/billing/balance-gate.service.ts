@@ -212,7 +212,7 @@ export class BalanceGateService {
     subscriptionId: string,
   ): Promise<ChargeResult> {
     // 1. Fetch subscription with pricing
-    const sub = await this.prisma.subscription.findUnique({
+    const sub = await this.prisma.serviceSubscription.findUnique({
       where: { id: subscriptionId },
       include: {
         pricing: {
@@ -326,7 +326,7 @@ export class BalanceGateService {
     organizationId: string,
     subscriptionId: string,
   ): Promise<ChargeResult> {
-    const sub = await this.prisma.subscription.findUnique({
+    const sub = await this.prisma.serviceSubscription.findUnique({
       where: { id: subscriptionId },
       include: {
         pricing: {

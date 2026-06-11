@@ -2,8 +2,8 @@ import { createHash } from "node:crypto"
 
 import { PrismaPg } from "@prisma/adapter-pg"
 import {
-  InvoiceLineType,
-  InvoiceStatus,
+  BillingInvoiceLineType,
+  BillingInvoiceStatus,
   Prisma,
   SupportTicketDepartment,
   SupportTicketPriority,
@@ -31,7 +31,7 @@ type SeederArgs = {
 }
 
 type InvoiceLineSeed = {
-  lineType: InvoiceLineType
+  lineType: BillingInvoiceLineType
   description: string
   quantity: number
   unitPrice: number
@@ -39,7 +39,7 @@ type InvoiceLineSeed = {
 
 type InvoiceSeed = {
   key: string
-  status: InvoiceStatus
+  status: BillingInvoiceStatus
   periodStart: Date
   periodEnd: Date
   issuedAt: Date | null
@@ -392,7 +392,7 @@ const ticketStatusTimestamps = (
   }
 }
 
-const buildInvoiceTotals = (lines: Array<{ lineType: InvoiceLineType; amount: number }>) => {
+const buildInvoiceTotals = (lines: Array<{ lineType: BillingInvoiceLineType; amount: number }>) => {
   const subtotalAmount = sumNumbers(
     lines
       .filter((line) => line.lineType !== "TAX" && line.lineType !== "CREDIT")
@@ -479,7 +479,7 @@ const main = async () => {
   const invoiceSeeds = invoiceSeedData()
   for (const seed of invoiceSeeds) {
     const invoiceNumber = `SEED-${scopeCode}-INV-${seed.key}`
-    const existingInvoice = await prisma.invoice.findUnique({
+    const existingInvoice = await prisma.billingInvoice.findUnique({
       where: {
         invoiceNumber,
       },
@@ -534,10 +534,10 @@ const main = async () => {
         seedScope: scopeCode,
         seedInvoice: invoiceNumber,
       },
-    } satisfies Omit<Prisma.InvoiceUncheckedCreateInput, "id">
+    } satisfies Omit<Prisma.BillingInvoiceUncheckedCreateInput, "id">
 
     if (existingInvoice) {
-      await prisma.invoice.update({
+      await prisma.billingInvoice.update({
         where: {
           id: existingInvoice.id,
         },
@@ -551,7 +551,7 @@ const main = async () => {
       })
       summary.invoices.updated += 1
     } else {
-      await prisma.invoice.create({
+      await prisma.billingInvoice.create({
         data: {
           ...invoiceData,
           lines: {

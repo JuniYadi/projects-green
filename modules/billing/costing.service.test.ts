@@ -3,10 +3,10 @@ import { PrismaClient } from "@prisma/client"
 import { CostingService } from "./costing.service"
 
 const mockPrisma = {
-  subscription: {
+  serviceSubscription: {
     findUnique: mock(() => Promise.resolve(null)),
   },
-  usageLedger: {
+  billingUsageLedger: {
     findMany: mock(() => Promise.resolve([])),
   },
 }
@@ -16,13 +16,13 @@ describe("CostingService", () => {
 
   beforeEach(() => {
     service = new CostingService(mockPrisma as unknown as PrismaClient)
-    mockPrisma.subscription.findUnique.mockClear()
-    mockPrisma.usageLedger.findMany.mockClear()
+    mockPrisma.serviceSubscription.findUnique.mockClear()
+    mockPrisma.billingUsageLedger.findMany.mockClear()
   })
 
   describe("calculateWhatsAppCost", () => {
     it("should calculate cost based on message type and region", async () => {
-      mockPrisma.subscription.findUnique.mockResolvedValue({
+      mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
         id: "sub-1",
         pricingId: "pricing-1",
         pricing: {
@@ -44,7 +44,7 @@ describe("CostingService", () => {
     })
 
     it("should return zero cost when pricing not found", async () => {
-      mockPrisma.subscription.findUnique.mockResolvedValue(null)
+      mockPrisma.serviceSubscription.findUnique.mockResolvedValue(null)
 
       const result = await service.calculateWhatsAppCost({
         organizationId: "org-1",
@@ -59,7 +59,7 @@ describe("CostingService", () => {
     })
 
     it("should return zero cost when unitRateMessage is null", async () => {
-      mockPrisma.subscription.findUnique.mockResolvedValue({
+      mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
         id: "sub-1",
         pricingId: "pricing-1",
         pricing: {
@@ -81,7 +81,7 @@ describe("CostingService", () => {
 
   describe("calculateHostingCost", () => {
     it("should calculate cost based on vCPU hours", async () => {
-      mockPrisma.subscription.findUnique.mockResolvedValue({
+      mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
         id: "sub-1",
         pricingId: "pricing-1",
         pricing: {
@@ -104,7 +104,7 @@ describe("CostingService", () => {
     })
 
     it("should return zero cost when pricing not found", async () => {
-      mockPrisma.subscription.findUnique.mockResolvedValue(null)
+      mockPrisma.serviceSubscription.findUnique.mockResolvedValue(null)
 
       const result = await service.calculateHostingCost({
         organizationId: "org-1",
@@ -120,7 +120,7 @@ describe("CostingService", () => {
 
   describe("getUsageBreakdown", () => {
     it("should return usage grouped by category", async () => {
-      mockPrisma.usageLedger.findMany.mockResolvedValue([
+      mockPrisma.billingUsageLedger.findMany.mockResolvedValue([
         { category: "whatsapp", amountIdr: 1000 },
         { category: "whatsapp", amountIdr: 2000 },
         { category: "hosting", amountIdr: 5000 },
@@ -138,7 +138,7 @@ describe("CostingService", () => {
     })
 
     it("should return empty array when no entries", async () => {
-      mockPrisma.usageLedger.findMany.mockResolvedValue([])
+      mockPrisma.billingUsageLedger.findMany.mockResolvedValue([])
 
       const result = await service.getUsageBreakdown("org-1", "2026-06")
 
@@ -146,7 +146,7 @@ describe("CostingService", () => {
     })
 
     it("should handle null category as unknown", async () => {
-      mockPrisma.usageLedger.findMany.mockResolvedValue([
+      mockPrisma.billingUsageLedger.findMany.mockResolvedValue([
         { category: null, amountIdr: 1000 },
       ] as never[])
 

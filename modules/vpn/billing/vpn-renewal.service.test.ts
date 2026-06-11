@@ -11,7 +11,7 @@ const mockVpnBillingService = {
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    subscription: {
+    serviceSubscription: {
       findMany: mock(),
       update: mock(),
       updateMany: mock(),
@@ -23,7 +23,7 @@ import { VpnRenewalService } from "./vpn-renewal.service"
 import { prisma } from "@/lib/prisma"
 
 const mockPrisma = prisma as unknown as {
-  subscription: {
+  serviceSubscription: {
     findMany: ReturnType<typeof mock>
     update: ReturnType<typeof mock>
     updateMany: ReturnType<typeof mock>
@@ -62,9 +62,9 @@ const createService = () =>
   )
 
 beforeEach(() => {
-  mockPrisma.subscription.findMany.mockReset()
-  mockPrisma.subscription.update.mockReset()
-  mockPrisma.subscription.updateMany.mockReset()
+  mockPrisma.serviceSubscription.findMany.mockReset()
+  mockPrisma.serviceSubscription.update.mockReset()
+  mockPrisma.serviceSubscription.updateMany.mockReset()
   mockVpnBillingService.chargeMonthly.mockReset()
   mockVpnBillingService.chargeMonthly.mockResolvedValue({
     billingAccountId: "ba_1",
@@ -83,10 +83,10 @@ describe("VpnRenewalService", () => {
       const dueSub = vpnSubscription({
         currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
       })
-      mockPrisma.subscription.findMany
+      mockPrisma.serviceSubscription.findMany
         .mockResolvedValueOnce([dueSub])
         .mockResolvedValueOnce([])
-      mockPrisma.subscription.updateMany.mockResolvedValue({ count: 1 })
+      mockPrisma.serviceSubscription.updateMany.mockResolvedValue({ count: 1 })
 
       const result = await createService().renewDueSubscriptions()
 
@@ -104,7 +104,7 @@ describe("VpnRenewalService", () => {
         }),
       )
 
-      expect(mockPrisma.subscription.updateMany).toHaveBeenCalledWith(
+      expect(mockPrisma.serviceSubscription.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             id: "sub_vpn_1",
@@ -119,13 +119,13 @@ describe("VpnRenewalService", () => {
 
     it("suspends subscription when balance is insufficient (no grace period)", async () => {
       const dueSub = vpnSubscription()
-      mockPrisma.subscription.findMany
+      mockPrisma.serviceSubscription.findMany
         .mockResolvedValueOnce([dueSub])
         .mockResolvedValueOnce([])
       mockVpnBillingService.chargeMonthly.mockRejectedValue(
         new Error("INSUFFICIENT_BALANCE"),
       )
-      mockPrisma.subscription.update.mockImplementation(
+      mockPrisma.serviceSubscription.update.mockImplementation(
         async (args: { where: { id: string }; data: Record<string, unknown> }) => ({
           id: args.where.id,
           ...args.data,
@@ -138,7 +138,7 @@ describe("VpnRenewalService", () => {
       expect(result.suspended).toBe(1)
       expect(result.errors).toBe(0)
 
-      expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+      expect(mockPrisma.serviceSubscription.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "sub_vpn_1" },
           data: expect.objectContaining({ status: "SUSPENDED" }),
@@ -151,7 +151,7 @@ describe("VpnRenewalService", () => {
         currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
       })
       // Each worker run calls findMany twice: once to get the sub, once to break the loop.
-      mockPrisma.subscription.findMany
+      mockPrisma.serviceSubscription.findMany
         .mockResolvedValueOnce([dueSub])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([dueSub])
@@ -159,7 +159,7 @@ describe("VpnRenewalService", () => {
 
       // Worker A: updateMany matches 1 row (actual extension)
       // Worker B: updateMany matches 0 rows (already extended)
-      mockPrisma.subscription.updateMany
+      mockPrisma.serviceSubscription.updateMany
         .mockResolvedValueOnce({ count: 1 })
         .mockResolvedValueOnce({ count: 0 })
 
@@ -173,7 +173,7 @@ describe("VpnRenewalService", () => {
       const resultB = await serviceB.renewDueSubscriptions()
       expect(resultB.renewed).toBe(0) // updateMany returned 0 rows
 
-      expect(mockPrisma.subscription.updateMany).toHaveBeenCalledTimes(2)
+      expect(mockPrisma.serviceSubscription.updateMany).toHaveBeenCalledTimes(2)
     })
 
     it("does not double-charge already-renewed subscriptions (idempotency)", async () => {
@@ -181,7 +181,7 @@ describe("VpnRenewalService", () => {
         currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
       })
       // Each worker run calls findMany twice
-      mockPrisma.subscription.findMany
+      mockPrisma.serviceSubscription.findMany
         .mockResolvedValueOnce([dueSub])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([dueSub])
@@ -208,7 +208,7 @@ describe("VpnRenewalService", () => {
           currency: "IDR",
           alreadyProcessed: true,
         })
-      mockPrisma.subscription.updateMany.mockResolvedValue({ count: 1 })
+      mockPrisma.serviceSubscription.updateMany.mockResolvedValue({ count: 1 })
 
       // Run twice — second call should see alreadyProcessed and skip extending
       await createService().renewDueSubscriptions()
@@ -218,18 +218,18 @@ describe("VpnRenewalService", () => {
       // alreadyProcessed=true means we skip the extension.
       // updateMany should have been called once (first run extended period).
       expect(mockVpnBillingService.chargeMonthly).toHaveBeenCalledTimes(2)
-      expect(mockPrisma.subscription.updateMany).toHaveBeenCalledTimes(1)
+      expect(mockPrisma.serviceSubscription.updateMany).toHaveBeenCalledTimes(1)
     })
 
     it("does not count extendPeriod failure as renewed (Issue 2 guard)", async () => {
       const dueSub = vpnSubscription({
         currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
       })
-      mockPrisma.subscription.findMany
+      mockPrisma.serviceSubscription.findMany
         .mockResolvedValueOnce([dueSub])
         .mockResolvedValueOnce([])
       // extendPeriod throws (transient DB error)
-      mockPrisma.subscription.updateMany.mockRejectedValue(
+      mockPrisma.serviceSubscription.updateMany.mockRejectedValue(
         new Error("DB_CONNECTION_ERROR"),
       )
 
@@ -242,11 +242,11 @@ describe("VpnRenewalService", () => {
       // chargeMonthly was attempted
       expect(mockVpnBillingService.chargeMonthly).toHaveBeenCalledTimes(1)
       // updateMany was attempted (and failed)
-      expect(mockPrisma.subscription.updateMany).toHaveBeenCalledTimes(1)
+      expect(mockPrisma.serviceSubscription.updateMany).toHaveBeenCalledTimes(1)
     })
 
     it("does not touch subscriptions with future period end", async () => {
-      mockPrisma.subscription.findMany.mockResolvedValue([])
+      mockPrisma.serviceSubscription.findMany.mockResolvedValue([])
 
       const result = await createService().renewDueSubscriptions()
 
@@ -256,7 +256,7 @@ describe("VpnRenewalService", () => {
       expect(mockVpnBillingService.chargeMonthly).not.toHaveBeenCalled()
 
       // Confirm the query includes the due-only filter
-      expect(mockPrisma.subscription.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.serviceSubscription.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             currentPeriodEnd: expect.objectContaining({ lte: expect.any(Date) }),
@@ -273,10 +273,10 @@ describe("VpnRenewalService", () => {
         vpnSubscription({ id: "sub_2", organizationId: "org_2" }),
         vpnSubscription({ id: "sub_3", organizationId: "org_1" }),
       ]
-      mockPrisma.subscription.findMany
+      mockPrisma.serviceSubscription.findMany
         .mockResolvedValueOnce(subs)
         .mockResolvedValueOnce([])
-      mockPrisma.subscription.updateMany.mockResolvedValue({ count: 1 })
+      mockPrisma.serviceSubscription.updateMany.mockResolvedValue({ count: 1 })
 
       const result = await createService().renewDueSubscriptions()
 
@@ -288,10 +288,10 @@ describe("VpnRenewalService", () => {
       const dueSub = vpnSubscription({
         currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
       })
-      mockPrisma.subscription.findMany
+      mockPrisma.serviceSubscription.findMany
         .mockResolvedValueOnce([dueSub])
         .mockResolvedValueOnce([])
-      mockPrisma.subscription.updateMany.mockResolvedValue({ count: 1 })
+      mockPrisma.serviceSubscription.updateMany.mockResolvedValue({ count: 1 })
 
       await createService().renewDueSubscriptions()
 

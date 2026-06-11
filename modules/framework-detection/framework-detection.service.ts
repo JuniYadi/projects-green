@@ -934,7 +934,7 @@ const enforceRuntimeMappings = async (
   prismaClient?: GithubApiDetectorDependencies['prisma']
 ): Promise<{ enforced: RequiredDependency[]; appliedMappings: string[] }> => {
   const client = prismaClient ?? (await import("@/lib/prisma")).prisma
-  const mappings = await client.runtimeMapping.findMany({
+  const mappings = await client.detectorRuntimeMapping.findMany({
     where: {
       isActive: true,
       OR: [
@@ -1343,7 +1343,7 @@ export const detectFrameworkFromGithubApi = async (
 
     // Log the blocked inspection (best-effort)
     try {
-      await prismaClient.inspectionLog.create({
+      await prismaClient.detectorInspectionLog.create({
         data: {
           installationId: BigInt(input.installationId),
           repoUrl: `https://github.com/${input.owner}/${input.repo}`,
@@ -1406,7 +1406,7 @@ export const detectFrameworkFromGithubApi = async (
 
     // Log the error (best-effort)
     try {
-      await prismaClient.inspectionLog.create({
+      await prismaClient.detectorInspectionLog.create({
         data: {
           installationId: BigInt(input.installationId),
           repoUrl: `https://github.com/${input.owner}/${input.repo}`,
@@ -1476,7 +1476,7 @@ export const detectFrameworkFromGithubApi = async (
 
   // 7. Log the inspection (best-effort, don't fail detection if logging fails)
   try {
-    await prismaClient.inspectionLog.create({
+    await prismaClient.detectorInspectionLog.create({
       data: {
         installationId: BigInt(input.installationId),
         repoUrl: `https://github.com/${input.owner}/${input.repo}`,

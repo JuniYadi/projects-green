@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma"
 import type {
   Prisma,
   DetectorRule,
-  RuntimeMapping,
-  InspectionLog,
+  DetectorRuntimeMapping,
+  DetectorInspectionLog,
 } from "@prisma/client"
 
 // --- DetectorRule CRUD ---
@@ -76,12 +76,12 @@ export async function deleteDetectorRule(id: string): Promise<DetectorRule> {
   return prisma.detectorRule.delete({ where: { id } })
 }
 
-// --- RuntimeMapping CRUD ---
+// --- DetectorRuntimeMapping CRUD ---
 
 export async function listRuntimeMappings(options?: {
   includeInactive?: boolean
-}): Promise<RuntimeMapping[]> {
-  return prisma.runtimeMapping.findMany({
+}): Promise<DetectorRuntimeMapping[]> {
+  return prisma.detectorRuntimeMapping.findMany({
     where: options?.includeInactive ? {} : { isActive: true },
     orderBy: [{ frameworkId: "asc" }, { priority: "desc" }],
   })
@@ -89,8 +89,8 @@ export async function listRuntimeMappings(options?: {
 
 export async function getRuntimeMappingById(
   id: string
-): Promise<RuntimeMapping | null> {
-  return prisma.runtimeMapping.findUnique({ where: { id } })
+): Promise<DetectorRuntimeMapping | null> {
+  return prisma.detectorRuntimeMapping.findUnique({ where: { id } })
 }
 
 export async function createRuntimeMapping(data: {
@@ -100,8 +100,8 @@ export async function createRuntimeMapping(data: {
   runtimeVersion: string
   buildVersion?: string
   priority?: number
-}): Promise<RuntimeMapping> {
-  return prisma.runtimeMapping.create({
+}): Promise<DetectorRuntimeMapping> {
+  return prisma.detectorRuntimeMapping.create({
     data: {
       frameworkId: data.frameworkId,
       frameworkVersion: data.frameworkVersion ?? null,
@@ -124,8 +124,8 @@ export async function updateRuntimeMapping(
     isActive?: boolean
     priority?: number
   }
-): Promise<RuntimeMapping> {
-  const updateData: Prisma.RuntimeMappingUpdateInput = {}
+): Promise<DetectorRuntimeMapping> {
+  const updateData: Prisma.DetectorRuntimeMappingUpdateInput = {}
 
   if (data.frameworkId !== undefined) updateData.frameworkId = data.frameworkId
   if (data.frameworkVersion !== undefined)
@@ -138,16 +138,16 @@ export async function updateRuntimeMapping(
   if (data.isActive !== undefined) updateData.isActive = data.isActive
   if (data.priority !== undefined) updateData.priority = data.priority
 
-  return prisma.runtimeMapping.update({ where: { id }, data: updateData })
+  return prisma.detectorRuntimeMapping.update({ where: { id }, data: updateData })
 }
 
 export async function deleteRuntimeMapping(
   id: string
-): Promise<RuntimeMapping> {
-  return prisma.runtimeMapping.delete({ where: { id } })
+): Promise<DetectorRuntimeMapping> {
+  return prisma.detectorRuntimeMapping.delete({ where: { id } })
 }
 
-// --- InspectionLog Queries ---
+// --- DetectorInspectionLog Queries ---
 
 export async function listInspectionLogs(options?: {
   limit?: number
@@ -155,11 +155,11 @@ export async function listInspectionLogs(options?: {
   status?: string
   repoUrl?: string
   framework?: string
-}): Promise<{ logs: InspectionLog[]; total: number }> {
+}): Promise<{ logs: DetectorInspectionLog[]; total: number }> {
   const limit = options?.limit ?? 50
   const offset = options?.offset ?? 0
 
-  const where: Prisma.InspectionLogWhereInput = {}
+  const where: Prisma.DetectorInspectionLogWhereInput = {}
 
   if (options?.status) where.status = options.status
   if (options?.repoUrl) where.repoUrl = { contains: options.repoUrl }
@@ -167,13 +167,13 @@ export async function listInspectionLogs(options?: {
     where.detectedFramework = { contains: options.framework }
 
   const [logs, total] = await Promise.all([
-    prisma.inspectionLog.findMany({
+    prisma.detectorInspectionLog.findMany({
       where,
       orderBy: { createdAt: "desc" },
       take: limit,
       skip: offset,
     }),
-    prisma.inspectionLog.count({ where }),
+    prisma.detectorInspectionLog.count({ where }),
   ])
 
   return { logs, total }
@@ -181,8 +181,8 @@ export async function listInspectionLogs(options?: {
 
 export async function getInspectionLogById(
   id: string
-): Promise<InspectionLog | null> {
-  return prisma.inspectionLog.findUnique({ where: { id } })
+): Promise<DetectorInspectionLog | null> {
+  return prisma.detectorInspectionLog.findUnique({ where: { id } })
 }
 
 // --- AI Rule Recommendations ---
@@ -203,7 +203,7 @@ export async function generateRuleRecommendations(): Promise<
   RuleRecommendation[]
 > {
   // Fetch recent logs to analyze patterns
-  const recentLogs = await prisma.inspectionLog.findMany({
+  const recentLogs = await prisma.detectorInspectionLog.findMany({
     where: { status: "success" },
     orderBy: { createdAt: "desc" },
     take: 100,

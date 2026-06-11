@@ -67,7 +67,7 @@ export class VpnRenewalService {
     let cursor: string | undefined
 
     while (true) {
-      const batch = await this.prisma.subscription.findMany({
+      const batch = await this.prisma.serviceSubscription.findMany({
         where: {
           status: "ACTIVE",
           currentPeriodEnd: { lte: new Date() },
@@ -136,7 +136,7 @@ export class VpnRenewalService {
             error.message === "INSUFFICIENT_BALANCE"
           ) {
             try {
-              await this.prisma.subscription.update({
+              await this.prisma.serviceSubscription.update({
                 where: { id: subscription.id },
                 data: {
                   status: "SUSPENDED",
@@ -178,7 +178,7 @@ export class VpnRenewalService {
     const periodEnd = new Date(now)
     periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1)
 
-    const result = await this.prisma.subscription.updateMany({
+    const result = await this.prisma.serviceSubscription.updateMany({
       where: {
         id: subscriptionId,
         currentPeriodEnd: { lte: now },

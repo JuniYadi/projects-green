@@ -137,7 +137,7 @@ export const createAdminSubscriptionRoutes = (
 
       try {
         // Check subscription exists
-        const existing = await prisma.subscription.findUnique({
+        const existing = await prisma.serviceSubscription.findUnique({
           where: { id },
           select: { id: true },
         })
@@ -183,7 +183,7 @@ export const createAdminSubscriptionRoutes = (
 
         // If no updates, return current subscription
         if (Object.keys(dataToUpdate).length === 0) {
-          const current = await prisma.subscription.findUnique({
+          const current = await prisma.serviceSubscription.findUnique({
             where: { id },
             include: {
               plan: { select: { code: true, resources: true } },
@@ -219,13 +219,13 @@ export const createAdminSubscriptionRoutes = (
         }
 
         // Update subscription
-        await prisma.subscription.update({
+        await prisma.serviceSubscription.update({
           where: { id },
           data: dataToUpdate,
         })
 
         // Fetch updated subscription with relations
-        const updated = await prisma.subscription.findUnique({
+        const updated = await prisma.serviceSubscription.findUnique({
           where: { id },
           include: {
             plan: { select: { code: true, resources: true } },

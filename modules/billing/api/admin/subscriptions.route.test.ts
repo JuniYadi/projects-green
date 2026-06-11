@@ -17,7 +17,7 @@ const mockFindUnique = mock()
 const mockUpdate = mock()
 
 const mockPrismaClient = {
-  subscription: {
+  serviceSubscription: {
     findUnique: mockFindUnique,
     update: mockUpdate,
   },

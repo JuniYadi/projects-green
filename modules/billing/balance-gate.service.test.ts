@@ -21,7 +21,7 @@ type MockPrisma = {
   pricing: {
     findFirst: ReturnType<typeof vi.fn>
   }
-  subscription: {
+  serviceSubscription: {
     findUnique: ReturnType<typeof vi.fn>
   }
   $transaction: ReturnType<typeof vi.fn>
@@ -39,7 +39,7 @@ const mockPrisma = {
   pricing: {
     findFirst: vi.fn(),
   },
-  subscription: {
+  serviceSubscription: {
     findUnique: vi.fn(),
   },
   $transaction: vi.fn(),
@@ -207,7 +207,7 @@ describe("BalanceGateService", () => {
 
     it("chargePayg deducts computed cost", async () => {
       // Setup mock subscription
-      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+      mockedPrisma.serviceSubscription.findUnique.mockResolvedValueOnce(
         mockPaygSubscription,
       );
 
@@ -248,7 +248,7 @@ describe("BalanceGateService", () => {
     });
 
     it("chargePayg insufficient balance", async () => {
-      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+      mockedPrisma.serviceSubscription.findUnique.mockResolvedValueOnce(
         mockPaygSubscription,
       );
 
@@ -263,7 +263,7 @@ describe("BalanceGateService", () => {
     });
 
     it("chargePayg exact balance allowed", async () => {
-      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+      mockedPrisma.serviceSubscription.findUnique.mockResolvedValueOnce(
         mockPaygSubscription,
       );
 
@@ -307,7 +307,7 @@ describe("BalanceGateService", () => {
     };
 
     it("chargePackage deducts basePriceIdr", async () => {
-      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+      mockedPrisma.serviceSubscription.findUnique.mockResolvedValueOnce(
         mockPackageSubscription,
       );
 
@@ -325,7 +325,7 @@ describe("BalanceGateService", () => {
     });
 
     it("chargePackage insufficient", async () => {
-      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+      mockedPrisma.serviceSubscription.findUnique.mockResolvedValueOnce(
         mockPackageSubscription,
       );
 
@@ -339,7 +339,7 @@ describe("BalanceGateService", () => {
     });
 
     it("chargeFlatMonthly delegates to chargePackage", async () => {
-      mockedPrisma.subscription.findUnique.mockResolvedValueOnce(
+      mockedPrisma.serviceSubscription.findUnique.mockResolvedValueOnce(
         mockPackageSubscription,
       );
 

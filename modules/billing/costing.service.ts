@@ -14,7 +14,7 @@ export class CostingService {
     region: string
     quantity: number
   }): Promise<CostingResult> {
-    const subscription = await this.prisma.subscription.findUnique({
+    const subscription = await this.prisma.serviceSubscription.findUnique({
       where: { id: params.subscriptionId },
       include: { pricing: true },
     })
@@ -48,7 +48,7 @@ export class CostingService {
     memoryGbHours: number
     storageGbMonths: number
   }): Promise<CostingResult> {
-    const subscription = await this.prisma.subscription.findUnique({
+    const subscription = await this.prisma.serviceSubscription.findUnique({
       where: { id: params.subscriptionId },
       include: { pricing: true },
     })
@@ -82,7 +82,7 @@ export class CostingService {
     organizationId: string,
     period: string,
   ): Promise<UsageBreakdown[]> {
-    const entries = await this.prisma.usageLedger.findMany({
+    const entries = await this.prisma.billingUsageLedger.findMany({
       where: {
         organizationId,
         period,

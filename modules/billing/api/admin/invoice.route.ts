@@ -1,7 +1,7 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
-import { Prisma, InvoiceStatus } from "@prisma/client"
+import { Prisma, BillingInvoiceStatus } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
@@ -177,7 +177,7 @@ export const createAdminInvoiceRoutes = (
       }
 
       try {
-        const invoice = await prisma.invoice.findUnique({
+        const invoice = await prisma.billingInvoice.findUnique({
           where: { id },
         })
 
@@ -201,15 +201,15 @@ export const createAdminInvoiceRoutes = (
           }
         }
 
-        const updateData: Prisma.InvoiceUpdateInput = {
-          status: targetStatus as InvoiceStatus,
+        const updateData: Prisma.BillingInvoiceUpdateInput = {
+          status: targetStatus as BillingInvoiceStatus,
         }
 
         if (targetStatus === "ISSUED") {
           updateData.issuedAt = new Date()
         }
 
-        const updatedInvoice = await prisma.invoice.update({
+        const updatedInvoice = await prisma.billingInvoice.update({
           where: { id },
           data: updateData,
         })

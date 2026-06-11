@@ -20,7 +20,7 @@ export class MessageCostService {
     messageType: MessageType
     deviceId?: string
   }): Promise<Decimal> {
-    const subscription = await this.prisma.subscription.findFirst({
+    const subscription = await this.prisma.serviceSubscription.findFirst({
       where: {
         organizationId: options.organizationId,
         package: { code: "WHATSAPP" },

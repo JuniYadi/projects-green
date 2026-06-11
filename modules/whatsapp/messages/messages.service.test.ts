@@ -112,7 +112,7 @@ const mockPrisma = {
   pricing: {
     findFirst: mock(async () => null),
   },
-  usageLedger: {
+  billingUsageLedger: {
     create: mock(async () => ({ id: "ledger-1" })),
   },
   $transaction: mock(async (fn: any) => await fn(mockTx)),
@@ -179,9 +179,9 @@ describe("messageService", () => {
     mockPrisma.whatsappMonthlyCount.create.mockClear()
     mockPrisma.whatsappMonthlyCount.update.mockClear()
     mockPrisma.billingAccount.findUnique.mockClear()
-    mockPrisma.subscription.findFirst.mockClear()
+    mockPrisma.serviceSubscription.findFirst.mockClear()
     mockPrisma.pricing.findFirst.mockClear()
-    mockPrisma.usageLedger.create.mockClear()
+    mockPrisma.billingUsageLedger.create.mockClear()
     mockPrisma.$transaction.mockClear()
     mockTx.whatsappDevice.findFirst.mockClear()
     mockTx.whatsappDevice.findUnique.mockClear()
@@ -238,8 +238,8 @@ describe("messageService", () => {
       organizationId: "tenant-1",
       balance: { toString: () => "100000" },
     } as any)
-    mockPrisma.subscription.findFirst.mockResolvedValue(null) // No subscription = no quota gate enforcement
-    mockPrisma.usageLedger.create.mockResolvedValue({ id: "ledger-1" } as any)
+    mockPrisma.serviceSubscription.findFirst.mockResolvedValue(null) // No subscription = no quota gate enforcement
+    mockPrisma.billingUsageLedger.create.mockResolvedValue({ id: "ledger-1" } as any)
 
     // $transaction passthrough — flatten the async callback so callers
     // don't receive a Promise<Promise<Result>>.

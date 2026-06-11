@@ -86,9 +86,9 @@ const setupPrismaDefaults = () => {
   mockPrisma.servicePlan.findUnique.mockReset()
   mockPrisma.region.findUnique.mockReset()
   mockPrisma.pricing.findFirst.mockReset()
-  mockPrisma.subscription.findUnique.mockReset()
-  mockPrisma.subscription.create.mockReset()
-  mockPrisma.subscription.update.mockReset()
+  mockPrisma.serviceSubscription.findUnique.mockReset()
+  mockPrisma.serviceSubscription.create.mockReset()
+  mockPrisma.serviceSubscription.update.mockReset()
   mockPrisma.billingAccount.findUnique.mockReset()
 
   mockPrisma.package.findUnique.mockResolvedValue({ id: "pkg_vpn" })
@@ -103,8 +103,8 @@ const setupPrismaDefaults = () => {
   })
 
   // Default: no existing subscription (route will create)
-  mockPrisma.subscription.findUnique.mockResolvedValue(null)
-  mockPrisma.subscription.create.mockImplementation(
+  mockPrisma.serviceSubscription.findUnique.mockResolvedValue(null)
+  mockPrisma.serviceSubscription.create.mockImplementation(
     async (args: { data: Record<string, unknown> }) => ({
       id: "sub_vpn_new",
       ...args.data,
@@ -112,7 +112,7 @@ const setupPrismaDefaults = () => {
       updatedAt: new Date(),
     }),
   )
-  mockPrisma.subscription.update.mockImplementation(
+  mockPrisma.serviceSubscription.update.mockImplementation(
     async (args: { where: { id: string }; data: Record<string, unknown> }) => ({
       id: args.where.id,
       ...args.data,
@@ -327,7 +327,7 @@ describe("POST /vpn/subscriptions", () => {
     )
 
     // Issue 1: subscription created first as SUSPENDED (acting as pending payment)
-    expect(mockPrisma.subscription.create).toHaveBeenCalledWith(
+    expect(mockPrisma.serviceSubscription.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           organizationId: "org_1",
@@ -354,7 +354,7 @@ describe("POST /vpn/subscriptions", () => {
     )
 
     // Issue 1: updated to ACTIVE after charge and provisioning succeed
-    expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+    expect(mockPrisma.serviceSubscription.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "sub_vpn_new" },
         data: { status: "ACTIVE" },
@@ -363,7 +363,7 @@ describe("POST /vpn/subscriptions", () => {
   })
 
   it("reuses existing ACTIVE subscription record", async () => {
-    mockPrisma.subscription.findUnique.mockResolvedValue({
+    mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
       id: "sub_vpn_existing",
       organizationId: "org_1",
       packageId: "pkg_vpn",
@@ -391,13 +391,13 @@ describe("POST /vpn/subscriptions", () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.subscriptionId).toBe("sub_vpn_existing")
-    expect(mockPrisma.subscription.create).not.toHaveBeenCalled()
+    expect(mockPrisma.serviceSubscription.create).not.toHaveBeenCalled()
     // It shouldn't update status because it was already ACTIVE
-    expect(mockPrisma.subscription.update).not.toHaveBeenCalled()
+    expect(mockPrisma.serviceSubscription.update).not.toHaveBeenCalled()
   })
 
   it("resets SUSPENDED subscription to SUSPENDED and retries charge (Issue 6)", async () => {
-    mockPrisma.subscription.findUnique.mockResolvedValue({
+    mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
       id: "sub_vpn_suspended",
       organizationId: "org_1",
       packageId: "pkg_vpn",
@@ -427,7 +427,7 @@ describe("POST /vpn/subscriptions", () => {
     expect(body.subscriptionId).toBe("sub_vpn_suspended")
 
     // Stale period triggers update with new dates only (no status change since already SUSPENDED)
-    const updateCall = mockPrisma.subscription.update.mock.calls[0]?.[0]
+    const updateCall = mockPrisma.serviceSubscription.update.mock.calls[0]?.[0]
     expect(updateCall).toMatchObject({
       where: { id: "sub_vpn_suspended" },
     })
@@ -436,7 +436,7 @@ describe("POST /vpn/subscriptions", () => {
     expect(updateCall.data.currentPeriodStart).toBeDefined()
 
     // Activates to ACTIVE after charge
-    expect(mockPrisma.subscription.update).toHaveBeenNthCalledWith(
+    expect(mockPrisma.serviceSubscription.update).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         where: { id: "sub_vpn_suspended" },
@@ -470,9 +470,9 @@ describe("POST /vpn/subscriptions", () => {
     expect(body.error).toBe("INSUFFICIENT_BALANCE")
 
     // Subscription created first as SUSPENDED
-    expect(mockPrisma.subscription.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.serviceSubscription.create).toHaveBeenCalledTimes(1)
     // Subscription updated/left as SUSPENDED on failed charge
-    expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+    expect(mockPrisma.serviceSubscription.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "sub_vpn_new" },
         data: expect.objectContaining({ status: "SUSPENDED" }),

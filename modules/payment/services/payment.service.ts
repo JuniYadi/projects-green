@@ -74,7 +74,7 @@ export class PaymentService {
       }
     }
 
-    const invoice = await prisma.invoice.create({
+    const invoice = await prisma.billingInvoice.create({
       data: {
         billingAccountId: account.id,
         invoiceNumber,
@@ -113,7 +113,7 @@ export class PaymentService {
   }
 
   async getInvoiceForUser(invoiceId: string, organizationId: string) {
-    const invoice = await prisma.invoice.findFirst({
+    const invoice = await prisma.billingInvoice.findFirst({
       where: {
         id: invoiceId,
         billingAccount: { organizationId },
@@ -123,7 +123,7 @@ export class PaymentService {
   }
 
   async getInvoicesForOrganization(organizationId: string, limit = 50) {
-    const invoices = await prisma.invoice.findMany({
+    const invoices = await prisma.billingInvoice.findMany({
       where: { billingAccount: { organizationId } },
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -140,7 +140,7 @@ export class PaymentService {
   }
 
   async markInvoiceAsPaid(invoiceId: string) {
-    return prisma.invoice.update({
+    return prisma.billingInvoice.update({
       where: { id: invoiceId },
       data: { status: "PAID" },
     })
@@ -175,7 +175,7 @@ export class PaymentService {
    * Pay an invoice using balance. Uses BillingTransactionService for atomic debit.
    */
   async payWithBalance(invoiceId: string, organizationId: string) {
-    const invoice = await prisma.invoice.findFirst({
+    const invoice = await prisma.billingInvoice.findFirst({
       where: { id: invoiceId, status: "OPEN", billingAccount: { organizationId } },
     })
 
@@ -207,7 +207,7 @@ export class PaymentService {
       invoiceId,
     })
 
-    await prisma.invoice.update({
+    await prisma.billingInvoice.update({
       where: { id: invoiceId },
       data: { status: "PAID" },
     })
@@ -234,7 +234,7 @@ export class PaymentService {
     // Generate invoice number using UUID to avoid race condition
     const invoiceNumber = `TOP-${crypto.randomUUID().split("-")[0].toUpperCase()}`
 
-    return prisma.invoice.create({
+    return prisma.billingInvoice.create({
       data: {
         billingAccountId: account.id,
         invoiceNumber,
