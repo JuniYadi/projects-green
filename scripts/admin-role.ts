@@ -1,6 +1,6 @@
 import { createHash } from "crypto"
 
-import { PlatformRole, type PlatformUserRole } from "@prisma/client"
+import { AuthPlatformRole, type AuthPlatformUserRole } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 
@@ -92,9 +92,9 @@ function toLookupWhere(identifier: AdminIdentifier) {
   return { OR: [{ workosUserId: normalizeWorkosUserId(identifier.workosUserId) ?? "" }] }
 }
 
-export async function listSuperAdmins(): Promise<PlatformUserRole[]> {
-  return prisma.platformUserRole.findMany({
-    where: { role: PlatformRole.SUPER_ADMIN },
+export async function listSuperAdmins(): Promise<AuthPlatformUserRole[]> {
+  return prisma.authPlatformUserRole.findMany({
+    where: { role: AuthPlatformRole.SUPER_ADMIN },
     orderBy: { createdAt: "asc" },
   })
 }
@@ -104,14 +104,14 @@ export async function addSuperAdmin(identifier: AdminIdentifier) {
     where: toLookupWhere(identifier),
   })
 
-  if (existing?.role === PlatformRole.SUPER_ADMIN) {
+  if (existing?.role === AuthPlatformRole.SUPER_ADMIN) {
     return { status: "already-super-admin", record: existing }
   }
 
   if (existing) {
-    const updated = await prisma.platformUserRole.update({
+    const updated = await prisma.authPlatformUserRole.update({
       where: { id: existing.id },
-      data: { role: PlatformRole.SUPER_ADMIN },
+      data: { role: AuthPlatformRole.SUPER_ADMIN },
     })
 
     return { status: "promoted", record: updated }
@@ -128,11 +128,11 @@ export async function addSuperAdmin(identifier: AdminIdentifier) {
     throw new Error("Could not determine workos user id")
   }
 
-  const created = await prisma.platformUserRole.create({
+  const created = await prisma.authPlatformUserRole.create({
     data: {
       email,
       workosUserId,
-      role: PlatformRole.SUPER_ADMIN,
+      role: AuthPlatformRole.SUPER_ADMIN,
     },
   })
 
@@ -140,20 +140,20 @@ export async function addSuperAdmin(identifier: AdminIdentifier) {
 }
 
 export async function deleteSuperAdmin(identifier: AdminIdentifier) {
-  const existing = await prisma.platformUserRole.findFirst({
+  const existing = await prisma.authPlatformUserRole.findFirst({
     where: toLookupWhere(identifier),
   })
 
-  if (!existing || existing.role !== PlatformRole.SUPER_ADMIN) {
+  if (!existing || existing.role !== AuthPlatformRole.SUPER_ADMIN) {
     throw new Error("Super admin not found")
   }
 
-  await prisma.platformUserRole.delete({ where: { id: existing.id } })
+  await prisma.authPlatformUserRole.delete({ where: { id: existing.id } })
 
   return { status: "deleted", record: existing }
 }
 
-export function formatSuperAdmin(record: PlatformUserRole) {
+export function formatSuperAdmin(record: AuthPlatformUserRole) {
   return [
     record.id,
     record.email ?? "-",

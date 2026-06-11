@@ -86,7 +86,7 @@ export const requireTenantAdmin = (ctx: AuthContext): boolean => {
   return ctx.orgRole === "admin" || ctx.orgRole === "owner"
 }
 export { hashApiKey } from "./crypto"
-export type { ApiKeyEnvironment } from "@prisma/client"
+export type { AuthApiKeyEnvironment } from "@prisma/client"
 
 // ─── Elysia plugin ────────────────────────────────────────────────────────────
 

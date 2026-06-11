@@ -329,7 +329,7 @@ const removeTestData = async () => {
  * real WorkOS org we create here, with roleSlug=`user_admin`, which is
  * enough to satisfy the auth plugin's "first active org wins" rule.
  * The `requireTenantAdmin` guard still succeeds because the seed user
- * is also a `super_admin` (via `PlatformUserRole`), which short-circuits
+ * is also a `super_admin` (via `AuthPlatformUserRole`), which short-circuits
  * the tenant role check.
  *
  * If WorkOS is unreachable in the current environment (e.g. CI without

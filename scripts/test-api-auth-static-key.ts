@@ -57,7 +57,7 @@ async function run() {
     const { raw, hash } = await generateRawApiKey("test_")
     rawKey = raw
 
-    const apiKey = await prisma.apiKey.create({
+    const apiKey = await prisma.authApiKey.create({
       data: {
         name: "e2e-static-key-test",
         keyHash: hash,
@@ -144,7 +144,7 @@ async function run() {
   } finally {
     // Cleanup: delete the test key
     if (keyId) {
-      await prisma.apiKey
+      await prisma.authApiKey
         .delete({ where: { id: keyId } })
         .catch(() => {})
       console.log(`\nCleaned up test key: ${keyId}`)

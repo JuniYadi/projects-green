@@ -11,11 +11,11 @@ import { Prisma } from "@prisma/client"
 // this file does not require a live DATABASE_URL.
 
 const mockPrisma = {
-  package: { findUnique: mock() },
+  servicePackage: { findUnique: mock() },
   servicePlan: { findUnique: mock() },
-  region: { findUnique: mock() },
-  pricing: { findFirst: mock() },
-  subscription: {
+  serviceRegion: { findUnique: mock() },
+  servicePricing: { findFirst: mock() },
+  serviceSubscription: {
     findUnique: mock(),
     create: mock(),
     update: mock(),
@@ -82,19 +82,19 @@ const createRoute = (
   })
 
 const setupPrismaDefaults = () => {
-  mockPrisma.package.findUnique.mockReset()
+  mockPrisma.servicePackage.findUnique.mockReset()
   mockPrisma.servicePlan.findUnique.mockReset()
-  mockPrisma.region.findUnique.mockReset()
-  mockPrisma.pricing.findFirst.mockReset()
+  mockPrisma.serviceRegion.findUnique.mockReset()
+  mockPrisma.servicePricing.findFirst.mockReset()
   mockPrisma.serviceSubscription.findUnique.mockReset()
   mockPrisma.serviceSubscription.create.mockReset()
   mockPrisma.serviceSubscription.update.mockReset()
   mockPrisma.billingAccount.findUnique.mockReset()
 
-  mockPrisma.package.findUnique.mockResolvedValue({ id: "pkg_vpn" })
+  mockPrisma.servicePackage.findUnique.mockResolvedValue({ id: "pkg_vpn" })
   mockPrisma.servicePlan.findUnique.mockResolvedValue({ id: "plan_standard" })
-  mockPrisma.region.findUnique.mockResolvedValue({ id: "region_id" })
-  mockPrisma.pricing.findFirst.mockResolvedValue({ id: "pricing_id" })
+  mockPrisma.serviceRegion.findUnique.mockResolvedValue({ id: "region_id" })
+  mockPrisma.servicePricing.findFirst.mockResolvedValue({ id: "pricing_id" })
   mockPrisma.billingAccount.findUnique.mockResolvedValue({
     id: "ba_1",
     organizationId: "org_1",
@@ -601,7 +601,7 @@ describe("POST /vpn/subscriptions", () => {
 
   it("returns 422 with VPN_PRICE_NOT_CONFIGURED when seed refs are missing", async () => {
     // Plan exists in the static catalog but the DB Package row is gone.
-    mockPrisma.package.findUnique.mockResolvedValue(null)
+    mockPrisma.servicePackage.findUnique.mockResolvedValue(null)
 
     const app = createRoute()
     const response = await app.handle(

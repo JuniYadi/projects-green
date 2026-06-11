@@ -6,14 +6,16 @@ datasource db {
   provider = "postgresql"
 }
 
-enum ApiKeyEnvironment {
+enum AuthApiKeyEnvironment {
   SANDBOX
   LIVE
+  @@map("ApiKeyEnvironment")
 }
 
-enum PlatformRole {
+enum AuthPlatformRole {
   NONE
   SUPER_ADMIN
+  @@map("PlatformRole")
 }
 
 model User {
@@ -24,32 +26,36 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
-model PlatformUserRole {
-  id           String       @id @default(cuid())
-  workosUserId String       @unique
-  email        String?      @unique
-  role         PlatformRole @default(NONE)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+model AuthPlatformUserRole {
+  id           String          @id @default(cuid())
+  workosUserId String          @unique
+  email        String?         @unique
+  role         AuthPlatformRole @default(NONE)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("PlatformUserRole")
 }
 
-model ApiKey {
-  id          String         @id @default(cuid())
-  name        String
+model AuthApiKey {
+  id             String              @id @default(cuid())
+  name           String
   organizationId String
-  keyHash     String
-  environment ApiKeyEnvironment @default(SANDBOX)
-  scopes      String[]
-  active      Boolean        @default(true)
-  expiresAt   DateTime?
-  createdBy   String?
-  lastUsedAt  DateTime?
-  lastUsedIp  String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  keyHash        String
+  environment    AuthApiKeyEnvironment @default(SANDBOX)
+  scopes         String[]
+  active         Boolean             @default(true)
+  expiresAt      DateTime?
+  createdBy      String?
+  lastUsedAt     DateTime?
+  lastUsedIp     String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@map("ApiKey")
 }
 
-model KnowledgeDocument {
+model DocsKnowledgeDocument {
   id                    String   @id @default(cuid())
   organizationId        String?
   path                  String
@@ -63,6 +69,7 @@ model KnowledgeDocument {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  @@map("KnowledgeDocument")
   @@index([organizationId, path])
   @@index([organizationId, updatedAt(sort: Desc)])
   @@index([updatedAt(sort: Desc)])
