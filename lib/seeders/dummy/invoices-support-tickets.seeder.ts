@@ -12,8 +12,8 @@
 import { createHash } from "node:crypto"
 
 import {
-  InvoiceLineType,
-  InvoiceStatus,
+  BillingInvoiceLineType,
+  BillingInvoiceStatus,
   Prisma,
   SupportTicketDepartment,
   SupportTicketPriority,
@@ -27,7 +27,7 @@ import { registerSeeder } from "../registry"
 // ── Internal Types ─────────────────────────────────────────────────────────
 
 interface InvoiceLineSeed {
-  lineType: InvoiceLineType
+  lineType: BillingInvoiceLineType
   description: string
   quantity: number
   unitPrice: number
@@ -35,7 +35,7 @@ interface InvoiceLineSeed {
 
 interface InvoiceSeed {
   key: string
-  status: InvoiceStatus
+  status: BillingInvoiceStatus
   periodStart: Date
   periodEnd: Date
   issuedAt: Date | null
@@ -78,7 +78,7 @@ const addDays = (date: Date, days: number) => {
 }
 
 const buildInvoiceTotals = (
-  lines: Array<{ lineType: InvoiceLineType; amount: number }>,
+  lines: Array<{ lineType: BillingInvoiceLineType; amount: number }>,
 ) => {
   const subtotalAmount = sumNumbers(
     lines
@@ -436,7 +436,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
     // ── Invoices ─────────────────────────────────────────────────────
     for (const seed of invoiceSeedData()) {
       const invoiceNumber = `SEED-${this.scopeCode}-INV-${seed.key}`
-      const existingInvoice = await this.prisma.invoice.findUnique({
+      const existingInvoice = await this.prisma.billingInvoice.findUnique({
         where: { invoiceNumber },
         select: { id: true },
       })
@@ -489,7 +489,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
       } satisfies Omit<Prisma.InvoiceUncheckedCreateInput, "id">
 
       if (existingInvoice) {
-        await this.prisma.invoice.update({
+        await this.prisma.billingInvoice.update({
           where: { id: existingInvoice.id },
           data: {
             ...invoiceData,
@@ -498,7 +498,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
         })
         this.trackUpdated()
       } else {
-        await this.prisma.invoice.create({
+        await this.prisma.billingInvoice.create({
           data: {
             ...invoiceData,
             lines: { create: linePayload },
@@ -559,7 +559,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
     )
 
     // Delete invoices (lines cascade via FK)
-    const deletedInvoices = await this.prisma.invoice.deleteMany({
+    const deletedInvoices = await this.prisma.billingInvoice.deleteMany({
       where: {
         metadataJson: { path: ["seedTag"], equals: SEED_TAG },
         billingAccount: { organizationId: this.organizationId },
@@ -577,7 +577,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
     this.trackDeleted(deletedTickets.count)
 
     // Delete billing account (only if it has no remaining invoices)
-    const remainingInvoices = await this.prisma.invoice.count({
+    const remainingInvoices = await this.prisma.billingInvoice.count({
       where: { billingAccount: { organizationId: this.organizationId } },
     })
     if (remainingInvoices === 0) {

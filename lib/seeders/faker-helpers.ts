@@ -9,7 +9,7 @@
  * and pass these helpers' output directly.
  *
  * Example:
- *   import { Prisma, InvoiceStatus } from "@prisma/client"
+ *   import { Prisma, BillingInvoiceStatus } from "@prisma/client"
  *   import { fakerInvoice, fakerInvoiceLine } from "@/lib/seeders/faker-helpers"
  *
  *   const invoiceData = fakerInvoice({
@@ -21,8 +21,8 @@
 import { faker } from "@faker-js/faker"
 import {
   type Prisma,
-  InvoiceStatus,
-  InvoiceLineType,
+  BillingInvoiceStatus,
+  BillingInvoiceLineType,
   SupportTicketDepartment,
   SupportTicketPriority,
   SupportTicketStatus,
@@ -137,14 +137,14 @@ export function fakerInvoiceNumber(): string {
  * Requires `billingAccount` relation connect.
  */
 export function fakerInvoice(
-  overrides: Partial<Prisma.InvoiceCreateInput>,
-): Prisma.InvoiceCreateInput {
+  overrides: Partial<Prisma.BillingInvoiceCreateInput>,
+): Prisma.BillingInvoiceCreateInput {
   const range = fakerDateRange()
   return {
     id: overrides.id ?? fakerId(),
     invoiceNumber: overrides.invoiceNumber ?? fakerInvoiceNumber(),
     billingAccount: overrides.billingAccount ?? { connect: { id: fakerId() } },
-    status: overrides.status ?? faker.helpers.enumValue(InvoiceStatus),
+    status: overrides.status ?? faker.helpers.enumValue(BillingInvoiceStatus),
     currency: overrides.currency ?? "USD",
     subtotalAmount: overrides.subtotalAmount ?? fakerAmount(10, 5_000),
     taxAmount: overrides.taxAmount ?? fakerAmount(0, 500),
@@ -163,12 +163,12 @@ export function fakerInvoice(
  * Requires `invoice` relation connect.
  */
 export function fakerInvoiceLine(
-  overrides: Partial<Prisma.InvoiceLineCreateInput>,
-): Prisma.InvoiceLineCreateInput {
+  overrides: Partial<Prisma.BillingInvoiceLineCreateInput>,
+): Prisma.BillingInvoiceLineCreateInput {
   return {
     id: overrides.id ?? fakerId(),
     invoice: overrides.invoice ?? { connect: { id: fakerId() } },
-    lineType: overrides.lineType ?? faker.helpers.enumValue(InvoiceLineType),
+    lineType: overrides.lineType ?? faker.helpers.enumValue(BillingInvoiceLineType),
     description: overrides.description ?? faker.commerce.productName(),
     quantity:
       overrides.quantity ??
