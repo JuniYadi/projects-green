@@ -75,6 +75,7 @@ mock.module("next/navigation.js", () => {
 mock.module("@/lib/platform-role", () => {
   return {
     getPlatformAccessForUser: mockGetPlatformAccessForUser,
+    getPlatformRoleForUser: mock(async () => "none" as const),
   }
 })
 

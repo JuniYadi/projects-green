@@ -13,6 +13,24 @@ mock.module("@/lib/prisma", () => ({
       findFirst: mockApiKeyFindFirst,
       update: mockApiKeyUpdate,
     },
+    paymentGateway: { findMany: async () => [], findFirst: async () => null },
+    paymentBankAccount: { findMany: async () => [] },
+    paymentCurrency: {
+      findMany: async () => [],
+      findUnique: async () => null,
+      findFirst: async () => null,
+    },
+    billingInvoice: {
+      findMany: async () => [],
+      findFirst: async () => null,
+      create: async (data: any) => ({ id: "inv-mock", ...data }),
+      update: async (data: any) => data,
+    },
+    billingAccount: {
+      findUnique: async () => null,
+      create: async (data: any) => data,
+    },
+    billingAdjustment: { create: async () => ({ id: "adj-mock" }) },
   },
 }))
 

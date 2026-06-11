@@ -28,6 +28,7 @@ const mockUnsealData = mock(async () => ({
 mock.module("@workos-inc/authkit-nextjs", () => {
   return {
     withAuth: mockWithAuth,
+    getWorkOS: () => ({}),
   }
 })
 

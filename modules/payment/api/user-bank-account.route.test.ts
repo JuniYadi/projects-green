@@ -76,6 +76,21 @@ mock.module("@/lib/prisma", () => ({
     billingAccount: {
       findUnique: mockBillingAccountFindUnique,
     },
+    paymentGateway: {
+      findMany: mock(async () => []),
+      findFirst: mock(async () => null),
+    },
+    paymentCurrency: {
+      findUnique: mock(async () => null),
+      findFirst: mock(async () => null),
+      findMany: mock(async () => []),
+    },
+    billingInvoice: {
+      findMany: mock(async () => []),
+      findFirst: mock(async () => null),
+      create: mock(async (data: any) => ({ id: "inv-mock", ...data })),
+      update: mock(async (data: any) => data),
+    },
     $transaction: mock((fns: unknown[]) => Promise.all(fns)),
   },
 }))
