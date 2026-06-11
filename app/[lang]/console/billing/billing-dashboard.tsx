@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useParams } from "next/navigation"
 
 import { SubscriptionCard } from "@/components/billing/subscription-card"
@@ -82,16 +84,17 @@ function calculateCostProjection(
   return Math.round(avgMonthly)
 }
 
-const secondaryLinks = [
-  { href: "/console/billing/usage", label: "Usage" },
-  { href: "/console/billing/alerts", label: "Alerts" },
-  { href: "/console/billing/transactions", label: "Transactions" },
-  { href: "/console/billing/subscription", label: "Subscriptions" },
+const createSecondaryLinks = (messages: ReturnType<typeof getMessages>) => [
+  { href: "/console/billing/usage", label: messages.console.billing.usage },
+  { href: "/console/billing/alerts", label: messages.console.billing.alerts },
+  { href: "/console/billing/transactions", label: messages.console.billing.transactions },
+  { href: "/console/billing/subscription", label: messages.console.billing.subscriptions },
 ]
 
 export function BillingDashboard() {
   const params = useParams()
-  const locale = (params?.lang as string) ?? "en"
+  const locale = resolveLocaleOrDefault(params?.lang as string | undefined)
+  const messages = getMessages(locale)
   const [data, setData] = useState<DashboardData>({
     account: null,
     subscriptions: null,
@@ -119,7 +122,7 @@ export function BillingDashboard() {
       })
 
       if (results[0].status === "rejected") {
-        setAccountError("Failed to load balance")
+        setAccountError(messages.console.billing.failedToLoadBalance)
       }
       setIsLoading(false)
     }
@@ -151,7 +154,7 @@ export function BillingDashboard() {
       {/* Action bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav className="flex flex-wrap items-center gap-1">
-          {secondaryLinks.map((link) => (
+          {createSecondaryLinks(messages).map((link) => (
             <Button key={link.href} asChild variant="ghost" size="sm">
               <Link href={link.href}>{link.label}</Link>
             </Button>
@@ -160,7 +163,7 @@ export function BillingDashboard() {
         <Button asChild size="sm">
           <Link href="/console/billing/topup">
             <PlusIcon />
-            Top Up Balance
+            {messages.console.billing.topUpBalance}
           </Link>
         </Button>
       </div>
@@ -170,39 +173,31 @@ export function BillingDashboard() {
         <div className="grid gap-6 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Balance</CardTitle>
+              <CardTitle className="text-sm font-medium">{messages.console.billing.balance}</CardTitle>
               <WalletIcon className="text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{account.formattedBalance}</p>
-              <p className="text-xs text-muted-foreground">
-                Account age: {account.accountAge}
-              </p>
+              <p className="text-xs text-muted-foreground">{messages.console.billing.accountAge.replace("{age}", account.accountAge)}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Next Invoice
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">{messages.console.billing.nextInvoice}</CardTitle>
               <Calendar className="text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
                 {formatDate(nextBillingDate)}
               </p>
-              <p className="text-xs text-muted-foreground">
-                Based on active subscriptions
-              </p>
+              <p className="text-xs text-muted-foreground">{messages.console.billing.basedOnActiveSubscriptions}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Est. Monthly
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">{messages.console.billing.estMonthly}</CardTitle>
               <ChartLineUp className="text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -211,9 +206,7 @@ export function BillingDashboard() {
                   ? formatCurrency(costProjection)
                   : "N/A"}
               </p>
-              <p className="text-xs text-muted-foreground">
-                Estimated monthly average
-              </p>
+              <p className="text-xs text-muted-foreground">{messages.console.billing.estimatedMonthlyAverage}</p>
             </CardContent>
           </Card>
         </div>
@@ -221,7 +214,7 @@ export function BillingDashboard() {
         <Card className="ring-destructive/20">
           <CardContent>
             <p className="text-sm text-destructive">
-              {accountError || "Failed to load balance"}
+              {accountError || messages.console.billing.failedToLoadBalance}
             </p>
           </CardContent>
         </Card>
@@ -232,7 +225,7 @@ export function BillingDashboard() {
         <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
           <WarningIcon className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
           <p className="text-sm text-yellow-600 dark:text-yellow-400">
-            Your balance is running low. Top up to avoid service interruption.
+            {messages.console.billing.lowBalanceWarning}
           </p>
         </div>
       )}
@@ -240,11 +233,9 @@ export function BillingDashboard() {
       {/* Active Subscriptions */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-heading text-lg font-semibold">
-            Active Subscriptions
-          </h2>
+          <h2 className="font-heading text-lg font-semibold">{messages.console.billing.activeSubscriptions}</h2>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/console/billing/subscription">View all</Link>
+            <Link href="/console/billing/subscription">{messages.console.billing.viewAll}</Link>
           </Button>
         </div>
 
@@ -257,7 +248,7 @@ export function BillingDashboard() {
         ) : (
           <Card>
             <CardContent className="py-6 text-center text-muted-foreground">
-              No active subscriptions
+              {messages.console.billing.noActiveSubscriptions}
             </CardContent>
           </Card>
         )}
@@ -266,18 +257,16 @@ export function BillingDashboard() {
       {/* Recent Invoices */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-heading text-lg font-semibold">
-            Recent Invoices
-          </h2>
+          <h2 className="font-heading text-lg font-semibold">{messages.console.billing.recentInvoices}</h2>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/console/billing/invoices">View all</Link>
+            <Link href="/console/billing/invoices">{messages.console.billing.viewAll}</Link>
           </Button>
         </div>
 
         <InvoiceTable
           invoices={data.invoices?.invoices.slice(0, 5) ?? []}
           lang={locale}
-          emptyMessage="No invoices yet."
+          emptyMessage={messages.console.billing.noInvoices}
         />
       </section>
     </div>

@@ -1,6 +1,9 @@
 "use client"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
@@ -67,6 +70,9 @@ function exportToCSV(data: UsageBreakdown[], filename: string) {
 }
 
 export default function UsagePage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [summary, setSummary] = useState<UsageSummary | null>(null)
   const [trend, setTrend] = useState<DailyTrend[]>([])
   const [loading, setLoading] = useState(true)

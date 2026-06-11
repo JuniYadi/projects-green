@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
@@ -38,6 +40,9 @@ const findDefaultSlug = (
 }
 
 export default function ManagePage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -171,13 +176,13 @@ export default function ManagePage() {
 
   return (
     <LifecyclePageShell
-      title="Manage Application"
-      description="Monitor real deployment status, events, and logs for your apps."
+      title={messages.console.app.manage.heading}
+      description={messages.console.app.manage.description}
     >
       <div className="space-y-6">
         {appsLoading ? (
           <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-            Loading your applications…
+            {messages.console.app.manage.loadingApps}
           </div>
         ) : appsError ? (
           <div
@@ -191,13 +196,13 @@ export default function ManagePage() {
               size="sm"
               onClick={handleAppsRetry}
             >
-              Retry
+              {messages.console.app.manage.retry}
             </Button>
           </div>
         ) : apps.length === 0 ? (
           <div className="space-y-2 rounded-xl border border-dashed border-border bg-muted/10 p-8 text-center">
             <p className="text-sm font-medium text-foreground">
-              No applications yet
+              {messages.console.app.manage.noApps}
             </p>
             <p className="text-xs text-muted-foreground">
               Deploy a private repository from the Deploy page to start
@@ -226,7 +231,7 @@ export default function ManagePage() {
 
             {overviewLoading ? (
               <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-                Loading application state…
+                {messages.console.app.manage.loadingAppState}
               </div>
             ) : overviewError ? (
               <div
@@ -240,7 +245,7 @@ export default function ManagePage() {
                   size="sm"
                   onClick={() => window.location.reload()}
                 >
-                  Retry
+                  {messages.console.app.manage.retry}
                 </Button>
               </div>
             ) : overview ? (

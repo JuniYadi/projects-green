@@ -1,7 +1,9 @@
 "use client"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useEffect, useState } from "react"
-
+import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getSubscriptions } from "@/lib/billing-client"
@@ -9,6 +11,9 @@ import type { BillingSubscriptions } from "@/lib/billing-client"
 import { GlobeIcon, RocketLaunchIcon } from "@phosphor-icons/react"
 
 export default function SubscriptionPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [data, setData] = useState<BillingSubscriptions | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

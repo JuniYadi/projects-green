@@ -4,6 +4,9 @@ import type { ColumnDef } from "@tanstack/react-table"
 
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { useParams } from "next/navigation"
 import {
   SUPPORT_TICKET_DEPARTMENT_LABELS,
   SUPPORT_TICKET_STATUS_LABELS,
@@ -50,11 +53,11 @@ const supportTicketRows: SupportTicket[] = [
   },
 ]
 
-const supportTicketColumns: ColumnDef<SupportTicket>[] = [
+const supportTicketColumns = (messages: ReturnType<typeof getMessages>): ColumnDef<SupportTicket>[] => [
   {
     accessorKey: "ticketId",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Ticket ID" />
+      <DataTableColumnHeader column={column} title={messages.console.supportTickets.ticketId} />
     ),
     cell: ({ row }) => (
       <span className="font-medium text-foreground">
@@ -65,20 +68,20 @@ const supportTicketColumns: ColumnDef<SupportTicket>[] = [
   {
     accessorKey: "title",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Title" />
+      <DataTableColumnHeader column={column} title={messages.console.supportTickets.titleColumn} />
     ),
   },
   {
     accessorKey: "status",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
+      <DataTableColumnHeader column={column} title={messages.console.supportTickets.status} />
     ),
     cell: ({ row }) => SUPPORT_TICKET_STATUS_LABELS[row.original.status],
   },
   {
     accessorKey: "department",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Department" />
+      <DataTableColumnHeader column={column} title={messages.console.supportTickets.department} />
     ),
     cell: ({ row }) =>
       SUPPORT_TICKET_DEPARTMENT_LABELS[row.original.department],
@@ -86,55 +89,58 @@ const supportTicketColumns: ColumnDef<SupportTicket>[] = [
   {
     accessorKey: "priority",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Priority" />
+      <DataTableColumnHeader column={column} title={messages.console.supportTickets.priority} />
     ),
   },
 ]
 
 export function SupportTicketsTable() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   return (
     <DataTable
-      columns={supportTicketColumns}
+      columns={supportTicketColumns(messages)}
       data={supportTicketRows}
-      searchPlaceholder="Filter by Ticket ID or Title..."
+      searchPlaceholder={messages.console.supportTickets.searchPlaceholder}
       searchableColumns={["ticketId", "title"]}
       facetFilters={[
         {
           columnId: "status",
-          label: "Status",
-          allLabel: "All status",
+          label: messages.console.supportTickets.status,
+          allLabel: messages.console.supportTickets.filterAllStatus,
           options: [
-            { label: "Open", value: "open" },
-            { label: "In Progress", value: "in_progress" },
-            { label: "Resolved", value: "resolved" },
-            { label: "Closed", value: "closed" },
+            { label: messages.console.supportTickets.open, value: "open" },
+            { label: messages.console.supportTickets.inProgress, value: "in_progress" },
+            { label: messages.console.supportTickets.resolved, value: "resolved" },
+            { label: messages.console.supportTickets.closed, value: "closed" },
           ],
         },
         {
           columnId: "department",
-          label: "Department",
-          allLabel: "All departments",
+          label: messages.console.supportTickets.department,
+          allLabel: messages.console.supportTickets.filterAllDepartments,
           options: [
-            { label: "Billing", value: "billing" },
-            { label: "Technical", value: "technical" },
-            { label: "Account", value: "account" },
-            { label: "Compliance", value: "compliance" },
+            { label: messages.console.supportTickets.billing, value: "billing" },
+            { label: messages.console.supportTickets.technical, value: "technical" },
+            { label: messages.console.supportTickets.account, value: "account" },
+            { label: messages.console.supportTickets.compliance, value: "compliance" },
           ],
         },
         {
           columnId: "priority",
-          label: "Priority",
-          allLabel: "All priority",
+          label: messages.console.supportTickets.priority,
+          allLabel: messages.console.supportTickets.filterAllPriority,
           options: [
-            { label: "Low", value: "Low" },
-            { label: "Medium", value: "Medium" },
-            { label: "High", value: "High" },
-            { label: "Urgent", value: "Urgent" },
+            { label: messages.console.supportTickets.low, value: "Low" },
+            { label: messages.console.supportTickets.medium, value: "Medium" },
+            { label: messages.console.supportTickets.high, value: "High" },
+            { label: messages.console.supportTickets.urgent, value: "Urgent" },
           ],
         },
       ]}
       initialSorting={[{ id: "ticketId", desc: true }]}
-      emptyMessage="No support tickets match your filters."
+      emptyMessage={messages.console.supportTickets.noTicketsMatch}
     />
   )
 }

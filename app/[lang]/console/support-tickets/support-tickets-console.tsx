@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { TicketTableSkeleton } from "@/modules/support-tickets/ui/ticket-table-skeleton"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
 import {
@@ -34,12 +35,13 @@ const apiClient = createSupportTicketsClient()
 
 const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
 
   return [
     {
       accessorKey: "ticketNumber",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Ticket ID" />
+        <DataTableColumnHeader column={column} title={messages.console.supportTickets.ticketId} />
       ),
       cell: ({ row }) => {
         const ticketPath = localizePathname({
@@ -60,20 +62,20 @@ const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
     {
       accessorKey: "subject",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Subject" />
+        <DataTableColumnHeader column={column} title={messages.console.supportTickets.subject} />
       ),
     },
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader column={column} title={messages.console.supportTickets.status} />
       ),
       cell: ({ row }) => SUPPORT_TICKET_STATUS_LABELS[row.original.status],
     },
     {
       accessorKey: "department",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Department" />
+        <DataTableColumnHeader column={column} title={messages.console.supportTickets.department} />
       ),
       cell: ({ row }) =>
         SUPPORT_TICKET_DEPARTMENT_LABELS[row.original.department],
@@ -81,14 +83,14 @@ const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
     {
       accessorKey: "priority",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Priority" />
+        <DataTableColumnHeader column={column} title={messages.console.supportTickets.priority} />
       ),
       cell: ({ row }) => SUPPORT_TICKET_PRIORITY_LABELS[row.original.priority],
     },
     {
       accessorKey: "service",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Service" />
+        <DataTableColumnHeader column={column} title={messages.console.supportTickets.service} />
       ),
       cell: ({ row }) =>
         row.original.service
@@ -131,6 +133,7 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
   }, [])
 
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
   const createPath = localizePathname({
     pathname: "/console/support-tickets/new",
     locale,
@@ -162,18 +165,18 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
               facetFilters={[
                 {
                   columnId: "status",
-                  label: "Status",
+                  label: messages.console.supportTickets.status,
                   allLabel: "All status",
                   options: [
-                    { label: "Open", value: "open" },
-                    { label: "In Progress", value: "in_progress" },
-                    { label: "Resolved", value: "resolved" },
-                    { label: "Closed", value: "closed" },
+                    { label: messages.console.supportTickets.open, value: "open" },
+                    { label: messages.console.supportTickets.inProgress, value: "in_progress" },
+                    { label: messages.console.supportTickets.resolved, value: "resolved" },
+                    { label: messages.console.supportTickets.closed, value: "closed" },
                   ],
                 },
                 {
                   columnId: "department",
-                  label: "Department",
+                  label: messages.console.supportTickets.department,
                   allLabel: "All departments",
                   options: SUPPORT_TICKET_DEPARTMENTS.map((departmentValue) => ({
                     label: SUPPORT_TICKET_DEPARTMENT_LABELS[departmentValue],
@@ -182,12 +185,12 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
                 },
                 {
                   columnId: "priority",
-                  label: "Priority",
+                  label: messages.console.supportTickets.priority,
                   allLabel: "All priority",
                   options: [
-                    { label: "Low", value: "low" },
-                    { label: "Medium", value: "medium" },
-                    { label: "High", value: "high" },
+                    { label: messages.console.supportTickets.low, value: "low" },
+                    { label: messages.console.supportTickets.medium, value: "medium" },
+                    { label: messages.console.supportTickets.high, value: "high" },
                   ],
                 },
                 {

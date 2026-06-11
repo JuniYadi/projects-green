@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { SupportTicketDetailSkeleton } from "@/modules/support-tickets/ui/support-ticket-detail-skeleton"
 import {
   SUPPORT_TICKET_DEPARTMENT_LABELS,
