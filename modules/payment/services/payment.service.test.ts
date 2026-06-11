@@ -207,7 +207,7 @@ describe("PaymentService", () => {
         id: "inv-usd",
         invoiceNumber: "TOP-USD001",
         currency: "USD",
-        totalAmount: { toNumber: () => 5000 },
+        totalAmount: { toNumber: () => 50000 },
         status: "OPEN" as string,
         paymentMethod: null as unknown as string,
         dueDate: new Date(),
@@ -216,7 +216,7 @@ describe("PaymentService", () => {
 
       const invoice = await service.createTopupInvoice({
         organizationId: "org-usd",
-        amount: 5000,
+        amount: 50000,
       })
 
       expect(invoice.currency).toBe("USD")

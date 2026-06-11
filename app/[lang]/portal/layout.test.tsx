@@ -45,9 +45,9 @@ const mockRedirect = mock((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
 
-const mockGetPlatformAccessForUser = mock(async () => ({
+const mockGetPlatformAccessForUser = mock(async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
   exists: true,
-  role: "super_admin" as const,
+  role: "super_admin",
 }))
 
 mock.module("@workos-inc/authkit-nextjs", () => {

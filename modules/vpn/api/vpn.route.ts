@@ -27,6 +27,11 @@ type VpnAuthContext = {
   user: { id: string; email?: string | null } | null
 }
 
+type VpnAuthResult =
+  | (VpnAuthContext & { ok: true })
+  | { ok: false; error: "UNAUTHORIZED"; message: string; organizationId?: string | null }
+  | { ok: false; error: "FORBIDDEN"; message: string; organizationId?: string | null }
+
 type RouteSet = {
   status?: number | string
 }
@@ -98,10 +103,20 @@ const isAdminAuth = (auth: VpnAuthContext): boolean => {
   )
 }
 
+const isAuthSuccess = (
+  auth: VpnAuthResult,
+): auth is VpnAuthContext & { ok: true } =>
+  auth.ok === true
+
+const requireOrg = (auth: VpnAuthContext & { ok: true }) => {
+  if (!auth.organizationId) throw new Error("No active organization")
+  return auth.organizationId as string
+}
+
 const requireAuth = async (
   authenticate: () => Promise<VpnAuthContext>,
   set: RouteSet,
-): Promise<VpnAuthContext | ReturnType<typeof toUnauthorized> | ReturnType<typeof toForbidden>> => {
+): Promise<VpnAuthResult> => {
   const auth = await authenticate()
 
   if (!auth.user) return toUnauthorized(set)
@@ -109,7 +124,7 @@ const requireAuth = async (
     return toForbidden(set, "No active organization found for VPN provisioning.")
   }
 
-  return auth
+  return { ...auth, ok: true as const }
 }
 
 const currentPeriod = (now: Date = new Date()): string => {
@@ -160,10 +175,15 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
   return new Elysia()
     .get("/status", async ({ set }) => {
       const auth = await requireAuth(authenticate, set)
-      if (!auth.user || !auth.organizationId) return auth
+      if (!isAuthSuccess(auth)) {
+        if (auth.error === "UNAUTHORIZED") return toUnauthorized(set)
+        return toForbidden(set, auth.message)
+      }
+      const { user } = auth
+      const organizationId = requireOrg(auth)
 
       const clients = await vpnClients.getActiveClientsForOrganization(
-        auth.organizationId,
+        organizationId,
       )
 
       return {
@@ -180,10 +200,15 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
     })
     .get("/clients/:clientId/download", async ({ params, set }) => {
       const auth = await requireAuth(authenticate, set)
-      if (!auth.user || !auth.organizationId) return auth
+      if (!isAuthSuccess(auth)) {
+        if (auth.error === "UNAUTHORIZED") return toUnauthorized(set)
+        return toForbidden(set, auth.message)
+      }
+      const { user } = auth
+      const organizationId = requireOrg(auth)
 
       const download = await vpnClients.getDownloadForOrganization({
-        organizationId: auth.organizationId,
+        organizationId,
         clientId: params.clientId,
       })
 
@@ -196,10 +221,15 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
     })
     .post("/clients/:clientId/revoke", async ({ params, set }) => {
       const auth = await requireAuth(authenticate, set)
-      if (!auth.user || !auth.organizationId) return auth
+      if (!isAuthSuccess(auth)) {
+        if (auth.error === "UNAUTHORIZED") return toUnauthorized(set)
+        return toForbidden(set, auth.message)
+      }
+      const { user } = auth
+      const organizationId = requireOrg(auth)
 
       const revoked = await vpnClients.markRevoked({
-        organizationId: auth.organizationId,
+        organizationId,
         clientId: params.clientId,
       })
       await openVpn.revokeClient(revoked.clientName)
@@ -212,8 +242,13 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
     })
     .get("/admin/health", async ({ set }) => {
       const auth = await requireAuth(authenticate, set)
-      if (!auth.user || !auth.organizationId) return auth
-      if (!isAdminAuth(auth)) {
+      if (!isAuthSuccess(auth)) {
+        if (auth.error === "UNAUTHORIZED") return toUnauthorized(set)
+        return toForbidden(set, auth.message)
+      }
+      const { user } = auth
+      const organizationId = requireOrg(auth)
+      if (!isAdminAuth({ ...auth, user, organizationId })) {
         return toForbidden(set, "You are not allowed to inspect VPN health.")
       }
 

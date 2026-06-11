@@ -2,35 +2,51 @@ import { describe, expect, it, mock } from "bun:test"
 
 import { createConsoleVoucherRoutes } from "./console-vouchers.route"
 
-function createDeps() {
+// Plain service object — tests override specific methods with mock()
+function createDefaultService() {
   return {
-    authenticate: mock(() => ({
-      user: { id: "user_1", email: "user@test.com" },
-      organizationId: "org_1",
-      role: "member",
-      roles: ["member"],
-    })),
-    service: {
-      redeemVoucher: mock(() => ({
+    redeemVoucher: mock(() =>
+      Promise.resolve({
         claimId: "claim_1",
         voucherCode: "TEST1234",
         amount: "50000",
         currency: "IDR",
         adjustmentId: "adj_1",
-      })),
-      getUserClaims: mock(() => []),
-    },
+      }),
+    ),
+    getUserClaims: () => Promise.resolve([]),
   }
 }
 
-const toApp = (deps: ReturnType<typeof createDeps>) =>
-  createConsoleVoucherRoutes(deps)
+function createDeps() {
+  return {
+    authenticate: () =>
+      Promise.resolve({
+        user: { id: "user_1", email: "user@test.com" },
+        organizationId: "org_1",
+        role: "member",
+        roles: ["member"],
+      }),
+    service: createDefaultService(),
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toApp = (deps: any) => createConsoleVoucherRoutes(deps)
 
 describe("Console Voucher Routes", () => {
   describe("POST /redeem", () => {
     it("returns 401 when unauthenticated", async () => {
-      const deps = createDeps()
-      deps.authenticate = mock(() => ({ user: null }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: null,
+          organizationId: null,
+          role: null,
+          roles: null,
+        }),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/redeem", {
@@ -46,13 +62,16 @@ describe("Console Voucher Routes", () => {
     })
 
     it("returns 403 when no organization", async () => {
-      const deps = createDeps()
-      deps.authenticate = mock(() => ({
-        user: { id: "user_1", email: "user@test.com" },
-        organizationId: null,
-        role: null,
-        roles: null,
-      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: { id: "user_1", email: "user@test.com" },
+          organizationId: null,
+          role: null,
+          roles: null,
+        }),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/redeem", {
@@ -68,7 +87,8 @@ describe("Console Voucher Routes", () => {
     })
 
     it("redeems a valid code successfully", async () => {
-      const deps = createDeps()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/redeem", {
@@ -86,7 +106,8 @@ describe("Console Voucher Routes", () => {
     })
 
     it("normalizes code to uppercase", async () => {
-      const deps = createDeps()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
 
       await toApp(deps).handle(
         new Request("http://localhost/vouchers/redeem", {
@@ -116,8 +137,16 @@ describe("Console Voucher Routes", () => {
 
   describe("GET /claims", () => {
     it("returns 401 when unauthenticated", async () => {
-      const deps = createDeps()
-      deps.authenticate = mock(() => ({ user: null }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: null,
+          organizationId: null,
+          role: null,
+          roles: null,
+        }),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/claims"),
@@ -127,22 +156,25 @@ describe("Console Voucher Routes", () => {
     })
 
     it("returns claim history for authenticated user", async () => {
-      const deps = createDeps()
-      deps.service.getUserClaims = mock(() => [
-        {
-          id: "claim_1",
-          voucherId: "v_1",
-          workosUserId: "user_1",
-          organizationId: "org_1",
-          billingAdjustmentId: "adj_1",
-          claimedAt: new Date(),
-          voucher: {
-            code: "TEST1234",
-            amount: { toFixed: () => "50000" },
-            currency: "IDR",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.getUserClaims = mock(() =>
+        Promise.resolve([
+          {
+            id: "claim_1",
+            voucherId: "v_1",
+            workosUserId: "user_1",
+            organizationId: "org_1",
+            billingAdjustmentId: "adj_1",
+            claimedAt: new Date(),
+            voucher: {
+              code: "TEST1234",
+              amount: { toFixed: () => "50000" },
+              currency: "IDR",
+            },
           },
-        },
-      ])
+        ]),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/claims"),

@@ -4,36 +4,54 @@ import { Elysia } from "elysia"
 import { VoucherNotFoundError } from "../vouchers.errors"
 import { createPortalVoucherRoutes } from "./portal-vouchers.route"
 
-function createDeps() {
+// Plain service object — tests override specific methods with mock()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function createDefaultService(): any {
   return {
-    authenticate: mock(() => ({
-      user: { id: "user_1", email: "admin@test.com" },
-      organizationId: "org_1",
-      role: "admin",
-      roles: ["admin"],
-    })),
-    getPlatformRole: mock(() => "super_admin" as const),
-    service: {
-      listVouchers: mock(() => ({ vouchers: [], total: 0 })),
-      getVoucherById: mock(() => {
-        throw new VoucherNotFoundError("v_1")
-      }),
-      createVoucher: mock(() => ({ id: "v_1", code: "TEST1234" })),
-      updateVoucher: mock(() => ({ id: "v_1" })),
-      disableVoucher: mock(() => ({ id: "v_1", status: "DISABLED" })),
-      getVoucherClaims: mock(() => []),
+    listVouchers: () => Promise.resolve({ vouchers: [], total: 0 }),
+    getVoucherById: () => {
+      throw new VoucherNotFoundError("v_1")
     },
+    createVoucher: () =>
+      Promise.resolve({ id: "v_1", code: "TEST1234" }),
+    updateVoucher: () => Promise.resolve({ id: "v_1" }),
+    disableVoucher: () =>
+      Promise.resolve({ id: "v_1", status: "DISABLED" }),
+    getVoucherClaims: () => Promise.resolve([]),
   }
 }
 
-const toApp = (deps: ReturnType<typeof createDeps>) =>
+function createDeps() {
+  return {
+    authenticate: () =>
+      Promise.resolve({
+        user: { id: "user_1", email: "admin@test.com" },
+        organizationId: "org_1",
+        role: "admin",
+        roles: ["admin"],
+      }),
+    getPlatformRole: () => Promise.resolve("super_admin" as const),
+    service: createDefaultService(),
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toApp = (deps: any) =>
   new Elysia().use(createPortalVoucherRoutes(deps))
 
 describe("Portal Voucher Routes", () => {
   describe("GET /vouchers/portal", () => {
     it("returns 401 when unauthenticated", async () => {
-      const deps = createDeps()
-      deps.authenticate = mock(() => ({ user: null }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: null,
+          organizationId: null,
+          role: null,
+          roles: null,
+        }),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal"),
@@ -45,14 +63,17 @@ describe("Portal Voucher Routes", () => {
     })
 
     it("returns 403 for non-admin users", async () => {
-      const deps = createDeps()
-      deps.getPlatformRole = mock(() => "none" as const)
-      deps.authenticate = mock(() => ({
-        user: { id: "user_1", email: "user@test.com" },
-        organizationId: "org_1",
-        role: "member",
-        roles: ["member"],
-      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.getPlatformRole = mock(() => Promise.resolve("none" as const))
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: { id: "user_1", email: "user@test.com" },
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+        }),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal"),
@@ -64,26 +85,32 @@ describe("Portal Voucher Routes", () => {
     })
 
     it("returns paginated voucher list for admins", async () => {
-      const deps = createDeps()
-      deps.service.listVouchers = mock(() => ({
-        vouchers: [{
-          id: "v_1",
-          code: "TEST1234",
-          prefix: null,
-          status: "ACTIVE",
-          maxClaims: 10,
-          claimedCount: 0,
-          expiresAt: new Date(Date.now() + 86400000),
-          amount: { toFixed: () => "50000" },
-          currency: "IDR",
-          targetWorkosUserId: null,
-          targetOrganizationId: null,
-          createdByWorkosUserId: "user_1",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }],
-        total: 1,
-      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.listVouchers = mock(() =>
+        Promise.resolve({
+          vouchers: [
+            {
+              id: "v_1",
+              code: "TEST1234",
+              prefix: null,
+              status: "ACTIVE",
+              maxClaims: 10,
+              claimedCount: 0,
+              expiresAt: new Date(Date.now() + 86400000),
+              amount: { toFixed: () => "50000" },
+              currency: "IDR",
+              targetWorkosUserId: null,
+              targetOrganizationId: null,
+              createdByWorkosUserId: "user_1",
+              metadataJson: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ],
+          total: 1,
+        }),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal"),
@@ -98,23 +125,27 @@ describe("Portal Voucher Routes", () => {
 
   describe("POST /vouchers/portal", () => {
     it("creates voucher with valid data", async () => {
-      const deps = createDeps()
-      deps.service.createVoucher = mock(() => ({
-        id: "v_1",
-        code: "TEST1234",
-        prefix: null,
-        status: "ACTIVE",
-        maxClaims: 10,
-        claimedCount: 0,
-        expiresAt: new Date(Date.now() + 86400000),
-        amount: { toFixed: () => "50000" },
-        currency: "IDR",
-        targetWorkosUserId: null,
-        targetOrganizationId: null,
-        createdByWorkosUserId: "user_1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.createVoucher = mock(() =>
+        Promise.resolve({
+          id: "v_1",
+          code: "TEST1234",
+          prefix: null,
+          status: "ACTIVE",
+          maxClaims: 10,
+          claimedCount: 0,
+          expiresAt: new Date(Date.now() + 86400000),
+          amount: { toFixed: () => "50000" },
+          currency: "IDR",
+          targetWorkosUserId: null,
+          targetOrganizationId: null,
+          createdByWorkosUserId: "user_1",
+          metadataJson: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal", {
@@ -166,25 +197,28 @@ describe("Portal Voucher Routes", () => {
 
   describe("GET /vouchers/portal/:id", () => {
     it("returns voucher detail with claims", async () => {
-      const deps = createDeps()
-      deps.service.getVoucherById = mock(() => ({
-        id: "v_1",
-        code: "TEST1234",
-        prefix: null,
-        status: "ACTIVE",
-        maxClaims: 10,
-        claimedCount: 0,
-        expiresAt: new Date(Date.now() + 86400000),
-        amount: { toFixed: () => "50000" },
-        currency: "IDR",
-        targetWorkosUserId: null,
-        targetOrganizationId: null,
-        createdByWorkosUserId: "user_1",
-        metadataJson: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        claims: [],
-      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.getVoucherById = mock(() =>
+        Promise.resolve({
+          id: "v_1",
+          code: "TEST1234",
+          prefix: null,
+          status: "ACTIVE",
+          maxClaims: 10,
+          claimedCount: 0,
+          expiresAt: new Date(Date.now() + 86400000),
+          amount: { toFixed: () => "50000" },
+          currency: "IDR",
+          targetWorkosUserId: null,
+          targetOrganizationId: null,
+          createdByWorkosUserId: "user_1",
+          metadataJson: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          claims: [],
+        }),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal/v_1"),
@@ -206,23 +240,27 @@ describe("Portal Voucher Routes", () => {
 
   describe("POST /vouchers/portal/:id/disable", () => {
     it("disables a voucher", async () => {
-      const deps = createDeps()
-      deps.service.disableVoucher = mock(() => ({
-        id: "v_1",
-        code: "TEST1234",
-        status: "DISABLED",
-        prefix: null,
-        maxClaims: 10,
-        claimedCount: 0,
-        expiresAt: new Date(),
-        amount: { toFixed: () => "50000" },
-        currency: "IDR",
-        targetWorkosUserId: null,
-        targetOrganizationId: null,
-        createdByWorkosUserId: "user_1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.disableVoucher = mock(() =>
+        Promise.resolve({
+          id: "v_1",
+          code: "TEST1234",
+          status: "DISABLED",
+          prefix: null,
+          maxClaims: 10,
+          claimedCount: 0,
+          expiresAt: new Date(),
+          amount: { toFixed: () => "50000" },
+          currency: "IDR",
+          targetWorkosUserId: null,
+          targetOrganizationId: null,
+          createdByWorkosUserId: "user_1",
+          metadataJson: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal/v_1/disable", {
@@ -239,17 +277,21 @@ describe("Portal Voucher Routes", () => {
 
   describe("GET /vouchers/portal/:id/claims", () => {
     it("returns claim history", async () => {
-      const deps = createDeps()
-      deps.service.getVoucherClaims = mock(() => [
-        {
-          id: "claim_1",
-          voucherId: "v_1",
-          workosUserId: "user_1",
-          organizationId: "org_1",
-          billingAdjustmentId: null,
-          claimedAt: new Date(),
-        },
-      ])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.getVoucherClaims = mock(() =>
+        Promise.resolve([
+          {
+            id: "claim_1",
+            voucherId: "v_1",
+            workosUserId: "user_1",
+            organizationId: "org_1",
+            billingAdjustmentId: null,
+            metadataJson: null,
+            claimedAt: new Date(),
+          },
+        ]),
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal/v_1/claims"),
