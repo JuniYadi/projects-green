@@ -1,7 +1,7 @@
 import type {
-  Deployment,
-  DeployEvent,
-  DeploymentLog,
+  ApplicationDeployment,
+  ApplicationDeployEvent,
+  ApplicationDeploymentLog,
   StackStatus,
 } from "@prisma/client"
 
@@ -99,7 +99,7 @@ export const buildDeployTimelineItems = (): DeployTimelineItem[] => {
  */
 export const toDeploymentStatusDTO = (
   deployment: Pick<
-    Deployment,
+    ApplicationDeployment,
     | "id"
     | "status"
     | "attempt"
@@ -129,7 +129,7 @@ export const toDeploymentStatusDTO = (
  * Empty input yields an empty array so the UI shows an honest no-data state.
  */
 export const toDeployLogLines = (
-  logs: Array<Pick<DeploymentLog, "id" | "scope" | "status" | "message">>
+  logs: Array<Pick<ApplicationDeploymentLog, "id" | "scope" | "status" | "message">>
 ): DeployLogLine[] => {
   return logs.map((log) => ({
     id: log.id,
@@ -165,7 +165,7 @@ export type DeployEventDTO = {
 }
 
 export const toDeployEventDTOs = (
-  events: Array<Pick<DeployEvent, "id" | "type" | "message" | "createdAt">>
+  events: Array<Pick<ApplicationDeployEvent, "id" | "type" | "message" | "createdAt">>
 ): DeployEventDTO[] => {
   return events.map((event) => ({
     id: event.id,

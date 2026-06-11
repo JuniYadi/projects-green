@@ -12,7 +12,7 @@ async function chunkArray<T>(array: T[], size: number): Promise<T[][]> {
 }
 
 export async function monitorActiveDeployments() {
-  const activeDeployments = await prisma.deployment.findMany({
+  const activeDeployments = await prisma.applicationDeployment.findMany({
     where: {
       status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
     },
@@ -38,7 +38,7 @@ export async function monitorActiveDeployments() {
           reason
         )
 
-        await prisma.deployment.update({
+        await prisma.applicationDeployment.update({
           where: { id: deployment.id },
           data: { status: "FAILED", failureReason: reason, completedAt: new Date() },
         })
@@ -109,16 +109,16 @@ export async function getMonitorStats() {
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
 
   const [active, recentFailed, recentSuccess] = await Promise.all([
-    prisma.deployment.count({
+    prisma.applicationDeployment.count({
       where: { status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] } },
     }),
-    prisma.deployment.count({
+    prisma.applicationDeployment.count({
       where: {
         status: "FAILED",
         createdAt: { gte: oneHourAgo },
       },
     }),
-    prisma.deployment.count({
+    prisma.applicationDeployment.count({
       where: {
         status: "RUNNING",
         completedAt: { gte: oneHourAgo },

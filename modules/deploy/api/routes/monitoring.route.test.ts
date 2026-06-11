@@ -13,7 +13,7 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 }))
 
 const mockPrisma = {
-  deployment: {
+  applicationDeployment: {
     findUnique: mock(async () => ({
       id: "deploy-123",
       organizationId: "org-1",
@@ -26,10 +26,10 @@ const mockPrisma = {
       completedAt: new Date("2026-06-05T10:05:00.000Z"),
     })),
   },
-  deploymentLog: {
+  applicationDeploymentLog: {
     findMany: mock(async () => []),
   },
-  deployEvent: {
+  applicationDeployEvent: {
     findMany: mock(async () => []),
   },
 }
@@ -46,15 +46,15 @@ const buildRequest = (path: string) =>
   })
 
 const setDeployment = (value: unknown) => {
-  mockPrisma.deployment.findUnique.mockResolvedValue(value as never)
+  mockPrisma.applicationDeployment.findUnique.mockResolvedValue(value as never)
 }
 
 describe("monitoringRoutes", () => {
   beforeEach(() => {
     mockWithAuth.mockClear()
-    mockPrisma.deployment.findUnique.mockClear()
-    mockPrisma.deploymentLog.findMany.mockClear()
-    mockPrisma.deployEvent.findMany.mockClear()
+    mockPrisma.applicationDeployment.findUnique.mockClear()
+    mockPrisma.applicationDeploymentLog.findMany.mockClear()
+    mockPrisma.applicationDeployEvent.findMany.mockClear()
 
     setDeployment({
       id: "deploy-123",
@@ -67,8 +67,8 @@ describe("monitoringRoutes", () => {
       startedAt: new Date("2026-06-05T10:00:00.000Z"),
       completedAt: new Date("2026-06-05T10:05:00.000Z"),
     })
-    mockPrisma.deploymentLog.findMany.mockResolvedValue([] as never)
-    mockPrisma.deployEvent.findMany.mockResolvedValue([] as never)
+    mockPrisma.applicationDeploymentLog.findMany.mockResolvedValue([] as never)
+    mockPrisma.applicationDeployEvent.findMany.mockResolvedValue([] as never)
   })
 
   it("returns real logs for a deployment (empty no-data state)", async () => {
@@ -83,7 +83,7 @@ describe("monitoringRoutes", () => {
   })
 
   it("maps persisted logs into log lines", async () => {
-    mockPrisma.deploymentLog.findMany.mockResolvedValueOnce([
+    mockPrisma.applicationDeploymentLog.findMany.mockResolvedValueOnce([
       { id: "l1", scope: "build", status: "BUILDING", message: "compiling" },
     ] as never)
 

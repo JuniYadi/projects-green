@@ -228,7 +228,7 @@ model ApplicationStack {
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
-  deployments          Deployment[]
+  deployments          ApplicationDeployment[]
   repositoryConnection GithubRepositoryConnection? @relation(fields: [repositoryConnectionId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, slug])
@@ -237,7 +237,7 @@ model ApplicationStack {
   @@index([status])
 }
 
-model Deployment {
+model ApplicationDeployment {
   id               String       @id @default(cuid())
   stackId          String
   organizationId   String
@@ -259,17 +259,18 @@ model Deployment {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  stack  ApplicationStack @relation(fields: [stackId], references: [id], onDelete: Cascade)
-  events DeployEvent[]
-  logs   DeploymentLog[]
+  stack  ApplicationStack           @relation(fields: [stackId], references: [id], onDelete: Cascade)
+  events ApplicationDeployEvent[]
+  logs   ApplicationDeploymentLog[]
 
+  @@map("Deployment")
   @@index([stackId])
   @@index([organizationId])
   @@index([status])
   @@index([createdAt(sort: Desc)])
 }
 
-enum DeployEventType {
+enum ApplicationDeployEventType {
   QUEUED
   BUILD_STARTED
   MANIFEST_PUSHED
@@ -281,22 +282,23 @@ enum DeployEventType {
   ROLLBACK_COMPLETED
 }
 
-model DeployEvent {
-  id           String           @id @default(cuid())
+model ApplicationDeployEvent {
+  id           String                   @id @default(cuid())
   deploymentId String
-  type         DeployEventType
+  type         ApplicationDeployEventType
   message      String?
   metadataJson Json?
-  createdAt    DateTime         @default(now())
+  createdAt    DateTime                 @default(now())
 
-  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  deployment ApplicationDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
+  @@map("DeployEvent")
   @@index([deploymentId])
   @@index([type])
   @@index([createdAt(sort: Desc)])
 }
 
-model DeploymentLog {
+model ApplicationDeploymentLog {
   id           String   @id @default(cuid())
   deploymentId String
   scope        String   @default("runtime")
@@ -304,8 +306,9 @@ model DeploymentLog {
   message      String
   timestamp    DateTime @default(now())
 
-  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  deployment ApplicationDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
+  @@map("DeploymentLog")
   @@index([deploymentId])
   @@index([timestamp(sort: Desc)])
 }

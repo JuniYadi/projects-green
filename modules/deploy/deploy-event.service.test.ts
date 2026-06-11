@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 const mockPrisma = {
-  deployEvent: {
+  applicationDeployEvent: {
     create: mock(() => Promise.resolve({ id: "evt-1", type: "QUEUED" })),
     findMany: mock(() => Promise.resolve([])),
   },
-  deploymentLog: {
+  applicationDeploymentLog: {
     create: mock(() => Promise.resolve({ id: "log-1" })),
     findMany: mock(() => Promise.resolve([])),
   },
@@ -20,10 +20,10 @@ const { recordDeployEvent, recordDeployLog, getDeployEvents, getDeployLogs } =
 
 describe("deploy-event.service", () => {
   beforeEach(() => {
-    mockPrisma.deployEvent.create.mockClear()
-    mockPrisma.deployEvent.findMany.mockClear()
-    mockPrisma.deploymentLog.create.mockClear()
-    mockPrisma.deploymentLog.findMany.mockClear()
+    mockPrisma.applicationDeployEvent.create.mockClear()
+    mockPrisma.applicationDeployEvent.findMany.mockClear()
+    mockPrisma.applicationDeploymentLog.create.mockClear()
+    mockPrisma.applicationDeploymentLog.findMany.mockClear()
   })
 
   it("recordDeployEvent creates event", async () => {
@@ -34,7 +34,7 @@ describe("deploy-event.service", () => {
     })
 
     expect(result).toBeDefined()
-    expect(mockPrisma.deployEvent.create).toHaveBeenCalledWith({
+    expect(mockPrisma.applicationDeployEvent.create).toHaveBeenCalledWith({
       data: {
         deploymentId: "dep-1",
         type: "QUEUED",
@@ -53,7 +53,7 @@ describe("deploy-event.service", () => {
     })
 
     expect(result).toBeDefined()
-    expect(mockPrisma.deploymentLog.create).toHaveBeenCalled()
+    expect(mockPrisma.applicationDeploymentLog.create).toHaveBeenCalled()
   })
 
   it("getDeployEvents returns events", async () => {

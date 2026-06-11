@@ -14,7 +14,7 @@ export const deployPipelineRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      const deployment = await prisma.deployment.findUnique({
+      const deployment = await prisma.applicationDeployment.findUnique({
         where: { id: params.deployId },
         include: { stack: true },
       })
@@ -62,7 +62,7 @@ export const deployPipelineRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      const deployment = await prisma.deployment.findUnique({
+      const deployment = await prisma.applicationDeployment.findUnique({
         where: { id: params.deployId },
       })
 
@@ -94,7 +94,7 @@ export const deployPipelineRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
       }
 
-      const deployment = await prisma.deployment.findUnique({
+      const deployment = await prisma.applicationDeployment.findUnique({
         where: { id: params.deployId },
       })
 

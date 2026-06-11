@@ -55,14 +55,14 @@ const mockPrisma = {
     create: mock(async () => ({ ...stackRecord })),
     update: mock(async () => ({ ...stackRecord })),
   },
-  deployment: {
+  applicationDeployment: {
     count: mock(async () => 0),
     create: mock(async () => ({ id: "deploy-1", status: "QUEUED" })),
   },
-  deployEvent: {
+  applicationDeployEvent: {
     create: mock(async () => ({ id: "event-1" })),
   },
-  deploymentLog: {
+  applicationDeploymentLog: {
     create: mock(async () => ({ id: "log-1" })),
   },
 }
@@ -124,15 +124,15 @@ const resetPrisma = () => {
   mockPrisma.applicationStack.update.mockResolvedValue({
     ...stackRecord,
   } as never)
-  mockPrisma.deployment.count.mockClear()
-  mockPrisma.deployment.count.mockResolvedValue(0 as never)
-  mockPrisma.deployment.create.mockClear()
-  mockPrisma.deployment.create.mockResolvedValue({
+  mockPrisma.applicationDeployment.count.mockClear()
+  mockPrisma.applicationDeployment.count.mockResolvedValue(0 as never)
+  mockPrisma.applicationDeployment.create.mockClear()
+  mockPrisma.applicationDeployment.create.mockResolvedValue({
     id: "deploy-1",
     status: "QUEUED",
   } as never)
-  mockPrisma.deployEvent.create.mockClear()
-  mockPrisma.deploymentLog.create.mockClear()
+  mockPrisma.applicationDeployEvent.create.mockClear()
+  mockPrisma.applicationDeploymentLog.create.mockClear()
 }
 
 describe("deploySubmitRoutes /submit", () => {
@@ -152,7 +152,7 @@ describe("deploySubmitRoutes /submit", () => {
     expect(body.data.stackId).toBe("stack-1")
     expect(body.data.deploymentId).toBe("deploy-1")
     expect(body.data.status).toBe("QUEUED")
-    expect(mockPrisma.deployment.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.applicationDeployment.create).toHaveBeenCalledTimes(1)
   })
 
   it("blocks deploy when the PAYG balance is insufficient (unhappy path)", async () => {
@@ -167,7 +167,7 @@ describe("deploySubmitRoutes /submit", () => {
     const body = (await res.json()) as { error: string; topupUrl: string }
     expect(body.error).toBe("INSUFFICIENT_PAYG_BUFFER")
     expect(body.topupUrl).toBe("/console/billing/topup")
-    expect(mockPrisma.deployment.create).not.toHaveBeenCalled()
+    expect(mockPrisma.applicationDeployment.create).not.toHaveBeenCalled()
   })
 
   it("returns 404 when the repository is not connected", async () => {
@@ -189,7 +189,7 @@ describe("deploySubmitRoutes /submit", () => {
     expect(res.status).toBe(409)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe("STACK_DEPLOY_IN_PROGRESS")
-    expect(mockPrisma.deployment.create).not.toHaveBeenCalled()
+    expect(mockPrisma.applicationDeployment.create).not.toHaveBeenCalled()
   })
 
   it("does not run the PAYG gate for fixed plans", async () => {
@@ -205,7 +205,7 @@ describe("deploySubmitRoutes /submit", () => {
       billingMode: "PACKAGE",
     })
     expect(res.status).toBe(200)
-    expect(mockPrisma.deployment.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.applicationDeployment.create).toHaveBeenCalledTimes(1)
   })
 
   it("rejects unauthenticated requests", async () => {
