@@ -100,7 +100,7 @@ export async function listSuperAdmins(): Promise<AuthPlatformUserRole[]> {
 }
 
 export async function addSuperAdmin(identifier: AdminIdentifier) {
-  const existing = await prisma.platformUserRole.findFirst({
+  const existing = await prisma.authPlatformUserRole.findFirst({
     where: toLookupWhere(identifier),
   })
 

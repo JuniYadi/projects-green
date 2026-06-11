@@ -386,7 +386,7 @@ describe("fakerWhatsappMessage()", () => {
 // ── Knowledge Document Helpers ───────────────────────────────────────────
 
 describe("fakerKnowledgeDocument()", () => {
-  it("returns an object matching KnowledgeDocumentCreateInput shape", () => {
+  it("returns an object matching DocsKnowledgeDocumentCreateInput shape", () => {
     const doc = fakerKnowledgeDocument({
       updatedByWorkosUserId: "user-abc",
     })

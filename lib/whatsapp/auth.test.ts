@@ -21,8 +21,8 @@ const mockPlatformFindFirst = mock<
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    platformUserRole: { findFirst: mockPlatformFindFirst },
-    apiKey: { findFirst: async () => null, update: async () => ({}) },
+    authPlatformUserRole: { findFirst: mockPlatformFindFirst },
+    authApiKey: { findFirst: async () => null, update: async () => ({}) },
   },
 }))
 
@@ -445,9 +445,9 @@ describe("API key path (PlatformScope)", () => {
   })
 })
 
-// ─── 5. super_admin WorkOS user (DB PlatformUserRole) ──────────────────────
+// ─── 5. super_admin WorkOS user (DB AuthPlatformUserRole) ──────────────────────
 
-describe("super_admin WorkOS user (DB PlatformUserRole)", () => {
+describe("super_admin WorkOS user (DB AuthPlatformUserRole)", () => {
   it("passes requireSuperAdmin and requireTenantAdmin even with organizationId=null and orgRole=null", async () => {
     const scope = await composeWorkOSScope({
       userId: "user_superadmin",

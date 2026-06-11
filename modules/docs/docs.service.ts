@@ -9,7 +9,7 @@ const SEARCH_TOKEN_PATTERN = /[a-z0-9]+/g
 const MAX_RETRIEVAL_CANDIDATES = 100
 const MAX_RETRIEVAL_RESULTS = 4
 
-type KnowledgeDocumentRecord = {
+type DocsKnowledgeDocumentRecord = {
   id: string
   organizationId: string | null
   path: string
@@ -57,7 +57,7 @@ const buildSearchText = (input: {
     .join(" ")
     .toLowerCase()
 
-const toUiDocEntry = (doc: KnowledgeDocumentRecord): UiDocEntry => ({
+const toUiDocEntry = (doc: DocsKnowledgeDocumentRecord): UiDocEntry => ({
   path: doc.path,
   title: doc.title,
   purpose: doc.purpose,
@@ -105,12 +105,12 @@ const findDocumentByScope = async (input: {
           path: input.path,
         }
 
-  return (await prisma.knowledgeDocument.findFirst({
+  return (await prisma.docsKnowledgeDocument.findFirst({
     where,
     orderBy: {
       updatedAt: "desc",
     },
-  })) as KnowledgeDocumentRecord | null
+  })) as DocsKnowledgeDocumentRecord | null
 }
 
 export const getDocByPath = async (input: {
@@ -186,7 +186,7 @@ export const upsertDocByPath = async (
   })
 
   const savedDoc = existingDoc
-    ? await prisma.knowledgeDocument.update({
+    ? await prisma.docsKnowledgeDocument.update({
         where: { id: existingDoc.id },
         data: {
           title: input.title.trim(),
@@ -198,7 +198,7 @@ export const upsertDocByPath = async (
           updatedByWorkosUserId: input.updatedByWorkosUserId,
         },
       })
-    : await prisma.knowledgeDocument.create({
+    : await prisma.docsKnowledgeDocument.create({
         data: {
           organizationId: input.organizationId,
           path: normalizedPath,
@@ -212,11 +212,11 @@ export const upsertDocByPath = async (
         },
       })
 
-  return toUiDocEntry(savedDoc as KnowledgeDocumentRecord)
+  return toUiDocEntry(savedDoc as DocsKnowledgeDocumentRecord)
 }
 
 const scoreDocument = (input: {
-  doc: KnowledgeDocumentRecord
+  doc: DocsKnowledgeDocumentRecord
   routePath: string
   queryTokens: string[]
 }) => {
@@ -277,13 +277,13 @@ export const searchKnowledgeDocs = async (input: {
       }
     : { organizationId: null }
 
-  const candidates = (await prisma.knowledgeDocument.findMany({
+  const candidates = (await prisma.docsKnowledgeDocument.findMany({
     where,
     orderBy: {
       updatedAt: "desc",
     },
     take: MAX_RETRIEVAL_CANDIDATES,
-  })) as KnowledgeDocumentRecord[]
+  })) as DocsKnowledgeDocumentRecord[]
 
   const scored = candidates
     .map((doc) => ({
@@ -332,10 +332,10 @@ export const semanticSearchKnowledgeDocs = async (input: {
       }
     : { organizationId: null }
 
-  const candidates = (await prisma.knowledgeDocument.findMany({
+  const candidates = (await prisma.docsKnowledgeDocument.findMany({
     where,
     take: MAX_RETRIEVAL_CANDIDATES,
-  })) as KnowledgeDocumentRecord[]
+  })) as DocsKnowledgeDocumentRecord[]
 
   // Compute query embedding (lexical fallback if AI_API_KEY not set)
   let queryEmbedding: number[] | null = null
@@ -407,7 +407,7 @@ export const backfillEmbeddings = async (batchSize = 50): Promise<{
   let hasMore = true
 
   while (hasMore) {
-    const docs = (await prisma.knowledgeDocument.findMany({
+    const docs = (await prisma.docsKnowledgeDocument.findMany({
       take: batchSize,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       where: {
@@ -416,7 +416,7 @@ export const backfillEmbeddings = async (batchSize = 50): Promise<{
         },
       },
       orderBy: { id: "asc" },
-    })) as KnowledgeDocumentRecord[]
+    })) as DocsKnowledgeDocumentRecord[]
 
     if (docs.length === 0) {
       hasMore = false
@@ -433,7 +433,7 @@ export const backfillEmbeddings = async (batchSize = 50): Promise<{
           notes: doc.notes,
         })
 
-        await prisma.knowledgeDocument.update({
+        await prisma.docsKnowledgeDocument.update({
           where: { id: doc.id },
           data: { embedding },
         })
@@ -464,10 +464,10 @@ export const listDocs = async (
       }
     : { organizationId: null }
 
-  const docs = (await prisma.knowledgeDocument.findMany({
+  const docs = (await prisma.docsKnowledgeDocument.findMany({
     where,
     orderBy: { updatedAt: "desc" },
-  })) as KnowledgeDocumentRecord[]
+  })) as DocsKnowledgeDocumentRecord[]
 
   return docs.map((doc) => ({
     id: doc.id,
@@ -483,7 +483,7 @@ export const listDocs = async (
 }
 
 export const deleteDocById = async (id: string): Promise<void> => {
-  await prisma.knowledgeDocument.delete({
+  await prisma.docsKnowledgeDocument.delete({
     where: { id },
   })
 }

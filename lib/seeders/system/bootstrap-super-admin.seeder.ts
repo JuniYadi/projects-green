@@ -8,7 +8,7 @@
  */
 
 import { BaseSeeder, registerSeeder } from "@/lib/seeders"
-import { PlatformRole } from "@prisma/client"
+import { AuthPlatformRole } from "@prisma/client"
 import { createHash } from "crypto"
 
 const INITIAL_EMAIL_ENV_VAR = "INITIAL_SUPER_ADMIN_EMAIL"
@@ -38,8 +38,8 @@ export class BootstrapSuperAdminSeeder extends BaseSeeder {
       return
     }
 
-    const existingSuperAdmins = await this.prisma.platformUserRole.findMany({
-      where: { role: PlatformRole.SUPER_ADMIN },
+    const existingSuperAdmins = await this.prisma.authPlatformUserRole.findMany({
+      where: { role: AuthPlatformRole.SUPER_ADMIN },
     })
 
     if (existingSuperAdmins.length > 0) {
@@ -59,7 +59,7 @@ export class BootstrapSuperAdminSeeder extends BaseSeeder {
       }))
 
     for (const entry of entries) {
-      const platformUserRole = await this.prisma.platformUserRole.upsert({
+      const platformUserRole = await this.prisma.authPlatformUserRole.upsert({
         where: {
           ...(entry.email
             ? { email: entry.email }
@@ -69,7 +69,7 @@ export class BootstrapSuperAdminSeeder extends BaseSeeder {
         create: {
           email: entry.email ?? undefined,
           workosUserId: entry.workosUserId ?? undefined,
-          role: PlatformRole.SUPER_ADMIN,
+          role: AuthPlatformRole.SUPER_ADMIN,
         },
       })
 

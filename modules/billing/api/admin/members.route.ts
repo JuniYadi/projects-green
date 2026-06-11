@@ -26,7 +26,7 @@ const defaultDeps: AdminMembersRouteDeps = {
   authenticate: () => withAuth(),
   getPlatformRole: getPlatformRoleForUser,
   isAdmin: (actor) => {
-    // super_admin from PlatformUserRole table bypasses auth.role entirely
+    // super_admin from AuthPlatformUserRole table bypasses auth.role entirely
     if (actor.platformRole === "super_admin") return true
     // tenant-level admin/owner check requires auth.role to be present
     return actor.orgRole === "admin" || actor.orgRole === "owner"

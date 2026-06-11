@@ -2,7 +2,7 @@
  * Embeddings Dummy Seeder
  *
  * Migrated from scripts/seed-embeddings.ts.
- * Generates vector embeddings for existing KnowledgeDocuments.
+ * Generates vector embeddings for existing DocsKnowledgeDocuments.
  *
  * CLI args (passed via seed-runner):
  *   --dry-run       Preview documents without modifying DB
@@ -22,7 +22,7 @@ class EmbeddingsSeeder extends BaseSeeder {
   static override readonly classification = "dummy" as const
   static override readonly runOrder = 30
   static override readonly description =
-    "Generate vector embeddings for KnowledgeDocuments"
+    "Generate vector embeddings for DocsKnowledgeDocuments"
   static override readonly requiredEnvVars = ["AI_API_KEY"] as const
 
   async seed(): Promise<void> {
@@ -42,7 +42,7 @@ class EmbeddingsSeeder extends BaseSeeder {
       where.organizationId = orgId
     }
 
-    const total = await this.prisma.knowledgeDocument.count({ where })
+    const total = await this.prisma.docsKnowledgeDocument.count({ where })
     this.log(`Found ${total} documents to process`)
 
     if (total === 0) {
@@ -51,7 +51,7 @@ class EmbeddingsSeeder extends BaseSeeder {
     }
 
     if (dryRun) {
-      const docs = await this.prisma.knowledgeDocument.findMany({
+      const docs = await this.prisma.docsKnowledgeDocument.findMany({
         where,
         take: limit ?? 10,
         select: { id: true, path: true, title: true },
@@ -79,7 +79,7 @@ class EmbeddingsSeeder extends BaseSeeder {
     let hasMore = true
 
     while (hasMore) {
-      const docs = await this.prisma.knowledgeDocument.findMany({
+      const docs = await this.prisma.docsKnowledgeDocument.findMany({
         where,
         take: 50,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
@@ -108,7 +108,7 @@ class EmbeddingsSeeder extends BaseSeeder {
             notes: doc.notes,
           })
 
-          await this.prisma.knowledgeDocument.update({
+          await this.prisma.docsKnowledgeDocument.update({
             where: { id: doc.id },
             data: { embedding },
           })
@@ -150,7 +150,7 @@ class EmbeddingsSeeder extends BaseSeeder {
       where.organizationId = orgId
     }
 
-    const result = await this.prisma.knowledgeDocument.updateMany({
+    const result = await this.prisma.docsKnowledgeDocument.updateMany({
       where,
       data: { embedding: [] },
     })

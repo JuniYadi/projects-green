@@ -362,14 +362,14 @@ export function fakerWhatsappMessage(
 // ── Knowledge Document Helpers ──────────────────────────────────────────────
 
 /**
- * Generate a KnowledgeDocument create input.
+ * Generate a DocsKnowledgeDocument create input.
  * Requires `updatedByWorkosUserId`.
  */
 export function fakerKnowledgeDocument(
-  overrides: Partial<Prisma.KnowledgeDocumentCreateInput> & {
+  overrides: Partial<Prisma.DocsKnowledgeDocumentCreateInput> & {
     updatedByWorkosUserId: string
   },
-): Prisma.KnowledgeDocumentCreateInput {
+): Prisma.DocsKnowledgeDocumentCreateInput {
   return {
     id: overrides.id ?? fakerId(),
     organizationId: overrides.organizationId ?? null,

@@ -16,7 +16,7 @@ export const createDocsConsoleRoutes = () =>
       // Fetch all docs visible to this org (org-specific + global)
       // If an org doc exists for a path, it should probably override or be listed alongside.
       // For a simple listing, we'll fetch all and group by path, preferring org-specific.
-      const docs = await prisma.knowledgeDocument.findMany({
+      const docs = await prisma.docsKnowledgeDocument.findMany({
         where: {
           OR: [
             { organizationId: organizationId },
@@ -31,7 +31,7 @@ export const createDocsConsoleRoutes = () =>
 
       // Unique by path, preferring organizationId if present
       const uniqueDocs = Array.from(
-        docs.reduce((acc, doc) => {
+        docs.reduce((acc: Map<string, { id: string; path: string; title: string; updatedAt: string; isGlobal: boolean }>, doc) => {
           if (!acc.has(doc.path) || doc.organizationId !== null) {
             acc.set(doc.path, {
               id: doc.id,
@@ -65,7 +65,7 @@ export const createDocsConsoleRoutes = () =>
       const organizationId = auth.organizationId ?? null
 
       // Simple search for now
-      const docs = await prisma.knowledgeDocument.findMany({
+      const docs = await prisma.docsKnowledgeDocument.findMany({
         where: {
           AND: [
             {

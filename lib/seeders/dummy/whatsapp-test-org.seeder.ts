@@ -8,7 +8,7 @@
  * Unseed removes all test data in dependency order.
  */
 
-import { PlatformRole, WhatsappDeviceStatus } from "@prisma/client"
+import { AuthPlatformRole, WhatsappDeviceStatus } from "@prisma/client"
 
 import { BaseSeeder } from "../base-seeder"
 import { registerSeeder } from "../registry"
@@ -89,7 +89,7 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
     })
     this.trackDeleted(deletedDevices.count)
 
-    const deletedUsers = await this.prisma.platformUserRole.deleteMany({
+    const deletedUsers = await this.prisma.authPlatformUserRole.deleteMany({
       where: { email: DEFAULT_TEST_DATA.superAdminEmail },
     })
     this.trackDeleted(deletedUsers.count)
@@ -100,12 +100,12 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
   // ── Private Seed Helpers ───────────────────────────────────────────
 
   private async createSuperAdmin(): Promise<void> {
-    const existing = await this.prisma.platformUserRole.findFirst({
+    const existing = await this.prisma.authPlatformUserRole.findFirst({
       where: { email: DEFAULT_TEST_DATA.superAdminEmail },
     })
 
     if (existing) {
-      if (existing.role === PlatformRole.SUPER_ADMIN) {
+      if (existing.role === AuthPlatformRole.SUPER_ADMIN) {
         this.log(
           `Super admin ${DEFAULT_TEST_DATA.superAdminEmail} already exists`,
         )
@@ -113,9 +113,9 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
         return
       }
 
-      await this.prisma.platformUserRole.update({
+      await this.prisma.authPlatformUserRole.update({
         where: { id: existing.id },
-        data: { role: PlatformRole.SUPER_ADMIN },
+        data: { role: AuthPlatformRole.SUPER_ADMIN },
       })
       this.log(
         `Promoted to super admin: ${DEFAULT_TEST_DATA.superAdminEmail}`,
@@ -124,11 +124,11 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
       return
     }
 
-    await this.prisma.platformUserRole.create({
+    await this.prisma.authPlatformUserRole.create({
       data: {
         email: DEFAULT_TEST_DATA.superAdminEmail,
         workosUserId: DEFAULT_TEST_DATA.superAdminUserId,
-        role: PlatformRole.SUPER_ADMIN,
+        role: AuthPlatformRole.SUPER_ADMIN,
       },
     })
     this.log(`Created super admin: ${DEFAULT_TEST_DATA.superAdminEmail}`)
