@@ -1,7 +1,9 @@
 "use client"
 
 import { useCallback } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams, useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MembersList } from "@/app/[lang]/portal/settings/members/members-list"
@@ -21,6 +23,9 @@ type OrganizationTabsProps = {
 }
 
 export function OrganizationTabs({ organizationId }: OrganizationTabsProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -41,13 +46,13 @@ export function OrganizationTabs({ organizationId }: OrganizationTabsProps) {
     <Tabs value={activeTab} onValueChange={handleTabChange} className="gap-6">
       <TabsList className="h-9">
         <TabsTrigger value="members" className="px-3 text-sm">
-          Members
+          {messages.console.organization.members}
         </TabsTrigger>
         <TabsTrigger value="invitations" className="px-3 text-sm">
-          Invitations
+          {messages.console.organization.invitations}
         </TabsTrigger>
         <TabsTrigger value="ownership" className="px-3 text-sm">
-          Ownership
+          {messages.console.organization.ownership}
         </TabsTrigger>
       </TabsList>
       <TabsContent value="members" className="text-sm">

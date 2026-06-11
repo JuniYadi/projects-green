@@ -1,12 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
-
+import { useParams, useRouter } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
 import {
   Select,
   SelectContent,
@@ -15,8 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MarkdownEditor } from "@/components/ui/markdown-editor"
-import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
 import {
   SUPPORT_TICKET_DEPARTMENT_LABELS,
   SUPPORT_TICKET_DEPARTMENTS,
@@ -40,8 +40,9 @@ type FileWithPreview = {
 const apiClient = createSupportTicketsClient()
 
 export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenProps) {
-  const router = useRouter()
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
+  const router = useRouter()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -152,7 +153,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
     const secureForm = secureFormRef.current?.value || ""
 
     if (!subject.trim()) {
-      setErrorMessage("Subject is required.")
+      setErrorMessage(messages.console.supportTickets.subjectRequired)
       return
     }
 
@@ -175,7 +176,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
       router.refresh()
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to create support ticket."
+        error instanceof Error ? error.message : messages.console.supportTickets.unableToCreate
       )
       setIsSubmitting(false)
     }
@@ -192,9 +193,9 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-foreground">Creating Ticket</h3>
+            <h3 className="text-lg font-semibold text-foreground">{messages.console.supportTickets.creatingTicket}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Please wait while we process your request and upload any attachments. Do not refresh, close, or navigate away.
+              {messages.console.supportTickets.creatingDescription}
             </p>
           </div>
         </div>
@@ -215,15 +216,15 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
 
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">Ticket Details</CardTitle>
+              <CardTitle className="text-base font-semibold text-foreground">{messages.console.supportTickets.ticketDetails}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-2">
-                <Label htmlFor="ticket-subject" className="text-xs font-semibold text-muted-foreground">Subject</Label>
+                <Label htmlFor="ticket-subject" className="text-xs font-semibold text-muted-foreground">{messages.console.supportTickets.subject}</Label>
                 <Input
                   id="ticket-subject"
                   ref={subjectRef}
-                  placeholder="Describe your issue"
+                  placeholder={messages.console.supportTickets.subjectPlaceholder}
                   disabled={isSubmitting}
                   className="bg-background/50 border-border text-foreground focus-visible:ring-primary/50"
                 />
@@ -242,7 +243,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                         : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    General Message
+                    {messages.console.supportTickets.generalMessage}
                   </button>
                   <button
                     type="button"
@@ -259,20 +260,20 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                       )}
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
                     </span>
-                    Secure details
+                    {messages.console.supportTickets.secureDetails}
                   </button>
                 </div>
 
                 {/* General Message Tab */}
                 <div data-testid="message-tab-content" className={activeTab === "message" ? "space-y-2" : "hidden"}>
                   <Label htmlFor="ticket-description" className="text-xs font-semibold text-muted-foreground">
-                    Message (optional)
+                    {messages.console.supportTickets.messageOptional}
                   </Label>
                   <MarkdownEditor
                     id="ticket-description"
                     ref={descriptionRef}
                     rows={6}
-                    placeholder="Add any details about your request"
+                    placeholder={messages.console.supportTickets.messagePlaceholder}
                     disabled={isSubmitting}
                   />
                 </div>
@@ -282,28 +283,28 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                   <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4 space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
-                        Encrypted
+                        {messages.console.supportTickets.encrypted}
                       </span>
                       <span className="text-xs font-medium text-yellow-500/90 flex items-center gap-1">
                         <svg className="w-3.5 h-3.5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                         </svg>
-                        End-to-End Secure Channel
+                        {messages.console.supportTickets.endToEndSecure}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Details entered here are encrypted end-to-end and only visible to engineers assigned to your ticket. Use this section for passwords, tokens, API keys, or sensitive credentials.
+                      {messages.console.supportTickets.secureDescription}
                     </p>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="ticket-secure-form" className="sr-only">
-                      Secure Details (optional)
+                      {messages.console.supportTickets.secureDetailsOptional}
                     </Label>
                     <MarkdownEditor
                       id="ticket-secure-form"
                       ref={secureFormRef}
                       rows={6}
-                      placeholder="Sensitive credentials, configurations, or secrets only"
+                      placeholder={messages.console.supportTickets.securePlaceholder}
                       disabled={isSubmitting}
                     />
                   </div>
@@ -317,7 +318,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
               <div className="space-y-4">
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="ticket-files" className="text-xs font-semibold text-muted-foreground">
-                    Attachments (optional)
+                    {messages.console.supportTickets.attachmentsOptional}
                   </Label>
                   <Input
                     id="ticket-files"
@@ -394,11 +395,11 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
         <div className="space-y-6">
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">Categorization</CardTitle>
+              <CardTitle className="text-base font-semibold text-foreground">{messages.console.supportTickets.categorization}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="ticket-department" className="text-xs font-semibold text-muted-foreground">Department</Label>
+                <Label htmlFor="ticket-department" className="text-xs font-semibold text-muted-foreground">{messages.console.supportTickets.department}</Label>
                 <Select
                   value={department}
                   onValueChange={(nextValue) =>
@@ -407,7 +408,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                   disabled={isSubmitting}
                 >
                   <SelectTrigger id="ticket-department" className="w-full bg-background/50 border-border text-foreground">
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder={messages.console.supportTickets.selectDepartment} />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border">
                     {SUPPORT_TICKET_DEPARTMENTS.map((departmentValue) => (
@@ -420,7 +421,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="ticket-service" className="text-xs font-semibold text-muted-foreground">Service (optional)</Label>
+                <Label htmlFor="ticket-service" className="text-xs font-semibold text-muted-foreground">{messages.console.supportTickets.serviceOptional}</Label>
                 <Select
                   value={service}
                   onValueChange={(nextValue) =>
@@ -429,10 +430,10 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                   disabled={isSubmitting}
                 >
                   <SelectTrigger id="ticket-service" className="w-full bg-background/50 border-border text-foreground">
-                    <SelectValue placeholder="Select service" />
+                    <SelectValue placeholder={messages.console.supportTickets.selectService} />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border">
-                    <SelectItem value="none" className="text-foreground hover:bg-muted">None</SelectItem>
+                    <SelectItem value="none" className="text-foreground hover:bg-muted">{messages.console.supportTickets.none}</SelectItem>
                     {SUPPORT_TICKET_SERVICES.map((serviceValue) => (
                       <SelectItem key={serviceValue} value={serviceValue} className="text-foreground hover:bg-muted">
                         {SUPPORT_TICKET_SERVICE_LABELS[serviceValue]}
@@ -443,7 +444,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="ticket-priority" className="text-xs font-semibold text-muted-foreground">Priority</Label>
+                <Label htmlFor="ticket-priority" className="text-xs font-semibold text-muted-foreground">{messages.console.supportTickets.priority}</Label>
                 <Select
                   value={priority}
                   onValueChange={(nextValue) =>
@@ -452,12 +453,12 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                   disabled={isSubmitting}
                 >
                   <SelectTrigger id="ticket-priority" className="w-full bg-background/50 border-border text-foreground">
-                    <SelectValue placeholder="Select priority" />
+                    <SelectValue placeholder={messages.console.supportTickets.selectPriority} />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border">
-                    <SelectItem value="low" className="text-foreground hover:bg-muted">Low</SelectItem>
-                    <SelectItem value="medium" className="text-foreground hover:bg-muted">Medium</SelectItem>
-                    <SelectItem value="high" className="text-foreground hover:bg-muted">High</SelectItem>
+                    <SelectItem value="low" className="text-foreground hover:bg-muted">{messages.console.supportTickets.low}</SelectItem>
+                    <SelectItem value="medium" className="text-foreground hover:bg-muted">{messages.console.supportTickets.medium}</SelectItem>
+                    <SelectItem value="high" className="text-foreground hover:bg-muted">{messages.console.supportTickets.high}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -473,7 +474,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                 onClick={onSubmitCreateTicket}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Submitting..." : "Submit Ticket"}
+                {isSubmitting ? messages.console.supportTickets.submitting : messages.console.supportTickets.submitTicket}
               </Button>
               <Button
                 type="button"
@@ -482,7 +483,7 @@ export function SupportTicketCreateScreen({ lang }: SupportTicketCreateScreenPro
                 onClick={() => router.push(listPath)}
                 disabled={isSubmitting}
               >
-                Cancel
+                {messages.console.supportTickets.cancel}
               </Button>
             </CardContent>
           </Card>

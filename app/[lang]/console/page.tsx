@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getMessages } from "@/lib/i18n/messages"
 import {
   localizePathname,
   resolveLocaleOrDefault,
@@ -31,7 +32,7 @@ type DashboardCard = {
   href: string | null
 }
 
-const initialState: DashboardCard[] = [
+const createInitialState = (): DashboardCard[] => [
   {
     title: "Current Balance",
     icon: <WalletIcon />,
@@ -71,9 +72,10 @@ const initialState: DashboardCard[] = [
 ]
 
 export default function ConsolePage() {
-  const [cards, setCards] = useState<DashboardCard[]>(initialState)
+  const [cards, setCards] = useState<DashboardCard[]>(createInitialState())
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
 
   const fetchDashboardData = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -85,7 +87,7 @@ export default function ConsolePage() {
 
     setCards([
       {
-        title: "Current Balance",
+        title: messages.console.overview.currentBalance,
         icon: <WalletIcon />,
         value:
           results[0].status === "fulfilled" && results[0].value?.ok
@@ -100,7 +102,7 @@ export default function ConsolePage() {
         href: null,
       },
       {
-        title: "Spent This Month",
+        title: messages.console.overview.spentThisMonth,
         icon: <CurrencyCircleDollarIcon />,
         value:
           results[1].status === "fulfilled" && results[1].value?.success
@@ -116,7 +118,7 @@ export default function ConsolePage() {
         href: null,
       },
       {
-        title: "Last Invoice",
+        title: messages.console.overview.lastInvoice,
         icon: <ReceiptIcon />,
         value:
           results[2].status === "fulfilled" &&
@@ -124,7 +126,7 @@ export default function ConsolePage() {
           results[2].value.invoices?.length > 0
             ? `IDR ${results[2].value.invoices[0].totalAmountIdr}`
             : results[2].status === "fulfilled" && results[2].value?.ok
-              ? "No invoices yet"
+              ? messages.console.overview.noInvoicesYet
               : null,
         subtitle:
           results[2].status === "fulfilled" &&
@@ -149,7 +151,7 @@ export default function ConsolePage() {
               }),
       },
       {
-        title: "Open Tickets",
+        title: messages.console.overview.openTickets,
         icon: <LifebuoyIcon />,
         value:
           results[3].status === "fulfilled" && results[3].value?.ok
@@ -157,7 +159,7 @@ export default function ConsolePage() {
             : null,
         subtitle:
           results[3].status === "fulfilled" && results[3].value?.ok
-            ? "Awaiting response"
+            ? messages.console.overview.awaitingResponse
             : null,
         loading: false,
         error:
@@ -178,10 +180,8 @@ export default function ConsolePage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Console</h1>
-        <p className="text-sm text-muted-foreground">
-          Overview of your organization billing and activity.
-        </p>
+        <h1 className="text-2xl font-semibold">{messages.console.overview.heading}</h1>
+        <p className="text-sm text-muted-foreground">{messages.console.overview.description}</p>
       </header>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -207,7 +207,7 @@ export default function ConsolePage() {
                     <Skeleton className="h-4 w-20" />
                   </div>
                 ) : card.error ? (
-                  <p className="text-sm text-muted-foreground">Unavailable</p>
+                  <p className="text-sm text-muted-foreground">{messages.console.overview.unavailable}</p>
                 ) : (
                   <>
                     <p className="text-2xl font-bold">{card.value}</p>

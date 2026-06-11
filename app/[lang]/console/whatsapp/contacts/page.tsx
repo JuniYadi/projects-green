@@ -45,6 +45,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   whatsappClient,
   type Contact,
@@ -107,6 +110,9 @@ const emptyFormData: ContactFormData = {
 // ─── Page Component ───────────────────────────────────────────────────────
 
 export default function WhatsAppContactsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   // ── Data state ──────────────────────────────────────────────────────────
 
   const [contacts, setContacts] = React.useState<Contact[]>([])
@@ -140,7 +146,7 @@ export default function WhatsAppContactsPage() {
       setContacts(items)
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to load contacts."
+        error instanceof Error ? error.message : messages.console.whatsapp.contacts.unableToLoad
       )
     } finally {
       setIsLoading(false)
@@ -180,7 +186,7 @@ export default function WhatsAppContactsPage() {
 
   const handleAdd = async () => {
     if (!formData.phoneNumber.trim()) {
-      toast.error("Phone number is required.")
+      toast.error(messages.console.whatsapp.contacts.phoneNumberRequired)
       return
     }
 
@@ -193,13 +199,13 @@ export default function WhatsAppContactsPage() {
         contactGroupId: formData.contactGroupId || undefined,
         status: formData.status,
       })
-      toast.success("Contact created successfully.")
+      toast.success(messages.console.whatsapp.contacts.contactCreated)
       setAddDialogOpen(false)
       setFormData(emptyFormData)
       void loadContacts()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to create contact."
+        error instanceof Error ? error.message : messages.console.whatsapp.contacts.unableToCreate
       )
     } finally {
       setIsSubmitting(false)
@@ -209,7 +215,7 @@ export default function WhatsAppContactsPage() {
   const handleEdit = async () => {
     if (!editingContact) return
     if (!formData.phoneNumber.trim()) {
-      toast.error("Phone number is required.")
+      toast.error(messages.console.whatsapp.contacts.phoneNumberRequired)
       return
     }
 
@@ -222,13 +228,13 @@ export default function WhatsAppContactsPage() {
         contactGroupId: formData.contactGroupId || undefined,
         status: formData.status,
       })
-      toast.success("Contact updated successfully.")
+      toast.success(messages.console.whatsapp.contacts.contactUpdated)
       setEditDialogOpen(false)
       setEditingContact(null)
       void loadContacts()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to update contact."
+        error instanceof Error ? error.message : messages.console.whatsapp.contacts.unableToUpdate
       )
     } finally {
       setIsSubmitting(false)
@@ -241,13 +247,13 @@ export default function WhatsAppContactsPage() {
     setIsSubmitting(true)
     try {
       await whatsappClient.deleteContact(deletingContact.id)
-      toast.success("Contact deleted successfully.")
+      toast.success(messages.console.whatsapp.contacts.contactDeleted)
       setDeleteDialogOpen(false)
       setDeletingContact(null)
       void loadContacts()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to delete contact."
+        error instanceof Error ? error.message : messages.console.whatsapp.contacts.unableToDelete
       )
     } finally {
       setIsSubmitting(false)
@@ -294,24 +300,20 @@ export default function WhatsAppContactsPage() {
     <div className="space-y-6">
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Contacts</h1>
-        <p className="text-muted-foreground">
-          Manage your WhatsApp contacts and contact groups.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.contacts.heading}</h1>
+        <p className="text-muted-foreground">{messages.console.whatsapp.contacts.description}</p>
       </div>
 
       {/* ── Main Card ──────────────────────────────────────────────────── */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Contacts</CardTitle>
-            <CardDescription>
-              Manage your WhatsApp contacts
-            </CardDescription>
+            <CardTitle>{messages.console.whatsapp.contacts.cardTitle}</CardTitle>
+            <CardDescription>{messages.console.whatsapp.contacts.cardDescription}</CardDescription>
           </div>
           <Button onClick={openAddDialog}>
             <UserPlus weight="bold" className="mr-2 size-4" />
-            Add Contact
+            {messages.console.whatsapp.contacts.addContact}
           </Button>
         </CardHeader>
         <CardContent>
@@ -320,7 +322,7 @@ export default function WhatsAppContactsPage() {
             <div className="relative flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search contacts..."
+                placeholder={messages.console.whatsapp.contacts.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -332,19 +334,19 @@ export default function WhatsAppContactsPage() {
           <div className="mb-6 grid grid-cols-3 gap-4">
             <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold">{contacts.length}</p>
-              <p className="text-xs text-muted-foreground">Total Contacts</p>
+              <p className="text-xs text-muted-foreground">{messages.console.whatsapp.contacts.totalContacts}</p>
             </div>
             <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold text-green-600">
                 {contacts.filter((c) => c.status === "ACTIVE").length}
               </p>
-              <p className="text-xs text-muted-foreground">Active</p>
+              <p className="text-xs text-muted-foreground">{messages.console.whatsapp.contacts.activeLabel}</p>
             </div>
             <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold text-blue-600">
                 {contacts.filter((c) => c.isWhatsapp).length}
               </p>
-              <p className="text-xs text-muted-foreground">Has WhatsApp</p>
+              <p className="text-xs text-muted-foreground">{messages.console.whatsapp.contacts.hasWhatsApp}</p>
             </div>
           </div>
 
@@ -382,7 +384,7 @@ export default function WhatsAppContactsPage() {
                 className="mt-3"
                 onClick={() => void loadContacts()}
               >
-                Retry
+                {messages.console.whatsapp.contacts.retry}
               </Button>
             </div>
           )}
@@ -393,8 +395,8 @@ export default function WhatsAppContactsPage() {
               <User className="mb-3 size-10 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 {searchQuery
-                  ? "No contacts match your search"
-                  : "No contacts yet"}
+                  ? messages.console.whatsapp.contacts.noContactsMatch
+                  : messages.console.whatsapp.contacts.noContactsYet}
               </p>
               {!searchQuery && (
                 <Button
@@ -402,7 +404,7 @@ export default function WhatsAppContactsPage() {
                   className="mt-3"
                   onClick={openAddDialog}
                 >
-                  Add your first contact
+                  {messages.console.whatsapp.contacts.addFirstContact}
                 </Button>
               )}
             </div>
@@ -457,7 +459,7 @@ export default function WhatsAppContactsPage() {
                             onClick={() => openEditDialog(contact)}
                           >
                             <PencilSimple className="mr-2 size-4" />
-                            Edit
+                            {messages.console.whatsapp.contacts.edit}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -465,7 +467,7 @@ export default function WhatsAppContactsPage() {
                             onClick={() => openDeleteDialog(contact)}
                           >
                             <Trash className="mr-2 size-4" />
-                            Delete
+                            {messages.console.whatsapp.contacts.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -481,15 +483,13 @@ export default function WhatsAppContactsPage() {
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Contact</DialogTitle>
-            <DialogDescription>
-              Add a new contact to your WhatsApp list.
-            </DialogDescription>
+            <DialogTitle>{messages.console.whatsapp.contacts.addDialogTitle}</DialogTitle>
+            <DialogDescription>{messages.console.whatsapp.contacts.addDialogDescription}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="add-phone">
-                Phone Number <span className="text-destructive">*</span>
+                {messages.console.whatsapp.contacts.phoneNumber} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="add-phone"
@@ -501,7 +501,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-name">Name</Label>
+              <Label htmlFor="add-name">{messages.console.whatsapp.contacts.name}</Label>
               <Input
                 id="add-name"
                 value={formData.name}
@@ -512,7 +512,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-email">Email</Label>
+              <Label htmlFor="add-email">{messages.console.whatsapp.contacts.email}</Label>
               <Input
                 id="add-email"
                 type="email"
@@ -524,7 +524,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-group">Audience (optional)</Label>
+              <Label htmlFor="add-group">{messages.console.whatsapp.contacts.audience}</Label>
               <Select
                 value={formData.contactGroupId}
                 onValueChange={(value) =>
@@ -544,7 +544,7 @@ export default function WhatsAppContactsPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-status">Status</Label>
+              <Label htmlFor="add-status">{messages.console.whatsapp.contacts.status}</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) =>
@@ -558,8 +558,8 @@ export default function WhatsAppContactsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                  <SelectItem value="ACTIVE">{messages.console.whatsapp.contacts.activeStatus}</SelectItem>
+                  <SelectItem value="INACTIVE">{messages.console.whatsapp.contacts.inactiveStatus}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -570,13 +570,13 @@ export default function WhatsAppContactsPage() {
               onClick={() => setAddDialogOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {messages.console.whatsapp.contacts.cancel}
             </Button>
             <Button
               onClick={() => void handleAdd()}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Adding..." : "Add Contact"}
+              {isSubmitting ? messages.console.whatsapp.contacts.adding : messages.console.whatsapp.contacts.addContact}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -592,15 +592,15 @@ export default function WhatsAppContactsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Contact</DialogTitle>
+            <DialogTitle>{messages.console.whatsapp.contacts.editDialogTitle}</DialogTitle>
             <DialogDescription>
-              Update contact details.
+              {messages.console.whatsapp.contacts.editDialogDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-phone">
-                Phone Number <span className="text-destructive">*</span>
+                {messages.console.whatsapp.contacts.phoneNumber} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="edit-phone"
@@ -612,7 +612,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-name">Name</Label>
+              <Label htmlFor="edit-name">{messages.console.whatsapp.contacts.name}</Label>
               <Input
                 id="edit-name"
                 value={formData.name}
@@ -623,7 +623,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-email">Email</Label>
+              <Label htmlFor="edit-email">{messages.console.whatsapp.contacts.email}</Label>
               <Input
                 id="edit-email"
                 type="email"
@@ -635,7 +635,7 @@ export default function WhatsAppContactsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-group">Audience (optional)</Label>
+              <Label htmlFor="edit-group">{messages.console.whatsapp.contacts.audience}</Label>
               <Select
                 value={formData.contactGroupId}
                 onValueChange={(value) =>
@@ -655,7 +655,7 @@ export default function WhatsAppContactsPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-status">Status</Label>
+              <Label htmlFor="edit-status">{messages.console.whatsapp.contacts.status}</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) =>
@@ -669,8 +669,8 @@ export default function WhatsAppContactsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                  <SelectItem value="ACTIVE">{messages.console.whatsapp.contacts.activeStatus}</SelectItem>
+                  <SelectItem value="INACTIVE">{messages.console.whatsapp.contacts.inactiveStatus}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -681,13 +681,13 @@ export default function WhatsAppContactsPage() {
               onClick={() => setEditDialogOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {messages.console.whatsapp.contacts.cancel}
             </Button>
             <Button
               onClick={() => void handleEdit()}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Saving..." : "Save Changes"}
+              {isSubmitting ? messages.console.whatsapp.contacts.saving : messages.console.whatsapp.contacts.saveChanges}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -697,13 +697,9 @@ export default function WhatsAppContactsPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Contact</DialogTitle>
+            <DialogTitle>{messages.console.whatsapp.contacts.deleteDialogTitle}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{" "}
-              <strong>
-                {deletingContact?.name || deletingContact?.phoneNumber}
-              </strong>
-              ? This action cannot be undone.
+              {messages.console.whatsapp.contacts.deleteDialogDescription.replace("{name}", deletingContact?.name || deletingContact?.phoneNumber || "")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -712,14 +708,14 @@ export default function WhatsAppContactsPage() {
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {messages.console.whatsapp.contacts.cancel}
             </Button>
             <Button
               variant="destructive"
               onClick={() => void handleDelete()}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Deleting..." : "Delete"}
+              {isSubmitting ? messages.console.whatsapp.contacts.deleting : messages.console.whatsapp.contacts.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

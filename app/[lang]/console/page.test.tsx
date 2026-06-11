@@ -44,7 +44,8 @@ describe("ConsolePage", () => {
     const { container } = render(<ConsolePage />)
 
     // Static header text renders in initial client render
-    expect(container.textContent).toContain("Console")
+    // Card titles use hardcoded EN in initial state (module-level, no i18n access)
+    expect(container.textContent).toContain("Konsol")
     expect(container.textContent).toContain("Current Balance")
     expect(container.textContent).toContain("Spent This Month")
     expect(container.textContent).toContain("Last Invoice")
@@ -58,7 +59,7 @@ describe("ConsolePage", () => {
       expect(container.textContent).toContain("IDR 75000")
       expect(container.textContent).toContain("Status: PAID")
       expect(container.textContent).toContain("2")
-      expect(container.textContent).toContain("Awaiting response")
+      expect(container.textContent).toContain("Menunggu respons")
     })
   })
 
@@ -84,7 +85,7 @@ describe("ConsolePage", () => {
     const { container } = render(<ConsolePage />)
 
     await waitFor(() => {
-      expect(container.textContent).toContain("No invoices yet")
+      expect(container.textContent).toContain("Belum ada invoice")
       expect(
         container.querySelector('a[href="/id/console/billing/invoices"]'),
       ).not.toBeNull()

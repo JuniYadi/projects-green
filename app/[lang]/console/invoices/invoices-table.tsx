@@ -3,12 +3,12 @@
 import type { ColumnDef } from "@tanstack/react-table"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-
+import { getMessages } from "@/lib/i18n/messages"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { InvoicesTableSkeleton } from "@/modules/invoices/ui/invoices-table-skeleton"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Button } from "@/components/ui/button"
-import { InvoicesTableSkeleton } from "@/modules/invoices/ui/invoices-table-skeleton"
-import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   DEFAULT_INVOICE_SORT,
   formatInvoiceCurrency,
@@ -111,6 +111,8 @@ const getErrorMessage = (payload: InvoiceErrorResponse | null) => {
 }
 
 export function InvoicesTable({ lang }: InvoicesTableProps) {
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
   const [state, setState] = useState<InvoiceListRequestState>({
     status: "loading",
   })

@@ -1,6 +1,7 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { OrganizationTabs } from "./organization-tabs"
 
@@ -17,6 +18,7 @@ export default async function ConsoleOrganizationPage({
 }: ConsoleOrganizationPageProps) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
   const auth = await withAuth({ ensureSignedIn: true })
 
   if (!auth.organizationId) {
@@ -37,9 +39,9 @@ export default async function ConsoleOrganizationPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Organization Settings</h1>
+        <h1 className="text-2xl font-semibold">{messages.console.organization.heading}</h1>
         <p className="text-sm text-muted-foreground">
-          Manage members, invitations, and ownership for the active organization.
+          {messages.console.organization.description}
         </p>
       </header>
       <OrganizationTabs organizationId={auth.organizationId} />
