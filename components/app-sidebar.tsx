@@ -29,6 +29,7 @@ import {
   PulseIcon,
   ReceiptIcon,
   RocketLaunchIcon,
+  Ticket,
   WalletIcon,
   WhatsappLogoIcon,
 } from "@phosphor-icons/react"
@@ -112,6 +113,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+      {
+        title: "Vouchers",
+        url: localizePathname({
+          pathname: "/portal/admin/vouchers",
+          locale,
+        }),
+        icon: <Ticket />,
+        isActive: startsWithRoute(path, "/portal/admin/vouchers"),
       },
     ],
   },
