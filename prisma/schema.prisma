@@ -1649,3 +1649,56 @@ model PaymentAuditLog {
   @@index([action])
   @@index([createdAt])
 }
+
+// ─── Voucher Feature ──────────────────────────────────────────────────────────
+
+/// Status of a voucher: ACTIVE (available), EXPIRED (past expiresAt),
+/// DEPLETED (all claims used), DISABLED (manually disabled).
+enum VoucherStatus {
+  ACTIVE
+  EXPIRED
+  DEPLETED
+  DISABLED
+}
+
+model Voucher {
+  id                    String        @id @default(cuid())
+  code                  String        @unique
+  prefix                String?
+  status                VoucherStatus @default(ACTIVE)
+  maxClaims             Int           @default(1)
+  claimedCount          Int           @default(0)
+  expiresAt             DateTime
+  amount                Decimal       @db.Decimal(12, 2)
+  currency              String        @default("IDR")
+  targetWorkosUserId    String?
+  targetOrganizationId  String?
+  createdByWorkosUserId String
+  metadataJson          Json?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  claims VoucherClaim[]
+
+  @@index([status, expiresAt])
+  @@index([targetWorkosUserId])
+  @@index([targetOrganizationId])
+  @@index([code, status])
+}
+
+model VoucherClaim {
+  id                  String   @id @default(cuid())
+  voucherId           String
+  workosUserId        String
+  organizationId      String
+  billingAdjustmentId String?
+  metadataJson        Json?
+  claimedAt           DateTime @default(now())
+
+  voucher Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  @@unique([voucherId, workosUserId])
+  @@index([workosUserId, claimedAt(sort: Desc)])
+  @@index([voucherId, claimedAt(sort: Desc)])
+  @@index([organizationId])
+}
