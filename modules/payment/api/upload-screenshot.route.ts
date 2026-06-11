@@ -1,8 +1,6 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { randomUUID } from "node:crypto"
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
 export const createUploadScreenshotRoutes = () =>
   new Elysia({ prefix: "/upload-screenshot" }).post(
@@ -67,36 +65,23 @@ export const createUploadScreenshotRoutes = () =>
       }
 
       try {
-        const s3 = new S3Client({
+        const s3 = new Bun.S3Client({
           region,
+          bucket,
           endpoint: process.env.S3_ENDPOINT,
-          credentials: {
-            accessKeyId,
-            secretAccessKey,
-            sessionToken: process.env.S3_SESSION_TOKEN,
-          },
+          accessKeyId,
+          secretAccessKey,
+          sessionToken: process.env.S3_SESSION_TOKEN,
         })
 
-        const buffer = Buffer.from(await file.arrayBuffer())
-
-        await s3.send(
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: key,
-            Body: buffer,
-            ContentType: file.type,
-          }),
-        )
+        const buffer = await file.arrayBuffer()
+        const blob = new Blob([buffer], { type: file.type })
+        await s3.write(key, blob)
 
         // Generate a presigned GET URL valid for 30 days so the admin panel can view it
-        const url = await getSignedUrl(
-          s3,
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: key,
-          }),
-          { expiresIn: 30 * 24 * 60 * 60 }, // 30 days
-        )
+        const url = s3.presign(key, {
+          expiresIn: 30 * 24 * 60 * 60, // 30 days
+        })
 
         return { ok: true, url, key }
       } catch (error) {
