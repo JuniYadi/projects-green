@@ -406,8 +406,8 @@ describe("POST /vpn/subscriptions", () => {
       type: "BUNDLE",
       billingMode: "PACKAGE",
       status: "SUSPENDED",
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: new Date(),
+      currentPeriodStart: new Date("2026-04-01T00:00:00.000Z"),
+      currentPeriodEnd: new Date("2026-04-30T00:00:00.000Z"),
     })
 
     const app = createRoute()
@@ -425,15 +425,15 @@ describe("POST /vpn/subscriptions", () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.subscriptionId).toBe("sub_vpn_suspended")
-    
-    // Resets/updates period first (keeping status: SUSPENDED during charge)
-    expect(mockPrisma.subscription.update).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        where: { id: "sub_vpn_suspended" },
-        data: expect.objectContaining({ status: "SUSPENDED" }),
-      }),
-    )
+
+    // Stale period triggers update with new dates only (no status change since already SUSPENDED)
+    const updateCall = mockPrisma.subscription.update.mock.calls[0]?.[0]
+    expect(updateCall).toMatchObject({
+      where: { id: "sub_vpn_suspended" },
+    })
+    // data should contain currentPeriodStart but NOT status
+    expect(updateCall.data.status).toBeUndefined()
+    expect(updateCall.data.currentPeriodStart).toBeDefined()
 
     // Activates to ACTIVE after charge
     expect(mockPrisma.subscription.update).toHaveBeenNthCalledWith(

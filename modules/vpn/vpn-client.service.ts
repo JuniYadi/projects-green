@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client"
 
-import { decryptWithAppKey, encryptWithAppKey } from "@/lib/whatsapp/crypto"
+import { decryptVpnConfig, encryptVpnConfig } from "./vpn-crypto"
 
 type VpnClientDelegate = Pick<
   PrismaClient["vpnClient"],
@@ -55,7 +55,7 @@ export class VpnClientService {
   async createActiveClient(
     input: CreateActiveClientInput,
   ): Promise<VpnClientRecord> {
-    const encryptedConfig = await encryptWithAppKey(input.ovpnConfig)
+    const encryptedConfig = encryptVpnConfig(input.ovpnConfig)
 
     return this.prisma.vpnClient.create({
       data: {
@@ -126,7 +126,7 @@ export class VpnClientService {
 
     return {
       fileName: `${client.clientName}.ovpn`,
-      content: await decryptWithAppKey(client.encryptedConfig),
+      content: decryptVpnConfig(client.encryptedConfig),
     }
   }
 
@@ -152,7 +152,7 @@ export class VpnClientService {
     })
   }
 
-  async encryptConfigForTest(config: string): Promise<string> {
-    return encryptWithAppKey(config)
+  encryptConfigForTest(config: string): string {
+    return encryptVpnConfig(config)
   }
 }

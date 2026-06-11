@@ -1,4 +1,4 @@
-import type { PaymentProvider } from "./provider.interface"
+import type { PaymentProvider, ConfigFieldDef } from "./provider.interface"
 
 const providers = new Map<string, PaymentProvider>()
 
@@ -62,23 +62,11 @@ export function findProvider(
  */
 export function getProviderConfigFields(
   providerId: string
-): ConfigFieldDefish[] {
+): ConfigFieldDef[] {
   const provider = providers.get(providerId)
   if (!provider) return []
   return provider.configFields
 }
 
 // Re-export for convenience
-export type { PaymentProvider } from "./provider.interface"
-export type { ConfigFieldDef, PaymentResult, PaymentRequest } from "./provider.interface"
-
-// Small local type to avoid circular imports in UI components
-type ConfigFieldDefish = {
-  key: string
-  type: "string" | "password" | "url" | "select" | "number"
-  label: string
-  placeholder?: string
-  required: boolean
-  defaultValue?: string
-  options?: { label: string; value: string }[]
-}
+export type { PaymentProvider, ConfigFieldDef, PaymentResult, PaymentRequest } from "./provider.interface"

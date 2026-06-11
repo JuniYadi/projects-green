@@ -323,14 +323,17 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
             vpnSubscriptionId = existing.id
             periodStart = existing.currentPeriodStart
           } else if (existing && existing.status === "SUSPENDED") {
-            await prisma.subscription.update({
-              where: { id: existing.id },
-              data: {
-                status: "SUSPENDED", // Keep SUSPENDED (pending activation)
-                currentPeriodStart: now,
-                currentPeriodEnd: periodEnd,
-              },
-            })
+            // Skip the no-op status update. Only refresh period if stale.
+            const periodStale = existing.currentPeriodEnd < now
+            if (periodStale) {
+              await prisma.subscription.update({
+                where: { id: existing.id },
+                data: {
+                  currentPeriodStart: now,
+                  currentPeriodEnd: periodEnd,
+                },
+              })
+            }
             vpnSubscriptionId = existing.id
             isNewOrSuspended = true
           } else {

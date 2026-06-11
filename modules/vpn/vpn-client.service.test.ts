@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { decryptWithAppKey } from "@/lib/whatsapp/crypto"
 
+import { decryptVpnConfig, resetVpnCrypto } from "./vpn-crypto"
 import { VpnClientService } from "./vpn-client.service"
 
-const VALID_APP_KEY_32B = Buffer.alloc(32).fill("v").toString("base64")
+const VALID_ENCRYPTION_KEY = Buffer.alloc(32).fill("e").toString("hex")
 
 const mockPrisma = {
   vpnClient: {
     create: mock(),
     findFirst: mock(),
+    findMany: mock(),
     update: mock(),
   },
 }
@@ -16,7 +17,8 @@ const mockPrisma = {
 const service = new VpnClientService(mockPrisma)
 
 beforeEach(() => {
-  process.env.APP_KEY = VALID_APP_KEY_32B
+  process.env.ENCRYPTION_KEY = VALID_ENCRYPTION_KEY
+  resetVpnCrypto()
   mockPrisma.vpnClient.create.mockReset()
   mockPrisma.vpnClient.findFirst.mockReset()
   mockPrisma.vpnClient.update.mockReset()
@@ -43,7 +45,7 @@ describe("VpnClientService", () => {
     expect(client.provider).toBe("OPENVPN")
     expect(client.regionCode).toBe("INDONESIA")
     expect(client.encryptedConfig).not.toBe("client\nsecret-cert\n")
-    await expect(decryptWithAppKey(client.encryptedConfig)).resolves.toBe(
+    expect(decryptVpnConfig(client.encryptedConfig!)).toBe(
       "client\nsecret-cert\n",
     )
     expect(mockPrisma.vpnClient.create).toHaveBeenCalledWith({
@@ -81,7 +83,7 @@ describe("VpnClientService", () => {
   })
 
   it("downloads decrypted config only for the owning organization", async () => {
-    const encryptedConfig = await service.encryptConfigForTest("client\nsecret\n")
+    const encryptedConfig = service.encryptConfigForTest("client\nsecret\n")
     mockPrisma.vpnClient.findFirst.mockResolvedValue({
       id: "vpn_client_1",
       organizationId: "org_1",

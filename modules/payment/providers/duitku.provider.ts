@@ -51,7 +51,7 @@ export const duitkuProvider: PaymentProvider = {
     request: PaymentRequest,
     config: Record<string, string>
   ): Promise<PaymentResult> {
-    const isSandbox = process.env.NODE_ENV !== "production"
+    const isSandbox = process.env.DUITKU_SANDBOX === "true"
     const baseUrl = config.sandboxUrl || "https://sandbox.duitku.com"
     const effectiveBaseUrl = isSandbox ? baseUrl : config.productionUrl || "https://api.duitku.com"
 

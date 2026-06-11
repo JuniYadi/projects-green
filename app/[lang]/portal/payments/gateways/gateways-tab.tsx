@@ -32,33 +32,22 @@ interface PaymentGateway {
 
 const CURRENCY_OPTIONS = ["IDR", "USD"] as const
 
-const PROVIDER_OPTIONS = [
-  {
-    value: "duitku",
-    label: "Duitku",
-    supportedCurrencies: ["IDR"],
-    configFields: [
-      { key: "merchantCode", label: "Merchant Code", type: "string", placeholder: "M12345" },
-      { key: "apiKey", label: "API Key", type: "password", placeholder: "Your Duitku API key" },
-      { key: "sandboxUrl", label: "Sandbox URL", type: "url", placeholder: "https://sandbox.duitku.com" },
-      { key: "productionUrl", label: "Production URL", type: "url", placeholder: "https://api.duitku.com" },
-    ],
-  },
-  {
-    value: "paypal",
-    label: "PayPal",
-    supportedCurrencies: ["USD"],
-    configFields: [
-      { key: "clientId", label: "Client ID", type: "string", placeholder: "Your PayPal REST app Client ID" },
-      { key: "clientSecret", label: "Client Secret", type: "password", placeholder: "Your PayPal REST app Secret" },
-      { key: "environment", label: "Environment", type: "select", placeholder: "", options: [{ label: "Sandbox", value: "sandbox" }, { label: "Production", value: "production" }] },
-      { key: "webhookId", label: "Webhook ID", type: "string", placeholder: "Webhook verification ID from PayPal dashboard" },
-    ],
-  },
-]
+type ConfigField = {
+  key: string
+  type: "string" | "password" | "url" | "select" | "number"
+  label: string
+  placeholder?: string
+  required: boolean
+  defaultValue?: string
+  options?: { label: string; value: string }[]
+}
 
-type ProviderOption = (typeof PROVIDER_OPTIONS)[number]
-type ConfigField = ProviderOption["configFields"][number]
+type ProviderOptionDTO = {
+  value: string
+  label: string
+  supportedCurrencies: string[]
+  configFields: ConfigField[]
+}
 
 function readSupportedCurrencies(formData: FormData): string[] {
   return CURRENCY_OPTIONS.filter((code) => formData.get(`currency_${code}`) === "on")
@@ -83,6 +72,8 @@ type GatewaysRequestState =
 
 export function GatewaysTab() {
   const [state, setState] = useState<GatewaysRequestState>({ status: "loading" })
+  const [providers, setProviders] = useState<ProviderOptionDTO[]>([])
+  const [providersLoading, setProvidersLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null)
@@ -92,8 +83,8 @@ export function GatewaysTab() {
   const [selectedProvider, setSelectedProvider] = useState<string>("")
   const [editProviderType, setEditProviderType] = useState<string>("")
 
-  const currentProvider = PROVIDER_OPTIONS.find((p) => p.value === selectedProvider)
-  const editProvider = PROVIDER_OPTIONS.find((p) => p.value === editProviderType) || PROVIDER_OPTIONS.find((p) => p.value === editingGateway?.type)
+  const currentProvider = providers.find((p) => p.value === selectedProvider)
+  const editProvider = providers.find((p) => p.value === editProviderType) || providers.find((p) => p.value === editingGateway?.type)
 
   const gatewayColumns = useMemo<ColumnDef<PaymentGateway>[]>(
     () => [
@@ -107,7 +98,7 @@ export function GatewaysTab() {
           <div className="grid gap-1">
             <span className="font-medium">{row.original.name}</span>
             <span className="text-xs text-muted-foreground">
-              {PROVIDER_OPTIONS.find((p) => p.value === row.original.type)
+              {providers.find((p) => p.value === row.original.type)
                 ?.label || row.original.type}
             </span>
           </div>
@@ -203,10 +194,29 @@ export function GatewaysTab() {
     }
   }, [])
 
+  const fetchProviders = useCallback(async () => {
+    try {
+      const response = await fetch("/api/portal/payments/gateways/providers")
+      if (!response.ok) {
+        setProviders([])
+        return
+      }
+      const payload = await response.json()
+      if (payload.ok) {
+        setProviders(payload.data || [])
+      }
+    } catch {
+      setProviders([])
+    } finally {
+      setProvidersLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchGateways()
-  }, [fetchGateways])
+    void fetchProviders()
+  }, [fetchGateways, fetchProviders])
 
   async function handleToggle(gateway: PaymentGateway) {
     setTogglingId(gateway.id)
@@ -231,7 +241,7 @@ export function GatewaysTab() {
     setIsSubmitting(true)
 
     const providerType = String(formData.get("type") || "")
-    const providerDef = PROVIDER_OPTIONS.find((p) => p.value === providerType)
+    const providerDef = providers.find((p) => p.value === providerType)
     const config = providerDef ? readConfigValues(formData, providerDef.configFields) : {}
     const currencies = readSupportedCurrencies(formData)
 
@@ -272,7 +282,7 @@ export function GatewaysTab() {
     const formData = new FormData(event.currentTarget)
     setIsSubmitting(true)
 
-    const providerDef = PROVIDER_OPTIONS.find((p) => p.value === (editProviderType || editingGateway.type))
+    const providerDef = providers.find((p) => p.value === (editProviderType || editingGateway.type))
     const config = providerDef ? readConfigValues(formData, providerDef.configFields) : {}
     const currencies = readSupportedCurrencies(formData)
 
@@ -410,7 +420,7 @@ export function GatewaysTab() {
                     <SelectValue placeholder="Select a provider..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {PROVIDER_OPTIONS.map((provider) => (
+                    {providers.map((provider) => (
                       <SelectItem key={provider.value} value={provider.value}>
                         {provider.label}
                       </SelectItem>

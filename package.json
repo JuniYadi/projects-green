@@ -47,6 +47,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.64",
+    "@aws-sdk/client-s3": "^3.1066.0",
+    "@aws-sdk/s3-request-presigner": "^3.1066.0",
     "@elysia/eden": "^1.4.10",
     "@elysia/openapi": "^1.4.15",
     "@formatjs/intl-localematcher": "^0.8.8",
