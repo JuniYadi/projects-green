@@ -11,7 +11,7 @@ CREATE TYPE "StackStatus" AS ENUM ('IDLE', 'QUEUED', 'BUILDING', 'DEPLOYING', 'R
 CREATE TYPE "DeploySource" AS ENUM ('GITHUB', 'TEMPLATE', 'MANUAL');
 
 -- CreateEnum
-CREATE TYPE "DeployEventType" AS ENUM ('QUEUED', 'BUILD_STARTED', 'MANIFEST_PUSHED', 'ARGOCD_SYNC_STARTED', 'ARGOCD_SYNCED', 'DEPLOY_COMPLETED', 'DEPLOY_FAILED', 'ROLLBACK_STARTED', 'ROLLBACK_COMPLETED');
+CREATE TYPE "ApplicationDeployEventType" AS ENUM ('QUEUED', 'BUILD_STARTED', 'MANIFEST_PUSHED', 'ARGOCD_SYNC_STARTED', 'ARGOCD_SYNCED', 'DEPLOY_COMPLETED', 'DEPLOY_FAILED', 'ROLLBACK_STARTED', 'ROLLBACK_COMPLETED');
 
 -- CreateEnum
 CREATE TYPE "SupportTicketDepartment" AS ENUM ('BILLING', 'TECHNICAL', 'ACCOUNT', 'COMPLIANCE');
@@ -41,13 +41,13 @@ CREATE TYPE "BillingPeriod" AS ENUM ('MONTHLY', 'YEARLY', 'CUSTOM');
 CREATE TYPE "MeterAggregation" AS ENUM ('SUM', 'MAX', 'LAST', 'COUNT');
 
 -- CreateEnum
-CREATE TYPE "InvoiceStatus" AS ENUM ('DRAFT', 'ISSUED', 'OPEN', 'PAID', 'OVERDUE', 'CANCELLED', 'VOID', 'UNCOLLECTIBLE');
+CREATE TYPE "BillingInvoiceStatus" AS ENUM ('DRAFT', 'ISSUED', 'OPEN', 'PAID', 'OVERDUE', 'CANCELLED', 'VOID', 'UNCOLLECTIBLE');
 
 -- CreateEnum
-CREATE TYPE "InvoiceLineType" AS ENUM ('SUBSCRIPTION', 'METERED', 'ADJUSTMENT', 'TAX', 'CREDIT');
+CREATE TYPE "BillingInvoiceLineType" AS ENUM ('SUBSCRIPTION', 'METERED', 'ADJUSTMENT', 'TAX', 'CREDIT');
 
 -- CreateEnum
-CREATE TYPE "InvoiceLineSourceType" AS ENUM ('RATED_USAGE', 'ADJUSTMENT', 'MANUAL');
+CREATE TYPE "BillingInvoiceLineSourceType" AS ENUM ('RATED_USAGE', 'ADJUSTMENT', 'MANUAL');
 
 -- CreateEnum
 CREATE TYPE "BillingAdjustmentType" AS ENUM ('CREDIT', 'DEBIT', 'WRITEOFF');
@@ -275,7 +275,7 @@ CREATE TABLE "RuntimeMapping" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "RuntimeMapping_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "DRM_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -296,7 +296,7 @@ CREATE TABLE "InspectionLog" (
     "errorMessage" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "InspectionLog_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "DetectorInspectionLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -360,7 +360,7 @@ CREATE TABLE "Deployment" (
 CREATE TABLE "DeployEvent" (
     "id" TEXT NOT NULL,
     "deploymentId" TEXT NOT NULL,
-    "type" "DeployEventType" NOT NULL,
+    "type" "ApplicationDeployEventType" NOT NULL,
     "message" TEXT,
     "metadataJson" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -528,7 +528,7 @@ CREATE TABLE "SubscriptionVersion" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "SubscriptionVersion_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ServiceSubscriptionVersion_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -638,7 +638,7 @@ CREATE TABLE "Invoice" (
     "periodStart" TIMESTAMP(3) NOT NULL,
     "periodEnd" TIMESTAMP(3) NOT NULL,
     "currency" TEXT NOT NULL,
-    "status" "InvoiceStatus" NOT NULL DEFAULT 'DRAFT',
+    "status" "BillingInvoiceStatus" NOT NULL DEFAULT 'DRAFT',
     "subtotalAmount" DECIMAL(18,6) NOT NULL DEFAULT 0,
     "taxAmount" DECIMAL(18,6) NOT NULL DEFAULT 0,
     "discountAmount" DECIMAL(18,6) NOT NULL DEFAULT 0,
@@ -662,7 +662,7 @@ CREATE TABLE "Invoice" (
 CREATE TABLE "InvoiceLine" (
     "id" TEXT NOT NULL,
     "invoiceId" TEXT NOT NULL,
-    "lineType" "InvoiceLineType" NOT NULL,
+    "lineType" "BillingInvoiceLineType" NOT NULL,
     "description" TEXT NOT NULL,
     "quantity" DECIMAL(18,6) NOT NULL,
     "unitPrice" DECIMAL(18,6) NOT NULL,
@@ -681,7 +681,7 @@ CREATE TABLE "InvoiceLine" (
 CREATE TABLE "InvoiceLineSource" (
     "id" TEXT NOT NULL,
     "invoiceLineId" TEXT NOT NULL,
-    "sourceType" "InvoiceLineSourceType" NOT NULL,
+    "sourceType" "BillingInvoiceLineSourceType" NOT NULL,
     "sourceId" TEXT NOT NULL,
     "amount" DECIMAL(18,6) NOT NULL,
     "metadataJson" JSONB,
@@ -819,7 +819,7 @@ CREATE TABLE "Subscription" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Subscription_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ServiceSubscription_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1373,22 +1373,22 @@ CREATE UNIQUE INDEX "GithubRepositoryConnection_githubRepositoryId_installationI
 CREATE INDEX "DetectorRule_isActive_idx" ON "DetectorRule"("isActive");
 
 -- CreateIndex
-CREATE INDEX "RuntimeMapping_frameworkId_isActive_idx" ON "RuntimeMapping"("frameworkId", "isActive");
+CREATE INDEX "DRM_frameworkId_isActive_idx" ON "RuntimeMapping"("frameworkId", "isActive");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "RuntimeMapping_frameworkId_frameworkVersion_runtimeId_key" ON "RuntimeMapping"("frameworkId", "frameworkVersion", "runtimeId");
+CREATE UNIQUE INDEX "DRM_frameworkId_frameworkVersion_runtimeId_key" ON "RuntimeMapping"("frameworkId", "frameworkVersion", "runtimeId");
 
 -- CreateIndex
-CREATE INDEX "InspectionLog_repoUrl_idx" ON "InspectionLog"("repoUrl");
+CREATE INDEX "DetectorInspectionLog_repoUrl_idx" ON "InspectionLog"("repoUrl");
 
 -- CreateIndex
-CREATE INDEX "InspectionLog_detectedFramework_idx" ON "InspectionLog"("detectedFramework");
+CREATE INDEX "DetectorInspectionLog_detectedFramework_idx" ON "InspectionLog"("detectedFramework");
 
 -- CreateIndex
-CREATE INDEX "InspectionLog_status_idx" ON "InspectionLog"("status");
+CREATE INDEX "DetectorInspectionLog_status_idx" ON "InspectionLog"("status");
 
 -- CreateIndex
-CREATE INDEX "InspectionLog_createdAt_idx" ON "InspectionLog"("createdAt");
+CREATE INDEX "DetectorInspectionLog_createdAt_idx" ON "InspectionLog"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "ApplicationStack_organizationId_idx" ON "ApplicationStack"("organizationId");
@@ -1529,13 +1529,13 @@ CREATE INDEX "BillingSubscription_billingAccountId_status_idx" ON "BillingSubscr
 CREATE UNIQUE INDEX "BillingSubscription_billingAccountId_externalKey_key" ON "BillingSubscription"("billingAccountId", "externalKey");
 
 -- CreateIndex
-CREATE INDEX "SubscriptionVersion_subscriptionId_effectiveFrom_idx" ON "SubscriptionVersion"("subscriptionId", "effectiveFrom" DESC);
+CREATE INDEX "ServiceSubscriptionVersion_subscriptionId_effectiveFrom_idx" ON "SubscriptionVersion"("subscriptionId", "effectiveFrom" DESC);
 
 -- CreateIndex
-CREATE INDEX "SubscriptionVersion_planVersionId_idx" ON "SubscriptionVersion"("planVersionId");
+CREATE INDEX "ServiceSubscriptionVersion_planVersionId_idx" ON "SubscriptionVersion"("planVersionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "SubscriptionVersion_subscriptionId_version_key" ON "SubscriptionVersion"("subscriptionId", "version");
+CREATE UNIQUE INDEX "ServiceSubscriptionVersion_subscriptionId_version_key" ON "SubscriptionVersion"("subscriptionId", "version");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Plan_code_key" ON "Plan"("code");
@@ -1658,13 +1658,13 @@ CREATE INDEX "Pricing_regionId_idx" ON "Pricing"("regionId");
 CREATE UNIQUE INDEX "Pricing_planId_regionId_type_billingMode_key" ON "Pricing"("planId", "regionId", "type", "billingMode");
 
 -- CreateIndex
-CREATE INDEX "Subscription_tenantId_status_idx" ON "Subscription"("tenantId", "status");
+CREATE INDEX "ServiceSubscription_tenantId_status_idx" ON "Subscription"("tenantId", "status");
 
 -- CreateIndex
-CREATE INDEX "Subscription_packageId_idx" ON "Subscription"("packageId");
+CREATE INDEX "ServiceSubscription_packageId_idx" ON "Subscription"("packageId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Subscription_tenantId_packageId_planId_key" ON "Subscription"("tenantId", "packageId", "planId");
+CREATE UNIQUE INDEX "ServiceSubscription_tenantId_packageId_planId_key" ON "Subscription"("tenantId", "packageId", "planId");
 
 -- CreateIndex
 CREATE INDEX "VpnClient_organizationId_status_idx" ON "VpnClient"("organizationId", "status");

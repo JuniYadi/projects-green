@@ -477,8 +477,9 @@ export class BillingSeeder extends BaseSeeder {
       const [planCode, regionCode] = [pricing.planCode, pricing.regionCode]
 
       // Find plan by compound key: packageCode_planCode
-      const pkgCode = planCode.split("_")[0]
-      const plCode = planCode.replace(`${pkgCode}_`, "")
+      // Package codes may contain underscores (e.g. APP_HOSTING), so we match prefixes
+      const pkgCode = this.getPackageCode(planCode)
+      const plCode = planCode.slice(pkgCode.length + 1) // +1 for the underscore
       const pkg = await this.prisma.servicePackage.findUnique({
         where: { code: pkgCode as ServiceType },
       })
@@ -571,6 +572,22 @@ export class BillingSeeder extends BaseSeeder {
         this.trackCreated()
       }
     }
+  }
+
+  /**
+   * Extract the package code from a compound plan code.
+   * Package codes may contain underscores (e.g. APP_HOSTING), so we match
+   * known prefixes rather than naively splitting on the first underscore.
+   */
+  private getPackageCode(planCode: string): string {
+    const packageCodes: ServiceType[] = ["APP_HOSTING", "VPN", "WHATSAPP"]
+    for (const pkg of packageCodes) {
+      if (planCode.startsWith(pkg + "_")) {
+        return pkg
+      }
+    }
+    // Fallback: split on first underscore (for backward compatibility)
+    return planCode.split("_")[0]
   }
 }
 

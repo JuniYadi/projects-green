@@ -7,8 +7,8 @@ describe("billing core prisma models", () => {
     expect(schema).toContain("model BillingAccount {")
     expect(schema).toContain("model BillingSubscription {")
     expect(schema).toContain("model ServiceSubscriptionVersion {")
-    expect(schema).toContain("model Plan {")
-    expect(schema).toContain("model PlanVersion {")
+    expect(schema).toContain("model BillingPlan {")
+    expect(schema).toContain("model BillingPlanTier {")
     expect(schema).toContain("model BillingMeter {")
     expect(schema).toContain("model BillingMeterPrice {")
 

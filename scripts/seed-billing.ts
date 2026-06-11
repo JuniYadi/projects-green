@@ -220,8 +220,9 @@ async function seedPricings() {
     const [planCode, regionCode] = [pricing.planCode, pricing.regionCode]
 
     // Find plan by compound key: packageCode_planCode (e.g., "APP_HOSTING_STARTER")
-    const pkgCode = planCode.split("_")[0]
-    const plCode = planCode.replace(`${pkgCode}_`, "")
+    // Package codes may contain underscores (e.g. APP_HOSTING), so we match known prefixes
+    const pkgCode = getPackageCode(planCode)
+    const plCode = planCode.slice(pkgCode.length + 1) // +1 for the underscore
     const pkg = await prisma.servicePackage.findUnique({ where: { code: pkgCode as ServiceType } })
     if (!pkg) {
       console.error(`  ⚠️ Package ${pkgCode} not found, skipping pricing`)
@@ -312,6 +313,22 @@ async function seedBillingAccounts() {
   }
 
   console.log(`  ✅ Billing accounts: ${created} created, ${updated} found`)
+}
+
+/**
+ * Extract the package code from a compound plan code.
+ * Package codes may contain underscores (e.g. APP_HOSTING), so we match
+ * known prefixes rather than naively splitting on the first underscore.
+ */
+function getPackageCode(planCode: string): string {
+  const packageCodes: ServiceType[] = ["APP_HOSTING", "VPN", "WHATSAPP"]
+  for (const pkg of packageCodes) {
+    if (planCode.startsWith(pkg + "_")) {
+      return pkg
+    }
+  }
+  // Fallback: split on first underscore (for backward compatibility)
+  return planCode.split("_")[0]
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────

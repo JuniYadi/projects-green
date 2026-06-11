@@ -231,6 +231,16 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
       "+6289876543212",
     ]
 
+    // Get the WhatsApp device ID
+    const device = await this.prisma.whatsappDevice.findFirst({
+      where: { phoneNumber: DEFAULT_TEST_DATA.devicePhone },
+    })
+
+    if (!device) {
+      this.warn("WhatsApp device not found, cannot create conversations")
+      return
+    }
+
     for (const phoneNumber of testPhoneNumbers) {
       const existing = await this.prisma.whatsappConversation.findFirst({
         where: {
@@ -249,7 +259,7 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
         data: {
           organizationId: DEFAULT_TEST_DATA.organizationId,
           contactPhone: phoneNumber,
-          whatsappDeviceId: DEFAULT_TEST_DATA.organizationId,
+          whatsappDeviceId: device.id,
           lastMessageAt: new Date(),
           lastDirection: "OUTBOX",
         },

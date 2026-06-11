@@ -675,7 +675,7 @@ model ServiceSubscriptionVersion {
   updatedAt      DateTime  @updatedAt
 
   subscription BillingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  planVersion  PlanVersion         @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
+  planVersion  BillingPlanTier     @relation(fields: [planVersionId], references: [id], onDelete: Restrict)
   ratedUsage   BillingRatedUsage[]
 
   @@unique([subscriptionId, version], map: "ServiceSubscriptionVersion_subscriptionId_version_key")
@@ -684,7 +684,7 @@ model ServiceSubscriptionVersion {
   @@map("SubscriptionVersion")
 }
 
-model Plan {
+model BillingPlan {
   id           String   @id @default(cuid())
   code         String   @unique
   name         String
@@ -694,10 +694,12 @@ model Plan {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  versions PlanVersion[]
+  versions BillingPlanTier[]
+
+  @@map("Plan")
 }
 
-model PlanVersion {
+model BillingPlanTier {
   id            String        @id @default(cuid())
   planId        String
   version       Int
@@ -708,12 +710,13 @@ model PlanVersion {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  plan                 Plan                  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  plan                 BillingPlan                 @relation(fields: [planId], references: [id], onDelete: Cascade)
   subscriptionVersions ServiceSubscriptionVersion[]
   meterPrices          BillingMeterPrice[]
 
   @@unique([planId, version])
   @@index([planId, effectiveFrom(sort: Desc)])
+  @@map("PlanVersion")
 }
 
 model BillingMeter {
@@ -749,7 +752,7 @@ model BillingMeterPrice {
   updatedAt     DateTime  @updatedAt
 
   meter       BillingMeter         @relation(fields: [meterId], references: [id], onDelete: Cascade)
-  planVersion PlanVersion           @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  planVersion BillingPlanTier      @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
   ratedUsage  BillingRatedUsage[]
 
   @@unique([meterId, planVersionId, effectiveFrom])
