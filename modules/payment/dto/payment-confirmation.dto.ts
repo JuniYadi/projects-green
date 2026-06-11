@@ -1,11 +1,14 @@
 import { Prisma } from "@prisma/client"
 
+import { getEncryptionService } from "../services/encryption.service"
+
 export interface PaymentConfirmationDTO {
   id: string
   amount: number
   currency: string
   bankAccountId: string
   bankName: string
+  accountName: string
   accountNumber: string
   status: "pending" | "approved" | "rejected"
   submittedAt: string
@@ -15,6 +18,16 @@ export interface PaymentConfirmationDTO {
 type ConfirmationWithRelations = Prisma.PaymentConfirmationGetPayload<{
   include: { invoice: true; bankAccount: true }
 }>
+
+function decryptPaymentField(value: string | null | undefined): string {
+  if (!value) return ""
+
+  try {
+    return getEncryptionService().decryptFieldOptional(value) ?? value
+  } catch {
+    return value
+  }
+}
 
 export function toPaymentConfirmationDTO(
   confirmation: ConfirmationWithRelations
@@ -26,7 +39,8 @@ export function toPaymentConfirmationDTO(
       confirmation.invoice?.currency ?? confirmation.bankAccount.currency,
     bankAccountId: confirmation.bankAccountId,
     bankName: confirmation.bankAccount.bankName,
-    accountNumber: confirmation.bankAccount.accountNumber,
+    accountName: decryptPaymentField(confirmation.bankAccount.accountName),
+    accountNumber: decryptPaymentField(confirmation.bankAccount.accountNumber),
     status: confirmation.status.toLowerCase() as PaymentConfirmationDTO["status"],
     submittedAt: confirmation.createdAt.toISOString(),
     notes: confirmation.notes,

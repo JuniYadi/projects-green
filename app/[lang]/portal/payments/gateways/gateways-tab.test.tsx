@@ -4,6 +4,36 @@ import { fireEvent, render } from "@testing-library/react"
 import { GatewaysTab } from "./gateways-tab"
 
 describe("GatewaysTab", () => {
+  it("renders gateways in a table", async () => {
+    globalThis.fetch = Object.assign(
+      async () =>
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: [
+              {
+                id: "gw-1",
+                name: "Duitku",
+                type: "duitku",
+                isActive: true,
+                isDefault: false,
+                supportedCurrencies: ["IDR"],
+                config: {},
+              },
+            ],
+          }),
+          { status: 200 }
+        ),
+      { preconnect: () => {} }
+    ) as typeof fetch
+
+    const view = render(<GatewaysTab />)
+
+    expect(await view.findByRole("table")).toBeInTheDocument()
+    expect(view.getByRole("columnheader", { name: /gateway/i })).toBeInTheDocument()
+    expect(view.getByLabelText("Filter gateways...")).toBeInTheDocument()
+  })
+
   it("opens a gateway creation form from the empty state action", async () => {
     globalThis.fetch = Object.assign(
       async () =>

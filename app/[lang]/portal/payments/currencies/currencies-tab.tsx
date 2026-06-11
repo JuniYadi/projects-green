@@ -1,11 +1,15 @@
 "use client"
 
+import type { ColumnDef } from "@tanstack/react-table"
+
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useCallback, useEffect, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
 
 interface Currency {
   id: string
@@ -30,6 +34,95 @@ export function CurrenciesTab() {
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editing, setEditing] = useState<Currency | null>(null)
+
+  const currencyColumns = useMemo<ColumnDef<Currency>[]>(
+    () => [
+      {
+        id: "currency",
+        accessorFn: (currency) => `${currency.code} ${currency.name}`,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Currency" />
+        ),
+        cell: ({ row }) => (
+          <div className="grid gap-1">
+            <span className="font-medium">{row.original.code}</span>
+            <span className="text-xs text-muted-foreground">
+              {row.original.name}
+            </span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "ratePerBase",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Rate" />
+        ),
+        cell: ({ row }) =>
+          row.original.isBase
+            ? "Base currency"
+            : row.original.ratePerBase.toLocaleString(),
+      },
+      {
+        id: "topupRange",
+        accessorFn: (currency) => `${currency.minTopup} ${currency.maxTopup}`,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Top-up range" />
+        ),
+        cell: ({ row }) =>
+          `${row.original.symbol}${row.original.minTopup.toLocaleString()} – ${
+            row.original.symbol
+          }${row.original.maxTopup.toLocaleString()}`,
+      },
+      {
+        id: "status",
+        accessorFn: (currency) => (currency.isActive ? "active" : "inactive"),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-2">
+            {row.original.isBase && (
+              <Badge variant="default" className="text-xs">
+                Base
+              </Badge>
+            )}
+            <Badge
+              variant={row.original.isActive ? "default" : "secondary"}
+              className="text-xs"
+            >
+              {row.original.isActive ? "Active" : "Inactive"}
+            </Badge>
+          </div>
+        ),
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={isSubmitting}
+              onClick={() => void handleToggle(row.original.id)}
+            >
+              {row.original.isActive ? "Disable" : "Enable"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setEditing(row.original)}
+            >
+              Edit
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [isSubmitting]
+  )
 
   const fetchCurrencies = useCallback(async () => {
     try {
@@ -202,55 +295,25 @@ export function CurrenciesTab() {
         )}
 
         {!editing && !isCreating && (
-          <>
-            {currencies.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No currencies configured yet.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {currencies.map((currency) => (
-                  <div
-                    key={currency.id}
-                    className="flex items-center justify-between rounded-md border p-3"
-                  >
-                    <div className="space-y-1">
-                      <div className="font-medium">
-                        {currency.code} <span className="text-muted-foreground">· {currency.name}</span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        {currency.isBase ? (
-                          <Badge variant="default" className="text-xs">Base</Badge>
-                        ) : (
-                          <span>1 {base?.code ?? "base"} = {currency.ratePerBase.toLocaleString()} {currency.code}</span>
-                        )}
-                        <Badge variant={currency.isActive ? "default" : "secondary"} className="text-xs">
-                          {currency.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                        <span>
-                          Top-up {currency.symbol}{currency.minTopup.toLocaleString()} – {currency.symbol}{currency.maxTopup.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={isSubmitting}
-                        onClick={() => void handleToggle(currency.id)}
-                      >
-                        {currency.isActive ? "Disable" : "Enable"}
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" onClick={() => setEditing(currency)}>
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
+          <DataTable
+            columns={currencyColumns}
+            data={currencies}
+            searchPlaceholder="Filter currencies..."
+            searchableColumns={["currency", "status", "topupRange"]}
+            facetFilters={[
+              {
+                columnId: "status",
+                label: "Status",
+                allLabel: "All status",
+                options: [
+                  { label: "Active", value: "active" },
+                  { label: "Inactive", value: "inactive" },
+                ],
+              },
+            ]}
+            initialSorting={[{ id: "currency", desc: false }]}
+            emptyMessage="No currencies match your filters."
+          />
         )}
       </CardContent>
     </Card>

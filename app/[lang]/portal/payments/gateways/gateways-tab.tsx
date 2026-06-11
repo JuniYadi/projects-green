@@ -1,5 +1,9 @@
 "use client"
 
+import type { ColumnDef } from "@tanstack/react-table"
+
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useCallback, useEffect, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
 
 interface PaymentGateway {
   id: string
@@ -90,6 +94,93 @@ export function GatewaysTab() {
 
   const currentProvider = PROVIDER_OPTIONS.find((p) => p.value === selectedProvider)
   const editProvider = PROVIDER_OPTIONS.find((p) => p.value === editProviderType) || PROVIDER_OPTIONS.find((p) => p.value === editingGateway?.type)
+
+  const gatewayColumns = useMemo<ColumnDef<PaymentGateway>[]>(
+    () => [
+      {
+        id: "gateway",
+        accessorFn: (gateway) => gateway.name,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Gateway" />
+        ),
+        cell: ({ row }) => (
+          <div className="grid gap-1">
+            <span className="font-medium">{row.original.name}</span>
+            <span className="text-xs text-muted-foreground">
+              {PROVIDER_OPTIONS.find((p) => p.value === row.original.type)
+                ?.label || row.original.type}
+            </span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "type",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Provider" />
+        ),
+        cell: ({ row }) => <Badge variant="outline">{row.original.type}</Badge>,
+      },
+      {
+        id: "currencies",
+        accessorFn: (gateway) => gateway.supportedCurrencies?.join(", ") || "all",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Currencies" />
+        ),
+        cell: ({ row }) => (
+          <Badge variant="outline" className="text-xs">
+            {row.original.supportedCurrencies?.length
+              ? row.original.supportedCurrencies.join(", ")
+              : "All currencies"}
+          </Badge>
+        ),
+      },
+      {
+        id: "status",
+        accessorFn: (gateway) => (gateway.isActive ? "active" : "inactive"),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => (
+          <Badge
+            variant={row.original.isActive ? "default" : "secondary"}
+            className="text-xs"
+          >
+            {row.original.isActive ? "Active" : "Inactive"}
+          </Badge>
+        ),
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            <Toggle
+              variant="outline"
+              size="sm"
+              pressed={row.original.isActive}
+              disabled={togglingId === row.original.id}
+              onPressedChange={() => handleToggle(row.original)}
+              aria-label={`Toggle ${row.original.name}`}
+            >
+              {row.original.isActive ? "Inactive" : "Active"}
+            </Toggle>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditingGateway(row.original)
+                setEditProviderType(row.original.type)
+              }}
+            >
+              Configure
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [togglingId]
+  )
 
   const fetchGateways = useCallback(async () => {
     try {
@@ -428,66 +519,24 @@ export function GatewaysTab() {
         )}
 
         {!editingGateway && (
-          <>
-            {gateways.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No payment gateways configured yet.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {gateways.map((gateway) => {
-                  const providerDef = PROVIDER_OPTIONS.find((p) => p.value === gateway.type)
-                  return (
-                    <div
-                      key={gateway.id}
-                      className="flex items-center justify-between rounded-md border p-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="font-medium">{gateway.name}</div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{providerDef?.label || gateway.type}</span>
-                          <Badge
-                            variant={gateway.isActive ? "default" : "secondary"}
-                            className="text-xs"
-                          >
-                            {gateway.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {gateway.supportedCurrencies && gateway.supportedCurrencies.length > 0
-                              ? gateway.supportedCurrencies.join(", ")
-                              : "All currencies"}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Toggle
-                          variant="outline"
-                          size="sm"
-                          pressed={gateway.isActive}
-                          disabled={togglingId === gateway.id}
-                          onPressedChange={() => handleToggle(gateway)}
-                          aria-label={`Toggle ${gateway.name}`}
-                        >
-                          {gateway.isActive ? "Inactive" : "Active"}
-                        </Toggle>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setEditingGateway(gateway)
-                            setEditProviderType(gateway.type)
-                          }}
-                        >
-                          Configure
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </>
+          <DataTable
+            columns={gatewayColumns}
+            data={gateways}
+            searchPlaceholder="Filter gateways..."
+            searchableColumns={["gateway", "type", "currencies", "status"]}
+            facetFilters={[
+              {
+                columnId: "status",
+                label: "Status",
+                allLabel: "All status",
+                options: [
+                  { label: "Active", value: "active" },
+                  { label: "Inactive", value: "inactive" },
+                ],
+              },
+            ]}
+            emptyMessage="No payment gateways match your filters."
+          />
         )}
       </CardContent>
     </Card>

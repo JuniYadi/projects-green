@@ -1,11 +1,15 @@
 "use client"
 
+import type { ColumnDef } from "@tanstack/react-table"
+
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useCallback, useEffect, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
 
 interface BankAccount {
   id: string
@@ -48,6 +52,104 @@ export function BankAccountsTab() {
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null)
+
+  const bankAccountColumns = useMemo<ColumnDef<BankAccount>[]>(
+    () => [
+      {
+        id: "bank",
+        accessorFn: (account) => account.bankName,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Bank" />
+        ),
+        cell: ({ row }) => (
+          <div className="grid gap-1">
+            <span className="font-medium">{row.original.bankName}</span>
+            <span className="text-xs text-muted-foreground">
+              {row.original.swiftCode || "No SWIFT code"}
+            </span>
+          </div>
+        ),
+      },
+      {
+        id: "account",
+        accessorFn: (account) =>
+          [account.accountNumber, account.accountName].filter(Boolean).join(" "),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Account" />
+        ),
+        cell: ({ row }) => (
+          <div className="grid gap-1">
+            <span>{row.original.accountNumber}</span>
+            <span className="text-xs text-muted-foreground">
+              {row.original.accountName}
+            </span>
+          </div>
+        ),
+      },
+      {
+        id: "currencies",
+        accessorFn: (account) => getAccountCurrencies(account).join(", "),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Currencies" />
+        ),
+        cell: ({ row }) => (
+          <Badge variant="outline" className="text-xs">
+            {getAccountCurrencies(row.original).join(", ")}
+          </Badge>
+        ),
+      },
+      {
+        id: "status",
+        accessorFn: (account) => (account.isActive ? "active" : "inactive"),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-2">
+            <Badge
+              variant={row.original.isActive ? "default" : "secondary"}
+              className="text-xs"
+            >
+              {row.original.isActive ? "Active" : "Inactive"}
+            </Badge>
+            {row.original.isDefault && (
+              <Badge variant="outline" className="text-xs">
+                Default
+              </Badge>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            {!row.original.isDefault && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={isSubmitting}
+                onClick={() => void handleSetDefault(row.original.id)}
+              >
+                Set Default
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setEditingAccount(row.original)}
+            >
+              Edit
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [isSubmitting]
+  )
 
   const fetchBankAccounts = useCallback(async () => {
     try {
@@ -362,66 +464,24 @@ export function BankAccountsTab() {
         )}
 
         {!editingAccount && (
-          <>
-            {bankAccounts.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No bank accounts added yet.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {bankAccounts.map((account) => (
-                  <div
-                    key={account.id}
-                    className="flex items-center justify-between rounded-md border p-3"
-                  >
-                    <div className="space-y-1">
-                      <div className="font-medium">{account.bankName}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {account.accountNumber} - {account.accountName}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant={account.isActive ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          {account.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {getAccountCurrencies(account).join(", ")}
-                        </Badge>
-                        {account.isDefault && (
-                          <Badge variant="outline" className="text-xs">
-                            Default
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!account.isDefault && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={isSubmitting}
-                          onClick={() => void handleSetDefault(account.id)}
-                        >
-                          Set Default
-                        </Button>
-                      )}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditingAccount(account)}
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
+          <DataTable
+            columns={bankAccountColumns}
+            data={bankAccounts}
+            searchPlaceholder="Filter bank accounts..."
+            searchableColumns={["bank", "account", "currencies", "status"]}
+            facetFilters={[
+              {
+                columnId: "status",
+                label: "Status",
+                allLabel: "All status",
+                options: [
+                  { label: "Active", value: "active" },
+                  { label: "Inactive", value: "inactive" },
+                ],
+              },
+            ]}
+            emptyMessage="No bank accounts match your filters."
+          />
         )}
       </CardContent>
     </Card>
