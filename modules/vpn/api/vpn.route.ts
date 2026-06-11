@@ -179,7 +179,6 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         if (auth.error === "UNAUTHORIZED") return toUnauthorized(set)
         return toForbidden(set, auth.message)
       }
-      const { user } = auth
       const organizationId = requireOrg(auth)
 
       const clients = await vpnClients.getActiveClientsForOrganization(
@@ -204,7 +203,6 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         if (auth.error === "UNAUTHORIZED") return toUnauthorized(set)
         return toForbidden(set, auth.message)
       }
-      const { user } = auth
       const organizationId = requireOrg(auth)
 
       const download = await vpnClients.getDownloadForOrganization({
@@ -225,7 +223,6 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         if (auth.error === "UNAUTHORIZED") return toUnauthorized(set)
         return toForbidden(set, auth.message)
       }
-      const { user } = auth
       const organizationId = requireOrg(auth)
 
       const revoked = await vpnClients.markRevoked({

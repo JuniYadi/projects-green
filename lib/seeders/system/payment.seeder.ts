@@ -94,10 +94,10 @@ export class PaymentSeeder extends BaseSeeder {
     this.log("Seeding Duitku payment gateway...")
 
     const config = {
-      merchantCode: "DS00000",
-      apiKey: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      sandboxUrl: "https://sandbox.duitku.com/webapi/api/merchant",
-      productionUrl: "https://passport.duitku.com/webapi/api/merchant",
+      merchantCode: process.env.DUITKU_MERCHANT_CODE ?? "DS00000",
+      apiKey: process.env.DUITKU_API_KEY ?? "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      sandboxUrl: process.env.DUITKU_SANDBOX_URL ?? "https://sandbox.duitku.com/webapi/api/merchant",
+      productionUrl: process.env.DUITKU_PRODUCTION_URL ?? "https://passport.duitku.com/webapi/api/merchant",
     }
 
     const existing = await this.prisma.paymentGateway.findFirst({
@@ -211,34 +211,36 @@ export class PaymentSeeder extends BaseSeeder {
   async unseed(): Promise<void> {
     this.log("Removing seeded payment data...")
 
-    const deletedBankAccounts = await this.prisma.paymentBankAccount.deleteMany(
-      {
-        where: {
-          bankCode: { in: bankAccounts.map((a) => a.bankCode) },
+    await this.prisma.$transaction(async (tx) => {
+      const deletedBankAccounts = await tx.paymentBankAccount.deleteMany(
+        {
+          where: {
+            bankCode: { in: bankAccounts.map((a) => a.bankCode) },
+          },
         },
-      },
-    )
-    this.trackDeleted(deletedBankAccounts.count)
+      )
+      this.trackDeleted(deletedBankAccounts.count)
 
-    const manualGateway = await this.prisma.paymentGateway.findFirst({
-      where: { name: "Manual Bank Transfer" },
-    })
-    if (manualGateway) {
-      await this.prisma.paymentGateway.delete({
-        where: { id: manualGateway.id },
+      const manualGateway = await tx.paymentGateway.findFirst({
+        where: { name: "Manual Bank Transfer" },
       })
-      this.trackDeleted(1)
-    }
+      if (manualGateway) {
+        await tx.paymentGateway.delete({
+          where: { id: manualGateway.id },
+        })
+        this.trackDeleted(1)
+      }
 
-    const duitkuGateway = await this.prisma.paymentGateway.findFirst({
-      where: { name: "Duitku" },
-    })
-    if (duitkuGateway) {
-      await this.prisma.paymentGateway.delete({
-        where: { id: duitkuGateway.id },
+      const duitkuGateway = await tx.paymentGateway.findFirst({
+        where: { name: "Duitku" },
       })
-      this.trackDeleted(1)
-    }
+      if (duitkuGateway) {
+        await tx.paymentGateway.delete({
+          where: { id: duitkuGateway.id },
+        })
+        this.trackDeleted(1)
+      }
+    })
 
     this.log(
       `Done: ${this.result.deleted} records removed`,
