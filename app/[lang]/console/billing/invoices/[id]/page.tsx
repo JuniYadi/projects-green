@@ -8,10 +8,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
-import { getInvoice, getAccount, payWithBalance, topupAndPay } from "@/lib/billing-client"
-import type { InvoiceDetail, BillingAccount } from "@/lib/billing-client"
-import { ArrowLeftIcon, DownloadIcon, WalletIcon, PlusIcon, CheckCircleIcon, ClockIcon, XCircleIcon } from "@phosphor-icons/react"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  getInvoice,
+  getAccount,
+  getPaymentMethods,
+  payWithBalance,
+  topupAndPay,
+} from "@/lib/billing-client"
+import type {
+  BillingAccount,
+  InvoiceDetail,
+  PaymentMethod,
+} from "@/lib/billing-client"
+import {
+  ArrowLeftIcon,
+  WalletIcon,
+  PlusIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  XCircleIcon,
+} from "@phosphor-icons/react"
+import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 import {
   Dialog,
   DialogContent,
@@ -40,6 +57,7 @@ export default function InvoiceDetailPage() {
     topupInvoiceNumber?: string
   } | null>(null)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -47,13 +65,16 @@ export default function InvoiceDetailPage() {
 
     async function loadData() {
       try {
-        const [invoiceResult, accountResult] = await Promise.all([
-          getInvoice(invoiceId, { signal: controller.signal }),
-          getAccount({ signal: controller.signal }),
-        ])
+        const [invoiceResult, accountResult, paymentMethodsResult] =
+          await Promise.all([
+            getInvoice(invoiceId, { signal: controller.signal }),
+            getAccount({ signal: controller.signal }),
+            getPaymentMethods(),
+          ])
         if (!cancelled) {
           setData(invoiceResult)
           setAccount(accountResult)
+          setPaymentMethods(paymentMethodsResult.accounts)
         }
       } catch {
         if (!cancelled) {
@@ -173,6 +194,16 @@ export default function InvoiceDetailPage() {
   const issueDate = invoice.issuedAt ?? invoice.createdAt ?? null
   const dueDate = invoice.dueAt ?? invoice.dueDate ?? null
   const confirmPaymentHref = `/console/billing/payments/confirm?invoiceId=${invoice.id}`
+  const defaultPaymentMethod =
+    paymentMethods.find((method) => method.isActive && method.isDefault) ??
+    paymentMethods.find((method) => method.isActive) ??
+    null
+  const isManualPayment =
+    invoice.paymentMethod === "MANUAL_BANK" ||
+    invoice.paymentMethod === "manual_bank_transfer"
+  const isGatewayPayment =
+    invoice.paymentMethod === "PAYMENT_GATEWAY" ||
+    invoice.paymentMethod === "payment_gateway"
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -230,17 +261,10 @@ export default function InvoiceDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Invoice Details</CardTitle>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button variant="outline" size="sm" disabled>
-                    <DownloadIcon className="mr-2 h-4 w-4" />
-                    Download PDF
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>Coming soon</TooltipContent>
-            </Tooltip>
+            <InvoiceDownloadPdfAction
+              invoiceId={invoice.id}
+              invoiceNumber={invoice.invoiceNumber}
+            />
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -311,7 +335,7 @@ export default function InvoiceDetailPage() {
           {invoice.status === "OPEN" && isTopUp && (
             <div className="border-t pt-4">
               <h3 className="mb-4 font-medium">Complete Your Top-Up</h3>
-              {invoice.paymentMethod === "MANUAL_BANK" ? (
+              {isManualPayment ? (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
                     Transfer the exact total amount{" "}
@@ -320,6 +344,33 @@ export default function InvoiceDetailPage() {
                     </span>{" "}
                     to the destination bank account, then confirm your payment.
                   </p>
+                  {defaultPaymentMethod ? (
+                    <div className="grid gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Bank</span>
+                        <span className="font-medium">
+                          {defaultPaymentMethod.bankName}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Account Number</span>
+                        <span className="font-medium">
+                          {defaultPaymentMethod.accountNumber}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Account Name</span>
+                        <span className="font-medium">
+                          {defaultPaymentMethod.accountName}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-300">
+                      Bank account details are not available right now. Please
+                      contact support before transferring this payment.
+                    </p>
+                  )}
                   <Button asChild>
                     <Link href={confirmPaymentHref}>
                       <CheckCircleIcon className="mr-2 h-4 w-4" />
@@ -327,10 +378,28 @@ export default function InvoiceDetailPage() {
                     </Link>
                   </Button>
                 </div>
+              ) : isGatewayPayment ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Complete your payment through the payment gateway. Your balance
+                    will be updated automatically once the payment is confirmed.
+                  </p>
+                  {invoice.paymentUrl ? (
+                    <Button asChild>
+                      <Link href={invoice.paymentUrl} target="_blank" rel="noreferrer">
+                        Continue to Payment Gateway
+                      </Link>
+                    </Button>
+                  ) : (
+                    <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-300">
+                      The payment gateway link is not available for this invoice.
+                      Please create a new top-up or contact support.
+                    </p>
+                  )}
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Complete your payment through the payment gateway. Your balance
-                  will be updated automatically once the payment is confirmed.
+                  This invoice does not have a payment method selected yet.
                 </p>
               )}
             </div>

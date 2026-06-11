@@ -50,6 +50,10 @@ describe("BankAccountService", () => {
     bankName: "BCA",
     accountName: "enc_John Doe",
     accountNumber: "enc_123456",
+    currency: "IDR",
+    supportedCurrencies: ["IDR"],
+    swiftCode: null,
+    bankAddress: null,
     isActive: true,
     isDefault: false,
     sortOrder: 1,
@@ -162,11 +166,49 @@ describe("BankAccountService", () => {
           accountName: "enc_John Doe",
           accountNumber: "enc_123456",
           currency: "IDR",
+          supportedCurrencies: ["IDR"],
+          swiftCode: undefined,
+          bankAddress: undefined,
           isDefault: false,
           isActive: true,
         },
       })
       expect(result.bankCode).toBe("014")
+      expect(result.supportedCurrencies).toEqual(["IDR"])
+    })
+
+    it("creates bank account with multiple supported currencies and international fields", async () => {
+      mockBankAccountCreate.mockImplementation(() =>
+        Promise.resolve({
+          ...mockAccount,
+          currency: "USD",
+          supportedCurrencies: ["USD", "IDR"],
+          swiftCode: "CENAIDJA",
+          bankAddress: "1 International Plaza, Jakarta",
+        })
+      )
+
+      const result = await service.create({
+        bankCode: "HSBC",
+        bankName: "HSBC Indonesia",
+        accountName: "PT Projects Green",
+        accountNumber: "987654321",
+        supportedCurrencies: ["USD", "IDR"],
+        swiftCode: "CENAIDJA",
+        bankAddress: "1 International Plaza, Jakarta",
+      })
+
+      expect(mockBankAccountCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          currency: "USD",
+          supportedCurrencies: ["USD", "IDR"],
+          swiftCode: "CENAIDJA",
+          bankAddress: "1 International Plaza, Jakarta",
+        }),
+      })
+      expect(result.supportedCurrencies).toEqual(["USD", "IDR"])
+      expect(result.swiftCode).toBe("CENAIDJA")
+      expect(result.bankAddress).toBe("1 International Plaza, Jakarta")
     })
 
     it("clears existing default when new account is set as default", async () => {
@@ -308,6 +350,38 @@ describe("BankAccountService", () => {
 
       expect(updated.isActive).toBe(false)
     })
+
+    it("updates supported currencies and international fields", async () => {
+      mockBankAccountFindUnique.mockImplementation(() =>
+        Promise.resolve(mockAccount)
+      )
+      mockBankAccountUpdate.mockImplementation(() =>
+        Promise.resolve({
+          ...mockAccount,
+          currency: "USD",
+          supportedCurrencies: ["USD"],
+          swiftCode: "CENAIDJA",
+          bankAddress: "1 International Plaza, Jakarta",
+        })
+      )
+
+      const updated = await service.update("ba_1", {
+        supportedCurrencies: ["USD"],
+        swiftCode: "CENAIDJA",
+        bankAddress: "1 International Plaza, Jakarta",
+      })
+
+      expect(mockBankAccountUpdate).toHaveBeenCalledWith({
+        where: { id: "ba_1" },
+        data: expect.objectContaining({
+          currency: "USD",
+          supportedCurrencies: ["USD"],
+          swiftCode: "CENAIDJA",
+          bankAddress: "1 International Plaza, Jakarta",
+        }),
+      })
+      expect(updated.supportedCurrencies).toEqual(["USD"])
+    })
   })
 
   describe("toggle", () => {
@@ -371,6 +445,34 @@ describe("BankAccountService", () => {
 
       expect(mockBankAccountFindMany).toHaveBeenCalledWith({
         where: { isActive: true },
+        orderBy: [
+          { isDefault: "desc" },
+          { sortOrder: "asc" },
+          { createdAt: "desc" },
+        ],
+      })
+      expect(result).toHaveLength(2)
+    })
+
+    it("filters active accounts by supported currency with legacy fallback", async () => {
+      const accounts = [
+        { ...mockAccount, id: "ba_usd", currency: "IDR", supportedCurrencies: ["USD", "IDR"] },
+        { ...mockAccount, id: "ba_legacy_usd", currency: "USD", supportedCurrencies: [] },
+      ]
+      mockBankAccountFindMany.mockImplementation(() =>
+        Promise.resolve(accounts)
+      )
+
+      const result = await service.getActiveAccounts("USD")
+
+      expect(mockBankAccountFindMany).toHaveBeenCalledWith({
+        where: {
+          isActive: true,
+          OR: [
+            { supportedCurrencies: { has: "USD" } },
+            { supportedCurrencies: { isEmpty: true }, currency: "USD" },
+          ],
+        },
         orderBy: [
           { isDefault: "desc" },
           { sortOrder: "asc" },

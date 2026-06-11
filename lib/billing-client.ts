@@ -45,6 +45,7 @@ export type InvoiceListItem = {
   status: string
   type?: string | null
   paymentMethod?: string | null
+  paymentUrl?: string | null
   issuedAt: string | null
   dueAt: string | null
   createdAt?: string | null

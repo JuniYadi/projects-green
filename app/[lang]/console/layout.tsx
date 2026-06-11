@@ -15,6 +15,7 @@ import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { ThunderAiHelpDrawer } from "@/modules/docs/ui/thunder-ai-help-drawer"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
+import { getPlatformAccessForUser } from "@/lib/platform-role"
 
 const ONBOARDING_PATH = "/onboarding/organization"
 
@@ -31,6 +32,7 @@ export default async function ConsoleLayout({
   const locale = resolveLocaleOrDefault(lang)
   const auth = await withAuth({ ensureSignedIn: true })
   const consolePath = localizePathname({ pathname: "/console", locale })
+  const portalPath = localizePathname({ pathname: "/portal", locale })
 
   if (!auth.organizationId) {
     const onboardingPath = localizePathname({
@@ -39,6 +41,15 @@ export default async function ConsoleLayout({
     })
 
     redirect(`${onboardingPath}?next=${encodeURIComponent(consolePath)}`)
+  }
+
+  const platformAccess = await getPlatformAccessForUser({
+    id: auth.user.id,
+    email: auth.user.email,
+  })
+
+  if (platformAccess.exists) {
+    redirect(portalPath)
   }
 
   const workosUser = await getLatestWorkOSUser(auth.user)

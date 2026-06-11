@@ -120,10 +120,21 @@ export const app = new Elysia({ prefix: "/api" })
       return
     }
 
-    // Log all unhandled errors so they appear in server output
+    // Extract sub-error code from Prisma or other typed errors.
+    // PrismaClientKnownRequestError always has a .code (e.g. "P2022").
+    const detailCode =
+      error &&
+      typeof error === "object" &&
+      typeof (error as Record<string, unknown>).code === "string"
+        ? ((error as Record<string, unknown>).code as string)
+        : null
+
+    const errorTag = detailCode ? ` [${detailCode}]` : ""
+
+    // Always log with a grep-friendly prefix so errors are easy to find.
     console.error(
-      `[elysia] ${request.method} ${path} — ${code}:`,
-      error instanceof Error ? error.stack ?? error.message : error,
+      `[API ERROR] ${request.method} ${path} — INTERNAL_SERVER_ERROR${errorTag}`,
+      error instanceof Error ? `\n${error.stack ?? error.message}` : String(error),
     )
 
     set.status = 500
@@ -131,6 +142,9 @@ export const app = new Elysia({ prefix: "/api" })
     return {
       ok: false as const,
       error: "INTERNAL_SERVER_ERROR" as const,
+      // Always expose the error category so operators can triage without
+      // inspecting the server log. Safe: error codes are not secrets.
+      ...(detailCode ? { errorType: detailCode } : {}),
       message:
         process.env.NODE_ENV === "production"
           ? "An unexpected error occurred."

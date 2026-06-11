@@ -73,6 +73,17 @@ type InvoiceLineResponse = {
   amountIdr: string
 }
 
+function getPaymentUrl(metadata: Prisma.JsonValue | null): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null
+  }
+
+  const paymentUrl = metadata.paymentUrl
+  return typeof paymentUrl === "string" && paymentUrl.length > 0
+    ? paymentUrl
+    : null
+}
+
 function formatInvoiceLine(
   line: {
     quantity: Decimal
@@ -137,6 +148,7 @@ export const createBillingInvoicesRoutes = (
           status: inv.status,
           type: inv.type,
           paymentMethod: inv.paymentMethod,
+          paymentUrl: getPaymentUrl(inv.metadata),
           issuedAt: inv.issuedAt?.toISOString() ?? null,
           dueAt: inv.dueAt?.toISOString() ?? null,
           createdAt: inv.createdAt?.toISOString() ?? null,
@@ -214,6 +226,7 @@ export const createBillingInvoicesRoutes = (
             status: invoice.status,
             type: invoice.type,
             paymentMethod: invoice.paymentMethod,
+            paymentUrl: getPaymentUrl(invoice.metadata),
             issuedAt: invoice.issuedAt?.toISOString() ?? null,
             dueAt: invoice.dueAt?.toISOString() ?? null,
             createdAt: invoice.createdAt?.toISOString() ?? null,

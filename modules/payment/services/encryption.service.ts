@@ -6,18 +6,30 @@ import {
 } from "@/lib/encryption"
 
 export class EncryptionService {
-  private key: Buffer
+  private key: Buffer | null = null
+  private readonly rawKey: string
 
   constructor(key: string) {
-    // Key should be 32 bytes for AES-256
-    this.key = Buffer.from(key, "hex")
-    if (this.key.length !== 32) {
-      throw new Error("Encryption key must be 32 bytes (64 hex characters)")
+    this.rawKey = key
+  }
+
+  private getKey(): Buffer {
+    if (!this.key) {
+      // Key should be 32 bytes for AES-256. Validate lazily so read-only
+      // payment availability endpoints can still respond with JSON errors or
+      // decrypted-field fallbacks instead of failing route module startup.
+      const key = Buffer.from(this.rawKey, "hex")
+      if (key.length !== 32) {
+        throw new Error("Encryption key must be 32 bytes (64 hex characters)")
+      }
+      this.key = key
     }
+
+    return this.key
   }
 
   encryptField(value: string): string {
-    const encrypted = encrypt(value, this.key)
+    const encrypted = encrypt(value, this.getKey())
     return serializeEncryptedField(encrypted)
   }
 
@@ -26,7 +38,7 @@ export class EncryptionService {
     if (!data) {
       throw new Error("Invalid encrypted field format")
     }
-    return decrypt(data, this.key)
+    return decrypt(data, this.getKey())
   }
 
   decryptFieldOptional(encryptedValue: string | null): string | null {

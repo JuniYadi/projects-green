@@ -24,7 +24,11 @@ export function TopupForm({ className, currency = "IDR", onSuccess }: TopupFormP
   const [amount, setAmount] = useState<number>(50000)
   const [referenceId, setReferenceId] = useState<string>("")
 
-  const isValid = amount >= 10000 && amount <= 1000000
+  // Limits align with the Currency seed (IDR min=50000, max=200M).
+  // For USD the currency prop switches min/max in the input and messages below.
+  const minLimit = currency === "USD" ? 10 : 50000
+  const maxLimit = currency === "USD" ? 10000 : 200000000
+  const isValid = amount >= minLimit && amount <= maxLimit
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -106,19 +110,19 @@ export function TopupForm({ className, currency = "IDR", onSuccess }: TopupFormP
           <FieldLabel>Amount ({currency})</FieldLabel>
           <Input
             type="number"
-            min={10000}
-            max={1000000}
-            step={1000}
+            min={minLimit}
+            max={maxLimit}
+            step={currency === "USD" ? 1 : 1000}
             value={amount}
             onChange={(e) => setAmount(Number.parseInt(e.target.value, 10) || 0)}
-            placeholder="Enter amount (min 10,000)"
+            placeholder={`Enter amount (min ${formatCurrency(String(minLimit))})`}
             disabled={formState === "submitting"}
           />
-          {amount > 0 && amount < 10000 && (
-            <p className="mt-1 text-sm text-destructive">Minimum topup is {formatCurrency("10000")}</p>
+          {amount > 0 && amount < minLimit && (
+            <p className="mt-1 text-sm text-destructive">Minimum topup is {formatCurrency(String(minLimit))}</p>
           )}
-          {amount > 1000000 && (
-            <p className="mt-1 text-sm text-destructive">Maximum topup is {formatCurrency("1000000")}</p>
+          {amount > maxLimit && (
+            <p className="mt-1 text-sm text-destructive">Maximum topup is {formatCurrency(String(maxLimit))}</p>
           )}
         </Field>
 

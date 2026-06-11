@@ -1,8 +1,14 @@
 import { Elysia, t } from "elysia"
+import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { prisma } from "@/lib/prisma"
+import { VpnClientService } from "../vpn-client.service"
 import { VpnBillingService } from "../billing/vpn-billing.service"
+import {
+  OpenVpnSshAdapter,
+  openVpnSshEnvFromProcessEnv,
+} from "../openvpn/openvpn-ssh-adapter"
 import {
   VpnPriceNotConfiguredError,
   resolveVpnMonthlyPrice,
@@ -26,19 +32,35 @@ type RouteSet = {
 }
 
 type VpnBillingLike = Pick<VpnBillingService, "chargeMonthly">
+type OpenVpnLike = Pick<
+  OpenVpnSshAdapter,
+  "createClient" | "fetchConfig" | "revokeClient" | "healthCheck"
+>
+type VpnClientServiceLike = Pick<
+  VpnClientService,
+  | "createActiveClient"
+  | "createProvisioningFailure"
+  | "getActiveClientsForOrganization"
+  | "getDownloadForOrganization"
+  | "markRevoked"
+>
 
 type VpnRouteDeps = {
   authenticate?: () => Promise<VpnAuthContext>
   billing?: VpnBillingLike
+  openVpn?: OpenVpnLike
+  vpnClients?: VpnClientServiceLike
 }
 
-const defaultAuthenticate = async (): Promise<VpnAuthContext> => {
-  // Default: no auth — tests inject a real auth context.
-  return { user: null, organizationId: null }
-}
+const defaultAuthenticate = async (): Promise<VpnAuthContext> => withAuth()
 
 const defaultBilling = (): VpnBillingLike =>
   new VpnBillingService(prisma, new BillingTransactionService(prisma))
+
+const defaultOpenVpn = (): OpenVpnLike =>
+  new OpenVpnSshAdapter({ env: openVpnSshEnvFromProcessEnv() })
+
+const defaultVpnClients = (): VpnClientServiceLike => new VpnClientService(prisma)
 
 const TOPUP_URL = "/console/billing/topup"
 
@@ -69,10 +91,43 @@ const toServerError = (set: RouteSet, message: string) => {
   }
 }
 
+const isAdminAuth = (auth: VpnAuthContext): boolean => {
+  const roles = new Set([auth.role, ...(auth.roles ?? [])].filter(Boolean))
+  return ["admin", "owner", "super_admin", "user_admin", "user_owner"].some(
+    (role) => roles.has(role),
+  )
+}
+
+const requireAuth = async (
+  authenticate: () => Promise<VpnAuthContext>,
+  set: RouteSet,
+): Promise<VpnAuthContext | ReturnType<typeof toUnauthorized> | ReturnType<typeof toForbidden>> => {
+  const auth = await authenticate()
+
+  if (!auth.user) return toUnauthorized(set)
+  if (!auth.organizationId) {
+    return toForbidden(set, "No active organization found for VPN provisioning.")
+  }
+
+  return auth
+}
+
 const currentPeriod = (now: Date = new Date()): string => {
   const year = now.getUTCFullYear()
   const month = String(now.getUTCMonth() + 1).padStart(2, "0")
   return `${year}-${month}`
+}
+
+const buildOpenVpnClientName = (
+  organizationId: string,
+  subscriptionId: string,
+): string => {
+  const safeOrgId = organizationId.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 24)
+  const safeSubscriptionId = subscriptionId
+    .replace(/[^A-Za-z0-9_-]/g, "_")
+    .slice(0, 32)
+
+  return `org_${safeOrgId}_${safeSubscriptionId}`
 }
 
 // ─── Routes factory ─────────────────────────────────────────────────────
@@ -99,8 +154,73 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
   // does not require a live DATABASE_URL. lib/api.ts and the
   // production singleton below run after the env is loaded.
   const billing = deps.billing ?? defaultBilling()
+  const openVpn = deps.openVpn ?? defaultOpenVpn()
+  const vpnClients = deps.vpnClients ?? defaultVpnClients()
 
   return new Elysia()
+    .get("/status", async ({ set }) => {
+      const auth = await requireAuth(authenticate, set)
+      if (!auth.user || !auth.organizationId) return auth
+
+      const clients = await vpnClients.getActiveClientsForOrganization(
+        auth.organizationId,
+      )
+
+      return {
+        ok: true as const,
+        clients: clients.map((client) => ({
+          id: client.id,
+          clientName: client.clientName,
+          status: client.status,
+          regionCode: client.regionCode,
+          currentPeriodStart: client.currentPeriodStart.toISOString(),
+          currentPeriodEnd: client.currentPeriodEnd.toISOString(),
+        })),
+      }
+    })
+    .get("/clients/:clientId/download", async ({ params, set }) => {
+      const auth = await requireAuth(authenticate, set)
+      if (!auth.user || !auth.organizationId) return auth
+
+      const download = await vpnClients.getDownloadForOrganization({
+        organizationId: auth.organizationId,
+        clientId: params.clientId,
+      })
+
+      return new Response(download.content, {
+        headers: {
+          "content-type": "application/x-openvpn-profile; charset=utf-8",
+          "content-disposition": `attachment; filename="${download.fileName}"`,
+        },
+      })
+    })
+    .post("/clients/:clientId/revoke", async ({ params, set }) => {
+      const auth = await requireAuth(authenticate, set)
+      if (!auth.user || !auth.organizationId) return auth
+
+      const revoked = await vpnClients.markRevoked({
+        organizationId: auth.organizationId,
+        clientId: params.clientId,
+      })
+      await openVpn.revokeClient(revoked.clientName)
+
+      return {
+        ok: true as const,
+        clientId: revoked.id,
+        status: revoked.status,
+      }
+    })
+    .get("/admin/health", async ({ set }) => {
+      const auth = await requireAuth(authenticate, set)
+      if (!auth.user || !auth.organizationId) return auth
+      if (!isAdminAuth(auth)) {
+        return toForbidden(set, "You are not allowed to inspect VPN health.")
+      }
+
+      const health = await openVpn.healthCheck()
+
+      return { ok: true as const, health }
+    })
     .post(
       "/subscriptions",
       async ({ body, set }) => {
@@ -176,7 +296,9 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1)
 
         let vpnSubscriptionId: string | undefined
+        let periodStart = now
         let isNewOrSuspended = false
+        let vpnClientId: string | undefined
 
         try {
           // Find or create the Subscription record first so we can use
@@ -199,15 +321,19 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
 
           if (existing && existing.status === "ACTIVE") {
             vpnSubscriptionId = existing.id
+            periodStart = existing.currentPeriodStart
           } else if (existing && existing.status === "SUSPENDED") {
-            await prisma.subscription.update({
-              where: { id: existing.id },
-              data: {
-                status: "SUSPENDED", // Keep SUSPENDED (pending activation)
-                currentPeriodStart: now,
-                currentPeriodEnd: periodEnd,
-              },
-            })
+            // Skip the no-op status update. Only refresh period if stale.
+            const periodStale = existing.currentPeriodEnd < now
+            if (periodStale) {
+              await prisma.subscription.update({
+                where: { id: existing.id },
+                data: {
+                  currentPeriodStart: now,
+                  currentPeriodEnd: periodEnd,
+                },
+              })
+            }
             vpnSubscriptionId = existing.id
             isNewOrSuspended = true
           } else {
@@ -243,7 +369,48 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
             period,
           })
 
-          // Charge succeeded -> activate subscription
+          const clientName = buildOpenVpnClientName(
+            auth.organizationId,
+            vpnSubscriptionId,
+          )
+
+          try {
+            await openVpn.createClient(clientName)
+            const ovpnConfig = await openVpn.fetchConfig(clientName)
+            const vpnClient = await vpnClients.createActiveClient({
+              organizationId: auth.organizationId,
+              subscriptionId: vpnSubscriptionId,
+              clientName,
+              currentPeriodStart: periodStart,
+              currentPeriodEnd: periodEnd,
+              createdBy: auth.user.id,
+              ovpnConfig,
+            })
+            vpnClientId = vpnClient.id
+          } catch (provisioningError) {
+            await vpnClients.createProvisioningFailure({
+              organizationId: auth.organizationId,
+              subscriptionId: vpnSubscriptionId,
+              clientName,
+              currentPeriodStart: periodStart,
+              currentPeriodEnd: periodEnd,
+              createdBy: auth.user.id,
+              reason:
+                provisioningError instanceof Error
+                  ? provisioningError.message
+                  : "OpenVPN provisioning failed",
+            })
+
+            set.status = 502
+            return {
+              ok: false as const,
+              error: "VPN_PROVISIONING_FAILED" as const,
+              message:
+                "VPN billing succeeded, but OpenVPN provisioning failed. Please contact support.",
+            }
+          }
+
+          // Charge and provisioning succeeded -> activate subscription
           if (isNewOrSuspended && vpnSubscriptionId) {
             await prisma.subscription.update({
               where: { id: vpnSubscriptionId },
@@ -317,6 +484,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           currency: price.currency,
           period,
           topupUrl: TOPUP_URL,
+          vpnClientId,
         }
       },
       {

@@ -78,25 +78,85 @@ const { PaymentService } = await import("./payment.service")
 describe("PaymentService", () => {
   let service: InstanceType<typeof PaymentService>
 
+  function resetMocks() {
+    mockPrisma.invoice.create.mockReset()
+    mockPrisma.invoice.update.mockReset()
+    mockPrisma.invoice.findFirst.mockReset()
+    mockPrisma.invoice.findMany.mockReset()
+    mockPrisma.billingAccount.findUnique.mockReset()
+    mockPrisma.billingAccount.create.mockReset()
+    mockPrisma.billingAccount.update.mockReset()
+    mockPrisma.billingAdjustment.create.mockReset()
+    mockBillingTransactions.creditBalance.mockReset()
+    mockBillingTransactions.debitBalance.mockReset()
+
+    // Restore default implementations
+    mockPrisma.invoice.create.mockImplementation(() =>
+      Promise.resolve({
+        id: "inv-123",
+        invoiceNumber: "TOP-ABC123",
+        totalAmount: { toNumber: () => 50000 },
+        status: "OPEN",
+        currency: "IDR",
+        paymentMethod: "VA",
+        dueDate: new Date("2026-06-10"),
+        type: "TOP_UP",
+      })
+    )
+    mockPrisma.invoice.update.mockImplementation(() => Promise.resolve({}))
+    mockPrisma.invoice.findFirst.mockImplementation(() => Promise.resolve(null))
+    mockPrisma.invoice.findMany.mockImplementation(() => Promise.resolve([]))
+    mockPrisma.billingAccount.findUnique.mockImplementation(() =>
+      Promise.resolve({
+        id: "ba-123",
+        organizationId: "org-123",
+        balance: { toNumber: () => 100000 },
+        currency: "IDR",
+      })
+    )
+    mockPrisma.billingAccount.create.mockImplementation(() =>
+      Promise.resolve({
+        id: "ba-123",
+        organizationId: "org-123",
+        currency: "IDR",
+      })
+    )
+    mockPrisma.billingAccount.update.mockImplementation(() => Promise.resolve({}))
+    mockPrisma.billingAdjustment.create.mockImplementation(() => Promise.resolve({}))
+    mockBillingTransactions.creditBalance.mockImplementation(() =>
+      Promise.resolve({
+        billingAccountId: "ba-123",
+        adjustmentId: "adj-1",
+        balanceBefore: { toString: () => "100000" },
+        balanceAfter: { toString: () => "150000" },
+        amount: { toString: () => "50000" },
+        currency: "IDR",
+        alreadyProcessed: false,
+      })
+    )
+    mockBillingTransactions.debitBalance.mockImplementation(() =>
+      Promise.resolve({
+        billingAccountId: "ba-123",
+        adjustmentId: "adj-2",
+        balanceBefore: { toString: () => "100000" },
+        balanceAfter: { toString: () => "50000" },
+        amount: { toString: () => "50000" },
+        currency: "IDR",
+        alreadyProcessed: false,
+      })
+    )
+  }
+
   beforeEach(() => {
     service = new PaymentService(mockBillingTransactions as unknown as BillingTransactionService)
-    mockPrisma.invoice.create.mockClear()
-    mockPrisma.invoice.update.mockClear()
-    mockPrisma.invoice.findFirst.mockClear()
-    mockPrisma.invoice.findMany.mockClear()
-    mockPrisma.billingAccount.findUnique.mockClear()
-    mockPrisma.billingAccount.create.mockClear()
-    mockPrisma.billingAccount.update.mockClear()
-    mockPrisma.billingAdjustment.create.mockClear()
-    mockBillingTransactions.creditBalance.mockClear()
-    mockBillingTransactions.debitBalance.mockClear()
+    resetMocks()
   })
 
   describe("createTopupInvoice", () => {
     it("should create invoice with correct fields", async () => {
       const invoice = await service.createTopupInvoice({
         organizationId: "org-123",
-        amount: 50000,
+        amount: 5000,
         paymentMethod: "VA",
         gatewayId: "gw-123",
       })
@@ -110,18 +170,18 @@ describe("PaymentService", () => {
       await expect(
         service.createTopupInvoice({
           organizationId: "org-123",
-          amount: 5000,
+          amount: 1,
         })
-      ).rejects.toThrow("Minimum top-up amount is 10000")
+      ).rejects.toThrow("Minimum top-up amount is 10")
     })
 
     it("should throw error for amount above maximum", async () => {
       await expect(
         service.createTopupInvoice({
           organizationId: "org-123",
-          amount: 200000000,
+          amount: 20000,
         })
-      ).rejects.toThrow("Maximum top-up amount is 100000000")
+      ).rejects.toThrow("Maximum top-up amount is 10000")
     })
 
     it("should create billing account if not exists", async () => {
@@ -131,7 +191,7 @@ describe("PaymentService", () => {
 
       await service.createTopupInvoice({
         organizationId: "org-new",
-        amount: 50000,
+        amount: 5000,
       })
 
       expect(mockPrisma.billingAccount.create).toHaveBeenCalledTimes(1)
@@ -147,7 +207,7 @@ describe("PaymentService", () => {
         id: "inv-usd",
         invoiceNumber: "TOP-USD001",
         currency: "USD",
-        totalAmount: { toNumber: () => 50000 },
+        totalAmount: { toNumber: () => 5000 },
         status: "OPEN" as string,
         paymentMethod: null as unknown as string,
         dueDate: new Date(),
@@ -156,7 +216,7 @@ describe("PaymentService", () => {
 
       const invoice = await service.createTopupInvoice({
         organizationId: "org-usd",
-        amount: 50000,
+        amount: 5000,
       })
 
       expect(invoice.currency).toBe("USD")

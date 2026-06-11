@@ -87,17 +87,25 @@ export function InvoiceTable({
       {
         accessorKey: "issuedAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Period" />
+          <DataTableColumnHeader column={column} title="Issued Date" />
         ),
-        cell: ({ row }) => {
-          const issued = formatDate(row.original.issuedAt)
-          const due = formatDate(row.original.dueAt)
-          return (
-            <span className="text-muted-foreground">
-              {issued} - {due}
-            </span>
-          )
-        },
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {formatDate(row.original.issuedAt)}
+          </span>
+        ),
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "dueAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Due Date" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {formatDate(row.original.dueAt)}
+          </span>
+        ),
         sortingFn: "datetime",
       },
       {

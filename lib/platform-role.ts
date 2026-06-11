@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma"
 
 export type PlatformAccessRole = "none" | "super_admin"
 
+export type PlatformAccess = {
+  exists: boolean
+  role: PlatformAccessRole
+}
+
 const toPlatformAccessRole = (
   role: string | null | undefined
 ): PlatformAccessRole => {
@@ -12,14 +17,14 @@ const toPlatformAccessRole = (
   return "none"
 }
 
-export const getPlatformRoleForUser = async (
+export const getPlatformAccessForUser = async (
   user: { id?: string | null; email?: string | null } | null | undefined
-): Promise<PlatformAccessRole> => {
+): Promise<PlatformAccess> => {
   const workosUserId = user?.id?.trim()
   const email = user?.email?.trim().toLowerCase() ?? null
 
   if (!workosUserId && !email) {
-    return "none"
+    return { exists: false, role: "none" }
   }
 
   try {
@@ -31,9 +36,20 @@ export const getPlatformRoleForUser = async (
         ],
       },
     })
-    return toPlatformAccessRole(record?.role ?? undefined)
+    return {
+      exists: Boolean(record),
+      role: toPlatformAccessRole(record?.role ?? undefined),
+    }
   } catch {
     // DB failure: deny access rather than exposing internal errors
-    return "none"
+    return { exists: false, role: "none" }
   }
+}
+
+export const getPlatformRoleForUser = async (
+  user: { id?: string | null; email?: string | null } | null | undefined
+): Promise<PlatformAccessRole> => {
+  const access = await getPlatformAccessForUser(user)
+
+  return access.role
 }

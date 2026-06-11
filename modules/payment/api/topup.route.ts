@@ -7,6 +7,8 @@ import { BankAccountService } from "../services/bank-account.service"
 import { DuitkuService } from "../services/duitku.service"
 import { GatewayService } from "../services/gateway.service"
 import { CreateTopupSchema } from "../types/payment.types"
+import { PAYMENT_CONSTANTS } from "../constants"
+import { paypalProvider } from "../providers/paypal.provider"
 import { CurrencyService } from "@/modules/billing/currency.service"
 
 const paymentService = new PaymentService()
@@ -15,10 +17,20 @@ const duitkuService = new DuitkuService()
 const gatewayService = new GatewayService()
 const currencyService = new CurrencyService()
 
+const PAYPAL_GATEWAY_TYPES = ["paypal", "PAYPAL"]
+
+async function findPayPalGatewayForCurrency(currency: string) {
+  for (const type of PAYPAL_GATEWAY_TYPES) {
+    const gateway = await gatewayService.findByTypeForCurrency(type, currency)
+    if (gateway) return gateway
+  }
+  return null
+}
+
 // Topup quick-pick presets are authored in the base currency (USD) and
 // converted to the account currency at request time so a USD user sees clean
 // USD buttons and an IDR user sees the converted IDR equivalents.
-const BASE_TOPUP_PRESETS = [5, 10, 25, 50, 100]
+const BASE_TOPUP_PRESETS = [10, 25, 50, 100, 250]
 
 function roundPreset(value: number, currencyCode: string): number {
   // Whole-unit currencies (IDR) round to the nearest 1,000; sub-unit
@@ -35,7 +47,11 @@ export const createTopupRoutes = () =>
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required",
+        }
       }
 
       const parseResult = CreateTopupSchema.safeParse(body)
@@ -53,24 +69,52 @@ export const createTopupRoutes = () =>
 
       try {
         let gatewayId: string | undefined
+        const billingAccount = await prisma.billingAccount.findUnique({
+          where: { organizationId: auth.organizationId },
+          select: { currency: true },
+        })
+        const currency = billingAccount?.currency ?? "IDR"
+
+        if (paymentMethod === "MANUAL_BANK") {
+          const accounts = await bankAccountService.getActiveAccounts(currency)
+          if (accounts.length === 0) {
+            set.status = 400
+            return {
+              ok: false,
+              error: "MANUAL_BANK_NOT_AVAILABLE",
+              message: `Manual bank transfer is not available for ${currency}. Please choose another payment method.`,
+            }
+          }
+        }
+
         if (paymentMethod === "VA" || paymentMethod === "QRIS") {
           // VA/QRIS run through a payment gateway. Only offer a gateway that
           // declares support for the account currency (covers BOTH and
           // ONLY-ONE). This replaces the old hardcoded "Duitku = IDR only"
           // branch with the gateway's own supportedCurrencies list.
-          const billingAccount = await prisma.billingAccount.findUnique({
-            where: { organizationId: auth.organizationId },
-            select: { currency: true },
-          })
-          const currency = billingAccount?.currency ?? "IDR"
-
-          const gateway = await gatewayService.findByTypeForCurrency("GATEWAY", currency)
+          const gateway = await gatewayService.findByTypeForCurrency(
+            "GATEWAY",
+            currency
+          )
           if (!gateway) {
             set.status = 400
             return {
               ok: false,
               error: "GATEWAY_NOT_AVAILABLE",
               message: `No payment gateway available for ${currency}. Please use manual bank transfer.`,
+            }
+          }
+          gatewayId = gateway.id
+        }
+
+        if (paymentMethod === "PAYPAL") {
+          const gateway = await findPayPalGatewayForCurrency(currency)
+          if (!gateway) {
+            set.status = 400
+            return {
+              ok: false,
+              error: "PAYPAL_NOT_AVAILABLE",
+              message: `PayPal is not available for ${currency}. Please choose another payment method.`,
             }
           }
           gatewayId = gateway.id
@@ -123,6 +167,57 @@ export const createTopupRoutes = () =>
           }
         }
 
+        if (paymentMethod === "PAYPAL") {
+          if (!gatewayId) {
+            throw new Error("PayPal gateway not configured")
+          }
+
+          const config = await gatewayService.getDecryptedConfig(gatewayId)
+          if (!config) {
+            throw new Error("PayPal gateway not configured")
+          }
+
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
+          const paypalResult = await paypalProvider.createPayment(
+            {
+              invoiceId: invoice.id,
+              amount,
+              currency,
+              email: `${auth.organizationId}@payment.local`,
+              customerName: `Org ${auth.organizationId}`,
+              productDetails:
+                `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
+              paymentMethod: "paypal",
+              callbackUrl: `${appUrl}/api/webhooks/paypal/callback`,
+              returnUrl: `${appUrl}/console/billing/invoices/${invoice.id}`,
+            },
+            config as unknown as Record<string, string>
+          )
+
+          await prisma.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              metadata: {
+                paypalReference: paypalResult.reference,
+              },
+            },
+          })
+
+          return {
+            ok: true,
+            invoice: {
+              id: invoice.id,
+              amount: invoice.totalAmount?.toNumber() || amount,
+              status: invoice.status,
+              paymentMethod: invoice.paymentMethod,
+              gateway: "paypal",
+              dueDate: invoice.dueDate?.toISOString(),
+              type: invoice.type,
+            },
+            paymentUrl: paypalResult.redirectUrl,
+          }
+        }
+
         return {
           ok: true,
           invoice: {
@@ -144,14 +239,17 @@ export const createTopupRoutes = () =>
 
         console.error(
           `[payment] POST /topup —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
 
         set.status = isClientError ? 400 : 500
         return {
           ok: false,
           error: isClientError ? "CLIENT_ERROR" : "INTERNAL_ERROR",
-          message: error instanceof Error ? error.message : "An unexpected error occurred",
+          message:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred",
         }
       }
     })
@@ -160,10 +258,17 @@ export const createTopupRoutes = () =>
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required",
+        }
       }
 
-      const invoice = await paymentService.getInvoiceForUser(params.id, auth.organizationId)
+      const invoice = await paymentService.getInvoiceForUser(
+        params.id,
+        auth.organizationId
+      )
 
       if (!invoice) {
         return { ok: false, error: "NOT_FOUND", message: "Invoice not found" }
@@ -176,18 +281,32 @@ export const createTopupRoutes = () =>
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required",
+        }
       }
 
-      const accounts = await bankAccountService.getActiveAccounts()
-      return { ok: true, data: accounts }
+      const billingAccount = await prisma.billingAccount.findUnique({
+        where: { organizationId: auth.organizationId },
+        select: { currency: true },
+      })
+      const currency = billingAccount?.currency ?? "IDR"
+
+      const accounts = await bankAccountService.getActiveAccounts(currency)
+      return { ok: true, currency, data: accounts }
     })
 
-    .get("/methods", async ({ set }) => {
+    .get("/methods", async ({ query, set }) => {
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required",
+        }
       }
 
       const billingAccount = await prisma.billingAccount.findUnique({
@@ -195,27 +314,38 @@ export const createTopupRoutes = () =>
         select: { currency: true },
       })
 
-      const currency = billingAccount?.currency ?? "IDR"
+      const requestedCurrency =
+        typeof query.currency === "string" ? query.currency.toUpperCase() : null
+      const accountCurrency = billingAccount?.currency ?? "IDR"
+      const currency =
+        requestedCurrency === accountCurrency ? requestedCurrency : accountCurrency
 
-      const [accounts, gateway, currencyRow, baseCurrency] = await Promise.all([
-        bankAccountService.getActiveAccounts(currency),
-        gatewayService.findByTypeForCurrency("GATEWAY", currency),
-        currencyService.findByCode(currency),
-        currencyService.getBase().catch(() => null),
-      ])
+      const [accounts, gateway, paypalGateway, currencyRow, baseCurrency] =
+        await Promise.all([
+          bankAccountService.getActiveAccounts(currency),
+          gatewayService.findByTypeForCurrency("GATEWAY", currency),
+          findPayPalGatewayForCurrency(currency),
+          currencyService.findByCode(currency),
+          currencyService.getBase().catch(() => null),
+        ])
 
       const manualEnabled = accounts.length > 0
       // VA/QRIS require a gateway that supports this currency.
       const gatewayEnabled = Boolean(gateway)
+      const paypalEnabled = Boolean(paypalGateway)
 
       // Derive quick-pick presets from base-currency anchors converted into the
       // account currency, so amounts stay meaningful regardless of currency.
-      const rate = currencyRow?.ratePerBase?.toNumber() ?? (currency === "IDR" ? 18000 : 1)
-      const presets = BASE_TOPUP_PRESETS.map((base) => roundPreset(base * rate, currency))
+      const rate =
+        currencyRow?.ratePerBase?.toNumber() ?? (currency === "IDR" ? 18000 : 1)
+      const presets = BASE_TOPUP_PRESETS.map((base) =>
+        roundPreset(base * rate, currency)
+      )
 
-      const minTopup = currencyRow?.minTopup?.toNumber() ?? presets[0]
+      const minTopup =
+        currencyRow?.minTopup?.toNumber() ?? PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT
       const maxTopup =
-        currencyRow?.maxTopup?.toNumber() ?? presets[presets.length - 1] * 100
+        currencyRow?.maxTopup?.toNumber() ?? PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT
 
       return {
         ok: true,
@@ -232,6 +362,7 @@ export const createTopupRoutes = () =>
           MANUAL_BANK: manualEnabled,
           VA: gatewayEnabled,
           QRIS: gatewayEnabled,
+          PAYPAL: paypalEnabled,
         },
       }
     })
@@ -241,10 +372,16 @@ export const createPaymentHistoryRoutes = () =>
     const auth = await withAuth()
     if (!auth.organizationId) {
       set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Organization required",
+      }
     }
 
-    const invoices = await paymentService.getInvoicesForOrganization(auth.organizationId)
+    const invoices = await paymentService.getInvoicesForOrganization(
+      auth.organizationId
+    )
 
     return { ok: true, data: invoices }
   })

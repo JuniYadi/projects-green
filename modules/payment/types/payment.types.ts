@@ -4,9 +4,11 @@ export const PaymentMethod = {
   VIRTUAL_ACCOUNT: "VA",
   QRIS: "QRIS",
   MANUAL_BANK: "MANUAL_BANK",
+  PAYPAL: "PAYPAL",
 } as const
 
-export type PaymentMethodType = (typeof PaymentMethod)[keyof typeof PaymentMethod]
+export type PaymentMethodType =
+  (typeof PaymentMethod)[keyof typeof PaymentMethod]
 
 export const InvoiceType = {
   TOP_UP: "TOP_UP",
@@ -22,12 +24,15 @@ export const ConfirmationStatus = {
   REJECTED: "REJECTED",
 } as const
 
-export type ConfirmationStatusValue = (typeof ConfirmationStatus)[keyof typeof ConfirmationStatus]
+export type ConfirmationStatusValue =
+  (typeof ConfirmationStatus)[keyof typeof ConfirmationStatus]
 
 // Request/Response schemas using Zod
 export const CreateTopupSchema = z.object({
-  amount: z.number().min(10000).max(100000000),
-  paymentMethod: z.enum(["VA", "QRIS", "MANUAL_BANK"]),
+  // Per-currency limits are enforced in the route/service layer via the
+  // Currency table. This schema only validates shape and sign.
+  amount: z.number().positive(),
+  paymentMethod: z.enum(["VA", "QRIS", "MANUAL_BANK", "PAYPAL"]),
 })
 
 export const ConfirmPaymentSchema = z.object({
@@ -69,8 +74,12 @@ export interface BankAccountResponse {
   bankName: string
   accountNumber: string
   accountName: string
-  // ISO currency code this account receives, e.g. "IDR" or "USD".
+  // Legacy/default ISO currency code for backward compatibility.
   currency: string
+  // ISO currency codes this account can receive, e.g. ["IDR"], ["USD"], or both.
+  supportedCurrencies: string[]
+  swiftCode: string | null
+  bankAddress: string | null
   isActive: boolean
   isDefault: boolean
 }

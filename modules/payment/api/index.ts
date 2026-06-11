@@ -9,6 +9,7 @@ import { createConfirmRoutes } from "./confirm.route"
 import { createInvoicePaymentRoutes } from "./invoice-payment.route"
 import { createTopupRoutes, createPaymentHistoryRoutes } from "./topup.route"
 import { createUserBankAccountRoutes } from "./user-bank-account.route"
+import { createUploadScreenshotRoutes } from "./upload-screenshot.route"
 import { createWebhookRoutes } from "./webhook.route"
 
 export const paymentRoutes = new Elysia({ prefix: "/portal/payments" })
@@ -24,6 +25,7 @@ export const userPaymentRoutes = new Elysia({ prefix: "/payments" })
   .use(createConfirmRoutes())
   .use(createInvoicePaymentRoutes())
   .use(createUserBankAccountRoutes())
+  .use(createUploadScreenshotRoutes())
 
 export const webhookRoutes = new Elysia({ prefix: "/webhooks" })
   .use(createWebhookRoutes())

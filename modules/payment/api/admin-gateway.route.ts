@@ -3,6 +3,22 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { GatewayService } from "../services/gateway.service"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { listProviders } from "../providers/registry"
+
+type ProviderOptionDTO = {
+  value: string
+  label: string
+  supportedCurrencies: string[]
+  configFields: Array<{
+    key: string
+    type: "string" | "password" | "url" | "select" | "number"
+    label: string
+    placeholder?: string
+    required: boolean
+    defaultValue?: string
+    options?: { label: string; value: string }[]
+  }>
+}
 
 const gatewayService = new GatewayService()
 
@@ -64,6 +80,26 @@ export const createAdminGatewayRoutes = () =>
 
       const gateway = await gatewayService.update(params.id, { name, config, isDefault, supportedCurrencies })
       return { ok: true, data: gateway }
+    })
+    .get("/providers", async () => {
+      const providers = listProviders()
+
+      const dtos: ProviderOptionDTO[] = providers.map((p) => ({
+        value: p.id,
+        label: p.name,
+        supportedCurrencies: p.supportedCurrencies,
+        configFields: p.configFields.map((f) => ({
+          key: f.key,
+          type: f.type,
+          label: f.label,
+          placeholder: f.placeholder,
+          required: f.required,
+          defaultValue: f.defaultValue,
+          options: f.options,
+        })),
+      }))
+
+      return { ok: true, data: dtos }
     })
     .patch("/:id/toggle", async ({ params }) => {
       const auth = await withAuth()
