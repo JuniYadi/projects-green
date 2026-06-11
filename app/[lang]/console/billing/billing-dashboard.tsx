@@ -89,6 +89,7 @@ const createSecondaryLinks = (messages: ReturnType<typeof getMessages>) => [
   { href: "/console/billing/alerts", label: messages.console.billing.alerts },
   { href: "/console/billing/transactions", label: messages.console.billing.transactions },
   { href: "/console/billing/subscription", label: messages.console.billing.subscriptions },
+  { href: "/console/billing/vouchers", label: "Vouchers" },
 ]
 
 export function BillingDashboard() {
