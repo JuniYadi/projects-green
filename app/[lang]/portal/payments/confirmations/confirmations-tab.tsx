@@ -149,10 +149,12 @@ export function ConfirmationsTab() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">
-                      {new Intl.NumberFormat("id-ID", {
-                        style: "currency",
-                        currency: confirmation.currency,
-                      }).format(confirmation.amount)}
+                      {confirmation.currency
+                        ? new Intl.NumberFormat("id-ID", {
+                            style: "currency",
+                            currency: confirmation.currency,
+                          }).format(confirmation.amount)
+                        : new Intl.NumberFormat("id-ID").format(confirmation.amount)}
                     </span>
                     <Badge variant={STATUS_VARIANTS[confirmation.status]} className="text-xs">
                       {confirmation.status}

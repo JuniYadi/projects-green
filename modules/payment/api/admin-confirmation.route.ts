@@ -3,6 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { ConfirmationService } from "../services/confirmation.service"
 import { ReviewConfirmationSchema } from "../types/payment.types"
+import { toPaymentConfirmationDTO } from "../dto/payment-confirmation.dto"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 
 const confirmationService = new ConfirmationService()
@@ -24,7 +25,7 @@ export const createAdminConfirmationRoutes = () =>
       const offset = parseInt(query?.offset || "0")
 
       const confirmations = await confirmationService.listPending(limit, offset)
-      return { ok: true, data: confirmations }
+      return { ok: true, data: confirmations.map(toPaymentConfirmationDTO) }
     })
 
     .get("/:id", async ({ params }) => {
@@ -43,7 +44,7 @@ export const createAdminConfirmationRoutes = () =>
         return { ok: false, error: "NOT_FOUND", message: "Confirmation not found" }
       }
 
-      return { ok: true, data: confirmation }
+      return { ok: true, data: toPaymentConfirmationDTO(confirmation) }
     })
 
     .post("/:id/approve", async ({ params }) => {

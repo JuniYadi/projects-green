@@ -24,11 +24,14 @@ interface BankAccount {
 
 type FormState = "idle" | "submitting" | "success" | "error"
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("id-ID", {
+function formatCurrency(value: number, currencyCode: string = "IDR"): string {
+  const locale = currencyCode === "USD" ? "en-US" : "id-ID"
+  const decimals = currencyCode === "USD"
+  return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
+    currency: currencyCode,
+    minimumFractionDigits: decimals ? 2 : 0,
+    maximumFractionDigits: decimals ? 2 : 0,
   }).format(value)
 }
 
@@ -44,6 +47,7 @@ function ConfirmationPageContent() {
   const invoiceId = searchParams.get("invoiceId") || ""
   const amountParam = searchParams.get("amount") || ""
   const urlAmount = amountParam ? Number.parseInt(amountParam, 10) : 0
+  const urlCurrency = searchParams.get("currency") || ""
 
   const [formState, setFormState] = useState<FormState>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -52,6 +56,7 @@ function ConfirmationPageContent() {
 
   // Invoice amount — prefer URL param, fallback to API fetch
   const [invoiceAmount, setInvoiceAmount] = useState(urlAmount)
+  const [invoiceCurrency, setInvoiceCurrency] = useState<string>(urlCurrency || "IDR")
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(!urlAmount && !!invoiceId)
 
   // Screenshot upload
@@ -87,6 +92,10 @@ function ConfirmationPageContent() {
               : Number.parseFloat(String(totalAmount))
           if (!Number.isNaN(parsed)) {
             setInvoiceAmount(parsed)
+          }
+          const rawCurrency = data.invoice?.currency
+          if (rawCurrency && typeof rawCurrency === "string") {
+            setInvoiceCurrency(rawCurrency.toUpperCase())
           }
         }
       } catch {
@@ -143,6 +152,7 @@ function ConfirmationPageContent() {
   }, [searchParams])
 
   const displayAmount = urlAmount > 0 ? urlAmount : invoiceAmount
+  const displayCurrency = urlCurrency || invoiceCurrency
   const isValid = bankAccountId && initialPaymentDateTime && displayAmount > 0
 
   // ── Screenshot upload handler ──
@@ -308,7 +318,7 @@ function ConfirmationPageContent() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Amount</span>
                   <span className="font-medium">
-                    {formatCurrency(displayAmount)}
+                    {formatCurrency(displayAmount, displayCurrency)}
                   </span>
                 </div>
                 {selectedBank && (
@@ -390,7 +400,7 @@ function ConfirmationPageContent() {
                       Amount to Confirm
                     </span>
                     <span className="text-xl font-semibold">
-                      {formatCurrency(displayAmount)}
+                      {formatCurrency(displayAmount, displayCurrency)}
                     </span>
                   </div>
                   {invoiceId && (
