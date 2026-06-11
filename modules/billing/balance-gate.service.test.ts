@@ -18,7 +18,7 @@ type MockPrisma = {
   billingAdjustment: {
     create: ReturnType<typeof vi.fn>
   }
-  pricing: {
+  servicePricing: {
     findFirst: ReturnType<typeof vi.fn>
   }
   serviceSubscription: {
@@ -36,7 +36,7 @@ const mockPrisma = {
   billingAdjustment: {
     create: vi.fn(),
   },
-  pricing: {
+  servicePricing: {
     findFirst: vi.fn(),
   },
   serviceSubscription: {
@@ -359,7 +359,7 @@ describe("BalanceGateService", () => {
 
   describe("findPricing", () => {
     it("returns mapped PricingLookup", async () => {
-      mockedPrisma.pricing.findFirst.mockResolvedValueOnce({
+      mockedPrisma.servicePricing.findFirst.mockResolvedValueOnce({
         id: "price-1",
         planId: "plan-1",
         regionId: "reg-1",
@@ -388,7 +388,7 @@ describe("BalanceGateService", () => {
     });
 
     it("throws PricingNotFoundError when not found", async () => {
-      mockedPrisma.pricing.findFirst.mockResolvedValueOnce(null);
+      mockedPrisma.servicePricing.findFirst.mockResolvedValueOnce(null);
 
       await expect(
         service.findPricing({

@@ -7,7 +7,7 @@ const mockUpdate = mock()
 const mockSendPaymentReminder = mock()
 
 const mockPrismaClient = {
-  invoice: {
+  billingInvoice: {
     findMany: mockFindMany,
     update: mockUpdate,
   },

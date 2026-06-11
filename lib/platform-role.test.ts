@@ -10,7 +10,7 @@ const findFirstMock = mock<
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    platformUserRole: {
+    authPlatformUserRole: {
       findFirst: findFirstMock,
     },
   },

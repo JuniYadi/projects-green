@@ -31,12 +31,12 @@ const mockPrisma = {
       organizationId: "org_1",
     })),
   },
-  invoice: {
+  billingInvoice: {
     findMany: mock(async () => []),
     findFirst: mock(async (): Promise<unknown> => null),
     updateMany: mock(async () => ({ count: 1 })),
   },
-  platformUserRole: {
+  authPlatformUserRole: {
     findFirst: mock(async () => null),
   },
 }
@@ -48,10 +48,10 @@ const { createInvoicesRoutes } = await import("@/modules/invoices/api/invoices.r
 
 describe("invoices default deps", () => {
   beforeEach(() => {
-    mockPrisma.invoice.findMany.mockClear()
-    mockPrisma.invoice.findFirst.mockClear()
-    mockPrisma.invoice.updateMany.mockClear()
-    mockPrisma.platformUserRole.findFirst.mockClear()
+    mockPrisma.billingInvoice.findMany.mockClear()
+    mockPrisma.billingInvoice.findFirst.mockClear()
+    mockPrisma.billingInvoice.updateMany.mockClear()
+    mockPrisma.authPlatformUserRole.findFirst.mockClear()
   })
 
   it("uses default authenticate and getPlatformRole via withAuth", async () => {
@@ -72,7 +72,7 @@ describe("invoices default deps", () => {
     const { Elysia } = await import("elysia")
 
     // Override prisma mock to return empty invoices
-    mockPrisma.invoice.findMany.mockResolvedValue([])
+    mockPrisma.billingInvoice.findMany.mockResolvedValue([])
 
     const app = new Elysia().use(createInvoicesRoutes())
 
@@ -128,7 +128,7 @@ describe("invoices default deps", () => {
       ],
     }
 
-    mockPrisma.invoice.findFirst.mockResolvedValue(invoiceDetail)
+    mockPrisma.billingInvoice.findFirst.mockResolvedValue(invoiceDetail)
 
     const app = new Elysia().use(createInvoicesRoutes())
 

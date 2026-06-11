@@ -29,7 +29,7 @@ const mockInvoiceCreate = mock(() =>
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    invoice: {
+    billingInvoice: {
       create: mockInvoiceCreate,
       update: mock(() => Promise.resolve({})),
       findFirst: mock(() => Promise.resolve(null)),

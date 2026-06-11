@@ -12,13 +12,13 @@ const mockPrisma = {
     findFirst: vi.fn(),
     create: vi.fn(),
   },
-  invoice: {
+  billingInvoice: {
     findFirst: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     count: vi.fn(),
   },
-  invoiceLine: {
+  billingInvoiceLine: {
     create: vi.fn(),
   },
 }
@@ -216,8 +216,8 @@ describe("BillingTransactionService", () => {
         balance: decimal("40.00"),
       })
       // No existing DRAFT service invoice — will create
-      mockPrisma.invoice.findFirst.mockResolvedValue(null)
-      mockPrisma.invoice.create.mockResolvedValue({
+      mockPrisma.billingInvoice.findFirst.mockResolvedValue(null)
+      mockPrisma.billingInvoice.create.mockResolvedValue({
         id: "inv_svc_1",
         billingAccountId: "ba_1",
         invoiceNumber: "SVC-202606-0001",
@@ -229,7 +229,7 @@ describe("BillingTransactionService", () => {
         subtotalAmount: decimal("0"),
         totalAmount: decimal("0"),
       })
-      mockPrisma.invoiceLine.create.mockResolvedValue({
+      mockPrisma.billingInvoiceLine.create.mockResolvedValue({
         id: "line_1",
         invoiceId: "inv_svc_1",
         lineType: "USAGE",
@@ -239,12 +239,12 @@ describe("BillingTransactionService", () => {
         amount: decimal("60.00"),
         currency: "IDR",
       })
-      mockPrisma.invoice.update.mockResolvedValue({
+      mockPrisma.billingInvoice.update.mockResolvedValue({
         id: "inv_svc_1",
         subtotalAmount: decimal("60.00"),
         totalAmount: decimal("60.00"),
       })
-      mockPrisma.invoice.count.mockResolvedValue(0)
+      mockPrisma.billingInvoice.count.mockResolvedValue(0)
       mockPrisma.billingAdjustment.create.mockResolvedValue({
         id: "adj_3",
         billingAccountId: "ba_1",
@@ -265,8 +265,8 @@ describe("BillingTransactionService", () => {
 
       expect(result.balanceBefore.toString()).toBe("100")
       expect(result.balanceAfter.toString()).toBe("40")
-      expect(mockPrisma.invoice.findFirst).toHaveBeenCalled()
-      expect(mockPrisma.invoiceLine.create).toHaveBeenCalled()
+      expect(mockPrisma.billingInvoice.findFirst).toHaveBeenCalled()
+      expect(mockPrisma.billingInvoiceLine.create).toHaveBeenCalled()
     })
   })
 })

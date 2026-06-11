@@ -45,7 +45,7 @@ function createMockPrisma() {
       findUnique: mock(async () => null as any),
       update: mock(async (data: unknown) => data),
     },
-    invoice: {
+    billingInvoice: {
       create: mock(async (data: any) => ({
         id: "inv-1",
         ...data.data,
@@ -54,7 +54,7 @@ function createMockPrisma() {
       updateMany: mock(async () => ({ count: 0 })),
       findMany: mock(async () => [] as any),
     },
-    invoiceLine: {
+    billingInvoiceLine: {
       create: mock(async (data: any) => ({
         id: "il-1",
         ...data.data,
@@ -90,7 +90,7 @@ describe("BillingCycleService", () => {
 
   describe("finalizeServiceInvoices", () => {
     it("returns 0 when no DRAFT service invoices exist for the previous month", async () => {
-      mockPrisma.invoice.findMany.mockImplementation(async () => [])
+      mockPrisma.billingInvoice.findMany.mockImplementation(async () => [])
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
@@ -114,8 +114,8 @@ describe("BillingCycleService", () => {
         periodEnd: new Date("2026-06-30"),
       }
 
-      mockPrisma.invoice.findMany.mockImplementation(async () => [mockInvoice])
-      mockPrisma.invoice.updateMany.mockImplementation(async () => ({
+      mockPrisma.billingInvoice.findMany.mockImplementation(async () => [mockInvoice])
+      mockPrisma.billingInvoice.updateMany.mockImplementation(async () => ({
         count: 1,
       }))
 
@@ -126,7 +126,7 @@ describe("BillingCycleService", () => {
       const result = await service.finalizeServiceInvoices()
 
       expect(result.finalized).toBe(1)
-      expect(mockPrisma.invoice.updateMany).toHaveBeenCalledWith(
+      expect(mockPrisma.billingInvoice.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ status: "DRAFT" }),
           data: expect.objectContaining({
@@ -137,8 +137,8 @@ describe("BillingCycleService", () => {
     })
 
     it("does not finalize non-DRAFT invoices", async () => {
-      mockPrisma.invoice.findMany.mockImplementation(async () => [])
-      mockPrisma.invoice.updateMany.mockImplementation(async () => ({
+      mockPrisma.billingInvoice.findMany.mockImplementation(async () => [])
+      mockPrisma.billingInvoice.updateMany.mockImplementation(async () => ({
         count: 0,
       }))
 
@@ -329,7 +329,7 @@ describe("BillingCycleService", () => {
         },
       ])
 
-      mockPrisma.invoice.findMany.mockImplementation(async () => [
+      mockPrisma.billingInvoice.findMany.mockImplementation(async () => [
         {
           id: "prev-inv-1",
           totalAmount: new Decimal(75000),
@@ -546,8 +546,8 @@ describe("BillingCycleService", () => {
         periodEnd: new Date("2026-06-30"),
       }
 
-      mockPrisma.invoice.findMany.mockImplementation(async () => [mockInvoice])
-      mockPrisma.invoice.updateMany.mockImplementation(async () => ({ count: 1 }))
+      mockPrisma.billingInvoice.findMany.mockImplementation(async () => [mockInvoice])
+      mockPrisma.billingInvoice.updateMany.mockImplementation(async () => ({ count: 1 }))
 
       mockPrisma.billingAccount.findUnique.mockImplementation(async () => ({
         organizationId: "tenant-1",

@@ -7,10 +7,10 @@ import {
 } from "./vpn-subscription-refs"
 
 const mockPrisma = {
-  package: { findUnique: mock() },
+  servicePackage: { findUnique: mock() },
   servicePlan: { findUnique: mock() },
-  region: { findUnique: mock() },
-  pricing: { findFirst: mock() },
+  serviceRegion: { findUnique: mock() },
+  servicePricing: { findFirst: mock() },
 }
 
 function decimal(value: string) {
@@ -19,12 +19,12 @@ function decimal(value: string) {
 
 describe("resolveVpnSubscriptionRefs", () => {
   it("returns the IDs for a known (plan, region) combination", async () => {
-    mockPrisma.package.findUnique.mockResolvedValue({ id: "pkg_vpn" })
+    mockPrisma.servicePackage.findUnique.mockResolvedValue({ id: "pkg_vpn" })
     mockPrisma.servicePlan.findUnique.mockResolvedValue({
       id: "plan_standard_id",
     })
-    mockPrisma.region.findUnique.mockResolvedValue({ id: "region_id_id" })
-    mockPrisma.pricing.findFirst.mockResolvedValue({
+    mockPrisma.serviceRegion.findUnique.mockResolvedValue({ id: "region_id_id" })
+    mockPrisma.servicePricing.findFirst.mockResolvedValue({
       id: "pricing_id",
       basePriceIdr: decimal("0"),
     })
@@ -43,7 +43,7 @@ describe("resolveVpnSubscriptionRefs", () => {
   })
 
   it("throws when the VPN package is missing (seed not run)", async () => {
-    mockPrisma.package.findUnique.mockResolvedValue(null)
+    mockPrisma.servicePackage.findUnique.mockResolvedValue(null)
 
     await expect(
       resolveVpnSubscriptionRefs(
@@ -54,7 +54,7 @@ describe("resolveVpnSubscriptionRefs", () => {
   })
 
   it("throws when the plan code is unknown", async () => {
-    mockPrisma.package.findUnique.mockResolvedValue({ id: "pkg_vpn" })
+    mockPrisma.servicePackage.findUnique.mockResolvedValue({ id: "pkg_vpn" })
     mockPrisma.servicePlan.findUnique.mockResolvedValue(null)
 
     await expect(
@@ -66,11 +66,11 @@ describe("resolveVpnSubscriptionRefs", () => {
   })
 
   it("throws when the region is unknown", async () => {
-    mockPrisma.package.findUnique.mockResolvedValue({ id: "pkg_vpn" })
+    mockPrisma.servicePackage.findUnique.mockResolvedValue({ id: "pkg_vpn" })
     mockPrisma.servicePlan.findUnique.mockResolvedValue({
       id: "plan_standard_id",
     })
-    mockPrisma.region.findUnique.mockResolvedValue(null)
+    mockPrisma.serviceRegion.findUnique.mockResolvedValue(null)
 
     await expect(
       resolveVpnSubscriptionRefs(
@@ -81,12 +81,12 @@ describe("resolveVpnSubscriptionRefs", () => {
   })
 
   it("throws when the pricing row is missing for the (plan, region) pair", async () => {
-    mockPrisma.package.findUnique.mockResolvedValue({ id: "pkg_vpn" })
+    mockPrisma.servicePackage.findUnique.mockResolvedValue({ id: "pkg_vpn" })
     mockPrisma.servicePlan.findUnique.mockResolvedValue({
       id: "plan_standard_id",
     })
-    mockPrisma.region.findUnique.mockResolvedValue({ id: "region_id_id" })
-    mockPrisma.pricing.findFirst.mockResolvedValue(null)
+    mockPrisma.serviceRegion.findUnique.mockResolvedValue({ id: "region_id_id" })
+    mockPrisma.servicePricing.findFirst.mockResolvedValue(null)
 
     await expect(
       resolveVpnSubscriptionRefs(

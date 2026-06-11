@@ -457,7 +457,7 @@ describe("OrganizationOnboarding", () => {
 
     const createCall = calls.find((c) => c.url.includes("/create"))
     expect(createCall).toBeDefined()
-    expect(createCall!.body).toEqual({ name: "Create Org's" })
+    expect(createCall!.body).toEqual({ name: "Create Org's", currency: "IDR" })
   })
 
   it("shows error when create org API returns error", async () => {

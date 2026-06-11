@@ -44,7 +44,7 @@ const mockEntries = [
     amountIdr: new Decimal(1000),
     metadata: null,
     createdAt: new Date("2026-05-30T10:00:00Z"),
-    serviceSubscription: { id: "sub-1" },
+    subscription: { id: "sub-1" },
   },
   {
     id: "ledger-2",
@@ -55,7 +55,7 @@ const mockEntries = [
     amountIdr: new Decimal(500),
     metadata: null,
     createdAt: new Date("2026-05-30T11:00:00Z"),
-    serviceSubscription: { id: "sub-1" },
+    subscription: { id: "sub-1" },
   },
 ]
 
@@ -75,7 +75,7 @@ const mockLedgerEntriesWithSubscription = [
     subscriptionId: "sub-1",
     category: "WHATSAPP_MESSAGE_OUT",
     amountIdr: new Decimal(2000),
-    serviceSubscription: mockSubscriptionWithCap,
+    subscription: mockSubscriptionWithCap,
     createdAt: new Date(),
   },
   {
@@ -83,7 +83,7 @@ const mockLedgerEntriesWithSubscription = [
     subscriptionId: "sub-1",
     category: "WHATSAPP_MESSAGE_OUT",
     amountIdr: new Decimal(2000),
-    serviceSubscription: mockSubscriptionWithCap,
+    subscription: mockSubscriptionWithCap,
     createdAt: new Date(),
   },
   {
@@ -91,7 +91,7 @@ const mockLedgerEntriesWithSubscription = [
     subscriptionId: "sub-2",
     category: "VPN_BANDWIDTH",
     amountIdr: new Decimal(3000),
-    serviceSubscription: mockSubscriptionNoCap,
+    subscription: mockSubscriptionNoCap,
     createdAt: new Date(),
   },
 ]
@@ -199,7 +199,7 @@ describe("UsageLedgerService", () => {
           period: "2026-05",
           category: "WHATSAPP_MESSAGE_OUT",
         },
-        include: { serviceSubscription: true },
+        include: { subscription: true },
         orderBy: { createdAt: "asc" },
       })
     })
@@ -215,7 +215,7 @@ describe("UsageLedgerService", () => {
           organizationId: "org-1",
           period: "2026-05",
         },
-        include: { serviceSubscription: true },
+        include: { subscription: true },
         orderBy: { createdAt: "asc" },
       })
     })
@@ -280,7 +280,7 @@ describe("UsageLedgerService", () => {
           subscriptionId: "sub-1",
           category: "WHATSAPP_MESSAGE_OUT",
           amountIdr: new Decimal(6000),
-          serviceSubscription: mockSubscriptionWithCap,
+          subscription: mockSubscriptionWithCap,
           createdAt: new Date(),
         },
       ])
@@ -302,7 +302,7 @@ describe("UsageLedgerService", () => {
           subscriptionId: "sub-2",
           category: "VPN_BANDWIDTH",
           amountIdr: new Decimal(3000),
-          serviceSubscription: mockSubscriptionNoCap,
+          subscription: mockSubscriptionNoCap,
           createdAt: new Date(),
         },
       ])
@@ -328,7 +328,7 @@ describe("UsageLedgerService", () => {
           amountIdr: new Decimal(1000),
           metadata: null,
           createdAt: new Date("2026-06-01"),
-          serviceSubscription: { id: "sub-1" },
+          subscription: { id: "sub-1" },
         },
       ]
       ;(mockPrisma.billingUsageLedger.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(entries)
@@ -344,7 +344,7 @@ describe("UsageLedgerService", () => {
             lte: new Date("2026-06-30"),
           },
         },
-        include: { serviceSubscription: true },
+        include: { subscription: true },
         orderBy: { createdAt: "asc" },
       })
     })
@@ -363,7 +363,7 @@ describe("UsageLedgerService", () => {
           },
           category: "whatsapp",
         },
-        include: { serviceSubscription: true },
+        include: { subscription: true },
         orderBy: { createdAt: "asc" },
       })
     })
