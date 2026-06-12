@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "serve": "local-to-pub --port 3300 --uri pgreen",
-    "test": "bun test",
+    "test": "bun test **/*.test.ts **/*.test.tsx",
     "test:coverage": "bun run scripts/check-coverage-threshold.ts",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
