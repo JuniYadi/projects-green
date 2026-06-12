@@ -117,7 +117,7 @@ describe("fakerBillingAccount()", () => {
     expect(typeof account.id).toBe("string")
     expect(account.organizationId).toBe("org-123")
     expect(typeof account.status).toBe("string")
-    expect(typeof account.currency).toBe("string")
+    expect(typeof account.preferredCurrency).toBe("string")
     expect(account.createdAt).toBeInstanceOf(Date)
     expect(account.updatedAt).toBeInstanceOf(Date)
   })
@@ -125,11 +125,11 @@ describe("fakerBillingAccount()", () => {
   it("accepts overrides", () => {
     const account = fakerBillingAccount({
       organizationId: "org-123",
-      currency: "IDR",
+      preferredCurrency: "IDR",
       status: "ACTIVE",
     })
 
-    expect(account.currency).toBe("IDR")
+    expect(account.preferredCurrency).toBe("IDR")
     expect(account.status).toBe("ACTIVE")
   })
 })

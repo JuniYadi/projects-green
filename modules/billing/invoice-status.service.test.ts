@@ -6,10 +6,15 @@ const mockFindMany = mock()
 const mockUpdate = mock()
 const mockSendPaymentReminder = mock()
 
+const mockBillingAccountFindUnique = mock()
+
 const mockPrismaClient = {
   billingInvoice: {
     findMany: mockFindMany,
     update: mockUpdate,
+  },
+  billingAccount: {
+    findUnique: mockBillingAccountFindUnique,
   },
 }
 
@@ -28,6 +33,14 @@ describe("InvoiceStatusManager", () => {
 
   beforeEach(() => {
     mock.clearAllMocks()
+
+    // Default: return account with no contacts (tests that don't need billing contacts)
+    mockBillingAccountFindUnique.mockResolvedValue({
+      id: "ba_default",
+      organizationId: "org-default",
+      contacts: [],
+    })
+
     manager = new InvoiceStatusManager(
       mockPrismaClient as unknown as PrismaClient,
       mockEmailService as InvoiceEmailService,

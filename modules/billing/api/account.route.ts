@@ -100,7 +100,7 @@ export const createBillingAccountRoutes = (
         })
 
         const balance = account.balance
-        const currency = account.currency
+        const currency = account.preferredCurrency
         const isPositive = balance.gt(0)
         const isAboveWarn = balance.gte(MINIMUM_BALANCE_WARN_IDR)
         const accountAge = daysSince(account.createdAt)

@@ -386,6 +386,38 @@ const buildPortalNavMain = (
   locale: AppLocale
 ): AppSidebarNavItem[] => [
   {
+<<<<<<< Updated upstream
+=======
+    title: "Settings",
+    url: localizePathname({ pathname: "/portal/settings/members", locale }),
+    icon: <GearSixIcon />,
+    isActive: startsWithRoute(pathname, "/portal/settings"),
+    items: [
+      {
+        title: "Members",
+        url: localizePathname({ pathname: "/portal/settings/members", locale }),
+        isActive: startsWithRoute(pathname, "/portal/settings/members"),
+      },
+      {
+        title: "Invitations",
+        url: localizePathname({
+          pathname: "/portal/settings/invitations",
+          locale,
+        }),
+        isActive: startsWithRoute(pathname, "/portal/settings/invitations"),
+      },
+      {
+        title: "Ownership",
+        url: localizePathname({
+          pathname: "/portal/settings/ownership",
+          locale,
+        }),
+        isActive: startsWithRoute(pathname, "/portal/settings/ownership"),
+      },
+    ],
+  },
+  {
+>>>>>>> Stashed changes
     title: "App Hosting",
     url: localizePathname({ pathname: "/portal/app", locale }),
     icon: <RocketLaunchIcon />,

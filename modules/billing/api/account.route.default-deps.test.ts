@@ -35,7 +35,7 @@ const mockAccountRecord = {
   id: "acc_1",
   organizationId: "org_1",
   balance: new Decimal(100000),
-  currency: "IDR",
+  preferredCurrency: "IDR",
   createdAt: new Date(),
   updatedAt: new Date(),
 }

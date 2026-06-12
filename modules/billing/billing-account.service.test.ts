@@ -42,7 +42,7 @@ describe("ensureBillingAccountForOrg", () => {
       id: "acc-1",
       organizationId: "org_123",
       balance: new Prisma.Decimal(100_000),
-      currency: "IDR",
+      preferredCurrency: "IDR",
       timezone: "UTC",
       status: "ACTIVE" as const,
       metadataJson: {},
@@ -75,7 +75,7 @@ describe("ensureBillingAccountForOrg", () => {
       id: "acc-1",
       organizationId: "org_123",
       balance: new Prisma.Decimal(0),
-      currency: "IDR",
+      preferredCurrency: "IDR",
       timezone: "UTC",
       status: "ACTIVE" as const,
       metadataJson: {},
@@ -108,7 +108,7 @@ describe("ensureBillingAccountForOrg", () => {
       data: {
         organizationId: "org_123",
         balance: expect.anything(),
-        currency: "IDR",
+        preferredCurrency: "IDR",
         timezone: "UTC",
         status: "ACTIVE",
       },
@@ -120,7 +120,7 @@ describe("ensureBillingAccountForOrg", () => {
       id: "acc-2",
       organizationId: "org_456",
       balance: new Prisma.Decimal(0),
-      currency: "USD",
+      preferredCurrency: "USD",
       timezone: "UTC",
       status: "ACTIVE" as const,
       metadataJson: {},
@@ -142,12 +142,12 @@ describe("ensureBillingAccountForOrg", () => {
       currency: "USD",
     })
 
-    expect(result.currency).toBe("USD")
+    expect(result.preferredCurrency).toBe("USD")
     expect(mockPrisma.billingAccount.create).toHaveBeenCalledWith({
       data: {
         organizationId: "org_456",
         balance: expect.anything(),
-        currency: "USD",
+        preferredCurrency: "USD",
         timezone: "UTC",
         status: "ACTIVE",
       },
@@ -245,7 +245,7 @@ describe("updateBillingCurrencyIfClean", () => {
     mockPrisma.billingAccount.update.mockResolvedValue({
       id: "ba_1",
       organizationId: "org_1",
-      currency: "USD",
+      preferredCurrency: "USD",
     })
 
     const result = await updateBillingCurrencyIfClean(
@@ -254,10 +254,10 @@ describe("updateBillingCurrencyIfClean", () => {
       "USD",
     )
 
-    expect(result.currency).toBe("USD")
+    expect(result.preferredCurrency).toBe("USD")
     expect(mockPrisma.billingAccount.update).toHaveBeenCalledWith({
       where: { id: "ba_1" },
-      data: { currency: "USD" },
+      data: { preferredCurrency: "USD" },
     })
   })
 

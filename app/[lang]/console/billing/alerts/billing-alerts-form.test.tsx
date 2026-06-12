@@ -1,85 +1,117 @@
 import "@/test/register"
-import { describe, expect, it, beforeEach, afterEach } from "bun:test"
-import { render } from "@testing-library/react"
+import { describe, expect, it, beforeEach, mock } from "bun:test"
+import { render, waitFor } from "@testing-library/react"
 import { BillingAlertsForm } from "./billing-alerts-form"
 import React from "react"
 
-const STORAGE_KEY = "notify-limits"
-const OLD_STORAGE_KEY = "billing-alert-preferences"
+// ─── Mock billing client ──────────────────────────────────────────────────────
 
-describe("BillingAlertsForm localStorage key and migration", () => {
+const mockGetBillingAccount = mock()
+const mockUpdateBillingAlerts = mock()
+
+mock.module("@/lib/billing-client", () => ({
+  getBillingAccount: mockGetBillingAccount,
+  updateBillingAlerts: mockUpdateBillingAlerts,
+}))
+
+const defaultAccount = {
+  ok: true as const,
+  id: "ba_1",
+  organizationId: "org_1",
+  tenantId: null,
+  preferredCurrency: "USD" as const,
+  timezone: "UTC",
+  status: "ACTIVE",
+  balance: 100000,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  contacts: [],
+  alertPreferences: {
+    balanceThresholdEnabled: false,
+    balanceThresholdAmount: 50000,
+    usageThresholdEnabled: false,
+    usageThresholdAmount: 100000,
+  },
+}
+
+describe("BillingAlertsForm", () => {
   beforeEach(() => {
-    localStorage.clear()
+    mockGetBillingAccount.mockReset()
+    mockUpdateBillingAlerts.mockReset()
+    mockGetBillingAccount.mockResolvedValue(defaultAccount)
   })
 
-  afterEach(() => {
-    localStorage.clear()
-  })
-
-  it("loads default preferences when localStorage is empty", () => {
+  it("shows loading state initially", () => {
+    mockGetBillingAccount.mockImplementationOnce(
+      () => new Promise(() => {}), // never resolves
+    )
     const view = render(<BillingAlertsForm />)
-    const checkbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
-    expect(checkbox.getAttribute("aria-checked")).toBe("false")
+    // Loading skeletons should be visible
+    const skeletons = view.container.querySelectorAll('[class*="animate-pulse"]')
+    expect(skeletons.length).toBeGreaterThan(0)
   })
 
-  it("loads preferences from notify-limits if present", () => {
-    const preferences = {
-      balanceThresholdEnabled: true,
-      balanceThresholdAmount: 25000,
-      usageThresholdEnabled: false,
-      usageThresholdAmount: 100000,
-      invoiceReminderEnabled: true,
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences))
-
+  it("loads and displays default preferences", async () => {
     const view = render(<BillingAlertsForm />)
 
-    const balanceCheckbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
-    expect(balanceCheckbox.getAttribute("aria-checked")).toBe("true")
-
-    const invoiceCheckbox = view.getByRole("checkbox", { name: "Send email when new invoice is issued" })
-    expect(invoiceCheckbox.getAttribute("aria-checked")).toBe("true")
+    await waitFor(() => {
+      const checkbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
+      expect(checkbox.getAttribute("aria-checked")).toBe("false")
+    })
   })
 
-  it("migrates preferences from billing-alert-preferences to notify-limits", () => {
-    const legacyPreferences = {
-      balanceThresholdEnabled: true,
-      balanceThresholdAmount: 15000,
-      usageThresholdEnabled: true,
-      usageThresholdAmount: 75000,
-      invoiceReminderEnabled: false,
-    }
-    localStorage.setItem(OLD_STORAGE_KEY, JSON.stringify(legacyPreferences))
+  it("loads and displays enabled balance threshold", async () => {
+    mockGetBillingAccount.mockResolvedValue({
+      ...defaultAccount,
+      alertPreferences: {
+        balanceThresholdEnabled: true,
+        balanceThresholdAmount: 25000,
+        usageThresholdEnabled: false,
+        usageThresholdAmount: 100000,
+      },
+    })
 
     const view = render(<BillingAlertsForm />)
 
-    // Check that values are loaded in form
-    const balanceCheckbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
-    expect(balanceCheckbox.getAttribute("aria-checked")).toBe("true")
+    await waitFor(() => {
+      const balanceCheckbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
+      expect(balanceCheckbox.getAttribute("aria-checked")).toBe("true")
+    })
 
-    // Check that new key is set and old key is removed
-    const newStored = localStorage.getItem(STORAGE_KEY)
-    expect(newStored).not.toBeNull()
-    expect(JSON.parse(newStored!)).toEqual(legacyPreferences)
-
-    const oldStored = localStorage.getItem(OLD_STORAGE_KEY)
-    expect(oldStored).toBeNull()
+    await waitFor(() => {
+      expect(view.getByDisplayValue("25000")).toBeTruthy()
+    })
   })
 
-  it("handles malformed legacy JSON gracefully", () => {
-    localStorage.setItem(OLD_STORAGE_KEY, "{ invalid json }")
+  it("shows invoice reminders link to contacts page", async () => {
     const view = render(<BillingAlertsForm />)
-    const checkbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
-    expect(checkbox.getAttribute("aria-checked")).toBe("false")
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
-    expect(localStorage.getItem(OLD_STORAGE_KEY)).toBeNull()
+
+    await waitFor(() => {
+      const link = view.getByRole("link", { name: /Billing Contacts/i })
+      expect(link).toBeTruthy()
+      expect(link.getAttribute("href")).toBe("/console/billing/contacts")
+    })
   })
 
-  it("handles malformed new JSON gracefully", () => {
-    localStorage.setItem(STORAGE_KEY, "{ invalid json }")
+  it("handles API error gracefully", async () => {
+    mockGetBillingAccount.mockRejectedValue(new Error("Failed to fetch"))
+
     const view = render(<BillingAlertsForm />)
-    const checkbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
-    expect(checkbox.getAttribute("aria-checked")).toBe("false")
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+
+    await waitFor(() => {
+      // Should show retry button
+      const retry = view.queryByRole("button", { name: /Retry/i })
+      // If the form can show fallback UI, check for it
+      expect(retry).toBeTruthy()
+    })
+  })
+
+  it("has a Save button", async () => {
+    const view = render(<BillingAlertsForm />)
+
+    await waitFor(() => {
+      const saveButton = view.getByRole("button", { name: /Save Preferences/i })
+      expect(saveButton).toBeTruthy()
+    })
   })
 })

@@ -9,7 +9,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+<<<<<<< Updated upstream
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
+=======
+import { useCallback, useEffect, useState, type FormEvent } from "react"
+>>>>>>> Stashed changes
 
 interface BankAccount {
   id: string
@@ -51,6 +55,7 @@ export function BankAccountsTab() {
   const [state, setState] = useState<BankAccountsRequestState>({ status: "loading" })
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+<<<<<<< Updated upstream
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null)
 
   const bankAccountColumns = useMemo<ColumnDef<BankAccount>[]>(
@@ -150,6 +155,8 @@ export function BankAccountsTab() {
     ],
     [isSubmitting]
   )
+=======
+>>>>>>> Stashed changes
 
   const fetchBankAccounts = useCallback(async () => {
     try {
@@ -191,9 +198,12 @@ export function BankAccountsTab() {
           bankName: String(formData.get("bankName") || ""),
           accountName: String(formData.get("accountName") || ""),
           accountNumber: String(formData.get("accountNumber") || ""),
+<<<<<<< Updated upstream
           supportedCurrencies: getSupportedCurrencies(formData),
           swiftCode: String(formData.get("swiftCode") || "") || null,
           bankAddress: String(formData.get("bankAddress") || "") || null,
+=======
+>>>>>>> Stashed changes
         }),
       })
       const payload = await response.json()
@@ -215,6 +225,7 @@ export function BankAccountsTab() {
     }
   }
 
+<<<<<<< Updated upstream
   async function handleUpdateBankAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editingAccount) return
@@ -279,6 +290,8 @@ export function BankAccountsTab() {
     }
   }
 
+=======
+>>>>>>> Stashed changes
   if (state.status === "loading") {
     return (
       <Card>
@@ -314,11 +327,17 @@ export function BankAccountsTab() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Bank Accounts</CardTitle>
+<<<<<<< Updated upstream
           {!editingAccount && (
             <Button type="button" size="sm" onClick={() => setIsCreating(true)}>
               Add Bank Account
             </Button>
           )}
+=======
+          <Button type="button" size="sm" onClick={() => setIsCreating(true)}>
+            Add Bank Account
+          </Button>
+>>>>>>> Stashed changes
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -340,6 +359,7 @@ export function BankAccountsTab() {
                 <span>Account holder</span>
                 <Input name="accountName" placeholder="PT Projects Green" required />
               </label>
+<<<<<<< Updated upstream
               <fieldset className="space-y-2 text-sm font-medium">
                 <legend>Supported currencies</legend>
                 <div className="flex flex-wrap gap-3 rounded-md border p-3">
@@ -367,6 +387,8 @@ export function BankAccountsTab() {
                   placeholder="Bank branch or registered bank address"
                 />
               </label>
+=======
+>>>>>>> Stashed changes
             </div>
             <div className="mt-4 flex gap-2">
               <Button type="submit" size="sm" disabled={isSubmitting}>
@@ -377,6 +399,26 @@ export function BankAccountsTab() {
                 size="sm"
                 variant="outline"
                 onClick={() => setIsCreating(false)}
+<<<<<<< Updated upstream
+=======
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {bankAccounts.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No bank accounts added yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {bankAccounts.map((account) => (
+              <div
+                key={account.id}
+                className="flex items-center justify-between rounded-md border p-3"
+>>>>>>> Stashed changes
               >
                 Cancel
               </Button>

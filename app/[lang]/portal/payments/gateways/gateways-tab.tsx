@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+<<<<<<< Updated upstream
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Toggle } from "@/components/ui/toggle"
@@ -19,6 +20,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
+=======
+import { Skeleton } from "@/components/ui/skeleton"
+import { useCallback, useEffect, useState, type FormEvent } from "react"
+>>>>>>> Stashed changes
 
 interface PaymentGateway {
   id: string
@@ -72,6 +77,7 @@ type GatewaysRequestState =
 
 export function GatewaysTab() {
   const [state, setState] = useState<GatewaysRequestState>({ status: "loading" })
+<<<<<<< Updated upstream
   const [providers, setProviders] = useState<ProviderOptionDTO[]>([])
   const [providersLoading, setProvidersLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
@@ -172,6 +178,10 @@ export function GatewaysTab() {
     ],
     [togglingId]
   )
+=======
+  const [isCreating, setIsCreating] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+>>>>>>> Stashed changes
 
   const fetchGateways = useCallback(async () => {
     try {
@@ -355,6 +365,45 @@ export function GatewaysTab() {
     })
   }
 
+  async function handleCreateGateway(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch("/api/portal/payments/gateways", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: String(formData.get("name") || ""),
+          type: String(formData.get("type") || ""),
+          config: {
+            merchantCode: "",
+            apiKey: "",
+            sandboxUrl: "",
+            productionUrl: "",
+          },
+        }),
+      })
+      const payload = await response.json()
+
+      if (!response.ok || !payload.ok) {
+        setState({
+          status: "error",
+          message: payload.message || "Failed to create gateway",
+        })
+        return
+      }
+
+      setIsCreating(false)
+      await fetchGateways()
+    } catch {
+      setState({ status: "error", message: "Failed to create gateway" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   if (state.status === "loading") {
     return (
       <Card>
@@ -390,11 +439,17 @@ export function GatewaysTab() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Payment Gateways</CardTitle>
+<<<<<<< Updated upstream
           {!editingGateway && (
             <Button type="button" size="sm" onClick={() => setIsCreating(true)}>
               Add Gateway
             </Button>
           )}
+=======
+          <Button type="button" size="sm" onClick={() => setIsCreating(true)}>
+            Add Gateway
+          </Button>
+>>>>>>> Stashed changes
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -404,6 +459,7 @@ export function GatewaysTab() {
             onSubmit={handleCreateGateway}
           >
             <div className="grid gap-4 md:grid-cols-2">
+<<<<<<< Updated upstream
               <Label className="space-y-2 text-sm font-medium md:col-span-2">
                 <span>Gateway name</span>
                 <Input name="name" placeholder="My Duitku Gateway" required />
@@ -444,6 +500,55 @@ export function GatewaysTab() {
                       <span>{code}</span>
                     </label>
                   ))}
+=======
+              <label className="space-y-2 text-sm font-medium">
+                <span>Gateway name</span>
+                <Input name="name" placeholder="Midtrans production" required />
+              </label>
+              <label className="space-y-2 text-sm font-medium">
+                <span>Provider type</span>
+                <Input name="type" placeholder="midtrans" required />
+              </label>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button type="submit" size="sm" disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create gateway"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsCreating(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {gateways.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No payment gateways configured yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {gateways.map((gateway) => (
+              <div
+                key={gateway.id}
+                className="flex items-center justify-between rounded-md border p-3"
+              >
+                <div className="space-y-1">
+                  <div className="font-medium">{gateway.name}</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{gateway.provider}</span>
+                    <Badge
+                      variant={gateway.status === "active" ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      {gateway.status}
+                    </Badge>
+                  </div>
+>>>>>>> Stashed changes
                 </div>
                 <p className="text-xs font-normal text-muted-foreground">
                   Defaults to the provider&apos;s supported currencies. Uncheck to restrict.

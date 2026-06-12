@@ -122,12 +122,19 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMain.map((item) => item.title)).toEqual([
+<<<<<<< Updated upstream
+=======
+      "Settings",
+>>>>>>> Stashed changes
       "App Hosting",
       "WhatsApp",
       "VPN",
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
+<<<<<<< Updated upstream
     expect(navMain.map((item) => item.title)).not.toContain("Settings")
+=======
+>>>>>>> Stashed changes
 
     expect(projects.map((project) => project.name)).toContain("Payments")
     expect(projects.map((project) => project.name)).toContain(
@@ -151,6 +158,10 @@ describe("resolveSidebarMenu", () => {
     // Payments no longer has its own sidebar context — falls back to portal platform nav
     expect(navMainLabel).not.toBe("Payments")
     expect(navMain.map((item) => item.title)).toEqual([
+<<<<<<< Updated upstream
+=======
+      "Settings",
+>>>>>>> Stashed changes
       "App Hosting",
       "WhatsApp",
       "VPN",

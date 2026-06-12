@@ -8,6 +8,7 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+<<<<<<< Updated upstream
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+=======
+import { Input } from "@/components/ui/input"
+>>>>>>> Stashed changes
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -91,6 +95,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 export function ConfirmationsTab() {
+<<<<<<< Updated upstream
   const [state, setState] = useState<ConfirmationsRequestState>({
     status: "loading",
   })
@@ -98,6 +103,10 @@ export function ConfirmationsTab() {
   const [selectedConfirmation, setSelectedConfirmation] =
     useState<PaymentConfirmation | null>(null)
   const [rejectReason, setRejectReason] = useState("")
+=======
+  const [state, setState] = useState<ConfirmationsRequestState>({ status: "loading" })
+  const [isCreating, setIsCreating] = useState(false)
+>>>>>>> Stashed changes
 
   const fetchConfirmations = useCallback(async () => {
     try {
@@ -286,11 +295,61 @@ export function ConfirmationsTab() {
     !selectedConfirmation || !rejectReason.trim() || pendingActionId !== null
 
   return (
+<<<<<<< Updated upstream
     <>
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Payment Confirmations</CardTitle>
+=======
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">Payment Confirmations</CardTitle>
+          <Button type="button" size="sm" onClick={() => setIsCreating(true)}>
+            Submit Manual Payment
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isCreating && (
+          <form className="rounded-lg border bg-muted/20 p-4">
+            <p className="mb-4 text-sm text-muted-foreground">
+              Use this intake form to capture a manual payment for review before
+              approval or rejection.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm font-medium">
+                <span>Amount</span>
+                <Input name="amount" inputMode="decimal" placeholder="1000000" />
+              </label>
+              <label className="space-y-2 text-sm font-medium">
+                <span>Bank account</span>
+                <Input name="bankAccountId" placeholder="Destination bank account" />
+              </label>
+              <label className="space-y-2 text-sm font-medium md:col-span-2">
+                <span>Notes</span>
+                <Input name="notes" placeholder="Transfer reference or notes" />
+              </label>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button type="submit" size="sm">Save for review</Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsCreating(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {confirmations.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No payment confirmations to review.
+>>>>>>> Stashed changes
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

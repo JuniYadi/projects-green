@@ -183,12 +183,13 @@ export class InvoiceStatusManager {
     organizationId: string,
   ): Promise<void> {
     try {
-      const recipientEmail = await this.resolveOrgAdminEmail(organizationId)
-      if (!recipientEmail) return
+      const recipients = await this.resolveInvoiceRecipients(organizationId)
+      if (recipients.length === 0) return
 
-      await this.emailService!.sendInvoiceCreated(
-        toInvoiceListItem(invoice),
-        recipientEmail,
+      await Promise.allSettled(
+        recipients.map((r) =>
+          this.emailService!.sendInvoiceCreated(toInvoiceListItem(invoice), r.email),
+        ),
       )
     } catch (error) {
       console.error(
@@ -203,12 +204,13 @@ export class InvoiceStatusManager {
     organizationId: string,
   ): Promise<void> {
     try {
-      const recipientEmail = await this.resolveOrgAdminEmail(organizationId)
-      if (!recipientEmail) return
+      const recipients = await this.resolveInvoiceRecipients(organizationId)
+      if (recipients.length === 0) return
 
-      await this.emailService!.sendInvoiceOverdue(
-        toInvoiceListItem(invoice),
-        recipientEmail,
+      await Promise.allSettled(
+        recipients.map((r) =>
+          this.emailService!.sendInvoiceOverdue(toInvoiceListItem(invoice), r.email),
+        ),
       )
     } catch (error) {
       console.error(
@@ -223,12 +225,13 @@ export class InvoiceStatusManager {
     organizationId: string,
   ): Promise<void> {
     try {
-      const recipientEmail = await this.resolveOrgAdminEmail(organizationId)
-      if (!recipientEmail) return
+      const recipients = await this.resolveInvoiceRecipients(organizationId)
+      if (recipients.length === 0) return
 
-      await this.emailService!.sendPaymentReminder(
-        toInvoiceListItem(invoice),
-        recipientEmail,
+      await Promise.allSettled(
+        recipients.map((r) =>
+          this.emailService!.sendPaymentReminder(toInvoiceListItem(invoice), r.email),
+        ),
       )
     } catch (error) {
       console.error(
@@ -236,6 +239,45 @@ export class InvoiceStatusManager {
         error,
       )
     }
+  }
+
+  /**
+   * Resolve all invoice email recipients for an organization.
+   *
+   * Priority chain:
+   * 1. All active billing contacts that have opted into invoice notifications
+   * 2. Org admin email from WorkOS (always appended — never replaced)
+   *
+   * Recipients are deduplicated by email address.
+   */
+  private async resolveInvoiceRecipients(
+    organizationId: string,
+  ): Promise<Array<{ email: string }>> {
+    const recipients: Array<{ email: string }> = []
+
+    // 1. Active billing contacts (opted-in)
+    const account = await this.prisma.billingAccount.findUnique({
+      where: { organizationId },
+      include: {
+        contacts: {
+          where: { isActive: true, notifyOnInvoice: true },
+        },
+      },
+    })
+
+    if (account?.contacts) {
+      for (const contact of account.contacts) {
+        recipients.push({ email: contact.email })
+      }
+    }
+
+    // 2. Org admin email (always appended — not replaced)
+    const orgAdminEmail = await this.resolveOrgAdminEmail(organizationId)
+    if (orgAdminEmail && !recipients.some((r) => r.email === orgAdminEmail)) {
+      recipients.push({ email: orgAdminEmail })
+    }
+
+    return recipients
   }
 
   private async resolveOrgAdminEmail(organizationId: string): Promise<string | null> {
