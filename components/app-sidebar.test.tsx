@@ -56,7 +56,7 @@ describe("resolveSidebarMenu", () => {
     ).toBe(true)
     expect(
       billingMenu.projects.map((project) => project.name)
-    ).toEqual(["Overview", "Billing", "VPN", "Support Tickets"])
+    ).toEqual(["Overview", "Billing", "Support Tickets"])
 
     expect(
       supportMenu.projects.find((project) => project.name === "Support Tickets")
@@ -64,7 +64,7 @@ describe("resolveSidebarMenu", () => {
     ).toBe(true)
     expect(
       supportMenu.projects.map((project) => project.name)
-    ).toEqual(["Overview", "Billing", "VPN", "Support Tickets"])
+    ).toEqual(["Overview", "Billing", "Support Tickets"])
   })
 
   it("returns hub context when on /console page", () => {
@@ -80,14 +80,11 @@ describe("resolveSidebarMenu", () => {
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
       "Billing",
-      "VPN",
       "Support Tickets",
     ])
     expect(projects.find((project) => project.name === "Overview")?.isActive).toBe(true)
 
-    // Organization lives in the top-left switcher dropdown, not the sidebar
     expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp"])
-    expect(navMain.map((item) => item.title)).not.toContain("Organization")
     expect(navMain[0]?.isActive).toBe(false)
   })
 
@@ -106,7 +103,6 @@ describe("resolveSidebarMenu", () => {
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
       "Billing",
-      "VPN",
       "Support Tickets",
     ])
     expect(
@@ -122,22 +118,14 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMain.map((item) => item.title)).toEqual([
-<<<<<<< Updated upstream
-=======
       "Settings",
->>>>>>> Stashed changes
       "App Hosting",
       "WhatsApp",
-      "VPN",
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
-<<<<<<< Updated upstream
-    expect(navMain.map((item) => item.title)).not.toContain("Settings")
-=======
->>>>>>> Stashed changes
 
     expect(projects.map((project) => project.name)).toContain("Payments")
-    expect(projects.map((project) => project.name)).toContain(
+    expect(projects.map((project) => project.name)).not.toContain(
       "Documentation"
     )
     expect(projects.map((project) => project.name)).not.toContain(
@@ -158,55 +146,10 @@ describe("resolveSidebarMenu", () => {
     // Payments no longer has its own sidebar context — falls back to portal platform nav
     expect(navMainLabel).not.toBe("Payments")
     expect(navMain.map((item) => item.title)).toEqual([
-<<<<<<< Updated upstream
-=======
       "Settings",
->>>>>>> Stashed changes
       "App Hosting",
       "WhatsApp",
-      "VPN",
     ])
-  })
-
-  it("omits organization from console sidebar navMain (lives in top-left switcher)", () => {
-    const { navMain } = resolveSidebarMenu({
-      surface: "console",
-      pathname: "/console/organization",
-      locale: "en",
-    })
-
-    expect(navMain.map((item) => item.title)).not.toContain("Organization")
-  })
-
-  it("limits portal app hosting context to admin scope", () => {
-    const { navMain, navMainLabel } = resolveSidebarMenu({
-      surface: "portal",
-      pathname: "/portal/app",
-      locale: "en",
-    })
-
-    expect(navMainLabel).toBe("App Hosting")
-    expect(navMain.map((item) => item.title)).toEqual([
-      "Overview",
-      "Detector Control",
-      "Events",
-    ])
-  })
-
-  it("returns app hosting event navigation for github events path", () => {
-    const { navMain, navMainLabel } = resolveSidebarMenu({
-      surface: "portal",
-      pathname: "/portal/app/events/github",
-      locale: "en",
-    })
-
-    expect(navMainLabel).toBe("App Hosting")
-    const events = navMain.find((item) => item.title === "Events")
-    expect(events).toBeDefined()
-    expect(events?.isActive).toBe(true)
-    expect(events?.items?.map((item) => item.title)).toEqual(["GitHub"])
-    expect(events?.items?.[0]?.url).toContain("/portal/app/events/github")
-    expect(events?.items?.[0]?.isActive).toBe(true)
   })
 
   it("includes thunder AI help trigger link for console sidebar secondary links", () => {
