@@ -278,8 +278,8 @@ export function BillingContactsList() {
         }
       })
       setDeactivateTarget(null)
-    } catch {
-      // Silently handle — the contact list remains unchanged
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to deactivate contact")
     } finally {
       setDeactivating(false)
     }
