@@ -5,10 +5,12 @@ type MockAuthValue = {
 }
 
 let mockAuthValue: MockAuthValue = { user: null }
-let mockPlatformRole: string = "none"
+let mockPlatformRole: string | null = null
 
 const mockWithAuth = mock(async () => mockAuthValue)
-const mockGetPlatformRole = mock(async () => mockPlatformRole)
+const mockGetPlatformRoleForUser = mock(async () =>
+  mockPlatformRole === "SUPER_ADMIN" ? "super_admin" : "none"
+)
 
 mock.module("@workos-inc/authkit-nextjs", () => ({
   withAuth: mockWithAuth,
@@ -19,15 +21,15 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 }))
 
 mock.module("@/lib/platform-role", () => ({
-  getPlatformRoleForUser: mockGetPlatformRole,
+  getPlatformRoleForUser: mockGetPlatformRoleForUser,
 }))
 
 describe("adminGuards", () => {
   beforeEach(() => {
     mockAuthValue = { user: null }
-    mockPlatformRole = "none"
+    mockPlatformRole = null
     mockWithAuth.mockClear()
-    mockGetPlatformRole.mockClear()
+    mockGetPlatformRoleForUser.mockClear()
   })
 
   it("toUnauthorizedError sets status to 401", async () => {
@@ -60,7 +62,7 @@ describe("adminGuards", () => {
   describe("getAdminActorContext", () => {
     it("returns AdminActorContext when authenticated", async () => {
       mockAuthValue = { user: { id: "user_1", email: "admin@test.com" } }
-      mockPlatformRole = "super_admin"
+      mockPlatformRole = "SUPER_ADMIN"
 
       const { getAdminActorContext } = await import("./admin.guards")
       const result = await getAdminActorContext()
@@ -84,7 +86,7 @@ describe("adminGuards", () => {
   describe("requireSuperAdmin", () => {
     it("returns actor for super_admin", async () => {
       mockAuthValue = { user: { id: "user_1", email: "admin@test.com" } }
-      mockPlatformRole = "super_admin"
+      mockPlatformRole = "SUPER_ADMIN"
 
       const { requireSuperAdmin } = await import("./admin.guards")
       const set: { status?: number } = {}
@@ -114,7 +116,7 @@ describe("adminGuards", () => {
 
     it("returns ForbiddenError when not super_admin", async () => {
       mockAuthValue = { user: { id: "user_1", email: "admin@test.com" } }
-      mockPlatformRole = "org_admin"
+      mockPlatformRole = "ORG_ADMIN"
 
       const { requireSuperAdmin } = await import("./admin.guards")
       const set: { status?: number } = {}

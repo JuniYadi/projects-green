@@ -143,11 +143,24 @@ const selectSourceRepository = async (view: RenderResult) => {
 
 describe("DeployWizard", () => {
   beforeEach(() => {
-    mock.restore()
     window.sessionStorage.clear()
     currentQuery = ""
     deployStatusResponse = "running"
     replaceCalls.splice(0)
+    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
+      new URLSearchParams()
+    )
+    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+      push: mock(),
+      replace: mock((url: string) => {
+        replaceCalls.push(url)
+        updateQueryFromUrl(url)
+      }),
+      prefetch: mock(),
+      back: mock(),
+      refresh: mock(),
+      forward: mock(),
+    })
     globalThis.fetch = mock((input: RequestInfo | URL, init?: RequestInit) => {
       const requestInit = init
       const requestUrl =
