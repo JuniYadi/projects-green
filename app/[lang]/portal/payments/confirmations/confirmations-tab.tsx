@@ -5,7 +5,20 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useMemo } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 interface PaymentConfirmation {
   id: string
@@ -13,10 +26,63 @@ interface PaymentConfirmation {
   currency: string
   bankAccountId: string
   bankName: string
+  accountName?: string
   accountNumber: string
   status: "pending" | "approved" | "rejected"
   submittedAt: string
-  notes?: string
+  notes?: string | null
+}
+
+const STATUS_VARIANTS: Record<
+  PaymentConfirmation["status"],
+  "default" | "secondary" | "destructive"
+> = {
+  pending: "secondary",
+  approved: "default",
+  rejected: "destructive",
+}
+
+const STATUS_FILTER_OPTIONS = [
+  { label: "Pending", value: "pending" },
+  { label: "Approved", value: "approved" },
+  { label: "Rejected", value: "rejected" },
+]
+
+function formatConfirmationAmount(confirmation: PaymentConfirmation): string {
+  if (!confirmation.currency) {
+    return new Intl.NumberFormat("id-ID").format(confirmation.amount)
+  }
+
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: confirmation.currency,
+  }).format(confirmation.amount)
+}
+
+function formatSubmittedAt(value: string): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value))
+}
+
+function PaymentStatusBadge({ status }: { status: PaymentConfirmation["status"] }) {
+  return (
+    <Badge variant={STATUS_VARIANTS[status]} className="text-xs capitalize">
+      {status}
+    </Badge>
+  )
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="text-sm text-foreground">{value || "-"}</dd>
+    </div>
+  )
 }
 
 type ConfirmationsRequestState =
@@ -24,15 +90,16 @@ type ConfirmationsRequestState =
   | { status: "success"; data: PaymentConfirmation[] }
   | { status: "error"; message: string }
 
-const STATUS_VARIANTS: Record<PaymentConfirmation["status"], "default" | "secondary" | "destructive"> = {
-  pending: "secondary",
-  approved: "default",
-  rejected: "destructive",
-}
+
 
 export function ConfirmationsTab() {
-  const [state, setState] = useState<ConfirmationsRequestState>({ status: "loading" })
-  const [isCreating, setIsCreating] = useState(false)
+  const [state, setState] = useState<ConfirmationsRequestState>({
+    status: "loading",
+  })
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null)
+  const [selectedConfirmation, setSelectedConfirmation] =
+    useState<PaymentConfirmation | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
 
   const fetchConfirmations = useCallback(async () => {
     try {
@@ -46,9 +113,12 @@ export function ConfirmationsTab() {
       const payload = await response.json()
 
       if (payload.ok) {
-        setState({ status: "success", data: payload.confirmations || [] })
+        setState({ status: "success", data: payload.data || [] })
       } else {
-        setState({ status: "error", message: payload.message || "Failed to load confirmations" })
+        setState({
+          status: "error",
+          message: payload.message || "Failed to load confirmations",
+        })
       }
     } catch {
       setState({ status: "error", message: "Failed to load confirmations" })
@@ -59,6 +129,125 @@ export function ConfirmationsTab() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchConfirmations()
   }, [fetchConfirmations])
+
+  async function reviewConfirmation(
+    id: string,
+    action: "approve" | "reject",
+    reason?: string
+  ) {
+    setPendingActionId(`${action}:${id}`)
+    try {
+      const response = await fetch(
+        `/api/portal/payments/confirmations/${id}/${action}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body:
+            action === "reject"
+              ? JSON.stringify({
+                  action: "reject",
+                  reason: reason?.trim() || "Rejected from portal review",
+                })
+              : undefined,
+        }
+      )
+      const payload = await response.json()
+      if (!response.ok || !payload.ok) {
+        setState({
+          status: "error",
+          message: payload.message || `Failed to ${action} confirmation`,
+        })
+        return
+      }
+      setSelectedConfirmation(null)
+      setRejectReason("")
+      await fetchConfirmations()
+    } catch {
+      setState({ status: "error", message: `Failed to ${action} confirmation` })
+    } finally {
+      setPendingActionId(null)
+    }
+  }
+
+  const confirmationColumns = useMemo<ColumnDef<PaymentConfirmation>[]>(
+    () => [
+      {
+        accessorKey: "submittedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Submitted" />
+        ),
+        cell: ({ row }) => formatSubmittedAt(row.original.submittedAt),
+        sortingFn: "datetime",
+      },
+      {
+        accessorKey: "amount",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Amount" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">
+            {formatConfirmationAmount(row.original)}
+          </span>
+        ),
+      },
+      {
+        id: "bankAccount",
+        accessorFn: (row) =>
+          [row.bankName, row.accountName, row.accountNumber]
+            .filter(Boolean)
+            .join(" "),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Bank Account" />
+        ),
+        cell: ({ row }) => (
+          <div className="grid gap-1">
+            <span className="font-medium">{row.original.bankName}</span>
+            <span className="text-xs text-muted-foreground">
+              {[row.original.accountNumber, row.original.accountName]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => <PaymentStatusBadge status={row.original.status} />,
+      },
+      {
+        accessorKey: "notes",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Notes" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {row.original.notes || "-"}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setSelectedConfirmation(row.original)
+              setRejectReason("")
+            }}
+          >
+            Review
+          </Button>
+        ),
+      },
+    ],
+    []
+  )
 
   if (state.status === "loading") {
     return (
@@ -89,102 +278,162 @@ export function ConfirmationsTab() {
   }
 
   const confirmations = state.data
+  const isPendingReview = selectedConfirmation?.status === "pending"
+  const rejectDisabled =
+    !selectedConfirmation || !rejectReason.trim() || pendingActionId !== null
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Payment Confirmations</CardTitle>
-          <Button type="button" size="sm" onClick={() => setIsCreating(true)}>
-            Submit Manual Payment
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isCreating && (
-          <form className="rounded-lg border bg-muted/20 p-4">
-            <p className="mb-4 text-sm text-muted-foreground">
-              Use this intake form to capture a manual payment for review before
-              approval or rejection.
-            </p>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="space-y-2 text-sm font-medium">
-                <span>Amount</span>
-                <Input name="amount" inputMode="decimal" placeholder="1000000" />
-              </label>
-              <label className="space-y-2 text-sm font-medium">
-                <span>Bank account</span>
-                <Input name="bankAccountId" placeholder="Destination bank account" />
-              </label>
-              <label className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Notes</span>
-                <Input name="notes" placeholder="Transfer reference or notes" />
-              </label>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Button type="submit" size="sm">Save for review</Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setIsCreating(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        )}
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Payment Confirmations</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+            Manual payment confirmations must be submitted from a customer
+            invoice/top-up flow so the invoice and organization context are known.
+            Use this tab to review pending confirmations.
+          </div>
 
-        {confirmations.length === 0 ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            No payment confirmations to review.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {confirmations.map((confirmation) => (
-              <div
-                key={confirmation.id}
-                className="flex items-start justify-between rounded-md border p-3"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">
-                      {new Intl.NumberFormat("id-ID", {
-                        style: "currency",
-                        currency: confirmation.currency,
-                      }).format(confirmation.amount)}
-                    </span>
-                    <Badge variant={STATUS_VARIANTS[confirmation.status]} className="text-xs">
-                      {confirmation.status}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {confirmation.bankName} - {confirmation.accountNumber}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Submitted: {new Date(confirmation.submittedAt).toLocaleDateString("id-ID")}
-                  </div>
-                  {confirmation.notes && (
-                    <div className="mt-1 text-xs italic text-muted-foreground">
-                      {confirmation.notes}
-                    </div>
-                  )}
+          <DataTable
+            columns={confirmationColumns}
+            data={confirmations}
+            searchPlaceholder="Filter confirmations..."
+            searchableColumns={["bankAccount", "notes", "status"]}
+            facetFilters={[
+              {
+                columnId: "status",
+                label: "Status",
+                allLabel: "All status",
+                options: STATUS_FILTER_OPTIONS,
+              },
+            ]}
+            initialSorting={[{ id: "submittedAt", desc: false }]}
+            emptyMessage="No payment confirmations match your filters."
+          />
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={selectedConfirmation !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedConfirmation(null)
+            setRejectReason("")
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Review payment confirmation</DialogTitle>
+            <DialogDescription>
+              Confirm the bank transfer details before marking the payment as
+              received.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedConfirmation && (
+            <div className="grid gap-4">
+              <dl className="grid gap-3 sm:grid-cols-2">
+                <DetailRow
+                  label="Amount"
+                  value={formatConfirmationAmount(selectedConfirmation)}
+                />
+                <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Status
+                  </dt>
+                  <dd>
+                    <PaymentStatusBadge status={selectedConfirmation.status} />
+                  </dd>
                 </div>
-                {confirmation.status === "pending" && (
-                  <div className="flex items-center gap-2">
-                    <Button type="button" size="sm" variant="outline">
-                      Reject
-                    </Button>
-                    <Button type="button" size="sm">
-                      Approve
-                    </Button>
-                  </div>
-                )}
+                <DetailRow
+                  label="Bank"
+                  value={selectedConfirmation.bankName}
+                />
+                <DetailRow
+                  label="Account number"
+                  value={selectedConfirmation.accountNumber}
+                />
+                <DetailRow
+                  label="Account holder"
+                  value={selectedConfirmation.accountName || "-"}
+                />
+                <DetailRow
+                  label="Submitted"
+                  value={formatSubmittedAt(selectedConfirmation.submittedAt)}
+                />
+              </dl>
+
+              <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Notes
+                </dt>
+                <dd className="text-sm text-foreground">
+                  {selectedConfirmation.notes || "-"}
+                </dd>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+
+              {isPendingReview && (
+                <div className="grid gap-2">
+                  <Label htmlFor="rejectReason">Rejection reason</Label>
+                  <Textarea
+                    id="rejectReason"
+                    value={rejectReason}
+                    onChange={(event) => setRejectReason(event.target.value)}
+                    onInput={(event) =>
+                      setRejectReason(event.currentTarget.value)
+                    }
+                    placeholder="Explain why this payment confirmation is rejected."
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSelectedConfirmation(null)
+                setRejectReason("")
+              }}
+            >
+              Close
+            </Button>
+            {selectedConfirmation && isPendingReview && (
+              <>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={rejectDisabled}
+                  onClick={() =>
+                    void reviewConfirmation(
+                      selectedConfirmation.id,
+                      "reject",
+                      rejectReason
+                    )
+                  }
+                >
+                  Reject payment
+                </Button>
+                <Button
+                  type="button"
+                  disabled={pendingActionId !== null}
+                  onClick={() =>
+                    void reviewConfirmation(selectedConfirmation.id, "approve")
+                  }
+                >
+                  Approve received payment
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
