@@ -7,13 +7,13 @@ import { MessageCostService } from "./message-cost.service"
 interface MockedPrisma {
   serviceSubscription: { findFirst: ReturnType<typeof vi.fn> }
   billingAccount: { findUnique: ReturnType<typeof vi.fn> }
-  pricing: { findFirst: ReturnType<typeof vi.fn> }
+  servicePricing: { findFirst: ReturnType<typeof vi.fn> }
 }
 
 const createMockPrisma = (): MockedPrisma => ({
   serviceSubscription: { findFirst: vi.fn() },
   billingAccount: { findUnique: vi.fn() },
-  pricing: { findFirst: vi.fn() },
+  servicePricing: { findFirst: vi.fn() },
 })
 
 describe("MessageCostService", () => {
@@ -32,7 +32,7 @@ describe("MessageCostService", () => {
         planId: "plan-1",
         plan: { resources: {} },
       })
-      ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(mockPrisma.servicePricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "price-1",
         planId: "plan-1",
         regionId: "reg-1",
@@ -72,7 +72,7 @@ describe("MessageCostService", () => {
         planId: "plan-1",
         plan: { resources: {} },
       })
-      ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+      ;(mockPrisma.servicePricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
 
       const cost = await service.estimateMessageCost({
         organizationId: "org-1",
@@ -105,7 +105,7 @@ describe("MessageCostService", () => {
         planId: "plan-1",
         plan: { resources: {} },
       })
-      ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(mockPrisma.servicePricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "price-1",
         planId: "plan-1",
         regionId: "reg-1",
@@ -139,7 +139,7 @@ describe("MessageCostService", () => {
         planId: "plan-1",
         plan: { resources: {} },
       })
-      ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(mockPrisma.servicePricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "price-1",
         planId: "plan-1",
         regionId: "reg-1",
@@ -173,7 +173,7 @@ describe("MessageCostService", () => {
         planId: "plan-1",
         plan: { resources: {} },
       })
-      ;(mockPrisma.pricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(mockPrisma.servicePricing.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "price-1",
         planId: "plan-1",
         regionId: "reg-1",

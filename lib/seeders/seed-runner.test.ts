@@ -5,6 +5,24 @@ import { describe, it, expect, beforeEach, mock } from "bun:test"
 const mockPrisma = {
   currency: { findUnique: mock(() => Promise.resolve(null)) },
   $disconnect: mock(() => Promise.resolve()),
+  paymentGateway: { findMany: async () => [], findFirst: async () => null },
+  paymentBankAccount: { findMany: async () => [] },
+  paymentCurrency: {
+    findMany: async () => [],
+    findUnique: async () => null,
+    findFirst: async () => null,
+  },
+  billingInvoice: {
+    findMany: async () => [],
+    findFirst: async () => null,
+    create: async (data: any) => ({ id: "inv-mock", ...data }),
+    update: async (data: any) => data,
+  },
+  billingAccount: {
+    findUnique: async () => null,
+    create: async (data: any) => data,
+  },
+  billingAdjustment: { create: async () => ({ id: "adj-mock" }) },
 }
 
 mock.module("@/lib/prisma", () => ({

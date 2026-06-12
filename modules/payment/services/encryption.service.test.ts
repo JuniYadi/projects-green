@@ -13,14 +13,16 @@ describe("EncryptionService", () => {
 
     it("rejects key shorter than 32 bytes", () => {
       const shortKey = "0123456789abcdef"
-      expect(() => new EncryptionService(shortKey)).toThrow(
+      const service = new EncryptionService(shortKey)
+      expect(() => service.encryptField("test")).toThrow(
         "Encryption key must be 32 bytes (64 hex characters)"
       )
     })
 
     it("rejects key longer than 32 bytes", () => {
       const longKey = "0123456789abcdef".repeat(5)
-      expect(() => new EncryptionService(longKey)).toThrow(
+      const service = new EncryptionService(longKey)
+      expect(() => service.encryptField("test")).toThrow(
         "Encryption key must be 32 bytes (64 hex characters)"
       )
     })
@@ -160,6 +162,9 @@ describe("getEncryptionService", () => {
   })
 
   it("throws error when ENCRYPTION_KEY is not set", () => {
+    // Reset any cached instance from other tests
+    resetEncryptionService()
+
     // Save original env var
     const originalValue = process.env.ENCRYPTION_KEY
 

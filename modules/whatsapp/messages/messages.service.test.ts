@@ -55,7 +55,7 @@ const mockTx = {
     findFirst: mock(async () => null),
     create: mock(async () => ({ id: "adj-1" })),
   },
-  invoice: {
+  billingInvoice: {
     findFirst: mock(async () => null),
     count: mock(async () => 0),
     create: mock(async () => ({
@@ -68,7 +68,7 @@ const mockTx = {
     })),
     update: mock(async () => ({ id: "inv-1" })),
   },
-  invoiceLine: {
+  billingInvoiceLine: {
     create: mock(async () => ({ id: "line-1" })),
   },
 }
@@ -109,7 +109,7 @@ const mockPrisma = {
     findFirst: mock(async () => null),
     findUnique: mock(async () => null),
   },
-  pricing: {
+  servicePricing: {
     findFirst: mock(async () => null),
   },
   billingUsageLedger: {
@@ -180,7 +180,7 @@ describe("messageService", () => {
     mockPrisma.whatsappMonthlyCount.update.mockClear()
     mockPrisma.billingAccount.findUnique.mockClear()
     mockPrisma.serviceSubscription.findFirst.mockClear()
-    mockPrisma.pricing.findFirst.mockClear()
+    mockPrisma.servicePricing.findFirst.mockClear()
     mockPrisma.billingUsageLedger.create.mockClear()
     mockPrisma.$transaction.mockClear()
     mockTx.whatsappDevice.findFirst.mockClear()
@@ -197,11 +197,11 @@ describe("messageService", () => {
     mockTx.billingAccount.update.mockClear()
     mockTx.billingAdjustment.findFirst.mockClear()
     mockTx.billingAdjustment.create.mockClear()
-    mockTx.invoice.findFirst.mockClear()
-    mockTx.invoice.count.mockClear()
-    mockTx.invoice.create.mockClear()
-    mockTx.invoice.update.mockClear()
-    mockTx.invoiceLine.create.mockClear()
+    mockTx.billingInvoice.findFirst.mockClear()
+    mockTx.billingInvoice.count.mockClear()
+    mockTx.billingInvoice.create.mockClear()
+    mockTx.billingInvoice.update.mockClear()
+    mockTx.billingInvoiceLine.create.mockClear()
     mockDeviceClient.sendMessage.mockClear()
     mockEnqueue.mockClear()
 
@@ -284,9 +284,9 @@ describe("messageService", () => {
       id: "adj-1",
     } as any)
     // Invoice defaults: no existing draft, creates new one
-    mockTx.invoice.findFirst.mockResolvedValue(null)
-    mockTx.invoice.count.mockResolvedValue(0)
-    mockTx.invoice.create.mockResolvedValue({
+    mockTx.billingInvoice.findFirst.mockResolvedValue(null)
+    mockTx.billingInvoice.count.mockResolvedValue(0)
+    mockTx.billingInvoice.create.mockResolvedValue({
       id: "inv-1",
       status: "DRAFT",
       billingAccountId: "ba-1",
@@ -294,8 +294,8 @@ describe("messageService", () => {
       periodStart: new Date("2026-06-01"),
       periodEnd: new Date("2026-06-30"),
     } as any)
-    mockTx.invoice.update.mockResolvedValue({ id: "inv-1" } as any)
-    mockTx.invoiceLine.create.mockResolvedValue({ id: "line-1" } as any)
+    mockTx.billingInvoice.update.mockResolvedValue({ id: "inv-1" } as any)
+    mockTx.billingInvoiceLine.create.mockResolvedValue({ id: "line-1" } as any)
 
     // Default: ALLOWANCE path (prisma.whatsappDevice.updateMany returns count=1)
     mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 1 })

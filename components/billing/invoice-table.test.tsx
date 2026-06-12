@@ -56,7 +56,7 @@ describe("InvoiceTable", () => {
     expect(view.getByText("All status")).toBeInTheDocument()
     expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
     expect(view.getByText("Invoice #")).toBeInTheDocument()
-    expect(view.getByText("Period")).toBeInTheDocument()
+    expect(view.getByText("Issued Date")).toBeInTheDocument()
     expect(view.getByText("Amount")).toBeInTheDocument()
     expect(view.getByText("Status")).toBeInTheDocument()
     expect(
@@ -95,8 +95,9 @@ describe("InvoiceTable", () => {
   it("shows N/A for invoices with null dates", () => {
     const view = render(<InvoiceTable invoices={sampleInvoices} lang="en" />)
 
-    // The cancelled invoice has null issuedAt/dueAt, so shows N/A - N/A
-    expect(view.getByText("N/A - N/A")).toBeInTheDocument()
+    // The cancelled invoice (index 3) has null issuedAt/dueAt, so shows N/A
+    const naElements = view.getAllByText("N/A")
+    expect(naElements.length).toBeGreaterThanOrEqual(1)
   })
 
   it("renders custom empty message", () => {

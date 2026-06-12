@@ -2,7 +2,7 @@ import type { BillingTransactionService } from "@/modules/billing/billing-transa
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 const mockPrisma = {
-  invoice: {
+  billingInvoice: {
     create: mock(() =>
       Promise.resolve({
         id: "inv-123",
@@ -79,10 +79,10 @@ describe("PaymentService", () => {
   let service: InstanceType<typeof PaymentService>
 
   function resetMocks() {
-    mockPrisma.invoice.create.mockReset()
-    mockPrisma.invoice.update.mockReset()
-    mockPrisma.invoice.findFirst.mockReset()
-    mockPrisma.invoice.findMany.mockReset()
+    mockPrisma.billingInvoice.create.mockReset()
+    mockPrisma.billingInvoice.update.mockReset()
+    mockPrisma.billingInvoice.findFirst.mockReset()
+    mockPrisma.billingInvoice.findMany.mockReset()
     mockPrisma.billingAccount.findUnique.mockReset()
     mockPrisma.billingAccount.create.mockReset()
     mockPrisma.billingAccount.update.mockReset()
@@ -91,7 +91,7 @@ describe("PaymentService", () => {
     mockBillingTransactions.debitBalance.mockReset()
 
     // Restore default implementations
-    mockPrisma.invoice.create.mockImplementation(() =>
+    mockPrisma.billingInvoice.create.mockImplementation(() =>
       Promise.resolve({
         id: "inv-123",
         invoiceNumber: "TOP-ABC123",
@@ -103,9 +103,9 @@ describe("PaymentService", () => {
         type: "TOP_UP",
       })
     )
-    mockPrisma.invoice.update.mockImplementation(() => Promise.resolve({}))
-    mockPrisma.invoice.findFirst.mockImplementation(() => Promise.resolve(null))
-    mockPrisma.invoice.findMany.mockImplementation(() => Promise.resolve([]))
+    mockPrisma.billingInvoice.update.mockImplementation(() => Promise.resolve({}))
+    mockPrisma.billingInvoice.findFirst.mockImplementation(() => Promise.resolve(null))
+    mockPrisma.billingInvoice.findMany.mockImplementation(() => Promise.resolve([]))
     mockPrisma.billingAccount.findUnique.mockImplementation(() =>
       Promise.resolve({
         id: "ba-123",
@@ -163,7 +163,7 @@ describe("PaymentService", () => {
 
       expect(invoice.id).toBe("inv-123")
       expect(invoice.invoiceNumber).toMatch(/^TOP-/)
-      expect(mockPrisma.invoice.create).toHaveBeenCalledTimes(1)
+      expect(mockPrisma.billingInvoice.create).toHaveBeenCalledTimes(1)
     })
 
     it("should throw error for amount below minimum", async () => {
@@ -203,11 +203,11 @@ describe("PaymentService", () => {
         organizationId: "org-usd",
         currency: "USD",
       })
-      mockPrisma.invoice.create.mockResolvedValueOnce({
+      mockPrisma.billingInvoice.create.mockResolvedValueOnce({
         id: "inv-usd",
         invoiceNumber: "TOP-USD001",
         currency: "USD",
-        totalAmount: { toNumber: () => 5000 },
+        totalAmount: { toNumber: () => 50000 },
         status: "OPEN" as string,
         paymentMethod: null as unknown as string,
         dueDate: new Date(),
@@ -228,7 +228,7 @@ describe("PaymentService", () => {
       const invoices = await service.getInvoicesForOrganization("org-123")
 
       expect(Array.isArray(invoices)).toBe(true)
-      expect(mockPrisma.invoice.findMany).toHaveBeenCalledTimes(1)
+      expect(mockPrisma.billingInvoice.findMany).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -236,7 +236,7 @@ describe("PaymentService", () => {
     it("should update invoice status to PAID", async () => {
       await service.markInvoiceAsPaid("inv-123")
 
-      expect(mockPrisma.invoice.update).toHaveBeenCalledWith({
+      expect(mockPrisma.billingInvoice.update).toHaveBeenCalledWith({
         where: { id: "inv-123" },
         data: { status: "PAID" },
       })
@@ -272,7 +272,7 @@ describe("PaymentService", () => {
 
   describe("payWithBalance", () => {
     it("should debit via BillingTransactionService and mark invoice as paid", async () => {
-      ;(mockPrisma.invoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce({
+      ;(mockPrisma.billingInvoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce({
         id: "inv-123",
         status: "OPEN",
         totalAmount: { toNumber: () => 50000 },
@@ -292,14 +292,14 @@ describe("PaymentService", () => {
           invoiceId: "inv-123",
         })
       )
-      expect(mockPrisma.invoice.update).toHaveBeenCalledWith({
+      expect(mockPrisma.billingInvoice.update).toHaveBeenCalledWith({
         where: { id: "inv-123" },
         data: { status: "PAID" },
       })
     })
 
     it("should throw error when invoice not found", async () => {
-      ;(mockPrisma.invoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce(null)
+      ;(mockPrisma.billingInvoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce(null)
 
       await expect(
         service.payWithBalance("inv-notfound", "org-123")
@@ -307,7 +307,7 @@ describe("PaymentService", () => {
     })
 
     it("should throw error when insufficient balance", async () => {
-      ;(mockPrisma.invoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce({
+      ;(mockPrisma.billingInvoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce({
         id: "inv-123",
         status: "OPEN",
         totalAmount: { toNumber: () => 200000 },

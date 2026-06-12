@@ -48,6 +48,7 @@ const mockGetGithubInstallUrl = mock(() => "https://github.com/install?state=s")
 mock.module("@workos-inc/authkit-nextjs", () => {
   return {
     withAuth: mockWithAuth,
+    getWorkOS: () => ({}),
   }
 })
 

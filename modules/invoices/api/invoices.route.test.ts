@@ -1,6 +1,12 @@
 import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
+// Ensure default deps don't pick up leaked mocks from other files
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  withAuth: mock(async () => ({ user: null })),
+  getWorkOS: () => ({}),
+}))
+
 import { createInvoicesRoutes } from "@/modules/invoices/api/invoices.route"
 import type { InvoiceEmailService } from "@/modules/invoices/email.service"
 import {
