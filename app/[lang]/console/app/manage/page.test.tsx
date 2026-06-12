@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, fireEvent, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 let currentQuery = ""
 const replaceCalls: string[] = []
@@ -133,6 +133,23 @@ const installFetch = () => {
 const renderPage = async (query = "") => {
   currentQuery = query
   replaceCalls.splice(0)
+  ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
+    new URLSearchParams(query)
+  )
+  ;(usePathname as ReturnType<typeof mock>).mockReturnValue(
+    "/console/app/manage"
+  )
+  ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+    push: mock(),
+    replace: mock((url: string) => {
+      replaceCalls.push(url)
+      updateQueryFromUrl(url)
+    }),
+    prefetch: mock(),
+    back: mock(),
+    refresh: mock(),
+    forward: mock(),
+  })
 
   const pageModule = await import("@/app/[lang]/console/app/manage/page")
   return render(<pageModule.default />)
@@ -164,10 +181,10 @@ describe("ManagePage", () => {
     const view = await renderPage()
 
     await waitFor(() => {
-      expect(view.getAllByText("console-next-app").length).toBeGreaterThan(0)
+      expect(view.getByText("Deployment status")).toBeInTheDocument()
     })
 
-    expect(view.getByText("Deployment status")).toBeInTheDocument()
+    expect(view.getAllByText("console-next-app").length).toBeGreaterThan(0)
     expect(view.getByText("Visit app")).toBeInTheDocument()
   })
 

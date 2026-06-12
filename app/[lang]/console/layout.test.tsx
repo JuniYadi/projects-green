@@ -153,8 +153,10 @@ describe("ConsoleLayout", () => {
       },
       organizationId: "org_123",
     }))
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console")
-    ;(redirect as ReturnType<typeof mock>).mockImplementation(mockRedirect)
+    ;(usePathname as unknown as ReturnType<typeof mock>).mockReturnValue(
+      "/en/console"
+    )
+    ;(redirect as unknown as ReturnType<typeof mock>).mockImplementation(mockRedirect)
   })
 
   it("renders shared console shell around children", async () => {

@@ -155,8 +155,10 @@ describe("PortalLayout", () => {
       },
       organizationId: "org_123",
     }))
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/portal/documentations")
-    ;(redirect as ReturnType<typeof mock>).mockImplementation(mockRedirect)
+    ;(usePathname as unknown as ReturnType<typeof mock>).mockReturnValue(
+      "/en/portal/documentations"
+    )
+    ;(redirect as unknown as ReturnType<typeof mock>).mockImplementation(mockRedirect)
   })
 
   it("renders shared portal shell around children", async () => {
