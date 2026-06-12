@@ -1,22 +1,3 @@
-export const createNavigationMock = ({
-  pathname,
-  redirect,
-}: {
-  pathname: string
-  redirect: (url: string) => unknown
-}) => {
-  return {
-    redirect,
-    usePathname: () => pathname,
-    useSearchParams: () => new URLSearchParams(),
-    useRouter: () => ({
-      replace: () => {},
-      push: () => {},
-      refresh: () => {},
-    }),
-  }
-}
-
 export const createAuthMock = ({
   withAuth,
   getUser,

@@ -6,10 +6,7 @@ const pushMock = mock((href: string) => {
   void href
 })
 
-mock.module("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock }),
-}))
-
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { TopupFormEnhanced } from "./topup-form-enhanced"
 
 const originalFetch = globalThis.fetch
@@ -23,6 +20,12 @@ const jsonResponse = (body: unknown, status = 200) =>
 
 describe("TopupFormEnhanced", () => {
   beforeEach(() => {
+    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+      push: pushMock,
+      replace: () => {},
+      refresh: () => {},
+    })
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console/billing/topup")
     pushMock.mockClear()
   })
 

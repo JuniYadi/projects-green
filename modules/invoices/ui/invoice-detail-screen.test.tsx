@@ -1,21 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { fireEvent, render, waitFor } from "@testing-library/react"
+
+
 
 import { InvoiceDetailScreen } from "@/modules/invoices/ui/invoice-detail-screen"
 
-const mockRouterRefresh = mock(() => {})
 const originalFetch = globalThis.fetch
 
-mock.module("next/navigation", () => {
-  return {
-    useRouter: () => ({
-      refresh: mockRouterRefresh,
-      replace: () => {},
-      push: () => {},
-      prefetch: async () => undefined,
-    }),
-  }
-})
 
 const jsonResponse = (body: unknown, status = 200) => {
   return new Response(JSON.stringify(body), {
@@ -27,8 +19,15 @@ const jsonResponse = (body: unknown, status = 200) => {
 }
 
 describe("InvoiceDetailScreen", () => {
+  let mockRouterRefresh: ReturnType<typeof mock>
+
   beforeEach(() => {
-    mockRouterRefresh.mockClear()
+    mockRouterRefresh = mock(() => {})
+    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+      refresh: mockRouterRefresh,
+    })
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console/invoices/inv_1")
+    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(new URLSearchParams())
 
     globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)

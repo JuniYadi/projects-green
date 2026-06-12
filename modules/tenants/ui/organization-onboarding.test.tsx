@@ -1,17 +1,9 @@
 import { mock } from "bun:test"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
 const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})
 const mockSwitchToOrganization = mock(async () => {})
-
-mock.module("next/navigation", () => {
-  return {
-    useRouter: () => ({
-      replace: mockRouterReplace,
-      refresh: mockRouterRefresh,
-    }),
-  }
-})
 
 mock.module("@workos-inc/authkit-nextjs/components", () => {
   return {
@@ -70,6 +62,12 @@ beforeEach(() => {
   mockRouterReplace.mockClear()
   mockRouterRefresh.mockClear()
   mockSwitchToOrganization.mockClear()
+  ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+    replace: mockRouterReplace,
+    refresh: mockRouterRefresh,
+    push: () => {},
+  })
+  ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console")
 })
 
 afterEach(() => {

@@ -2,7 +2,8 @@ import { beforeEach, afterAll, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
-import { createAuthMock, createNavigationMock } from "@/test/layout-test-mocks"
+import { createAuthMock } from "@/test/layout-test-mocks"
+import { redirect, usePathname } from "next/navigation"
 
 type MockAuthPayload = {
   user: {
@@ -58,19 +59,8 @@ mock.module("@workos-inc/authkit-nextjs", () => {
   })
 })
 
-mock.module("next/navigation", () => {
-  return createNavigationMock({
-    pathname: "/en/portal/documentations",
-    redirect: mockRedirect,
-  })
-})
 
-mock.module("next/navigation.js", () => {
-  return createNavigationMock({
-    pathname: "/en/portal/documentations",
-    redirect: mockRedirect,
-  })
-})
+// Next/navigation mock handled by setup.ts centralized mock
 
 mock.module("@/lib/platform-role", () => {
   return {
@@ -165,6 +155,8 @@ describe("PortalLayout", () => {
       },
       organizationId: "org_123",
     }))
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/portal/documentations")
+    ;(redirect as ReturnType<typeof mock>).mockImplementation(mockRedirect)
   })
 
   it("renders shared portal shell around children", async () => {

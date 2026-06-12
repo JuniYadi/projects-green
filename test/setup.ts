@@ -27,6 +27,28 @@ mock.module("react-icons/si", () => {
   }
 })
 
+mock.module("next/navigation", () => {
+  const { mock } = require("bun:test")
+  
+  const routerMock = {
+    push: mock(),
+    replace: mock(),
+    prefetch: mock(),
+    back: mock(),
+    refresh: mock(),
+    forward: mock(),
+  }
+
+  return {
+    useRouter: mock(() => routerMock),
+    usePathname: mock(() => ""),
+    useSearchParams: mock(() => new URLSearchParams()),
+    useParams: mock(() => ({})),
+    redirect: mock(),
+    notFound: mock(),
+  }
+})
+
 expect.extend(matchers)
 
 if (!window.matchMedia) {

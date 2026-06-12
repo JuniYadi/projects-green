@@ -10,10 +10,6 @@ mock.module("@/lib/vpn-client", () => ({
   activateVpnSubscription: mockActivateVpnSubscription,
 }))
 
-mock.module("next/navigation", () => ({
-  useParams: () => ({ lang: "en" }),
-  useRouter: () => ({ push: mock() }),
-}))
 
 import ConsoleVpnPage from "./page"
 

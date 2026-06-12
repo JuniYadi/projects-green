@@ -1,19 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
-const mockRouterRefresh = mock(() => {})
 const originalFetch = globalThis.fetch
 
-mock.module("next/navigation", () => {
-  return {
-    useRouter: () => ({
-      refresh: mockRouterRefresh,
-      replace: () => {},
-      push: () => {},
-      prefetch: async () => undefined,
-    }),
-  }
-})
 
 const jsonResponse = (body: unknown, status = 200) => {
   return new Response(JSON.stringify(body), {
@@ -26,6 +16,11 @@ const jsonResponse = (body: unknown, status = 200) => {
 
 describe("InvoiceDetailPage", () => {
   beforeEach(() => {
+    (useRouter as ReturnType<typeof mock>).mockReturnValue({
+      refresh: mock(() => {}),
+    })
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console/invoices/inv_1")
+
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)
 
@@ -66,7 +61,8 @@ describe("InvoiceDetailPage", () => {
   })
 
   afterEach(() => {
-    mockRouterRefresh.mockClear()
+    ;(useRouter as ReturnType<typeof mock>).mockClear()
+    ;(usePathname as ReturnType<typeof mock>).mockClear()
     globalThis.fetch = originalFetch
   })
 

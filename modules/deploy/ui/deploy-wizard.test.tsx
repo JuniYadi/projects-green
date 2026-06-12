@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   fireEvent,
   render,
@@ -59,24 +60,6 @@ const githubRepositories = [
   },
 ]
 
-mock.module("next/navigation", () => {
-  return {
-    usePathname: () => "/console/app/deploy",
-    useSearchParams: () => new URLSearchParams(currentQuery),
-    useRouter: () => ({
-      replace: (url: string) => {
-        replaceCalls.push(url)
-        updateQueryFromUrl(url)
-      },
-    }),
-    redirect: (url: string) => {
-      throw new Error(`REDIRECT:${url}`)
-    },
-    notFound: () => {
-      throw new Error("NOT_FOUND")
-    },
-  }
-})
 
 mock.module("react-icons/si", () => {
   return {
@@ -111,6 +94,7 @@ const renderWizard = async (
 ) => {
   currentQuery = query
   replaceCalls.splice(0)
+  ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(new URLSearchParams(query))
   window.sessionStorage.clear()
   if (persistedState) {
     window.sessionStorage.setItem(
@@ -428,9 +412,11 @@ describe("DeployWizard", () => {
     })
 
     expect(view.getByRole("link", { name: "Visit App" })).toBeTruthy()
-    expect(replaceCalls.some((value) => value.includes("step=monitor"))).toBe(
-      true
-    )
+    expect(
+      (useRouter().replace as ReturnType<typeof mock>).mock.calls.some(
+        (args: unknown[]) => String(args[0]).includes("step=monitor")
+      )
+    ).toBe(true)
   }, 15_000)
 
   it("shows failure path with retry and edit settings actions", async () => {

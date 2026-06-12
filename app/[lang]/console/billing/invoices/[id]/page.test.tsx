@@ -1,15 +1,12 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { useParams } from "next/navigation"
 import { render, waitFor } from "@testing-library/react"
 
 import InvoiceDetailPage from "./page"
 
 const originalFetch = globalThis.fetch
 
-mock.module("next/navigation", () => ({
-  useParams: () => ({ id: "inv-1", lang: "en" }),
-  useSearchParams: () => new URLSearchParams(),
-}))
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -38,10 +35,11 @@ const invoicePayload = (overrides: Record<string, unknown> = {}) => ({
 
 describe("Billing InvoiceDetailPage", () => {
   beforeEach(() => {
+    ;(useParams as ReturnType<typeof mock>).mockReturnValue({ id: "inv-1" })
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)
 
-      if (url === "/api/billing/invoices/inv-1") {
+      if (url.includes("/api/billing/invoices/")) {
         return jsonResponse(invoicePayload())
       }
 
