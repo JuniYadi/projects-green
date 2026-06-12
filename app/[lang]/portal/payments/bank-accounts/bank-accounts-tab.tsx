@@ -1,15 +1,14 @@
 "use client"
 
-import type { ColumnDef } from "@tanstack/react-table"
-
-import { DataTable } from "@/components/data-table"
-import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useState, type FormEvent, useMemo } from "react"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
 
 interface BankAccount {
   id: string
@@ -464,24 +463,32 @@ export function BankAccountsTab() {
         )}
 
         {!editingAccount && (
-          <DataTable
-            columns={bankAccountColumns}
-            data={bankAccounts}
-            searchPlaceholder="Filter bank accounts..."
-            searchableColumns={["bank", "account", "currencies", "status"]}
-            facetFilters={[
-              {
-                columnId: "status",
-                label: "Status",
-                allLabel: "All status",
-                options: [
-                  { label: "Active", value: "active" },
-                  { label: "Inactive", value: "inactive" },
-                ],
-              },
-            ]}
-            emptyMessage="No bank accounts match your filters."
-          />
+          <>
+            {bankAccounts.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No bank accounts added yet.
+              </div>
+            ) : (
+              <DataTable
+                columns={bankAccountColumns}
+                data={bankAccounts}
+                searchPlaceholder="Filter bank accounts..."
+                searchableColumns={["bank", "account", "currencies", "status"]}
+                facetFilters={[
+                  {
+                    columnId: "status",
+                    label: "Status",
+                    allLabel: "All status",
+                    options: [
+                      { label: "Active", value: "active" },
+                      { label: "Inactive", value: "inactive" },
+                    ],
+                  },
+                ]}
+                emptyMessage="No bank accounts match your filters."
+              />
+            )}
+          </>
         )}
       </CardContent>
     </Card>

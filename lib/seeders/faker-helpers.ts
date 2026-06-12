@@ -96,7 +96,7 @@ export function fakerBillingAccount(
     id: overrides.id ?? fakerId(),
     organizationId: overrides.organizationId,
     status: overrides.status ?? faker.helpers.enumValue(BillingAccountStatus),
-    currency: overrides.currency ?? "USD",
+    preferredCurrency: overrides.preferredCurrency ?? "USD",
     createdAt: overrides.createdAt ?? fakerRecentDate(),
     updatedAt: overrides.updatedAt ?? new Date(),
   }

@@ -1,6 +1,7 @@
 import { Elysia } from "elysia"
 
 import { createBillingAccountRoutes } from "./account.route"
+import { createBillingRoutes } from "./billing.route"
 import { createBillingTopupRoutes } from "./topup.route"
 import { createBillingSubscriptionsRoutes } from "./subscriptions.route"
 import { createBillingInvoicesRoutes } from "./invoices.route"
@@ -20,6 +21,7 @@ const costingService = new CostingService(prisma)
 
 export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createBillingAccountRoutes())
+  .use(createBillingRoutes())
   .use(createBillingTopupRoutes())
   .use(createBillingSubscriptionsRoutes())
   .use(createBillingInvoicesRoutes())

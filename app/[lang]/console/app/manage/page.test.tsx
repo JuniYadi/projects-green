@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, fireEvent, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom"
+import { useRouter } from "next/navigation"
 
 let currentQuery = ""
 const replaceCalls: string[] = []
@@ -10,19 +11,6 @@ const updateQueryFromUrl = (url: string) => {
   currentQuery = parts[1] ?? ""
 }
 
-mock.module("next/navigation", () => {
-  return {
-    usePathname: () => "/console/app/manage",
-    useSearchParams: () => new URLSearchParams(currentQuery),
-    useParams: () => ({ lang: "en" }),
-    useRouter: () => ({
-      replace: (url: string) => {
-        replaceCalls.push(url)
-        updateQueryFromUrl(url)
-      },
-    }),
-  }
-})
 
 const sampleApp = {
   id: "stack-1",
@@ -209,7 +197,8 @@ describe("ManagePage", () => {
     await renderPage()
 
     await waitFor(() => {
-      expect(replaceCalls.some((url) => url.includes("app=console-next-app"))).toBe(
+      const calls = (useRouter().replace as ReturnType<typeof mock>).mock.calls;
+      expect(calls.some((args: any) => args[0].includes("app=console-next-app"))).toBe(
         true
       )
     })

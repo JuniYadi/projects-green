@@ -1,92 +1,138 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
-  BellIcon,
   WalletIcon,
   LightningIcon,
   Envelope,
+  Spinner,
 } from "@phosphor-icons/react"
-
-type AlertPreferences = {
-  balanceThresholdEnabled: boolean
-  balanceThresholdAmount: number
-  usageThresholdEnabled: boolean
-  usageThresholdAmount: number
-  invoiceReminderEnabled: boolean
-}
-
-const STORAGE_KEY = "notify-limits"
-const OLD_STORAGE_KEY = "billing-alert-preferences"
+import {
+  getBillingAccount,
+  updateBillingAlerts,
+  type AlertPreferences,
+  type AlertPreferencesInput,
+} from "@/lib/billing-client"
 
 const defaultPreferences: AlertPreferences = {
   balanceThresholdEnabled: false,
   balanceThresholdAmount: 50000,
   usageThresholdEnabled: false,
   usageThresholdAmount: 100000,
-  invoiceReminderEnabled: false,
-}
-
-function loadPreferences(): AlertPreferences {
-  if (typeof window === "undefined") return defaultPreferences
-
-  try {
-    const oldStored = localStorage.getItem(OLD_STORAGE_KEY)
-    if (oldStored) {
-      try {
-        const parsed = JSON.parse(oldStored)
-        localStorage.setItem(STORAGE_KEY, oldStored)
-        localStorage.removeItem(OLD_STORAGE_KEY)
-        return { ...defaultPreferences, ...parsed }
-      } catch {
-        localStorage.removeItem(OLD_STORAGE_KEY)
-      }
-    }
-
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        return { ...defaultPreferences, ...JSON.parse(stored) }
-      } catch {
-        localStorage.removeItem(STORAGE_KEY)
-      }
-    }
-  } catch (e) {
-    console.warn("Failed to parse stored alert preferences:", e)
-  }
-  return defaultPreferences
-}
-
-function savePreferences(prefs: AlertPreferences) {
-  if (typeof window === "undefined") return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
 }
 
 export function BillingAlertsForm() {
-  const [preferences, setPreferences] = useState<AlertPreferences>(() => {
-    if (typeof window === "undefined") return defaultPreferences
-    return loadPreferences()
-  })
+  const [preferences, setPreferences] = useState<AlertPreferences>(defaultPreferences)
+  const [initialPrefs, setInitialPrefs] = useState<AlertPreferences>(defaultPreferences)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    getBillingAccount()
+      .then((account) => {
+        if (cancelled) return
+        const prefs = {
+          balanceThresholdEnabled: account.alertPreferences?.balanceThresholdEnabled ?? false,
+          balanceThresholdAmount: account.alertPreferences?.balanceThresholdAmount ?? 50000,
+          usageThresholdEnabled: account.alertPreferences?.usageThresholdEnabled ?? false,
+          usageThresholdAmount: account.alertPreferences?.usageThresholdAmount ?? 100000,
+        }
+        setPreferences(prefs)
+        setInitialPrefs(prefs)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : "Failed to load preferences")
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [])
+
+  const isDirty =
+    preferences.balanceThresholdEnabled !== initialPrefs.balanceThresholdEnabled ||
+    preferences.balanceThresholdAmount !== initialPrefs.balanceThresholdAmount ||
+    preferences.usageThresholdEnabled !== initialPrefs.usageThresholdEnabled ||
+    preferences.usageThresholdAmount !== initialPrefs.usageThresholdAmount
 
   const updatePreference = useCallback(
     <K extends keyof AlertPreferences>(key: K, value: AlertPreferences[K]) => {
       setPreferences((prev) => ({ ...prev, [key]: value }))
       setSaved(false)
     },
-    []
+    [],
   )
 
-  const handleSave = useCallback(() => {
-    savePreferences(preferences)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = useCallback(async () => {
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+
+    const input: AlertPreferencesInput = {
+      balanceThresholdEnabled: preferences.balanceThresholdEnabled,
+      balanceThresholdAmount: preferences.balanceThresholdAmount,
+      usageThresholdEnabled: preferences.usageThresholdEnabled,
+      usageThresholdAmount: preferences.usageThresholdAmount,
+    }
+
+    try {
+      const account = await updateBillingAlerts(input)
+      const prefs = {
+        balanceThresholdEnabled: account.alertPreferences?.balanceThresholdEnabled ?? false,
+        balanceThresholdAmount: account.alertPreferences?.balanceThresholdAmount ?? 50000,
+        usageThresholdEnabled: account.alertPreferences?.usageThresholdEnabled ?? false,
+        usageThresholdAmount: account.alertPreferences?.usageThresholdAmount ?? 100000,
+      }
+      setPreferences(prefs)
+      setInitialPrefs(prefs)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save preferences")
+    } finally {
+      setSaving(false)
+    }
   }, [preferences])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    )
+  }
+
+  if (error && !preferences.balanceThresholdEnabled && !preferences.usageThresholdEnabled) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -130,7 +176,7 @@ export function BillingAlertsForm() {
                   onChange={(e) =>
                     updatePreference(
                       "balanceThresholdAmount",
-                      parseInt(e.target.value) || 0
+                      parseInt(e.target.value) || 0,
                     )
                   }
                   className="w-40"
@@ -189,7 +235,7 @@ export function BillingAlertsForm() {
                   onChange={(e) =>
                     updatePreference(
                       "usageThresholdAmount",
-                      parseInt(e.target.value) || 0
+                      parseInt(e.target.value) || 0,
                     )
                   }
                   className="w-40"
@@ -206,7 +252,7 @@ export function BillingAlertsForm() {
         </CardContent>
       </Card>
 
-      {/* Invoice Reminder */}
+      {/* Invoice Reminders — now handled by Billing Contacts */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -216,46 +262,47 @@ export function BillingAlertsForm() {
             <div>
               <CardTitle>Invoice Reminders</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Receive email notifications for new invoices.
+                Manage who receives invoice notifications.
               </p>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-3">
-            <Checkbox
-              id="invoice-reminder"
-              checked={preferences.invoiceReminderEnabled}
-              onCheckedChange={(checked) =>
-                updatePreference("invoiceReminderEnabled", checked === true)
-              }
-            />
-            <Label htmlFor="invoice-reminder" className="cursor-pointer">
-              Send email when new invoice is issued
-            </Label>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Invoice notification preferences are now managed per contact on the{" "}
+            <a
+              href="/console/billing/contacts"
+              className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+            >
+              Billing Contacts
+            </a>{" "}
+            page. Add or update contacts to control which email addresses receive
+            invoice notifications.
+          </p>
         </CardContent>
       </Card>
 
       {/* Save Button */}
       <div className="flex items-center gap-4">
-        <Button onClick={handleSave}>
-          <BellIcon className="mr-2 h-4 w-4" />
-          Save Preferences
+        <Button onClick={() => void handleSave()} disabled={!isDirty || saving}>
+          {saving ? (
+            <>
+              <Spinner className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save Preferences"
+          )}
         </Button>
         {saved && (
           <p className="text-sm text-green-600 dark:text-green-400">
             Preferences saved successfully!
           </p>
         )}
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
       </div>
-
-      {/* localStorage notice */}
-      <p className="text-xs text-muted-foreground">
-        Alert preferences are stored locally in your browser. They will not
-        persist across devices and will be lost if you clear browser data. Backend
-        integration for server-side persistence is planned.
-      </p>
     </div>
   )
 }

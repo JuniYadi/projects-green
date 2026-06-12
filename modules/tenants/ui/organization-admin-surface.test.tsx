@@ -1,19 +1,11 @@
 import { mock } from "bun:test"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
 const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})
 const mockConfirm = mock(() => true)
 
-mock.module("next/navigation", () => {
-  return {
-    useRouter: () => ({
-      replace: mockRouterReplace,
-      refresh: mockRouterRefresh,
-    }),
-    usePathname: () => "/console/organization",
-    useSearchParams: () => new URLSearchParams(),
-  }
-})
+
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
@@ -179,6 +171,12 @@ beforeEach(() => {
   mockConfirm.mockClear()
   mockConfirm.mockImplementation(() => true)
   window.confirm = mockConfirm
+  ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+    replace: mockRouterReplace,
+    refresh: mockRouterRefresh,
+    push: () => {},
+  })
+  ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console/organization")
 })
 
 afterEach(() => {

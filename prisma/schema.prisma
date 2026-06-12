@@ -524,6 +524,18 @@ enum BillingSubscriptionStatus2 {
   CANCELLED
 }
 
+enum BillingCurrency {
+  USD
+  IDR
+}
+
+enum BillingContactRole {
+  OWNER
+  FINANCE
+  ACCOUNTING
+  GENERAL
+}
+
 enum VpnProvider {
   OPENVPN
 }
@@ -624,7 +636,8 @@ model BillingAccount {
   id             String               @id @default(cuid())
   organizationId String               @unique
   tenantId       String?
-  currency       String               @default("IDR")
+  currency        String               @default("IDR")
+  preferredCurrency BillingCurrency    @default(USD)
   timezone       String               @default("UTC")
   status         BillingAccountStatus @default(ACTIVE)
   balance        Decimal              @default(0) @db.Decimal(12, 2)
@@ -639,6 +652,25 @@ model BillingAccount {
   adjustments   BillingAdjustment[]
   runs          BillingRun[]
   auditLogs     BillingAuditLog[]
+  contacts      BillingContact[]
+}
+
+model BillingContact {
+  id                 String              @id @default(cuid())
+  billingAccountId  String
+  billingAccount     BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  email              String
+  name               String?
+  role               BillingContactRole  @default(GENERAL)
+  notifyOnInvoice    Boolean             @default(true)
+  notifyOnLowBalance Boolean             @default(true)
+  notifyOnSupport    Boolean             @default(true)
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@unique([billingAccountId, email])
+  @@index([billingAccountId])
 }
 
 model BillingSubscription {

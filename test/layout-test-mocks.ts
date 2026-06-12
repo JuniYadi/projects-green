@@ -3,7 +3,7 @@ export const createNavigationMock = ({
   redirect,
 }: {
   pathname: string
-  redirect: (url: string) => unknown
+  redirect: (path: string) => void
 }) => {
   return {
     redirect,

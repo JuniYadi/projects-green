@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom"
 import { SupportTicketCreateScreen } from "./support-ticket-create-screen"
@@ -8,17 +9,6 @@ const mockRouterRefresh = mock(() => {})
 const originalFetch = globalThis.fetch
 const originalCreateObjectURL = globalThis.URL?.createObjectURL
 const originalRevokeObjectURL = globalThis.URL?.revokeObjectURL
-
-mock.module("next/navigation", () => {
-  return {
-    useRouter: () => ({
-      push: mockRouterPush,
-      refresh: mockRouterRefresh,
-      replace: () => {},
-      prefetch: async () => undefined,
-    }),
-  }
-})
 
 const jsonResponse = (body: unknown, status = 200) => {
   return new Response(JSON.stringify(body), {
@@ -56,6 +46,13 @@ const expectRedirected = () => {
 
 describe("SupportTicketCreateScreen", () => {
   beforeEach(() => {
+    (useRouter as ReturnType<typeof mock>).mockReturnValue({
+      push: mockRouterPush,
+      refresh: mockRouterRefresh,
+      replace: () => {},
+    })
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console/support-tickets")
+
     mockRouterPush.mockClear()
     mockRouterRefresh.mockClear()
 

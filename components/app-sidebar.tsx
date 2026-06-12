@@ -22,14 +22,12 @@ import {
   CreditCardIcon,
   CrosshairIcon,
   GaugeIcon,
-  GlobeIcon,
   LifebuoyIcon,
   Lightning,
   PaperPlaneTiltIcon,
-  PulseIcon,
   ReceiptIcon,
   RocketLaunchIcon,
-  Ticket,
+  GearSixIcon,
   WalletIcon,
   WhatsappLogoIcon,
 } from "@phosphor-icons/react"
@@ -114,15 +112,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
       },
-      {
-        title: "Vouchers",
-        url: localizePathname({
-          pathname: "/portal/admin/vouchers",
-          locale,
-        }),
-        icon: <Ticket />,
-        isActive: startsWithRoute(path, "/portal/admin/vouchers"),
-      },
     ],
   },
   {
@@ -138,10 +127,16 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     ],
     getNavMain: (path, locale) => [
       {
-        title: "Overview",
-        url: localizePathname({ pathname: "/portal/app", locale }),
+        title: "Deploy",
+        url: localizePathname({ pathname: "/portal/app/deploy", locale }),
         icon: <RocketLaunchIcon />,
-        isActive: path === "/portal/app",
+        isActive: path === "/portal/app/deploy",
+      },
+      {
+        title: "Manage",
+        url: localizePathname({ pathname: "/portal/app/manage", locale }),
+        icon: <GaugeIcon />,
+        isActive: startsWithRoute(path, "/portal/app/manage"),
       },
       {
         title: "Detector Control",
@@ -151,39 +146,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <CrosshairIcon />,
         isActive: startsWithRoute(path, "/portal/app/detector"),
-      },
-      {
-        title: "Events",
-        url: localizePathname({ pathname: "/portal/app/events/github", locale }),
-        icon: <PulseIcon />,
-        isActive: startsWithRoute(path, "/portal/app/events"),
-        items: [
-          {
-            title: "GitHub",
-            url: localizePathname({ pathname: "/portal/app/events/github", locale }),
-            isActive: startsWithRoute(path, "/portal/app/events/github"),
-          },
-        ],
-      },
-    ],
-  },
-  {
-    context: "vpn",
-    matches: (path) => startsWithRoute(path, "/portal/vpn"),
-    navMainLabel: "VPN",
-    getProjects: (path, locale) => [
-      {
-        name: "Back to Portal",
-        url: localizePathname({ pathname: "/portal", locale }),
-        icon: <CaretLeftIcon />,
-      },
-    ],
-    getNavMain: (path, locale) => [
-      {
-        title: "VPN Clients",
-        url: localizePathname({ pathname: "/portal/vpn", locale }),
-        icon: <GlobeIcon />,
-        isActive: path === "/portal/vpn",
       },
     ],
   },
@@ -223,26 +185,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
 
 
 const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
-  {
-    context: "vpn",
-    matches: (path) => startsWithRoute(path, "/console/vpn"),
-    navMainLabel: "VPN",
-    getProjects: (path, locale) => [
-      {
-        name: "Back to Console",
-        url: localizePathname({ pathname: "/console", locale }),
-        icon: <CaretLeftIcon />,
-      },
-    ],
-    getNavMain: (path, locale) => [
-      {
-        title: "VPN Access",
-        url: localizePathname({ pathname: "/console/vpn", locale }),
-        icon: <GlobeIcon />,
-        isActive: path === "/console/vpn",
-      },
-    ],
-  },
   {
     context: "applications",
     matches: (path) => startsWithRoute(path, "/console/app"),
@@ -364,27 +306,42 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       icon: <WhatsappLogoIcon />,
       isActive: startsWithRoute(path, "/console/whatsapp"),
     },
-    // Organization is intentionally omitted here. It lives in the top-left
-    // organization switcher dropdown (NavOrganization) to keep a single point
-    // of access and avoid duplicating the entry in the sidebar.
   ],
 })
-
-const getConsoleHubMenu = (path: string, locale: AppLocale) => {
-  const menu = getHubMenu(path, locale)
-  menu.projects.splice(2, 0, {
-    name: "VPN",
-    url: localizePathname({ pathname: "/console/vpn", locale }),
-    icon: <GlobeIcon />,
-    isActive: path === "/console/vpn",
-  })
-  return menu
-}
 
 const buildPortalNavMain = (
   pathname: string,
   locale: AppLocale
 ): AppSidebarNavItem[] => [
+  {
+    title: "Settings",
+    url: localizePathname({ pathname: "/portal/settings/members", locale }),
+    icon: <GearSixIcon />,
+    isActive: startsWithRoute(pathname, "/portal/settings"),
+    items: [
+      {
+        title: "Members",
+        url: localizePathname({ pathname: "/portal/settings/members", locale }),
+        isActive: startsWithRoute(pathname, "/portal/settings/members"),
+      },
+      {
+        title: "Invitations",
+        url: localizePathname({
+          pathname: "/portal/settings/invitations",
+          locale,
+        }),
+        isActive: startsWithRoute(pathname, "/portal/settings/invitations"),
+      },
+      {
+        title: "Ownership",
+        url: localizePathname({
+          pathname: "/portal/settings/ownership",
+          locale,
+        }),
+        isActive: startsWithRoute(pathname, "/portal/settings/ownership"),
+      },
+    ],
+  },
   {
     title: "App Hosting",
     url: localizePathname({ pathname: "/portal/app", locale }),
@@ -396,12 +353,6 @@ const buildPortalNavMain = (
     url: localizePathname({ pathname: "/portal/whatsapp/devices", locale }),
     icon: <WhatsappLogoIcon />,
     isActive: startsWithRoute(pathname, "/portal/whatsapp"),
-  },
-  {
-    title: "VPN",
-    url: localizePathname({ pathname: "/portal/vpn", locale }),
-    icon: <GlobeIcon />,
-    isActive: startsWithRoute(pathname, "/portal/vpn"),
   },
 ]
 
@@ -462,25 +413,10 @@ const buildPortalProjects = (
     isActive: startsWithRoute(pathname, PAYMENTS_PATH),
   },
   {
-    name: "VPN",
-    url: localizePathname({ pathname: "/portal/vpn", locale }),
-    icon: <GlobeIcon />,
-    isActive: startsWithRoute(pathname, "/portal/vpn"),
-  },
-  {
     name: "Invoices",
     url: localizePathname({ pathname: "/portal/invoices", locale }),
     icon: <ReceiptIcon />,
     isActive: startsWithRoute(pathname, "/portal/invoices"),
-  },
-  {
-    name: "Documentation",
-    url: localizePathname({
-      pathname: "/portal/documentations",
-      locale,
-    }),
-    icon: <BookOpenIcon />,
-    isActive: startsWithRoute(pathname, "/portal/documentations"),
   },
   {
     name: "Support Tickets",
@@ -539,7 +475,7 @@ export const resolveSidebarMenu = ({
   }
 
   return {
-    ...getConsoleHubMenu(pathname, locale),
+    ...getHubMenu(pathname, locale),
     navMainLabel: "Platform",
   }
 }

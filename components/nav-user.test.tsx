@@ -27,29 +27,8 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
   }
 })
 
-mock.module("next/navigation", () => {
-  return {
-    redirect: () => {},
-    usePathname: () => mockPathname,
-    useSearchParams: () => mockSearchParams,
-    useRouter: () => ({
-      replace: mockReplace,
-      refresh: mockRefresh,
-    }),
-  }
-})
 
-mock.module("next/navigation.js", () => {
-  return {
-    redirect: () => {},
-    usePathname: () => mockPathname,
-    useSearchParams: () => mockSearchParams,
-    useRouter: () => ({
-      replace: mockReplace,
-      refresh: mockRefresh,
-    }),
-  }
-})
+import { redirect, useRouter, usePathname, useSearchParams } from "next/navigation"
 
 describe("NavUser", () => {
   afterEach(() => {
@@ -63,6 +42,12 @@ describe("NavUser", () => {
     mockRefresh.mockClear()
     mockPathname = "/en/console"
     mockSearchParams = new URLSearchParams()
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(mockPathname)
+    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(mockSearchParams)
+    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+      replace: mockReplace,
+      refresh: mockRefresh,
+    })
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const path =
         typeof input === "string"

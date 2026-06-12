@@ -329,3 +329,116 @@ export async function getAdminAdjustments(params?: {
 
   return fetchBilling<AdjustmentsResponse>(endpoint)
 }
+
+// ─── Billing Contacts ──────────────────────────────────────────────────────────
+
+export type BillingContactDTO = {
+  id: string
+  billingAccountId: string
+  email: string
+  name: string | null
+  role: "OWNER" | "FINANCE" | "ACCOUNTING" | "GENERAL"
+  notifyOnInvoice: boolean
+  notifyOnLowBalance: boolean
+  notifyOnSupport: boolean
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type AlertPreferences = {
+  balanceThresholdEnabled: boolean
+  balanceThresholdAmount: number
+  usageThresholdEnabled: boolean
+  usageThresholdAmount: number
+}
+
+export type BillingAccountDetail = {
+  ok: true
+  id: string
+  organizationId: string
+  tenantId: string | null
+  preferredCurrency: "USD" | "IDR"
+  timezone: string
+  status: string
+  balance: number
+  createdAt: string
+  updatedAt: string
+  contacts: BillingContactDTO[]
+  alertPreferences: AlertPreferences
+}
+
+export type UpdateContactInput = {
+  name?: string | null
+  notifyOnInvoice?: boolean
+  notifyOnLowBalance?: boolean
+  notifyOnSupport?: boolean
+  isActive?: boolean
+}
+
+export type CreateContactInput = {
+  email: string
+  name?: string
+  role?: "FINANCE" | "ACCOUNTING" | "GENERAL"
+  notifyOnInvoice?: boolean
+  notifyOnLowBalance?: boolean
+  notifyOnSupport?: boolean
+}
+
+export async function getBillingAccount(): Promise<BillingAccountDetail> {
+  return fetchBilling<BillingAccountDetail>("/api/billing/account")
+}
+
+export async function addBillingContact(
+  input: CreateContactInput,
+): Promise<{ ok: true } & BillingContactDTO> {
+  return fetchBilling<{ ok: true } & BillingContactDTO>("/api/billing/contacts", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+}
+
+export async function updateBillingContact(
+  contactId: string,
+  input: UpdateContactInput,
+): Promise<{ ok: true } & BillingContactDTO> {
+  return fetchBilling<{ ok: true } & BillingContactDTO>(
+    `/api/billing/contacts/${contactId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    },
+  )
+}
+
+export async function deactivateBillingContact(
+  contactId: string,
+): Promise<{ ok: true }> {
+  return fetchBilling<{ ok: true }>(
+    `/api/billing/contacts/${contactId}`,
+    { method: "DELETE" },
+  )
+}
+
+export async function updateBillingCurrency(
+  preferredCurrency: "USD" | "IDR",
+): Promise<{ ok: true; preferredCurrency: "USD" | "IDR" }> {
+  return fetchBilling<{ ok: true; preferredCurrency: "USD" | "IDR" }>(
+    "/api/billing/currency",
+    {
+      method: "PATCH",
+      body: JSON.stringify({ preferredCurrency }),
+    },
+  )
+}
+
+export type AlertPreferencesInput = Partial<AlertPreferences>
+
+export async function updateBillingAlerts(
+  input: AlertPreferencesInput,
+): Promise<BillingAccountDetail> {
+  return fetchBilling<BillingAccountDetail>("/api/billing/alerts", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  })
+}

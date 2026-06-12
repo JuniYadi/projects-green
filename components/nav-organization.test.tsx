@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 
 import { NavOrganization } from "@/components/nav-organization"
 import { SidebarProvider } from "@/components/ui/sidebar"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
 const mockSwitchToOrganization = mock(async () => {})
 const mockReplace = mock(() => {})
@@ -28,27 +29,8 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
   }
 })
 
-mock.module("next/navigation", () => {
-  return {
-    usePathname: () => mockPathname,
-    useSearchParams: () => mockSearchParams,
-    useRouter: () => ({
-      replace: mockReplace,
-      refresh: mockRefresh,
-    }),
-  }
-})
 
-mock.module("next/navigation.js", () => {
-  return {
-    usePathname: () => mockPathname,
-    useSearchParams: () => mockSearchParams,
-    useRouter: () => ({
-      replace: mockReplace,
-      refresh: mockRefresh,
-    }),
-  }
-})
+
 
 describe("NavOrganization", () => {
   afterEach(() => {
@@ -62,6 +44,12 @@ describe("NavOrganization", () => {
     mockRefresh.mockClear()
     mockPathname = "/en/console/organization"
     mockSearchParams = new URLSearchParams("tab=members")
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(mockPathname)
+    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(mockSearchParams)
+    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+      replace: mockReplace,
+      refresh: mockRefresh,
+    })
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const path =
         typeof input === "string"

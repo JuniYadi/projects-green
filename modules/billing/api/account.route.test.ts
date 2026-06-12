@@ -30,7 +30,7 @@ describe("GET /account - JIT upsert", () => {
       id: "acc-1",
       organizationId: "org_123",
       balance: new Decimal(100_000),
-      currency: "USD",
+      preferredCurrency: "USD",
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -52,7 +52,7 @@ describe("GET /account - JIT upsert", () => {
       id: "acc-1",
       organizationId: "org_123",
       balance: new Decimal(500000),
-      currency: "USD",
+      preferredCurrency: "USD",
       createdAt: new Date("2026-05-01"),
       updatedAt: new Date(),
     }
@@ -121,7 +121,7 @@ describe("GET /account - JIT upsert", () => {
       id: "acc-1",
       organizationId: "org_123",
       balance: new Decimal(500000),
-      currency: "USD",
+      preferredCurrency: "USD",
       createdAt: new Date("2026-05-01"),
       updatedAt: new Date(),
     }
@@ -149,7 +149,7 @@ describe("GET /account - JIT upsert", () => {
       id: "acc-3",
       organizationId: "org_789",
       balance: new Decimal(100_000),
-      currency: "IDR",
+      preferredCurrency: "IDR",
       createdAt: new Date(), // today = diffDays === 0
       updatedAt: new Date(),
     }
@@ -172,7 +172,7 @@ describe("GET /account - JIT upsert", () => {
       id: "acc-4",
       organizationId: "org_789",
       balance: new Decimal(100_000),
-      currency: "IDR",
+      preferredCurrency: "IDR",
       createdAt: yesterday,
       updatedAt: new Date(),
     }
@@ -192,7 +192,7 @@ describe("GET /account - JIT upsert", () => {
       id: "acc-2",
       organizationId: "org_456",
       balance: new Decimal(0),
-      currency: "IDR",
+      preferredCurrency: "IDR",
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -214,7 +214,7 @@ describe("GET /account - JIT upsert", () => {
       id: "acc-5",
       organizationId: "org_111",
       balance: new Decimal(5000), // below MINIMUM_BALANCE_WARN_IDR (10_000)
-      currency: "IDR",
+      preferredCurrency: "IDR",
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -236,7 +236,7 @@ describe("GET /account - JIT upsert", () => {
       id: "acc-6",
       organizationId: "org_222",
       balance: new Decimal(9999999),
-      currency: "IDR",
+      preferredCurrency: "IDR",
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -260,7 +260,7 @@ describe("GET /account - JIT upsert", () => {
       id: "acc-7",
       organizationId: "org_333",
       balance: new Decimal(100_000),
-      currency: "IDR",
+      preferredCurrency: "IDR",
       createdAt: threeDaysAgo,
       updatedAt: new Date(),
     }

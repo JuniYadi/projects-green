@@ -411,7 +411,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
       where: { organizationId: this.organizationId },
       create: {
         organizationId: this.organizationId,
-        currency: "USD",
+        preferredCurrency: "USD",
         timezone: "UTC",
         status: "ACTIVE",
         metadataJson: {

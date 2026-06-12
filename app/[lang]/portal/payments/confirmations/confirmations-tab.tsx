@@ -1,13 +1,14 @@
 "use client"
 
-import type { ColumnDef } from "@tanstack/react-table"
-import { useCallback, useEffect, useMemo, useState } from "react"
-
-import { DataTable } from "@/components/data-table"
-import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useCallback, useEffect, useState, useMemo } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 
 interface PaymentConfirmation {
@@ -32,11 +32,6 @@ interface PaymentConfirmation {
   submittedAt: string
   notes?: string | null
 }
-
-type ConfirmationsRequestState =
-  | { status: "loading" }
-  | { status: "success"; data: PaymentConfirmation[] }
-  | { status: "error"; message: string }
 
 const STATUS_VARIANTS: Record<
   PaymentConfirmation["status"],
@@ -89,6 +84,13 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
+type ConfirmationsRequestState =
+  | { status: "loading" }
+  | { status: "success"; data: PaymentConfirmation[] }
+  | { status: "error"; message: string }
+
+
 
 export function ConfirmationsTab() {
   const [state, setState] = useState<ConfirmationsRequestState>({
@@ -267,12 +269,7 @@ export function ConfirmationsTab() {
       <div className="rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
         {state.message}
         <div className="mt-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => void fetchConfirmations()}
-          >
+          <Button type="button" size="sm" variant="outline" onClick={() => void fetchConfirmations()}>
             Retry
           </Button>
         </div>

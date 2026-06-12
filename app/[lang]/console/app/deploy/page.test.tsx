@@ -7,12 +7,6 @@ mock.module("@/modules/deploy/ui/deploy-wizard", () => {
   }
 })
 
-mock.module("next/navigation", () => {
-  return {
-    usePathname: () => "/console/app/deploy",
-    useParams: () => ({ lang: "en" }),
-  }
-})
 
 describe("DeployPage", () => {
   it("renders deploy wizard", async () => {

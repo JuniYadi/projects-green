@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { render, act } from "@testing-library/react"
 
 const mockReplace = mock(() => {})
@@ -29,21 +30,14 @@ describe("ThunderAiHelpDrawer", () => {
     globalThis.fetch = mockFetch
     currentParams = ""
 
-    mock.module("next/navigation", () => ({
-      useRouter: () => ({
-        replace: mockReplace,
-      }),
-      usePathname: () => "/en/console",
-      useSearchParams: () => new URLSearchParams(currentParams),
-    }))
 
-    mock.module("next/navigation.js", () => ({
-      useRouter: () => ({
-        replace: mockReplace,
-      }),
-      usePathname: () => "/en/console",
-      useSearchParams: () => new URLSearchParams(currentParams),
-    }))
+    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+      replace: mockReplace,
+    })
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console")
+    ;(useSearchParams as ReturnType<typeof mock>).mockImplementation(
+      () => new URLSearchParams(currentParams)
+    )
 
     const mod = await import("./thunder-ai-help-drawer")
     ThunderAiHelpDrawer = mod.ThunderAiHelpDrawer

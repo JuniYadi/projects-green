@@ -1,14 +1,10 @@
 "use client"
 
-import type { ColumnDef } from "@tanstack/react-table"
-
-import { DataTable } from "@/components/data-table"
-import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Toggle } from "@/components/ui/toggle"
 import {
@@ -19,6 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
 
 interface PaymentGateway {
   id: string
@@ -170,7 +169,7 @@ export function GatewaysTab() {
         ),
       },
     ],
-    [togglingId]
+    [togglingId, providers]
   )
 
   const fetchGateways = useCallback(async () => {
@@ -529,24 +528,32 @@ export function GatewaysTab() {
         )}
 
         {!editingGateway && (
-          <DataTable
-            columns={gatewayColumns}
-            data={gateways}
-            searchPlaceholder="Filter gateways..."
-            searchableColumns={["gateway", "type", "currencies", "status"]}
-            facetFilters={[
-              {
-                columnId: "status",
-                label: "Status",
-                allLabel: "All status",
-                options: [
-                  { label: "Active", value: "active" },
-                  { label: "Inactive", value: "inactive" },
-                ],
-              },
-            ]}
-            emptyMessage="No payment gateways match your filters."
-          />
+          <>
+            {gateways.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No payment gateways configured yet.
+              </div>
+            ) : (
+              <DataTable
+                columns={gatewayColumns}
+                data={gateways}
+                searchPlaceholder="Filter gateways..."
+                searchableColumns={["gateway", "type", "currencies", "status"]}
+                facetFilters={[
+                  {
+                    columnId: "status",
+                    label: "Status",
+                    allLabel: "All status",
+                    options: [
+                      { label: "Active", value: "active" },
+                      { label: "Inactive", value: "inactive" },
+                    ],
+                  },
+                ]}
+                emptyMessage="No payment gateways match your filters."
+              />
+            )}
+          </>
         )}
       </CardContent>
     </Card>
