@@ -61,6 +61,43 @@ const authHandler = handleAuth({
       return NextResponse.redirect(verifyUrl)
     }
 
+    if (
+      code === "organization_selection_required" &&
+      pendingAuthenticationToken
+    ) {
+      const selectOrgUrl = new URL("/auth/select-organization", request.url)
+      selectOrgUrl.searchParams.set(
+        "pendingAuthenticationToken",
+        pendingAuthenticationToken
+      )
+
+      // Forward rawData so the org selection page can render the org list
+      // without an extra WorkOS API call. Contains: { user, organizations }
+      const rawData =
+        hasErrorObject && "rawData" in error && error.rawData
+          ? (error.rawData as {
+              user?: Record<string, unknown>
+              organizations?: Array<{ id: string; name: string }>
+            })
+          : undefined
+
+      if (rawData?.organizations) {
+        selectOrgUrl.searchParams.set(
+          "organizations",
+          JSON.stringify(rawData.organizations)
+        )
+      }
+
+      if (rawData?.user?.email) {
+        selectOrgUrl.searchParams.set(
+          "email",
+          (rawData.user.email as string) ?? ""
+        )
+      }
+
+      return NextResponse.redirect(selectOrgUrl)
+    }
+
     // Extract user-friendly error message from WorkOS OauthException
     let errorMessage = "Authentication failed"
     if (error instanceof Error) {

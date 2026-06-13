@@ -19,20 +19,18 @@
 
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
-import { VpnBillingService } from "@/modules/vpn/billing/vpn-billing.service"
 import { VpnRenewalService } from "@/modules/vpn/billing/vpn-renewal.service"
 
 async function main() {
   console.info("[vpn-renewal] Starting VPN monthly renewal cycle...")
 
   const transactions = new BillingTransactionService(prisma)
-  const vpnBilling = new VpnBillingService(prisma, transactions)
-  const renewalService = new VpnRenewalService(prisma, vpnBilling)
+  const renewalService = new VpnRenewalService(prisma, transactions)
 
   const result = await renewalService.renewDueSubscriptions()
 
   console.info(
-    `[vpn-renewal] Complete: ${result.renewed} renewed, ${result.suspended} suspended, ${result.errors} errors`,
+    `[vpn-renewal] Complete: ${result.renewed} renewed, ${result.retried} retried, ${result.suspended} suspended, ${result.expired} expired, ${result.errors} errors`,
   )
 
   if (result.errors > 0) {

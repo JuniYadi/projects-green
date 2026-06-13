@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient, type VpnProtocol } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
-import { encryptVpnConfig } from "@/modules/vpn/vpn-crypto"
+import { encryptVpnConfig, encryptProxyPassword } from "@/modules/vpn/vpn-crypto"
 import {
   OpenVpnSshAdapter,
   openVpnSshEnvFromProcessEnv,
@@ -10,7 +10,6 @@ import {
 import { WireGuardSshAdapter } from "./wireguard-ssh-adapter"
 import { ProxySshAdapter } from "./proxy-ssh-adapter"
 import type { SshTarget } from "./vpn-server-ssh-executor"
-import { hashProxyPassword } from "./proxy-password"
 
 type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer">
 
@@ -121,7 +120,7 @@ export class VpnProvisioningService {
       }
       case "PROXY": {
         const { password } = await this.proxy.createUser(target, username)
-        return { password: hashProxyPassword(password) }
+        return { password: encryptProxyPassword(password) }
       }
       default: {
         const exhaustive: never = protocol

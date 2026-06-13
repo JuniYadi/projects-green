@@ -46,6 +46,13 @@ export class VpnInsufficientBalanceError extends Error {
   }
 }
 
+export class VpnSubscriptionNotFoundError extends Error {
+  constructor(message = "Subscription not found.") {
+    super(message)
+    this.name = "VpnSubscriptionNotFoundError"
+  }
+}
+
 type PrismaLike = PrismaClient
 
 /** Enabled protocols on a server, derived from its feature flags. */
@@ -183,6 +190,8 @@ export class VpnSubscriptionService {
         organizationId: input.organizationId,
         packageId: input.packageId,
         status: "SUSPENDED",
+        priceLocked: pkg.price,
+        currency: pkg.currency,
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
         serverAccounts: {
@@ -238,6 +247,49 @@ export class VpnSubscriptionService {
     }
 
     return activated
+  }
+
+  /**
+   * Cancel a subscription at period end (no refund, Story 16). The customer
+   * keeps access until `currentPeriodEnd`; the renewal worker then lets it
+   * lapse instead of charging again.
+   */
+  async cancelAtPeriodEnd(
+    organizationId: string,
+    id: string
+  ): Promise<VpnSubscriptionWithAccounts> {
+    const existing = await this.prisma.vpnSubscription.findFirst({
+      where: { id, organizationId },
+    })
+    if (!existing) throw new VpnSubscriptionNotFoundError()
+
+    return this.prisma.vpnSubscription.update({
+      where: { id: existing.id },
+      data: { cancelAtPeriodEnd: true },
+      include: subscriptionInclude,
+    })
+  }
+
+  /**
+   * Billing info for a subscription: locked price, currency, period window,
+   * and whether a cancellation is pending. Org-scoped.
+   */
+  async getBillingInfo(organizationId: string, id: string) {
+    const sub = await this.prisma.vpnSubscription.findFirst({
+      where: { id, organizationId },
+      select: {
+        id: true,
+        status: true,
+        priceLocked: true,
+        currency: true,
+        currentPeriodStart: true,
+        currentPeriodEnd: true,
+        cancelAtPeriodEnd: true,
+        renewalFailedAt: true,
+      },
+    })
+    if (!sub) throw new VpnSubscriptionNotFoundError()
+    return sub
   }
 }
 

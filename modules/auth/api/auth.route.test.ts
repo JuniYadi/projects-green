@@ -20,6 +20,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new Error("not used")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -60,6 +63,9 @@ describe("authRoutes", () => {
           throw new Error("not used")
         },
         async completeEmailVerification() {
+          throw new Error("not used")
+        },
+        async completeOrganizationSelection() {
           throw new Error("not used")
         },
         async signup() {
@@ -107,6 +113,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new Error("not used")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -146,6 +155,9 @@ describe("authRoutes", () => {
           )
         },
         async completeEmailVerification() {
+          throw new Error("not used")
+        },
+        async completeOrganizationSelection() {
           throw new Error("not used")
         },
         async signup() {
@@ -195,6 +207,9 @@ describe("authRoutes", () => {
             "Invalid or expired verification code."
           )
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -233,6 +248,9 @@ describe("authRoutes", () => {
           throw new Error("not used")
         },
         async completeEmailVerification() {
+          throw new Error("not used")
+        },
+        async completeOrganizationSelection() {
           throw new Error("not used")
         },
         async signup() {
@@ -284,6 +302,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new Error("not used")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -329,6 +350,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new Error("not used")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -362,6 +386,9 @@ describe("authRoutes", () => {
           throw new MissingAuthConfigurationError()
         },
         async completeEmailVerification() {
+          throw new Error("not used")
+        },
+        async completeOrganizationSelection() {
           throw new Error("not used")
         },
         async signup() {
@@ -399,6 +426,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new Error("not used")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -431,6 +461,9 @@ describe("authRoutes", () => {
           throw new Error("Unexpected")
         },
         async completeEmailVerification() {
+          throw new Error("not used")
+        },
+        async completeOrganizationSelection() {
           throw new Error("not used")
         },
         async signup() {
@@ -471,6 +504,9 @@ describe("authRoutes", () => {
             headers: { "Content-Type": "application/json" },
           })
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -506,6 +542,9 @@ describe("authRoutes", () => {
         },
         async completeEmailVerification() {
           throw new MissingAuthConfigurationError()
+        },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
         },
         async signup() {
           throw new Error("not used")
@@ -545,6 +584,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new AuthValidationError("Invalid code")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -582,6 +624,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new Error("Unexpected")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -618,6 +663,9 @@ describe("authRoutes", () => {
           throw new Error("not used")
         },
         async completeEmailVerification() {
+          throw new Error("not used")
+        },
+        async completeOrganizationSelection() {
           throw new Error("not used")
         },
         async signup() {
@@ -661,6 +709,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new Error("not used")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new AuthValidationError("Invalid email")
         },
@@ -698,6 +749,9 @@ describe("authRoutes", () => {
           throw new Error("not used")
         },
         async completeEmailVerification() {
+          throw new Error("not used")
+        },
+        async completeOrganizationSelection() {
           throw new Error("not used")
         },
         async signup() {
@@ -740,6 +794,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new Error("not used")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -779,6 +836,9 @@ describe("authRoutes", () => {
         async completeEmailVerification() {
           throw new Error("not used")
         },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
         async signup() {
           throw new Error("not used")
         },
@@ -814,6 +874,9 @@ describe("authRoutes", () => {
           throw new Error("not used")
         },
         async completeEmailVerification() {
+          throw new Error("not used")
+        },
+        async completeOrganizationSelection() {
           throw new Error("not used")
         },
         async signup() {

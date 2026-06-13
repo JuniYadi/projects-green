@@ -1,81 +1,76 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 
-const mockGetVpnStatus = mock()
-const mockActivateVpnSubscription = mock()
+const mockListVpnSubscriptions = mock()
+const mockListVpnPackages = mock()
 
 mock.module("@/lib/vpn-client", () => ({
-  getVpnStatus: mockGetVpnStatus,
-  activateVpnSubscription: mockActivateVpnSubscription,
+  listVpnSubscriptions: mockListVpnSubscriptions,
+  listVpnPackages: mockListVpnPackages,
+  getVpnPackage: mock(),
+  purchaseVpnPackage: mock(),
+  cancelVpnSubscription: mock(),
+  getVpnProxyCredentials: mock(),
+  vpnConfigDownloadUrl: (s: string, a: string) =>
+    `/api/vpn/subscriptions/${s}/servers/${a}/config`,
 }))
-
 
 import ConsoleVpnPage from "./page"
 
 beforeEach(() => {
-  mockGetVpnStatus.mockReset()
-  mockActivateVpnSubscription.mockReset()
+  mockListVpnSubscriptions.mockReset()
+  mockListVpnPackages.mockReset()
+  mockListVpnPackages.mockResolvedValue([])
 })
 
 describe("ConsoleVpnPage", () => {
-  it("shows activate state when no VPN clients exist", async () => {
-    mockGetVpnStatus.mockResolvedValue({ ok: true, clients: [] })
+  it("shows available packages heading when no subscriptions exist", async () => {
+    mockListVpnSubscriptions.mockResolvedValue([])
 
     const view = render(<ConsoleVpnPage />)
 
     await waitFor(() => {
-      expect(view.getByText("VPN Indonesia")).toBeInTheDocument()
+      expect(view.getByText("VPN Packages")).toBeInTheDocument()
     })
-    expect(view.getByText("Activate VPN")).toBeInTheDocument()
-    expect(view.getByText(/Rp25\.000/)).toBeInTheDocument()
+    expect(view.getByText("Available packages")).toBeInTheDocument()
+    expect(view.queryByText("My VPN Subscriptions")).not.toBeInTheDocument()
   })
 
-  it("shows active state with download button when clients exist", async () => {
-    mockGetVpnStatus.mockResolvedValue({
-      ok: true,
-      clients: [
-        {
-          id: "vpn_1",
-          clientName: "org_org1_sub1",
-          status: "ACTIVE",
-          regionCode: "INDONESIA",
-          currentPeriodStart: "2026-06-01T00:00:00.000Z",
-          currentPeriodEnd: "2026-07-01T00:00:00.000Z",
-        },
-      ],
-    })
+  it("renders the My VPN Subscriptions section with server accounts", async () => {
+    mockListVpnSubscriptions.mockResolvedValue([
+      {
+        id: "sub_1",
+        organizationId: "org_1",
+        packageId: "pkg_1",
+        status: "ACTIVE",
+        currentPeriodStart: "2026-06-01T00:00:00.000Z",
+        currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+        serverAccounts: [
+          {
+            id: "sa_1",
+            serverId: "srv_1",
+            serverName: "ID-01",
+            protocol: "OPENVPN",
+            username: "vpn-org1-srv1-openvpn",
+            provisioningStatus: "ACTIVE",
+            failureReason: null,
+            hasConfig: true,
+            hasCredentials: false,
+            createdAt: "2026-06-01T00:00:00.000Z",
+            updatedAt: "2026-06-01T00:00:00.000Z",
+          },
+        ],
+      },
+    ])
 
     const view = render(<ConsoleVpnPage />)
 
     await waitFor(() => {
-      expect(view.getByText("VPN Status")).toBeInTheDocument()
+      expect(view.getByText("My VPN Subscriptions")).toBeInTheDocument()
     })
-    expect(view.getByText("Active")).toBeInTheDocument()
-    expect(view.getByText("Download .ovpn")).toBeInTheDocument()
-    expect(view.queryByText("Activate VPN")).not.toBeInTheDocument()
-  })
-
-  it("shows insufficient balance error with top-up link", async () => {
-    mockGetVpnStatus.mockResolvedValue({ ok: true, clients: [] })
-    mockActivateVpnSubscription.mockRejectedValue(
-      Object.assign(new Error("Insufficient balance"), {
-        error: "INSUFFICIENT_BALANCE",
-        topupUrl: "/console/billing/topup",
-      }),
-    )
-    const user = userEvent.setup()
-
-    const view = render(<ConsoleVpnPage />)
-
-    await waitFor(() => {
-      expect(view.getByText("Activate VPN")).toBeInTheDocument()
-    })
-    await user.click(view.getByText("Activate VPN"))
-
-    await waitFor(() => {
-      expect(view.getByText("Insufficient balance")).toBeInTheDocument()
-    })
-    expect(view.getByText("Top up balance")).toBeInTheDocument()
+    expect(view.getByText("ID-01")).toBeInTheDocument()
+    expect(view.getByText("Add another package")).toBeInTheDocument()
   })
 })

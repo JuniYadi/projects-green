@@ -82,7 +82,6 @@ import { monitorActiveDeployments } from "@/modules/deploy/deploy-monitor.servic
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { AppHostingBillingService } from "@/modules/deploy/billing/app-hosting-billing.service"
 import { WhatsappBillingService } from "@/modules/whatsapp/billing/whatsapp-billing.service"
-import { VpnBillingService } from "@/modules/vpn/billing/vpn-billing.service"
 import { VpnRenewalService } from "@/modules/vpn/billing/vpn-renewal.service"
 import {
   VpnProvisioningJob,
@@ -634,13 +633,12 @@ intervals.push(whatsappBillingInterval)
 const vpnRenewalInterval = setInterval(async () => {
   try {
     const transactions = new BillingTransactionService(prisma)
-    const vpnBilling = new VpnBillingService(prisma, transactions)
-    const renewalService = new VpnRenewalService(prisma, vpnBilling)
+    const renewalService = new VpnRenewalService(prisma, transactions)
 
     const result = await renewalService.renewDueSubscriptions()
 
     console.info(
-      `[vpn-renewal] renewed=${result.renewed} suspended=${result.suspended} errors=${result.errors}`,
+      `[vpn-renewal] renewed=${result.renewed} retried=${result.retried} suspended=${result.suspended} expired=${result.expired} errors=${result.errors}`,
     )
   } catch (error) {
     console.error("[vpn-renewal] cycle failed:", error)

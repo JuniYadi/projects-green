@@ -23,6 +23,7 @@ import { usersRoutes } from "@/modules/users/api/users.route"
 import { vpnRoutes } from "@/modules/vpn/api"
 import { adminVpnRoutes } from "@/modules/vpn/admin/api"
 import {
+  vpnPackageCatalogRoutes,
   vpnSubscriptionRoutes,
   adminVpnSubscriptionRoutes,
 } from "@/modules/vpn/subscriptions/api"
@@ -109,6 +110,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(usersRoutes)
   .use(vpnRoutes)
   .use(adminVpnRoutes)
+  .use(vpnPackageCatalogRoutes)
   .use(vpnSubscriptionRoutes)
   .use(adminVpnSubscriptionRoutes)
   .use(voucherRoutes)

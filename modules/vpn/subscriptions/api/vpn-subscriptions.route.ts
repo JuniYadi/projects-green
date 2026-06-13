@@ -4,12 +4,16 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
-import { decryptVpnConfig } from "@/modules/vpn/vpn-crypto"
+import {
+  decryptVpnConfig,
+  decryptProxyPassword,
+} from "@/modules/vpn/vpn-crypto"
 
 import {
   VpnDuplicateSubscriptionError,
   VpnInsufficientBalanceError,
   VpnPackageUnavailableError,
+  VpnSubscriptionNotFoundError,
   VpnSubscriptionService,
 } from "../vpn-subscription.service"
 import { toVpnSubscriptionDTO } from "../vpn-subscription.dto"
@@ -134,9 +138,11 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           ok: true as const,
           data: {
             username: account.username,
-            // Password is hashed at rest; it is shown once at provisioning
-            // time via the worker and cannot be recovered here.
-            passwordAvailable: account.password !== null,
+            // Proxy password is encrypted (reversible) at rest so the
+            // customer can view it on demand (Story 17).
+            password: account.password
+              ? decryptProxyPassword(account.password)
+              : null,
           },
         }
       }
@@ -155,6 +161,59 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           return { ok: true as const, data: toVpnSubscriptionDTO(sub) }
         } catch (error) {
           return toPurchaseError(set, error)
+        }
+      },
+      { body: t.Optional(t.Object({})) }
+    )
+    .get("/vpn/subscriptions/:id/billing", async ({ params, set }) => {
+      const ctx = await resolveOrg(set)
+      if ("error" in ctx) return ctx.error
+      try {
+        const info = await service.getBillingInfo(ctx.organizationId, params.id)
+        return {
+          ok: true as const,
+          data: {
+            id: info.id,
+            status: info.status,
+            price: info.priceLocked.toString(),
+            currency: info.currency,
+            currentPeriodStart: info.currentPeriodStart.toISOString(),
+            currentPeriodEnd: info.currentPeriodEnd.toISOString(),
+            cancelAtPeriodEnd: info.cancelAtPeriodEnd,
+            renewalFailedAt: info.renewalFailedAt
+              ? info.renewalFailedAt.toISOString()
+              : null,
+          },
+        }
+      } catch (error) {
+        if (error instanceof VpnSubscriptionNotFoundError) return notFound(set)
+        set.status = 500
+        return {
+          ok: false as const,
+          error: "INTERNAL_ERROR" as const,
+          message: "Something went wrong while loading billing info.",
+        }
+      }
+    })
+    .post(
+      "/vpn/subscriptions/:id/cancel",
+      async ({ params, set }) => {
+        const ctx = await resolveOrg(set)
+        if ("error" in ctx) return ctx.error
+        try {
+          const sub = await service.cancelAtPeriodEnd(
+            ctx.organizationId,
+            params.id
+          )
+          return { ok: true as const, data: toVpnSubscriptionDTO(sub) }
+        } catch (error) {
+          if (error instanceof VpnSubscriptionNotFoundError) return notFound(set)
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_ERROR" as const,
+            message: "Something went wrong while cancelling the subscription.",
+          }
         }
       },
       { body: t.Optional(t.Object({})) }

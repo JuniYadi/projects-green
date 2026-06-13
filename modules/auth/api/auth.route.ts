@@ -52,6 +52,17 @@ const emailVerificationCompleteSchema = z.object({
     .min(1, "Missing pending authentication token."),
 })
 
+const organizationSelectionCompleteSchema = z.object({
+  organizationId: z
+    .string()
+    .trim()
+    .min(1, "Please select an organization."),
+  pendingAuthenticationToken: z
+    .string()
+    .trim()
+    .min(1, "Missing pending authentication token."),
+})
+
 export const createAuthRoutes = (service: AuthService = authService) =>
   new Elysia()
     .post(
@@ -200,6 +211,60 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       },
       {
         body: emailVerificationCompleteSchema,
+      }
+    )
+    .post(
+      "/auth/organization-selection/complete",
+      async ({ body, request, set }) => {
+        try {
+          return await service.completeOrganizationSelection({
+            organizationId: body.organizationId,
+            pendingAuthenticationToken: body.pendingAuthenticationToken,
+            requestUrl: request.url,
+          })
+        } catch (error) {
+          if (error instanceof MissingAuthConfigurationError) {
+            set.status = 500
+            return {
+              ok: false as const,
+              error: "INTERNAL_SERVER_ERROR" as const,
+              message: "Missing WorkOS auth configuration.",
+            }
+          }
+
+          if (error instanceof InvalidAuthCredentialsError) {
+            set.status = 401
+            return {
+              ok: false as const,
+              error: "INVALID_CREDENTIALS" as const,
+              message: error.message,
+            }
+          }
+
+          if (error instanceof AuthValidationError) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VALIDATION_ERROR" as const,
+              message: error.message,
+            }
+          }
+
+          console.error(
+            `[auth] /auth/organization-selection/complete —`,
+            error instanceof Error ? error.stack ?? error.message : error
+          )
+
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_SERVER_ERROR" as const,
+            message: "Unable to complete authentication right now.",
+          }
+        }
+      },
+      {
+        body: organizationSelectionCompleteSchema,
       }
     )
     .post(

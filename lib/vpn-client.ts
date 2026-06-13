@@ -47,6 +47,61 @@ export type VpnApiErrorResponse = {
   topupUrl?: string
 }
 
+// ── Package catalog + subscription (Stories 16/17) ──────────────────────
+
+export type VpnPackageSummary = {
+  id: string
+  name: string
+  description: string | null
+  price: string
+  currency: string
+  serverCount: number
+  protocolCount: number
+  regions: string[]
+}
+
+export type VpnPackageServer = {
+  serverId: string
+  name: string
+  region: { name: string; slug: string; countryCode: string }
+  protocols: string[]
+}
+
+export type VpnPackageDetail = VpnPackageSummary & {
+  servers: VpnPackageServer[]
+}
+
+export type VpnServerAccount = {
+  id: string
+  serverId: string
+  serverName: string
+  protocol: "OPENVPN" | "WIREGUARD" | "PROXY"
+  username: string
+  provisioningStatus: "PENDING" | "PROVISIONING" | "ACTIVE" | "FAILED" | "REVOKED"
+  failureReason: string | null
+  hasConfig: boolean
+  hasCredentials: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type VpnSubscription = {
+  id: string
+  organizationId: string
+  packageId: string
+  status: "ACTIVE" | "SUSPENDED" | "EXPIRED"
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  serverAccounts: VpnServerAccount[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type VpnProxyCredentials = {
+  username: string
+  password: string | null
+}
+
 async function fetchVpn<T>(
   endpoint: string,
   options?: RequestInit,
@@ -95,4 +150,64 @@ export async function revokeVpnClient(
 
 export async function getVpnAdminHealth(): Promise<VpnAdminHealthResponse> {
   return fetchVpn<VpnAdminHealthResponse>("/api/vpn/admin/health")
+}
+
+// ── Package catalog + subscription helpers (Stories 16/17) ──────────────
+
+export async function listVpnPackages(): Promise<VpnPackageSummary[]> {
+  const res = await fetchVpn<{ ok: true; data: VpnPackageSummary[] }>(
+    "/api/vpn/packages"
+  )
+  return res.data
+}
+
+export async function getVpnPackage(id: string): Promise<VpnPackageDetail> {
+  const res = await fetchVpn<{ ok: true; data: VpnPackageDetail }>(
+    `/api/vpn/packages/${id}`
+  )
+  return res.data
+}
+
+export async function purchaseVpnPackage(
+  id: string
+): Promise<VpnSubscription> {
+  const res = await fetchVpn<{ ok: true; data: VpnSubscription }>(
+    `/api/vpn/packages/${id}/purchase`,
+    { method: "POST", body: JSON.stringify({}) }
+  )
+  return res.data
+}
+
+export async function listVpnSubscriptions(): Promise<VpnSubscription[]> {
+  const res = await fetchVpn<{ ok: true; data: VpnSubscription[] }>(
+    "/api/vpn/subscriptions"
+  )
+  return res.data
+}
+
+export async function cancelVpnSubscription(
+  id: string
+): Promise<VpnSubscription> {
+  const res = await fetchVpn<{ ok: true; data: VpnSubscription }>(
+    `/api/vpn/subscriptions/${id}/cancel`,
+    { method: "POST", body: JSON.stringify({}) }
+  )
+  return res.data
+}
+
+export async function getVpnProxyCredentials(
+  subscriptionId: string,
+  serverAccountId: string
+): Promise<VpnProxyCredentials> {
+  const res = await fetchVpn<{ ok: true; data: VpnProxyCredentials }>(
+    `/api/vpn/subscriptions/${subscriptionId}/servers/${serverAccountId}/credentials`
+  )
+  return res.data
+}
+
+export function vpnConfigDownloadUrl(
+  subscriptionId: string,
+  serverAccountId: string
+): string {
+  return `/api/vpn/subscriptions/${subscriptionId}/servers/${serverAccountId}/config`
 }
