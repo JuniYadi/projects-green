@@ -30,9 +30,9 @@ import {
   type VpnRegionItem,
 } from "./vpn-admin-client"
 
-type FormState = { name: string; flagEmoji: string; isActive: boolean }
+type FormState = { name: string; countryCode: string; isActive: boolean }
 
-const EMPTY_FORM: FormState = { name: "", flagEmoji: "", isActive: true }
+const EMPTY_FORM: FormState = { name: "", countryCode: "", isActive: true }
 
 export function RegionsTable() {
   const [regions, setRegions] = useState<VpnRegionItem[]>([])
@@ -75,7 +75,7 @@ export function RegionsTable() {
     setEditing(region)
     setForm({
       name: region.name,
-      flagEmoji: region.flagEmoji,
+      countryCode: region.countryCode,
       isActive: region.isActive,
     })
     setFormError(null)
@@ -163,7 +163,7 @@ export function RegionsTable() {
             ) : (
               regions.map((region) => (
                 <TableRow key={region.id}>
-                  <TableCell className="text-xl">{region.flagEmoji}</TableCell>
+                  <TableCell className="font-mono text-sm uppercase">{region.countryCode}</TableCell>
                   <TableCell className="font-medium">{region.name}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {region.slug}
@@ -221,14 +221,15 @@ export function RegionsTable() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="region-flag">Flag emoji</Label>
+              <Label htmlFor="region-country">Country code</Label>
               <Input
-                id="region-flag"
-                value={form.flagEmoji}
+                id="region-country"
+                value={form.countryCode}
                 onChange={(e) =>
-                  setForm({ ...form, flagEmoji: e.target.value })
+                  setForm({ ...form, countryCode: e.target.value })
                 }
-                placeholder="🇮🇩"
+                placeholder="id"
+                maxLength={8}
               />
             </div>
             <label className="flex items-center gap-2 text-sm">

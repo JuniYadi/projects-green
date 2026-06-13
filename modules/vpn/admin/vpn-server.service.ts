@@ -10,7 +10,7 @@ import type {
 type PrismaLike = Pick<PrismaClient, "vpnServer" | "vpnRegion" | "vpnSshKey">
 
 const serverInclude = {
-  region: { select: { id: true, name: true, slug: true, flagEmoji: true } },
+  region: { select: { id: true, name: true, slug: true, countryCode: true } },
   sshKey: { select: { id: true, name: true, fingerprint: true } },
 } satisfies Prisma.VpnServerInclude
 

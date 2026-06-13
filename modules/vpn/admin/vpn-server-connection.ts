@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client"
 
 type VpnServerWithRelations = Prisma.VpnServerGetPayload<{
   include: {
-    region: { select: { id: true; name: true; slug: true; flagEmoji: true } }
+    region: { select: { id: true; name: true; slug: true; countryCode: true } }
     sshKey: { select: { id: true; name: true; fingerprint: true } }
   }
 }>

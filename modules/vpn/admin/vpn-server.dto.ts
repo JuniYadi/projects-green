@@ -11,7 +11,7 @@ export type VpnServerDTO = {
   sshUser: string
   isActive: boolean
   health: VpnServerHealth
-  region: { id: string; name: string; slug: string; flagEmoji: string }
+  region: { id: string; name: string; slug: string; countryCode: string }
   sshKey: { id: string; name: string; fingerprint: string }
   protocols: {
     openVpn: { enabled: boolean; port: number | null }
@@ -24,7 +24,7 @@ export type VpnServerDTO = {
 
 type VpnServerWithRelations = Prisma.VpnServerGetPayload<{
   include: {
-    region: { select: { id: true; name: true; slug: true; flagEmoji: true } }
+    region: { select: { id: true; name: true; slug: true; countryCode: true } }
     sshKey: { select: { id: true; name: true; fingerprint: true } }
   }
 }>
@@ -41,7 +41,7 @@ export function toVpnServerDTO(server: VpnServerWithRelations): VpnServerDTO {
       id: server.region.id,
       name: server.region.name,
       slug: server.region.slug,
-      flagEmoji: server.region.flagEmoji,
+      countryCode: server.region.countryCode,
     },
     sshKey: {
       id: server.sshKey.id,

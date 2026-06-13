@@ -130,7 +130,7 @@ export function ServerForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit Server" : "Add Server"}</DialogTitle>
           <DialogDescription>
@@ -138,6 +138,7 @@ export function ServerForm({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="server-name">Name</Label>
             <Input
@@ -156,7 +157,7 @@ export function ServerForm({
               <SelectContent>
                 {regions.map((region) => (
                   <SelectItem key={region.id} value={region.id}>
-                    {region.flagEmoji} {region.name}
+                    {region.countryCode.toUpperCase()} — {region.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -194,6 +195,7 @@ export function ServerForm({
               onChange={(e) => setSshUser(e.target.value)}
               placeholder="root"
             />
+          </div>
           </div>
 
           <div className="space-y-3">

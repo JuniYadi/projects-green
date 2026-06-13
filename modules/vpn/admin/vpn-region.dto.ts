@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client"
  */
 export type VpnRegionDTO = Pick<
   Prisma.VpnRegionGetPayload<object>,
-  "id" | "name" | "slug" | "flagEmoji" | "isActive"
+  "id" | "name" | "slug" | "countryCode" | "isActive"
 > & {
   serverCount: number
   createdAt: string
@@ -21,7 +21,7 @@ export function toVpnRegionDTO(region: VpnRegionWithCount): VpnRegionDTO {
     id: region.id,
     name: region.name,
     slug: region.slug,
-    flagEmoji: region.flagEmoji,
+    countryCode: region.countryCode,
     isActive: region.isActive,
     serverCount: region._count.servers,
     createdAt: region.createdAt.toISOString(),

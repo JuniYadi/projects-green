@@ -39,7 +39,7 @@ const makeServer = (over: Record<string, unknown> = {}) => ({
   isActive: true,
   createdAt: new Date("2026-01-01T00:00:00Z"),
   updatedAt: new Date("2026-01-01T00:00:00Z"),
-  region: { id: "reg-1", name: "Indonesia", slug: "indonesia", flagEmoji: "🇮🇩" },
+  region: { id: "reg-1", name: "Indonesia", slug: "indonesia", countryCode: "id" },
   sshKey: { id: "key-1", name: "Prod Key", fingerprint: "SHA256:abc" },
   ...over,
 })

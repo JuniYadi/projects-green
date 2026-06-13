@@ -70,7 +70,7 @@ export class VpnRegionService {
       data: {
         name: input.name,
         slug,
-        flagEmoji: input.flagEmoji,
+        countryCode: input.countryCode,
         isActive: input.isActive ?? true,
       },
       include: regionInclude,
@@ -97,7 +97,7 @@ export class VpnRegionService {
       data.name = input.name
       data.slug = slug
     }
-    if (input.flagEmoji !== undefined) data.flagEmoji = input.flagEmoji
+    if (input.countryCode !== undefined) data.countryCode = input.countryCode
     if (input.isActive !== undefined) data.isActive = input.isActive
 
     return this.prisma.vpnRegion.update({

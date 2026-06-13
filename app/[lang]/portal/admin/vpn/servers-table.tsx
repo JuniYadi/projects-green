@@ -162,7 +162,7 @@ export function ServersTable() {
               <SelectItem value="all">All regions</SelectItem>
               {regions.map((region) => (
                 <SelectItem key={region.id} value={region.id}>
-                  {region.flagEmoji} {region.name}
+                  {region.countryCode.toUpperCase()} — {region.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -216,7 +216,7 @@ export function ServersTable() {
                 <TableRow key={server.id}>
                   <TableCell className="font-medium">{server.name}</TableCell>
                   <TableCell className="whitespace-nowrap">
-                    {server.region.flagEmoji} {server.region.name}
+                    {server.region.countryCode.toUpperCase()} — {server.region.name}
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {server.hostname}

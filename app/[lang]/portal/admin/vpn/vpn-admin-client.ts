@@ -10,7 +10,7 @@ export type VpnRegionItem = {
   id: string
   name: string
   slug: string
-  flagEmoji: string
+  countryCode: string
   isActive: boolean
   serverCount: number
   createdAt: string
@@ -33,7 +33,7 @@ export type VpnServerItem = {
   sshUser: string
   isActive: boolean
   health: "HEALTHY" | "WARNING" | "DOWN" | "UNKNOWN"
-  region: { id: string; name: string; slug: string; flagEmoji: string }
+  region: { id: string; name: string; slug: string; countryCode: string }
   sshKey: { id: string; name: string; fingerprint: string }
   protocols: {
     openVpn: { enabled: boolean; port: number | null }

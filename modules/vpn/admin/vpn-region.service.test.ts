@@ -14,7 +14,7 @@ const makeRegion = (over: Record<string, unknown> = {}) => ({
   id: "reg-1",
   name: "Indonesia",
   slug: "indonesia",
-  flagEmoji: "🇮🇩",
+  countryCode: "id",
   isActive: true,
   createdAt: new Date("2026-01-01T00:00:00Z"),
   updatedAt: new Date("2026-01-01T00:00:00Z"),
@@ -59,7 +59,7 @@ describe("VpnRegionService.create", () => {
     create.mockResolvedValue(makeRegion({ name: "Singapore", slug: "singapore" }))
     const region = await service.create({
       name: "Singapore",
-      flagEmoji: "🇸🇬",
+      countryCode: "sg",
       isActive: true,
     })
     expect(region.slug).toBe("singapore")
@@ -70,7 +70,7 @@ describe("VpnRegionService.create", () => {
   it("rejects duplicate slug", async () => {
     findUnique.mockResolvedValue(makeRegion())
     await expect(
-      service.create({ name: "Indonesia", flagEmoji: "🇮🇩", isActive: true })
+      service.create({ name: "Indonesia", countryCode: "id", isActive: true })
     ).rejects.toBeInstanceOf(VpnRegionConflictError)
     expect(create).not.toHaveBeenCalled()
   })
