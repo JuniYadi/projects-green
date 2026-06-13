@@ -280,3 +280,156 @@ export function createVpnServerConnectionTester(
 
 export const testVpnServerConnection: VpnServerConnectionTester =
   createVpnServerConnectionTester()
+
+// ---------------------------------------------------------------------------
+// SSH-based port verification (Story 12e)
+// ---------------------------------------------------------------------------
+
+/** A port found listening on the server via `ss -ntulp`. */
+export type ListeningPort = {
+  transport: "tcp" | "udp"
+  port: number
+  processName: string // e.g. "docker-proxy", "sshd", "openvpn"
+  pid: number
+}
+
+/** SSH exec result: run a command and return stdout/stderr. */
+export type SshExecResult = {
+  ok: true
+  stdout: string
+  stderr: string
+}
+
+/** Target for an SSH exec connection. */
+export type SshExecTarget = {
+  host: string
+  port: number
+  username: string
+  privateKey: string
+}
+
+/** SSH execer: runs a read-only command over an SSH channel. */
+export type SshExecer = (target: SshExecTarget) => Promise<SshExecResult>
+
+/** Max time to wait for the `ss` exec before failing fast. */
+export const SSH_EXEC_TIMEOUT_MS = 10_000
+
+/**
+ * Parse `ss -ntulp` output into structured listening port entries.
+ *
+ * Input format (Linux ss -ntulp):
+ *   udp   UNCONN  0  0    0.0.0.0:1194    0.0.0.0:*    users:(("docker-proxy",pid=12150,fd=8))
+ *   tcp   LISTEN  0  128  0.0.0.0:22      0.0.0.0:*    users:(("sshd",pid=848,fd=6))
+ *
+ * Handles IPv4 (0.0.0.0:port) and IPv6 ([::]:port) local addresses. Returns an
+ * empty array on parse errors (never throws).
+ */
+export function parseSsOutput(stdout: string): ListeningPort[] {
+  const ports: ListeningPort[] = []
+  if (!stdout) return ports
+  const lines = stdout.trim().split("\n")
+
+  for (const line of lines) {
+    const parts = line.trim().split(/\s+/)
+    if (parts.length < 5) continue
+
+    const transport = parts[0] as "tcp" | "udp"
+    if (transport !== "tcp" && transport !== "udp") continue
+
+    // Local Address:Port column — handle IPv6 [::]:port and IPv4 0.0.0.0:port.
+    const localAddr = parts[4]
+    const portMatch = localAddr.match(/:(\d+)$/)
+    if (!portMatch) continue
+    const port = Number.parseInt(portMatch[1], 10)
+    if (Number.isNaN(port)) continue
+
+    // Parse users column: users:(("process",pid=1234,fd=N)).
+    let processName = ""
+    let pid = 0
+    const usersCol = parts.slice(5).join(" ")
+    const userMatch = usersCol.match(/"([^"]+)",pid=(\d+)/)
+    if (userMatch) {
+      processName = userMatch[1]
+      pid = Number.parseInt(userMatch[2], 10)
+      if (Number.isNaN(pid)) pid = 0
+    }
+
+    ports.push({ transport, port, processName, pid })
+  }
+
+  return ports
+}
+
+/**
+ * Default SSH execer: open an SSH channel, run `ss -ntulp` (the only command
+ * ever executed), collect stdout/stderr, then close. Never throws — failures
+ * surface as a result with empty stdout and a stderr explanation.
+ */
+export const defaultSshExec: SshExecer = (target) =>
+  new Promise<SshExecResult>((resolve) => {
+    const client = new Client()
+    let settled = false
+
+    const finish = (result: SshExecResult) => {
+      if (settled) return
+      settled = true
+      try {
+        client.end()
+      } catch {
+        // ignore teardown errors
+      }
+      resolve(result)
+    }
+
+    const timeout = setTimeout(() => {
+      finish({ ok: true, stdout: "", stderr: "SSH exec timed out" })
+    }, SSH_EXEC_TIMEOUT_MS)
+
+    const done = (result: SshExecResult) => {
+      clearTimeout(timeout)
+      finish(result)
+    }
+
+    client.on("ready", () => {
+      client.exec("ss -ntulp", (err, channel) => {
+        if (err) {
+          done({ ok: true, stdout: "", stderr: err.message })
+          return
+        }
+
+        let stdout = ""
+        let stderr = ""
+
+        channel.on("data", (data: Buffer) => {
+          stdout += data.toString()
+        })
+        channel.stderr.on("data", (data: Buffer) => {
+          stderr += data.toString()
+        })
+        channel.on("close", () => {
+          done({ ok: true, stdout, stderr })
+        })
+      })
+    })
+
+    client.on("error", (err: Error) => {
+      done({ ok: true, stdout: "", stderr: err.message })
+    })
+
+    try {
+      client.connect({
+        host: target.host,
+        port: target.port,
+        username: target.username,
+        privateKey: target.privateKey,
+        readyTimeout: SSH_EXEC_TIMEOUT_MS,
+        keepaliveInterval: 0,
+      })
+    } catch (err) {
+      done({
+        ok: true,
+        stdout: "",
+        stderr: err instanceof Error ? err.message : "Failed to start SSH exec.",
+      })
+    }
+  })

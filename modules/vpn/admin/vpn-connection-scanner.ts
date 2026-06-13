@@ -13,6 +13,10 @@ import {
 } from "./vpn-port-checker"
 import {
   createVpnServerConnectionTester,
+  defaultSshExec,
+  parseSsOutput,
+  type ListeningPort,
+  type SshExecer,
   type VpnServerConnectionTester,
 } from "./vpn-server-connection"
 
@@ -40,6 +44,12 @@ export type ScanCheckResult = {
   message: string
   detail?: string
   timestamp: string
+  /** Process owning the port (present when verified via SSH `ss`). */
+  processName?: string
+  /** PID of the owning process (present when verified via SSH `ss`). */
+  processPid?: number
+  /** Suggested admin action, e.g. "ENABLE_PROTOCOL". */
+  suggestedAction?: string
 }
 
 export type ScanSummary = {
@@ -90,6 +100,8 @@ export type VpnServerScannerDeps = {
   tcpDial?: TcpDialer
   udpProbe?: UdpProber
   resolveKey?: KeyResolver
+  /** Runs `ss -ntulp` over SSH for definitive port detection. */
+  sshExec?: SshExecer
   now?: () => Date
 }
 
@@ -143,22 +155,42 @@ export function createVpnServerScanner(
   const resolveKey = deps.resolveKey ?? defaultResolveKey()
   const sshTester =
     deps.sshTester ?? createVpnServerConnectionTester({ resolveKey })
+  const sshExec = deps.sshExec ?? defaultSshExec
   const now = deps.now ?? (() => new Date())
 
   return async (server) => {
     const startedAt = now().toISOString()
     const hosts = resolveHosts(server)
 
+    // Phase 1: SSH handshake (reachability).
     const sshCheck = await runSshCheck(server, sshTester, now)
     const results: ScanCheckResult[] = [sshCheck]
 
-    // If SSH itself is unreachable, the box is dead at the network level.
-    // Skip every port probe with a clear reason rather than waiting on timeouts.
-    const networkDown = sshCheck.status !== "pass"
+    const sshReachable = sshCheck.status === "pass"
+
+    // Phase 2: definitive port data via `ss -ntulp` when SSH is reachable.
+    let listeningPorts: ListeningPort[] = []
+    let sshExecFailed = false
+    if (sshReachable) {
+      const ssResult = await runSsExec(server, hosts, resolveKey, sshExec)
+      if (ssResult) {
+        listeningPorts = ssResult
+      } else {
+        sshExecFailed = true
+      }
+    }
+
+    const useSsData = sshReachable && !sshExecFailed
 
     const portChecks = await Promise.all(
       buildPortChecks(server).map((spec) =>
-        runPortCheck(spec, hosts, networkDown, { tcpDial, udpProbe, now })
+        useSsData
+          ? runSshBasedPortCheck(spec, listeningPorts, now)
+          : runExternalPortCheck(spec, hosts, sshReachable, sshExecFailed, {
+              tcpDial,
+              udpProbe,
+              now,
+            })
       )
     )
     results.push(...portChecks)
@@ -232,10 +264,93 @@ function buildPortChecks(server: VpnServerWithRelations): PortCheckSpec[] {
   ]
 }
 
-async function runPortCheck(
+async function runSshBasedPortCheck(
+  spec: PortCheckSpec,
+  listeningPorts: ListeningPort[],
+  now: () => Date
+): Promise<ScanCheckResult> {
+  const timestamp = now().toISOString()
+  const base = {
+    check: spec.check,
+    label: LABELS[spec.check],
+    protocol: spec.protocol,
+    host: null,
+    port: spec.port,
+    transport: spec.transport,
+  }
+
+  const match =
+    spec.port !== null
+      ? listeningPorts.find(
+          (lp) => lp.port === spec.port && lp.transport === spec.transport
+        )
+      : undefined
+
+  if (!spec.enabled) {
+    // Protocol disabled — but is the port actually listening anyway?
+    if (match) {
+      return {
+        ...base,
+        status: "skip",
+        latencyMs: null,
+        message: `${match.processName || "A process"} listening on ${spec.port}/${spec.transport} but ${spec.protocol} protocol is disabled`,
+        detail: `Enable the ${spec.protocol} protocol on this server to match the running service.`,
+        processName: match.processName || undefined,
+        processPid: match.pid || undefined,
+        suggestedAction: "ENABLE_PROTOCOL",
+        timestamp,
+      }
+    }
+    return {
+      ...base,
+      status: "skip",
+      latencyMs: null,
+      message: "Protocol not enabled on this server",
+      timestamp,
+    }
+  }
+
+  if (spec.port === null) {
+    return {
+      ...base,
+      status: "error",
+      latencyMs: null,
+      message: "Port not configured",
+      timestamp,
+    }
+  }
+
+  if (match) {
+    const proc = match.processName || "unknown"
+    return {
+      ...base,
+      status: "pass",
+      latencyMs: null,
+      message: `${spec.port}/${spec.transport} — listening (${proc}${match.pid ? `, PID ${match.pid}` : ""})`,
+      detail: `Process ${proc}${match.pid ? ` (PID ${match.pid})` : ""} is listening on port ${spec.port}.`,
+      processName: match.processName || undefined,
+      processPid: match.pid || undefined,
+      timestamp,
+    }
+  }
+
+  return {
+    ...base,
+    status: "fail",
+    latencyMs: null,
+    message: `${spec.protocol} is not running — no process listening on ${spec.port}/${spec.transport}`,
+    detail:
+      `Expected ${LABELS[spec.check]} on port ${spec.port}/${spec.transport} but nothing is listening. ` +
+      `Check if the ${spec.protocol} service is installed and running.`,
+    timestamp,
+  }
+}
+
+async function runExternalPortCheck(
   spec: PortCheckSpec,
   hosts: string[],
-  networkDown: boolean,
+  sshReachable: boolean,
+  sshExecFailed: boolean,
   deps: { tcpDial: TcpDialer; udpProbe: UdpProber; now: () => Date }
 ): Promise<ScanCheckResult> {
   const base = {
@@ -257,7 +372,19 @@ async function runPortCheck(
     }
   }
 
-  if (networkDown || hosts.length === 0) {
+  // SSH unreachable (not merely an exec failure) means the box is dead at the
+  // network level — skip rather than waiting on probe timeouts.
+  if (!sshReachable && !sshExecFailed) {
+    return {
+      ...base,
+      status: "skip",
+      latencyMs: null,
+      message: "Server unreachable at network level",
+      timestamp: deps.now().toISOString(),
+    }
+  }
+
+  if (hosts.length === 0) {
     return {
       ...base,
       status: "skip",
@@ -277,12 +404,54 @@ async function runPortCheck(
     }
   }
 
-  const probe = spec.transport === "tcp" ? deps.tcpDial : deps.udpProbe
+  if (spec.transport === "tcp") {
+    return runExternalTcpCheck(spec, hosts, base, deps)
+  }
 
+  // UDP external probe — inconclusive, never reported as a hard pass.
+  const outcome = await deps.udpProbe(hosts[0], spec.port, PORT_CHECK_TIMEOUT_MS)
+  if (outcome.ok) {
+    return {
+      ...base,
+      status: "error",
+      latencyMs: outcome.latencyMs,
+      message: "Unable to verify via SSH — external UDP probe inconclusive",
+      detail:
+        "SSH was not available to run ss. The external UDP probe could not confirm " +
+        `if ${spec.port}/${spec.transport} is actually listening. ` +
+        `Manually SSH into the server and run: ss -ntulp | grep :${spec.port}`,
+      timestamp: deps.now().toISOString(),
+    }
+  }
+
+  return {
+    ...base,
+    status: outcome.kind === "fail" ? "fail" : "error",
+    latencyMs: outcome.latencyMs,
+    message: outcome.message,
+    detail: outcome.detail ?? SUGGESTIONS[spec.check],
+    timestamp: deps.now().toISOString(),
+  }
+}
+
+async function runExternalTcpCheck(
+  spec: PortCheckSpec,
+  hosts: string[],
+  base: {
+    check: Exclude<ScanCheckId, "ssh">
+    label: string
+    protocol: Exclude<ScanProtocol, "ssh">
+    host: string | null
+    port: number | null
+    transport: CheckTransport
+  },
+  deps: { tcpDial: TcpDialer; udpProbe: UdpProber; now: () => Date }
+): Promise<ScanCheckResult> {
+  const port = spec.port as number
   let lastError: PortCheckOutcome | null = null
 
   for (const host of hosts) {
-    const outcome = await probe(host, spec.port, PORT_CHECK_TIMEOUT_MS)
+    const outcome = await deps.tcpDial(host, port, PORT_CHECK_TIMEOUT_MS)
 
     if (outcome.ok) {
       const usedFallback = hosts.length > 1 && host !== hosts[0]
@@ -299,8 +468,6 @@ async function runPortCheck(
       }
     }
 
-    // Only DNS failures are retryable with the next candidate. Refused,
-    // timeout, and host-unreachable are terminal regardless of the address.
     if (!isDnsError(outcome)) {
       return {
         ...base,
@@ -316,7 +483,6 @@ async function runPortCheck(
     lastError = outcome
   }
 
-  // Every candidate failed DNS resolution.
   return {
     ...base,
     host: hosts[0] ?? null,
@@ -330,6 +496,49 @@ async function runPortCheck(
         : `Hostname "${hosts[0]}" could not be resolved. No IP fallback configured — add an IP Address to this server.`,
     timestamp: deps.now().toISOString(),
   }
+}
+
+/**
+ * Resolve the key once and run `ss -ntulp` over each host candidate until one
+ * yields parseable output. Returns the parsed listening ports, or `null` when
+ * the key is missing, no host responds, or the output is unparseable.
+ */
+async function runSsExec(
+  server: VpnServerWithRelations,
+  hosts: string[],
+  resolveKey: KeyResolver,
+  sshExec: SshExecer
+): Promise<ListeningPort[] | null> {
+  if (hosts.length === 0) return null
+
+  let privateKey: string
+  try {
+    const resolved = await resolveKey(server.sshKeyId)
+    if (!resolved) return null
+    privateKey = resolved
+  } catch {
+    return null
+  }
+
+  const base = {
+    port: server.sshPort,
+    username: server.sshUser,
+    privateKey,
+  }
+
+  for (const host of hosts) {
+    try {
+      const result = await sshExec({ host, ...base })
+      if (result.ok && result.stdout) {
+        const ports = parseSsOutput(result.stdout)
+        if (ports.length > 0) return ports
+      }
+    } catch {
+      continue
+    }
+  }
+
+  return null
 }
 
 function summarize(results: ScanCheckResult[]): ScanSummary {

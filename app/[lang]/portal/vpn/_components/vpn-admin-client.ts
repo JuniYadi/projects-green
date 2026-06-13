@@ -21,6 +21,9 @@ export type ScanCheckResult = {
   message: string
   detail?: string
   timestamp: string
+  processName?: string
+  processPid?: number
+  suggestedAction?: string
 }
 
 export type ScanSummary = {

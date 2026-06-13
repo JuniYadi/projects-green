@@ -47,8 +47,18 @@ function formatTimestamp(iso: string): string {
   return `${d.toISOString().slice(0, 19).replace("T", " ")} UTC`
 }
 
-function CheckRow({ check }: { check: ScanCheckResult }) {
+function CheckRow({
+  check,
+  onEnableProtocol,
+}: {
+  check: ScanCheckResult
+  onEnableProtocol?: (protocol: ScanCheckResult["protocol"]) => void
+}) {
+  const isMisconfig = check.suggestedAction === "ENABLE_PROTOCOL"
   const isProblem = check.status === "fail" || check.status === "error"
+  const processLabel = check.processName
+    ? `${check.processName}${check.processPid ? ` (PID ${check.processPid})` : ""}`
+    : null
   return (
     <div className="group">
       <div
@@ -65,10 +75,26 @@ function CheckRow({ check }: { check: ScanCheckResult }) {
           {formatLatency(check)}
         </span>
         <span className="truncate text-xs opacity-80" title={check.message}>
-          {check.message}
+          {check.status === "pass" && processLabel
+            ? processLabel
+            : check.message}
         </span>
       </div>
-      {isProblem && check.detail && (
+      {isMisconfig && (
+        <p className="pb-1 pl-7 text-xs text-muted-foreground/70">
+          💡{" "}
+          {check.detail ??
+            `${check.protocol} protocol is disabled but the port is active.`}{" "}
+          <button
+            type="button"
+            className="cursor-pointer underline hover:text-foreground"
+            onClick={() => onEnableProtocol?.(check.protocol)}
+          >
+            Enable now?
+          </button>
+        </p>
+      )}
+      {isProblem && check.detail && !isMisconfig && (
         <p className="pb-1 pl-7 text-xs text-muted-foreground/70">
           💡 {check.detail}
         </p>
