@@ -364,6 +364,12 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       icon: <WhatsappLogoIcon />,
       isActive: startsWithRoute(path, "/console/whatsapp"),
     },
+    {
+      title: "VPN",
+      url: localizePathname({ pathname: "/console/vpn", locale }),
+      icon: <GlobeIcon />,
+      isActive: startsWithRoute(path, "/console/vpn"),
+    },
   ],
 })
 

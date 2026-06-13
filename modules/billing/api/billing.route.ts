@@ -41,9 +41,12 @@ export const createBillingRoutes = (deps: Partial<BillingRouteDeps> = {}) => {
   const { authenticate } = { ...defaultDeps, ...deps }
 
   return new Elysia()
-    // ─── GET /billing/account ──────────────────────────────────────────────
+    // ─── GET /billing/account/detail ───────────────────────────────────────
+    // Detailed account payload (contacts, alert prefs, currency). Served on a
+    // distinct path so it never collides with the summary GET /account handler
+    // in account.route.ts (which powers the dashboard balance card + topup).
     .get(
-      "/account",
+      "/account/detail",
       async ({ set }) => {
         const auth = await authenticate()
 
@@ -62,7 +65,7 @@ export const createBillingRoutes = (deps: Partial<BillingRouteDeps> = {}) => {
           })
           return { ok: true as const, ...toBillingAccountDTO(account) }
         } catch (err) {
-          console.error("[Billing] GET /account error:", err)
+          console.error("[Billing] GET /account/detail error:", err)
           return toError(
             set,
             500,

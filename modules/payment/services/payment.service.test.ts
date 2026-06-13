@@ -41,6 +41,9 @@ const mockPrisma = {
   billingAdjustment: {
     create: mock(() => Promise.resolve({})),
   },
+  paymentCurrency: {
+    findUnique: mock(() => Promise.resolve(null)),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({
@@ -172,7 +175,7 @@ describe("PaymentService", () => {
           organizationId: "org-123",
           amount: 1,
         })
-      ).rejects.toThrow("Minimum top-up amount is 10")
+      ).rejects.toThrow("Minimum top-up amount is 10 IDR")
     })
 
     it("should throw error for amount above maximum", async () => {
@@ -181,7 +184,42 @@ describe("PaymentService", () => {
           organizationId: "org-123",
           amount: 20000,
         })
-      ).rejects.toThrow("Maximum top-up amount is 10000")
+      ).rejects.toThrow("Maximum top-up amount is 10000 IDR")
+    })
+
+    it("uses PaymentCurrency bounds when a row exists (IDR)", async () => {
+      ;(mockPrisma.paymentCurrency.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce(
+        {
+          code: "IDR",
+          minTopup: { toNumber: () => 250_000 },
+          maxTopup: { toNumber: () => 250_000_000 },
+        }
+      )
+
+      const invoice = await service.createTopupInvoice({
+        organizationId: "org-123",
+        amount: 180_000_000,
+      })
+
+      expect(invoice.id).toBe("inv-123")
+      expect(mockPrisma.billingInvoice.create).toHaveBeenCalledTimes(1)
+    })
+
+    it("rejects below the IDR PaymentCurrency minimum", async () => {
+      ;(mockPrisma.paymentCurrency.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce(
+        {
+          code: "IDR",
+          minTopup: { toNumber: () => 250_000 },
+          maxTopup: { toNumber: () => 250_000_000 },
+        }
+      )
+
+      await expect(
+        service.createTopupInvoice({
+          organizationId: "org-123",
+          amount: 180_000,
+        })
+      ).rejects.toThrow("Minimum top-up amount is 250000 IDR")
     })
 
     it("should create billing account if not exists", async () => {

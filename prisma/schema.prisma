@@ -1823,6 +1823,9 @@ model PaymentCurrency {
   // Top-up bounds expressed in THIS currency.
   minTopup    Decimal  @db.Decimal(18, 2)
   maxTopup    Decimal  @db.Decimal(18, 2)
+  // Low-balance warning threshold expressed in THIS currency. The billing UI
+  // shows a top-up nudge once the balance drops below this value.
+  minBalanceWarn Decimal @default(0) @db.Decimal(18, 2)
   isActive    Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())

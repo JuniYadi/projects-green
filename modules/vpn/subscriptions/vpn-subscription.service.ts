@@ -46,6 +46,15 @@ export class VpnInsufficientBalanceError extends Error {
   }
 }
 
+export class VpnBillingAccountNotFoundError extends Error {
+  constructor(
+    message = "No billing account found. Please set up billing before making a purchase."
+  ) {
+    super(message)
+    this.name = "VpnBillingAccountNotFoundError"
+  }
+}
+
 export class VpnSubscriptionNotFoundError extends Error {
   constructor(message = "Subscription not found.") {
     super(message)
@@ -206,8 +215,11 @@ export class VpnSubscriptionService {
       include: subscriptionInclude,
     })
 
-    // Billing gate: debit balance upfront. Leaves the subscription SUSPENDED
-    // (no charge) when balance is insufficient.
+    // Billing gate: debit balance upfront. If the charge fails for any reason
+    // (no billing account, insufficient balance, unexpected error) we delete
+    // the just-created subscription so failed attempts don't leave orphaned
+    // SUSPENDED subscriptions + PENDING server accounts behind. The delete
+    // cascades to serverAccounts (onDelete: Cascade).
     try {
       await this.transactions.debitServiceBalance({
         organizationId: input.organizationId,
@@ -229,8 +241,17 @@ export class VpnSubscriptionService {
         },
       })
     } catch (error) {
+      await this.prisma.vpnSubscription
+        .delete({ where: { id: subscription.id } })
+        .catch(() => {
+          // Best-effort cleanup. If the delete itself fails, surface the
+          // original billing error rather than masking it.
+        })
       if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
         throw new VpnInsufficientBalanceError()
+      }
+      if (error instanceof Error && error.message === "BILLING_ACCOUNT_NOT_FOUND") {
+        throw new VpnBillingAccountNotFoundError()
       }
       throw error
     }

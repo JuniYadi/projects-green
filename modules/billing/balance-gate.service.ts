@@ -40,7 +40,27 @@ export class BalanceGateService {
   }
 
   async isBalanceAboveWarn(organizationId: string): Promise<boolean> {
-    return (await this.getBalance(organizationId)).gte(MINIMUM_BALANCE_WARN_IDR);
+    const account = await this.prisma.billingAccount.findUnique({
+      where: { organizationId },
+      select: { balance: true, currency: true },
+    });
+    if (!account) {
+      throw new BillingAccountNotFoundError(organizationId);
+    }
+    const warnThreshold = await this.getWarnThreshold(account.currency);
+    return account.balance.gte(warnThreshold);
+  }
+
+  /**
+   * Per-currency low-balance warning threshold sourced from the Currency table.
+   * Falls back to the base-currency constant when the currency row is missing.
+   */
+  private async getWarnThreshold(currencyCode: string): Promise<Decimal> {
+    const currencyRow = await this.prisma.paymentCurrency.findUnique({
+      where: { code: currencyCode },
+      select: { minBalanceWarn: true },
+    });
+    return currencyRow?.minBalanceWarn ?? new Decimal(MINIMUM_BALANCE_WARN_IDR);
   }
 
   // ─── ServicePricing lookup ──────────────────────────────────────────────────
@@ -168,7 +188,7 @@ export class BalanceGateService {
             billingAccountId: account.id,
             adjustmentType: type,
             amount: amount,
-            currency: "IDR",
+            currency: account.currency,
             reason: description,
             metadataJson: metadata ?? undefined,
           },
@@ -297,7 +317,7 @@ export class BalanceGateService {
             billingAccountId: account.id,
             adjustmentType: "DEBIT",
             amount,
-            currency: "IDR",
+            currency: account.currency,
             reason: `PAYG charge: ${sub.pricing.servicePlan.code} (${mcpu}mCPU / ${memMb}MB)`,
             metadataJson: {
               subscriptionId,
@@ -378,7 +398,7 @@ export class BalanceGateService {
             billingAccountId: account.id,
             adjustmentType: "DEBIT",
             amount,
-            currency: "IDR",
+            currency: account.currency,
             reason: `ServicePackage charge: ${sub.pricing.servicePlan.code} (${sub.pricing.region.code})`,
             metadataJson: {
               subscriptionId,

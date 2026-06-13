@@ -22,6 +22,24 @@ export class PaymentService {
     return randomInt(1, 1000)
   }
 
+  /**
+   * Resolve per-currency top-up bounds from the PaymentCurrency table.
+   * Falls back to the base-currency (USD) constants when no row exists so
+   * validation never crashes on an unseeded currency.
+   */
+  private async getTopupBounds(
+    currencyCode: string
+  ): Promise<{ minTopup: number; maxTopup: number }> {
+    const currencyRow = await prisma.paymentCurrency.findUnique({
+      where: { code: currencyCode },
+    })
+
+    return {
+      minTopup: currencyRow?.minTopup?.toNumber() ?? PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT,
+      maxTopup: currencyRow?.maxTopup?.toNumber() ?? PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT,
+    }
+  }
+
   async createTopupInvoice(input: {
     organizationId: string
     amount: number
@@ -29,13 +47,6 @@ export class PaymentService {
     gatewayId?: string
   }) {
     const { amount, organizationId, paymentMethod, gatewayId } = input
-
-    if (amount < PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT) {
-      throw new Error(`Minimum top-up amount is ${PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT}`)
-    }
-    if (amount > PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT) {
-      throw new Error(`Maximum top-up amount is ${PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT}`)
-    }
 
     // Get or create billing account for organization
     let account = await prisma.billingAccount.findUnique({
@@ -46,9 +57,23 @@ export class PaymentService {
       account = await prisma.billingAccount.create({
         data: {
           organizationId,
+          // TODO(P1): Wire currency from onboarding selector / WorkOS locale.
+          // Hardcoded IDR fallback is a known debt (see CURRENCY-FIX-STRATEGY).
           currency: "IDR",
         },
       })
+    }
+
+    // Validate amount against currency-specific bounds. The PaymentCurrency
+    // table holds correct per-currency limits (e.g. IDR min 250k / max 250M);
+    // fall back to the base-currency (USD) constants only when no row exists.
+    const { minTopup, maxTopup } = await this.getTopupBounds(account.currency)
+
+    if (amount < minTopup) {
+      throw new Error(`Minimum top-up amount is ${minTopup} ${account.currency}`)
+    }
+    if (amount > maxTopup) {
+      throw new Error(`Maximum top-up amount is ${maxTopup} ${account.currency}`)
     }
 
     const now = new Date()
@@ -226,6 +251,8 @@ export class PaymentService {
       account = await prisma.billingAccount.create({
         data: {
           organizationId,
+          // TODO(P1): Wire currency from onboarding selector / WorkOS locale.
+          // Hardcoded IDR fallback is a known debt (see CURRENCY-FIX-STRATEGY).
           currency: "IDR",
         },
       })

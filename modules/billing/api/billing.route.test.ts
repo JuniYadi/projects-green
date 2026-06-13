@@ -76,7 +76,7 @@ function resetMocks() {
   }
 }
 
-describe("GET /account", () => {
+describe("GET /account/detail", () => {
   beforeEach(() => {
     resetMocks()
   })
@@ -95,7 +95,9 @@ describe("GET /account", () => {
       }),
     )
 
-    const response = await app.handle(new Request("http://localhost/account"))
+    const response = await app.handle(
+      new Request("http://localhost/account/detail"),
+    )
     expect(response.status).toBe(200)
 
     const body = await response.json()
@@ -125,7 +127,9 @@ describe("GET /account", () => {
       }),
     )
 
-    const response = await app.handle(new Request("http://localhost/account"))
+    const response = await app.handle(
+      new Request("http://localhost/account/detail"),
+    )
     expect(response.status).toBe(200)
 
     const body = await response.json()
@@ -146,7 +150,9 @@ describe("GET /account", () => {
       }),
     )
 
-    const response = await app.handle(new Request("http://localhost/account"))
+    const response = await app.handle(
+      new Request("http://localhost/account/detail"),
+    )
     expect(response.status).toBe(401)
 
     const body = await response.json()
@@ -164,7 +170,9 @@ describe("GET /account", () => {
       }),
     )
 
-    const response = await app.handle(new Request("http://localhost/account"))
+    const response = await app.handle(
+      new Request("http://localhost/account/detail"),
+    )
     expect(response.status).toBe(403)
 
     const body = await response.json()
@@ -184,7 +192,9 @@ describe("GET /account", () => {
       }),
     )
 
-    const response = await app.handle(new Request("http://localhost/account"))
+    const response = await app.handle(
+      new Request("http://localhost/account/detail"),
+    )
     expect(response.status).toBe(500)
 
     const body = await response.json()

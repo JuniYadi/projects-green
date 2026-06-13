@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 import {
+  VpnBillingAccountNotFoundError,
   VpnDuplicateSubscriptionError,
   VpnInsufficientBalanceError,
   VpnPackageUnavailableError,
@@ -14,6 +15,7 @@ const pkgFindUnique = mock<AnyFn>(async () => null)
 const subFindFirst = mock<AnyFn>(async () => null)
 const subCreate = mock<AnyFn>(async () => ({}))
 const subUpdate = mock<AnyFn>(async () => ({}))
+const subDelete = mock<AnyFn>(async () => ({}))
 const debitServiceBalance = mock<AnyFn>(async () => ({}))
 const dispatch = mock<AnyFn>(async () => {})
 
@@ -23,6 +25,7 @@ const prismaMock = {
     findFirst: subFindFirst,
     create: subCreate,
     update: subUpdate,
+    delete: subDelete,
   },
 } as any
 
@@ -73,12 +76,14 @@ beforeEach(() => {
   subFindFirst.mockClear()
   subCreate.mockClear()
   subUpdate.mockClear()
+  subDelete.mockClear()
   debitServiceBalance.mockClear()
   dispatch.mockClear()
   pkgFindUnique.mockResolvedValue(activePackage)
   subFindFirst.mockResolvedValue(null)
   subCreate.mockResolvedValue(createdSub)
   subUpdate.mockResolvedValue(createdSub)
+  subDelete.mockResolvedValue(createdSub)
   debitServiceBalance.mockResolvedValue({})
 })
 
@@ -126,7 +131,7 @@ describe("VpnSubscriptionService.purchase", () => {
     expect(subCreate).not.toHaveBeenCalled()
   })
 
-  it("maps INSUFFICIENT_BALANCE and leaves subscription suspended", async () => {
+  it("maps INSUFFICIENT_BALANCE and cleans up the orphaned subscription", async () => {
     debitServiceBalance.mockRejectedValue(new Error("INSUFFICIENT_BALANCE"))
     await expect(
       service.purchase({ organizationId: "org-1", packageId: "pkg-1" })
@@ -134,5 +139,20 @@ describe("VpnSubscriptionService.purchase", () => {
     expect(dispatch).not.toHaveBeenCalled()
     // No activation update happened
     expect(subUpdate).not.toHaveBeenCalled()
+    // Failed charge must not leave an orphaned subscription behind.
+    expect(subDelete).toHaveBeenCalledTimes(1)
+    expect(subDelete.mock.calls[0][0]).toEqual({ where: { id: "sub-1" } })
+  })
+
+  it("maps BILLING_ACCOUNT_NOT_FOUND and cleans up the orphaned subscription", async () => {
+    debitServiceBalance.mockRejectedValue(
+      new Error("BILLING_ACCOUNT_NOT_FOUND")
+    )
+    await expect(
+      service.purchase({ organizationId: "org-1", packageId: "pkg-1" })
+    ).rejects.toBeInstanceOf(VpnBillingAccountNotFoundError)
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(subUpdate).not.toHaveBeenCalled()
+    expect(subDelete).toHaveBeenCalledTimes(1)
   })
 })

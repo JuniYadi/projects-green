@@ -386,7 +386,7 @@ export type CreateContactInput = {
 }
 
 export async function getBillingAccount(): Promise<BillingAccountDetail> {
-  return fetchBilling<BillingAccountDetail>("/api/billing/account")
+  return fetchBilling<BillingAccountDetail>("/api/billing/account/detail")
 }
 
 export async function addBillingContact(

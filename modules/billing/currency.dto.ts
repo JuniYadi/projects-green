@@ -15,6 +15,7 @@ export type CurrencyDTO = {
   ratePerBase: number
   minTopup: number
   maxTopup: number
+  minBalanceWarn: number
   isActive: boolean
   sortOrder: number
 }
@@ -31,6 +32,7 @@ export function toCurrencyDTO(currency: CurrencyRecord): CurrencyDTO {
     ratePerBase: currency.ratePerBase.toNumber(),
     minTopup: currency.minTopup.toNumber(),
     maxTopup: currency.maxTopup.toNumber(),
+    minBalanceWarn: currency.minBalanceWarn.toNumber(),
     isActive: currency.isActive,
     sortOrder: currency.sortOrder,
   }

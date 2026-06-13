@@ -35,6 +35,7 @@ interface CurrencySeed {
   ratePerBase: number
   minTopup: number
   maxTopup: number
+  minBalanceWarn: number
   isActive: boolean
   sortOrder: number
 }
@@ -48,6 +49,7 @@ const currencies: CurrencySeed[] = [
     ratePerBase: 1,
     minTopup: 10,
     maxTopup: 10_000,
+    minBalanceWarn: 10,
     isActive: true,
     sortOrder: 0,
   },
@@ -59,6 +61,7 @@ const currencies: CurrencySeed[] = [
     ratePerBase: 18_000,
     minTopup: 50_000,
     maxTopup: 200_000_000,
+    minBalanceWarn: 10_000,
     isActive: true,
     sortOrder: 10,
   },
@@ -70,6 +73,7 @@ const currencies: CurrencySeed[] = [
     ratePerBase: 1.35,
     minTopup: 15,
     maxTopup: 15_000,
+    minBalanceWarn: 15,
     isActive: false,
     sortOrder: 20,
   },
@@ -81,6 +85,7 @@ const currencies: CurrencySeed[] = [
     ratePerBase: 4.65,
     minTopup: 45,
     maxTopup: 45_000,
+    minBalanceWarn: 45,
     isActive: false,
     sortOrder: 30,
   },
@@ -92,6 +97,7 @@ const currencies: CurrencySeed[] = [
     ratePerBase: 36.5,
     minTopup: 350,
     maxTopup: 350_000,
+    minBalanceWarn: 350,
     isActive: false,
     sortOrder: 40,
   },
@@ -103,6 +109,7 @@ const currencies: CurrencySeed[] = [
     ratePerBase: 25_500,
     minTopup: 250_000,
     maxTopup: 250_000_000,
+    minBalanceWarn: 15_000,
     isActive: false,
     sortOrder: 50,
   },
@@ -114,6 +121,7 @@ const currencies: CurrencySeed[] = [
     ratePerBase: 58,
     minTopup: 550,
     maxTopup: 550_000,
+    minBalanceWarn: 550,
     isActive: false,
     sortOrder: 60,
   },
@@ -138,6 +146,7 @@ async function seedCurrencies() {
       const rateChanged = !existing.ratePerBase.eq(currency.ratePerBase)
       const minChanged = !existing.minTopup.eq(currency.minTopup)
       const maxChanged = !existing.maxTopup.eq(currency.maxTopup)
+      const warnChanged = !existing.minBalanceWarn.eq(currency.minBalanceWarn)
       const nameChanged = existing.name !== currency.name
       const symbolChanged = existing.symbol !== currency.symbol
       const activeChanged = existing.isActive !== currency.isActive
@@ -148,6 +157,7 @@ async function seedCurrencies() {
         rateChanged ||
         minChanged ||
         maxChanged ||
+        warnChanged ||
         nameChanged ||
         symbolChanged ||
         activeChanged ||
@@ -163,6 +173,7 @@ async function seedCurrencies() {
             ratePerBase: currency.ratePerBase,
             minTopup: currency.minTopup,
             maxTopup: currency.maxTopup,
+            minBalanceWarn: currency.minBalanceWarn,
             isActive: currency.isActive,
             sortOrder: currency.sortOrder,
           },

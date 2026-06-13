@@ -100,7 +100,9 @@ export const createBillingAccountRoutes = (
         })
 
         const balance = account.balance
-        const currency = account.preferredCurrency
+        // Single source of truth: `currency` drives both transactions and
+        // display. `preferredCurrency` is deprecated (see CURRENCY-FIX-STRATEGY).
+        const currency = account.currency
         const isPositive = balance.gt(0)
         const isAboveWarn = balance.gte(MINIMUM_BALANCE_WARN_IDR)
         const accountAge = daysSince(account.createdAt)

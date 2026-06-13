@@ -10,6 +10,7 @@ import {
 } from "@/modules/vpn/vpn-crypto"
 
 import {
+  VpnBillingAccountNotFoundError,
   VpnDuplicateSubscriptionError,
   VpnInsufficientBalanceError,
   VpnPackageUnavailableError,
@@ -187,6 +188,10 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
         }
       } catch (error) {
         if (error instanceof VpnSubscriptionNotFoundError) return notFound(set)
+        console.error(
+          "[VPN SUBSCRIPTION] billing info error:",
+          error instanceof Error ? error.stack ?? error.message : String(error),
+        )
         set.status = 500
         return {
           ok: false as const,
@@ -208,6 +213,10 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           return { ok: true as const, data: toVpnSubscriptionDTO(sub) }
         } catch (error) {
           if (error instanceof VpnSubscriptionNotFoundError) return notFound(set)
+          console.error(
+            "[VPN SUBSCRIPTION] cancel error:",
+            error instanceof Error ? error.stack ?? error.message : String(error),
+          )
           set.status = 500
           return {
             ok: false as const,
@@ -238,6 +247,18 @@ function toPurchaseError(set: RouteSet, error: unknown) {
       topupUrl: TOPUP_URL,
     }
   }
+  if (error instanceof VpnBillingAccountNotFoundError) {
+    set.status = 402
+    return {
+      ok: false as const,
+      error: "BILLING_ACCOUNT_REQUIRED" as const,
+      message: error.message,
+    }
+  }
+  console.error(
+    "[VPN PURCHASE] unexpected error:",
+    error instanceof Error ? error.stack ?? error.message : String(error),
+  )
   set.status = 500
   return {
     ok: false as const,
