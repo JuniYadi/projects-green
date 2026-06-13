@@ -1173,6 +1173,9 @@ model VpnServer {
   region VpnRegion @relation(fields: [regionId], references: [id])
   sshKey VpnSshKey @relation(fields: [sshKeyId], references: [id])
 
+  packages        VpnPackageServer[]
+  serverAccounts  VpnServerAccount[]
+
   @@index([regionId])
   @@index([sshKeyId])
   @@index([isActive])
@@ -1194,6 +1197,94 @@ model BillingUsageLedger {
   @@index([organizationId, category])
   @@index([subscriptionId])
   @@map("UsageLedger")
+}
+
+model VpnPackage {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(12, 2)
+  currency    String   @default("IDR")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  servers VpnPackageServer[]
+
+  @@index([isActive])
+}
+
+model VpnPackageServer {
+  id        String   @id @default(cuid())
+  packageId String
+  serverId  String
+  createdAt DateTime @default(now())
+
+  package VpnPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  server  VpnServer  @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, serverId])
+  @@index([packageId])
+  @@index([serverId])
+}
+
+enum VpnProtocol {
+  OPENVPN
+  WIREGUARD
+  PROXY
+}
+
+enum VpnSubscriptionStatus {
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+}
+
+enum VpnProvisioningStatus {
+  PENDING
+  PROVISIONING
+  ACTIVE
+  FAILED
+  REVOKED
+}
+
+model VpnSubscription {
+  id                 String                @id @default(cuid())
+  organizationId     String
+  packageId          String
+  status             VpnSubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  serverAccounts VpnServerAccount[]
+
+  @@index([organizationId, status])
+  @@index([packageId])
+  @@index([currentPeriodEnd])
+}
+
+model VpnServerAccount {
+  id                 String                @id @default(cuid())
+  subscriptionId     String
+  serverId           String
+  protocol           VpnProtocol
+  username           String
+  password           String?
+  configEncrypted    String?
+  provisioningStatus VpnProvisioningStatus @default(PENDING)
+  failureReason      String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  subscription VpnSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  server       VpnServer       @relation(fields: [serverId], references: [id])
+
+  @@unique([serverId, protocol, username])
+  @@index([subscriptionId])
+  @@index([serverId])
+  @@index([provisioningStatus])
 }
 
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────

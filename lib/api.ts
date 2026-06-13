@@ -22,6 +22,10 @@ import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
 import { usersRoutes } from "@/modules/users/api/users.route"
 import { vpnRoutes } from "@/modules/vpn/api"
 import { adminVpnRoutes } from "@/modules/vpn/admin/api"
+import {
+  vpnSubscriptionRoutes,
+  adminVpnSubscriptionRoutes,
+} from "@/modules/vpn/subscriptions/api"
 import { voucherRoutes } from "@/modules/vouchers/api"
 import { healthRoutes } from "@/modules/health/api/health.route"
 import { markStartupComplete } from "@/modules/health/health.service"
@@ -105,6 +109,8 @@ export const app = new Elysia({ prefix: "/api" })
   .use(usersRoutes)
   .use(vpnRoutes)
   .use(adminVpnRoutes)
+  .use(vpnSubscriptionRoutes)
+  .use(adminVpnSubscriptionRoutes)
   .use(voucherRoutes)
   .use(healthRoutes)
   .use(whatsappRoutes)

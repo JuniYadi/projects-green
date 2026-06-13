@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { SubscriptionsTable } from "../_components/subscriptions-table"
 
 export default async function VpnSubscriptionsPage() {
   return (
@@ -12,21 +6,11 @@ export default async function VpnSubscriptionsPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Subscriptions</h1>
         <p className="text-sm text-muted-foreground">
-          Review and manage customer VPN subscriptions.
+          Review customer VPN subscriptions and manage per-protocol server
+          accounts.
         </p>
       </header>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Coming soon</CardTitle>
-          <CardDescription>
-            Subscription management ships with Story 15.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          This surface is reserved for customer subscription review and
-          lifecycle actions.
-        </CardContent>
-      </Card>
+      <SubscriptionsTable />
     </main>
   )
 }

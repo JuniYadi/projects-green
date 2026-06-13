@@ -84,6 +84,12 @@ import { AppHostingBillingService } from "@/modules/deploy/billing/app-hosting-b
 import { WhatsappBillingService } from "@/modules/whatsapp/billing/whatsapp-billing.service"
 import { VpnBillingService } from "@/modules/vpn/billing/vpn-billing.service"
 import { VpnRenewalService } from "@/modules/vpn/billing/vpn-renewal.service"
+import {
+  VpnProvisioningJob,
+  vpnStagedBackoff,
+  type VpnProvisioningJobData,
+} from "@/lib/queue/vpn-provisioning"
+import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
 
 // ══════════════════════════════════════════════════════════════════════════
 // BullMQ Workers
@@ -403,6 +409,20 @@ const whatsappTemplateSyncWorker = new Worker<WhatsAppTemplateSyncJobData>(
   },
 )
 allWorkers.push(whatsappTemplateSyncWorker)
+
+// ── VPN Provisioning Worker ──────────────────────────────────────────
+const vpnProvisioningWorker = new Worker<VpnProvisioningJobData>(
+  VpnProvisioningJob.queue,
+  async (job: Job<VpnProvisioningJobData>) => {
+    await vpnProvisioningService.provisionAccount(job.data.serverAccountId)
+  },
+  {
+    connection: redisConnection,
+    concurrency: VpnProvisioningJob.workerConcurrency,
+    settings: { backoffStrategy: vpnStagedBackoff },
+  },
+)
+allWorkers.push(vpnProvisioningWorker)
 
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {

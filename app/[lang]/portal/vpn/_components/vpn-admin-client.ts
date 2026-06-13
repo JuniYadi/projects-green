@@ -44,6 +44,56 @@ export type VpnServerItem = {
   updatedAt: string
 }
 
+export type VpnPackageServerEntry = {
+  id: string
+  server: VpnServerItem
+  protocols: string[]
+}
+
+export type VpnPackageItem = {
+  id: string
+  name: string
+  description: string | null
+  price: string
+  currency: "IDR" | "USD"
+  isActive: boolean
+  serverCount: number
+  servers: VpnPackageServerEntry[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type VpnServerAccountEntry = {
+  id: string
+  serverId: string
+  serverName: string
+  protocol: "OPENVPN" | "WIREGUARD" | "PROXY"
+  username: string
+  provisioningStatus:
+    | "PENDING"
+    | "PROVISIONING"
+    | "ACTIVE"
+    | "FAILED"
+    | "REVOKED"
+  failureReason: string | null
+  hasConfig: boolean
+  hasCredentials: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type VpnSubscriptionItem = {
+  id: string
+  organizationId: string
+  packageId: string
+  status: "ACTIVE" | "SUSPENDED" | "EXPIRED"
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  serverAccounts: VpnServerAccountEntry[]
+  createdAt: string
+  updatedAt: string
+}
+
 /**
  * Thin fetch wrapper for the admin VPN API. Throws an Error with the API
  * message on a non-ok response so callers can surface it to the user.
