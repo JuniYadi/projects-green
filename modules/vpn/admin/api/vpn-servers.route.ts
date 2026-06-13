@@ -49,7 +49,11 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
         typeof query.regionId === "string" && query.regionId.length > 0
           ? query.regionId
           : undefined
-      const servers = await service.list({ regionId })
+      const search =
+        typeof query.search === "string" && query.search.length > 0
+          ? query.search
+          : undefined
+      const servers = await service.list({ regionId, search })
       return { ok: true, data: servers.map(toVpnServerDTO) }
     })
     .post(

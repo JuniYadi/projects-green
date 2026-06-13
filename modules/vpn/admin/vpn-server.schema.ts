@@ -56,7 +56,6 @@ const baseServerShape = {
  * Enforce cross-field server constraints:
  * - at least one protocol port provided
  * - no duplicate port across enabled protocols
- * - WireGuard and Proxy cannot both be enabled on the same server
  */
 function refineServer<T extends z.ZodTypeAny>(schema: T) {
   return schema
@@ -90,14 +89,6 @@ function refineServer<T extends z.ZodTypeAny>(schema: T) {
           break
         }
         seen.add(port)
-      }
-
-      if (typeof wireGuard === "number" && typeof proxy === "number") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "WireGuard and Proxy cannot be enabled on the same server.",
-          path: ["wireGuardPort"],
-        })
       }
     })
 }

@@ -55,9 +55,17 @@ export class VpnServerService {
     this.prisma = prisma
   }
 
-  list(filter: { regionId?: string } = {}) {
+  list(filter: { regionId?: string; search?: string } = {}) {
+    const where: Prisma.VpnServerWhereInput = {}
+    if (filter.regionId) where.regionId = filter.regionId
+    if (filter.search) {
+      where.OR = [
+        { hostname: { contains: filter.search, mode: "insensitive" } },
+        { ipAddress: { contains: filter.search, mode: "insensitive" } },
+      ]
+    }
     return this.prisma.vpnServer.findMany({
-      where: filter.regionId ? { regionId: filter.regionId } : undefined,
+      where: Object.keys(where).length > 0 ? where : undefined,
       include: serverInclude,
       orderBy: { name: "asc" },
     })

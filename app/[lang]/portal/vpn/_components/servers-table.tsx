@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Select,
@@ -26,6 +27,7 @@ import {
   TrashIcon,
   PlugIcon,
   CopyIcon,
+  MagnifyingGlassIcon,
 } from "@phosphor-icons/react"
 
 import { ServerForm } from "./server-form"
@@ -67,6 +69,8 @@ export function ServersTable() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [regionFilter, setRegionFilter] = useState<string>("all")
+  const [searchFilter, setSearchFilter] = useState("")
+  const [searchDebounced, setSearchDebounced] = useState("")
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<VpnServerItem | null>(null)
   const [duplicating, setDuplicating] = useState<VpnServerItem | null>(null)
@@ -74,16 +78,16 @@ export function ServersTable() {
   const [testTarget, setTestTarget] = useState<VpnServerItem | null>(null)
   const [testResult, setTestResult] = useState<ScanResult | null>(null)
 
-  const loadServers = useCallback(async (regionId: string) => {
+  const loadServers = useCallback(async (regionId: string, search: string) => {
     setLoading(true)
     setError(null)
     try {
-      const qs =
-        regionId && regionId !== "all"
-          ? `?regionId=${encodeURIComponent(regionId)}`
-          : ""
+      const qs = new URLSearchParams()
+      if (regionId && regionId !== "all") qs.set("regionId", regionId)
+      if (search) qs.set("search", search)
+      const query = qs.toString()
       const res = await vpnApi<{ ok: true; data: VpnServerItem[] }>(
-        `/admin/vpn/servers${qs}`
+        `/admin/vpn/servers${query ? `?${query}` : ""}`
       )
       setServers(res.data)
     } catch (err) {
@@ -112,9 +116,16 @@ export function ServersTable() {
   }, [loadRefs])
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounced(searchFilter)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchFilter])
+
+  useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadServers(regionFilter)
-  }, [loadServers, regionFilter])
+    void loadServers(regionFilter, searchDebounced)
+  }, [loadServers, regionFilter, searchDebounced])
 
   const openCreate = () => {
     setEditing(null)
@@ -138,7 +149,7 @@ export function ServersTable() {
     if (!window.confirm(`Delete server "${server.name}"?`)) return
     try {
       await vpnApi(`/admin/vpn/servers/${server.id}`, { method: "DELETE" })
-      await loadServers(regionFilter)
+      await loadServers(regionFilter, searchDebounced)
     } catch (err) {
       window.alert((err as Error).message)
     }
@@ -164,7 +175,20 @@ export function ServersTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative w-full sm:w-72">
+          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setSearchFilter("")
+            }}
+            placeholder="Search hostname or IP..."
+            className="pl-8"
+            aria-label="Search servers by hostname or IP"
+          />
+        </div>
         <div className="flex items-center gap-2">
           <Select value={regionFilter} onValueChange={setRegionFilter}>
             <SelectTrigger className="w-40">
@@ -199,6 +223,7 @@ export function ServersTable() {
               <TableHead>Name</TableHead>
               <TableHead>Region</TableHead>
               <TableHead>Host</TableHead>
+              <TableHead>IP</TableHead>
               <TableHead>OpenVPN</TableHead>
               <TableHead>WG</TableHead>
               <TableHead>Proxy</TableHead>
@@ -210,14 +235,14 @@ export function ServersTable() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9}>
+                <TableCell colSpan={10}>
                   <Skeleton className="h-8 w-full" />
                 </TableCell>
               </TableRow>
             ) : servers.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="text-center text-sm text-muted-foreground"
                 >
                   No servers yet.
@@ -232,6 +257,11 @@ export function ServersTable() {
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {server.hostname}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {server.ipAddress ?? (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <ProtocolCell
@@ -314,7 +344,7 @@ export function ServersTable() {
           duplicateFrom={duplicating}
           regions={regions}
           sshKeys={sshKeys}
-          onSaved={() => loadServers(regionFilter)}
+          onSaved={() => loadServers(regionFilter, searchDebounced)}
         />
       )}
 

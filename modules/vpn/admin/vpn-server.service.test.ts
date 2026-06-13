@@ -112,13 +112,23 @@ describe("createVpnServerSchema", () => {
     expect(result.success).toBe(false)
   })
 
-  it("rejects WireGuard + Proxy on the same server", () => {
+  it("allows WireGuard + Proxy on the same server", () => {
     const result = createVpnServerSchema.safeParse({
       ...baseInput,
       wireGuardPort: 51820,
       proxyPort: 3128,
     })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
+  })
+
+  it("allows all three protocols on the same server", () => {
+    const result = createVpnServerSchema.safeParse({
+      ...baseInput,
+      openVpnPort: 1194,
+      wireGuardPort: 51820,
+      proxyPort: 3128,
+    })
+    expect(result.success).toBe(true)
   })
 
   it("rejects out-of-range ports", () => {
@@ -188,6 +198,39 @@ describe("createVpnServerSchema", () => {
       openVpnPort: 1194,
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe("VpnServerService.list", () => {
+  it("applies no where clause without filters", async () => {
+    await service.list()
+    expect(serverFindMany.mock.calls[0][0].where).toBeUndefined()
+  })
+
+  it("filters by regionId", async () => {
+    await service.list({ regionId: "reg-1" })
+    expect(serverFindMany.mock.calls[0][0].where).toEqual({ regionId: "reg-1" })
+  })
+
+  it("filters by search across hostname and ipAddress", async () => {
+    await service.list({ search: "203.0" })
+    expect(serverFindMany.mock.calls[0][0].where).toEqual({
+      OR: [
+        { hostname: { contains: "203.0", mode: "insensitive" } },
+        { ipAddress: { contains: "203.0", mode: "insensitive" } },
+      ],
+    })
+  })
+
+  it("composes regionId and search (AND logic)", async () => {
+    await service.list({ regionId: "reg-1", search: "203" })
+    expect(serverFindMany.mock.calls[0][0].where).toEqual({
+      regionId: "reg-1",
+      OR: [
+        { hostname: { contains: "203", mode: "insensitive" } },
+        { ipAddress: { contains: "203", mode: "insensitive" } },
+      ],
+    })
   })
 })
 
