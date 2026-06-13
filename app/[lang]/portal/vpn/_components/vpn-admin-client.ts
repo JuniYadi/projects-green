@@ -6,6 +6,39 @@ export type VpnApiError = {
   message: string
 }
 
+export type ScanCheckStatus = "pass" | "fail" | "skip" | "error"
+export type ScanStatus = "completed" | "partial" | "failed"
+
+export type ScanCheckResult = {
+  check: "ssh" | "openvpn" | "wireguard" | "proxy"
+  label: string
+  status: ScanCheckStatus
+  protocol: "ssh" | "openvpn" | "wireguard" | "proxy"
+  host: string | null
+  port: number | null
+  transport: "tcp" | "udp" | null
+  latencyMs: number | null
+  message: string
+  detail?: string
+  timestamp: string
+}
+
+export type ScanSummary = {
+  total: number
+  passed: number
+  failed: number
+  errors: number
+  skipped: number
+}
+
+export type ScanResult = {
+  status: ScanStatus
+  startedAt: string
+  completedAt: string
+  results: ScanCheckResult[]
+  summary: ScanSummary
+}
+
 export type VpnRegionItem = {
   id: string
   name: string

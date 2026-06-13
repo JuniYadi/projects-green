@@ -23,10 +23,12 @@ import {
 
 import {
   vpnApi,
+  type ScanResult,
   type VpnRegionItem,
   type VpnServerItem,
   type VpnSshKeyItem,
 } from "./vpn-admin-client"
+import { ConnectionTestModal } from "./connection-test-modal"
 
 const DEFAULT_PORTS = { openVpn: 1194, wireGuard: 51820, proxy: 3128 }
 const DEFAULT_SSH_PORT = 22
@@ -99,14 +101,11 @@ export function ServerForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{
-    reachable: boolean
-    message: string
-    fallbackIp?: string
-  } | null>(null)
+  const [testModalOpen, setTestModalOpen] = useState(false)
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null)
 
   // Any field change invalidates a prior connection-test result.
-  const clearTestResult = () => setTestResult(null)
+  const clearTestResult = () => setScanResult(null)
 
   const setProtocol = (key: ProtocolKey, patch: Partial<ProtoState[ProtocolKey]>) => {
     clearTestResult()
@@ -119,15 +118,17 @@ export function ServerForm({
   const testConnection = async () => {
     if (!editing) return
     setTesting(true)
-    setTestResult(null)
+    setTestModalOpen(true)
+    setScanResult(null)
     try {
-      const res = await vpnApi<{
-        ok: true
-        data: { reachable: boolean; message: string; fallbackIp?: string }
-      }>(`/admin/vpn/servers/${editing.id}/test`, { method: "POST" })
-      setTestResult(res.data)
+      const res = await vpnApi<{ ok: true; data: ScanResult }>(
+        `/admin/vpn/servers/${editing.id}/test`,
+        { method: "POST" }
+      )
+      setScanResult(res.data)
     } catch (err) {
-      setTestResult({ reachable: false, message: (err as Error).message })
+      setTestModalOpen(false)
+      setError((err as Error).message)
     } finally {
       setTesting(false)
     }
@@ -339,25 +340,6 @@ export function ServerForm({
             Active
           </label>
 
-          {testResult && (
-            <div
-              className={
-                testResult.reachable
-                  ? "rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-400"
-                  : "rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400"
-              }
-            >
-              <p className="break-words">
-                {testResult.reachable ? "✅" : "❌"} {testResult.message}
-              </p>
-              {!testResult.reachable && testResult.fallbackIp && (
-                <p className="mt-1 text-xs">
-                  ⚠ IP fallback available ({testResult.fallbackIp}).
-                </p>
-              )}
-            </div>
-          )}
-
           {error && (
             <p className="text-sm break-words text-red-600 dark:text-red-400">
               {error}
@@ -383,6 +365,16 @@ export function ServerForm({
           </Button>
         </DialogFooter>
       </DialogContent>
+      {editing && (
+        <ConnectionTestModal
+          open={testModalOpen}
+          onOpenChange={setTestModalOpen}
+          serverName={editing.name}
+          result={scanResult}
+          running={testing}
+          onRerun={testConnection}
+        />
+      )}
     </Dialog>
   )
 }

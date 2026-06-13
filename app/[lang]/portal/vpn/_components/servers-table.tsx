@@ -29,8 +29,10 @@ import {
 } from "@phosphor-icons/react"
 
 import { ServerForm } from "./server-form"
+import { ConnectionTestModal } from "./connection-test-modal"
 import {
   vpnApi,
+  type ScanResult,
   type VpnRegionItem,
   type VpnServerItem,
   type VpnSshKeyItem,
@@ -69,6 +71,8 @@ export function ServersTable() {
   const [editing, setEditing] = useState<VpnServerItem | null>(null)
   const [duplicating, setDuplicating] = useState<VpnServerItem | null>(null)
   const [testingId, setTestingId] = useState<string | null>(null)
+  const [testTarget, setTestTarget] = useState<VpnServerItem | null>(null)
+  const [testResult, setTestResult] = useState<ScanResult | null>(null)
 
   const loadServers = useCallback(async (regionId: string) => {
     setLoading(true)
@@ -142,16 +146,17 @@ export function ServersTable() {
 
   const testConnection = async (server: VpnServerItem) => {
     setTestingId(server.id)
+    setTestTarget(server)
+    setTestResult(null)
     try {
-      const res = await vpnApi<{
-        ok: true
-        data: { reachable: boolean; message: string }
-      }>(`/admin/vpn/servers/${server.id}/test`, { method: "POST" })
-      window.alert(
-        `${res.data.reachable ? "✅" : "🔴"} ${res.data.message}`
+      const res = await vpnApi<{ ok: true; data: ScanResult }>(
+        `/admin/vpn/servers/${server.id}/test`,
+        { method: "POST" }
       )
+      setTestResult(res.data)
     } catch (err) {
       window.alert((err as Error).message)
+      setTestTarget(null)
     } finally {
       setTestingId(null)
     }
@@ -310,6 +315,22 @@ export function ServersTable() {
           regions={regions}
           sshKeys={sshKeys}
           onSaved={() => loadServers(regionFilter)}
+        />
+      )}
+
+      {testTarget && (
+        <ConnectionTestModal
+          open={Boolean(testTarget)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setTestTarget(null)
+              setTestResult(null)
+            }
+          }}
+          serverName={testTarget.name}
+          result={testResult}
+          running={testingId === testTarget.id}
+          onRerun={() => testConnection(testTarget)}
         />
       )}
     </div>
