@@ -1,4 +1,5 @@
 import crypto from "node:crypto"
+import * as sshpk from "sshpk"
 
 import {
   encrypt,
@@ -50,26 +51,61 @@ export function decryptSshPrivateKey(encryptedValue: string): string {
 }
 
 /**
- * Compute a deterministic SHA256 fingerprint from an SSH private key by
- * deriving the public key (via node:crypto) and hashing its DER encoding.
- * Format: "SHA256:<base64-no-padding>" — stable for de-dupe and display.
- * Throws VpnSshKeyError if the key cannot be parsed.
+ * Parse an SSH private key in any supported format (OpenSSH, PKCS#8 PEM,
+ * RSA/EC/DSA traditional PEM) and return the DER-encoded SPKI public key
+ * bytes plus the algorithm name.
+ *
+ * Throws VpnSshKeyError for malformed, unsupported, or encrypted keys.
  */
-export function computeSshKeyFingerprint(privateKeyPem: string): string {
-  let publicDer: Buffer
+export function parseSshPrivateKey(
+  privateKey: string
+): { publicKeyDer: Buffer; algorithm: string } {
+  let parsed: sshpk.PrivateKey
   try {
-    const privateKey = crypto.createPrivateKey(privateKeyPem)
-    const publicKey = crypto.createPublicKey(privateKey)
-    publicDer = publicKey.export({ format: "der", type: "spki" }) as Buffer
-  } catch {
+    parsed = sshpk.parsePrivateKey(privateKey, "auto")
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (
+      message.toLowerCase().includes("encrypted") ||
+      message.toLowerCase().includes("password")
+    ) {
+      throw new VpnSshKeyError(
+        "Encrypted SSH private keys are not supported. Provide an unencrypted private key."
+      )
+    }
     throw new VpnSshKeyError(
-      "Could not parse the SSH private key. Provide a valid PEM/OpenSSH private key."
+      "Unsupported or malformed SSH private key. Supported formats: " +
+        "OpenSSH private key, PKCS#8 PEM, and RSA PEM."
     )
   }
 
+  // Export public key as PEM, then import via Node crypto for canonical DER SPKI
+  const pubPem = parsed.toPublic().toString("pem")
+  try {
+    const publicKey = crypto.createPublicKey(pubPem)
+    const publicKeyDer = publicKey.export({
+      format: "der",
+      type: "spki",
+    }) as Buffer
+    return { publicKeyDer, algorithm: parsed.type }
+  } catch {
+    throw new VpnSshKeyError(
+      "Could not derive a standard public key from the provided private key."
+    )
+  }
+}
+
+/**
+ * Compute a deterministic SHA256 fingerprint from an SSH private key by
+ * deriving the public key and hashing its DER SPKI encoding.
+ * Format: "SHA256:<base64-no-padding>" — stable for de-dupe and display.
+ * Throws VpnSshKeyError if the key cannot be parsed.
+ */
+export function computeSshKeyFingerprint(privateKey: string): string {
+  const { publicKeyDer } = parseSshPrivateKey(privateKey)
   const digest = crypto
     .createHash("sha256")
-    .update(publicDer)
+    .update(publicKeyDer)
     .digest("base64")
     .replace(/=+$/, "")
 

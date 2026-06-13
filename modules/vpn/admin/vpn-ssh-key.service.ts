@@ -28,6 +28,13 @@ export class VpnSshKeyInUseError extends Error {
   }
 }
 
+export class VpnSshKeyAlreadyExistsError extends Error {
+  constructor(message = "An SSH key with the same fingerprint already exists.") {
+    super(message)
+    this.name = "VpnSshKeyAlreadyExistsError"
+  }
+}
+
 export class VpnSshKeyService {
   private readonly prisma: PrismaLike
 
@@ -45,6 +52,19 @@ export class VpnSshKeyService {
   async create(input: CreateVpnSshKeyInput) {
     // Throws VpnSshKeyError (mapped at route) when the key cannot be parsed.
     const fingerprint = computeSshKeyFingerprint(input.privateKey)
+
+    // Reject duplicate key (fingerprint has a non-unique index, so use findFirst)
+    const existing = await this.prisma.vpnSshKey.findFirst({
+      where: { fingerprint },
+      select: { id: true, name: true },
+    })
+    if (existing) {
+      throw new VpnSshKeyAlreadyExistsError(
+        `An SSH key with this fingerprint already exists ("${existing.name}"). ` +
+          "Each key can only be added once."
+      )
+    }
+
     const encrypted = encryptSshPrivateKey(input.privateKey)
 
     return this.prisma.vpnSshKey.create({

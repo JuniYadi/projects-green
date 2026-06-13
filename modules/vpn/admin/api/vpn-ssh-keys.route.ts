@@ -8,6 +8,7 @@ import {
 import { createVpnSshKeySchema } from "../vpn-ssh-key.schema"
 import { toVpnSshKeyDTO } from "../vpn-ssh-key.dto"
 import {
+  VpnSshKeyAlreadyExistsError,
   VpnSshKeyInUseError,
   VpnSshKeyNotFoundError,
   vpnSshKeyService,
@@ -67,6 +68,10 @@ function toSshKeyError(set: RouteSet, error: unknown): AdminApiError {
   if (error instanceof VpnSshKeyNotFoundError) {
     set.status = 404
     return { ok: false, error: "NOT_FOUND", message: error.message }
+  }
+  if (error instanceof VpnSshKeyAlreadyExistsError) {
+    set.status = 409
+    return { ok: false, error: "SSH_KEY_DUPLICATE", message: error.message }
   }
   if (error instanceof VpnSshKeyInUseError) {
     set.status = 409

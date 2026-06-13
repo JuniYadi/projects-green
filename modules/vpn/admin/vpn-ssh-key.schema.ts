@@ -1,5 +1,8 @@
 import { z } from "zod"
 
+const PRIVATE_KEY_HEADER_RE =
+  /^-----BEGIN\s+(OPENSSH|RSA|EC|DSA|)\s*PRIVATE KEY-----$/m
+
 export const createVpnSshKeySchema = z.object({
   name: z
     .string()
@@ -10,8 +13,10 @@ export const createVpnSshKeySchema = z.object({
     .string()
     .trim()
     .min(1, "Private key is required.")
-    .refine((value) => /-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(value), {
-      message: "Private key must be a PEM/OpenSSH private key.",
+    .refine((value) => PRIVATE_KEY_HEADER_RE.test(value.trim()), {
+      message:
+        "Unsupported SSH private key format. " +
+        "Supported: OpenSSH private key, PKCS#8 PEM, RSA PEM, EC PEM, and DSA PEM.",
     }),
 })
 

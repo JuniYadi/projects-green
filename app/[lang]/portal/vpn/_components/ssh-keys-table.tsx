@@ -168,7 +168,9 @@ export function SshKeysTable() {
             <DialogTitle>Add SSH Key</DialogTitle>
             <DialogDescription>
               Stored encrypted. Label clearly so you can find it when adding
-              servers.
+              servers. Supported: OpenSSH private key (
+              <code className="text-xs">ssh-keygen -t ed25519</code>), PKCS#8
+              PEM, and RSA PEM. Encrypted keys not supported.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
