@@ -22,6 +22,7 @@ import {
   CreditCardIcon,
   CrosshairIcon,
   GaugeIcon,
+  GlobeIcon,
   LifebuoyIcon,
   Lightning,
   PaperPlaneTiltIcon,
@@ -111,6 +112,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+      {
+        title: "VPN",
+        url: localizePathname({
+          pathname: "/portal/admin/vpn",
+          locale,
+        }),
+        icon: <GlobeIcon />,
+        isActive: startsWithRoute(path, "/portal/admin/vpn"),
       },
     ],
   },

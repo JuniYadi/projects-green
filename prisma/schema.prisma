@@ -551,6 +551,13 @@ enum VpnClientStatus {
   PROVISIONING_FAILED
 }
 
+enum VpnServerHealth {
+  HEALTHY
+  WARNING
+  DOWN
+  UNKNOWN
+}
+
 enum AdjustmentType {
   CREDIT
   DEBIT
@@ -1116,6 +1123,59 @@ model VpnClient {
   @@index([organizationId, status])
   @@index([subscriptionId])
   @@index([currentPeriodEnd])
+}
+
+model VpnRegion {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  flagEmoji String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  servers VpnServer[]
+
+  @@index([isActive])
+}
+
+model VpnSshKey {
+  id          String   @id @default(cuid())
+  name        String
+  privateKey  String
+  fingerprint String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  servers VpnServer[]
+
+  @@index([fingerprint])
+}
+
+model VpnServer {
+  id            String          @id @default(cuid())
+  name          String          @unique
+  regionId      String
+  hostname      String
+  sshKeyId      String
+  sshUser       String          @default("root")
+  hasOpenVpn    Boolean         @default(false)
+  openVpnPort   Int?
+  hasWireGuard  Boolean         @default(false)
+  wireGuardPort Int?
+  hasProxy      Boolean         @default(false)
+  proxyPort     Int?
+  health        VpnServerHealth @default(UNKNOWN)
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  region VpnRegion @relation(fields: [regionId], references: [id])
+  sshKey VpnSshKey @relation(fields: [sshKeyId], references: [id])
+
+  @@index([regionId])
+  @@index([sshKeyId])
+  @@index([isActive])
 }
 
 model BillingUsageLedger {
