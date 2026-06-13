@@ -92,15 +92,17 @@ const toInvoiceListItem = (invoice: {
   invoiceNumber: string
   issuedAt: Date | null
   dueAt: Date | null
+  dueDate?: Date | null
   totalAmount: unknown
   currency: string
   status: PrismaInvoiceStatus
+  createdAt: Date
 }): InvoiceListItem => {
   return {
     id: invoice.id,
     invoiceNumber: invoice.invoiceNumber,
-    issuedAt: invoice.issuedAt?.toISOString() ?? null,
-    dueAt: invoice.dueAt?.toISOString() ?? null,
+    issuedAt: invoice.issuedAt?.toISOString() ?? invoice.createdAt.toISOString(),
+    dueAt: invoice.dueAt?.toISOString() ?? invoice.dueDate?.toISOString() ?? null,
     totalAmount: toNumber(invoice.totalAmount),
     currency: invoice.currency,
     status: toInvoiceStatus(invoice.status),
@@ -127,23 +129,6 @@ const toInvoiceLineItem = (line: {
   }
 }
 
-const toManualTransfer = (
-  metadataJson: unknown
-): InvoiceDetail["manualTransfer"] => {
-  if (!metadataJson || typeof metadataJson !== "object") return null
-  const meta = metadataJson as Record<string, unknown>
-  const hasFields =
-    meta.baseAmount !== undefined ||
-    meta.uniqueCode !== undefined ||
-    meta.finalAmount !== undefined
-  if (!hasFields) return null
-  return {
-    baseAmount: meta.baseAmount !== undefined ? toNumber(meta.baseAmount) : null,
-    uniqueCode: meta.uniqueCode !== undefined ? toNumber(meta.uniqueCode) : null,
-    finalAmount: meta.finalAmount !== undefined ? toNumber(meta.finalAmount) : null,
-  }
-}
-
 export const toInvoiceDetail = (invoice: InvoiceDetailRecord): InvoiceDetail => {
   return {
     ...toInvoiceListItem(invoice),
@@ -155,7 +140,6 @@ export const toInvoiceDetail = (invoice: InvoiceDetailRecord): InvoiceDetail => 
     paidAt: invoice.paidAt?.toISOString() ?? null,
     type: invoice.type ?? null,
     paymentMethod: invoice.paymentMethod ?? null,
-    manualTransfer: toManualTransfer(invoice.metadataJson),
     lineItems: invoice.lines.map((line) => toInvoiceLineItem(line)),
     billingAccountId: invoice.billingAccountId,
   }

@@ -135,8 +135,8 @@ describe("EncryptionService", () => {
       expect(service.decryptFieldOptional(encrypted)).toBe(plaintext)
     })
 
-    it("returns null for invalid data (does not throw)", () => {
-      expect(service.decryptFieldOptional("invalid-data")).toBeNull()
+    it("returns raw value for non-encrypted data (does not throw)", () => {
+      expect(service.decryptFieldOptional("invalid-data")).toBe("invalid-data")
     })
   })
 

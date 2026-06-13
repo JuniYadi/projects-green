@@ -32,7 +32,6 @@ const invoiceDetail: InvoiceDetail = {
   paidAt: null,
   type: null,
   paymentMethod: null,
-  manualTransfer: null,
   lineItems: [
     {
       id: "line_1",

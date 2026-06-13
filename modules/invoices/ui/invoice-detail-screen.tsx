@@ -396,41 +396,20 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
               <p className="text-xs text-muted-foreground">Invoice Status</p>
               <p className="font-medium">{getInvoiceStatusLabel(invoice.status)}</p>
             </div>
-            {invoice.manualTransfer ? (
-              <div className="grid gap-1 rounded-md border bg-muted/40 p-3">
-                <p className="text-xs text-muted-foreground">Amount to transfer</p>
-                <p className="text-base font-semibold">
-                  {formatInvoiceCurrency(
-                    invoice.manualTransfer.finalAmount ?? invoice.totalAmount,
-                    invoice.currency,
-                    locale
-                  )}
-                </p>
-                {invoice.manualTransfer.uniqueCode != null ? (
-                  <p className="text-xs text-muted-foreground">
-                    Includes a unique code of {invoice.manualTransfer.uniqueCode}.
-                    Transfer the exact amount so we can match your payment
-                    automatically.
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                After transferring the amount above to the destination account,
-                confirm your payment so we can verify and credit your balance.
-              </p>
-            )}
+            <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              After transferring the amount above to the destination account,
+              confirm your payment so we can verify and credit your balance.
+            </p>
           </div>
 
           <SheetFooter>
             <Button
               type="button"
               onClick={() => {
-                const amount = invoice.manualTransfer?.finalAmount ?? invoice.totalAmount
                 router.push(
                   `/console/billing/payments/confirm?invoiceId=${encodeURIComponent(
                     invoice.id
-                  )}&amount=${Math.round(amount)}`
+                  )}&amount=${Math.round(invoice.totalAmount)}`
                 )
               }}
             >

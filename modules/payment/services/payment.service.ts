@@ -1,6 +1,5 @@
 import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
-import { randomInt } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { PAYMENT_CONSTANTS } from "../constants"
@@ -12,14 +11,6 @@ export class PaymentService {
   constructor(billingTransactions?: BillingTransactionService) {
     this.billingTransactions =
       billingTransactions ?? new BillingTransactionService(prisma as unknown as PrismaClient)
-  }
-
-  /**
-   * Generate a 3-digit unique code for manual transfer verification.
-   * Uses crypto.randomInt for cryptographic security (financial context).
-   */
-  private generateUniqueCode(): number {
-    return randomInt(1, 1000)
   }
 
   /**
@@ -83,22 +74,6 @@ export class PaymentService {
     // Generate invoice number using UUID to avoid race condition
     const invoiceNumber = `TOP-${crypto.randomUUID().split("-")[0].toUpperCase()}`
 
-    // Generate unique code for manual transfer if enabled
-    const uniqueCodeEnabled = process.env.MANUAL_TRANSFER_UNIQUE_CODE_ENABLED !== "false"
-    let uniqueCode: number | undefined
-    let finalAmount = amount
-    let metadata: Record<string, unknown> | undefined
-
-    if (paymentMethod === "MANUAL_BANK" && uniqueCodeEnabled) {
-      uniqueCode = this.generateUniqueCode()
-      finalAmount = amount + uniqueCode
-      metadata = {
-        baseAmount: amount,
-        uniqueCode,
-        finalAmount,
-      }
-    }
-
     const invoice = await prisma.billingInvoice.create({
       data: {
         billingAccountId: account.id,
@@ -108,24 +83,20 @@ export class PaymentService {
         gatewayId,
         dueDate,
         status: "OPEN",
-        subtotalAmount: finalAmount,
-        totalAmount: finalAmount,
+        subtotalAmount: amount,
+        totalAmount: amount,
         currency: account.currency,
         periodStart: now,
         periodEnd: dueDate,
-        metadataJson: (metadata ?? Prisma.DbNull) as Prisma.InputJsonValue,
         // Every invoice must carry at least one line so the detail view and PDF
         // render a meaningful description / qty / unit price / total.
         lines: {
           create: {
             lineType: "ADJUSTMENT",
-            description:
-              uniqueCode !== undefined
-                ? `Balance Top-Up (includes unique code ${uniqueCode})`
-                : "Balance Top-Up",
+            description: "Balance Top-Up",
             quantity: new Prisma.Decimal(1),
-            unitPrice: new Prisma.Decimal(finalAmount),
-            amount: new Prisma.Decimal(finalAmount),
+            unitPrice: new Prisma.Decimal(amount),
+            amount: new Prisma.Decimal(amount),
             currency: account.currency,
             periodStart: now,
             periodEnd: dueDate,
