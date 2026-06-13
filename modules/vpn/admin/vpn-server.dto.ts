@@ -8,6 +8,8 @@ export type VpnServerDTO = {
   id: string
   name: string
   hostname: string
+  ipAddress: string | null
+  sshPort: number
   sshUser: string
   isActive: boolean
   health: VpnServerHealth
@@ -34,6 +36,8 @@ export function toVpnServerDTO(server: VpnServerWithRelations): VpnServerDTO {
     id: server.id,
     name: server.name,
     hostname: server.hostname,
+    ipAddress: server.ipAddress,
+    sshPort: server.sshPort,
     sshUser: server.sshUser,
     isActive: server.isActive,
     health: server.health,

@@ -1157,6 +1157,8 @@ model VpnServer {
   name          String          @unique
   regionId      String
   hostname      String
+  ipAddress     String?
+  sshPort       Int             @default(22)
   sshKeyId      String
   sshUser       String          @default("root")
   hasOpenVpn    Boolean         @default(false)

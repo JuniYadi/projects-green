@@ -25,6 +25,7 @@ import {
   PencilSimpleIcon,
   TrashIcon,
   PlugIcon,
+  CopyIcon,
 } from "@phosphor-icons/react"
 
 import { ServerForm } from "./server-form"
@@ -66,6 +67,7 @@ export function ServersTable() {
   const [regionFilter, setRegionFilter] = useState<string>("all")
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<VpnServerItem | null>(null)
+  const [duplicating, setDuplicating] = useState<VpnServerItem | null>(null)
   const [testingId, setTestingId] = useState<string | null>(null)
 
   const loadServers = useCallback(async (regionId: string) => {
@@ -112,11 +114,19 @@ export function ServersTable() {
 
   const openCreate = () => {
     setEditing(null)
+    setDuplicating(null)
     setFormOpen(true)
   }
 
   const openEdit = (server: VpnServerItem) => {
     setEditing(server)
+    setDuplicating(null)
+    setFormOpen(true)
+  }
+
+  const openDuplicate = (server: VpnServerItem) => {
+    setEditing(null)
+    setDuplicating(server)
     setFormOpen(true)
   }
 
@@ -255,6 +265,16 @@ export function ServersTable() {
                       >
                         <PlugIcon className="h-4 w-4" />
                       </Button>
+                      {server.isActive && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openDuplicate(server)}
+                          aria-label={`Duplicate ${server.name}`}
+                        >
+                          <CopyIcon className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -282,10 +302,11 @@ export function ServersTable() {
 
       {formOpen && (
         <ServerForm
-          key={editing?.id ?? "new"}
+          key={editing?.id ?? duplicating?.id ?? "new"}
           open={formOpen}
           onOpenChange={setFormOpen}
           editing={editing}
+          duplicateFrom={duplicating}
           regions={regions}
           sshKeys={sshKeys}
           onSaved={() => loadServers(regionFilter)}

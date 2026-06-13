@@ -30,6 +30,8 @@ export type VpnServerItem = {
   id: string
   name: string
   hostname: string
+  ipAddress: string | null
+  sshPort: number
   sshUser: string
   isActive: boolean
   health: "HEALTHY" | "WARNING" | "DOWN" | "UNKNOWN"

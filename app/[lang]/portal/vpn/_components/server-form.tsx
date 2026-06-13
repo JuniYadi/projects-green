@@ -29,6 +29,10 @@ import {
 } from "./vpn-admin-client"
 
 const DEFAULT_PORTS = { openVpn: 1194, wireGuard: 51820, proxy: 3128 }
+const DEFAULT_SSH_PORT = 22
+
+const truncate = (value: string, max: number) =>
+  value.length > max ? `${value.slice(0, max - 1)}…` : value
 
 type ProtocolKey = "openVpn" | "wireGuard" | "proxy"
 
@@ -38,24 +42,26 @@ export type ServerFormProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   editing: VpnServerItem | null
+  /** When set, prefill from this server as a new (create) server. */
+  duplicateFrom?: VpnServerItem | null
   regions: VpnRegionItem[]
   sshKeys: VpnSshKeyItem[]
   onSaved: () => void | Promise<void>
 }
 
-function initialProtocols(editing: VpnServerItem | null): ProtoState {
+function initialProtocols(source: VpnServerItem | null): ProtoState {
   return {
     openVpn: {
-      enabled: editing?.protocols.openVpn.enabled ?? false,
-      port: editing?.protocols.openVpn.port ?? DEFAULT_PORTS.openVpn,
+      enabled: source?.protocols.openVpn.enabled ?? false,
+      port: source?.protocols.openVpn.port ?? DEFAULT_PORTS.openVpn,
     },
     wireGuard: {
-      enabled: editing?.protocols.wireGuard.enabled ?? false,
-      port: editing?.protocols.wireGuard.port ?? DEFAULT_PORTS.wireGuard,
+      enabled: source?.protocols.wireGuard.enabled ?? false,
+      port: source?.protocols.wireGuard.port ?? DEFAULT_PORTS.wireGuard,
     },
     proxy: {
-      enabled: editing?.protocols.proxy.enabled ?? false,
-      port: editing?.protocols.proxy.port ?? DEFAULT_PORTS.proxy,
+      enabled: source?.protocols.proxy.enabled ?? false,
+      port: source?.protocols.proxy.port ?? DEFAULT_PORTS.proxy,
     },
   }
 }
@@ -70,24 +76,62 @@ export function ServerForm({
   open,
   onOpenChange,
   editing,
+  duplicateFrom,
   regions,
   sshKeys,
   onSaved,
 }: ServerFormProps) {
+  // Fields copied when duplicating; name/hostname/ip/sshPort are intentionally cleared.
+  const copySource = editing ?? duplicateFrom ?? null
   const [name, setName] = useState(editing?.name ?? "")
-  const [regionId, setRegionId] = useState(editing?.region.id ?? "")
+  const [regionId, setRegionId] = useState(copySource?.region.id ?? "")
   const [hostname, setHostname] = useState(editing?.hostname ?? "")
-  const [sshKeyId, setSshKeyId] = useState(editing?.sshKey.id ?? "")
-  const [sshUser, setSshUser] = useState(editing?.sshUser ?? "root")
-  const [isActive, setIsActive] = useState(editing?.isActive ?? true)
+  const [ipAddress, setIpAddress] = useState(editing?.ipAddress ?? "")
+  const [sshPort, setSshPort] = useState<number>(
+    editing?.sshPort ?? DEFAULT_SSH_PORT
+  )
+  const [sshKeyId, setSshKeyId] = useState(copySource?.sshKey.id ?? "")
+  const [sshUser, setSshUser] = useState(copySource?.sshUser ?? "root")
+  const [isActive, setIsActive] = useState(copySource?.isActive ?? true)
   const [protocols, setProtocols] = useState<ProtoState>(
-    initialProtocols(editing)
+    initialProtocols(copySource)
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{
+    reachable: boolean
+    message: string
+    fallbackIp?: string
+  } | null>(null)
 
-  const setProtocol = (key: ProtocolKey, patch: Partial<ProtoState[ProtocolKey]>) =>
+  // Any field change invalidates a prior connection-test result.
+  const clearTestResult = () => setTestResult(null)
+
+  const setProtocol = (key: ProtocolKey, patch: Partial<ProtoState[ProtocolKey]>) => {
+    clearTestResult()
     setProtocols((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))
+  }
+
+  // Test Connection only works against a saved server (needs a server id).
+  const canTest = Boolean(editing)
+
+  const testConnection = async () => {
+    if (!editing) return
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await vpnApi<{
+        ok: true
+        data: { reachable: boolean; message: string; fallbackIp?: string }
+      }>(`/admin/vpn/servers/${editing.id}/test`, { method: "POST" })
+      setTestResult(res.data)
+    } catch (err) {
+      setTestResult({ reachable: false, message: (err as Error).message })
+    } finally {
+      setTesting(false)
+    }
+  }
 
   const submit = async () => {
     setSaving(true)
@@ -97,6 +141,8 @@ export function ServerForm({
         name,
         regionId,
         hostname,
+        ipAddress: ipAddress.trim() ? ipAddress.trim() : undefined,
+        sshPort,
         sshKeyId,
         sshUser,
         isActive,
@@ -132,9 +178,17 @@ export function ServerForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit Server" : "Add Server"}</DialogTitle>
+          <DialogTitle>
+            {editing
+              ? "Edit Server"
+              : duplicateFrom
+                ? `Duplicate Server — ${duplicateFrom.name}`
+                : "Add Server"}
+          </DialogTitle>
           <DialogDescription>
-            Pick a saved SSH key. Enable at least one protocol.
+            {duplicateFrom
+              ? "Fields are pre-filled from the source. Enter a new name, hostname, IP, and SSH port."
+              : "Pick a saved SSH key. Enable at least one protocol."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -168,20 +222,67 @@ export function ServerForm({
             <Input
               id="server-host"
               value={hostname}
-              onChange={(e) => setHostname(e.target.value)}
+              onChange={(e) => {
+                clearTestResult()
+                setHostname(e.target.value)
+              }}
               placeholder="vpn-id-01.example.net"
             />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="server-ip">IP Address</Label>
+            <Input
+              id="server-ip"
+              value={ipAddress}
+              onChange={(e) => {
+                clearTestResult()
+                setIpAddress(e.target.value)
+              }}
+              placeholder="203.0.113.10 (optional)"
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional — fallback if hostname DNS fails. IPv4 or IPv6.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="server-ssh-port">SSH Port</Label>
+            <Input
+              id="server-ssh-port"
+              type="number"
+              value={sshPort}
+              onChange={(e) => {
+                clearTestResult()
+                setSshPort(Number(e.target.value))
+              }}
+              placeholder="22"
+            />
+          </div>
+          <div className="space-y-2">
             <Label>SSH Key</Label>
-            <Select value={sshKeyId} onValueChange={setSshKeyId}>
+            <Select
+              value={sshKeyId}
+              onValueChange={(value) => {
+                clearTestResult()
+                setSshKeyId(value)
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select SSH key" />
               </SelectTrigger>
               <SelectContent>
                 {sshKeys.map((key) => (
-                  <SelectItem key={key.id} value={key.id}>
-                    {key.name} ({key.fingerprint})
+                  <SelectItem
+                    key={key.id}
+                    value={key.id}
+                    title={`${key.name} — ${key.fingerprint}`}
+                  >
+                    <span className="flex max-w-[18rem] items-center gap-2">
+                      <span aria-hidden>🔑</span>
+                      <span className="truncate">{truncate(key.name, 40)}</span>
+                      <span className="truncate font-mono text-xs text-muted-foreground">
+                        {truncate(key.fingerprint, 12)}
+                      </span>
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -192,7 +293,10 @@ export function ServerForm({
             <Input
               id="server-ssh-user"
               value={sshUser}
-              onChange={(e) => setSshUser(e.target.value)}
+              onChange={(e) => {
+                clearTestResult()
+                setSshUser(e.target.value)
+              }}
               placeholder="root"
             />
           </div>
@@ -235,14 +339,45 @@ export function ServerForm({
             Active
           </label>
 
+          {testResult && (
+            <div
+              className={
+                testResult.reachable
+                  ? "rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-400"
+                  : "rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400"
+              }
+            >
+              <p className="break-words">
+                {testResult.reachable ? "✅" : "❌"} {testResult.message}
+              </p>
+              {!testResult.reachable && testResult.fallbackIp && (
+                <p className="mt-1 text-xs">
+                  ⚠ IP fallback available ({testResult.fallbackIp}).
+                </p>
+              )}
+            </div>
+          )}
+
           {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <p className="text-sm break-words text-red-600 dark:text-red-400">
+              {error}
+            </p>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
+          {canTest && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={testConnection}
+              disabled={testing}
+            >
+              {testing ? "Testing..." : "Test Connection"}
+            </Button>
+          )}
           <Button onClick={submit} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </Button>

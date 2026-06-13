@@ -26,12 +26,19 @@ type Deps = {
   requireSuperAdmin?: typeof requireSuperAdmin
   service?: VpnServerService
   testConnection?: VpnServerConnectionTester
+  /** Injectable clock for rate-limit testing. */
+  now?: () => number
 }
+
+/** Min interval between connection tests for the same server. */
+export const TEST_RATE_LIMIT_MS = 30_000
 
 export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
   const guard = deps.requireSuperAdmin ?? requireSuperAdmin
   const service = deps.service ?? vpnServerService
   const testConnection = deps.testConnection ?? testVpnServerConnection
+  const now = deps.now ?? Date.now
+  const lastTestAt = new Map<string, number>()
 
   return new Elysia()
     .get("/admin/vpn/servers", async ({ query, set }) => {
@@ -91,8 +98,23 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
 
+      const current = now()
+      const previous = lastTestAt.get(params.id)
+      if (previous !== undefined && current - previous < TEST_RATE_LIMIT_MS) {
+        const retryAfterSec = Math.ceil(
+          (TEST_RATE_LIMIT_MS - (current - previous)) / 1000
+        )
+        set.status = 429
+        return {
+          ok: false,
+          error: "RATE_LIMITED",
+          message: `Please wait ${retryAfterSec}s before testing this server again.`,
+        }
+      }
+
       try {
         const server = await service.getById(params.id)
+        lastTestAt.set(params.id, current)
         const result = await testConnection(server)
         return { ok: true, data: result }
       } catch (error) {

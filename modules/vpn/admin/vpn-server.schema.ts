@@ -9,6 +9,21 @@ const portSchema = z
 export const DEFAULT_OPENVPN_PORT = 1194
 export const DEFAULT_WIREGUARD_PORT = 51820
 export const DEFAULT_PROXY_PORT = 3128
+export const DEFAULT_SSH_PORT = 22
+
+// Built-in zod 4 IP format checks; union accepts IPv4 or IPv6.
+export function isValidIpAddress(value: string): boolean {
+  return z.ipv4().safeParse(value).success || z.ipv6().safeParse(value).success
+}
+
+const ipAddressSchema = z
+  .string()
+  .trim()
+  .refine((v) => v.length === 0 || isValidIpAddress(v), {
+    message: "IP address must be a valid IPv4 or IPv6 address.",
+  })
+  .transform((v) => (v.length === 0 ? undefined : v))
+  .optional()
 
 const baseServerShape = {
   name: z
@@ -22,6 +37,8 @@ const baseServerShape = {
     .trim()
     .min(3, "Hostname is required.")
     .max(253, "Hostname must be at most 253 characters."),
+  ipAddress: ipAddressSchema,
+  sshPort: portSchema.optional().default(DEFAULT_SSH_PORT),
   sshKeyId: z.string().trim().min(1, "SSH key is required."),
   sshUser: z
     .string()

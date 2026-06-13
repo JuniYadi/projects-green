@@ -17,6 +17,7 @@ const baseInput = {
   name: "ID-01",
   regionId: "reg-1",
   hostname: "vpn-id-01.example.net",
+  sshPort: 22,
   sshKeyId: "key-1",
   sshUser: "root",
   isActive: true,
@@ -27,6 +28,8 @@ const makeServer = (over: Record<string, unknown> = {}) => ({
   name: "ID-01",
   regionId: "reg-1",
   hostname: "vpn-id-01.example.net",
+  ipAddress: null,
+  sshPort: 22,
   sshKeyId: "key-1",
   sshUser: "root",
   hasOpenVpn: true,
@@ -128,6 +131,62 @@ describe("createVpnServerSchema", () => {
 
   it("update schema enforces the same protocol rule", () => {
     const result = updateVpnServerSchema.safeParse(baseInput)
+    expect(result.success).toBe(false)
+  })
+
+  it("defaults sshPort to 22 when omitted", () => {
+    const result = createVpnServerSchema.safeParse({
+      ...baseInput,
+      sshPort: undefined,
+      openVpnPort: 1194,
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.sshPort).toBe(22)
+  })
+
+  it("rejects out-of-range sshPort", () => {
+    const result = createVpnServerSchema.safeParse({
+      ...baseInput,
+      sshPort: 70000,
+      openVpnPort: 1194,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("accepts a valid IPv4 ipAddress", () => {
+    const result = createVpnServerSchema.safeParse({
+      ...baseInput,
+      ipAddress: "203.0.113.10",
+      openVpnPort: 1194,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts a valid IPv6 ipAddress", () => {
+    const result = createVpnServerSchema.safeParse({
+      ...baseInput,
+      ipAddress: "2001:db8::1",
+      openVpnPort: 1194,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("treats empty ipAddress as undefined", () => {
+    const result = createVpnServerSchema.safeParse({
+      ...baseInput,
+      ipAddress: "",
+      openVpnPort: 1194,
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.ipAddress).toBeUndefined()
+  })
+
+  it("rejects a malformed ipAddress", () => {
+    const result = createVpnServerSchema.safeParse({
+      ...baseInput,
+      ipAddress: "999.1.1.1",
+      openVpnPort: 1194,
+    })
     expect(result.success).toBe(false)
   })
 })
