@@ -93,11 +93,7 @@ export function SshKeysTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Store SSH keys once and reuse them across servers. Keys are stored
-          encrypted and never displayed again.
-        </p>
+      <div className="flex items-center justify-end">
         <Button onClick={openCreate} size="sm">
           <PlusIcon className="mr-2 h-4 w-4" />
           Add SSH Key
