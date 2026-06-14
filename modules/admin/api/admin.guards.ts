@@ -6,6 +6,7 @@ import {
 } from "@/lib/platform-role"
 
 export type AdminActorContext = {
+  ok: true
   userId: string
   platformRole: PlatformAccessRole
 }
@@ -54,6 +55,7 @@ export const getAdminActorContext =
     })
 
     return {
+      ok: true as const,
       userId: auth.user.id,
       platformRole,
     }
@@ -72,5 +74,5 @@ export const requireSuperAdmin = async (
     return toForbiddenError(set)
   }
 
-  return actor
+  return { ok: true, userId: actor.userId, platformRole: actor.platformRole }
 }

@@ -3,13 +3,16 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { BankAccountService } from "../services/bank-account.service"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { requireSuperAdmin } from "@/modules/admin/api/admin.guards"
 import { BANK_CODES } from "../constants"
 
 const bankAccountService = new BankAccountService()
 
 export const createAdminBankRoutes = () =>
   new Elysia({ prefix: "/bank-accounts" })
-    .get("/", async () => {
+    .get("/", async ({ set }) => {
+      const actor = await requireSuperAdmin(set)
+      if (!actor.ok) return actor
       const accounts = await bankAccountService.list({ includeInactive: true })
       return { ok: true, data: accounts }
     })

@@ -68,6 +68,7 @@ describe("adminGuards", () => {
       const result = await getAdminActorContext()
 
       expect(result).toEqual({
+        ok: true,
         userId: "user_1",
         platformRole: "super_admin",
       })
@@ -93,6 +94,7 @@ describe("adminGuards", () => {
       const result = await requireSuperAdmin(set)
 
       expect(result).toEqual({
+        ok: true,
         userId: "user_1",
         platformRole: "super_admin",
       })

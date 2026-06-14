@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 
@@ -266,11 +267,15 @@ export const createAdminMembersRoutes = (
       }
 
       try {
-        // Find billing account by organization ID
+        // Find billing account by organization ID, scoped to caller's org for non-super_admin
+        const billingAccountWhere: Prisma.BillingAccountWhereInput = {
+          organizationId: userId,
+          ...(actor.platformRole !== "super_admin" && auth.organizationId
+            ? { organizationId: auth.organizationId }
+            : {}),
+        }
         const billingAccount = await prisma.billingAccount.findFirst({
-          where: {
-            organizationId: userId,
-          },
+          where: billingAccountWhere,
         })
 
         if (!billingAccount) {

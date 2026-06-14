@@ -37,15 +37,15 @@ export function OverviewTab() {
       setState({
         status: "success",
         data: {
-          totalGateways: gateways.ok ? gateways.gateways?.length ?? 0 : 0,
+          totalGateways: gateways.ok ? gateways.data?.length ?? 0 : 0,
           activeGateways: gateways.ok
-            ? gateways.gateways?.filter((g: { status: string }) => g.status === "active").length ?? 0
+            ? gateways.data?.filter((g: { status: string }) => g.status === "active").length ?? 0
             : 0,
-          totalBankAccounts: bankAccounts.ok ? bankAccounts.bankAccounts?.length ?? 0 : 0,
+          totalBankAccounts: bankAccounts.ok ? bankAccounts.data?.length ?? 0 : 0,
           verifiedBankAccounts: bankAccounts.ok
-            ? bankAccounts.bankAccounts?.filter((b: { isVerified: boolean }) => b.isVerified).length ?? 0
+            ? bankAccounts.data?.filter((b: { isVerified: boolean }) => b.isVerified).length ?? 0
             : 0,
-          pendingConfirmations: confirmations.ok ? confirmations.confirmations?.length ?? 0 : 0,
+          pendingConfirmations: confirmations.ok ? confirmations.data?.length ?? 0 : 0,
           totalProcessed: 0, // Would need separate API for this
         },
       })
