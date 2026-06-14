@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 
+import { startTransition } from "react"
+
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   localizePathname,
@@ -29,14 +31,18 @@ export default function ConsoleVpnDashboardPage() {
   const load = useCallback(async () => {
     try {
       const subscriptions = await listVpnSubscriptions()
-      setState({ phase: "ready", subscriptions })
+      startTransition(() => {
+        setState({ phase: "ready", subscriptions })
+      })
     } catch {
-      setState({ phase: "ready", subscriptions: [] })
+      startTransition(() => {
+        setState({ phase: "ready", subscriptions: [] })
+      })
     }
   }, [])
 
   useEffect(() => {
-    void load()
+    load()
   }, [load])
 
   if (state.phase === "loading") {

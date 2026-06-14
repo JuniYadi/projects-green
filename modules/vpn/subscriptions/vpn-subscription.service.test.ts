@@ -10,6 +10,7 @@ import {
   buildAccountUsername,
 } from "./vpn-subscription.service"
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFn = (...args: any[]) => any
 
 const pkgFindUnique = mock<AnyFn>(async () => null)
@@ -28,8 +29,10 @@ const prismaMock = {
     update: subUpdate,
     delete: subDelete,
   },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const transactions = { debitServiceBalance } as any
 
 const service = new VpnSubscriptionService(prismaMock, {
@@ -105,6 +108,7 @@ describe("VpnSubscriptionService.purchase", () => {
     const accounts = subCreate.mock.calls[0][0].data.serverAccounts.create
     // srv-1: OpenVPN + WireGuard, srv-2: Proxy = 3 accounts
     expect(accounts).toHaveLength(3)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(accounts.map((a: any) => a.protocol).sort()).toEqual([
       "OPENVPN",
       "PROXY",

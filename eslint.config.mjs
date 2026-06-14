@@ -16,6 +16,7 @@ const eslintConfig = defineConfig([
     "test/**",
     // Ignore worktrees
     ".claude/worktrees/**",
+    ".crew/worktrees/**",
     ".worktrees/**",
   ]),
   // Relaxed rules for test files

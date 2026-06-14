@@ -145,6 +145,7 @@ export const defaultUdpProbe: UdpProber = (host, port, timeoutMs) =>
     const socket = dgram.createSocket("udp4")
     const startedAt = Date.now()
     let settled = false
+    // eslint-disable-next-line prefer-const -- reassigned in setTimeout below
     let timer: ReturnType<typeof setTimeout> | undefined
 
     const finish = (outcome: PortCheckOutcome) => {

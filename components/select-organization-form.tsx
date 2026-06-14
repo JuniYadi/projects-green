@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import { cn } from "@/lib/utils"
@@ -191,9 +192,9 @@ export function SelectOrganizationForm({
         <Field>
           <FieldDescription className="text-center">
             Need to use a different account?{" "}
-            <a href="/login" className="underline underline-offset-4">
+            <Link href="/login" className="underline underline-offset-4">
               Back to login
-            </a>
+            </Link>
           </FieldDescription>
         </Field>
       </FieldGroup>

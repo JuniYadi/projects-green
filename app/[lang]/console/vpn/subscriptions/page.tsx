@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, startTransition } from "react"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { listVpnSubscriptions, type VpnSubscription } from "@/lib/vpn-client"
@@ -17,14 +17,18 @@ export default function ConsoleVpnSubscriptionsPage() {
   const load = useCallback(async () => {
     try {
       const subscriptions = await listVpnSubscriptions()
-      setState({ phase: "ready", subscriptions })
+      startTransition(() => {
+        setState({ phase: "ready", subscriptions })
+      })
     } catch {
-      setState({ phase: "ready", subscriptions: [] })
+      startTransition(() => {
+        setState({ phase: "ready", subscriptions: [] })
+      })
     }
   }, [])
 
   useEffect(() => {
-    void load()
+    load()
   }, [load])
 
   if (state.phase === "loading") {
