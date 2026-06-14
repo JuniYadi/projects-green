@@ -105,14 +105,19 @@ export type VpnProxyCredentials = {
 async function fetchVpn<T>(
   endpoint: string,
   options?: RequestInit,
+  timeoutMs = 15_000,
 ): Promise<T> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
   const response = await fetch(endpoint, {
+    signal: controller.signal,
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
     },
     ...options,
-  })
+  }).finally(() => clearTimeout(timer))
 
   const data = (await response.json()) as T | VpnApiErrorResponse
 

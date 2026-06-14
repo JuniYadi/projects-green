@@ -186,7 +186,7 @@ export function createVpnServerConnectionTester(
 
   return async (server) => {
     const checkedAt = new Date().toISOString()
-    const hostname = server.hostname.trim()
+    const hostname = server.hostname?.trim() || undefined
     const ipAddress = server.ipAddress?.trim() || undefined
 
     const primary = hostname || ipAddress
