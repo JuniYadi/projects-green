@@ -16,6 +16,7 @@ const eslintConfig = defineConfig([
     "test/**",
     // Ignore worktrees
     ".claude/worktrees/**",
+    ".crew/worktrees/**",
     ".worktrees/**",
   ]),
   // Relaxed rules for test files
@@ -54,6 +55,14 @@ const eslintConfig = defineConfig([
     files: ["components/nav-user.tsx"],
     rules: {
       "react-hooks/set-state-in-effect": "warn",
+    },
+  },
+  // VPN admin module tests - prisma mocks require any
+  {
+    files: ["modules/vpn/admin/**/*.test.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
     },
   },
   // Email service test files use module.exports pattern

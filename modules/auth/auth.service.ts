@@ -137,6 +137,11 @@ export type AuthService = {
     pendingAuthenticationToken: string
     requestUrl: string
   }): Promise<Response>
+  completeOrganizationSelection(input: {
+    organizationId: string
+    pendingAuthenticationToken: string
+    requestUrl: string
+  }): Promise<Response>
   signup(input: {
     name: string
     email: string
@@ -237,6 +242,46 @@ export const authService: AuthService = {
       ) {
         throw new InvalidAuthCredentialsError(
           "Invalid or expired verification code."
+        )
+      }
+
+      if (error instanceof UnprocessableEntityException) {
+        throw new AuthValidationError(error.message)
+      }
+
+      throw error
+    }
+  },
+  async completeOrganizationSelection({
+    organizationId,
+    pendingAuthenticationToken,
+    requestUrl,
+  }) {
+    const { clientId, cookiePassword } = getAuthConfig()
+
+    try {
+      const authResponse =
+        await getWorkOS().userManagement.authenticateWithOrganizationSelection({
+          clientId,
+          organizationId,
+          pendingAuthenticationToken,
+          session: {
+            sealSession: true,
+            cookiePassword,
+          },
+        })
+
+      const sealedSession = ensureSealedSession(authResponse.sealedSession)
+
+      return toSessionResponse(200, sealedSession, requestUrl)
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof AuthenticationException ||
+        error instanceof NotFoundException
+      ) {
+        throw new InvalidAuthCredentialsError(
+          "Invalid or expired authentication session. Please login again."
         )
       }
 

@@ -48,14 +48,51 @@ type InvoiceRecord = {
   paidAt: Date | null
   type: string | null
   paymentMethod: string | null
+  gatewayId: string | null
   metadataJson: unknown
   metadata: unknown
   createdAt: Date
   updatedAt: Date
 }
 
+type InvoiceGatewayRecord = {
+  id: string
+  name: string
+  type: string
+}
+
+type InvoiceBankAccountRecord = {
+  id: string
+  bankCode: string
+  bankName: string
+  accountName: string
+  currency: string
+}
+
+type InvoicePaymentConfirmationRecord = {
+  id: string
+  invoiceId: string
+  bankAccountId: string
+  amount: unknown
+  paymentDateTime: Date
+  senderBankName: string | null
+  senderName: string | null
+  senderAccount: string | null
+  screenshotUrl: string | null
+  notes: string | null
+  status: string
+  reviewedBy: string | null
+  reviewedAt: Date | null
+  rejectReason: string | null
+  createdAt: Date
+  updatedAt: Date
+  bankAccount: InvoiceBankAccountRecord
+}
+
 export type InvoiceDetailRecord = InvoiceRecord & {
   lines: InvoiceLineRecord[]
+  gateway: InvoiceGatewayRecord | null
+  paymentConfirmations: InvoicePaymentConfirmationRecord[]
 }
 
 type InvoiceDelegate = {
@@ -184,6 +221,15 @@ export const createPrismaInvoiceRepository = (): InvoiceRepository => {
                 createdAt: "asc",
               },
             ],
+          },
+          gateway: true,
+          paymentConfirmations: {
+            include: {
+              bankAccount: true,
+            },
+            orderBy: {
+              createdAt: "asc",
+            },
           },
         },
       })

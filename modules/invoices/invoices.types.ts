@@ -49,11 +49,6 @@ export type InvoiceDetail = InvoiceListItem & {
   paidAt: string | null
   type: string | null
   paymentMethod: string | null
-  manualTransfer: {
-    baseAmount: number | null
-    uniqueCode: number | null
-    finalAmount: number | null
-  } | null
   lineItems: InvoiceLineItem[]
   billingAccountId?: string
 }
@@ -65,6 +60,60 @@ export type InvoicePaymentMethod = {
   last4: string | null
 }
 
+export type PaymentConfirmationStatus = "PENDING" | "APPROVED" | "REJECTED"
+
+export type PaymentConfirmationDTO = {
+  id: string
+  bankAccountId: string
+  bankName: string
+  accountName: string
+  amount: number
+  currency: string
+  senderName: string | null
+  senderBankName: string | null
+  senderAccount: string | null
+  screenshotUrl: string | null
+  notes: string | null
+  status: PaymentConfirmationStatus
+  rejectReason: string | null
+  reviewedAt: string | null
+  paymentDateTime: string
+  createdAt: string
+}
+
+export type PaymentGatewayInfo = {
+  id: string
+  name: string
+  type: string
+}
+
+export type PaymentReferenceInfo = {
+  vaNumber: string | null
+  paymentUrl: string | null
+  gatewayReference: string | null
+}
+
+export type PaymentTimelineEventType =
+  | "issued"
+  | "payment_submitted"
+  | "payment_approved"
+  | "payment_rejected"
+  | "paid"
+
+export type PaymentTimelineEvent = {
+  type: PaymentTimelineEventType
+  label: string
+  at: string
+}
+
+export type PaymentInfoDTO = {
+  method: string | null
+  gateway: PaymentGatewayInfo | null
+  reference: PaymentReferenceInfo | null
+  confirmations: PaymentConfirmationDTO[]
+  timeline: PaymentTimelineEvent[]
+}
+
 export type InvoiceListSuccessResponse = {
   ok: true
   invoices: InvoiceListItem[]
@@ -74,6 +123,9 @@ export type InvoiceDetailSuccessResponse = {
   ok: true
   invoice: InvoiceDetail
   canMarkCanceled: boolean
+  payment?: PaymentInfoDTO | null
+  canMarkPaid?: boolean
+  canManageConfirmations?: boolean
   organization?: {
     name: string
     billingFullName?: string | null

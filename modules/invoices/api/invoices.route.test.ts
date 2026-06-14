@@ -32,7 +32,6 @@ const invoiceDetail: InvoiceDetail = {
   paidAt: null,
   type: null,
   paymentMethod: null,
-  manualTransfer: null,
   lineItems: [
     {
       id: "line_1",
@@ -59,10 +58,14 @@ const createService = (): InvoiceService => {
       },
     ]),
     getInvoiceDetail: mock(async () => invoiceDetail),
+    getPaymentInfo: mock(async () => null),
     cancelInvoice: mock(
       async () => ({ ...invoiceDetail, status: "canceled" as const })
     ),
     getPaymentMethodOptions: () => [],
+    markInvoiceAsPaid: mock(
+      async () => ({ ...invoiceDetail, status: "paid" as const })
+    ),
   }
 }
 

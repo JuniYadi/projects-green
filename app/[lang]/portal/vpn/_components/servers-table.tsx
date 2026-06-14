@@ -1,0 +1,368 @@
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  PlusIcon,
+  PencilSimpleIcon,
+  TrashIcon,
+  PlugIcon,
+  CopyIcon,
+  MagnifyingGlassIcon,
+} from "@phosphor-icons/react"
+
+import { ServerForm } from "./server-form"
+import { ConnectionTestModal } from "./connection-test-modal"
+import {
+  vpnApi,
+  type ScanResult,
+  type VpnRegionItem,
+  type VpnServerItem,
+  type VpnSshKeyItem,
+} from "./vpn-admin-client"
+
+const HEALTH_ICON: Record<VpnServerItem["health"], string> = {
+  HEALTHY: "✅",
+  WARNING: "🟡",
+  DOWN: "🔴",
+  UNKNOWN: "⚪",
+}
+
+function ProtocolCell({
+  enabled,
+  port,
+}: {
+  enabled: boolean
+  port: number | null
+}) {
+  if (!enabled) return <span className="text-muted-foreground">❌</span>
+  return (
+    <span className="whitespace-nowrap">
+      ✅ <span className="font-mono text-xs">:{port}</span>
+    </span>
+  )
+}
+
+export function ServersTable() {
+  const [servers, setServers] = useState<VpnServerItem[]>([])
+  const [regions, setRegions] = useState<VpnRegionItem[]>([])
+  const [sshKeys, setSshKeys] = useState<VpnSshKeyItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [regionFilter, setRegionFilter] = useState<string>("all")
+  const [searchFilter, setSearchFilter] = useState("")
+  const [searchDebounced, setSearchDebounced] = useState("")
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<VpnServerItem | null>(null)
+  const [duplicating, setDuplicating] = useState<VpnServerItem | null>(null)
+  const [testingId, setTestingId] = useState<string | null>(null)
+  const [testTarget, setTestTarget] = useState<VpnServerItem | null>(null)
+  const [testResult, setTestResult] = useState<ScanResult | null>(null)
+
+  const loadServers = useCallback(async (regionId: string, search: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const qs = new URLSearchParams()
+      if (regionId && regionId !== "all") qs.set("regionId", regionId)
+      if (search) qs.set("search", search)
+      const query = qs.toString()
+      const res = await vpnApi<{ ok: true; data: VpnServerItem[] }>(
+        `/admin/vpn/servers${query ? `?${query}` : ""}`
+      )
+      setServers(res.data)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const loadRefs = useCallback(async () => {
+    try {
+      const [regionsRes, keysRes] = await Promise.all([
+        vpnApi<{ ok: true; data: VpnRegionItem[] }>("/admin/vpn/regions"),
+        vpnApi<{ ok: true; data: VpnSshKeyItem[] }>("/admin/vpn/ssh-keys"),
+      ])
+      setRegions(regionsRes.data)
+      setSshKeys(keysRes.data)
+    } catch {
+      // Surface only the server-list error; refs failure shows as empty selects.
+    }
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadRefs()
+  }, [loadRefs])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounced(searchFilter)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchFilter])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadServers(regionFilter, searchDebounced)
+  }, [loadServers, regionFilter, searchDebounced])
+
+  const openCreate = () => {
+    setEditing(null)
+    setDuplicating(null)
+    setFormOpen(true)
+  }
+
+  const openEdit = (server: VpnServerItem) => {
+    setEditing(server)
+    setDuplicating(null)
+    setFormOpen(true)
+  }
+
+  const openDuplicate = (server: VpnServerItem) => {
+    setEditing(null)
+    setDuplicating(server)
+    setFormOpen(true)
+  }
+
+  const remove = async (server: VpnServerItem) => {
+    if (!window.confirm(`Delete server "${server.name}"?`)) return
+    try {
+      await vpnApi(`/admin/vpn/servers/${server.id}`, { method: "DELETE" })
+      await loadServers(regionFilter, searchDebounced)
+    } catch (err) {
+      window.alert((err as Error).message)
+    }
+  }
+
+  const testConnection = async (server: VpnServerItem) => {
+    setTestingId(server.id)
+    setTestTarget(server)
+    setTestResult(null)
+    try {
+      const res = await vpnApi<{ ok: true; data: ScanResult }>(
+        `/admin/vpn/servers/${server.id}/test`,
+        { method: "POST" }
+      )
+      setTestResult(res.data)
+    } catch (err) {
+      window.alert((err as Error).message)
+      setTestTarget(null)
+    } finally {
+      setTestingId(null)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative w-full sm:w-72">
+          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setSearchFilter("")
+            }}
+            placeholder="Search hostname or IP..."
+            className="pl-8"
+            aria-label="Search servers by hostname or IP"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={regionFilter} onValueChange={setRegionFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Region" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All regions</SelectItem>
+              {regions.map((region) => (
+                <SelectItem key={region.id} value={region.id}>
+                  {region.countryCode.toUpperCase()} — {region.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={openCreate} size="sm">
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Add Server
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Region</TableHead>
+              <TableHead>Host</TableHead>
+              <TableHead>IP</TableHead>
+              <TableHead>OpenVPN</TableHead>
+              <TableHead>WG</TableHead>
+              <TableHead>Proxy</TableHead>
+              <TableHead>Health</TableHead>
+              <TableHead>Active</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={10}>
+                  <Skeleton className="h-8 w-full" />
+                </TableCell>
+              </TableRow>
+            ) : servers.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={10}
+                  className="text-center text-sm text-muted-foreground"
+                >
+                  No servers yet.
+                </TableCell>
+              </TableRow>
+            ) : (
+              servers.map((server) => (
+                <TableRow key={server.id}>
+                  <TableCell className="font-medium">{server.name}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {server.region.countryCode.toUpperCase()} — {server.region.name}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {server.hostname}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {server.ipAddress ?? (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <ProtocolCell
+                      enabled={server.protocols.openVpn.enabled}
+                      port={server.protocols.openVpn.port}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <ProtocolCell
+                      enabled={server.protocols.wireGuard.enabled}
+                      port={server.protocols.wireGuard.port}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <ProtocolCell
+                      enabled={server.protocols.proxy.enabled}
+                      port={server.protocols.proxy.port}
+                    />
+                  </TableCell>
+                  <TableCell title={server.health}>
+                    {HEALTH_ICON[server.health]}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={server.isActive ? "default" : "secondary"}>
+                      {server.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => testConnection(server)}
+                        disabled={testingId === server.id}
+                        aria-label={`Test connection to ${server.name}`}
+                      >
+                        <PlugIcon className="h-4 w-4" />
+                      </Button>
+                      {server.isActive && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openDuplicate(server)}
+                          aria-label={`Duplicate ${server.name}`}
+                        >
+                          <CopyIcon className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(server)}
+                        aria-label={`Edit ${server.name}`}
+                      >
+                        <PencilSimpleIcon className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(server)}
+                        aria-label={`Delete ${server.name}`}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {formOpen && (
+        <ServerForm
+          key={editing?.id ?? duplicating?.id ?? "new"}
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          editing={editing}
+          duplicateFrom={duplicating}
+          regions={regions}
+          sshKeys={sshKeys}
+          onSaved={() => loadServers(regionFilter, searchDebounced)}
+        />
+      )}
+
+      {testTarget && (
+        <ConnectionTestModal
+          open={Boolean(testTarget)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setTestTarget(null)
+              setTestResult(null)
+            }
+          }}
+          serverName={testTarget.name}
+          result={testResult}
+          running={testingId === testTarget.id}
+          onRerun={() => testConnection(testTarget)}
+        />
+      )}
+    </div>
+  )
+}

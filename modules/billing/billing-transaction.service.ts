@@ -42,6 +42,8 @@ export type ServiceLineInput = {
   quantity: Prisma.Decimal
   unitPrice: Prisma.Decimal
   lineType?: "USAGE" | "SUBSCRIPTION"
+  /** Category for grouped invoice display (e.g. "vpn", "app-hosting", "whatsapp"). */
+  category?: string
 }
 
 export type ServiceBalanceInput = BalanceMutationInput & {
@@ -49,6 +51,17 @@ export type ServiceBalanceInput = BalanceMutationInput & {
 }
 
 const MAX_BALANCE = new Prisma.Decimal("999999999.99")
+
+/**
+ * Infer line category from description for grouping in invoice display.
+ * Used as fallback when no explicit category is provided.
+ */
+function inferCategory(description: string): string {
+  if (/^VPN package/.test(description)) return "vpn"
+  if (/^App Hosting/.test(description)) return "app-hosting"
+  if (/^WhatsApp/.test(description)) return "whatsapp"
+  return "other"
+}
 
 export class BillingTransactionService {
   constructor(private prisma: PrismaClient) {}
@@ -105,6 +118,7 @@ export class BillingTransactionService {
           periodEnd: invoice.periodEnd,
           metadataJson: {
             source: input.source,
+            category: input.line.category ?? inferCategory(input.line.description),
             _internal: { idempotencyKey: input.idempotencyKey },
           },
         },
@@ -258,14 +272,10 @@ export class BillingTransactionService {
     })
     if (existing) return existing
 
-    // Generate invoice number: SVC-YYYYMM-NNNN
+    // Generate invoice number: SVC-YYYYMM
+    // One service invoice per month per org, so no sequential counter needed.
     const periodStr = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}`
-    const count = await tx.billingInvoice.count({
-      where: {
-        invoiceNumber: { startsWith: `SVC-${periodStr}` },
-      },
-    })
-    const invoiceNumber = `SVC-${periodStr}-${String(count + 1).padStart(4, "0")}`
+    const invoiceNumber = `SVC-${periodStr}`
 
     return tx.billingInvoice.create({
       data: {

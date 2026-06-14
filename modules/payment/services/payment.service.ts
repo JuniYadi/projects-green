@@ -1,6 +1,5 @@
 import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
-import { randomInt } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { PAYMENT_CONSTANTS } from "../constants"
@@ -15,11 +14,21 @@ export class PaymentService {
   }
 
   /**
-   * Generate a 3-digit unique code for manual transfer verification.
-   * Uses crypto.randomInt for cryptographic security (financial context).
+   * Resolve per-currency top-up bounds from the PaymentCurrency table.
+   * Falls back to the base-currency (USD) constants when no row exists so
+   * validation never crashes on an unseeded currency.
    */
-  private generateUniqueCode(): number {
-    return randomInt(1, 1000)
+  private async getTopupBounds(
+    currencyCode: string
+  ): Promise<{ minTopup: number; maxTopup: number }> {
+    const currencyRow = await prisma.paymentCurrency.findUnique({
+      where: { code: currencyCode },
+    })
+
+    return {
+      minTopup: currencyRow?.minTopup?.toNumber() ?? PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT,
+      maxTopup: currencyRow?.maxTopup?.toNumber() ?? PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT,
+    }
   }
 
   async createTopupInvoice(input: {
@@ -30,13 +39,6 @@ export class PaymentService {
   }) {
     const { amount, organizationId, paymentMethod, gatewayId } = input
 
-    if (amount < PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT) {
-      throw new Error(`Minimum top-up amount is ${PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT}`)
-    }
-    if (amount > PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT) {
-      throw new Error(`Maximum top-up amount is ${PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT}`)
-    }
-
     // Get or create billing account for organization
     let account = await prisma.billingAccount.findUnique({
       where: { organizationId },
@@ -46,9 +48,23 @@ export class PaymentService {
       account = await prisma.billingAccount.create({
         data: {
           organizationId,
+          // TODO(P1): Wire currency from onboarding selector / WorkOS locale.
+          // Hardcoded IDR fallback is a known debt (see CURRENCY-FIX-STRATEGY).
           currency: "IDR",
         },
       })
+    }
+
+    // Validate amount against currency-specific bounds. The PaymentCurrency
+    // table holds correct per-currency limits (e.g. IDR min 250k / max 250M);
+    // fall back to the base-currency (USD) constants only when no row exists.
+    const { minTopup, maxTopup } = await this.getTopupBounds(account.currency)
+
+    if (amount < minTopup) {
+      throw new Error(`Minimum top-up amount is ${minTopup} ${account.currency}`)
+    }
+    if (amount > maxTopup) {
+      throw new Error(`Maximum top-up amount is ${maxTopup} ${account.currency}`)
     }
 
     const now = new Date()
@@ -57,22 +73,6 @@ export class PaymentService {
 
     // Generate invoice number using UUID to avoid race condition
     const invoiceNumber = `TOP-${crypto.randomUUID().split("-")[0].toUpperCase()}`
-
-    // Generate unique code for manual transfer if enabled
-    const uniqueCodeEnabled = process.env.MANUAL_TRANSFER_UNIQUE_CODE_ENABLED !== "false"
-    let uniqueCode: number | undefined
-    let finalAmount = amount
-    let metadata: Record<string, unknown> | undefined
-
-    if (paymentMethod === "MANUAL_BANK" && uniqueCodeEnabled) {
-      uniqueCode = this.generateUniqueCode()
-      finalAmount = amount + uniqueCode
-      metadata = {
-        baseAmount: amount,
-        uniqueCode,
-        finalAmount,
-      }
-    }
 
     const invoice = await prisma.billingInvoice.create({
       data: {
@@ -83,24 +83,20 @@ export class PaymentService {
         gatewayId,
         dueDate,
         status: "OPEN",
-        subtotalAmount: finalAmount,
-        totalAmount: finalAmount,
+        subtotalAmount: amount,
+        totalAmount: amount,
         currency: account.currency,
         periodStart: now,
         periodEnd: dueDate,
-        metadataJson: (metadata ?? Prisma.DbNull) as Prisma.InputJsonValue,
         // Every invoice must carry at least one line so the detail view and PDF
         // render a meaningful description / qty / unit price / total.
         lines: {
           create: {
             lineType: "ADJUSTMENT",
-            description:
-              uniqueCode !== undefined
-                ? `Balance Top-Up (includes unique code ${uniqueCode})`
-                : "Balance Top-Up",
+            description: "Balance Top-Up",
             quantity: new Prisma.Decimal(1),
-            unitPrice: new Prisma.Decimal(finalAmount),
-            amount: new Prisma.Decimal(finalAmount),
+            unitPrice: new Prisma.Decimal(amount),
+            amount: new Prisma.Decimal(amount),
             currency: account.currency,
             periodStart: now,
             periodEnd: dueDate,
@@ -226,6 +222,8 @@ export class PaymentService {
       account = await prisma.billingAccount.create({
         data: {
           organizationId,
+          // TODO(P1): Wire currency from onboarding selector / WorkOS locale.
+          // Hardcoded IDR fallback is a known debt (see CURRENCY-FIX-STRATEGY).
           currency: "IDR",
         },
       })

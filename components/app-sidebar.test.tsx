@@ -84,7 +84,7 @@ describe("resolveSidebarMenu", () => {
     ])
     expect(projects.find((project) => project.name === "Overview")?.isActive).toBe(true)
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp"])
+    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp", "VPN"])
     expect(navMain[0]?.isActive).toBe(false)
   })
 
@@ -99,7 +99,7 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp"])
+    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp", "VPN"])
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
       "Billing",
@@ -120,6 +120,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Settings",
       "App Hosting",
+      "VPN",
       "WhatsApp",
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
@@ -148,6 +149,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Settings",
       "App Hosting",
+      "VPN",
       "WhatsApp",
     ])
   })

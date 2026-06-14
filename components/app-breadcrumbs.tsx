@@ -39,11 +39,17 @@ const SEGMENT_LABELS: Record<string, string> = {
   new: "New",
   organization: "Organization",
   organizations: "Organizations",
+  packages: "Packages",
   portal: "Portal",
   "payment-methods": "Payment Methods",
+  regions: "Regions",
+  servers: "Servers",
   settings: "Settings",
+  "ssh-keys": "SSH Keys",
+  subscriptions: "Subscriptions",
   "support-tickets": "Support Tickets",
   templates: "Templates",
+  vpn: "VPN",
   whatsapp: "WhatsApp",
 }
 

@@ -24,6 +24,9 @@ type MockPrisma = {
   serviceSubscription: {
     findUnique: ReturnType<typeof vi.fn>
   }
+  paymentCurrency: {
+    findUnique: ReturnType<typeof vi.fn>
+  }
   $transaction: ReturnType<typeof vi.fn>
 }
 
@@ -40,6 +43,9 @@ const mockPrisma = {
     findFirst: vi.fn(),
   },
   serviceSubscription: {
+    findUnique: vi.fn(),
+  },
+  paymentCurrency: {
     findUnique: vi.fn(),
   },
   $transaction: vi.fn(),
@@ -97,6 +103,10 @@ describe("BalanceGateService", () => {
     it("isBalanceAboveWarn true when balance=50_000", async () => {
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(50_000),
+        currency: "IDR",
+      });
+      mockedPrisma.paymentCurrency.findUnique.mockResolvedValueOnce({
+        minBalanceWarn: new Decimal(10_000),
       });
 
       const result = await service.isBalanceAboveWarn("org-1");
@@ -106,6 +116,10 @@ describe("BalanceGateService", () => {
     it("isBalanceAboveWarn false when balance=5_000", async () => {
       mockedPrisma.billingAccount.findUnique.mockResolvedValueOnce({
         balance: new Decimal(5_000),
+        currency: "IDR",
+      });
+      mockedPrisma.paymentCurrency.findUnique.mockResolvedValueOnce({
+        minBalanceWarn: new Decimal(10_000),
       });
 
       const result = await service.isBalanceAboveWarn("org-1");

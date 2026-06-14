@@ -16,6 +16,10 @@ import { ThunderAiHelpDrawer } from "@/modules/docs/ui/thunder-ai-help-drawer"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 import { getPlatformAccessForUser } from "@/lib/platform-role"
+import { getWorkOS } from "@workos-inc/authkit-nextjs"
+import { ensureBillingAccountForOrg } from "@/modules/billing/billing-account.service"
+import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
+import { BillingBalanceGateBanner } from "@/components/billing-balance-gate-banner"
 
 const ONBOARDING_PATH = "/onboarding/organization"
 
@@ -58,6 +62,41 @@ export default async function ConsoleLayout({
     auth.organizationId
   )
 
+  // JIT guarantee: every org reaching the console has a billing account, so the
+  // "missing account" state is impossible by the time a purchase is attempted.
+  // Best-effort — never block console access if WorkOS lookup or the DB write
+  // transiently fails; the purchase flow still returns a clean 402 in that case.
+  let balanceGate: { formattedBalance: string; isZero: boolean } | null = null
+  try {
+    const account = await ensureBillingAccountForOrg({
+      organizationId: auth.organizationId,
+      getOrganizationAction: (orgId) =>
+        getWorkOS().organizations.getOrganization(orgId),
+    })
+    if (account.balance.lt(MINIMUM_BALANCE_WARN_IDR)) {
+      // Single source of truth: `currency` (see CURRENCY-FIX-STRATEGY).
+      const currency = account.currency
+      const numberLocale = currency === "USD" ? "en-US" : "id-ID"
+      balanceGate = {
+        formattedBalance: `${currency} ${Number(account.balance).toLocaleString(
+          numberLocale,
+          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+        )}`,
+        isZero: account.balance.lte(0),
+      }
+    }
+  } catch (error) {
+    console.error("[ConsoleLayout] ensureBillingAccount failed", {
+      organizationId: auth.organizationId,
+      error: error instanceof Error ? error.message : "Unknown error",
+    })
+  }
+
+  const topupPath = localizePathname({
+    pathname: "/console/billing/topup",
+    locale,
+  })
+
   return (
     <SidebarProvider>
       <AppSidebar
@@ -79,6 +118,13 @@ export default async function ConsoleLayout({
             <ThunderAiHelpDrawer />
           </div>
         </header>
+        {balanceGate ? (
+          <BillingBalanceGateBanner
+            formattedBalance={balanceGate.formattedBalance}
+            topupUrl={topupPath}
+            isZero={balanceGate.isZero}
+          />
+        ) : null}
         {children}
       </SidebarInset>
     </SidebarProvider>

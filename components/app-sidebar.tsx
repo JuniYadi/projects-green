@@ -22,12 +22,17 @@ import {
   CreditCardIcon,
   CrosshairIcon,
   GaugeIcon,
+  GlobeIcon,
+  HardDrivesIcon,
   LifebuoyIcon,
   Lightning,
+  MapPinIcon,
+  PackageIcon,
   PaperPlaneTiltIcon,
   ReceiptIcon,
   RocketLaunchIcon,
   GearSixIcon,
+  ShieldCheckIcon,
   WalletIcon,
   WhatsappLogoIcon,
 } from "@phosphor-icons/react"
@@ -111,6 +116,59 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+    ],
+  },
+  {
+    context: "vpn",
+    matches: (path) => startsWithRoute(path, "/portal/vpn"),
+    navMainLabel: "VPN",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Overview",
+        url: localizePathname({ pathname: "/portal/vpn", locale }),
+        icon: <GlobeIcon />,
+        isActive: path === "/portal/vpn",
+      },
+      {
+        title: "SSH Keys",
+        url: localizePathname({ pathname: "/portal/vpn/ssh-keys", locale }),
+        icon: <ShieldCheckIcon />,
+        isActive: startsWithRoute(path, "/portal/vpn/ssh-keys"),
+      },
+      {
+        title: "Regions",
+        url: localizePathname({ pathname: "/portal/vpn/regions", locale }),
+        icon: <MapPinIcon />,
+        isActive: startsWithRoute(path, "/portal/vpn/regions"),
+      },
+      {
+        title: "Servers",
+        url: localizePathname({ pathname: "/portal/vpn/servers", locale }),
+        icon: <HardDrivesIcon />,
+        isActive: startsWithRoute(path, "/portal/vpn/servers"),
+      },
+      {
+        title: "Packages",
+        url: localizePathname({ pathname: "/portal/vpn/packages", locale }),
+        icon: <PackageIcon />,
+        isActive: startsWithRoute(path, "/portal/vpn/packages"),
+      },
+      {
+        title: "Subscriptions",
+        url: localizePathname({
+          pathname: "/portal/vpn/subscriptions",
+          locale,
+        }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/portal/vpn/subscriptions"),
       },
     ],
   },
@@ -270,6 +328,38 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
       },
     ],
   },
+  {
+    context: "vpn",
+    matches: (path) => startsWithRoute(path, "/console/vpn"),
+    navMainLabel: "VPN",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Console",
+        url: localizePathname({ pathname: "/console", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Dashboard",
+        url: localizePathname({
+          pathname: "/console/vpn/dashboard",
+          locale,
+        }),
+        icon: <GaugeIcon />,
+        isActive: path === "/console/vpn/dashboard",
+      },
+      {
+        title: "My Subscriptions",
+        url: localizePathname({
+          pathname: "/console/vpn/subscriptions",
+          locale,
+        }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/console/vpn/subscriptions"),
+      },
+    ],
+  },
 ]
 
 const getHubMenu = (path: string, locale: AppLocale) => ({
@@ -305,6 +395,12 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       url: localizePathname({ pathname: "/console/whatsapp/dashboard", locale }),
       icon: <WhatsappLogoIcon />,
       isActive: startsWithRoute(path, "/console/whatsapp"),
+    },
+    {
+      title: "VPN",
+      url: localizePathname({ pathname: "/console/vpn/dashboard", locale }),
+      icon: <GlobeIcon />,
+      isActive: startsWithRoute(path, "/console/vpn"),
     },
   ],
 })
@@ -347,6 +443,12 @@ const buildPortalNavMain = (
     url: localizePathname({ pathname: "/portal/app", locale }),
     icon: <RocketLaunchIcon />,
     isActive: startsWithRoute(pathname, "/portal/app"),
+  },
+  {
+    title: "VPN",
+    url: localizePathname({ pathname: "/portal/vpn", locale }),
+    icon: <GlobeIcon />,
+    isActive: startsWithRoute(pathname, "/portal/vpn"),
   },
   {
     title: "WhatsApp",

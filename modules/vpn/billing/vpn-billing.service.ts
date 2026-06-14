@@ -64,7 +64,7 @@ export class VpnBillingService {
         period: input.period,
       },
       line: {
-        description: `VPN ${input.regionCode} monthly payment`,
+        description: `VPN region ${input.regionCode} — ${input.period}`,
         quantity: new Prisma.Decimal(1),
         unitPrice: input.amount,
         lineType: "SUBSCRIPTION",

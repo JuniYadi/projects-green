@@ -37,6 +37,8 @@ export type InvoiceLineItem = {
   quantity: string
   unitPriceIdr: string
   amountIdr: string
+  category?: string
+  metadata?: Record<string, unknown>
 }
 
 export type InvoiceListItem = {
@@ -50,6 +52,8 @@ export type InvoiceListItem = {
   dueAt: string | null
   createdAt?: string | null
   dueDate?: string | null
+  periodStart: string
+  periodEnd: string
   totalAmountIdr: string
   currency: string
   lines: InvoiceLineItem[]
@@ -386,7 +390,7 @@ export type CreateContactInput = {
 }
 
 export async function getBillingAccount(): Promise<BillingAccountDetail> {
-  return fetchBilling<BillingAccountDetail>("/api/billing/account")
+  return fetchBilling<BillingAccountDetail>("/api/billing/account/detail")
 }
 
 export async function addBillingContact(

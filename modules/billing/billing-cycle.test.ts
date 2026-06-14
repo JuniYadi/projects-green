@@ -105,7 +105,7 @@ describe("BillingCycleService", () => {
       const mockInvoice = {
         id: "svc-inv-1",
         billingAccountId: "ba-1",
-        invoiceNumber: "SVC-202606-0001",
+        invoiceNumber: "SVC-202606",
         type: "SERVICE",
         status: "DRAFT" as const,
         currency: "IDR",
@@ -537,7 +537,7 @@ describe("BillingCycleService", () => {
       const mockInvoice = {
         id: "svc-inv-1",
         billingAccountId: "ba-1",
-        invoiceNumber: "SVC-202606-0001",
+        invoiceNumber: "SVC-202606",
         type: "SERVICE",
         status: "DRAFT" as const,
         currency: "IDR",

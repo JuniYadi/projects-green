@@ -272,7 +272,10 @@ export async function updatePreferredCurrency(
 
   return prisma.billingAccount.update({
     where: { organizationId },
-    data: { preferredCurrency: currency },
+    // Write `currency` (the single source of truth used by dashboard, topup,
+    // and all transaction logic) and keep the legacy `preferredCurrency` enum
+    // in sync so any remaining readers stay consistent.
+    data: { currency, preferredCurrency: currency },
   })
 }
 

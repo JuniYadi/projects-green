@@ -54,6 +54,23 @@ export function decryptVpnConfig(encryptedValue: string): string {
 }
 
 /**
+ * Encrypt a proxy password for at-rest storage. Unlike a one-way hash this is
+ * reversible so the customer can view the password on demand (Story 17).
+ */
+export function encryptProxyPassword(plaintext: string): string {
+  return serializeEncryptedField(encrypt(plaintext, getEncryptionKey()))
+}
+
+/** Decrypt a proxy password previously encrypted with encryptProxyPassword. */
+export function decryptProxyPassword(encryptedValue: string): string {
+  const data = parseEncryptedField(encryptedValue)
+  if (!data) {
+    throw new VpnCryptoError("Invalid encrypted password format")
+  }
+  return decrypt(data, getEncryptionKey())
+}
+
+/**
  * Clear the cached encryption key. Used in tests to isolate env changes.
  */
 export function resetVpnCrypto(): void {

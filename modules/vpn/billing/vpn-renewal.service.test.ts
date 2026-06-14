@@ -3,54 +3,41 @@ import { Prisma } from "@prisma/client"
 
 // ─── Mocks ──────────────────────────────────────────────────────────────
 //
-// Leaf-dependency mocks only per AGENTS.md.
+// Leaf-dependency mocks only per AGENTS.md. The renewal service takes its
+// prisma + transactions via constructor, so we inject plain mocks rather
+// than mock.module to avoid cross-file cache pollution.
 
-const mockVpnBillingService = {
-  chargeMonthly: mock(),
+const mockTransactions = {
+  debitServiceBalance: mock(),
 }
 
-mock.module("@/lib/prisma", () => ({
-  prisma: {
-    serviceSubscription: {
-      findMany: mock(),
-      update: mock(),
-      updateMany: mock(),
-    },
+const mockPrisma = {
+  vpnSubscription: {
+    findMany: mock(),
+    update: mock(),
+    updateMany: mock(),
   },
-}))
+}
 
 import { VpnRenewalService } from "./vpn-renewal.service"
-import { prisma } from "@/lib/prisma"
-
-const mockPrisma = prisma as unknown as {
-  serviceSubscription: {
-    findMany: ReturnType<typeof mock>
-    update: ReturnType<typeof mock>
-    updateMany: ReturnType<typeof mock>
-  }
-}
 
 function decimal(value: string) {
   return new Prisma.Decimal(value)
 }
 
-function vpnSubscription(overrides: Partial<Record<string, unknown>> = {}) {
+const NOW = new Date("2026-06-15T00:00:00Z")
+
+function subscription(overrides: Record<string, unknown> = {}) {
   return {
     id: "sub_vpn_1",
     organizationId: "org_1",
     packageId: "pkg_vpn",
-    planId: "plan_standard",
-    pricingId: "pricing_standard_idr",
-    type: "BUNDLE",
-    billingMode: "PACKAGE",
+    priceLocked: decimal("100000"),
+    currency: "IDR",
     status: "ACTIVE",
-    currentPeriodStart: new Date("2026-05-01T00:00:00Z"),
-    currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
-    plan: { code: "STANDARD" },
-    metadata: {
-      regionCode: "INDONESIA",
-      planCode: "STANDARD",
-    },
+    renewalFailedAt: null,
+    currentPeriodStart: new Date("2026-05-15T00:00:00Z"),
+    currentPeriodEnd: new Date("2026-06-15T00:00:00Z"),
     ...overrides,
   }
 }
@@ -58,249 +45,238 @@ function vpnSubscription(overrides: Partial<Record<string, unknown>> = {}) {
 const createService = () =>
   new VpnRenewalService(
     mockPrisma as never,
-    mockVpnBillingService as never,
+    mockTransactions as never
   )
 
 beforeEach(() => {
-  mockPrisma.serviceSubscription.findMany.mockReset()
-  mockPrisma.serviceSubscription.update.mockReset()
-  mockPrisma.serviceSubscription.updateMany.mockReset()
-  mockVpnBillingService.chargeMonthly.mockReset()
-  mockVpnBillingService.chargeMonthly.mockResolvedValue({
+  mockPrisma.vpnSubscription.findMany.mockReset()
+  mockPrisma.vpnSubscription.update.mockReset()
+  mockPrisma.vpnSubscription.updateMany.mockReset()
+  mockTransactions.debitServiceBalance.mockReset()
+  mockTransactions.debitServiceBalance.mockResolvedValue({
     billingAccountId: "ba_1",
     adjustmentId: "adj_renew",
-    balanceBefore: decimal("500.00"),
-    balanceAfter: decimal("475.00"),
-    amount: decimal("25.00"),
+    balanceBefore: decimal("500000"),
+    balanceAfter: decimal("400000"),
+    amount: decimal("100000"),
     currency: "IDR",
     alreadyProcessed: false,
   })
+  mockPrisma.vpnSubscription.update.mockImplementation(
+    async (args: { where: { id: string }; data: Record<string, unknown> }) => ({
+      id: args.where.id,
+      ...args.data,
+    })
+  )
 })
 
 describe("VpnRenewalService", () => {
   describe("renewDueSubscriptions", () => {
-    it("renews due subscriptions and extends period by one month", async () => {
-      const dueSub = vpnSubscription({
-        currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
-      })
-      mockPrisma.serviceSubscription.findMany
-        .mockResolvedValueOnce([dueSub])
+    it("renews due subscriptions at the locked price and extends period", async () => {
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription()])
         .mockResolvedValueOnce([])
-      mockPrisma.serviceSubscription.updateMany.mockResolvedValue({ count: 1 })
+      mockPrisma.vpnSubscription.updateMany.mockResolvedValue({ count: 1 })
 
-      const result = await createService().renewDueSubscriptions()
+      const result = await createService().renewDueSubscriptions(NOW)
 
       expect(result.renewed).toBe(1)
       expect(result.suspended).toBe(0)
+      expect(result.expired).toBe(0)
       expect(result.errors).toBe(0)
 
-      expect(mockVpnBillingService.chargeMonthly).toHaveBeenCalledWith(
+      expect(mockTransactions.debitServiceBalance).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "org_1",
-          vpnSubscriptionId: "sub_vpn_1",
-          regionCode: "INDONESIA",
-          amount: decimal("25000"),
-          period: "2026-06",
-        }),
+          amount: decimal("100000"),
+          currency: "IDR",
+          source: "VPN",
+          idempotencyKey: "vpn-package:sub_vpn_1:2026-06",
+        })
       )
 
-      expect(mockPrisma.serviceSubscription.updateMany).toHaveBeenCalledWith(
+      // Verify calendar-month alignment: extendPeriod should extend to
+      // end of July 2026 (month+2=8, day 0 = July 31)
+      const expectedPeriodEnd = new Date(
+        Date.UTC(2026, 7, 0, 23, 59, 59, 999)
+      )
+      expect(mockPrisma.vpnSubscription.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             id: "sub_vpn_1",
-            currentPeriodEnd: { lte: expect.any(Date) },
+            currentPeriodEnd: { lte: NOW },
           }),
           data: expect.objectContaining({
             status: "ACTIVE",
+            currentPeriodEnd: expectedPeriodEnd,
+            renewalFailedAt: null,
           }),
-        }),
+        })
       )
     })
 
-    it("suspends subscription when balance is insufficient (no grace period)", async () => {
-      const dueSub = vpnSubscription()
-      mockPrisma.serviceSubscription.findMany
-        .mockResolvedValueOnce([dueSub])
+    it("scans ACTIVE and SUSPENDED subscriptions that are due", async () => {
+      mockPrisma.vpnSubscription.findMany.mockResolvedValue([])
+
+      await createService().renewDueSubscriptions(NOW)
+
+      expect(mockPrisma.vpnSubscription.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { in: ["ACTIVE", "SUSPENDED"] },
+            currentPeriodEnd: { lte: NOW },
+          }),
+        })
+      )
+    })
+  })
+
+  describe("grace ladder on INSUFFICIENT_BALANCE", () => {
+    beforeEach(() => {
+      mockTransactions.debitServiceBalance.mockRejectedValue(
+        new Error("INSUFFICIENT_BALANCE")
+      )
+    })
+
+    it("day 0: records renewalFailedAt and retries (no suspend)", async () => {
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription({ renewalFailedAt: null })])
         .mockResolvedValueOnce([])
-      mockVpnBillingService.chargeMonthly.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE"),
-      )
-      mockPrisma.serviceSubscription.update.mockImplementation(
-        async (args: { where: { id: string }; data: Record<string, unknown> }) => ({
-          id: args.where.id,
-          ...args.data,
-        }),
-      )
 
-      const result = await createService().renewDueSubscriptions()
+      const result = await createService().renewDueSubscriptions(NOW)
 
-      expect(result.renewed).toBe(0)
+      expect(result.retried).toBe(1)
+      expect(result.suspended).toBe(0)
+      expect(result.expired).toBe(0)
+      expect(mockPrisma.vpnSubscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "sub_vpn_1" },
+          data: { renewalFailedAt: NOW },
+        })
+      )
+    })
+
+    it("day 3: suspends the subscription", async () => {
+      const failedAt = new Date("2026-06-12T00:00:00Z") // 3 days before NOW
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
+        .mockResolvedValueOnce([])
+
+      const result = await createService().renewDueSubscriptions(NOW)
+
       expect(result.suspended).toBe(1)
-      expect(result.errors).toBe(0)
-
-      expect(mockPrisma.serviceSubscription.update).toHaveBeenCalledWith(
+      expect(result.expired).toBe(0)
+      expect(mockPrisma.vpnSubscription.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "sub_vpn_1" },
           data: expect.objectContaining({ status: "SUSPENDED" }),
-        }),
+        })
       )
     })
 
-    it("does not double-extend on concurrent workers (updateMany WHERE guard)", async () => {
-      const dueSub = vpnSubscription({
-        currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
-      })
-      // Each worker run calls findMany twice: once to get the sub, once to break the loop.
-      mockPrisma.serviceSubscription.findMany
-        .mockResolvedValueOnce([dueSub])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([dueSub])
+    it("day 7: expires the subscription", async () => {
+      const failedAt = new Date("2026-06-08T00:00:00Z") // 7 days before NOW
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
         .mockResolvedValueOnce([])
 
-      // Worker A: updateMany matches 1 row (actual extension)
-      // Worker B: updateMany matches 0 rows (already extended)
-      mockPrisma.serviceSubscription.updateMany
-        .mockResolvedValueOnce({ count: 1 })
-        .mockResolvedValueOnce({ count: 0 })
+      const result = await createService().renewDueSubscriptions(NOW)
 
-      // Worker A runs
-      const serviceA = createService()
-      const resultA = await serviceA.renewDueSubscriptions()
-      expect(resultA.renewed).toBe(1)
-
-      // Worker B runs
-      const serviceB = createService()
-      const resultB = await serviceB.renewDueSubscriptions()
-      expect(resultB.renewed).toBe(0) // updateMany returned 0 rows
-
-      expect(mockPrisma.serviceSubscription.updateMany).toHaveBeenCalledTimes(2)
-    })
-
-    it("does not double-charge already-renewed subscriptions (idempotency)", async () => {
-      const dueSub = vpnSubscription({
-        currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
-      })
-      // Each worker run calls findMany twice
-      mockPrisma.serviceSubscription.findMany
-        .mockResolvedValueOnce([dueSub])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([dueSub])
-        .mockResolvedValueOnce([])
-
-      // First call: succeeds
-      mockVpnBillingService.chargeMonthly
-        .mockResolvedValueOnce({
-          billingAccountId: "ba_1",
-          adjustmentId: "adj_renew_1",
-          balanceBefore: decimal("500.00"),
-          balanceAfter: decimal("475.00"),
-          amount: decimal("25.00"),
-          currency: "IDR",
-          alreadyProcessed: false,
-        })
-        // Second call (duplicate retry): alreadyProcessed
-        .mockResolvedValueOnce({
-          billingAccountId: "ba_1",
-          adjustmentId: "adj_renew_1",
-          balanceBefore: decimal("475.00"),
-          balanceAfter: decimal("475.00"),
-          amount: decimal("25.00"),
-          currency: "IDR",
-          alreadyProcessed: true,
-        })
-      mockPrisma.serviceSubscription.updateMany.mockResolvedValue({ count: 1 })
-
-      // Run twice — second call should see alreadyProcessed and skip extending
-      await createService().renewDueSubscriptions()
-      await createService().renewDueSubscriptions()
-
-      // chargeMonthly was called twice (both runs), but the second run's
-      // alreadyProcessed=true means we skip the extension.
-      // updateMany should have been called once (first run extended period).
-      expect(mockVpnBillingService.chargeMonthly).toHaveBeenCalledTimes(2)
-      expect(mockPrisma.serviceSubscription.updateMany).toHaveBeenCalledTimes(1)
-    })
-
-    it("does not count extendPeriod failure as renewed (Issue 2 guard)", async () => {
-      const dueSub = vpnSubscription({
-        currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
-      })
-      mockPrisma.serviceSubscription.findMany
-        .mockResolvedValueOnce([dueSub])
-        .mockResolvedValueOnce([])
-      // extendPeriod throws (transient DB error)
-      mockPrisma.serviceSubscription.updateMany.mockRejectedValue(
-        new Error("DB_CONNECTION_ERROR"),
-      )
-
-      const result = await createService().renewDueSubscriptions()
-
-      expect(result.renewed).toBe(0) // charge was ok but extension failed
-      expect(result.errors).toBe(1)  // counted as error
+      expect(result.expired).toBe(1)
       expect(result.suspended).toBe(0)
-
-      // chargeMonthly was attempted
-      expect(mockVpnBillingService.chargeMonthly).toHaveBeenCalledTimes(1)
-      // updateMany was attempted (and failed)
-      expect(mockPrisma.serviceSubscription.updateMany).toHaveBeenCalledTimes(1)
+      expect(mockPrisma.vpnSubscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "sub_vpn_1" },
+          data: { status: "EXPIRED" },
+        })
+      )
     })
+  })
 
-    it("does not touch subscriptions with future period end", async () => {
-      mockPrisma.serviceSubscription.findMany.mockResolvedValue([])
+  describe("idempotency & safety", () => {
+    it("skips extension when charge was already processed", async () => {
+      mockTransactions.debitServiceBalance.mockResolvedValue({
+        billingAccountId: "ba_1",
+        adjustmentId: "adj_renew",
+        balanceBefore: decimal("400000"),
+        balanceAfter: decimal("400000"),
+        amount: decimal("100000"),
+        currency: "IDR",
+        alreadyProcessed: true,
+      })
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription()])
+        .mockResolvedValueOnce([])
 
-      const result = await createService().renewDueSubscriptions()
+      const result = await createService().renewDueSubscriptions(NOW)
 
       expect(result.renewed).toBe(0)
-      expect(result.suspended).toBe(0)
-      expect(result.errors).toBe(0)
-      expect(mockVpnBillingService.chargeMonthly).not.toHaveBeenCalled()
-
-      // Confirm the query includes the due-only filter
-      expect(mockPrisma.serviceSubscription.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            currentPeriodEnd: expect.objectContaining({ lte: expect.any(Date) }),
-          }),
-          take: expect.any(Number),
-          orderBy: expect.any(Object),
-        }),
-      )
+      expect(mockPrisma.vpnSubscription.updateMany).not.toHaveBeenCalled()
     })
 
-    it("renews multiple due subscriptions in batch with pagination", async () => {
-      const subs = [
-        vpnSubscription({ id: "sub_1", organizationId: "org_1" }),
-        vpnSubscription({ id: "sub_2", organizationId: "org_2" }),
-        vpnSubscription({ id: "sub_3", organizationId: "org_1" }),
-      ]
-      mockPrisma.serviceSubscription.findMany
-        .mockResolvedValueOnce(subs)
+    it("does not double-extend (updateMany WHERE guard returns 0)", async () => {
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription()])
         .mockResolvedValueOnce([])
-      mockPrisma.serviceSubscription.updateMany.mockResolvedValue({ count: 1 })
+      mockPrisma.vpnSubscription.updateMany.mockResolvedValue({ count: 0 })
 
-      const result = await createService().renewDueSubscriptions()
+      const result = await createService().renewDueSubscriptions(NOW)
+
+      expect(result.renewed).toBe(0)
+      expect(result.errors).toBe(0)
+    })
+
+    it("counts extendPeriod failure as an error, not a renewal", async () => {
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription()])
+        .mockResolvedValueOnce([])
+      mockPrisma.vpnSubscription.updateMany.mockRejectedValue(
+        new Error("DB_CONNECTION_ERROR")
+      )
+
+      const result = await createService().renewDueSubscriptions(NOW)
+
+      expect(result.renewed).toBe(0)
+      expect(result.errors).toBe(1)
+    })
+
+    it("counts non-balance charge errors as errors", async () => {
+      mockTransactions.debitServiceBalance.mockRejectedValue(
+        new Error("BILLING_ACCOUNT_NOT_FOUND")
+      )
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription()])
+        .mockResolvedValueOnce([])
+
+      const result = await createService().renewDueSubscriptions(NOW)
+
+      expect(result.errors).toBe(1)
+      expect(result.suspended).toBe(0)
+    })
+
+    it("renews multiple due subscriptions in one batch", async () => {
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([
+          subscription({ id: "sub_1" }),
+          subscription({ id: "sub_2" }),
+          subscription({ id: "sub_3" }),
+        ])
+        .mockResolvedValueOnce([])
+      mockPrisma.vpnSubscription.updateMany.mockResolvedValue({ count: 1 })
+
+      const result = await createService().renewDueSubscriptions(NOW)
 
       expect(result.renewed).toBe(3)
-      expect(mockVpnBillingService.chargeMonthly).toHaveBeenCalledTimes(3)
+      expect(mockTransactions.debitServiceBalance).toHaveBeenCalledTimes(3)
     })
 
-    it("uses idempotency key with current period (not previous)", async () => {
-      const dueSub = vpnSubscription({
-        currentPeriodEnd: new Date("2026-05-31T23:59:59Z"),
-      })
-      mockPrisma.serviceSubscription.findMany
-        .mockResolvedValueOnce([dueSub])
-        .mockResolvedValueOnce([])
-      mockPrisma.serviceSubscription.updateMany.mockResolvedValue({ count: 1 })
+    it("does not touch subscriptions when none are due", async () => {
+      mockPrisma.vpnSubscription.findMany.mockResolvedValue([])
 
-      await createService().renewDueSubscriptions()
+      const result = await createService().renewDueSubscriptions(NOW)
 
-      // Period should be current month (2026-06), not the expired one
-      expect(mockVpnBillingService.chargeMonthly).toHaveBeenCalledWith(
-        expect.objectContaining({
-          period: "2026-06",
-        }),
-      )
+      expect(result.renewed).toBe(0)
+      expect(mockTransactions.debitServiceBalance).not.toHaveBeenCalled()
     })
   })
 })

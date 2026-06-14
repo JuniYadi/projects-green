@@ -75,6 +75,53 @@ declare module "react-icons/si" {
 }
 
 
+declare module "sshpk" {
+  export class PrivateKey {
+    static parse(data: string | Buffer, format?: string): PrivateKey
+    toPublic(): Key
+    toString(format?: string, options?: { passphrase?: string }): string
+    toBuffer(format?: string): Buffer
+    fingerprint(algo?: string): Fingerprint
+    type: string
+    size: number
+    comment: string
+  }
+
+  export class Key {
+    fingerprint(algo?: string): Fingerprint
+    toString(format?: string): string
+    toBuffer(format?: string): Buffer
+    type: string
+    size: number
+    comment: string
+  }
+
+  export class Fingerprint {
+    hash: string
+    algo: string
+    toString(): string
+  }
+
+  export function parsePrivateKey(
+    data: string | Buffer,
+    format?: string
+  ): PrivateKey
+  export function generatePrivateKey(
+    algo: string,
+    options?: { bits?: number }
+  ): PrivateKey
+  export function parseKey(data: string | Buffer, type?: string): Key
+  export function parseSignature(data: string | Buffer, algo?: string): any
+  export class Identity {
+    toString(): string
+    toBuffer(): Buffer
+  }
+  export class Certificate {
+    toString(): string
+    toBuffer(): Buffer
+  }
+}
+
 declare module "@prisma/adapter-pg" {
   export class PrismaPg {
     connect(): Promise<any>

@@ -8,6 +8,8 @@ import { buildInvoicePdfBytes } from "@/modules/invoices/invoice-pdf"
 import {
   canManageInvoiceCancellation,
   canManageInvoiceNotifications,
+  canManagePaymentConfirmations,
+  canManuallyMarkPaid,
 } from "@/modules/invoices/invoices.policy"
 import {
   createInvoiceService,
@@ -53,6 +55,12 @@ const notifyRecipientSchema = z.object({
 const notifyCancelledSchema = z.object({
   recipientEmail: z.string().email().optional(),
   reason: z.string().trim().optional(),
+})
+
+const markPaidBodySchema = z.object({
+  paymentMethod: z.enum(["MANUAL_BANK", "CASH", "CHEQUE", "OTHER"]).optional(),
+  referenceNumber: z.string().trim().optional(),
+  notes: z.string().trim().optional(),
 })
 
 type InvoicesAuthContext = {
@@ -257,6 +265,11 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
+        const payment = await dependencies.service.getPaymentInfo({
+          organizationId: isSuperAdmin ? null : auth.organizationId,
+          invoiceId: parsedParams.data.invoiceId,
+        })
+
         const billingAccountId = invoice.billingAccountId
         const orgId = billingAccountId
           ? await dependencies.getOrganizationIdByBillingAccount(billingAccountId)
@@ -269,9 +282,13 @@ export const createInvoicesRoutes = (
         return {
           ok: true as const,
           invoice,
+          payment,
           canMarkCanceled:
             canManageInvoiceCancellation(actorRoles) &&
             isCancelableStatus(invoice.status),
+          canMarkPaid:
+            canManuallyMarkPaid(actorRoles) && invoice.status === "open",
+          canManageConfirmations: canManagePaymentConfirmations(actorRoles),
           organization: org ? {
             name: org.name,
             billingFullName: org.metadata?.billing_full_name ?? null,
@@ -751,6 +768,70 @@ export const createInvoicesRoutes = (
           error instanceof Error ? error.stack ?? error.message : error
         )
         return toServerError(set, "Unable to send notification right now.")
+      }
+    })
+    .post("/:invoiceId/mark-paid", async ({ params, body, set }) => {
+      const auth = await dependencies.authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      const parsedParams = paramsSchema.safeParse(params)
+      if (!parsedParams.success) {
+        return toValidationError(set, parsedParams.error.issues)
+      }
+
+      const parsedBody = markPaidBodySchema.safeParse(body ?? {})
+      if (!parsedBody.success) {
+        return toValidationError(set, parsedBody.error.issues)
+      }
+
+      try {
+        const actorRoles = await toActorRoles({
+          auth,
+          getPlatformRole: dependencies.getPlatformRole,
+        })
+
+        if (!canManuallyMarkPaid(actorRoles)) {
+          return toForbidden(set, "Only super admins can manually mark invoices as paid.")
+        }
+
+        const invoice = await dependencies.service.markInvoiceAsPaid({
+          organizationId: null,
+          invoiceId: parsedParams.data.invoiceId,
+          adminUserId: auth.user.id,
+          paymentMethod: parsedBody.data.paymentMethod,
+          referenceNumber: parsedBody.data.referenceNumber,
+          notes: parsedBody.data.notes,
+        })
+
+        return {
+          ok: true as const,
+          invoice,
+        }
+      } catch (error) {
+        if (error instanceof InvoiceNotFoundError) {
+          return toNotFound(set, error.message)
+        }
+
+        if (
+          error instanceof Error &&
+          error.message === "INVOICE_ALREADY_MARKED_PAID"
+        ) {
+          set.status = 409
+          return {
+            ok: false as const,
+            error: "CONFLICT" as const,
+            message: "Invoice has already been marked as paid.",
+          }
+        }
+
+        console.error(
+          `[invoices] POST /invoices/:invoiceId/mark-paid —`,
+          error instanceof Error ? error.stack ?? error.message : error
+        )
+        return toServerError(set, "Unable to mark invoice as paid right now.")
       }
     })
 }

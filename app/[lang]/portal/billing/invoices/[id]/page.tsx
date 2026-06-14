@@ -3,6 +3,10 @@ import { getInvoice } from "@/lib/billing-client"
 import { InvoiceActions } from "@/components/billing/admin/invoice-actions"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  InvoiceGroupedLines,
+  InvoiceFlatLine,
+} from "@/components/billing/invoice-grouped-lines"
 
 interface InvoiceDetailPageProps {
   params: Promise<{ id: string; lang: string }>
@@ -27,12 +31,21 @@ export default async function InvoiceDetailPage({ params }: InvoiceDetailPagePro
     }).format(parseInt(amount, 10))
   }
 
-  const formatDate = (date: string | null) => {
+  function formatDate(date: string | null) {
     if (!date) return "N/A"
     return new Intl.DateTimeFormat("id-ID", {
       day: "numeric",
       month: "long",
       year: "numeric",
+    }).format(new Date(date))
+  }
+
+  function formatPeriodDate(date: string) {
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
     }).format(new Date(date))
   }
 
@@ -76,6 +89,17 @@ export default async function InvoiceDetailPage({ params }: InvoiceDetailPagePro
 
           <Card>
             <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Billing Period</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-base font-bold">
+                {formatPeriodDate(invoice.periodStart)} — {formatPeriodDate(invoice.periodEnd)}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Due Date</CardTitle>
             </CardHeader>
             <CardContent>
@@ -86,31 +110,17 @@ export default async function InvoiceDetailPage({ params }: InvoiceDetailPagePro
 
         <Card>
           <CardHeader>
-            <CardTitle>Line Items</CardTitle>
+            <CardTitle>{invoice.type === "TOP_UP" ? "Top-Up Details" : "Service Charges"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="pb-3 text-left text-sm font-medium text-muted-foreground">Description</th>
-                    <th className="pb-3 text-right text-sm font-medium text-muted-foreground">Qty</th>
-                    <th className="pb-3 text-right text-sm font-medium text-muted-foreground">Unit Price</th>
-                    <th className="pb-3 text-right text-sm font-medium text-muted-foreground">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.lines.map((line, index) => (
-                    <tr key={index} className="border-b last:border-0">
-                      <td className="py-3 text-sm">{line.description}</td>
-                      <td className="py-3 text-right text-sm">{line.quantity}</td>
-                      <td className="py-3 text-right text-sm">{formatCurrency(line.unitPriceIdr)}</td>
-                      <td className="py-3 text-right text-sm font-medium">{formatCurrency(line.amountIdr)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {invoice.type === "TOP_UP" ? (
+              <InvoiceFlatLine lines={invoice.lines} />
+            ) : (
+              <InvoiceGroupedLines
+                lines={invoice.lines}
+                periodLabel={formatPeriodDate(invoice.periodStart) + " — " + formatPeriodDate(invoice.periodEnd)}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

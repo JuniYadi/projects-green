@@ -220,7 +220,7 @@ describe("BillingTransactionService", () => {
       mockPrisma.billingInvoice.create.mockResolvedValue({
         id: "inv_svc_1",
         billingAccountId: "ba_1",
-        invoiceNumber: "SVC-202606-0001",
+        invoiceNumber: "SVC-202606",
         type: "SERVICE",
         status: "DRAFT",
         currency: "IDR",

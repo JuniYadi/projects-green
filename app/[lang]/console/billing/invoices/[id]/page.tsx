@@ -30,6 +30,10 @@ import {
 } from "@phosphor-icons/react"
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 import {
+  InvoiceGroupedLines,
+  InvoiceFlatLine,
+} from "@/components/billing/invoice-grouped-lines"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -110,6 +114,16 @@ export default function InvoiceDetailPage() {
       day: "numeric",
       month: "long",
       year: "numeric",
+    }).format(new Date(dateStr))
+  }
+
+  /** Format period dates in UTC to avoid timezone rollover (end-of-month → next month in WIB). */
+  function formatPeriodDate(dateStr: string): string {
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
     }).format(new Date(dateStr))
   }
 
@@ -269,10 +283,16 @@ export default function InvoiceDetailPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Invoice Info */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-sm text-muted-foreground">Invoice Number</p>
               <p className="font-medium">{invoice.invoiceNumber}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Billing Period</p>
+              <p className="font-medium">
+                {formatPeriodDate(invoice.periodStart)} — {formatPeriodDate(invoice.periodEnd)}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Issued Date</p>
@@ -286,35 +306,19 @@ export default function InvoiceDetailPage() {
 
           {/* Line Items */}
           <div>
-            <h3 className="mb-4 font-medium">Line Items</h3>
-            <div className="rounded-lg border">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-medium">Description</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Qty</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Unit Price</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.lines.map((line, index) => (
-                    <tr key={index} className="border-b last:border-b-0">
-                      <td className="px-4 py-3 text-sm">{line.description}</td>
-                      <td className="px-4 py-3 text-right text-sm">
-                        {Number.parseFloat(line.quantity).toLocaleString("id-ID")}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm">
-                        {formatCurrency(line.unitPriceIdr, invoice.currency)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-medium">
-                        {formatCurrency(line.amountIdr, invoice.currency)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <h3 className="mb-4 font-medium">
+              {invoice.type === "TOP_UP" ? "Top-Up Details" : "Service Charges"}
+            </h3>
+            {invoice.type === "TOP_UP" ? (
+              <div className="rounded-lg border">
+                <InvoiceFlatLine lines={invoice.lines} />
+              </div>
+            ) : (
+              <InvoiceGroupedLines
+                lines={invoice.lines}
+                periodLabel={formatPeriodDate(invoice.periodStart) + " — " + formatPeriodDate(invoice.periodEnd)}
+              />
+            )}
           </div>
 
           {/* Total */}

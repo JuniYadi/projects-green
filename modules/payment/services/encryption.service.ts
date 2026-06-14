@@ -46,7 +46,9 @@ export class EncryptionService {
     try {
       return this.decryptField(encryptedValue)
     } catch {
-      return null
+      // Fallback: if the value is not valid encrypted JSON, return it as-is
+      // (handles plain-text values stored before encryption was enforced)
+      return encryptedValue
     }
   }
 }
