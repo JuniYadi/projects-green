@@ -71,6 +71,8 @@ type InvoiceLineResponse = {
   quantity: string
   unitPriceIdr: string
   amountIdr: string
+  category?: string
+  metadata?: Record<string, unknown>
 }
 
 function getPaymentUrl(metadata: Prisma.JsonValue | null): string | null {
@@ -90,14 +92,21 @@ function formatInvoiceLine(
     unitPrice: Decimal
     amount: Decimal
     description: string
+    metadataJson?: Prisma.JsonValue
   }
 ): InvoiceLineResponse {
-  // Use field names from InvoiceLine schema: quantity, unitPrice, amount
+  const metadata =
+    line.metadataJson && typeof line.metadataJson === "object" && !Array.isArray(line.metadataJson)
+      ? (line.metadataJson as Record<string, unknown>)
+      : {}
+
   return {
     description: line.description,
     quantity: line.quantity.toFixed(2),
     unitPriceIdr: line.unitPrice.toFixed(2),
     amountIdr: line.amount.toFixed(2),
+    category: (metadata.category as string) ?? undefined,
+    metadata,
   }
 }
 

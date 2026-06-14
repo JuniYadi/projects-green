@@ -37,6 +37,8 @@ export type InvoiceLineItem = {
   quantity: string
   unitPriceIdr: string
   amountIdr: string
+  category?: string
+  metadata?: Record<string, unknown>
 }
 
 export type InvoiceListItem = {

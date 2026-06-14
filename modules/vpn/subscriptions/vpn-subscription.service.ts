@@ -264,6 +264,7 @@ export class VpnSubscriptionService {
           quantity: chargeQuantity,
           unitPrice: pkg.price,
           lineType: "SUBSCRIPTION",
+          category: "vpn",
         },
       })
     } catch (error) {
