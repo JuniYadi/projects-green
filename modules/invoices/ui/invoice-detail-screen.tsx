@@ -31,10 +31,13 @@ import type {
   InvoiceDetail,
   InvoiceDetailSuccessResponse,
   InvoiceErrorResponse,
+  PaymentInfoDTO,
 } from "@/modules/invoices/invoices.types"
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 import { InvoiceStatusPill } from "@/modules/invoices/ui/invoice-status-pill"
 import { InvoiceDetailSkeleton } from "@/modules/invoices/ui/invoice-detail-skeleton"
+import { InvoicePaymentSection } from "@/modules/invoices/ui/invoice-payment-section"
+import { MarkPaidDialog } from "@/modules/invoices/ui/mark-paid-dialog"
 
 type InvoiceDetailScreenProps = {
   invoiceId: string
@@ -47,6 +50,9 @@ type InvoiceDetailRequestState =
       status: "success"
       invoice: InvoiceDetail
       canMarkCanceled: boolean
+      canMarkPaid: boolean
+      canManageConfirmations: boolean
+      payment: PaymentInfoDTO | null
       organization: {
         name: string
         billingFullName?: string | null
@@ -78,6 +84,7 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
   })
   const [isPaymentDrawerOpen, setIsPaymentDrawerOpen] = useState(false)
   const [isCancelSheetOpen, setIsCancelSheetOpen] = useState(false)
+  const [isMarkPaidOpen, setIsMarkPaidOpen] = useState(false)
   const [isCanceling, setIsCanceling] = useState(false)
   const [cancelErrorMessage, setCancelErrorMessage] = useState<string | null>(null)
 
@@ -105,6 +112,9 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           status: "success",
           invoice: payload.invoice,
           canMarkCanceled: payload.canMarkCanceled,
+          canMarkPaid: payload.canMarkPaid ?? false,
+          canManageConfirmations: payload.canManageConfirmations ?? false,
+          payment: payload.payment ?? null,
           organization: payload.organization ?? null,
         })
       } catch (error) {
@@ -219,6 +229,16 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           >
             Pay Invoice
           </Button>
+          {state.canMarkPaid ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setIsMarkPaidOpen(true)}
+            >
+              Mark as Paid
+            </Button>
+          ) : null}
           {state.canMarkCanceled ? (
             <Button
               type="button"
@@ -313,6 +333,14 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           </CardContent>
         </Card>
       </div>
+
+      {state.payment ? (
+        <InvoicePaymentSection
+          payment={state.payment}
+          canManageConfirmations={state.canManageConfirmations}
+          onActionComplete={() => void loadDetail()}
+        />
+      ) : null}
 
       <Card>
         <CardHeader className="pb-3">
@@ -418,6 +446,14 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <MarkPaidDialog
+        invoiceId={invoice.id}
+        invoiceNumber={invoice.invoiceNumber}
+        open={isMarkPaidOpen}
+        onOpenChange={setIsMarkPaidOpen}
+        onSuccess={() => void loadDetail()}
+      />
 
       <Sheet open={isCancelSheetOpen} onOpenChange={setIsCancelSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md">

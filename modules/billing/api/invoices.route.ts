@@ -153,6 +153,8 @@ export const createBillingInvoicesRoutes = (
           dueAt: inv.dueAt?.toISOString() ?? null,
           createdAt: inv.createdAt?.toISOString() ?? null,
           dueDate: inv.dueDate?.toISOString() ?? null,
+          periodStart: inv.periodStart.toISOString(),
+          periodEnd: inv.periodEnd.toISOString(),
           totalAmountIdr: inv.totalAmount.toFixed(2),
           currency: inv.currency,
           lines: inv.lines.map((line) => formatInvoiceLine(line)),
@@ -231,6 +233,8 @@ export const createBillingInvoicesRoutes = (
             dueAt: invoice.dueAt?.toISOString() ?? null,
             createdAt: invoice.createdAt?.toISOString() ?? null,
             dueDate: invoice.dueDate?.toISOString() ?? null,
+            periodStart: invoice.periodStart.toISOString(),
+            periodEnd: invoice.periodEnd.toISOString(),
             totalAmountIdr: invoice.totalAmount.toFixed(2),
             currency: invoice.currency,
             lines: invoice.lines.map((line) =>

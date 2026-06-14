@@ -27,12 +27,21 @@ export default async function InvoiceDetailPage({ params }: InvoiceDetailPagePro
     }).format(parseInt(amount, 10))
   }
 
-  const formatDate = (date: string | null) => {
+  function formatDate(date: string | null) {
     if (!date) return "N/A"
     return new Intl.DateTimeFormat("id-ID", {
       day: "numeric",
       month: "long",
       year: "numeric",
+    }).format(new Date(date))
+  }
+
+  function formatPeriodDate(date: string) {
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
     }).format(new Date(date))
   }
 
@@ -71,6 +80,17 @@ export default async function InvoiceDetailPage({ params }: InvoiceDetailPagePro
               <Badge variant={status === "paid" ? "default" : "secondary"}>
                 {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1).toLowerCase()}
               </Badge>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Billing Period</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-base font-bold">
+                {formatPeriodDate(invoice.periodStart)} — {formatPeriodDate(invoice.periodEnd)}
+              </p>
             </CardContent>
           </Card>
 

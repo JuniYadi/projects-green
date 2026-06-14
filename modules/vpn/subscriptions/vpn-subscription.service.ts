@@ -1,3 +1,5 @@
+import crypto from "node:crypto"
+
 import {
   Prisma,
   type PrismaClient,
@@ -79,7 +81,9 @@ function enabledProtocols(server: {
 
 /**
  * Username scheme from Story 14: `vpn-{orgId}-{serverId}-{protocol}`,
- * sanitized to the adapter-safe charset.
+ * sanitized to the adapter-safe charset. A 4-char hex suffix is appended
+ * to ensure uniqueness when an org subscribes to the same package+protocol
+ * multiple times (multi-sub).
  */
 export function buildAccountUsername(
   organizationId: string,
@@ -88,12 +92,15 @@ export function buildAccountUsername(
 ): string {
   const safeOrg = organizationId.replace(/[^A-Za-z0-9]/g, "").slice(0, 16)
   const safeServer = serverId.replace(/[^A-Za-z0-9]/g, "").slice(0, 16)
-  return `vpn-${safeOrg}-${safeServer}-${protocol.toLowerCase()}`
+  const suffix = crypto.randomBytes(2).toString("hex")
+  return `vpn-${safeOrg}-${safeServer}-${protocol.toLowerCase()}-${suffix}`
 }
 
 export type PurchaseInput = {
   organizationId: string
   packageId: string
+  /** Override for testability (default: new Date()). */
+  now?: Date
 }
 
 /**
@@ -162,23 +169,40 @@ export class VpnSubscriptionService {
       throw new VpnPackageUnavailableError()
     }
 
-    const existingActive = await this.prisma.vpnSubscription.findFirst({
-      where: {
-        organizationId: input.organizationId,
-        packageId: input.packageId,
-        status: "ACTIVE",
-      },
-    })
-    if (existingActive) {
-      throw new VpnDuplicateSubscriptionError()
-    }
+    const now = input.now ?? new Date()
+    const daysInMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)
+    ).getUTCDate()
+    const dayOfMonth = now.getUTCDate()
+    const daysRemaining = daysInMonth - dayOfMonth + 1
 
-    const now = new Date()
-    const periodEnd = new Date(now)
-    periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1)
+    // Align first period to end of current calendar month for pro-rata billing.
+    const periodEnd = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999
+      )
+    )
     const period = `${now.getUTCFullYear()}-${String(
       now.getUTCMonth() + 1
     ).padStart(2, "0")}`
+
+    // Pro-rate the first month charge when buying mid-cycle.
+    const isFullMonth = dayOfMonth === 1
+    const chargeAmount = isFullMonth
+      ? pkg.price
+      : pkg.price
+          .mul(daysRemaining)
+          .div(daysInMonth)
+          .toDecimalPlaces(2, Prisma.Decimal.ROUND_DOWN)
+    const chargeQuantity = isFullMonth
+      ? new Prisma.Decimal(1)
+      : new Prisma.Decimal(daysRemaining).div(daysInMonth)
 
     // Build the per-protocol account plan up front.
     const plan = pkg.servers.flatMap((entry) =>
@@ -223,7 +247,7 @@ export class VpnSubscriptionService {
     try {
       await this.transactions.debitServiceBalance({
         organizationId: input.organizationId,
-        amount: pkg.price,
+        amount: chargeAmount,
         currency: pkg.currency,
         source: "VPN",
         reason: `VPN package "${pkg.name}" monthly payment`,
@@ -234,8 +258,10 @@ export class VpnSubscriptionService {
           period,
         },
         line: {
-          description: `VPN package "${pkg.name}" monthly payment`,
-          quantity: new Prisma.Decimal(1),
+          description: isFullMonth
+            ? `VPN package "${pkg.name}" — ${period}`
+            : `VPN package "${pkg.name}" — ${daysRemaining}/${daysInMonth} month (${period})`,
+          quantity: chargeQuantity,
           unitPrice: pkg.price,
           lineType: "SUBSCRIPTION",
         },

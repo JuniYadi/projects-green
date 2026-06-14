@@ -50,6 +50,8 @@ export type InvoiceListItem = {
   dueAt: string | null
   createdAt?: string | null
   dueDate?: string | null
+  periodStart: string
+  periodEnd: string
   totalAmountIdr: string
   currency: string
   lines: InvoiceLineItem[]

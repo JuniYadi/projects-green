@@ -328,6 +328,38 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
       },
     ],
   },
+  {
+    context: "vpn",
+    matches: (path) => startsWithRoute(path, "/console/vpn"),
+    navMainLabel: "VPN",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Console",
+        url: localizePathname({ pathname: "/console", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Dashboard",
+        url: localizePathname({
+          pathname: "/console/vpn/dashboard",
+          locale,
+        }),
+        icon: <GaugeIcon />,
+        isActive: path === "/console/vpn/dashboard",
+      },
+      {
+        title: "My Subscriptions",
+        url: localizePathname({
+          pathname: "/console/vpn/subscriptions",
+          locale,
+        }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/console/vpn/subscriptions"),
+      },
+    ],
+  },
 ]
 
 const getHubMenu = (path: string, locale: AppLocale) => ({
@@ -366,7 +398,7 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
     },
     {
       title: "VPN",
-      url: localizePathname({ pathname: "/console/vpn", locale }),
+      url: localizePathname({ pathname: "/console/vpn/dashboard", locale }),
       icon: <GlobeIcon />,
       isActive: startsWithRoute(path, "/console/vpn"),
     },

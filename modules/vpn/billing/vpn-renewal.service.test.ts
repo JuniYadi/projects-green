@@ -94,6 +94,12 @@ describe("VpnRenewalService", () => {
           idempotencyKey: "vpn-package:sub_vpn_1:2026-06",
         })
       )
+
+      // Verify calendar-month alignment: extendPeriod should extend to
+      // end of July 2026 (month+2=8, day 0 = July 31)
+      const expectedPeriodEnd = new Date(
+        Date.UTC(2026, 7, 0, 23, 59, 59, 999)
+      )
       expect(mockPrisma.vpnSubscription.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -102,6 +108,7 @@ describe("VpnRenewalService", () => {
           }),
           data: expect.objectContaining({
             status: "ACTIVE",
+            currentPeriodEnd: expectedPeriodEnd,
             renewalFailedAt: null,
           }),
         })

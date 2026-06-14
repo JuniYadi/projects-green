@@ -2,6 +2,8 @@ import type {
   InvoiceDetailRecord,
   InvoiceRepository,
 } from "@/modules/invoices/invoices.repository"
+import { prisma } from "@/lib/prisma"
+import { toPaymentInfoDTO } from "@/modules/invoices/invoices.dto"
 import type {
   InvoiceDetail,
   InvoiceLineItem,
@@ -9,7 +11,10 @@ import type {
   InvoiceListQuery,
   InvoicePaymentMethod,
   InvoiceStatus,
+  PaymentInfoDTO,
 } from "@/modules/invoices/invoices.types"
+import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import { Prisma } from "@prisma/client"
 
 export class InvoiceNotFoundError extends Error {
   constructor(invoiceId: string) {
@@ -34,9 +39,21 @@ export type InvoiceService = {
     organizationId?: string | null
     invoiceId: string
   }) => Promise<InvoiceDetail>
+  getPaymentInfo: (input: {
+    organizationId?: string | null
+    invoiceId: string
+  }) => Promise<PaymentInfoDTO | null>
   cancelInvoice: (input: {
     organizationId?: string | null
     invoiceId: string
+  }) => Promise<InvoiceDetail>
+  markInvoiceAsPaid: (input: {
+    organizationId?: string | null
+    invoiceId: string
+    adminUserId: string
+    paymentMethod?: string
+    referenceNumber?: string
+    notes?: string
   }) => Promise<InvoiceDetail>
   getPaymentMethodOptions: () => InvoicePaymentMethod[]
 }
@@ -196,6 +213,131 @@ export const createInvoiceService = (
       }
 
       return toInvoiceDetail(invoice)
+    },
+    async getPaymentInfo({ organizationId, invoiceId }) {
+      const invoice = await repository.findByIdForOrganization({
+        organizationId,
+        invoiceId,
+      })
+
+      if (!invoice) {
+        throw new InvoiceNotFoundError(invoiceId)
+      }
+
+      return toPaymentInfoDTO(invoice)
+    },
+    async markInvoiceAsPaid({
+      organizationId,
+      invoiceId,
+      adminUserId,
+      paymentMethod,
+      referenceNumber,
+      notes,
+    }) {
+      const invoice = await repository.findByIdForOrganization({
+        organizationId,
+        invoiceId,
+      })
+
+      if (!invoice) {
+        throw new InvoiceNotFoundError(invoiceId)
+      }
+
+      const currentStatus = toInvoiceStatus(invoice.status)
+      if (currentStatus !== "open") {
+        throw new Error(
+          `Invoice ${invoiceId} cannot be marked as paid from status ${currentStatus}.`
+        )
+      }
+
+      const idempotencyKey = `manual:mark-paid:${invoiceId}`
+
+      await prisma.$transaction(async (tx) => {
+        const prismaClient = tx as unknown as import("@prisma/client").PrismaClient
+
+        // Idempotency check
+        const existingLog = await tx.paymentAuditLog.findFirst({
+          where: {
+            action: "MANUAL_MARK_PAID",
+            entityType: "Invoice",
+            entityId: invoiceId,
+          },
+        })
+
+        if (existingLog) {
+          throw new Error("INVOICE_ALREADY_MARKED_PAID")
+        }
+
+        // Look up billing account for organizationId
+        const billingAccount = await tx.billingAccount.findUnique({
+          where: { id: invoice.billingAccountId },
+        })
+
+        if (!billingAccount?.organizationId) {
+          throw new Error("BILLING_ACCOUNT_NOT_FOUND")
+        }
+
+        // Credit balance
+        const billingTx = new BillingTransactionService(prismaClient)
+        const totalAmount = toNumber(invoice.totalAmount)
+        const result = await billingTx.creditBalance({
+          organizationId: billingAccount.organizationId,
+          amount: new Prisma.Decimal(totalAmount),
+          currency: invoice.currency,
+          source: "TOPUP",
+          reason: `Manual mark paid: ${invoice.invoiceNumber}`,
+          idempotencyKey,
+          invoiceId: invoice.id,
+          metadata: {
+            markedBy: adminUserId,
+            paymentMethod: paymentMethod ?? null,
+            referenceNumber: referenceNumber ?? null,
+            notes: notes ?? null,
+          },
+        })
+
+        if (result.alreadyProcessed) {
+          throw new Error("INVOICE_ALREADY_MARKED_PAID")
+        }
+
+        // Update invoice status to PAID
+        await tx.billingInvoice.update({
+          where: { id: invoiceId },
+          data: {
+            status: "PAID",
+            paidAt: new Date(),
+          },
+        })
+
+        // Create audit log
+        await tx.paymentAuditLog.create({
+          data: {
+            action: "MANUAL_MARK_PAID",
+            entityType: "Invoice",
+            entityId: invoiceId,
+            actorId: adminUserId,
+            details: {
+              paymentMethod,
+              referenceNumber,
+              notes,
+              amount: totalAmount,
+              currency: invoice.currency,
+            },
+          },
+        })
+      })
+
+      // Re-fetch and return updated invoice
+      const updatedInvoice = await repository.findByIdForOrganization({
+        organizationId,
+        invoiceId,
+      })
+
+      if (!updatedInvoice) {
+        throw new InvoiceNotFoundError(invoiceId)
+      }
+
+      return toInvoiceDetail(updatedInvoice)
     },
     async cancelInvoice({ organizationId, invoiceId }) {
       const invoice = await repository.findByIdForOrganization({

@@ -66,10 +66,13 @@ export class InvoiceStatusManager {
     const threshold = new Date()
     threshold.setDate(threshold.getDate() - ISSUE_THRESHOLD_DAYS)
 
+    // Issue invoices whose billing period has ended + grace days.
+    // Using periodEnd instead of createdAt ensures a DRAFT invoice stays
+    // open for the entire month to accumulate all charges before issuing.
     const invoices = await this.prisma.billingInvoice.findMany({
       where: {
         status: "DRAFT",
-        createdAt: { lt: threshold },
+        periodEnd: { lt: threshold },
       },
       include: { billingAccount: true },
     })

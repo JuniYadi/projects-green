@@ -20,3 +20,13 @@ export const canManageInvoiceNotifications = (
   }
   return actor.tenantRole === "owner" || actor.tenantRole === "admin"
 }
+
+export const canManagePaymentConfirmations = (
+  actor: InvoiceActorRoleContext
+) => {
+  return actor.platformRole === "super_admin"
+}
+
+export const canManuallyMarkPaid = (actor: InvoiceActorRoleContext) => {
+  return actor.platformRole === "super_admin"
+}

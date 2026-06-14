@@ -84,7 +84,7 @@ describe("InvoiceStatusManager", () => {
       expect(mockFindMany).toHaveBeenCalledWith({
         where: {
           status: "DRAFT",
-          createdAt: { lt: expect.any(Date) },
+          periodEnd: { lt: expect.any(Date) },
         },
         include: { billingAccount: true },
       })

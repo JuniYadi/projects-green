@@ -113,6 +113,16 @@ export default function InvoiceDetailPage() {
     }).format(new Date(dateStr))
   }
 
+  /** Format period dates in UTC to avoid timezone rollover (end-of-month → next month in WIB). */
+  function formatPeriodDate(dateStr: string): string {
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(dateStr))
+  }
+
   async function handlePayWithBalance() {
     setIsProcessing(true)
     setError(null)
@@ -269,10 +279,16 @@ export default function InvoiceDetailPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Invoice Info */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-sm text-muted-foreground">Invoice Number</p>
               <p className="font-medium">{invoice.invoiceNumber}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Billing Period</p>
+              <p className="font-medium">
+                {formatPeriodDate(invoice.periodStart)} — {formatPeriodDate(invoice.periodEnd)}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Issued Date</p>

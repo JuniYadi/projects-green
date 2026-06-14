@@ -26,6 +26,7 @@ const baseInvoice = {
   paidAt: null,
   type: null,
   paymentMethod: null,
+  gatewayId: null,
   metadataJson: null,
   metadata: null,
   createdAt: new Date("2026-05-02T00:00:00.000Z"),
@@ -34,6 +35,8 @@ const baseInvoice = {
 
 const detailRecord = {
   ...baseInvoice,
+  gateway: null,
+  paymentConfirmations: [],
   lines: [
     {
       id: "line_1",
@@ -160,6 +163,7 @@ describe("invoice service", () => {
       paidAt: null,
       type: null,
       paymentMethod: null,
+      gatewayId: null,
       metadataJson: null,
       metadata: null,
       createdAt: new Date("2026-05-02T00:00:00.000Z"),

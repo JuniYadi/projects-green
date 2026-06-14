@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { Prisma } from "@prisma/client"
 
 import {
   VpnBillingAccountNotFoundError,
@@ -36,11 +37,15 @@ const service = new VpnSubscriptionService(prismaMock, {
   dispatch,
 })
 
+function decimal(value: string) {
+  return new Prisma.Decimal(value)
+}
+
 const activePackage = {
   id: "pkg-1",
   name: "Global Bundle",
   isActive: true,
-  price: { toString: () => "100000" },
+  price: decimal("100000"),
   currency: "IDR",
   servers: [
     {
@@ -88,10 +93,9 @@ beforeEach(() => {
 })
 
 describe("buildAccountUsername", () => {
-  it("follows the vpn-{org}-{server}-{protocol} scheme", () => {
-    expect(buildAccountUsername("org_abc", "srv1", "OPENVPN")).toBe(
-      "vpn-orgabc-srv1-openvpn"
-    )
+  it("follows the vpn-{org}-{server}-{protocol}-{suffix} scheme with random suffix", () => {
+    const result = buildAccountUsername("org_abc", "srv1", "OPENVPN")
+    expect(result).toMatch(/^vpn-orgabc-srv1-openvpn-[0-9a-f]{4}$/)
   })
 })
 
@@ -123,13 +127,6 @@ describe("VpnSubscriptionService.purchase", () => {
     expect(subCreate).not.toHaveBeenCalled()
   })
 
-  it("rejects a duplicate active subscription", async () => {
-    subFindFirst.mockResolvedValue({ id: "existing" })
-    await expect(
-      service.purchase({ organizationId: "org-1", packageId: "pkg-1" })
-    ).rejects.toBeInstanceOf(VpnDuplicateSubscriptionError)
-    expect(subCreate).not.toHaveBeenCalled()
-  })
 
   it("maps INSUFFICIENT_BALANCE and cleans up the orphaned subscription", async () => {
     debitServiceBalance.mockRejectedValue(new Error("INSUFFICIENT_BALANCE"))
@@ -154,5 +151,71 @@ describe("VpnSubscriptionService.purchase", () => {
     expect(dispatch).not.toHaveBeenCalled()
     expect(subUpdate).not.toHaveBeenCalled()
     expect(subDelete).toHaveBeenCalledTimes(1)
+  })
+
+  it("charges full amount when purchased on the 1st of the month", async () => {
+    // June 1, 2026 — full month, no pro-rata
+    const june1 = new Date("2026-06-01T00:00:00Z")
+    await service.purchase({
+      organizationId: "org-1",
+      packageId: "pkg-1",
+      now: june1,
+    })
+
+    expect(debitServiceBalance).toHaveBeenCalled()
+    const { amount, line } = debitServiceBalance.mock.calls[0][0]
+    expect(amount.toString()).toBe("100000")
+    expect(line.quantity.toString()).toBe("1")
+    expect(line.description).toBe('VPN package "Global Bundle" — 2026-06')
+  })
+
+  it("charges pro-rated amount for mid-month purchase", async () => {
+    // June 14, 2026 — 17 days remaining, charge = 17/30 × 100000 = 56666.66
+    const june14 = new Date("2026-06-14T00:00:00Z")
+    await service.purchase({
+      organizationId: "org-1",
+      packageId: "pkg-1",
+      now: june14,
+    })
+
+    expect(debitServiceBalance).toHaveBeenCalled()
+    const { amount, line } = debitServiceBalance.mock.calls[0][0]
+
+    // 17/30 = 0.5666... × 100000 = 56666.66, ROUND_DOWN → 56666.66
+    expect(amount.toString()).toBe("56666.66")
+    expect(line.description).toBe('VPN package "Global Bundle" — 17/30 month (2026-06)')
+    expect(line.unitPrice.toString()).toBe("100000")
+  })
+
+  it("charges pro-rated amount for end-of-month purchase", async () => {
+    // June 30, 2026 — 1 day remaining, charge = 1/30 × 100000 = 3333.33
+    const june30 = new Date("2026-06-30T00:00:00Z")
+    await service.purchase({
+      organizationId: "org-1",
+      packageId: "pkg-1",
+      now: june30,
+    })
+
+    expect(debitServiceBalance).toHaveBeenCalled()
+    const { amount, line } = debitServiceBalance.mock.calls[0][0]
+
+    expect(amount.toString()).toBe("3333.33")
+    expect(line.description).toBe('VPN package "Global Bundle" — 1/30 month (2026-06)')
+  })
+
+  it("subscription period aligns to calendar month end", async () => {
+    // June 14 purchase → periodEnd = June 30, not July 14
+    const june14 = new Date("2026-06-14T00:00:00Z")
+    await service.purchase({
+      organizationId: "org-1",
+      packageId: "pkg-1",
+      now: june14,
+    })
+
+    const createdData = subCreate.mock.calls[0][0].data
+    const expectedEnd = new Date(
+      Date.UTC(2026, 6, 0, 23, 59, 59, 999)
+    )
+    expect(createdData.currentPeriodEnd.getTime()).toBe(expectedEnd.getTime())
   })
 })

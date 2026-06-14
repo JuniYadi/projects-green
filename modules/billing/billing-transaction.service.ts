@@ -258,14 +258,10 @@ export class BillingTransactionService {
     })
     if (existing) return existing
 
-    // Generate invoice number: SVC-YYYYMM-NNNN
+    // Generate invoice number: SVC-YYYYMM
+    // One service invoice per month per org, so no sequential counter needed.
     const periodStr = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}`
-    const count = await tx.billingInvoice.count({
-      where: {
-        invoiceNumber: { startsWith: `SVC-${periodStr}` },
-      },
-    })
-    const invoiceNumber = `SVC-${periodStr}-${String(count + 1).padStart(4, "0")}`
+    const invoiceNumber = `SVC-${periodStr}`
 
     return tx.billingInvoice.create({
       data: {

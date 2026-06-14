@@ -15,7 +15,7 @@ mock.module("@/lib/vpn-client", () => ({
     `/api/vpn/subscriptions/${s}/servers/${a}/config`,
 }))
 
-import ConsoleVpnPage from "./page"
+import ConsoleVpnDashboardPage from "./dashboard/page"
 
 beforeEach(() => {
   mockListVpnSubscriptions.mockReset()
@@ -23,11 +23,11 @@ beforeEach(() => {
   mockListVpnPackages.mockResolvedValue([])
 })
 
-describe("ConsoleVpnPage", () => {
+describe("ConsoleVpnDashboardPage", () => {
   it("shows available packages heading when no subscriptions exist", async () => {
     mockListVpnSubscriptions.mockResolvedValue([])
 
-    const view = render(<ConsoleVpnPage />)
+    const view = render(<ConsoleVpnDashboardPage />)
 
     await waitFor(() => {
       expect(view.getByText("VPN Packages")).toBeInTheDocument()
@@ -65,7 +65,7 @@ describe("ConsoleVpnPage", () => {
       },
     ])
 
-    const view = render(<ConsoleVpnPage />)
+    const view = render(<ConsoleVpnDashboardPage />)
 
     await waitFor(() => {
       expect(view.getByText("My VPN Subscriptions")).toBeInTheDocument()

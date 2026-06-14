@@ -186,12 +186,18 @@ export class VpnRenewalService {
   }
 
   /**
-   * Extend the period by one month and clear renewal-failure tracking.
-   * Idempotent under concurrent workers via the `currentPeriodEnd` guard.
+   * Extend the period to the end of the next calendar month and clear
+   * renewal-failure tracking. Aligns to calendar months so renewal always
+   * happens at the start of a month, matching the pro-rated first-period
+   * from the purchase flow. Idempotent under concurrent workers via the
+   * `currentPeriodEnd` guard.
    */
   private async extendPeriod(id: string, now: Date): Promise<boolean> {
-    const periodEnd = new Date(now)
-    periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1)
+    // End of next calendar month (month+2, day 0).
+    // Example: now=July 1 → month+2=September, day 0=August 31
+    const periodEnd = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 2, 0, 23, 59, 59, 999)
+    )
 
     const updated = await this.prisma.vpnSubscription.updateMany({
       where: { id, currentPeriodEnd: { lte: now } },

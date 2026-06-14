@@ -27,7 +27,7 @@ export class VpnProvisioningJob extends BaseJob {
   static async dispatch(serverAccountId: string): Promise<void> {
     await this.enqueue(
       { serverAccountId },
-      { jobId: `vpn-provision:${serverAccountId}` }
+      { jobId: `vpn-provision-${serverAccountId}` }
     )
   }
 
