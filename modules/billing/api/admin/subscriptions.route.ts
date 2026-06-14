@@ -1,5 +1,7 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import { z } from "zod"
+import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
@@ -92,7 +94,110 @@ export const createAdminSubscriptionRoutes = (
     ...deps,
   }
 
+  const listQuerySchema = z.object({
+    page: z.coerce.number().min(1).default(1),
+    limit: z.coerce.number().min(1).max(100).default(20),
+    status: z
+      .enum(["ACTIVE", "SUSPENDED", "CANCELLED"])
+      .optional(),
+    organizationId: z.string().optional(),
+  })
+
   return new Elysia()
+    // GET /billing/admin/subscriptions — List all subscriptions
+    .get("/admin/subscriptions", async ({ query, set }) => {
+      const auth = await authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      const actor = await resolveActor(auth, getPlatformRole)
+      if (!isAdmin(actor)) {
+        return toForbidden(
+          set,
+          "Only administrators can view all subscriptions."
+        )
+      }
+
+      const parsed = listQuerySchema.safeParse(query)
+      if (!parsed.success) {
+        set.status = 422
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
+          message: "Invalid query parameters.",
+        }
+      }
+
+      const { page, limit, status, organizationId } = parsed.data
+      const skip = (page - 1) * limit
+
+      try {
+        const where: Prisma.ServiceSubscriptionWhereInput = {}
+
+        if (
+          actor.platformRole !== "super_admin" &&
+          auth.organizationId
+        ) {
+          where.organizationId = auth.organizationId
+        }
+
+        if (status) where.status = status
+        if (organizationId) where.organizationId = organizationId
+
+        const [subscriptions, total] = await Promise.all([
+          prisma.serviceSubscription.findMany({
+            where,
+            include: {
+              package: { select: { code: true } },
+              plan: { select: { code: true } },
+              pricing: {
+                select: {
+                  billingMode: true,
+                  type: true,
+                  basePriceIdr: true,
+                  region: { select: { code: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+          }),
+          prisma.serviceSubscription.count({ where }),
+        ])
+
+        const formatted = subscriptions.map((sub) => ({
+          id: sub.id,
+          organizationId: sub.organizationId,
+          packageCode: sub.package.code,
+          planCode: sub.plan.code,
+          regionCode: sub.pricing.region.code,
+          billingMode: sub.pricing.billingMode,
+          type: sub.pricing.type,
+          status: sub.status,
+          allocatedConfig:
+            sub.allocatedConfig as Record<string, unknown> | null,
+          monthlyRateIdr: sub.pricing.basePriceIdr.toFixed(2),
+          currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null,
+        }))
+
+        return {
+          ok: true as const,
+          subscriptions: formatted,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
+        }
+      } catch (error) {
+        console.error("[AdminSubscriptionsList] Error:", error)
+        return toServerError(set, "Unable to load subscriptions.")
+      }
+    })
     // PATCH /billing/admin/subscriptions/:id — Update subscription
     .patch("/admin/subscriptions/:id", async ({ params, body, set }) => {
       const auth = await authenticate()

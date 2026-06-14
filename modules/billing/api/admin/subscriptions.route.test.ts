@@ -15,11 +15,15 @@ import {
 
 const mockFindUnique = mock()
 const mockUpdate = mock()
+const mockFindMany = mock()
+const mockCount = mock()
 
 const mockPrismaClient = {
   serviceSubscription: {
     findUnique: mockFindUnique,
     update: mockUpdate,
+    findMany: mockFindMany,
+    count: mockCount,
   },
   pricing: {
     findUnique: mockFindUnique,
@@ -34,6 +38,8 @@ describe("AdminSubscriptionRoute", () => {
   beforeEach(() => {
     mockFindUnique.mockReset()
     mockUpdate.mockReset()
+    mockFindMany.mockReset()
+    mockCount.mockReset()
   })
 
   testIsAdmin((actor) => {
@@ -455,6 +461,223 @@ describe("AdminSubscriptionRoute", () => {
       )
 
       expect(res.status).toBe(403)
+    })
+  })
+
+  describe("GET /admin/subscriptions", () => {
+    it("returns 401 when no auth", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => ({ user: null } as MockAuthContext),
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions")
+      )
+
+      expect(response.status).toBe(401)
+      const body = await response.json()
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not admin", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRoleNone,
+            isAdmin: () => false,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions")
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns paginated subscriptions", async () => {
+      mockFindMany.mockResolvedValueOnce([
+        {
+          id: "sub-1",
+          organizationId: "org-1",
+          status: "ACTIVE",
+          currentPeriodEnd: new Date("2026-06-30"),
+          allocatedConfig: { devices: 5 },
+          package: { code: "WHATSAPP" },
+          plan: { code: "STANDARD" },
+          pricing: {
+            billingMode: "SUBSCRIPTION",
+            type: "BUNDLE",
+            basePriceIdr: new Decimal("299000"),
+            region: { code: "GLOBAL" },
+          },
+        },
+      ])
+      mockCount.mockResolvedValueOnce(1)
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions?page=1&limit=20")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.subscriptions).toHaveLength(1)
+      expect(body.subscriptions[0].id).toBe("sub-1")
+      expect(body.subscriptions[0].packageCode).toBe("WHATSAPP")
+      expect(body.subscriptions[0].monthlyRateIdr).toBe("299000.00")
+      expect(body.pagination.total).toBe(1)
+    })
+
+    it("filters by status", async () => {
+      mockFindMany.mockResolvedValueOnce([])
+      mockCount.mockResolvedValueOnce(0)
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions?status=SUSPENDED")
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: "SUSPENDED" }),
+        })
+      )
+    })
+
+    it("filters by organizationId", async () => {
+      mockFindMany.mockResolvedValueOnce([])
+      mockCount.mockResolvedValueOnce(0)
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/admin/subscriptions?organizationId=org-123"
+        )
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "org-123",
+          }),
+        })
+      )
+    })
+
+    it("scopes to caller org for non-super_admin", async () => {
+      mockFindMany.mockResolvedValueOnce([])
+      mockCount.mockResolvedValueOnce(0)
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              } as unknown as MockAuthContext),
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions")
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ organizationId: "org-1" }),
+        })
+      )
+    })
+
+    it("returns 500 on database error", async () => {
+      mockFindMany.mockRejectedValueOnce(new Error("Database error"))
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions")
+      )
+
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
+
+    it("returns 422 for invalid status", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions?status=INVALID")
+      )
+
+      expect(response.status).toBe(422)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
     })
   })
 })

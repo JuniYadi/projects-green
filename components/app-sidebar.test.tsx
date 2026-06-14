@@ -118,7 +118,7 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMain.map((item) => item.title)).toEqual([
-      "Settings",
+      "My Organization",
       "App Hosting",
       "VPN",
       "WhatsApp",
@@ -147,7 +147,7 @@ describe("resolveSidebarMenu", () => {
     // Payments no longer has its own sidebar context — falls back to portal platform nav
     expect(navMainLabel).not.toBe("Payments")
     expect(navMain.map((item) => item.title)).toEqual([
-      "Settings",
+      "My Organization",
       "App Hosting",
       "VPN",
       "WhatsApp",

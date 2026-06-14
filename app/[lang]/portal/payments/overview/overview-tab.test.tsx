@@ -146,13 +146,17 @@ describe("OverviewTab", () => {
         view = render(<OverviewTab />)
       })
 
-      expect(
-        view!.getByText("Pending Confirmations")
-      ).toBeInTheDocument()
+      // Two elements match: stat card title + list card title
+      const confirmElements =
+        view!.getAllByText("Pending Confirmations")
+      expect(confirmElements.length).toBeGreaterThanOrEqual(1)
 
-      const confirmCard = view!
-        .getByText("Pending Confirmations")
-        .closest(".group\\/card")
+      // The stat card title uses text-sm class (the list card uses text-base)
+      const statTitle = confirmElements.find(
+        (el) => el.classList.contains("text-sm")
+      )
+      expect(statTitle).toBeDefined()
+      const confirmCard = statTitle!.closest(".group\\/card")
       const boldNumbers =
         confirmCard!.querySelectorAll(".text-2xl.font-bold")
       expect(boldNumbers.length).toBe(1)
@@ -166,9 +170,10 @@ describe("OverviewTab", () => {
         view = render(<OverviewTab />)
       })
 
+      // Two elements match: stat card title + list card title
       expect(
-        view!.getByText("Pending Confirmations")
-      ).toBeInTheDocument()
+        view!.getAllByText("Pending Confirmations").length
+      ).toBeGreaterThanOrEqual(1)
       expect(view!.getByText("Awaiting review")).toBeInTheDocument()
     })
   })
