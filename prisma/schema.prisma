@@ -1928,3 +1928,15 @@ model VoucherClaim {
   @@index([voucherId, claimedAt(sort: Desc)])
   @@index([organizationId])
 }
+
+model CacheEntry {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key, expiresAt])
+  @@map("CacheEntry")
+}
