@@ -268,12 +268,10 @@ export const createAdminMembersRoutes = (
 
       try {
         // Find billing account by organization ID, scoped to caller's org for non-super_admin
-        const billingAccountWhere: Prisma.BillingAccountWhereInput = {
-          organizationId: userId,
-          ...(actor.platformRole !== "super_admin" && auth.organizationId
+        const billingAccountWhere: Prisma.BillingAccountWhereInput =
+          actor.platformRole !== "super_admin" && auth.organizationId
             ? { organizationId: auth.organizationId }
-            : {}),
-        }
+            : { organizationId: userId }
         const billingAccount = await prisma.billingAccount.findFirst({
           where: billingAccountWhere,
         })

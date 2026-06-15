@@ -526,8 +526,14 @@ describe("AdminMembersRoute", () => {
 
     it("returns 404 (not 403) when org admin queries a different org", async () => {
       // The caller is admin of org_own but asks about org_other.
-      // The DB-scoping fix causes findFirst to return null → 404.
-      mockFindFirst.mockResolvedValueOnce(null)
+      // The DB-scoping fix must restrict findFirst to caller's org (not target),
+      // otherwise the WHERE clause would match and return a record instead of null.
+      mockFindFirst.mockImplementationOnce((where: Record<string, unknown>) => {
+        // If scoping is correct, findFirst is called with { where: { organizationId: "org_own" } }
+        // which won't match any record for "org_other" → null → 404
+        expect(where?.where?.organizationId).toBe("org_own")
+        return null
+      })
 
       const app = new Elysia()
         .use(
