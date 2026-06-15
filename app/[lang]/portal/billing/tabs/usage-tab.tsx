@@ -5,53 +5,30 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChartBarIcon, TrendDownIcon, WalletIcon } from "@phosphor-icons/react"
+import {
+  getAdminUsage,
+  type AdminUsageBreakdown,
+  type AdminUsageTrend,
+} from "@/lib/billing-client"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-
-interface UsageBreakdown {
-  category: string
-  quantity: number
-  totalCost: number
-  percentage: number
-}
-
-interface DailyTrend {
-  date: string
-  amount: number
-}
 
 type UsageTabProps = {
   lang: string
 }
 
 export function UsageTab({ lang: _lang }: UsageTabProps) {
-  const [breakdown, setBreakdown] = useState<UsageBreakdown[]>([])
-  const [trend, setTrend] = useState<DailyTrend[]>([])
+  const [breakdown, setBreakdown] = useState<AdminUsageBreakdown[]>([])
+  const [trend, setTrend] = useState<AdminUsageTrend[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [breakdownRes, trendRes] = await Promise.all([
-          fetch("/api/billing/usage/breakdown", { credentials: "include" }),
-          fetch("/api/billing/usage/trend?days=30", { credentials: "include" }),
-        ])
+        const response = await getAdminUsage({ days: 30 })
 
-        if (!breakdownRes.ok) {
-          throw new Error(`Failed to fetch usage breakdown: ${breakdownRes.status}`)
-        }
-        if (!trendRes.ok) {
-          throw new Error(`Failed to fetch usage trend: ${trendRes.status}`)
-        }
-
-        const breakdownData = await breakdownRes.json()
-        const trendData = await trendRes.json()
-
-        setBreakdown(breakdownData.data.breakdown.map((item: Record<string, unknown>) => ({
-          ...item,
-          totalCost: Number(item.totalCost),
-        })))
-        setTrend(trendData.data.trend)
+        setBreakdown(response.data.breakdown)
+        setTrend(response.data.trend)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error")
       } finally {

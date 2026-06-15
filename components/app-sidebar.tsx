@@ -33,6 +33,7 @@ import {
   RocketLaunchIcon,
   GearSixIcon,
   ShieldCheckIcon,
+  TicketIcon,
   WalletIcon,
   WhatsappLogoIcon,
 } from "@phosphor-icons/react"
@@ -116,6 +117,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+      {
+        title: "Vouchers",
+        url: localizePathname({
+          pathname: "/portal/admin/vouchers",
+          locale,
+        }),
+        icon: <TicketIcon />,
+        isActive: startsWithRoute(path, "/portal/admin/vouchers"),
       },
     ],
   },
@@ -410,7 +420,7 @@ const buildPortalNavMain = (
   locale: AppLocale
 ): AppSidebarNavItem[] => [
   {
-    title: "Settings",
+    title: "My Organization",
     url: localizePathname({ pathname: "/portal/settings/members", locale }),
     icon: <GearSixIcon />,
     isActive: startsWithRoute(pathname, "/portal/settings"),

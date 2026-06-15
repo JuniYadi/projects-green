@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 
 interface PaymentStats {
@@ -13,9 +14,23 @@ interface PaymentStats {
   totalProcessed: number
 }
 
+interface ConfirmationItem {
+  id: string
+  amount?: number
+  currency?: string
+  bankName?: string
+  accountName?: string
+  accountNumber?: string
+  submittedAt?: string
+}
+
 type StatsRequestState =
   | { status: "loading" }
-  | { status: "success"; data: PaymentStats }
+  | {
+      status: "success"
+      data: PaymentStats
+      pendingItems: ConfirmationItem[]
+    }
   | { status: "error"; message: string }
 
 export function OverviewTab() {
@@ -36,16 +51,17 @@ export function OverviewTab() {
 
       setState({
         status: "success",
+        pendingItems: confirmations.ok ? confirmations.data ?? [] : [],
         data: {
-          totalGateways: gateways.ok ? gateways.gateways?.length ?? 0 : 0,
+          totalGateways: gateways.ok ? gateways.data?.length ?? 0 : 0,
           activeGateways: gateways.ok
-            ? gateways.gateways?.filter((g: { status: string }) => g.status === "active").length ?? 0
+            ? gateways.data?.filter((g: { status: string }) => g.status === "active").length ?? 0
             : 0,
-          totalBankAccounts: bankAccounts.ok ? bankAccounts.bankAccounts?.length ?? 0 : 0,
+          totalBankAccounts: bankAccounts.ok ? bankAccounts.data?.length ?? 0 : 0,
           verifiedBankAccounts: bankAccounts.ok
-            ? bankAccounts.bankAccounts?.filter((b: { isVerified: boolean }) => b.isVerified).length ?? 0
+            ? bankAccounts.data?.filter((b: { isVerified: boolean }) => b.isVerified).length ?? 0
             : 0,
-          pendingConfirmations: confirmations.ok ? confirmations.confirmations?.length ?? 0 : 0,
+          pendingConfirmations: confirmations.ok ? confirmations.data?.length ?? 0 : 0,
           totalProcessed: 0, // Would need separate API for this
         },
       })
@@ -84,7 +100,7 @@ export function OverviewTab() {
     )
   }
 
-  const { data } = state
+  const { data, pendingItems } = state
 
   return (
     <div className="space-y-6">
@@ -140,6 +156,53 @@ export function OverviewTab() {
           <p className="text-muted-foreground">
             Use the tabs above to manage payment gateways, bank accounts, and manual payment confirmations.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Pending Confirmations</CardTitle>
+          <Link
+            href="/portal/payments?tab=confirmations"
+            className="text-sm text-primary hover:underline"
+          >
+            See All →
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {pendingItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No pending confirmations
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {pendingItems.slice(0, 5).map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-center justify-between gap-4 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      {item.bankName || "Unknown Bank"}
+                      {item.accountName
+                        ? ` — ${item.accountName}`
+                        : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.submittedAt
+                        ? new Date(item.submittedAt).toLocaleDateString()
+                        : ""}
+                    </p>
+                  </div>
+                  {typeof item.amount === "number" && (
+                    <span className="shrink-0 font-medium">
+                      {item.currency ?? "IDR"} {item.amount.toLocaleString()}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>

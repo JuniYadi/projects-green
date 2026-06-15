@@ -54,6 +54,7 @@ const createMockInspectionLog = (overrides = {}) => ({
 
 // Mock requireSuperAdmin that always passes
 const mockGuardPass = async () => ({
+  ok: true as const,
   userId: "admin-1",
   platformRole: "super_admin" as const,
 })

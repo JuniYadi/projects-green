@@ -82,6 +82,7 @@ describe("github event log routes", () => {
 
     const app = createGithubEventLogRoutes({
       requireSuperAdmin: async () => ({
+        ok: true as const,
         userId: "admin_1",
         platformRole: "super_admin" as const,
       }),

@@ -8,8 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CalendarIcon, FileTextIcon, WalletIcon } from "@phosphor-icons/react"
 import Link from "next/link"
 
-import { getInvoices } from "@/lib/billing-client"
-import type { InvoiceListItem } from "@/lib/billing-client"
+import {
+  getAdminInvoices,
+  type AdminInvoiceListItem,
+} from "@/lib/billing-client"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
 
 type OverviewTabProps = {
@@ -17,15 +19,15 @@ type OverviewTabProps = {
 }
 
 export function OverviewTab({ lang }: OverviewTabProps) {
-  const [invoices, setInvoices] = useState<InvoiceListItem[]>([])
+  const [invoices, setInvoices] = useState<AdminInvoiceListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadData() {
       try {
-        const invoicesData = await getInvoices()
-        setInvoices(invoicesData.invoices.slice(0, 5))
+        const invoicesData = await getAdminInvoices({ limit: 5 })
+        setInvoices(invoicesData.invoices)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load invoices")
       } finally {

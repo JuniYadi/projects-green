@@ -409,4 +409,189 @@ describe("AdminMembersRoute", () => {
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
     })
   })
+
+  // ── P0.2 Org-scoping regression tests ─────────────────────────────────────
+  // The fix adds DB-level org scoping to the detail endpoint so that non-
+  // super_admin callers can only see members belonging to their own org.
+  // Missing records return 404 (not 403) because the fix uses DB-scoping.
+  describe("P0.2 org-scoping on GET /admin/members/:userId", () => {
+    const mockBillingAccount = {
+      id: "acc-own-org",
+      organizationId: "org_own",
+      balance: new Decimal("100000.00"),
+      currency: "USD",
+      timezone: "UTC",
+      status: "ACTIVE",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    const mockSubscriptions = [
+      {
+        id: "sub-1",
+        organizationId: "org_own",
+        status: "ACTIVE",
+        package: { code: "WA_BASIC" },
+        plan: { code: "basic" },
+        currentPeriodEnd: new Date("2026-06-30"),
+      },
+    ]
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    const mockUsage = [
+      {
+        id: "usage-1",
+        organizationId: "org_own",
+        period: currentMonth,
+        category: "MESSAGE",
+        amountIdr: new Decimal("10000.00"),
+        createdAt: new Date(),
+      },
+    ]
+
+    it("returns 401 when no auth", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () => ({ user: null } as MockAuthContext),
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/members/org_own", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(401)
+    })
+
+    it("returns 403 when non-admin user (not super_admin, not org admin)", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () => ({
+              user: { id: "user-1", email: "user@test.com" },
+              organizationId: "org_own",
+              role: "member",
+            } as MockAuthContext),
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => false,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/members/org_own", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 200 when org admin queries their own org", async () => {
+      mockFindFirst.mockResolvedValueOnce(mockBillingAccount)
+      mockFindManySubscription.mockResolvedValueOnce(mockSubscriptions)
+      mockFindManyUsage.mockResolvedValueOnce(mockUsage)
+
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () => ({
+              user: { id: "admin-1", email: "admin@org_own.com" },
+              organizationId: "org_own",
+              role: "admin",
+            } as MockAuthContext),
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: (actor) => actor.orgRole === "admin",
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/members/org_own", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.member.organizationId).toBe("org_own")
+    })
+
+    it("returns 404 (not 403) when org admin queries a different org", async () => {
+      // The caller is admin of org_own but asks about org_other.
+      // The DB-scoping fix must restrict findFirst to caller's org (not target),
+      // otherwise the WHERE clause would match and return a record instead of null.
+      mockFindFirst.mockImplementationOnce((where: Record<string, unknown>) => {
+        // If scoping is correct, findFirst is called with { where: { organizationId: "org_own" } }
+        // which won't match any record for "org_other" → null → 404
+        expect(where?.where?.organizationId).toBe("org_own")
+        return null
+      })
+
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () => ({
+              user: { id: "admin-1", email: "admin@org_own.com" },
+              organizationId: "org_own",
+              role: "admin",
+            } as MockAuthContext),
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: (actor) => actor.orgRole === "admin",
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/members/org_other", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(404)
+      const body = await response.json()
+      expect(body.error).toBe("NOT_FOUND")
+      expect(body.error).not.toBe("FORBIDDEN")
+    })
+
+    it("returns 200 when super_admin queries any org", async () => {
+      // Super_admin bypasses org-scoping and can see any org's member
+      const otherOrgAccount = { ...mockBillingAccount, organizationId: "org_other" }
+      mockFindFirst.mockResolvedValueOnce(otherOrgAccount)
+      mockFindManySubscription.mockResolvedValueOnce([])
+      mockFindManyUsage.mockResolvedValueOnce([])
+
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () => ({
+              user: { id: "super-1", email: "super@test.com" },
+              organizationId: "org_own",
+              role: null,
+            } as MockAuthContext),
+            getPlatformRole: async () => "super_admin" as PlatformAccessRole,
+            isAdmin: (actor) => actor.platformRole === "super_admin",
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/members/org_other", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.member.organizationId).toBe("org_other")
+    })
+  })
 })

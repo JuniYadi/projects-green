@@ -5,18 +5,20 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
 
 import { SubscriptionManager } from "@/components/billing/admin/subscription-manager"
-import { getSubscriptions } from "@/lib/billing-client"
-import type { SubscriptionItem } from "@/lib/billing-client"
+import {
+  getAdminSubscriptions,
+  type AdminSubscriptionItem,
+} from "@/lib/billing-client"
 
 export function SubscriptionsTab() {
-  const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([])
+  const [subscriptions, setSubscriptions] = useState<AdminSubscriptionItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadSubscriptions() {
       try {
-        const response = await getSubscriptions()
+        const response = await getAdminSubscriptions({ limit: 50 })
         setSubscriptions(response.subscriptions)
       } catch (err) {
         setError(

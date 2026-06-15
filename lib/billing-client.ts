@@ -334,6 +334,132 @@ export async function getAdminAdjustments(params?: {
   return fetchBilling<AdjustmentsResponse>(endpoint)
 }
 
+// ─── Admin Invoices ─────────────────────────────────────────────────────────
+
+export type AdminInvoiceListItem = {
+  id: string
+  invoiceNumber: string
+  status: string
+  subtotalAmountIdr: string
+  taxAmountIdr: string
+  discountAmountIdr: string
+  totalAmountIdr: string
+  currency: string
+  issuedAt: string | null
+  dueAt: string | null
+  paidAt: string | null
+  createdAt: string
+  organizationId: string | null
+}
+
+export type AdminInvoicesResponse = {
+  ok: true
+  invoices: AdminInvoiceListItem[]
+  pagination: { page: number; limit: number; total: number; totalPages: number }
+}
+
+export async function getAdminInvoices(params?: {
+  page?: number
+  limit?: number
+  status?: string
+  organizationId?: string
+}): Promise<AdminInvoicesResponse> {
+  const searchParams = new URLSearchParams()
+  if (params?.page) searchParams.set("page", String(params.page))
+  if (params?.limit) searchParams.set("limit", String(params.limit))
+  if (params?.status) searchParams.set("status", params.status)
+  if (params?.organizationId)
+    searchParams.set("organizationId", params.organizationId)
+
+  const endpoint = searchParams.toString()
+    ? `/api/billing/admin/invoices?${searchParams.toString()}`
+    : "/api/billing/admin/invoices"
+
+  return fetchBilling<AdminInvoicesResponse>(endpoint)
+}
+
+// ─── Admin Subscriptions ─────────────────────────────────────────────────────
+
+export type AdminSubscriptionItem = {
+  id: string
+  organizationId: string | null
+  packageCode: string
+  planCode: string
+  regionCode: string
+  billingMode: string
+  type: string
+  status: string
+  allocatedConfig: Record<string, unknown> | null
+  monthlyRateIdr: string
+  currentPeriodEnd: string | null
+}
+
+export type AdminSubscriptionsResponse = {
+  ok: true
+  subscriptions: AdminSubscriptionItem[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+export async function getAdminSubscriptions(params?: {
+  page?: number
+  limit?: number
+  status?: string
+  organizationId?: string
+}): Promise<AdminSubscriptionsResponse> {
+  const searchParams = new URLSearchParams()
+  if (params?.page) searchParams.set("page", String(params.page))
+  if (params?.limit) searchParams.set("limit", String(params.limit))
+  if (params?.status) searchParams.set("status", params.status)
+  if (params?.organizationId)
+    searchParams.set("organizationId", params.organizationId)
+
+  const endpoint = searchParams.toString()
+    ? `/api/billing/admin/subscriptions?${searchParams.toString()}`
+    : "/api/billing/admin/subscriptions"
+
+  return fetchBilling<AdminSubscriptionsResponse>(endpoint)
+}
+
+// ─── Admin Usage ─────────────────────────────────────────────────────────────
+
+export type AdminUsageBreakdown = {
+  category: string
+  quantity: number
+  totalCost: number
+  percentage: number
+}
+
+export type AdminUsageTrend = {
+  date: string
+  amount: number
+}
+
+export type AdminUsageResponse = {
+  ok: true
+  data: {
+    breakdown: AdminUsageBreakdown[]
+    trend: AdminUsageTrend[]
+  }
+}
+
+export async function getAdminUsage(
+  params?: { days?: number }
+): Promise<AdminUsageResponse> {
+  const searchParams = new URLSearchParams()
+  if (params?.days) searchParams.set("days", String(params.days))
+
+  const endpoint = searchParams.toString()
+    ? `/api/billing/admin/usage?${searchParams.toString()}`
+    : "/api/billing/admin/usage"
+
+  return fetchBilling<AdminUsageResponse>(endpoint)
+}
+
 // ─── Billing Contacts ──────────────────────────────────────────────────────────
 
 export type BillingContactDTO = {
