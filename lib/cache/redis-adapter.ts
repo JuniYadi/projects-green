@@ -54,4 +54,14 @@ export class RedisCacheAdapter implements CacheStore, GateStore {
       console.error("[RedisCacheAdapter] releaseLock error:", err)
     }
   }
+
+  async checkLockExists(lockKey: string): Promise<boolean> {
+    try {
+      const result = await redis.exists(lockKey)
+      return result === 1
+    } catch (err) {
+      console.error("[RedisCacheAdapter] checkLockExists error:", err)
+      return true // Assume lock exists on error to avoid thundering herd
+    }
+  }
 }

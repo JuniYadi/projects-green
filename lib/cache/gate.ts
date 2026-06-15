@@ -28,12 +28,13 @@ async function waitForLock(
   pollMs: number
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
+  const lockKey = `cache:gate:${key}`
   while (Date.now() < deadline) {
-    const locked = await redisAdapter.acquireLock(key, timeoutMs / 1000)
-    if (locked) return true
+    const exists = await redisAdapter.checkLockExists(lockKey)
+    if (!exists) return true // Lock was released by another worker
     await sleep(pollMs)
   }
-  return false
+  return false // Timeout
 }
 
 export async function getOrFetch<T>(

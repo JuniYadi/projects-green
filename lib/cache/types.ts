@@ -11,4 +11,5 @@ export interface CacheStore {
 export interface GateStore {
   acquireLock(key: string, ttl: number): Promise<boolean>
   releaseLock(key: string): Promise<void>
+  checkLockExists(lockKey: string): Promise<boolean>
 }
