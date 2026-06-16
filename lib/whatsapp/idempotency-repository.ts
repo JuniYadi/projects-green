@@ -4,8 +4,9 @@ import { getWhatsAppBroadcastRedisConnection } from "@/lib/queue/whatsapp-broadc
 const IDEMPOTENCY_TTL_SECONDS = 86_400
 const IDEMPOTENCY_KEY_PREFIX = "wa:idempotency:"
 const IDEMPOTENCY_KEY_PATTERN = `${IDEMPOTENCY_KEY_PREFIX}*`
+const MAX_FALLBACK_SIZE = 10_000
 
-const fallbackEventIds = new Set<string>()
+const fallbackEventIds = new Map<string, number>()
 let redisClient: Redis | null = null
 
 const getIdempotencyKey = (eventId: string) => {
@@ -77,7 +78,14 @@ export async function markEventProcessed(eventId: string): Promise<void> {
   const redis = await getAvailableRedisClient()
 
   if (!redis) {
-    fallbackEventIds.add(eventId)
+    if (fallbackEventIds.size >= MAX_FALLBACK_SIZE) {
+      const now = Date.now()
+      const cutoff = now - IDEMPOTENCY_TTL_SECONDS * 1000
+      for (const [key, ts] of fallbackEventIds) {
+        if (ts < cutoff) fallbackEventIds.delete(key)
+      }
+    }
+    fallbackEventIds.set(eventId, Date.now())
     return
   }
 
@@ -90,7 +98,14 @@ export async function markEventProcessed(eventId: string): Promise<void> {
     )
   } catch (err) {
     warnAndUseFallback("set", err)
-    fallbackEventIds.add(eventId)
+    if (fallbackEventIds.size >= MAX_FALLBACK_SIZE) {
+      const now = Date.now()
+      const cutoff = now - IDEMPOTENCY_TTL_SECONDS * 1000
+      for (const [key, ts] of fallbackEventIds) {
+        if (ts < cutoff) fallbackEventIds.delete(key)
+      }
+    }
+    fallbackEventIds.set(eventId, Date.now())
   }
 }
 

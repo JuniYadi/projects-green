@@ -1,4 +1,5 @@
 import { Queue, type JobsOptions, type RedisOptions } from "bullmq"
+import { randomUUID } from "crypto"
 
 export const WHATSAPP_BROADCAST_QUEUE_NAME = "whatsapp-broadcast"
 export const WHATSAPP_BROADCAST_JOB_NAME = "broadcast-dispatch"
@@ -105,7 +106,7 @@ export const createWhatsAppBroadcastQueue = ({
   return {
     async enqueue(data, opts) {
       await queueClient.add(jobName, data, {
-        jobId: `wa-broadcast:${data.campaignId}:${data.recipientId}`,
+        jobId: `wa-broadcast:${data.method}:${data.campaignId}:${data.recipientId}:${randomUUID()}`,
         ...opts,
       })
     },
@@ -133,6 +134,11 @@ const getSharedQueue = () => {
 }
 
 /**
+ * Get the shared broadcast queue instance.
+ */
+export const getWhatsAppBroadcastQueue = getSharedQueue
+
+/**
  * Enqueue a broadcast dispatch job.
  */
 export const enqueueWhatsAppBroadcast = async (
@@ -146,7 +152,7 @@ export const enqueueWhatsAppBroadcast = async (
     WHATSAPP_BROADCAST_JOB_NAME,
     { campaignId, recipientId, method },
     {
-      jobId: `wa-broadcast:${campaignId}:${recipientId}`,
+      jobId: `wa-broadcast:${method}:${campaignId}:${recipientId}:${randomUUID()}`,
     }
   )
 }

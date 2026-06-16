@@ -16,7 +16,24 @@ const redisConnection = getWhatsAppWebhookRedisConnection()
 const worker = new Worker<WhatsAppWebhookJobData>(
   WHATSAPP_WEBHOOK_QUEUE_NAME,
   async (job: Job<WhatsAppWebhookJobData>) => {
-    const { eventType, payload, deviceId } = job.data
+    const { eventType, payload, deviceId, organizationId } = job.data
+
+    // Validate organization ownership if organizationId is provided
+    if (organizationId) {
+      const deviceOrgId = await getDeviceOrganization(deviceId)
+      if (!deviceOrgId) {
+        console.warn(
+          `[whatsapp-webhook-worker] device not found: ${deviceId}, skipping event`
+        )
+        return
+      }
+      if (deviceOrgId !== organizationId) {
+        console.error(
+          `[whatsapp-webhook-worker] organization mismatch: device=${deviceId} belongs to org=${deviceOrgId}, not org=${organizationId}`
+        )
+        return
+      }
+    }
 
     if (eventType === "message") {
       await handleMessageEvent(payload, deviceId)

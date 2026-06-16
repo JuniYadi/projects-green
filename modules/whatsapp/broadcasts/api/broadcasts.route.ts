@@ -1,11 +1,13 @@
 import { Elysia, t } from "elysia"
+import { randomUUID } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
-import { enqueueWhatsAppBroadcast } from "@/lib/queue/whatsapp-broadcast"
+import { enqueueWhatsAppBroadcast, getWhatsAppBroadcastQueue, WHATSAPP_BROADCAST_JOB_NAME } from "@/lib/queue/whatsapp-broadcast"
 import { toWhatsappBroadcastCampaignDTO } from "../broadcasts.dto"
 
+const E164_REGEX = /^[+]?[1-9]\d{6,14}$/  
 const broadcastRecipientSchema = t.Object({
-  phoneNumber: t.String(),
+  phoneNumber: t.String({ pattern: "^[+]?[1-9]\\d{6,14}$" }),
   name: t.Optional(t.String()),
   dynamicValues: t.Optional(t.Any()),
 })
@@ -144,6 +146,20 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
+    // Validate state transitions
+    const VALID_TRANSITIONS: Record<string, string[]> = {
+      QUEUED: ["PROCESSING", "CANCELLED"],
+      PROCESSING: ["PAUSED", "COMPLETED", "COMPLETED_WITH_ERRORS", "CANCELLED"],
+      PAUSED: ["PROCESSING", "CANCELLED"],
+      COMPLETED: [],
+      COMPLETED_WITH_ERRORS: [],
+      CANCELLED: [],
+    }
+    if (body.status && !VALID_TRANSITIONS[campaign.status]?.includes(body.status)) {
+      set.status = 400
+      return { ok: false, error: "INVALID_TRANSITION", message: `Cannot transition from ${campaign.status} to ${body.status}` }
+    }
+
     const updated = await prisma.whatsappBroadcastCampaign.update({
       where: { id },
       data: body,
@@ -218,10 +234,15 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       }
     })
 
-    // Enqueue each recipient for dispatch
-    for (const recipient of campaign.recipients) {
-      await enqueueWhatsAppBroadcast(campaign.id, recipient.id, "dispatch")
-    }
+    // Enqueue all recipients in bulk
+    const queue = getWhatsAppBroadcastQueue()
+    await queue.addBulk(
+      campaign.recipients.map((r) => ({
+        name: WHATSAPP_BROADCAST_JOB_NAME,
+        data: { campaignId: campaign.id, recipientId: r.id, method: "dispatch" as const },
+        opts: { jobId: `wa-broadcast:dispatch:${campaign.id}:${r.id}:${randomUUID()}` },
+      }))
+    )
 
     return { ok: true, message: `Dispatched ${campaign.recipients.length} recipients for broadcasting.` }
   })

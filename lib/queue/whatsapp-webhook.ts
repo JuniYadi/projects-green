@@ -1,4 +1,5 @@
 import { Queue, type JobsOptions, type RedisOptions } from "bullmq"
+import { randomUUID } from "crypto"
 
 export const WHATSAPP_WEBHOOK_QUEUE_NAME = "whatsapp-webhook"
 export const WHATSAPP_WEBHOOK_JOB_NAME = "webhook-event"
@@ -108,7 +109,7 @@ export const createWhatsAppWebhookQueue = ({
   return {
     async enqueue(data, opts) {
       await queueClient.add(jobName, data, {
-        jobId: `wa-webhook:${data.eventType}:${Date.now()}`,
+        jobId: `wa-webhook:${data.eventType}:${randomUUID()}`,
         ...opts,
       })
     },
@@ -150,7 +151,7 @@ export const enqueueWhatsAppWebhook = async (
     WHATSAPP_WEBHOOK_JOB_NAME,
     { eventType, payload, deviceId, organizationId },
     {
-      jobId: `wa-webhook:${eventType}:${deviceId}:${Date.now()}`,
+      jobId: `wa-webhook:${eventType}:${deviceId}:${randomUUID()}`,
     }
   )
 }
