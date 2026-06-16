@@ -9,6 +9,13 @@ import crypto from "node:crypto"
 import { Elysia, t } from "elysia"
 
 import { prisma } from "@/lib/prisma"
+import {
+  createRateLimiter,
+  getClientIp,
+  buildRateLimitResponse,
+  rateLimitHeaders,
+} from "@/lib/rate-limit"
+import { logAuditEvent } from "@/lib/audit.service"
 
 import {
   VpnMobileDeviceService,
@@ -18,8 +25,17 @@ import {
 const MOBILE_SESSION_SECRET =
   process.env.MOBILE_SESSION_SECRET ?? process.env.JWT_SECRET ?? ""
 
-const ACCESS_TOKEN_TTL_SECONDS = 86400 // 24 hours
-const REFRESH_TOKEN_TTL_SECONDS = 2592000 // 30 days
+const ACCESS_TOKEN_TTL_SECONDS = 604800 // 7 days
+
+// Rate limiters
+const exchangeRateLimiter = createRateLimiter({
+  windowMs: 3600_000,
+  max: 10,
+})
+const refreshRateLimiter = createRateLimiter({
+  windowMs: 3600_000,
+  max: 30,
+})
 
 /**
  * Sign a mobile session JWT (HS256).
@@ -97,7 +113,17 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
   return new Elysia()
     .post(
       "/vpn/mobile/auth/exchange",
-      async ({ body, set }) => {
+      async ({ body, request, set }) => {
+        // Rate limit: 10/h per IP
+        const rateResult = exchangeRateLimiter(
+          getClientIp(request)
+        )
+        if (!rateResult.allowed) {
+          set.status = 429
+          set.headers = rateLimitHeaders(rateResult)
+          return buildRateLimitResponse(rateResult)
+        }
+
         // Authenticate user via WorkOS (or injected auth for tests).
         const auth = deps.authenticate
           ? await deps.authenticate()
@@ -124,14 +150,28 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           }
         }
 
-        // Find or create the device via upsert.
+        // Find the user's active subscription FIRST.
+        const subscription =
+          await prisma.vpnSubscription.findFirst({
+            where: {
+              organizationId: auth.organizationId,
+              status: "ACTIVE",
+            },
+            select: {
+              id: true,
+              status: true,
+              currentPeriodEnd: true,
+            },
+          })
+
+        // Find or create the device with subscription link.
         let device: {
           id: string
           status: string
         }
         try {
           device = await deviceService.create({
-            subscriptionId: "", // Will be resolved from user's subscription
+            subscriptionId: subscription?.id ?? "",
             organizationId: auth.organizationId,
             userId: auth.user.id,
             deviceName: body.deviceName,
@@ -157,21 +197,17 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           }
         }
 
-        // Find the user's active subscription.
-        const subscription =
-          await prisma.vpnSubscription.findFirst({
-            where: {
-              organizationId: auth.organizationId,
-              status: "ACTIVE",
-            },
-            select: {
-              id: true,
-              status: true,
-              currentPeriodEnd: true,
-            },
-          })
+        // Audit: log device registration.
+        logAuditEvent({
+          deviceId: device.id,
+          userId: auth.user.id,
+          action: "DEVICE_REGISTERED",
+          details: { pairedVia: "SSO" },
+          ip: getClientIp(request),
+          userAgent: request.headers.get("user-agent"),
+        }).catch(() => {})
 
-        // Generate session token.
+        // Generate session token (no refresh token).
         const iat = Math.floor(now().getTime() / 1000)
         const exp = iat + ACCESS_TOKEN_TTL_SECONDS
         const token = signJwt({
@@ -183,29 +219,8 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           exp,
         })
 
-        // Generate refresh token.
-        const refreshToken = crypto.randomUUID()
-        const refreshExp = new Date(
-          now().getTime() + REFRESH_TOKEN_TTL_SECONDS * 1000
-        )
-
-        // Store refresh token (hashed) in DB.
-        const refreshTokenHash = crypto
-          .createHash("sha256")
-          .update(refreshToken)
-          .digest("hex")
-
-        // Use a simple key-value approach — store in a generic
-        // token table or metadata. For now, store in device record
-        // metadata via a separate mechanism.
-        // For simplicity in this phase, we return the refresh token
-        // without persistence (server-side refresh validation will be
-        // added in a follow-up). The PRD specifies this as a 30-day
-        // refresh with rotation.
-
         return {
           token,
-          refreshToken,
           expiresAt: new Date(exp * 1000).toISOString(),
           user: {
             id: auth.user.id,
@@ -231,37 +246,26 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
     )
     .post(
       "/vpn/mobile/auth/refresh",
-      async ({ body, set }) => {
-        // Validate refresh token.
-        if (!body.refreshToken || body.refreshToken.length < 10) {
-          set.status = 401
-          return {
-            error: {
-              code: "TOKEN_INVALID" as const,
-              message:
-                "Invalid or expired refresh token.",
-              details: {},
-            },
-          }
+      async ({ request, set }) => {
+        // Rate limit: 30/h per IP
+        const rateResult = refreshRateLimiter(
+          getClientIp(request)
+        )
+        if (!rateResult.allowed) {
+          set.status = 429
+          set.headers = rateLimitHeaders(rateResult)
+          return buildRateLimitResponse(rateResult)
         }
 
-        // In a full implementation, we'd look up the hashed refresh
-        // token in DB, validate it, then rotate. For this phase,
-        // return a new token pair.
-        // The mobile app will call refresh when it gets a 401.
-
-        const iat = Math.floor(now().getTime() / 1000)
-        const exp = iat + ACCESS_TOKEN_TTL_SECONDS
-        const newRefreshToken = crypto.randomUUID()
-
-        // Without a persisted session, we return a limited-scope
-        // response. Full refresh token rotation will be implemented
-        // in Phase 8 (security hardening).
-
+        // Deprecated endpoint.
+        set.status = 410
         return {
-          token: "", // Placeholder — full implementation in Phase 8
-          refreshToken: newRefreshToken,
-          expiresAt: new Date(exp * 1000).toISOString(),
+          error: {
+            code: "GONE" as const,
+            message:
+              "Token refresh is deprecated. Please obtain a new session token via POST /vpn/mobile/auth/exchange.",
+            details: {},
+          },
         }
       },
       {

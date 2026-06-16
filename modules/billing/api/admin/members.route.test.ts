@@ -528,7 +528,7 @@ describe("AdminMembersRoute", () => {
       // The caller is admin of org_own but asks about org_other.
       // The DB-scoping fix must restrict findFirst to caller's org (not target),
       // otherwise the WHERE clause would match and return a record instead of null.
-      mockFindFirst.mockImplementationOnce((where: Record<string, unknown>) => {
+      mockFindFirst.mockImplementationOnce((where: { where?: { organizationId: string } }) => {
         // If scoping is correct, findFirst is called with { where: { organizationId: "org_own" } }
         // which won't match any record for "org_other" → null → 404
         expect(where?.where?.organizationId).toBe("org_own")

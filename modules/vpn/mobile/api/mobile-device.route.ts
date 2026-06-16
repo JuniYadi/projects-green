@@ -10,6 +10,8 @@ import { Elysia, t } from "elysia"
 
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import { getClientIp } from "@/lib/rate-limit"
+import { logAuditEvent } from "@/lib/audit.service"
 
 import {
   VpnMobileDeviceService,
@@ -131,7 +133,7 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
      */
     .delete(
       "/vpn/mobile/devices/:deviceId",
-      async ({ params, set }) => {
+      async ({ request, params, set }) => {
         const ctx = await resolveOrg(set)
         if ("error" in ctx) return ctx.error
 
@@ -170,6 +172,16 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
           }
           throw error
         }
+
+        // Audit: log device revocation
+        logAuditEvent({
+          deviceId: device.id,
+          userId: ctx.userId,
+          action: "DEVICE_REVOKED",
+          details: { reason: "User-initiated revocation" },
+          ip: getClientIp(request),
+          userAgent: request.headers.get("user-agent"),
+        }).catch(() => {})
 
         return { ok: true as const }
       }

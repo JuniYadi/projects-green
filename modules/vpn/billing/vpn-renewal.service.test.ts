@@ -17,6 +17,13 @@ const mockPrisma = {
     update: mock(),
     updateMany: mock(),
   },
+  vpnMobileDevice: {
+    updateMany: mock(),
+    deleteMany: mock(),
+  },
+  vpnPairingToken: {
+    deleteMany: mock(),
+  },
 }
 
 import { VpnRenewalService } from "./vpn-renewal.service"
@@ -68,6 +75,12 @@ beforeEach(() => {
       ...args.data,
     })
   )
+  mockPrisma.vpnMobileDevice.updateMany.mockClear()
+  mockPrisma.vpnMobileDevice.deleteMany.mockClear()
+  mockPrisma.vpnPairingToken.deleteMany.mockClear()
+  mockPrisma.vpnMobileDevice.updateMany.mockResolvedValue({ count: 0 })
+  mockPrisma.vpnMobileDevice.deleteMany.mockResolvedValue({ count: 0 })
+  mockPrisma.vpnPairingToken.deleteMany.mockResolvedValue({ count: 0 })
 })
 
 describe("VpnRenewalService", () => {
@@ -277,6 +290,89 @@ describe("VpnRenewalService", () => {
 
       expect(result.renewed).toBe(0)
       expect(mockTransactions.debitServiceBalance).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("lifecycle & cleanup hooks", () => {
+    const sevenDaysAgo = new Date(NOW.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const thirtyDaysAgo = new Date(NOW.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+    it("T7.1: suspends ACTIVE mobile devices on subscription suspend", async () => {
+      const failedAt = new Date("2026-06-12T00:00:00Z")
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
+        .mockResolvedValueOnce([])
+      mockTransactions.debitServiceBalance.mockRejectedValue(
+        new Error("INSUFFICIENT_BALANCE"),
+      )
+
+      const result = await createService().renewDueSubscriptions(NOW)
+
+      expect(result.suspended).toBe(1)
+      expect(mockPrisma.vpnMobileDevice.updateMany).toHaveBeenCalledWith({
+        where: { subscriptionId: "sub_vpn_1", status: "ACTIVE" },
+        data: { status: "SUSPENDED", revokedReason: "payment failed" },
+      })
+    })
+
+    it("T7.2: revokes ACTIVE/SUSPENDED mobile devices on subscription expiry", async () => {
+      const failedAt = new Date("2026-06-08T00:00:00Z")
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
+        .mockResolvedValueOnce([])
+      mockTransactions.debitServiceBalance.mockRejectedValue(
+        new Error("INSUFFICIENT_BALANCE"),
+      )
+
+      const result = await createService().renewDueSubscriptions(NOW)
+
+      expect(result.expired).toBe(1)
+      expect(mockPrisma.vpnMobileDevice.updateMany).toHaveBeenCalledWith({
+        where: {
+          subscriptionId: "sub_vpn_1",
+          status: { in: ["ACTIVE", "SUSPENDED"] },
+        },
+        data: {
+          status: "REVOKED",
+          revokedAt: NOW,
+          revokedReason: "subscription expired",
+        },
+      })
+    })
+
+    it("T7.3: reactivates SUSPENDED mobile devices on successful renewal", async () => {
+      mockPrisma.vpnSubscription.findMany
+        .mockResolvedValueOnce([subscription()])
+        .mockResolvedValueOnce([])
+      mockPrisma.vpnSubscription.updateMany.mockResolvedValue({ count: 1 })
+
+      const result = await createService().renewDueSubscriptions(NOW)
+
+      expect(result.renewed).toBe(1)
+      expect(mockPrisma.vpnMobileDevice.updateMany).toHaveBeenCalledWith({
+        where: { subscriptionId: "sub_vpn_1", status: "SUSPENDED" },
+        data: { status: "ACTIVE", revokedReason: null },
+      })
+    })
+
+    it("T7.4: deletes expired pairing tokens older than 7 days", async () => {
+      mockPrisma.vpnSubscription.findMany.mockResolvedValue([])
+
+      await createService().renewDueSubscriptions(NOW)
+
+      expect(mockPrisma.vpnPairingToken.deleteMany).toHaveBeenCalledWith({
+        where: { expiresAt: { lt: sevenDaysAgo } },
+      })
+    })
+
+    it("T7.5: deletes REVOKED mobile devices older than 30 days", async () => {
+      mockPrisma.vpnSubscription.findMany.mockResolvedValue([])
+
+      await createService().renewDueSubscriptions(NOW)
+
+      expect(mockPrisma.vpnMobileDevice.deleteMany).toHaveBeenCalledWith({
+        where: { status: "REVOKED", revokedAt: { lt: thirtyDaysAgo } },
+      })
     })
   })
 })

@@ -10,6 +10,13 @@ import { Elysia, t } from "elysia"
 
 import { prisma } from "@/lib/prisma"
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import {
+  createRateLimiter,
+  getClientIp,
+  buildRateLimitResponse,
+  rateLimitHeaders,
+} from "@/lib/rate-limit"
+import { logAuditEvent } from "@/lib/audit.service"
 
 import {
   VpnPairingTokenService,
@@ -24,6 +31,16 @@ import {
   toPairingClaimResultDTO,
   toPairingGenerateResultDTO,
 } from "@/modules/vpn/mobile/vpn-pairing-token.dto"
+
+// Rate limiters
+const claimRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 5,
+})
+const generateRateLimiter = createRateLimiter({
+  windowMs: 3600_000,
+  max: 30,
+})
 
 type AuthContext = {
   organizationId?: string | null
@@ -132,6 +149,16 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
         const ctx = await resolveAuth(set)
         if ("error" in ctx) return ctx.error
 
+        // Rate limit: 30/h per user (user is guaranteed non-null after resolveAuth)
+        const rateResult = generateRateLimiter(
+          ctx.auth.user!.id
+        )
+        if (!rateResult.allowed) {
+          set.status = 429
+          set.headers = rateLimitHeaders(rateResult)
+          return buildRateLimitResponse(rateResult)
+        }
+
         // Verify subscription exists and belongs to user's org.
         const subscription =
           await prisma.vpnSubscription.findUnique({
@@ -192,7 +219,17 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
      */
     .post(
       "/vpn/mobile/pairing/claim",
-      async ({ body, set }) => {
+      async ({ body, request, set }) => {
+        // Rate limit: 5/min per IP
+        const rateResult = claimRateLimiter(
+          getClientIp(request)
+        )
+        if (!rateResult.allowed) {
+          set.status = 429
+          set.headers = rateLimitHeaders(rateResult)
+          return buildRateLimitResponse(rateResult)
+        }
+
         try {
           const result = await pairingService.claim({
             pairingToken: body.pairingToken,
@@ -235,6 +272,15 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
                 },
               },
             })
+
+          // Audit: log device registration via QR
+          logAuditEvent({
+            deviceId: result.deviceId,
+            action: "DEVICE_REGISTERED",
+            details: { pairedVia: "QR" },
+            ip: getClientIp(request),
+            userAgent: request.headers.get("user-agent"),
+          }).catch(() => {})
 
           return toPairingClaimResultDTO(
             result.deviceId,

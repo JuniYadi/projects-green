@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 
 import {
   Table,
@@ -13,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DeviceMobileIcon } from "@phosphor-icons/react"
 
 import {
   vpnApi,
@@ -104,6 +106,7 @@ export function SubscriptionsTable() {
             <TableRow>
               <TableHead>Organization</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Devices</TableHead>
               <TableHead>Period end</TableHead>
               <TableHead>Server accounts</TableHead>
             </TableRow>
@@ -111,14 +114,14 @@ export function SubscriptionsTable() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={5}>
                   <Skeleton className="h-8 w-full" />
                 </TableCell>
               </TableRow>
             ) : subs.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={4}
+                  colSpan={5}
                   className="text-center text-sm text-muted-foreground"
                 >
                   No subscriptions yet.
@@ -134,6 +137,15 @@ export function SubscriptionsTable() {
                     <Badge variant={STATUS_VARIANT[sub.status]}>
                       {sub.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/portal/vpn/devices?subscriptionId=${sub.id}`}
+                      className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
+                    >
+                      <DeviceMobileIcon className="h-4 w-4 text-muted-foreground" />
+                      {sub.deviceCount}
+                    </Link>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(sub.currentPeriodEnd).toLocaleDateString()}

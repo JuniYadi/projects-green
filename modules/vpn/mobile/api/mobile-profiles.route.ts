@@ -9,11 +9,23 @@
 import { Elysia, t } from "elysia"
 
 import { prisma } from "@/lib/prisma"
+import {
+  createRateLimiter,
+  getClientIp,
+  buildRateLimitResponse,
+  rateLimitHeaders,
+} from "@/lib/rate-limit"
+import { logAuditEvent } from "@/lib/audit.service"
 
 import {
   requireMobileSession,
   type MobileAuthContext,
 } from "./mobile-auth.middleware"
+
+const configRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 60,
+})
 
 type RouteSet = { status?: number | string }
 
@@ -123,6 +135,16 @@ export const createMobileProfilesRoutes = () => {
         const auth = await requireMobileSession(request, set)
         if (!auth.ok) return auth.error
 
+        // Rate limit: 60/min per device
+        const rateResult = configRateLimiter(
+          auth.mobileAuth.deviceId
+        )
+        if (!rateResult.allowed) {
+          set.status = 429
+          set.headers = rateLimitHeaders(rateResult)
+          return buildRateLimitResponse(rateResult)
+        }
+
         const access = await checkDeviceAccess(auth.mobileAuth, set)
         if (!access) {
           return {
@@ -173,6 +195,16 @@ export const createMobileProfilesRoutes = () => {
         }
 
         const format = account.protocol === "WIREGUARD" ? "wireguard" : account.protocol === "OPENVPN" ? "openvpn" : "proxy"
+
+        // Audit: log config download
+        logAuditEvent({
+          deviceId: auth.mobileAuth.deviceId,
+          userId: auth.mobileAuth.userId,
+          action: "CONFIG_DOWNLOADED",
+          details: { profileId: account.id },
+          ip: getClientIp(request),
+          userAgent: request.headers.get("user-agent"),
+        }).catch(() => {})
 
         return { config, format, profileId: account.id }
       }

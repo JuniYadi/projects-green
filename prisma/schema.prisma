@@ -1355,6 +1355,20 @@ model VpnPairingToken {
   @@index([expiresAt])
 }
 
+model VpnAuditLog {
+  id        String   @id @default(cuid())
+  deviceId  String?
+  userId    String?
+  action    String   // REGISTERED, REVOKED, CONFIG_DOWNLOADED
+  details   Json?    // { pairedVia, profileId, revokedBy, reason, etc }
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([deviceId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+}
+
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────
 
 enum WhatsappDeviceStatus {

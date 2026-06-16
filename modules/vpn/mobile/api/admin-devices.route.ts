@@ -10,6 +10,8 @@ import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { prisma } from "@/lib/prisma"
+import { getClientIp } from "@/lib/rate-limit"
+import { logAuditEvent } from "@/lib/audit.service"
 
 import {
   VpnMobileDeviceService,
@@ -192,7 +194,7 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
      */
     .delete(
       "/vpn/mobile/admin/devices/:deviceId",
-      async ({ params, body, set }) => {
+      async ({ request, params, body, set }) => {
         const ctx = await requireAdmin(set)
         if ("error" in ctx) return ctx.error
 
@@ -223,6 +225,19 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
           }
           throw error
         }
+
+        // Audit: log admin-initiated device revocation
+        logAuditEvent({
+          deviceId: device.id,
+          userId: ctx.userId,
+          action: "DEVICE_REVOKED",
+          details: {
+            revokedBy: ctx.userId,
+            reason: body.reason ?? null,
+          },
+          ip: getClientIp(request),
+          userAgent: request.headers.get("user-agent"),
+        }).catch(() => {})
 
         return { ok: true as const }
       },
