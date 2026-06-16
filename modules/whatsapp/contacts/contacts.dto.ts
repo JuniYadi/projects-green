@@ -14,6 +14,7 @@ export type WhatsappContactDTO = Pick<
   | "dynamicValues"
   | "createdAt"
   | "updatedAt"
+  | "contactGroupId"
 >
 
 export function toWhatsappContactDTO(
@@ -32,5 +33,6 @@ export function toWhatsappContactDTO(
     dynamicValues: contact.dynamicValues,
     createdAt: contact.createdAt,
     updatedAt: contact.updatedAt,
+    contactGroupId: contact.contactGroupId,
   }
 }

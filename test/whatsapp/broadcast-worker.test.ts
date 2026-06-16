@@ -23,26 +23,22 @@ class QueueMock {
 
 // ─── Client mocks ────────────────────────────────────────────────────────────────
 
-const sendTemplateMessageMock = mock(
-  async () => ({ providerMessageId: "wmid" }),
-)
-const fromDeviceMock = mock(
-  async () => ({ sendTemplateMessage: sendTemplateMessageMock }),
-)
+const sendTemplateMessageMock = mock(async () => ({ providerMessageId: "wmid" })) as any
+const fromDeviceMock = mock(async () => ({ sendTemplateMessage: sendTemplateMessageMock })) as any
 
 // ─── Prisma mocks ────────────────────────────────────────────────────────────────
 
-const recipientFU = mock(async () => null)
-const recipientUpd = mock(async () => ({}))
-const recipientGB = mock(async () => [])
-const campaignFU = mock(async () => null)
-const campaignUpd = mock(async () => ({}))
-const rateFU = mock(async () => null)
-const rateUp = mock(async () => ({}))
-const convUp = mock(async () => ({ id: "c" }))
-const msgCr = mock(async () => ({ id: "m" }))
+const recipientFU = mock(async () => null) as any
+const recipientUpd = mock(async () => ({})) as any
+const recipientGB = mock(async () => []) as any
+const campaignFU = mock(async () => null) as any
+const campaignUpd = mock(async () => ({})) as any
+const rateFU = mock(async () => null) as any
+const rateUp = mock(async () => ({})) as any
+const convUp = mock(async () => ({ id: "c" })) as any
+const msgCr = mock(async () => ({ id: "m" })) as any
 
-mock.module("bullmq", () => ({ Queue: QueueMock, Worker: WorkerMock }))
+mock.module("bullmq", () => ({ Queue: QueueMock, Worker: WorkerMock }) as any)
 mock.module("@/lib/prisma", () => ({
   prisma: {
     whatsappBroadcastRecipient: {
@@ -61,10 +57,10 @@ mock.module("@/lib/prisma", () => ({
     whatsappConversation: { upsert: convUp },
     whatsappMessage: { create: msgCr },
   },
-}))
+}) as any)
 mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   WhatsAppDeviceClient: { fromDevice: fromDeviceMock },
-}))
+}) as any)
 
 // Import under test
 await import("@/scripts/whatsapp-broadcast-worker")
