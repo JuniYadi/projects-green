@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import {
   Card,
@@ -25,7 +25,7 @@ import {
   type VpnServerAccount,
   type VpnSubscription,
 } from "@/lib/vpn-client"
-import { DownloadIcon, EyeIcon, EyeSlashIcon } from "@phosphor-icons/react"
+import { DownloadIcon, EyeIcon, EyeSlashIcon, DeviceMobileIcon } from "@phosphor-icons/react"
 
 type Props = {
   subscriptions: VpnSubscription[]
@@ -133,6 +133,38 @@ function ConfigCell({
 
 export function VpnMyServices({ subscriptions, onChanged }: Props) {
   const [cancelling, setCancelling] = useState<string | null>(null)
+  const [devicesBySub, setDevicesBySub] = useState<
+    Record<string, Array<{ deviceName: string; platform: string; status: string }>>
+  >({})
+
+  // Fetch device count per subscription.
+  const loadDevices = useCallback(async () => {
+    try {
+      const { listMobileDevices } = await import(
+        "@/lib/vpn-mobile-client"
+      )
+      const devices = await listMobileDevices()
+      const grouped: Record<
+        string,
+        Array<{
+          deviceName: string
+          platform: string
+          status: string
+        }>
+      > = {}
+      for (const d of devices) {
+        if (!grouped[d.subscriptionId]) grouped[d.subscriptionId] = []
+        grouped[d.subscriptionId].push(d)
+      }
+      setDevicesBySub(grouped)
+    } catch {
+      // Device data is supplementary — silence errors.
+    }
+  }, [])
+
+  useEffect(() => {
+    loadDevices()
+  }, [loadDevices])
 
   const handleCancel = async (id: string) => {
     setCancelling(id)
@@ -146,7 +178,9 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
 
   return (
     <div className="space-y-6">
-      {subscriptions.map((sub) => (
+      {subscriptions.map((sub) => {
+        const subDevices = devicesBySub[sub.id] ?? []
+        return (
         <Card key={sub.id}>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div className="space-y-1">
@@ -204,9 +238,49 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                 ))}
               </TableBody>
             </Table>
+
+            {/* Paired Devices section */}
+            {subDevices.length > 0 && (
+              <div className="mt-4 rounded-md border p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <DeviceMobileIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    Devices ({subDevices.length})
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {subDevices.map((d, i) => (
+                    <p
+                      key={i}
+                      className="text-sm text-muted-foreground"
+                    >
+                      {d.deviceName}
+                      <span className="mx-1">·</span>
+                      {d.platform === "ios"
+                        ? "iOS"
+                        : d.platform === "android"
+                          ? "Android"
+                          : d.platform}
+                      <span className="mx-1">·</span>
+                      <span
+                        className={
+                          d.status === "ACTIVE"
+                            ? "text-green-600"
+                            : d.status === "REVOKED"
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                        }
+                      >
+                        {d.status}
+                      </span>
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
-      ))}
+      )})}
     </div>
   )
 }

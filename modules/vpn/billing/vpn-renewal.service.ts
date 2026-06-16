@@ -23,7 +23,10 @@ export type VpnRenewalResult = {
   errors: number
 }
 
-type PrismaLike = Pick<PrismaClient, "vpnSubscription">
+type PrismaLike = Pick<
+  PrismaClient,
+  "vpnSubscription" | "vpnMobileDevice" | "vpnPairingToken"
+>
 
 // ─── Service ────────────────────────────────────────────────────────────
 
@@ -86,6 +89,29 @@ export class VpnRenewalService {
       }
 
       cursor = batch[batch.length - 1].id
+    }
+
+    // T7.4 — Daily cleanup: remove expired pairing tokens older than 7 days.
+    try {
+      const staleTokens = new Date(now.getTime() - 7 * DAY_MS)
+      await this.prisma.vpnPairingToken.deleteMany({
+        where: { expiresAt: { lt: staleTokens } },
+      })
+    } catch {
+      // Best-effort cleanup.
+    }
+
+    // T7.5 — Daily cleanup: remove REVOKED devices older than 30 days.
+    try {
+      const oldRevoked = new Date(now.getTime() - 30 * DAY_MS)
+      await this.prisma.vpnMobileDevice.deleteMany({
+        where: {
+          status: "REVOKED",
+          revokedAt: { lt: oldRevoked },
+        },
+      })
+    } catch {
+      // Best-effort cleanup.
     }
 
     return result
@@ -162,6 +188,20 @@ export class VpnRenewalService {
           where: { id: subscription.id },
           data: { status: "EXPIRED" },
         })
+        // T7.2 — Revoke all mobile devices on subscription expiry.
+        await this.prisma.vpnMobileDevice.updateMany({
+          where: {
+            subscriptionId: subscription.id,
+            status: { in: ["ACTIVE", "SUSPENDED"] },
+          },
+          data: {
+            status: "REVOKED",
+            revokedAt: now,
+            revokedReason: "subscription expired",
+          },
+        }).catch(() => {
+          // Device revocation is best-effort.
+        })
         result.expired++
       } else if (daysFailed >= SUSPEND_AFTER_DAYS) {
         await this.prisma.vpnSubscription.update({
@@ -170,6 +210,19 @@ export class VpnRenewalService {
             status: "SUSPENDED",
             renewalFailedAt: subscription.renewalFailedAt ?? now,
           },
+        })
+        // T7.1 — Suspend all ACTIVE mobile devices on subscription suspend.
+        await this.prisma.vpnMobileDevice.updateMany({
+          where: {
+            subscriptionId: subscription.id,
+            status: "ACTIVE",
+          },
+          data: {
+            status: "SUSPENDED",
+            revokedReason: "payment failed",
+          },
+        }).catch(() => {
+          // Device suspension is best-effort.
         })
         result.suspended++
       } else {
@@ -208,6 +261,22 @@ export class VpnRenewalService {
         renewalFailedAt: null,
       },
     })
+
+    // T7.3 — Reactivate SUSPENDED mobile devices on successful renewal.
+    if (updated.count > 0) {
+      await this.prisma.vpnMobileDevice.updateMany({
+        where: {
+          subscriptionId: id,
+          status: "SUSPENDED",
+        },
+        data: {
+          status: "ACTIVE",
+          revokedReason: null,
+        },
+      }).catch(() => {
+        // Device reactivation is best-effort.
+      })
+    }
 
     return updated.count > 0
   }

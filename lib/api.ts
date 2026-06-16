@@ -20,6 +20,7 @@ import { supportTicketAttachmentRoutes } from "@/modules/support-tickets/api/sup
 import { supportTicketRoutes } from "@/modules/support-tickets/api/support-tickets.route"
 import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
 import { usersRoutes } from "@/modules/users/api/users.route"
+import { mobileVpnRoutes } from "@/modules/vpn/mobile/api"
 import { vpnRoutes } from "@/modules/vpn/api"
 import { adminVpnRoutes } from "@/modules/vpn/admin/api"
 import {
@@ -109,6 +110,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(adminRoutes)
   .use(usersRoutes)
   .use(vpnRoutes)
+  .use(mobileVpnRoutes)
   .use(adminVpnRoutes)
   .use(vpnPackageCatalogRoutes)
   .use(vpnSubscriptionRoutes)
