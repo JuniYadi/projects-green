@@ -164,6 +164,18 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
             },
           })
 
+        if (!subscription) {
+          set.status = 403
+          return {
+            error: {
+              code: "SUBSCRIPTION_REQUIRED" as const,
+              message:
+                "An active VPN subscription is required to register this device.",
+              details: {},
+            },
+          }
+        }
+
         // Find or create the device with subscription link.
         let device: {
           id: string
@@ -171,7 +183,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
         }
         try {
           device = await deviceService.create({
-            subscriptionId: subscription?.id ?? "",
+            subscriptionId: subscription.id,
             organizationId: auth.organizationId,
             userId: auth.user.id,
             deviceName: body.deviceName,

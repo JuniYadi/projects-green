@@ -26,6 +26,11 @@ export function createRateLimiter(config: RateLimitConfig): (key: string) => Rat
     // Remove entries outside the sliding window for this key
     if (timestamps) {
       timestamps = timestamps.filter((t) => t > windowStart)
+      if (timestamps.length === 0) {
+        store.delete(key)
+      } else {
+        store.set(key, timestamps)
+      }
     }
 
     // Periodic full cleanup to prevent memory leaks (every 100 calls)

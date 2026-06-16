@@ -7,6 +7,11 @@
  */
 
 import { Elysia, t } from "elysia"
+import {
+  type Prisma,
+  type VpnDeviceStatus,
+  type VpnPairingMethod,
+} from "@prisma/client"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { prisma } from "@/lib/prisma"
@@ -77,6 +82,8 @@ const isOrgAdmin = (auth: AuthContext) => {
   )
 }
 
+const EXPORT_TAKE_LIMIT = 10_000
+
 export const createAdminDevicesRoutes = (deps: Deps = {}) => {
   const authenticate = deps.authenticate ?? (() => withAuth())
   const deviceService = deps.deviceService ?? vpnMobileDeviceService
@@ -113,7 +120,7 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
         const skip = (page - 1) * limit
 
         // Build where clause.
-        const where: Record<string, unknown> = {}
+        const where: Prisma.VpnMobileDeviceWhereInput = {}
 
         // Super admin can filter by org; admin is scoped to own org.
         if (isSuperAdmin(ctx.auth) && query.organizationId) {
@@ -126,13 +133,13 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
           where.subscriptionId = query.subscriptionId
         }
         if (query.status) {
-          where.status = query.status
+          where.status = query.status as VpnDeviceStatus
         }
         if (query.platform) {
           where.platform = query.platform
         }
         if (query.pairedVia) {
-          where.pairedVia = query.pairedVia
+          where.pairedVia = query.pairedVia as VpnPairingMethod
         }
         if (query.search) {
           where.deviceName = {
@@ -263,17 +270,21 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
           return forbidden(set, "Only super admins can export device data.")
         }
 
-        const where: Record<string, unknown> = {}
+        const where: Prisma.VpnMobileDeviceWhereInput = {}
         if (query.organizationId) {
           where.organizationId = query.organizationId
         }
+        if (query.subscriptionId) {
+          where.subscriptionId = query.subscriptionId
+        }
         if (query.status) {
-          where.status = query.status
+          where.status = query.status as VpnDeviceStatus
         }
 
         const devices = await prisma.vpnMobileDevice.findMany({
           where,
           orderBy: { createdAt: "desc" },
+          take: EXPORT_TAKE_LIMIT,
         })
 
         // Build CSV.
@@ -330,6 +341,7 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
       {
         query: t.Object({
           organizationId: t.Optional(t.String()),
+          subscriptionId: t.Optional(t.String()),
           status: t.Optional(t.String()),
         }),
       }

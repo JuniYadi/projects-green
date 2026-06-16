@@ -1351,6 +1351,7 @@ model VpnPairingToken {
 
   subscription VpnSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
+  @@index([subscriptionId])
   @@index([token])
   @@index([expiresAt])
 }

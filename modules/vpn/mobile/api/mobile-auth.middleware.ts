@@ -271,7 +271,7 @@ export async function requireMobileSession(
 
   // Verify device fingerprint matches bound token.
   const requestFingerprint = request.headers.get("X-Device-Fingerprint")
-  if (requestFingerprint && requestFingerprint !== claims.fingerprint) {
+  if (!requestFingerprint || requestFingerprint !== claims.fingerprint) {
     set.status = 401
     return {
       ok: false,

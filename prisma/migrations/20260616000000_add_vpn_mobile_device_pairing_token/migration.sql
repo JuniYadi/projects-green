@@ -40,6 +40,20 @@ CREATE TABLE "VpnPairingToken" (
     CONSTRAINT "VpnPairingToken_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "VpnAuditLog" (
+    "id" TEXT NOT NULL,
+    "deviceId" TEXT,
+    "userId" TEXT,
+    "action" TEXT NOT NULL,
+    "details" JSONB,
+    "ip" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "VpnAuditLog_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "VpnMobileDevice_subscriptionId_deviceFingerprint_key" ON "VpnMobileDevice"("subscriptionId", "deviceFingerprint");
 
@@ -59,10 +73,19 @@ CREATE INDEX "VpnMobileDevice_status_idx" ON "VpnMobileDevice"("status");
 CREATE UNIQUE INDEX "VpnPairingToken_token_key" ON "VpnPairingToken"("token");
 
 -- CreateIndex
+CREATE INDEX "VpnPairingToken_subscriptionId_idx" ON "VpnPairingToken"("subscriptionId");
+
+-- CreateIndex
 CREATE INDEX "VpnPairingToken_token_idx" ON "VpnPairingToken"("token");
 
 -- CreateIndex
 CREATE INDEX "VpnPairingToken_expiresAt_idx" ON "VpnPairingToken"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_deviceId_createdAt_idx" ON "VpnAuditLog"("deviceId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_action_createdAt_idx" ON "VpnAuditLog"("action", "createdAt" DESC);
 
 -- AddForeignKey
 ALTER TABLE "VpnMobileDevice" ADD CONSTRAINT "VpnMobileDevice_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "VpnSubscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -54,6 +54,8 @@ import { createMobileAuthRoutes } from "./mobile-auth.route"
 import { createMobilePairingRoutes } from "./mobile-pairing.route"
 import { createMobileProfilesRoutes } from "./mobile-profiles.route"
 import { createMobileDeviceRoutes } from "./mobile-device.route"
+import { createAdminDevicesRoutes } from "./admin-devices.route"
+import { requireMobileSession } from "./mobile-auth.middleware"
 
 // ── Test Data ───────────────────────────────────────────────────────────
 
@@ -203,6 +205,15 @@ function createDeviceApp() {
   )
 }
 
+function createAdminDevicesApp(authenticateAdmin = authenticate) {
+  return new Elysia().use(
+    createAdminDevicesRoutes({
+      authenticate: authenticateAdmin,
+      deviceService: fakeDeviceService,
+    })
+  )
+}
+
 const setupPrismaDefaults = () => {
   mockFindUnique.mockReset()
   mockFindMany.mockReset()
@@ -277,7 +288,7 @@ describe("Mobile VPN Integration", () => {
       )
     })
 
-    it("returns null subscription when user has no active subscription", async () => {
+    it("rejects device registration when user has no active subscription", async () => {
       mockFindFirst.mockResolvedValue(null)
 
       const app = createAuthApp()
@@ -293,10 +304,10 @@ describe("Mobile VPN Integration", () => {
         })
       )
 
-      expect(res.status).toBe(200)
+      expect(res.status).toBe(403)
       const body = await res.json()
-      expect(body.subscription).toBeNull()
-      expect(body.token).toBeTruthy()
+      expect(body.error.code).toBe("SUBSCRIPTION_REQUIRED")
+      expect(fakeDeviceService.create).not.toHaveBeenCalled()
     })
   })
 
@@ -399,6 +410,120 @@ describe("Mobile VPN Integration", () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body).toEqual({ ok: true })
+    })
+  })
+
+  describe("Mobile session fingerprint", () => {
+    const validClaims = {
+      sub: "user-1",
+      org: "org-1",
+      device: DEVICE_ID,
+      fingerprint: FINGERPRINT,
+      iat: Math.floor(NOW.getTime() / 1000),
+      exp: Math.floor(NOW.getTime() / 1000) + 300,
+      typ: "mobile-session" as const,
+    }
+
+    it("rejects requests missing X-Device-Fingerprint", async () => {
+      const set: { status?: number | string } = {}
+      const result = await requireMobileSession(
+        new Request("http://localhost/vpn/mobile/profiles", {
+          headers: { Authorization: "Bearer mock-session-token" },
+        }),
+        set,
+        {
+          verifySessionJwt: mock(() => validClaims),
+          getDeviceStatus: mock(async () => ({
+            status: "ACTIVE",
+            subscriptionStatus: "ACTIVE",
+          })),
+        }
+      )
+
+      expect(result.ok).toBe(false)
+      expect(set.status).toBe(401)
+      if (!result.ok) expect(result.error.code).toBe("TOKEN_INVALID")
+    })
+
+    it("rejects mismatched X-Device-Fingerprint", async () => {
+      const set: { status?: number | string } = {}
+      const result = await requireMobileSession(
+        new Request("http://localhost/vpn/mobile/profiles", {
+          headers: {
+            Authorization: "Bearer mock-session-token",
+            "X-Device-Fingerprint": "wrong-fingerprint",
+          },
+        }),
+        set,
+        {
+          verifySessionJwt: mock(() => validClaims),
+          getDeviceStatus: mock(async () => ({
+            status: "ACTIVE",
+            subscriptionStatus: "ACTIVE",
+          })),
+        }
+      )
+
+      expect(result.ok).toBe(false)
+      expect(set.status).toBe(401)
+      if (!result.ok) expect(result.error.code).toBe("TOKEN_INVALID")
+    })
+
+    it("accepts matching X-Device-Fingerprint", async () => {
+      const set: { status?: number | string } = {}
+      const result = await requireMobileSession(
+        new Request("http://localhost/vpn/mobile/profiles", {
+          headers: {
+            Authorization: "Bearer mock-session-token",
+            "X-Device-Fingerprint": FINGERPRINT,
+          },
+        }),
+        set,
+        {
+          verifySessionJwt: mock(() => validClaims),
+          getDeviceStatus: mock(async () => ({
+            status: "ACTIVE",
+            subscriptionStatus: "ACTIVE",
+          })),
+        }
+      )
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.mobileAuth.deviceFingerprint).toBe(FINGERPRINT)
+      }
+    })
+  })
+
+  describe("Admin device export", () => {
+    it("filters CSV export by subscriptionId and caps results", async () => {
+      mockFindMany.mockResolvedValue([activeDevice])
+
+      const app = createAdminDevicesApp(
+        mock(async () => ({
+          user: { id: "super-1" },
+          organizationId: "org-1",
+          role: "super_admin",
+          roles: ["super_admin"],
+        }))
+      )
+      const res = await app.handle(
+        new Request(
+          "http://localhost/vpn/mobile/admin/devices/export?subscriptionId=sub-1&status=ACTIVE"
+        )
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            subscriptionId: SUBSCRIPTION_ID,
+            status: "ACTIVE",
+          },
+          take: 10000,
+        })
+      )
+      expect(await res.text()).toContain(SUBSCRIPTION_ID)
     })
   })
 
