@@ -338,6 +338,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/console/whatsapp/messages"),
       },
       {
+        title: "Broadcasts",
+        url: localizePathname({
+          pathname: "/console/whatsapp/broadcasts",
+          locale,
+        }),
+        icon: <RocketLaunchIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/broadcasts"),
+      },
+      {
         title: "Contacts",
         url: localizePathname({
           pathname: "/console/whatsapp/contacts",

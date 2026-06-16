@@ -1,24 +1,27 @@
 import { Queue, type JobsOptions, type RedisOptions } from "bullmq"
 import { randomUUID } from "crypto"
 
-export const WHATSAPP_BROADCAST_QUEUE_NAME = "whatsapp-broadcast"
-export const WHATSAPP_BROADCAST_JOB_NAME = "broadcast-dispatch"
+export const WHATSAPP_WEBHOOK_QUEUE_NAME = "whatsapp-webhook"
+export const WHATSAPP_WEBHOOK_JOB_NAME = "webhook-event"
 
-export type WhatsAppBroadcastJobData = {
-  campaignId: string
-  recipientId: string
-  method: "dispatch" | "throttle" | "status-update"
+export type WhatsAppWebhookEventType = "message" | "statuses" | "error"
+
+export type WhatsAppWebhookJobData = {
+  eventType: WhatsAppWebhookEventType
+  payload: unknown
+  deviceId: string
+  organizationId?: string
 }
 
-export type WhatsAppBroadcastQueue = {
-  enqueue: (data: WhatsAppBroadcastJobData, opts?: JobsOptions) => Promise<void>
+export type WhatsAppWebhookQueue = {
+  enqueue: (data: WhatsAppWebhookJobData, opts?: JobsOptions) => Promise<void>
   close: () => Promise<void>
 }
 
 type QueueAddOnly = {
   add: (
     name: string,
-    data: WhatsAppBroadcastJobData,
+    data: WhatsAppWebhookJobData,
     opts?: JobsOptions
   ) => Promise<unknown>
 }
@@ -57,7 +60,7 @@ const parseRedisDb = (pathname: string): number => {
   return value
 }
 
-export const getWhatsAppBroadcastRedisConnection = (): RedisOptions => {
+export const getWhatsAppWebhookRedisConnection = (): RedisOptions => {
   const redisUrl = process.env.REDIS_URL?.trim()
 
   if (!redisUrl) {
@@ -82,31 +85,31 @@ export const getWhatsAppBroadcastRedisConnection = (): RedisOptions => {
   }
 }
 
-export const createWhatsAppBroadcastQueue = ({
+export const createWhatsAppWebhookQueue = ({
   queue,
-  queueName = WHATSAPP_BROADCAST_QUEUE_NAME,
-  jobName = WHATSAPP_BROADCAST_JOB_NAME,
+  queueName = WHATSAPP_WEBHOOK_QUEUE_NAME,
+  jobName = WHATSAPP_WEBHOOK_JOB_NAME,
   defaultJobOptions = DEFAULT_JOB_OPTIONS,
 }: {
   queue?: QueueAddOnly
   queueName?: string
   jobName?: string
   defaultJobOptions?: JobsOptions
-} = {}): WhatsAppBroadcastQueue => {
+} = {}): WhatsAppWebhookQueue => {
   const managedQueue = queue
   const ownedQueue = managedQueue
     ? null
-    : new Queue<WhatsAppBroadcastJobData>(queueName, {
-        connection: getWhatsAppBroadcastRedisConnection(),
+    : new Queue<WhatsAppWebhookJobData>(queueName, {
+        connection: getWhatsAppWebhookRedisConnection(),
         defaultJobOptions,
       })
   const queueClient: QueueAddOnly =
-    managedQueue ?? (ownedQueue as Queue<WhatsAppBroadcastJobData>)
+    managedQueue ?? (ownedQueue as Queue<WhatsAppWebhookJobData>)
 
   return {
     async enqueue(data, opts) {
       await queueClient.add(jobName, data, {
-        jobId: `wa-broadcast:${data.method}:${data.campaignId}:${data.recipientId}:${randomUUID()}`,
+        jobId: `wa-webhook:${data.eventType}:${randomUUID()}`,
         ...opts,
       })
     },
@@ -118,15 +121,15 @@ export const createWhatsAppBroadcastQueue = ({
   }
 }
 
-let sharedQueue: Queue<WhatsAppBroadcastJobData> | null = null
+let sharedQueue: Queue<WhatsAppWebhookJobData> | null = null
 
 const getSharedQueue = () => {
   if (sharedQueue) {
     return sharedQueue
   }
 
-  sharedQueue = new Queue<WhatsAppBroadcastJobData>(WHATSAPP_BROADCAST_QUEUE_NAME, {
-    connection: getWhatsAppBroadcastRedisConnection(),
+  sharedQueue = new Queue<WhatsAppWebhookJobData>(WHATSAPP_WEBHOOK_QUEUE_NAME, {
+    connection: getWhatsAppWebhookRedisConnection(),
     defaultJobOptions: DEFAULT_JOB_OPTIONS,
   })
 
@@ -134,25 +137,21 @@ const getSharedQueue = () => {
 }
 
 /**
- * Get the shared broadcast queue instance.
+ * Enqueue a webhook event for async processing.
  */
-export const getWhatsAppBroadcastQueue = getSharedQueue
-
-/**
- * Enqueue a broadcast dispatch job.
- */
-export const enqueueWhatsAppBroadcast = async (
-  campaignId: string,
-  recipientId: string,
-  method: WhatsAppBroadcastJobData["method"] = "dispatch"
+export const enqueueWhatsAppWebhook = async (
+  eventType: WhatsAppWebhookJobData["eventType"],
+  payload: unknown,
+  deviceId: string,
+  organizationId?: string
 ) => {
   const queue = getSharedQueue()
 
   await queue.add(
-    WHATSAPP_BROADCAST_JOB_NAME,
-    { campaignId, recipientId, method },
+    WHATSAPP_WEBHOOK_JOB_NAME,
+    { eventType, payload, deviceId, organizationId },
     {
-      jobId: `wa-broadcast:${method}:${campaignId}:${recipientId}:${randomUUID()}`,
+      jobId: `wa-webhook:${eventType}:${deviceId}:${randomUUID()}`,
     }
   )
 }

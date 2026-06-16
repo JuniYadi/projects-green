@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
+import { toWhatsappTemplateDTO } from "../templates.dto"
 
 const templateLanguageSchema = t.Object({
   lang: t.String(),
@@ -23,24 +24,45 @@ const templateBodySchema = t.Object({
 })
 
 const templateUpdateSchema = t.Partial(t.Omit(templateBodySchema, ["languages"]))
+const DEFAULT_LIMIT = 50
+const MAX_LIMIT = 100
+
+function getPagination(query: Record<string, unknown>) {
+  const page = Math.max(Number(query.page) || 1, 1)
+  const limit = Math.min(Math.max(Number(query.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)
+  return { page, limit, skip: (page - 1) * limit }
+}
 
 export const templatesRoutes = new Elysia({ prefix: "/templates" })
-  .get("/", async ({ request, set }: { request: any, set: any }) => {
+  .get("/", async ({ request, set, query }: { request: any, set: any, query: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
     if (!whatsappAuth) {
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
-    const templates = await prisma.whatsappTemplate.findMany({
-      where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin"
-        ? { organizationId: whatsappAuth.organizationId! }
-        : {},
-      include: {
-        languages: true,
-      },
-      orderBy: { createdAt: "desc" },
-    })
-    return { ok: true, templates }
+    const { page, limit, skip } = getPagination(query)
+    const where = whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin"
+      ? { organizationId: whatsappAuth.organizationId! }
+      : {}
+    const [total, templates] = await Promise.all([
+      prisma.whatsappTemplate.count({ where }),
+      prisma.whatsappTemplate.findMany({
+        where,
+        include: {
+          languages: true,
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+    ])
+    const data = templates.map(toWhatsappTemplateDTO)
+    return {
+      ok: true,
+      templates: data,
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    }
   })
   .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
@@ -65,7 +87,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
-    return { ok: true, template }
+    return { ok: true, template: toWhatsappTemplateDTO(template) }
   })
   .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
@@ -93,7 +115,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       },
     })
 
-    return { ok: true, template }
+    return { ok: true, template: toWhatsappTemplateDTO(template) }
   }, {
     body: templateBodySchema
   })
@@ -125,7 +147,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       },
     })
 
-    return { ok: true, template: updated }
+    return { ok: true, template: toWhatsappTemplateDTO(updated) }
   }, {
     body: templateUpdateSchema
   })

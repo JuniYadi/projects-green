@@ -3,6 +3,7 @@ import { mock } from "bun:test"
 // Mock prisma
 const mockPrisma = {
   whatsappMessage: {
+    count: mock(async () => 1),
     findMany: mock(async () => [{ id: "msg-1" }]),
     findFirst: mock(async () => ({
       id: "msg-1",
@@ -88,6 +89,7 @@ describe("messagesRoutes", () => {
       platformRole: "none",
     })
 
+    mockPrisma.whatsappMessage.count.mockClear()
     mockPrisma.whatsappMessage.findMany.mockClear()
     mockPrisma.whatsappMessage.findFirst.mockClear()
     mockPrisma.whatsappMessage.create.mockClear()
@@ -96,6 +98,7 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappConversation.findFirst.mockClear()
     mockMessageService.sendMessage.mockClear()
 
+    mockPrisma.whatsappMessage.count.mockResolvedValue(1)
     mockPrisma.whatsappMessage.findMany.mockResolvedValue([
       { id: "msg-1" },
     ] as any)

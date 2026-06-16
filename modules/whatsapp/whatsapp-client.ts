@@ -241,9 +241,24 @@ export type BroadcastStatus =
   | "COMPLETED"
   | "COMPLETED_WITH_ERRORS"
 
+export type BroadcastRecipientStatus = "QUEUED" | "SENT" | "FAILED"
+
+export type BroadcastRecipient = {
+  id: string
+  phoneNumber: string
+  name?: string | null
+  dynamicValues?: Record<string, unknown> | null
+  status: BroadcastRecipientStatus
+  attempts: number
+  waMessageId?: string | null
+  lastError?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type Broadcast = {
   id: string
-  organizationId: string
+  organizationId?: string
   templateName: string
   templateLanguage: string
   templateParams?: Record<string, unknown> | null
@@ -258,6 +273,8 @@ export type Broadcast = {
   endedAt?: string | null
   whatsappDeviceId?: string | null
   whatsappContactGroupId?: string | null
+  recipients?: BroadcastRecipient[]
+  recipientCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -703,26 +720,34 @@ export const createWhatsAppClient = () => {
 
     async listBroadcasts() {
       const payload = await requestJson<
-        ApiSuccess<{ broadcasts: Broadcast[] }>
+        ApiSuccess<{ broadcasts?: Broadcast[]; campaigns?: Broadcast[] }>
       >(
         `${API_BASE}/broadcasts`,
         undefined,
         "Unable to load WhatsApp broadcasts."
       )
-      return payload.broadcasts
+      return payload.broadcasts ?? payload.campaigns ?? []
     },
 
     async getBroadcast(id: string) {
-      const payload = await requestJson<ApiSuccess<{ broadcast: Broadcast }>>(
+      const payload = await requestJson<
+        ApiSuccess<{ broadcast?: Broadcast; campaign?: Broadcast }>
+      >(
         `${API_BASE}/broadcasts/${id}`,
         undefined,
         "Unable to load WhatsApp broadcast."
       )
-      return payload.broadcast
+      const broadcast = payload.broadcast ?? payload.campaign
+      if (!broadcast) {
+        throw new Error("Unable to load WhatsApp broadcast.")
+      }
+      return broadcast
     },
 
     async createBroadcast(input: CreateBroadcastInput) {
-      const payload = await requestJson<ApiSuccess<{ broadcast: Broadcast }>>(
+      const payload = await requestJson<
+        ApiSuccess<{ broadcast?: Broadcast; campaign?: Broadcast }>
+      >(
         `${API_BASE}/broadcasts`,
         {
           method: "POST",
@@ -731,11 +756,17 @@ export const createWhatsAppClient = () => {
         },
         "Unable to create WhatsApp broadcast."
       )
-      return payload.broadcast
+      const broadcast = payload.broadcast ?? payload.campaign
+      if (!broadcast) {
+        throw new Error("Unable to create WhatsApp broadcast.")
+      }
+      return broadcast
     },
 
     async updateBroadcast(id: string, input: UpdateBroadcastInput) {
-      const payload = await requestJson<ApiSuccess<{ broadcast: Broadcast }>>(
+      const payload = await requestJson<
+        ApiSuccess<{ broadcast?: Broadcast; campaign?: Broadcast }>
+      >(
         `${API_BASE}/broadcasts/${id}`,
         {
           method: "PATCH",
@@ -744,7 +775,11 @@ export const createWhatsAppClient = () => {
         },
         "Unable to update WhatsApp broadcast."
       )
-      return payload.broadcast
+      const broadcast = payload.broadcast ?? payload.campaign
+      if (!broadcast) {
+        throw new Error("Unable to update WhatsApp broadcast.")
+      }
+      return broadcast
     },
 
     async deleteBroadcast(id: string) {

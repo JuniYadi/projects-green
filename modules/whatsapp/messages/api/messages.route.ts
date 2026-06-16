@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { messageService } from "../messages.service"
+import { toWhatsappMessageDTO } from "../messages.dto"
 import { InsufficientQuotaError } from "../quota.service"
 import {
   InsufficientBalanceError,
@@ -33,11 +34,59 @@ const messageBodySchema = t.Object({
 
 const sendSchema = t.Object({
   phoneNumber: t.String(),
-  message: t.String(),
+  type: t.Optional(t.Union([
+    t.Literal("text"),
+    t.Literal("image"),
+    t.Literal("document"),
+    t.Literal("audio"),
+    t.Literal("video"),
+    t.Literal("location"),
+  ])),
+  message: t.Optional(t.String()),
+  mediaUrl: t.Optional(t.String()),
+  caption: t.Optional(t.String()),
+  filename: t.Optional(t.String()),
+  latitude: t.Optional(t.Number()),
+  longitude: t.Optional(t.Number()),
+  name: t.Optional(t.String()),
+  address: t.Optional(t.String()),
   deviceId: t.Optional(t.String()),
 })
 
 const messageUpdateSchema = t.Partial(messageBodySchema)
+
+function validateSendBody(body: any): string | null {
+  const type = body.type ?? "text"
+
+  if (type === "text" && !body.message) {
+    return "message is required for text messages"
+  }
+
+  if (["image", "document", "audio", "video"].includes(type)) {
+    if (!body.mediaUrl) {
+      return "mediaUrl is required for media messages"
+    }
+    if (!/^https?:\/\//.test(body.mediaUrl)) {
+      return "mediaUrl must be a publicly accessible http(s) URL"
+    }
+  }
+
+  if (type === "location") {
+    if (typeof body.latitude !== "number" || typeof body.longitude !== "number") {
+      return "latitude and longitude are required for location messages"
+    }
+  }
+
+  return null
+}
+const DEFAULT_LIMIT = 20
+const MAX_LIMIT = 100
+
+function getPagination(query: Record<string, unknown>) {
+  const page = Math.max(Number(query.page) || 1, 1)
+  const limit = Math.min(Math.max(Number(query.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)
+  return { page, limit, skip: (page - 1) * limit }
+}
 
 export const messagesRoutes = new Elysia({ prefix: "/messages" })
   .get("/", async ({ request, set, query }: { request: any, set: any, query: any }) => {
@@ -47,6 +96,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
     const { conversationId, direction, messageType } = query as any
+    const { page, limit, skip } = getPagination(query)
 
     const where: any = {
       conversation: {
@@ -58,14 +108,25 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     if (direction) where.direction = direction
     if (messageType) where.messageType = messageType
 
-    const messages = await prisma.whatsappMessage.findMany({
-      where,
-      include: {
-        statusHistory: true
-      },
-      orderBy: { createdAt: "desc" },
-    })
-    return { ok: true, messages }
+    const [total, messages] = await Promise.all([
+      prisma.whatsappMessage.count({ where }),
+      prisma.whatsappMessage.findMany({
+        where,
+        include: {
+          statusHistory: true
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+    ])
+    const data = messages.map(toWhatsappMessageDTO)
+    return {
+      ok: true,
+      messages: data,
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    }
   })
   .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
@@ -90,7 +151,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       return { ok: false, error: "NOT_FOUND", message: "Message not found." }
     }
 
-    return { ok: true, message }
+    return { ok: true, message: toWhatsappMessageDTO(message) }
   })
   .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
@@ -117,7 +178,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       },
     })
 
-    return { ok: true, message }
+    return { ok: true, message: toWhatsappMessageDTO(message) }
   }, {
     body: messageBodySchema
   })
@@ -146,7 +207,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       data: body,
     })
 
-    return { ok: true, message: updated }
+    return { ok: true, message: toWhatsappMessageDTO(updated) }
   }, {
     body: messageUpdateSchema
   })
@@ -181,13 +242,39 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
-    const { phoneNumber, message, deviceId } = body
+    const validationError = validateSendBody(body)
+    if (validationError) {
+      set.status = 422
+      return { ok: false, error: "VALIDATION_ERROR", message: validationError }
+    }
+
+    const {
+      phoneNumber,
+      type,
+      message,
+      mediaUrl,
+      caption,
+      filename,
+      latitude,
+      longitude,
+      name,
+      address,
+      deviceId,
+    } = body
 
     try {
       const result = await messageService.sendMessage({
         organizationId: whatsappAuth.organizationId!,
         phoneNumber,
+        type,
         message,
+        mediaUrl,
+        caption,
+        filename,
+        latitude,
+        longitude,
+        name,
+        address,
         deviceId,
       })
 

@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import { toWhatsappContactDTO } from "../contacts.dto"
 
 const contactBodySchema = t.Object({
   phoneNumber: t.String(),
@@ -16,6 +17,14 @@ const contactBodySchema = t.Object({
 const contactUpdateSchema = t.Partial(contactBodySchema)
 
 const DEFAULT_CONTACT_GROUP_NAME = "Ungrouped"
+const DEFAULT_LIMIT = 50
+const MAX_LIMIT = 100
+
+function getPagination(query: Record<string, unknown>) {
+  const page = Math.max(Number(query.page) || 1, 1)
+  const limit = Math.min(Math.max(Number(query.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)
+  return { page, limit, skip: (page - 1) * limit }
+}
 
 // Resolve a usable contact group id for an organization. When the caller does
 // not provide one, fall back to (or lazily create) a default "Ungrouped" group
@@ -62,6 +71,7 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
     const { contactGroupId, status, phoneNumber } = query as any
+    const { page, limit, skip } = getPagination(query)
     
     const where: any = {
       organizationId: whatsappAuth.organizationId!,
@@ -71,11 +81,22 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
     if (status) where.status = status
     if (phoneNumber) where.phoneNumber = { contains: phoneNumber }
 
-    const contacts = await prisma.whatsappContact.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-    })
-    return { ok: true, contacts }
+    const [total, contacts] = await Promise.all([
+      prisma.whatsappContact.count({ where }),
+      prisma.whatsappContact.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+    ])
+    const data = contacts.map(toWhatsappContactDTO)
+    return {
+      ok: true,
+      contacts: data,
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    }
   })
   .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
@@ -95,7 +116,7 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
       return { ok: false, error: "NOT_FOUND", message: "Contact not found." }
     }
 
-    return { ok: true, contact }
+    return { ok: true, contact: toWhatsappContactDTO(contact) }
   })
   .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
@@ -142,7 +163,7 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
       },
     })
 
-    return { ok: true, contact }
+    return { ok: true, contact: toWhatsappContactDTO(contact) }
   }, {
     body: contactBodySchema
   })
@@ -183,7 +204,7 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
       data: body,
     })
 
-    return { ok: true, contact: updated }
+    return { ok: true, contact: toWhatsappContactDTO(updated) }
   }, {
     body: contactUpdateSchema
   })

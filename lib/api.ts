@@ -32,6 +32,7 @@ import { voucherRoutes } from "@/modules/vouchers/api"
 import { healthRoutes } from "@/modules/health/api/health.route"
 import { markStartupComplete } from "@/modules/health/health.service"
 import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.module"
+import { whatsappWebhookRoutes } from "@/lib/whatsapp/webhook-routes"
 
 const parseErrorPath = (
   value: string | Array<string | number> | undefined
@@ -117,6 +118,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(adminVpnSubscriptionRoutes)
   .use(voucherRoutes)
   .use(healthRoutes)
+  .use(whatsappWebhookRoutes)
   .use(whatsappRoutes)
   .onError(({ code, error, set, request, path }) => {
     if (code === "VALIDATION") {

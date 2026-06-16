@@ -396,28 +396,60 @@ describe("messageService", () => {
       )
     })
 
-    it("creates broadcast campaign", async () => {
-      await sendMessageTestHelper()
+    it("sends and stores image messages", async () => {
+      await sendMessageTestHelper({
+        type: "image",
+        mediaUrl: "https://example.com/image.jpg",
+        caption: "Image caption",
+      })
 
-      expect(mockPrisma.whatsappBroadcastCampaign.create).toHaveBeenCalled()
-    })
-
-    it("creates broadcast recipient", async () => {
-      await sendMessageTestHelper({ phoneNumber: "+1234567890" })
-
-      expect(mockPrisma.whatsappBroadcastRecipient.create).toHaveBeenCalledWith(
+      expect(mockDeviceClient.sendMessage).toHaveBeenCalledWith({
+        to: "+1234567890",
+        type: "image",
+        payload: {
+          link: "https://example.com/image.jpg",
+          caption: "Image caption",
+          filename: undefined,
+        },
+      })
+      expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            phoneNumber: "+1234567890",
+            messageType: "image",
+            body: "Image caption",
+            mediaUrl: "https://example.com/image.jpg",
           }),
         })
       )
     })
 
-    it("enqueues broadcast job", async () => {
+    it("sends location messages", async () => {
+      await sendMessageTestHelper({
+        type: "location",
+        latitude: -6.2,
+        longitude: 106.8,
+        name: "Jakarta",
+        address: "Jakarta, ID",
+      })
+
+      expect(mockDeviceClient.sendMessage).toHaveBeenCalledWith({
+        to: "+1234567890",
+        type: "location",
+        payload: {
+          latitude: -6.2,
+          longitude: 106.8,
+          name: "Jakarta",
+          address: "Jakarta, ID",
+        },
+      })
+    })
+
+    it("does not create broadcast campaign records for direct messages", async () => {
       await sendMessageTestHelper()
 
-      expect(mockEnqueue).toHaveBeenCalledWith("camp-1", "", "dispatch")
+      expect(mockPrisma.whatsappBroadcastCampaign.create).not.toHaveBeenCalled()
+      expect(mockPrisma.whatsappBroadcastRecipient.create).not.toHaveBeenCalled()
+      expect(mockEnqueue).not.toHaveBeenCalled()
     })
 
     it("sets status to queued when Meta API fails", async () => {

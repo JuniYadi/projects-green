@@ -1,7 +1,6 @@
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { prisma } from "@/lib/prisma"
 import { quotaService, InsufficientQuotaError } from "./quota.service"
-import { enqueueWhatsAppBroadcast } from "@/lib/queue/whatsapp-broadcast"
 import { enqueueQuotaReconciliation } from "@/lib/queue/quota-reconciliation"
 import { randomUUID } from "crypto"
 import { Prisma } from "@prisma/client"
@@ -27,10 +26,26 @@ export type SendMessageResult = {
   error?: string
 }
 
+export type SendMessageType =
+  | "text"
+  | "image"
+  | "document"
+  | "audio"
+  | "video"
+  | "location"
+
 export type SendMessageOptions = {
   organizationId: string
   phoneNumber: string
-  message: string
+  type?: SendMessageType
+  message?: string
+  mediaUrl?: string
+  caption?: string
+  filename?: string
+  latitude?: number
+  longitude?: number
+  name?: string
+  address?: string
   deviceId?: string
 }
 
@@ -40,7 +55,21 @@ export type MessageService = {
 }
 
 export const messageService: MessageService = {
-  async sendMessage({ organizationId, phoneNumber, message, deviceId }) {
+  async sendMessage(options) {
+    const {
+      organizationId,
+      phoneNumber,
+      deviceId,
+      type = "text",
+      message,
+      mediaUrl,
+      caption,
+      filename,
+      latitude,
+      longitude,
+      name,
+      address,
+    } = options
     const jobId = `wa-job-${randomUUID()}`
 
     // Get or create device first (needed for quota gate checks)
@@ -138,11 +167,40 @@ export const messageService: MessageService = {
     // Send message via Meta Cloud API
     let waMessageId: string | undefined
     try {
-      const result = await client.sendMessage({
-        to: phoneNumber,
-        type: "text",
-        payload: { text: message },
-      })
+      const result = type === "text"
+        ? await client.sendMessage({
+            to: phoneNumber,
+            type: "text",
+            payload: { text: message ?? "" },
+          })
+        : type === "location"
+          ? await client.sendMessage({
+              to: phoneNumber,
+              type: "location",
+              payload: {
+                latitude: latitude ?? 0,
+                longitude: longitude ?? 0,
+                name,
+                address,
+              },
+            })
+          : type === "document"
+            ? await client.sendMessage({
+                to: phoneNumber,
+                type: "document",
+                payload: { link: mediaUrl ?? "", caption, filename },
+              })
+            : type === "audio"
+              ? await client.sendMessage({
+                  to: phoneNumber,
+                  type: "audio",
+                  payload: { link: mediaUrl ?? "" },
+                })
+              : await client.sendMessage({
+                  to: phoneNumber,
+                  type,
+                  payload: { link: mediaUrl ?? "", caption },
+                })
       waMessageId = result.providerMessageId
     } catch (err) {
       console.error("[messageService] Failed to send via Meta API:", err)
@@ -247,38 +305,13 @@ export const messageService: MessageService = {
       data: {
         conversationId,
         direction: "OUTBOX",
-        messageType: "text",
-        body: message,
+        messageType: type,
+        body: type === "text" ? message : caption,
+        mediaUrl,
         waMessageId,
         metadata: { jobId, quotaPending },
       },
     })
-
-    // Create broadcast recipient for async processing
-    const campaign = await prisma.whatsappBroadcastCampaign.create({
-      data: {
-        organizationId,
-        templateName: "direct_message",
-        templateLanguage: "en",
-        status: waMessageId ? "COMPLETED" : "QUEUED",
-        total: 1,
-        queued: waMessageId ? 0 : 1,
-        sent: waMessageId ? 1 : 0,
-        whatsappDeviceId: deviceId,
-      },
-    })
-
-    await prisma.whatsappBroadcastRecipient.create({
-      data: {
-        broadcastId: campaign.id,
-        phoneNumber,
-        status: waMessageId ? "SENT" : "QUEUED",
-        waMessageId,
-      },
-    })
-
-    // Enqueue broadcast job for async processing
-    await enqueueWhatsAppBroadcast(campaign.id, "", "dispatch")
 
     return {
       jobId,
