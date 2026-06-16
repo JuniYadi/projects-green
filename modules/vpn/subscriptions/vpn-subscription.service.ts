@@ -17,6 +17,9 @@ const subscriptionInclude = {
       },
     },
   },
+  _count: {
+    select: { mobileDevices: true },
+  },
 } satisfies Prisma.VpnSubscriptionInclude
 
 export type VpnSubscriptionWithAccounts = Prisma.VpnSubscriptionGetPayload<{

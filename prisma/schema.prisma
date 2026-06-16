@@ -1269,6 +1269,8 @@ model VpnSubscription {
   updatedAt          DateTime              @updatedAt
 
   serverAccounts VpnServerAccount[]
+  mobileDevices VpnMobileDevice[]
+  pairingTokens VpnPairingToken[]
 
   @@index([organizationId, status])
   @@index([packageId])
@@ -1295,6 +1297,77 @@ model VpnServerAccount {
   @@index([subscriptionId])
   @@index([serverId])
   @@index([provisioningStatus])
+}
+
+// ─── VPN Mobile App Access ────────────────────────────────────────────────────
+
+enum VpnDeviceStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum VpnPairingMethod {
+  SSO
+  QR
+}
+
+model VpnMobileDevice {
+  id               String           @id @default(cuid())
+  organizationId   String
+  subscriptionId   String
+  userId           String?
+  deviceName       String
+  deviceFingerprint String
+  platform         String
+  osVersion        String?
+  appVersion       String?
+  pairedVia        VpnPairingMethod
+  status           VpnDeviceStatus  @default(ACTIVE)
+  lastSeenAt       DateTime?
+  revokedAt        DateTime?
+  revokedReason    String?
+  revokedBy        String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  subscription VpnSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, deviceFingerprint])
+  @@index([organizationId, status])
+  @@index([subscriptionId])
+  @@index([userId])
+  @@index([status])
+}
+
+model VpnPairingToken {
+  id              String   @id @default(cuid())
+  subscriptionId  String
+  token           String   @unique
+  expiresAt       DateTime
+  claimedAt       DateTime?
+  claimedByDevice String?
+  createdAt       DateTime @default(now())
+
+  subscription VpnSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model VpnAuditLog {
+  id        String   @id @default(cuid())
+  deviceId  String?
+  userId    String?
+  action    String   // REGISTERED, REVOKED, CONFIG_DOWNLOADED
+  details   Json?    // { pairedVia, profileId, revokedBy, reason, etc }
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([deviceId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
 }
 
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────

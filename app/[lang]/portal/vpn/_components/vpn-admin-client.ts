@@ -127,6 +127,7 @@ export type VpnSubscriptionItem = {
   status: "ACTIVE" | "SUSPENDED" | "EXPIRED"
   currentPeriodStart: string
   currentPeriodEnd: string
+  deviceCount: number
   serverAccounts: VpnServerAccountEntry[]
   createdAt: string
   updatedAt: string

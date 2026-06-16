@@ -7,6 +7,9 @@ type SubscriptionPayload = Prisma.VpnSubscriptionGetPayload<{
         server: { select: { id: true; name: true; hostname: true } }
       }
     }
+    _count: {
+      select: { mobileDevices: true }
+    }
   }
 }>
 
@@ -37,6 +40,7 @@ export type VpnSubscriptionDTO = {
   status: SubscriptionPayload["status"]
   currentPeriodStart: string
   currentPeriodEnd: string
+  deviceCount: number
   serverAccounts: VpnServerAccountDTO[]
   createdAt: string
   updatedAt: string
@@ -68,6 +72,7 @@ export function toVpnSubscriptionDTO(
     status: subscription.status,
     currentPeriodStart: subscription.currentPeriodStart.toISOString(),
     currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+    deviceCount: subscription._count.mobileDevices,
     serverAccounts: subscription.serverAccounts.map(toServerAccountDTO),
     createdAt: subscription.createdAt.toISOString(),
     updatedAt: subscription.updatedAt.toISOString(),
