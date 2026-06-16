@@ -11,6 +11,8 @@
 import { Elysia } from "elysia"
 import { verifySignature } from "./webhook"
 import { verifyWebhookUseCase } from "./verify-webhook"
+import { handleEventUseCase } from "./handle-event"
+import { enqueueWhatsAppWebhook } from "@/lib/queue/whatsapp-webhook"
 
 export const whatsappWebhookRoutes = new Elysia({ tags: ["WhatsApp Webhook"] })
   // Meta sends GET to verify webhook ownership
@@ -27,9 +29,10 @@ export const whatsappWebhookRoutes = new Elysia({ tags: ["WhatsApp Webhook"] })
   })
   // Receive webhook events from Meta
   .post("/whatsapp/webhook", async ({ body, set, request }) => {
-    const rawBody = body instanceof Uint8Array
-      ? new TextDecoder().decode(body)
-      : JSON.stringify(body)
+    const rawBody =
+      body instanceof Uint8Array
+        ? new TextDecoder().decode(body)
+        : JSON.stringify(body)
 
     const signature = request.headers.get("x-hub-signature-256") || ""
     const isValid = verifySignature(rawBody, signature)
@@ -38,6 +41,64 @@ export const whatsappWebhookRoutes = new Elysia({ tags: ["WhatsApp Webhook"] })
       return { error: "Invalid signature" }
     }
 
-    // TODO (PGREEN-008): dispatch to BullMQ job queue
+    // Respond 200 to Meta immediately — processing happens async via BullMQ
+    void dispatchWebhookEvents(body).catch((err) => {
+      console.error("[whatsapp-webhook] dispatch error:", err)
+    })
+
     return { ok: true }
   })
+
+export async function dispatchWebhookEvents(body: unknown): Promise<void> {
+  const result = await handleEventUseCase(body)
+
+  // Handle duplicate events first (no code property)
+  if (result && "duplicate" in result && result.duplicate) {
+    console.info("[whatsapp-webhook] duplicate event ignored")
+    return
+  }
+
+  if (!result || !("code" in result)) {
+    console.warn("[whatsapp-webhook] unexpected handleEventUseCase result", result)
+    return
+  }
+
+  if (result.code !== 200) {
+    console.warn("[whatsapp-webhook] invalid payload:", result.message)
+    return
+  }
+
+  const entries = "entries" in result ? result.entries : []
+  if (!entries || entries.length === 0) {
+    console.info("[whatsapp-webhook] no entries to process")
+    return
+  }
+
+  for (const entry of entries) {
+    const phoneNumberId = entry.phoneNumberId
+
+    // Enqueue each message event
+    for (const message of entry.messages) {
+      try {
+        await enqueueWhatsAppWebhook("message", message, phoneNumberId)
+      } catch (err) {
+        console.error(
+          "[whatsapp-webhook] failed to enqueue message event",
+          err,
+        )
+      }
+    }
+
+    // Enqueue each status event
+    for (const status of entry.statuses) {
+      try {
+        await enqueueWhatsAppWebhook("statuses", status, phoneNumberId)
+      } catch (err) {
+        console.error(
+          "[whatsapp-webhook] failed to enqueue status event",
+          err,
+        )
+      }
+    }
+  }
+}

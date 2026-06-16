@@ -11,6 +11,7 @@ import { workosNodeMock } from "./workos-node-mock"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockFindMany = mock(async () => [] as any)
+const mockCount = mock(async () => 0)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockFindFirst = mock(async () => null as any)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,6 +22,7 @@ const mockUpdate = mock(async () => null as any)
 mock.module("@/lib/prisma", () => ({
   prisma: {
     whatsappMessage: {
+      count: mockCount,
       findMany: mockFindMany,
       findFirst: mockFindFirst,
       create: mockCreate,
@@ -62,6 +64,7 @@ describe("WhatsApp Messages E2E", () => {
   beforeEach(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockFindMany.mockImplementation(async () => [] as any)
+    mockCount.mockImplementation(async () => 0)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockFindFirst.mockImplementation(async () => null as any)
 

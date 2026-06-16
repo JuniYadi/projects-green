@@ -3,8 +3,30 @@ import { hasProcessedEvent, markEventProcessed } from "./idempotency-repository"
 
 type WhatsappWebhookEnvelope = {
   object: "whatsapp_business_account"
-  entry: unknown[]
+  entry: Array<{
+    id: string
+    changes: Array<{
+      value: {
+        messaging_product: string
+        metadata: {
+          phone_number_id: string
+          display_phone_number?: string
+        }
+        messages?: unknown[]
+        statuses?: unknown[]
+      }
+      field: string
+    }>
+  }>
   eventId?: string
+}
+
+export type ParsedWebhookEntry = {
+  id: string
+  phoneNumberId: string
+  displayPhoneNumber?: string
+  messages: unknown[]
+  statuses: unknown[]
 }
 
 type DebugRepository = {
@@ -24,7 +46,10 @@ function isWhatsappWebhookEnvelope(payload: unknown): payload is WhatsappWebhook
   return candidate.object === "whatsapp_business_account" && Array.isArray(candidate.entry)
 }
 
-export function handleEventUseCase(payload: unknown, options: HandleEventOptions = {}) {
+export async function handleEventUseCase(
+  payload: unknown,
+  options: HandleEventOptions = {}
+) {
   if (!isWhatsappWebhookEnvelope(payload)) {
     if (options.debugRepository) {
       options.debugRepository.save({
@@ -40,14 +65,29 @@ export function handleEventUseCase(payload: unknown, options: HandleEventOptions
   }
 
   if (payload.eventId !== undefined) {
-    if (hasProcessedEvent(payload.eventId)) {
+    if (await hasProcessedEvent(payload.eventId)) {
       return { duplicate: true }
     }
-    markEventProcessed(payload.eventId)
+    await markEventProcessed(payload.eventId)
   }
+
+  // Parse entries into a stable structure for downstream dispatch
+  const parsedEntries: ParsedWebhookEntry[] = payload.entry.map((entry) => {
+    const change = entry.changes?.[0]
+    const value = change?.value ?? {}
+
+    return {
+      id: entry.id,
+      phoneNumberId: value.metadata?.phone_number_id ?? "",
+      displayPhoneNumber: value.metadata?.display_phone_number,
+      messages: value.messages ?? [],
+      statuses: value.statuses ?? [],
+    }
+  })
 
   return {
     code: 200,
     message: "EVENT_RECEIVED",
+    entries: parsedEntries,
   }
 }

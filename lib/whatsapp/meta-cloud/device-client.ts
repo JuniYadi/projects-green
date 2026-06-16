@@ -175,9 +175,24 @@ export class WhatsAppDeviceClient {
   }
 
   async listTemplates(): Promise<any> {
+    return this.listTemplatesPage()
+  }
+
+  async listTemplatesPage(after?: string): Promise<any> {
+    const endpoint = new URL(ENDPOINTS.TEMPLATES(this.wabaId))
+    endpoint.searchParams.set(
+      "fields",
+      "name,language,status,category,components,rejected_reason"
+    )
+    endpoint.searchParams.set("limit", "100")
+
+    if (after) {
+      endpoint.searchParams.set("after", after)
+    }
+
     return this.httpClient.request(
       "LIST_TEMPLATES",
-      ENDPOINTS.TEMPLATES(this.wabaId),
+      endpoint.toString(),
       "GET"
     )
   }

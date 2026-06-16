@@ -179,6 +179,7 @@ describe("resolveSidebarMenu", () => {
       "Devices",
       "Templates",
       "Messages",
+      "Broadcasts",
       "Contacts",
     ])
     expect(
