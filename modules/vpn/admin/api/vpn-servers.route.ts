@@ -17,10 +17,7 @@ import {
   vpnServerService,
   type VpnServerService,
 } from "../vpn-server.service"
-import {
-  scanVpnServerConnection,
-  type VpnServerScanner,
-} from "../vpn-connection-scanner"
+import type { VpnServerScanner } from "../vpn-connection-scanner"
 
 type Deps = {
   requireSuperAdmin?: typeof requireSuperAdmin
@@ -36,7 +33,6 @@ export const TEST_RATE_LIMIT_MS = 30_000
 export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
   const guard = deps.requireSuperAdmin ?? requireSuperAdmin
   const service = deps.service ?? vpnServerService
-  const scanConnection = deps.scanConnection ?? scanVpnServerConnection
   const now = deps.now ?? Date.now
   const lastTestAt = new Map<string, number>()
 
@@ -119,6 +115,9 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
       try {
         const server = await service.getById(params.id)
         lastTestAt.set(params.id, current)
+        const scanConnection =
+          deps.scanConnection ??
+          (await import("../vpn-connection-scanner")).scanVpnServerConnection
         const result = await scanConnection(server)
         return { ok: true, data: result }
       } catch (error) {
