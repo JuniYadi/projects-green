@@ -297,6 +297,58 @@ export async function processDeliveryStatus(
   }
 }
 
+// ─── Meta Webhook Envelope Handler ────────────────────────────────────────────────
+
+/**
+ * Handle an incoming Meta webhook payload.
+ * Extracts the message or status from the Meta envelope and processes it.
+ */
+export async function handleIncomingWebhook(
+  body: unknown,
+  deviceId: string,
+  organizationId: string,
+): Promise<{ success: true; data?: unknown } | { success: false; error: string }> {
+  try {
+    // Parse the Meta webhook envelope
+    const payload = body as Record<string, unknown>
+    const entry = (payload.entry as Record<string, unknown>[])?.[0]
+    const changes = (entry?.changes as Record<string, unknown>[])?.[0]
+    const value = changes?.value as Record<string, unknown> | undefined
+
+    if (!value) {
+      return { success: false, error: "Invalid webhook payload structure" }
+    }
+
+    // Check for messages
+    const messages = value.messages as Record<string, unknown>[] | undefined
+    if (messages && messages.length > 0) {
+      const messagePayload = messages[0]
+      const result = await processInboundMessage(
+        messagePayload as ParsedMessagePayload,
+        deviceId,
+        organizationId,
+      )
+      return { success: true, data: result }
+    }
+
+    // Check for statuses
+    const statuses = value.statuses as Record<string, unknown>[] | undefined
+    if (statuses && statuses.length > 0) {
+      const statusPayload = statuses[0]
+      const result = await processDeliveryStatus(
+        statusPayload as ParsedStatusPayload,
+        deviceId,
+        organizationId,
+      )
+      return { success: true, data: result }
+    }
+
+    return { success: false, error: "No messages or statuses found in payload" }
+  } catch (e) {
+    return { success: false, error: String(e) }
+  }
+}
+
 // ─── Webhook Event Recording ──────────────────────────────────────────────────
 
 /**

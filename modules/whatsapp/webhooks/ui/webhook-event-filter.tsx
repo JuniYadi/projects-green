@@ -7,7 +7,7 @@
 
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { X } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -56,6 +56,10 @@ export function WebhookEventFilter({
   initialFilters,
   showDeviceFilter,
 }: WebhookEventFilterProps) {
+  // Local state for date inputs — avoids stale closure over initialFilters
+  const [localDateFrom, setLocalDateFrom] = useState(initialFilters.dateFrom)
+  const [localDateTo, setLocalDateTo] = useState(initialFilters.dateTo)
+
   const hasActiveFilters =
     initialFilters.eventType !== "all" ||
     initialFilters.processingStatus !== "all" ||
@@ -71,6 +75,8 @@ export function WebhookEventFilter({
   )
 
   const handleReset = useCallback(() => {
+    setLocalDateFrom(DEFAULT_FILTER_STATE.dateFrom)
+    setLocalDateTo(DEFAULT_FILTER_STATE.dateTo)
     onFilterChange(DEFAULT_FILTER_STATE)
   }, [onFilterChange])
 
@@ -156,8 +162,11 @@ export function WebhookEventFilter({
         </label>
         <input
           type="date"
-          value={initialFilters.dateFrom}
-          onChange={(e) => updateFilter("dateFrom", e.target.value)}
+          value={localDateFrom}
+          onChange={(e) => {
+            setLocalDateFrom(e.target.value)
+            updateFilter("dateFrom", e.target.value)
+          }}
           className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
@@ -169,8 +178,11 @@ export function WebhookEventFilter({
         </label>
         <input
           type="date"
-          value={initialFilters.dateTo}
-          onChange={(e) => updateFilter("dateTo", e.target.value)}
+          value={localDateTo}
+          onChange={(e) => {
+            setLocalDateTo(e.target.value)
+            updateFilter("dateTo", e.target.value)
+          }}
           className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>

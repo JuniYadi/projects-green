@@ -58,9 +58,9 @@ function InfoRow({ label, value }: InfoRowProps) {
 
 export default function ConsoleWhatsAppDeviceDetailPage() {
   const params = useParams<{ deviceId: string; lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
   const deviceId = params?.deviceId
 
+  const locale = resolveLocaleOrDefault(params?.lang)
   const devicesPath = localizePathname({
     pathname: "/console/whatsapp/devices",
     locale,

@@ -49,6 +49,12 @@ type EventsApiResponse = {
   }
 }
 
+// ─── Constants ─────────────────────────────────────────────────────────────────
+
+/** Static filter options — not derived from loaded events to avoid cold-start UI gaps. */
+const EVENT_TYPES = ["inbound_message", "status_update"]
+const PROCESSING_STATUSES = ["PENDING", "SUCCESS", "FAILED"]
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeDeviceLabel(device: DeviceListItem): string {
@@ -178,18 +184,6 @@ export default function PortalWhatsAppWebhookEventsPage() {
     void loadEvents()
   }
 
-  // ── Derived values ───────────────────────────────────────────────────────
-
-  const eventTypes = React.useMemo(() => {
-    const types = new Set(events.map((e) => e.eventType))
-    return Array.from(types).sort()
-  }, [events])
-
-  const processingStatuses = React.useMemo(() => {
-    const statuses = new Set(events.map((e) => e.processingStatus))
-    return Array.from(statuses).sort()
-  }, [events])
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -240,8 +234,8 @@ export default function PortalWhatsAppWebhookEventsPage() {
       {/* Filter Bar */}
       {selectedDeviceId && (
         <WebhookEventFilter
-          eventTypes={eventTypes}
-          statuses={processingStatuses}
+          eventTypes={EVENT_TYPES}
+          statuses={PROCESSING_STATUSES}
           devices={devices.map((d) => ({ id: d.id, label: makeDeviceLabel(d) }))}
           onFilterChange={handleFilterChange}
           initialFilters={filters}

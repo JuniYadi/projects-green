@@ -14,6 +14,8 @@ import { verifyWebhookUseCase } from "./verify-webhook"
 import { handleEventUseCase } from "./handle-event"
 import { enqueueWhatsAppWebhook } from "@/lib/queue/whatsapp-webhook"
 import { webhookMetrics } from "@/modules/health/webhook-metrics.service"
+import { prisma } from "@/lib/prisma"
+import { createWebhookEvent } from "@/modules/whatsapp/webhooks/webhooks.service"
 
 export const whatsappWebhookRoutes = new Elysia({ tags: ["WhatsApp Webhook"] })
   // Meta sends GET to verify webhook ownership
@@ -54,6 +56,17 @@ export const whatsappWebhookRoutes = new Elysia({ tags: ["WhatsApp Webhook"] })
     return { ok: true }
   })
 
+/**
+ * Look up a WhatsApp device by its Meta phone_number_id (whatsappPhoneId).
+ */
+async function lookupDeviceByPhoneId(phoneNumberId: string) {
+  if (!phoneNumberId) return null
+  return prisma.whatsappDevice.findFirst({
+    where: { whatsappPhoneId: phoneNumberId },
+    select: { id: true, organizationId: true },
+  })
+}
+
 export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Promise<void> {
   const result = await handleEventUseCase(body, { rawBody })
 
@@ -85,7 +98,10 @@ export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Pr
   for (const entry of entries) {
     const phoneNumberId = entry.phoneNumberId
 
-    // Enqueue each message event
+    // Look up device to capture webhook events
+    const device = await lookupDeviceByPhoneId(phoneNumberId)
+
+    // Enqueue each message event + create webhook event record
     for (const message of entry.messages) {
       try {
         await enqueueWhatsAppWebhook("message", message, phoneNumberId)
@@ -95,9 +111,19 @@ export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Pr
           err,
         )
       }
+
+      // Capture webhook event for this message
+      if (device) {
+        createWebhookEvent(
+          device.organizationId,
+          device.id,
+          "inbound_message",
+          message as any,
+        ).catch((err) => console.error("[whatsapp-webhook] failed to create webhook event:", err))
+      }
     }
 
-    // Enqueue each status event
+    // Enqueue each status event + create webhook event record
     for (const status of entry.statuses) {
       try {
         await enqueueWhatsAppWebhook("statuses", status, phoneNumberId)
@@ -106,6 +132,16 @@ export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Pr
           "[whatsapp-webhook] failed to enqueue status event",
           err,
         )
+      }
+
+      // Capture webhook event for this status
+      if (device) {
+        createWebhookEvent(
+          device.organizationId,
+          device.id,
+          "status_update",
+          status as any,
+        ).catch((err) => console.error("[whatsapp-webhook] failed to create webhook event:", err))
       }
     }
   }

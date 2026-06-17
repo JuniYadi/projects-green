@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import {
   createWebhookEvent,
+  handleIncomingWebhook,
   recordProcessingResult,
   listWebhookEvents,
 } from "../webhooks.service"
@@ -303,16 +304,8 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
     // 2. Process asynchronously
     ;(async () => {
       try {
-        await prisma.whatsappLog.create({
-          data: {
-            organizationId: device.organizationId,
-            whatsappDeviceId: deviceId,
-            type: "INBOX",
-            message: "Incoming Webhook Event",
-            metadata: body as any,
-          },
-        })
-        await recordProcessingResult(eventId, "SUCCESS")
+        const result = await handleIncomingWebhook(body, deviceId, device.organizationId)
+        await recordProcessingResult(eventId, result.success ? "SUCCESS" : "FAILED", result.success ? undefined : result.error)
       } catch (e) {
         console.error("Error processing whatsapp webhook:", e)
         await recordProcessingResult(eventId, "FAILED", String(e))

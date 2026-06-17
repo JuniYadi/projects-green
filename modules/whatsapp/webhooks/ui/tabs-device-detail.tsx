@@ -31,6 +31,12 @@ import {
   type WebhookEventFilterState,
 } from "@/modules/whatsapp/webhooks/ui/webhook-event-filter"
 
+// ─── Constants ─────────────────────────────────────────────────────────────────
+
+/** Static filter options — not derived from loaded events to avoid cold-start UI gaps. */
+const EVENT_TYPES = ["inbound_message", "status_update"]
+const PROCESSING_STATUSES = ["PENDING", "SUCCESS", "FAILED"]
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type PageState = "loading" | "error" | "loaded"
@@ -80,17 +86,6 @@ function WebhookLogTabContent({ deviceId }: { deviceId: string }) {
     DEFAULT_FILTER_STATE,
   )
   const [page, setPage] = React.useState(1)
-
-  // Derived values for filter options (populated from loaded events)
-  const eventTypes = React.useMemo(() => {
-    const types = new Set(events.map((e) => e.eventType))
-    return Array.from(types).sort()
-  }, [events])
-
-  const processingStatuses = React.useMemo(() => {
-    const statuses = new Set(events.map((e) => e.processingStatus))
-    return Array.from(statuses).sort()
-  }, [events])
 
   const loadEvents = React.useCallback(async () => {
     setPageState("loading")
@@ -159,8 +154,8 @@ function WebhookLogTabContent({ deviceId }: { deviceId: string }) {
   return (
     <div className="space-y-4">
       <WebhookEventFilter
-        eventTypes={eventTypes}
-        statuses={processingStatuses}
+        eventTypes={EVENT_TYPES}
+        statuses={PROCESSING_STATUSES}
         devices={[]}
         onFilterChange={handleFilterChange}
         initialFilters={filters}
