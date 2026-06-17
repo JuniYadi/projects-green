@@ -1,16 +1,8 @@
-/**
- * Quota & Balance Card — Inline editable client component
- *
- * Loading skeleton: rendered initially while React hydrates (or on re-fetch).
- * Error: inline error message with retry button.
- * Success: editable fields with save/cancel.
- */
-
 "use client"
 
+import { eden } from "@/lib/eden"
 import { useState, useCallback } from "react"
 import { toast } from "sonner"
-
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -23,6 +15,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Pen, Check, X, WarningCircle } from "@phosphor-icons/react"
+
+/**
+ * Quota & Balance Card — Inline editable client component
+ *
+ * Loading skeleton: rendered initially while React hydrates (or on re-fetch).
+ * Error: inline error message with retry button.
+ * Success: editable fields with save/cancel.
+ */
 
 type QuotaBalanceCardProps = {
   deviceId: string
@@ -73,22 +73,13 @@ export function QuotaBalanceCard({
     setError(null)
 
     try {
-      const res = await fetch(
-        `/api/whatsapp/devices/${deviceId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            quotaBase,
-            dailyLimitMessage: dailyLimit,
-          }),
-        },
-      )
+      const { data: res } = await eden.api.whatsapp.devices[deviceId].patch({
+        quotaBase,
+        dailyLimitMessage: dailyLimit,
+      } as never)
 
-      const body = await res.json()
-
-      if (!body.ok) {
-        throw new Error(body.message || "Failed to update device limits.")
+      if (!res?.ok) {
+        throw new Error((res as { message?: string })?.message || "Failed to update device limits.")
       }
 
       toast.success("Device limits updated successfully.")

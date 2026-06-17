@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import {
   Table,
   TableBody,
@@ -46,15 +47,15 @@ export function MembersList({ organizationId }: MembersListProps) {
   const loadData = useCallback(async () => {
     try {
       const [authRes, membersRes] = await Promise.all([
-        fetch(`/api/tenants/${organizationId}/authorization`).then(r => r.json()),
-        fetch(`/api/tenants/${organizationId}/members`).then(r => r.json())
+        eden.api.tenants[organizationId].authorization.get().then(r => r.data),
+        eden.api.tenants[organizationId].members.get().then(r => r.data)
       ])
 
-      if (authRes.ok) setAuthorization(authRes)
-      if (membersRes.ok) {
-        setMembers(membersRes.members)
+      if (authRes?.ok) setAuthorization(authRes as TenantAuthorizationResponse)
+      if (membersRes?.ok) {
+        setMembers((membersRes as { members: TenantMembershipSummary[] }).members)
       } else {
-        setError(membersRes.message || "Failed to load members")
+        setError((membersRes as { message?: string })?.message || "Failed to load members")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred")
@@ -72,6 +73,7 @@ export function MembersList({ organizationId }: MembersListProps) {
     setPendingActionId(actionId)
     setError(null)
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

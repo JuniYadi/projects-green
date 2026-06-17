@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import {
   Table,
   TableBody,
@@ -49,15 +50,15 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
   const loadData = useCallback(async () => {
     try {
       const [authRes, invRes] = await Promise.all([
-        fetch(`/api/tenants/${organizationId}/authorization`).then(r => r.json()),
-        fetch(`/api/tenants/${organizationId}/invitations`).then(r => r.json())
+        eden.api.tenants[organizationId].authorization.get().then(r => r.data),
+        eden.api.tenants[organizationId].invitations.get().then(r => r.data)
       ])
 
-      if (authRes.ok) setAuthorization(authRes)
-      if (invRes.ok) {
-        setInvitations(invRes.invitations)
+      if (authRes?.ok) setAuthorization(authRes as TenantAuthorizationResponse)
+      if (invRes?.ok) {
+        setInvitations((invRes as { invitations: TenantInvitationSummary[] }).invitations)
       } else {
-        setError(invRes.message || "Failed to load invitations")
+        setError((invRes as { message?: string })?.message || "Failed to load invitations")
       }
     } catch {
       setError("An unexpected error occurred")
@@ -79,17 +80,16 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     setIsSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(`/api/tenants/${organizationId}/invitations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, targetRole: role })
-      }).then(r => r.json())
+      const { data: res } = await eden.api.tenants[organizationId].invitations.post({
+        email,
+        targetRole: role as "admin" | "owner" | "member"
+      })
 
-      if (res.ok) {
+      if (res?.ok) {
         setEmail("")
         void loadData()
       } else {
-        setError(res.message || "Failed to send invitation")
+        setError((res as { message?: string })?.message || "Failed to send invitation")
       }
     } catch {
       setError("An unexpected error occurred")
@@ -101,6 +101,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
   const handleAction = async (path: string) => {
     setError(null)
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(path, { method: "POST" }).then(r => r.json())
       if (res.ok) {
         void loadData()

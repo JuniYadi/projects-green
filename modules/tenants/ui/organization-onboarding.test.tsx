@@ -1,5 +1,5 @@
 import { mock } from "bun:test"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 
 const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})

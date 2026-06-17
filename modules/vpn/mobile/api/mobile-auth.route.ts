@@ -93,6 +93,7 @@ const unauthorized = (set: RouteSet) => {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const serverError = (set: RouteSet, message: string) => {
   set.status = 500
   return {

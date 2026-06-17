@@ -35,9 +35,7 @@ function getCategory(item: InvoiceLineItem): Category {
   return "other"
 }
 
-function hasMetadata(line: InvoiceLineItem): boolean {
-  return !!(line.metadata && Object.keys(line.metadata).length > 0)
-}
+
 
 function extractDetail(line: InvoiceLineItem): string | null {
   const meta = line.metadata ?? {}
@@ -64,13 +62,11 @@ function groupLines(lines: InvoiceLineItem[]): Grouped {
 // ─── Group Section ─────────────────────────────────────────────────────
 
 function GroupSection({
-  category,
   label,
   icon,
   items,
   defaultOpen,
 }: {
-  category: Category
   label: string
   icon: React.ReactNode
   items: InvoiceLineItem[]
@@ -171,7 +167,6 @@ export function InvoiceGroupedLines({ lines, periodLabel }: InvoiceGroupedLinesP
         {categories.map(([cat, data]) => (
           <GroupSection
             key={cat}
-            category={cat}
             label={data.label}
             icon={data.icon}
             items={data.items}

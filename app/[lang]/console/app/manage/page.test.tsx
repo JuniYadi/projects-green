@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, fireEvent, waitFor } from "@testing-library/react"
+import { render, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
@@ -215,9 +215,10 @@ describe("ManagePage", () => {
 
     await waitFor(() => {
       const calls = (useRouter().replace as ReturnType<typeof mock>).mock.calls;
-      expect(calls.some((args: any) => args[0].includes("app=console-next-app"))).toBe(
-        true
-      )
+      expect(calls.some((args: unknown) => {
+        const url = (args as unknown[])[0] as string
+        return url.includes("app=console-next-app")
+      })).toBe(true)
     })
   })
 })

@@ -108,6 +108,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
   const authenticate = deps.authenticate ?? (() => withAuth())
   const pairingService =
     deps.pairingService ?? vpnPairingTokenService
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const deviceService =
     deps.deviceService ?? vpnMobileDeviceService
 

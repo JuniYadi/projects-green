@@ -1,5 +1,6 @@
 "use client"
 
+import { eden } from "@/lib/eden"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -72,7 +73,7 @@ type GatewaysRequestState =
 export function GatewaysTab() {
   const [state, setState] = useState<GatewaysRequestState>({ status: "loading" })
   const [providers, setProviders] = useState<ProviderOptionDTO[]>([])
-  const [providersLoading, setProvidersLoading] = useState(true)
+  const [, setProvidersLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null)
@@ -174,14 +175,12 @@ export function GatewaysTab() {
 
   const fetchGateways = useCallback(async () => {
     try {
-      const response = await fetch("/api/portal/payments/gateways")
+      const { data: payload } = await eden.api.portal.payments.gateways.get()
 
-      if (!response.ok) {
+      if (!payload) {
         setState({ status: "error", message: "Failed to load gateways" })
         return
       }
-
-      const payload = await response.json()
 
       if (payload.ok) {
         setState({ status: "success", data: payload.data || [] })
@@ -195,13 +194,8 @@ export function GatewaysTab() {
 
   const fetchProviders = useCallback(async () => {
     try {
-      const response = await fetch("/api/portal/payments/gateways/providers")
-      if (!response.ok) {
-        setProviders([])
-        return
-      }
-      const payload = await response.json()
-      if (payload.ok) {
+      const { data: payload } = await eden.api.portal.payments.gateways.providers.get()
+      if (payload?.ok) {
         setProviders(payload.data || [])
       }
     } catch {
@@ -220,11 +214,8 @@ export function GatewaysTab() {
   async function handleToggle(gateway: PaymentGateway) {
     setTogglingId(gateway.id)
     try {
-      const response = await fetch(`/api/portal/payments/gateways/${gateway.id}/toggle`, {
-        method: "PATCH",
-      })
-      const payload = await response.json()
-      if (payload.ok) {
+      const { data: payload } = await eden.api.portal.payments.gateways[gateway.id].toggle.patch()
+      if (payload?.ok) {
         await fetchGateways()
       }
     } catch {
@@ -245,22 +236,18 @@ export function GatewaysTab() {
     const currencies = readSupportedCurrencies(formData)
 
     try {
-      const response = await fetch("/api/portal/payments/gateways", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: String(formData.get("name") || ""),
-          type: providerType,
-          supportedCurrencies: currencies,
-          config,
-        }),
-      })
-      const payload = await response.json()
+      const body = {
+        name: String(formData.get("name") || ""),
+        type: providerType,
+        supportedCurrencies: currencies,
+        config,
+      }
+      const { data: payload } = await eden.api.portal.payments.gateways.post(body as never)
 
-      if (!response.ok || !payload.ok) {
+      if (!payload?.ok) {
         setState({
           status: "error",
-          message: payload.message || "Failed to create gateway",
+          message: "message" in (payload ?? {}) ? (payload as { message: string }).message : "Failed to create gateway",
         })
         return
       }
@@ -286,23 +273,16 @@ export function GatewaysTab() {
     const currencies = readSupportedCurrencies(formData)
 
     try {
-      const response = await fetch(
-        `/api/portal/payments/gateways/${editingGateway.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: String(formData.get("name") || ""),
-            supportedCurrencies: currencies,
-            config,
-          }),
-        }
-      )
-      const payload = await response.json()
-      if (!response.ok || !payload.ok) {
+      const body = {
+        name: String(formData.get("name") || ""),
+        supportedCurrencies: currencies,
+        config,
+      }
+      const { data: payload } = await eden.api.portal.payments.gateways[editingGateway.id].put(body as never)
+      if (!payload?.ok) {
         setState({
           status: "error",
-          message: payload.message || "Failed to update gateway",
+          message: payload?.message || "Failed to update gateway",
         })
         return
       }

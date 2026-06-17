@@ -101,8 +101,6 @@ mock.module("@/modules/github/github-install-state", () => {
   }
 })
 
-const mockGetStateSecret = mock(() => "")
-
 mock.module("@/modules/github/github.service", () => {
   return {
     GithubIntegrationDisabledError: MockGithubIntegrationDisabledError,

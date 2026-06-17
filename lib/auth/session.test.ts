@@ -2,10 +2,8 @@ import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test"
 
 // ─── Prisma mocks for resolveApiKey ─────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockApiKeyFindFirst = mock(async (): Promise<any> => null)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockApiKeyUpdate = mock(async (): Promise<any> => ({}))
+const mockApiKeyFindFirst = mock(async (): Promise<unknown> => null)
+const mockApiKeyUpdate = mock(async (): Promise<unknown> => ({}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -23,12 +21,12 @@ mock.module("@/lib/prisma", () => ({
     billingInvoice: {
       findMany: async () => [],
       findFirst: async () => null,
-      create: async (data: any) => ({ id: "inv-mock", ...data }),
-      update: async (data: any) => data,
+      create: async (data: unknown) => ({ id: "inv-mock", ...(data as Record<string, unknown>) }),
+      update: async (data: unknown) => data,
     },
     billingAccount: {
       findUnique: async () => null,
-      create: async (data: any) => data,
+      create: async (data: unknown) => data as Record<string, unknown>,
     },
     billingAdjustment: { create: async () => ({ id: "adj-mock" }) },
   },

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
@@ -80,21 +81,19 @@ export default function VouchersPage() {
 
     async function loadClaims() {
       try {
-        const res = await fetch("/api/vouchers/claims", {
-          signal: abortController.signal,
+        const { data } = await eden.api.vouchers.claims.get({
+          $fetch: { signal: abortController.signal },
         })
-        const data = (await res.json()) as ClaimsResponse | ApiErrorResponse
-        if (data.ok) {
-          setClaims(
-            data.data.map((item) => ({
-              id: item.id,
-              voucherCode: item.voucher.code,
-              amount: item.voucher.amount,
-              currency: item.voucher.currency,
-              claimedAt: item.claimedAt,
-            }))
-          )
-        }
+        if (!data?.ok) return
+        setClaims(
+          data.data.map((item: { id: string; voucher: { code: string; amount: string; currency: string }; claimedAt: string }) => ({
+            id: item.id,
+            voucherCode: item.voucher.code,
+            amount: item.voucher.amount,
+            currency: item.voucher.currency,
+            claimedAt: item.claimedAt,
+          }))
+        )
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
         // Silently fail — claims table will be empty
@@ -115,41 +114,34 @@ export default function VouchersPage() {
     setRedeemResult(null)
 
     try {
-      const res = await fetch("/api/vouchers/redeem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: trimmedCode }),
-      })
-      const data = (await res.json()) as RedeemResponse | ApiErrorResponse
+      const redeemParams: Record<string, unknown> = { code: trimmedCode }
+      const { data } = await eden.api.vouchers.redeem.post(redeemParams as never)
 
-      if (data.ok) {
-        setRedeemResult({
-          type: "success",
-          message: `Successfully redeemed voucher! ${data.data.currency} ${Number(data.data.amount).toLocaleString()} credit added.`,
-        })
-        setCode("")
-
-        // Reload claims to include the new one
-        const claimsRes = await fetch("/api/vouchers/claims")
-        const claimsData = (await claimsRes.json()) as
-          | ClaimsResponse
-          | ApiErrorResponse
-        if (claimsData.ok) {
-          setClaims(
-            claimsData.data.map((item) => ({
-              id: item.id,
-              voucherCode: item.voucher.code,
-              amount: item.voucher.amount,
-              currency: item.voucher.currency,
-              claimedAt: item.claimedAt,
-            }))
-          )
-        }
-      } else {
+      if (!data?.ok) {
         setRedeemResult({
           type: "error",
-          message: data.message || "Failed to redeem voucher",
+          message: data?.message || "Failed to redeem voucher",
         })
+        return
+      }
+      setRedeemResult({
+        type: "success",
+        message: `Successfully redeemed voucher! ${data.data.currency} ${Number(data.data.amount).toLocaleString()} credit added.`,
+      })
+      setCode("")
+
+      // Reload claims to include the new one
+      const { data: claimsData } = await eden.api.vouchers.claims.get()
+      if (claimsData?.ok) {
+        setClaims(
+          claimsData.data.map((item: { id: string; voucher: { code: string; amount: string; currency: string }; claimedAt: string }) => ({
+            id: item.id,
+            voucherCode: item.voucher.code,
+            amount: item.voucher.amount,
+            currency: item.voucher.currency,
+            claimedAt: item.claimedAt,
+          }))
+        )
       }
     } catch {
       setRedeemResult({

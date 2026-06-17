@@ -132,7 +132,8 @@ export function VpnDevicesTable() {
   }, [page, limit, filters])
 
   useEffect(() => {
-    load()
+    const run = async () => { await load() }
+    run()
   }, [load])
 
   const handleRevoke = useCallback(async () => {

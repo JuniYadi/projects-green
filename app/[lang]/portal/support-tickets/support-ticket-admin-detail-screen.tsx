@@ -197,6 +197,7 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
 
     const downloadUrl = `/api/support-tickets/attachments/${attachment.id}`
     try {
+      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(downloadUrl)
       if (!response.ok) throw new Error("Failed to load preview")
       const blob = await response.blob()

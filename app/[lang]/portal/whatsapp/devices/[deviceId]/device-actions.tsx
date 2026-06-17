@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
@@ -51,18 +52,10 @@ export function DeviceActions({
     setActionState("verifying")
 
     try {
-      const response = await fetch(
-        `/api/whatsapp/devices/${deviceId}/verify`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        }
-      )
+      const { data } = await eden.api.whatsapp.devices[deviceId].verify.post()
 
-      const data = await response.json()
-
-      if (!response.ok || data.ok === false) {
-        throw new Error(data.message || "Failed to verify device")
+      if (!data?.ok) {
+        throw new Error((data as { message?: string })?.message || "Failed to verify device")
       }
 
       toast.success("Device verified successfully")
@@ -80,18 +73,10 @@ export function DeviceActions({
     setActionState("reconnecting")
 
     try {
-      const response = await fetch(
-        `/api/whatsapp/devices/${deviceId}/reconnect`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        }
-      )
+      const { data } = await eden.api.whatsapp.devices[deviceId].reconnect.post()
 
-      const data = await response.json()
-
-      if (!response.ok || data.ok === false) {
-        throw new Error(data.message || "Failed to reconnect device")
+      if (!data?.ok) {
+        throw new Error((data as { message?: string })?.message || "Failed to reconnect device")
       }
 
       toast.success("Device reconnected successfully")
@@ -120,27 +105,22 @@ export function DeviceActions({
         return
       }
 
-      const response = await fetch(`/api/admin/devices/${deviceId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+      const { data } = await eden.api.admin.devices[deviceId].patch(payload as never)
 
-      const data = await response.json()
-
-      if (!response.ok || data.ok === false) {
-        if (data.error === "VALIDATION_ERROR") {
-          const fieldMessages = data.fieldErrors
-            ? Object.entries(data.fieldErrors)
+      if (!data?.ok) {
+        const errData = data as { error?: string; message?: string; fieldErrors?: Record<string, string[]> }
+        if (errData.error === "VALIDATION_ERROR") {
+          const fieldMessages = errData.fieldErrors
+            ? Object.entries(errData.fieldErrors)
                 .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(", ")}`)
                 .join("\n")
             : ""
-          toast.error(data.message || "Validation failed", {
+          toast.error(errData.message || "Validation failed", {
             description: fieldMessages || undefined,
           })
           return
         }
-        throw new Error(data.message || "Failed to update device")
+        throw new Error(errData.message || "Failed to update device")
       }
 
       toast.success("Device updated successfully")
@@ -160,16 +140,10 @@ export function DeviceActions({
   async function handleDeactivate() {
     setIsDeactivating(true)
     try {
-      const response = await fetch(`/api/admin/devices/${deviceId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "NON_ACTIVE" }),
-      })
+      const { data } = await eden.api.admin.devices[deviceId].patch({ status: "NON_ACTIVE" } as never)
 
-      const data = await response.json()
-
-      if (!response.ok || data.ok === false) {
-        throw new Error(data.message || "Failed to deactivate device")
+      if (!data?.ok) {
+        throw new Error((data as { message?: string })?.message || "Failed to deactivate device")
       }
 
       toast.success("Device deactivated successfully")
@@ -189,15 +163,10 @@ export function DeviceActions({
   async function handleDelete() {
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/admin/devices/${deviceId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      })
+      const { data } = await eden.api.admin.devices[deviceId].delete()
 
-      const data = await response.json()
-
-      if (!response.ok || data.ok === false) {
-        throw new Error(data.message || "Failed to delete device")
+      if (!data?.ok) {
+        throw new Error((data as { message?: string })?.message || "Failed to delete device")
       }
 
       toast.success("Device deleted successfully")

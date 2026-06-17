@@ -263,6 +263,7 @@ export class AppHostingBillingService {
     // Need at least one hour of balance to resume
     if (account.balance.lt(input.hourlyCost)) return { cleared: false }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { billingState: _, billingGraceStartedAt: __, ...restMeta } = meta
     await this.prisma.applicationStack.update({
       where: { id: input.stackId },

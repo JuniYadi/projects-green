@@ -70,7 +70,7 @@ describe("Webhook Route - Duitku Callback", () => {
     mockVerifyCallback.mockResolvedValueOnce(false)
 
     const { createWebhookRoutes } = await import("./webhook.route")
-    const routes = createWebhookRoutes()
+    createWebhookRoutes()
 
     // The route should return 400 for invalid signature
     expect(mockVerifyCallback).toBeDefined()
@@ -85,7 +85,7 @@ describe("Webhook Route - Duitku Callback", () => {
     })
 
     const { createWebhookRoutes } = await import("./webhook.route")
-    const routes = createWebhookRoutes()
+    createWebhookRoutes()
 
     // Should return "Already processed" and not call creditBalance
     expect(mockCreditBalance).not.toHaveBeenCalled()
@@ -96,7 +96,7 @@ describe("Webhook Route - Duitku Callback", () => {
     mockPaymentAuditLog.findFirst.mockResolvedValueOnce(null)
 
     const { createWebhookRoutes } = await import("./webhook.route")
-    const routes = createWebhookRoutes()
+    createWebhookRoutes()
 
     // Verify creditBalance would be called with correct params
     expect(mockCreditBalance).toBeDefined()
@@ -106,7 +106,7 @@ describe("Webhook Route - Duitku Callback", () => {
     mockPaymentAuditLog.findFirst.mockResolvedValueOnce(null)
 
     const { createWebhookRoutes } = await import("./webhook.route")
-    const routes = createWebhookRoutes()
+    createWebhookRoutes()
 
     // resultCode "01" should not trigger creditBalance
     expect(mockCreditBalance).toBeDefined()

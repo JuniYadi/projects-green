@@ -187,7 +187,6 @@ export class ManifestBuilder {
 
     let idx = 0
     for (const [name, cm] of Object.entries(container.configMaps)) {
-      const fileName = idx === 0 ? "configmap.yml" : `configmap-${idx}.yml`
       result.push({
         apiVersion: "v1",
         kind: "ConfigMap",
@@ -214,7 +213,6 @@ export class ManifestBuilder {
       for (const [k, v] of Object.entries(secret.value)) {
         encoded[k] = Buffer.from(v).toString("base64")
       }
-      const fileName = idx === 0 ? "secret.yml" : `secret-${idx}.yml`
       result.push({
         apiVersion: "v1",
         kind: "Secret",
@@ -232,7 +230,6 @@ export class ManifestBuilder {
 
     // TLS secrets
     if (container.tlsSecrets) {
-      let tlsIdx = 0
       for (const [name, tls] of Object.entries(container.tlsSecrets)) {
         result.push({
           apiVersion: "v1",
@@ -249,7 +246,6 @@ export class ManifestBuilder {
             "tls.key": Buffer.from(tls.key).toString("base64"),
           },
         })
-        tlsIdx++
       }
     }
 
@@ -277,7 +273,6 @@ export class ManifestBuilder {
   buildIngresses(container: StackContainer): K8sResource[] {
     if (!container.ingresses) return []
     return container.ingresses.map((ing, idx) => {
-      const fileName = idx === 0 ? "ingress.yml" : `ingress-${idx}.yml`
       return {
         apiVersion: "networking.k8s.io/v1",
         kind: "Ingress",

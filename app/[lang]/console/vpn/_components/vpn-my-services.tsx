@@ -163,7 +163,8 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
   }, [])
 
   useEffect(() => {
-    loadDevices()
+    const run = async () => { await loadDevices() }
+    run()
   }, [loadDevices])
 
   const handleCancel = async (id: string) => {

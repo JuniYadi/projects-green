@@ -121,23 +121,14 @@ const serverProfile = {
 const NOW = new Date("2026-06-16T12:00:00Z")
 
 const mockSignJwt = mock(() => "mock-session-token")
-const mockVerifyJwt = mock(() => ({
-  sub: SUBSCRIPTION_ID,
-  org: "org-1",
-  iat: Math.floor(NOW.getTime() / 1000),
-  exp: Math.floor(NOW.getTime() / 1000) + 300,
-  jti: "jti-uuid",
-  typ: "vpn-pairing" as const,
-}))
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fakeDeviceService = {
   create: mock(async () => ({ id: DEVICE_ID, status: "ACTIVE" })),
   revoke: mock(async () => ({ ...activeDevice, status: "REVOKED" })),
   updateLastSeen: mock(async () => activeDevice),
   updateName: mock(async () => activeDevice),
   findById: mock(async () => activeDevice),
-} as any
+} as any // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const fakePairingService = {
   generate: mock(async () => ({
@@ -186,8 +177,7 @@ function createPairingApp() {
   return new Elysia().use(
     createMobilePairingRoutes({
       authenticate,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      pairingService: fakePairingService as any,
+      pairingService: fakePairingService as any, // eslint-disable-line @typescript-eslint/no-explicit-any
     })
   )
 }

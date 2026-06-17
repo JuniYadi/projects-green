@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -112,15 +113,15 @@ export function GithubEventsTable() {
       if (processStatus) params.set("processStatus", processStatus)
       if (deletedState) params.set("deletedState", deletedState)
 
-      const res: EventListResponse = await fetch(
-        `/api/admin/app/events/github?${params}`
-      ).then((r) => r.json())
-      if (res.ok) {
-        setEvents(res.data.items)
-        setTotal(res.data.total)
-      } else {
+      const { data: res } = await eden.api.admin.app.events.github.get({
+        $query: Object.fromEntries(params.entries()),
+      })
+      if (!res || !res.ok) {
         setError("Failed to load events")
+        return
       }
+      setEvents(res.data!.items as never)
+      setTotal(res.data!.total as never)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An error occurred"
@@ -139,11 +140,9 @@ export function GithubEventsTable() {
     setIsLoadingDetail(true)
     setJsonModalOpen(true)
     try {
-      const res: EventDetailResponse = await fetch(
-        `/api/admin/app/events/github/${event.id}`
-      ).then((r) => r.json())
-      if (res.ok) {
-        setSelectedEvent(res.data)
+      const { data: res } = await eden.api.admin.app.events.github[event.id].get()
+      if (res?.ok && res.data) {
+        setSelectedEvent(res.data as unknown as GithubEventDetail)
       } else {
         setError("Failed to load event detail")
       }

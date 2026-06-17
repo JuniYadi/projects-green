@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -394,16 +395,10 @@ async function updateSubscription(
   id: string,
   updates: Partial<SubscriptionItem>
 ): Promise<void> {
-  const response = await fetch(`/api/billing/admin/subscriptions/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(updates),
-  })
+  const { data } = await eden.api.billing.admin.subscriptions[id].patch(updates as never)
 
-  const data = await response.json()
-
-  if (!response.ok || data.ok === false) {
-    throw new Error(data.message || "Failed to update subscription")
+  if (!data?.ok) {
+    throw new Error((data as { message?: string })?.message || "Failed to update subscription")
   }
 }
 

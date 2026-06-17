@@ -1,7 +1,6 @@
 import { Elysia } from "elysia"
 
 import {
-  checkLiveness,
   checkReadiness,
   checkStartup,
 } from "@/modules/health/health.service"

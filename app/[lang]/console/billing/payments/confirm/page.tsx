@@ -1,5 +1,6 @@
 "use client"
 
+import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from "react"
@@ -84,9 +85,8 @@ function ConfirmationPageContent() {
 
     async function fetchInvoice() {
       try {
-        const response = await fetch(`/api/payments/topup/invoice/${invoiceId}`)
-        const data = await response.json()
-        if (data.ok && !cancelled) {
+        const { data } = await eden.api.payments.topup.invoice[invoiceId].get()
+        if (data?.ok && !cancelled) {
           const totalAmount = data.invoice?.totalAmount
           const parsed =
             typeof totalAmount === "number"
@@ -120,23 +120,24 @@ function ConfirmationPageContent() {
 
     async function fetchBankAccounts() {
       try {
-        const response = await fetch("/api/payments/topup/bank-accounts")
-        const data = await response.json()
-        if (data.ok && !cancelled) {
-          setBankAccounts(data.data || [])
-          if (data.data?.length > 0) {
-            const preselected = searchParams.get("bankAccountId")
-            if (
-              preselected &&
-              data.data.some((b: BankAccount) => b.id === preselected)
-            ) {
-              setBankAccountId(preselected)
-            } else {
-              const defaultAccount = data.data.find(
-                (b: BankAccount) => b.isDefault,
-              )
-              setBankAccountId(defaultAccount?.id || data.data[0].id)
-            }
+        const { data } = await eden.api.payments.topup["bank-accounts"].get()
+        if (!data?.ok || cancelled) {
+          return
+        }
+        setBankAccounts((data as { data?: BankAccount[] }).data || [])
+        const bankAccountsData = (data as { data: BankAccount[] }).data
+        if (bankAccountsData?.length > 0) {
+          const preselected = searchParams.get("bankAccountId")
+          if (
+            preselected &&
+            bankAccountsData.some((b) => b.id === preselected)
+          ) {
+            setBankAccountId(preselected)
+          } else {
+            const defaultAccount = bankAccountsData.find(
+              (b) => b.isDefault,
+            )
+            setBankAccountId(defaultAccount?.id || bankAccountsData[0].id)
           }
         }
       } catch {
@@ -178,15 +179,12 @@ function ConfirmationPageContent() {
       const formData = new FormData()
       formData.append("file", file)
 
-      const response = await fetch("/api/payments/upload-screenshot", {
-        method: "POST",
-        body: formData,
-      })
+      const { data: result } = await eden.api.payments["upload-screenshot"].post({
+        $fetch: { method: "POST", body: formData } as RequestInit
+      } as never)
+      if (!result?.ok) throw new Error((result as { message?: string })?.message || "Upload failed")
 
-      const result = await response.json()
-      if (!result.ok) throw new Error(result.message || "Upload failed")
-
-      setScreenshotUrl(result.url)
+      setScreenshotUrl((result as { url: string }).url)
       setScreenshotPreview(URL.createObjectURL(file))
     } catch (err) {
       setErrorMessage(
@@ -244,30 +242,22 @@ function ConfirmationPageContent() {
     setErrorMessage(null)
 
     try {
-      const response = await fetch(
-        `/api/payments/topup/confirm/${invoiceId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bankAccountId,
-            amount: displayAmount,
-            paymentDateTime: new Date(
-              initialPaymentDateTime,
-            ).toISOString(),
-            senderBankName: senderBankName || undefined,
-            senderName: senderName || undefined,
-            senderAccount: senderAccount || undefined,
-            screenshotUrl: screenshotUrl || undefined,
-            notes: notes || undefined,
-          }),
-        },
-      )
+      const { data: result } = await eden.api.payments.topup.confirm[invoiceId].post({
+        bankAccountId,
+        amount: displayAmount,
+        paymentDateTime: new Date(
+          initialPaymentDateTime,
+        ).toISOString(),
+        senderBankName: senderBankName || undefined,
+        senderName: senderName || undefined,
+        senderAccount: senderAccount || undefined,
+        screenshotUrl: screenshotUrl || undefined,
+        notes: notes || undefined,
+      } as never)
 
-      const result = await response.json()
-      if (!response.ok || !result.ok) {
+      if (!result?.ok) {
         throw new Error(
-          result.message || "Confirmation failed. Please try again.",
+          (result as { message?: string })?.message || "Confirmation failed. Please try again.",
         )
       }
 
@@ -669,7 +659,6 @@ function ConfirmationPageContent() {
 export default function ConfirmPaymentPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
   return (
     <Suspense
       fallback={

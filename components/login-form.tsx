@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
 import { XCircleIcon } from "@phosphor-icons/react"
@@ -94,20 +95,9 @@ export function LoginForm({
     setIsRequestingCode(true)
 
     try {
-      const response = await fetch("/api/auth/magic/request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: emailResult.data }),
-      })
+      const { data: payload } = await eden.api.auth.magic.request.post({ email: emailResult.data })
 
-      const payload = (await response.json().catch(() => null)) as
-        | ApiErrorPayload
-        | { message?: string }
-        | null
-
-      if (!response.ok) {
+      if (!payload) {
         setServerFieldErrors(
           (payload as ApiErrorPayload | null)?.fieldErrors ?? {}
         )
@@ -162,25 +152,15 @@ export function LoginForm({
     setIsVerifyingCode(true)
 
     try {
-      const response = await fetch("/api/auth/magic/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: emailResult.data,
-          code: codeResult.data,
-        }),
+      const { data: payload } = await eden.api.auth.magic.verify.post({
+        email: emailResult.data ?? email,
+        code: codeResult.data ?? code,
       })
 
-      const payload = (await response
-        .json()
-        .catch(() => null)) as ApiErrorPayload | null
-
-      if (!response.ok) {
-        setServerFieldErrors(payload?.fieldErrors ?? {})
+      if (!payload || !payload.ok) {
+        setServerFieldErrors((payload as { fieldErrors?: Record<string, string[]> })?.fieldErrors ?? {})
         setSubmitError(
-          payload?.message ?? "Invalid or expired code. Please try again."
+          (payload as { message?: string })?.message ?? "Invalid or expired code. Please try again."
         )
         return
       }

@@ -1,5 +1,5 @@
 import { mock } from "bun:test"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 
 const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})
@@ -511,6 +511,7 @@ describe("OrganizationAdminSurface", () => {
   it("shows notice and refreshes after successful action", async () => {
     const OrganizationAdminSurface = await loadOrganizationAdminSurface()
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let callCount = 0
     globalThis.fetch = mock(
       async (input: RequestInfo | URL, init?: RequestInit) => {

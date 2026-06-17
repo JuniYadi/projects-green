@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
 import {
   Table,
@@ -113,17 +114,20 @@ export function VoucherManagementTable() {
       searchParams.set("offset", String(offset))
       if (search) searchParams.set("prefix", search)
 
-      const res = await fetch(
-        `/api/vouchers/portal?${searchParams.toString()}`
-      )
-      const data = (await res.json()) as ListResponse | ApiErrorResponse
+      const { data } = await eden.api.vouchers.portal.get({
+        $query: Object.fromEntries(searchParams.entries()),
+      })
 
-      if (data.ok) {
-        setVouchers(data.data)
-        setTotal(data.total)
-      } else {
-        setError(data.message || "Failed to load vouchers")
+      if (!data) {
+        setError("Failed to load vouchers")
+        return
       }
+      if (!data.ok) {
+        setError(data.message || "Failed to load vouchers")
+        return
+      }
+      setVouchers(data.data as never)
+      setTotal(data.total as never)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unexpected error occurred"
@@ -173,14 +177,9 @@ export function VoucherManagementTable() {
         payload.targetOrganizationId = createForm.targetOrganizationId.trim()
       }
 
-      const res = await fetch("/api/vouchers/portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      const data = (await res.json()) as CreateResponse | ApiErrorResponse
+      const { data } = await eden.api.vouchers.portal.post(payload)
 
-      if (data.ok) {
+      if (data?.ok) {
         setDialogOpen(false)
         setCreateForm({
           prefix: "",
@@ -194,7 +193,7 @@ export function VoucherManagementTable() {
         // Reload the list from first page
         setOffset(0)
       } else {
-        setCreateError(data.message || "Failed to create voucher")
+        setCreateError(data?.message || "Failed to create voucher")
       }
     } catch (err) {
       setCreateError(

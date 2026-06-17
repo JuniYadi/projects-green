@@ -28,17 +28,17 @@ const mockRedisDel = mock(async (key: string): Promise<number> => {
 })
 
 const mockPrismaFindUnique = mock(
-  async (_args: unknown): Promise<Record<string, unknown> | null> => {
+  async (_args?: unknown): Promise<Record<string, unknown> | null> => {
     return null
   }
 )
 const mockPrismaUpsert = mock(
-  async (_args: unknown): Promise<Record<string, unknown>> => {
+  async (_args?: unknown): Promise<Record<string, unknown>> => {
     return {}
   }
 )
 const mockPrismaDelete = mock(
-  async (_args: unknown): Promise<Record<string, unknown>> => {
+  async (_args?: unknown): Promise<Record<string, unknown>> => {
     return {}
   }
 )

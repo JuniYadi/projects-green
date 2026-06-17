@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -38,20 +39,17 @@ export function Recommendations() {
   const handleGenerate = async () => {
     setIsGenerating(true)
     try {
-      const res = await fetch("/api/admin/detector/recommend", {
-        method: "POST",
-      })
-      const data = await res.json()
-      if (data.ok) {
-        setRecommendations(data.data)
-        setHasGenerated(true)
-        if (data.data.length === 0) {
-          toast.info(
-            "No new recommendations found. The system needs more inspection data."
-          )
-        }
-      } else {
-        toast.error(data.message || "Failed to generate recommendations")
+      const { data } = await eden.api.admin.detector.recommend.post()
+      if (!data?.ok) {
+        toast.error(data?.message || "Failed to generate recommendations")
+        return
+      }
+      setRecommendations(data.data)
+      setHasGenerated(true)
+      if (data.data.length === 0) {
+        toast.info(
+          "No new recommendations found. The system needs more inspection data."
+        )
       }
     } catch {
       toast.error("Failed to generate recommendations")
@@ -63,24 +61,19 @@ export function Recommendations() {
   const handleApprove = async (rec: RuleRecommendation) => {
     setApprovingId(rec.id)
     try {
-      const res = await fetch("/api/admin/detector/rules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: rec.suggestedName,
-          description: rec.suggestedDescription,
-          patternJson: rec.suggestedPatternJson,
-          implicationsJson: rec.suggestedImplicationsJson,
-          confidenceWeight: rec.suggestedConfidenceWeight,
-          priority: rec.suggestedPriority,
-        }),
+      const { data: res } = await eden.api.admin.detector.rules.post({
+        name: rec.suggestedName,
+        description: rec.suggestedDescription,
+        patternJson: rec.suggestedPatternJson as Record<string, unknown>,
+        implicationsJson: rec.suggestedImplicationsJson as Record<string, unknown>,
+        confidenceWeight: rec.suggestedConfidenceWeight,
+        priority: rec.suggestedPriority,
       })
-      const data = await res.json()
-      if (data.ok) {
+      if (res?.ok) {
         toast.success(`Rule "${rec.suggestedName}" created successfully`)
         setRecommendations((prev) => prev.filter((r) => r.id !== rec.id))
       } else {
-        toast.error(data.message || "Failed to create rule")
+        toast.error(res?.message || "Failed to create rule")
       }
     } catch {
       toast.error("Failed to create rule from recommendation")

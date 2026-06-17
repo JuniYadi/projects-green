@@ -101,7 +101,6 @@ function formatRelativeTime(dateString: string): string {
 export default function WhatsAppDashboardPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
   const [state, setState] = React.useState<DashboardState>("loading")
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [conversations, setConversations] = React.useState<

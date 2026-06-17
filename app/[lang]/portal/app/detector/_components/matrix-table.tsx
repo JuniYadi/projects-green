@@ -1,6 +1,7 @@
 "use client"
 
 import type { ColumnDef } from "@tanstack/react-table"
+import { eden } from "@/lib/eden"
 import { useEffect, useState } from "react"
 
 import { DataTable } from "@/components/data-table"
@@ -248,15 +249,15 @@ export function MatrixTable() {
       try {
         const params = new URLSearchParams()
         if (includeInactive) params.set("includeInactive", "true")
-        const res = await fetch(`/api/admin/detector/mappings?${params}`, {
-          signal: abortController.signal,
+        const { data } = await eden.api.admin.detector.mappings.get({
+          $query: Object.fromEntries(params.entries()),
+          $fetch: { signal: abortController.signal },
         })
-        const data = await res.json()
-        if (data.ok) {
-          setMappings(data.data)
-        } else {
-          setError(data.message || "Failed to load mappings")
+        if (!data?.ok) {
+          setError(data?.message || "Failed to load mappings")
+          return
         }
+        setMappings(data.data)
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
         setError(err instanceof Error ? err.message : "An error occurred")
@@ -270,65 +271,44 @@ export function MatrixTable() {
   }, [includeInactive, refreshKey])
 
   const handleCreate = async (formData: MappingFormData) => {
-    const res = await fetch("/api/admin/detector/mappings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        frameworkId: formData.frameworkId,
-        frameworkVersion: formData.frameworkVersion || undefined,
-        runtimeId: formData.runtimeId,
-        runtimeVersion: formData.runtimeVersion,
-        buildVersion: formData.buildVersion || undefined,
-        priority: formData.priority,
-      }),
+    const { data } = await eden.api.admin.detector.mappings.post({
+      frameworkId: formData.frameworkId,
+      frameworkVersion: formData.frameworkVersion || undefined,
+      runtimeId: formData.runtimeId,
+      runtimeVersion: formData.runtimeVersion,
+      buildVersion: formData.buildVersion || undefined,
+      priority: formData.priority,
     })
-    const data = await res.json()
-    if (!data.ok) throw new Error(data.message)
+    if (!data?.ok) throw new Error(data?.message || "Failed to create mapping")
     toast.success("Mapping created successfully")
     refresh()
   }
 
   const handleUpdate = async (formData: MappingFormData) => {
     if (!editingMapping) return
-    const res = await fetch(
-      `/api/admin/detector/mappings/${editingMapping.id}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          frameworkId: formData.frameworkId,
-          frameworkVersion: formData.frameworkVersion || null,
-          runtimeId: formData.runtimeId,
-          runtimeVersion: formData.runtimeVersion,
-          buildVersion: formData.buildVersion || null,
-          priority: formData.priority,
-        }),
-      }
-    )
-    const data = await res.json()
-    if (!data.ok) throw new Error(data.message)
+    const { data } = await eden.api.admin.detector.mappings[editingMapping.id].patch({
+      frameworkId: formData.frameworkId,
+      frameworkVersion: formData.frameworkVersion || null,
+      runtimeId: formData.runtimeId,
+      runtimeVersion: formData.runtimeVersion,
+      buildVersion: formData.buildVersion || null,
+      priority: formData.priority,
+    })
+    if (!data?.ok) throw new Error(data?.message || "Failed to update mapping")
     toast.success("Mapping updated successfully")
     refresh()
   }
 
   const handleToggleActive = async (mapping: RuntimeMapping) => {
-    const res = await fetch(
-      `/api/admin/detector/mappings/${mapping.id}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !mapping.isActive }),
-      }
-    )
-    const data = await res.json()
-    if (data.ok) {
-      toast.success(
-        `Mapping ${mapping.isActive ? "deactivated" : "activated"} successfully`
-      )
-      refresh()
-    } else {
-      toast.error(data.message || "Failed to toggle mapping status")
+    const { data } = await eden.api.admin.detector.mappings[mapping.id].patch({ isActive: !mapping.isActive })
+    if (!data?.ok) {
+      toast.error(data?.message || "Failed to toggle mapping status")
+      return
     }
+    toast.success(
+      `Mapping ${mapping.isActive ? "deactivated" : "activated"} successfully`
+    )
+    refresh()
   }
 
   const handleDelete = async (mapping: RuntimeMapping) => {
@@ -339,17 +319,13 @@ export function MatrixTable() {
     )
       return
 
-    const res = await fetch(
-      `/api/admin/detector/mappings/${mapping.id}`,
-      { method: "DELETE" }
-    )
-    const data = await res.json()
-    if (data.ok) {
-      toast.success("Mapping deleted successfully")
-      refresh()
-    } else {
-      toast.error(data.message || "Failed to delete mapping")
+    const { data } = await eden.api.admin.detector.mappings[mapping.id].delete()
+    if (!data?.ok) {
+      toast.error(data?.message || "Failed to delete mapping")
+      return
     }
+    toast.success("Mapping deleted successfully")
+    refresh()
   }
 
   const columns: ColumnDef<RuntimeMapping>[] = [

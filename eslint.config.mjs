@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
     ".claude/worktrees/**",
     ".crew/worktrees/**",
     ".worktrees/**",
+    'coverage/**'
   ]),
   // Relaxed rules for test files
   {
@@ -48,6 +49,27 @@ const eslintConfig = defineConfig([
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@next/next/no-assign-module-variable": "off",
+    },
+  },
+  // Ban raw fetch() — use eden (lib/eden.ts) for type-safe API calls
+  {
+    files: [
+      "app/**/*.ts",
+      "app/**/*.tsx",
+      "components/**/*.ts",
+      "components/**/*.tsx",
+      "hooks/**/*.ts",
+      "hooks/**/*.tsx",
+    ],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "fetch",
+          message:
+            "Use `eden` from '@/lib/eden' instead of raw fetch(). Eden provides type-safe API calls with compile-time validation.",
+        },
+      ],
     },
   },
   // UI components with hydration pattern

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -90,23 +91,15 @@ export function AdjustmentForm({
     setServerError(null)
 
     try {
-      const response = await fetch("/api/billing/admin/adjust", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          tenantId,
-          type,
-          amount,
-          reason: reason.trim(),
-        }),
-      })
+      const { data } = await eden.api.billing.admin.adjust.post({
+        tenantId,
+        type,
+        amount,
+        reason: reason.trim(),
+      } as never)
 
-      const result = await response.json()
-
-      if (!response.ok || result.ok === false) {
-        throw new Error(result.message || "Failed to create adjustment")
+      if (!data?.ok) {
+        throw new Error((data as { message?: string })?.message || "Failed to create adjustment")
       }
 
       toast.success("Adjustment created successfully")

@@ -1,6 +1,7 @@
 "use client"
 
 import type { ColumnDef } from "@tanstack/react-table"
+import { eden } from "@/lib/eden"
 
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
@@ -126,17 +127,12 @@ export function CurrenciesTab() {
 
   const fetchCurrencies = useCallback(async () => {
     try {
-      const response = await fetch("/api/portal/payments/currencies")
-      if (!response.ok) {
-        setState({ status: "error", message: "Failed to load currencies" })
+      const { data: payload } = await eden.api.portal.payments.currencies.get()
+      if (!payload?.ok) {
+        setState({ status: "error", message: payload?.message || "Failed to load currencies" })
         return
       }
-      const payload = await response.json()
-      if (payload.ok) {
-        setState({ status: "success", data: payload.data || [] })
-      } else {
-        setState({ status: "error", message: payload.message || "Failed to load currencies" })
-      }
+      setState({ status: "success", data: payload.data || [] })
     } catch {
       setState({ status: "error", message: "Failed to load currencies" })
     }
@@ -155,22 +151,24 @@ export function CurrenciesTab() {
   ) {
     setIsSubmitting(true)
     try {
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...(method === "POST" ? { code: String(formData.get("code") || "").toUpperCase() } : {}),
-          name: String(formData.get("name") || ""),
-          symbol: String(formData.get("symbol") || ""),
-          isBase: isBaseRow,
-          ratePerBase: isBaseRow ? 1 : Number(formData.get("ratePerBase") || 0),
-          minTopup: Number(formData.get("minTopup") || 0),
-          maxTopup: Number(formData.get("maxTopup") || 0),
-        }),
-      })
-      const payload = await response.json()
-      if (!response.ok || !payload.ok) {
-        setState({ status: "error", message: payload.message || "Failed to save currency" })
+      const body = {
+        ...(method === "POST" ? { code: String(formData.get("code") || "").toUpperCase() } : {}),
+        name: String(formData.get("name") || ""),
+        symbol: String(formData.get("symbol") || ""),
+        isBase: isBaseRow,
+        ratePerBase: isBaseRow ? 1 : Number(formData.get("ratePerBase") || 0),
+        minTopup: Number(formData.get("minTopup") || 0),
+        maxTopup: Number(formData.get("maxTopup") || 0),
+      }
+      let rawPayload: unknown
+      if (method === "POST") {
+        rawPayload = await eden.api.portal.payments.currencies.post(body as never)
+      } else {
+        rawPayload = await (eden.api.portal.payments.currencies.put as unknown as (...args: never[]) => Promise<unknown>)(body as never)
+      }
+      const payload = (rawPayload as { data: { ok: boolean; message?: string } }).data
+      if (!payload?.ok) {
+        setState({ status: "error", message: payload?.message || "Failed to save currency" })
         return false
       }
       await fetchCurrencies()
@@ -208,12 +206,9 @@ export function CurrenciesTab() {
   async function handleToggle(id: string) {
     setIsSubmitting(true)
     try {
-      const response = await fetch(`/api/portal/payments/currencies/${id}/toggle`, {
-        method: "PATCH",
-      })
-      const payload = await response.json()
-      if (!response.ok || !payload.ok) {
-        setState({ status: "error", message: payload.message || "Failed to toggle currency" })
+      const { data: payload } = await eden.api.portal.payments.currencies[id].toggle.patch()
+      if (!payload?.ok) {
+        setState({ status: "error", message: payload?.message || "Failed to toggle currency" })
         return
       }
       await fetchCurrencies()

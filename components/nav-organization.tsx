@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { eden } from "@/lib/eden"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@workos-inc/authkit-nextjs/components"
@@ -106,17 +107,13 @@ export function NavOrganization({
       setIsLoadingMemberships(true)
 
       try {
-        const response = await fetch("/api/tenants/bootstrap")
-        const payload = (await response.json().catch(() => null)) as
-          | TenantBootstrapResponse
-          | TenantApiError
-          | null
+        const { data: payload } = await eden.api.tenants.bootstrap.get()
 
         if (!isActive) {
           return
         }
 
-        if (!response.ok || !payload || isTenantApiError(payload)) {
+        if (!payload || isTenantApiError(payload)) {
           setBootstrapOrgId(null)
           setMemberships([])
           return
@@ -180,22 +177,12 @@ export function NavOrganization({
     setIsCreating(true)
 
     try {
-      const response = await fetch("/api/tenants/organizations/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: candidateName,
-          currency: input.currency,
-        }),
+      const { data: payload } = await eden.api.tenants.organizations.create.post({
+        name: candidateName,
+        currency: input.currency,
       })
-      const payload = (await response.json().catch(() => null)) as
-        | TenantOrganizationCreateResponse
-        | TenantApiError
-        | null
 
-      if (!response.ok || !payload || isTenantApiError(payload)) {
+      if (!payload || isTenantApiError(payload)) {
         setCreateError(
           payload && isTenantApiError(payload)
             ? payload.message

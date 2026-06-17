@@ -1,6 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
+import { eden } from "@/lib/eden"
 import { useParams } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -30,7 +31,13 @@ export default function DocDetailPage() {
 
   const { data, isLoading } = useQuery<DocResponse>({
     queryKey: ["docs", "detail", path],
-    queryFn: () => fetch(`/api/docs?path=${encodeURIComponent(path)}`).then((res) => res.json()),
+    queryFn: async () => {
+      const { data } = await eden.api.docs.get({ $query: { path } })
+      if (!data) {
+        return { ok: false, message: "Failed to load documentation" } as DocResponse
+      }
+      return data as DocResponse
+    },
     enabled: !!params.slug,
   })
 

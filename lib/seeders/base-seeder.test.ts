@@ -13,12 +13,12 @@ const mockPrisma = {
   billingInvoice: {
     findMany: async () => [],
     findFirst: async () => null,
-    create: async (data: any) => ({ id: "inv-mock", ...data }),
-    update: async (data: any) => data,
+    create: async (data: unknown) => ({ id: "inv-mock", ...(data as Record<string, unknown>) }),
+    update: async (data: unknown) => data,
   },
   billingAccount: {
     findUnique: async () => null,
-    create: async (data: any) => data,
+    create: async (data: unknown) => data as Record<string, unknown>,
   },
   billingAdjustment: { create: async () => ({ id: "adj-mock" }) },
 }

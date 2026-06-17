@@ -141,6 +141,7 @@ export async function vpnApi<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
+  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(`/api${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,

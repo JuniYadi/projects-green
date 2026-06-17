@@ -3,7 +3,6 @@ import { Prisma } from "@prisma/client"
 
 import {
   VpnBillingAccountNotFoundError,
-  VpnDuplicateSubscriptionError,
   VpnInsufficientBalanceError,
   VpnPackageUnavailableError,
   VpnSubscriptionService,

@@ -188,7 +188,8 @@ export function BillingContactsList() {
   }, [])
 
   useEffect(() => {
-    void fetchAccount()
+    const run = async () => { await fetchAccount() }
+    run()
   }, [fetchAccount])
 
   const contacts = useMemo(

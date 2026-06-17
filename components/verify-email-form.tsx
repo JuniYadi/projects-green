@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
 
 import { cn } from "@/lib/utils"
@@ -69,28 +70,15 @@ export function VerifyEmailForm({
           setIsSubmitting(true)
 
           try {
-            const response = await fetch(
-              "/api/auth/email-verification/complete",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  code,
-                  pendingAuthenticationToken,
-                }),
-              }
-            )
+            const { data } = await eden.api.auth["email-verification"].complete.post({
+              code,
+              pendingAuthenticationToken,
+            })
 
-            const payload = (await response
-              .json()
-              .catch(() => null)) as ApiErrorPayload | null
-
-            if (!response.ok) {
-              setServerFieldErrors(payload?.fieldErrors ?? {})
+            if (!data?.ok) {
+              setServerFieldErrors((data as Record<string, unknown>)?.fieldErrors as Record<string, string[]> ?? {})
               setSubmitError(
-                payload?.message ?? "Invalid or expired verification code."
+                (data as Record<string, unknown>)?.message as string ?? "Invalid or expired verification code."
               )
               return
             }

@@ -1,4 +1,4 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
 import { createDetectorAdminRoutes } from "@/modules/framework-detection/api/detector-admin.route"
@@ -170,12 +170,6 @@ describe("detectorAdminRoutes", () => {
           }),
         })
       )
-
-      const body = (await response.json()) as {
-        ok: boolean
-        error: string
-        fieldErrors?: Record<string, string[]>
-      }
 
       // Elysia returns 422 for validation errors by default
       expect(response.status).toBe(422)

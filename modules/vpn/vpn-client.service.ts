@@ -11,6 +11,7 @@ type VpnClientPrisma = {
   vpnClient: VpnClientDelegate
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 type VpnClientRecord = Prisma.VpnClientGetPayload<{}>
 
 type CreateClientInput = {

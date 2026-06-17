@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom"
 import { SupportTicketCreateScreen } from "./support-ticket-create-screen"
