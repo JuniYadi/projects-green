@@ -19,5 +19,7 @@ export const getApiBaseUrl = () => {
 }
 
 export const eden = edenTreaty<App>(getApiBaseUrl(), {
-  fetcher: (...args: Parameters<typeof fetch>) => fetch(...args),
+  // Pass `fetch` directly so its full type (including Next 16's `preconnect`)
+  // is preserved; an arrow wrapper drops the non-call-signature members.
+  fetcher: fetch,
 })

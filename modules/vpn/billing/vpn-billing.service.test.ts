@@ -100,7 +100,7 @@ describe("VpnBillingService", () => {
             period: "2026-06",
           }),
           line: expect.objectContaining({
-            description: "VPN INDONESIA monthly payment",
+            description: "VPN region INDONESIA — 2026-06",
             quantity: new Prisma.Decimal(1),
             unitPrice: decimal("25.00"),
             lineType: "SUBSCRIPTION",
