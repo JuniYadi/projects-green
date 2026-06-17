@@ -121,21 +121,23 @@ function ConfirmationPageContent() {
     async function fetchBankAccounts() {
       try {
         const { data } = await eden.api.payments.topup["bank-accounts"].get()
-        if (data.ok && !cancelled) {
-          setBankAccounts(data.data || [])
-          if (data.data?.length > 0) {
-            const preselected = searchParams.get("bankAccountId")
-            if (
-              preselected &&
-              data.data.some((b: BankAccount) => b.id === preselected)
-            ) {
-              setBankAccountId(preselected)
-            } else {
-              const defaultAccount = data.data.find(
-                (b: BankAccount) => b.isDefault,
-              )
-              setBankAccountId(defaultAccount?.id || data.data[0].id)
-            }
+        if (!data?.ok || cancelled) {
+          return
+        }
+        setBankAccounts((data as { data?: BankAccount[] }).data || [])
+        const bankAccountsData = (data as { data: BankAccount[] }).data
+        if (bankAccountsData?.length > 0) {
+          const preselected = searchParams.get("bankAccountId")
+          if (
+            preselected &&
+            bankAccountsData.some((b) => b.id === preselected)
+          ) {
+            setBankAccountId(preselected)
+          } else {
+            const defaultAccount = bankAccountsData.find(
+              (b) => b.isDefault,
+            )
+            setBankAccountId(defaultAccount?.id || bankAccountsData[0].id)
           }
         }
       } catch {
@@ -177,10 +179,12 @@ function ConfirmationPageContent() {
       const formData = new FormData()
       formData.append("file", file)
 
-      const { data: result } = await eden.api.payments["upload-screenshot"].post(formData)
-      if (!result.ok) throw new Error(result.message || "Upload failed")
+      const { data: result } = await eden.api.payments["upload-screenshot"].post({
+        $fetch: { method: "POST", body: formData } as RequestInit
+      } as never)
+      if (!result?.ok) throw new Error((result as { message?: string })?.message || "Upload failed")
 
-      setScreenshotUrl(result.url)
+      setScreenshotUrl((result as { url: string }).url)
       setScreenshotPreview(URL.createObjectURL(file))
     } catch (err) {
       setErrorMessage(
@@ -239,21 +243,21 @@ function ConfirmationPageContent() {
 
     try {
       const { data: result } = await eden.api.payments.topup.confirm[invoiceId].post({
-            bankAccountId,
-            amount: displayAmount,
-            paymentDateTime: new Date(
-              initialPaymentDateTime,
-            ).toISOString(),
-            senderBankName: senderBankName || undefined,
-            senderName: senderName || undefined,
-            senderAccount: senderAccount || undefined,
-            screenshotUrl: screenshotUrl || undefined,
-            notes: notes || undefined,
-          })
+        bankAccountId,
+        amount: displayAmount,
+        paymentDateTime: new Date(
+          initialPaymentDateTime,
+        ).toISOString(),
+        senderBankName: senderBankName || undefined,
+        senderName: senderName || undefined,
+        senderAccount: senderAccount || undefined,
+        screenshotUrl: screenshotUrl || undefined,
+        notes: notes || undefined,
+      } as never)
 
       if (!result?.ok) {
         throw new Error(
-          result.message || "Confirmation failed. Please try again.",
+          (result as { message?: string })?.message || "Confirmation failed. Please try again.",
         )
       }
 

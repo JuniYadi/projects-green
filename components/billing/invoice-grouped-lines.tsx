@@ -167,7 +167,6 @@ export function InvoiceGroupedLines({ lines, periodLabel }: InvoiceGroupedLinesP
         {categories.map(([cat, data]) => (
           <GroupSection
             key={cat}
-            category={cat}
             label={data.label}
             icon={data.icon}
             items={data.items}

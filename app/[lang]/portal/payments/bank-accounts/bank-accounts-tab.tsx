@@ -159,14 +159,11 @@ export function BankAccountsTab() {
         setState({ status: "error", message: "Failed to load bank accounts" })
         return
       }
-
-      const payload = await response.json()
-
-      if (payload.ok) {
-        setState({ status: "success", data: payload.data || [] })
-      } else {
-        setState({ status: "error", message: payload.message || "Failed to load bank accounts" })
+      if (!payload.ok) {
+        setState({ status: "error", message: "message" in payload ? (payload as { message: string }).message : "Failed to load bank accounts" })
+        return
       }
+      setState({ status: "success", data: (payload.data || []) as unknown as BankAccount[] })
     } catch {
       setState({ status: "error", message: "Failed to load bank accounts" })
     }
@@ -183,7 +180,7 @@ export function BankAccountsTab() {
     setIsSubmitting(true)
 
     try {
-      const { data: payload } = await eden.api.portal.payments["bank-accounts"].post({
+      const body = {
         bankCode: String(formData.get("bankCode") || "OTHER"),
         bankName: String(formData.get("bankName") || ""),
         accountName: String(formData.get("accountName") || ""),
@@ -191,12 +188,13 @@ export function BankAccountsTab() {
         supportedCurrencies: getSupportedCurrencies(formData),
         swiftCode: String(formData.get("swiftCode") || "") || null,
         bankAddress: String(formData.get("bankAddress") || "") || null,
-      })
+      }
+      const { data: payload } = await eden.api.portal.payments["bank-accounts"].post(body as never)
 
       if (!payload?.ok) {
         setState({
           status: "error",
-          message: payload.message || "Failed to create bank account",
+          message: payload?.message || "Failed to create bank account",
         })
         return
       }
@@ -217,19 +215,20 @@ export function BankAccountsTab() {
     setIsSubmitting(true)
 
     try {
-      const { data: payload } = await eden.api.portal.payments["bank-accounts"][editingAccount.id].put({
+      const body = {
         bankName: String(formData.get("bankName") || ""),
         accountName: String(formData.get("accountName") || ""),
         accountNumber: String(formData.get("accountNumber") || ""),
         supportedCurrencies: getSupportedCurrencies(formData),
         swiftCode: String(formData.get("swiftCode") || "") || null,
         bankAddress: String(formData.get("bankAddress") || "") || null,
-      })
+      }
+      const { data: payload } = await eden.api.portal.payments["bank-accounts"][editingAccount.id].put(body as never)
 
       if (!payload?.ok) {
         setState({
           status: "error",
-          message: payload.message || "Failed to update bank account",
+          message: payload?.message || "Failed to update bank account",
         })
         return
       }
@@ -250,7 +249,7 @@ export function BankAccountsTab() {
       if (!payload?.ok) {
         setState({
           status: "error",
-          message: payload.message || "Failed to set default bank account",
+          message: payload?.message || "Failed to set default bank account",
         })
         return
       }

@@ -38,11 +38,11 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
         eden.api.tenants[organizationId].members.get().then(r => r.data)
       ])
 
-      if (authRes.ok) setAuthorization(authRes)
-      if (membersRes.ok) {
-        setMembers(membersRes.members)
+      if (authRes?.ok) setAuthorization(authRes as TenantAuthorizationResponse)
+      if (membersRes?.ok) {
+        setMembers((membersRes as { members: TenantMembershipSummary[] }).members)
       } else {
-        setError(membersRes.message || "Failed to load members")
+        setError((membersRes as { message?: string })?.message || "Failed to load members")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred")
@@ -66,12 +66,14 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
     setIsSubmitting(true)
     setError(null)
     try {
-      const { data: res } = await eden.api.tenants[organizationId].ownership.transfer.post({ newOwnerMembershipId: selectedAdminId })
+      const { data: res } = await eden.api.tenants[organizationId].ownership.transfer.post({
+        newOwnerMembershipId: selectedAdminId
+      })
 
       if (res?.ok) {
         window.location.reload()
       } else {
-        setError(res.message || "Transfer failed")
+        setError((res as { message?: string })?.message || "Transfer failed")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred")

@@ -395,10 +395,10 @@ async function updateSubscription(
   id: string,
   updates: Partial<SubscriptionItem>
 ): Promise<void> {
-  const { data } = await eden.api.billing.admin.subscriptions[id].patch(updates)
+  const { data } = await eden.api.billing.admin.subscriptions[id].patch(updates as never)
 
-  if (!data || data.ok === false) {
-    throw new Error(data.message || "Failed to update subscription")
+  if (!data?.ok) {
+    throw new Error((data as { message?: string })?.message || "Failed to update subscription")
   }
 }
 

@@ -39,17 +39,20 @@ export default function DocsPage() {
     ? `/api/docs/search?q=${encodeURIComponent(debouncedSearch)}`
     : "/api/docs/list"
 
-  const { data, isLoading } = useQuery<DocsListResponse>({
+  const { data, isLoading } = useQuery({
     queryKey: ["docs", "list", debouncedSearch],
     queryFn: async () => {
       const { data } = debouncedSearch
         ? await eden.api.docs.search.get({ $query: { q: debouncedSearch } })
         : await eden.api.docs.list.get()
-      return data
+      if (!data?.ok) {
+        return { ok: false, docs: [] }
+      }
+      return { ok: true as const, docs: data.docs }
     },
   })
 
-  const docs = data?.docs ?? []
+  const docs = data && typeof data === "object" && "docs" in data ? (data as { docs: unknown[] }).docs as never[] : []
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 pt-0">

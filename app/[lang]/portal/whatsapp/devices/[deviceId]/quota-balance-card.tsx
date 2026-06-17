@@ -78,12 +78,10 @@ export function QuotaBalanceCard({
       const { data: res } = await eden.api.whatsapp.devices[deviceId].patch({
         quotaBase,
         dailyLimitMessage: dailyLimit,
-      })
+      } as never)
 
-      const body = await res.json()
-
-      if (!body.ok) {
-        throw new Error(body.message || "Failed to update device limits.")
+      if (!res?.ok) {
+        throw new Error((res as { message?: string })?.message || "Failed to update device limits.")
       }
 
       toast.success("Device limits updated successfully.")

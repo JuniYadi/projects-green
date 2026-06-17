@@ -96,10 +96,10 @@ export function AdjustmentForm({
         type,
         amount,
         reason: reason.trim(),
-      })
+      } as never)
 
-      if (!data || data.ok === false) {
-        throw new Error(result.message || "Failed to create adjustment")
+      if (!data?.ok) {
+        throw new Error((data as { message?: string })?.message || "Failed to create adjustment")
       }
 
       toast.success("Adjustment created successfully")

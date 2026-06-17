@@ -41,8 +41,11 @@ export default function TransactionsPage() {
     async function loadTransactions() {
       try {
         const { data } = await eden.api.payments.history.get()
-        if (data.ok && !cancelled) {
-          setTransactions(data.data || [])
+        if (!data || !data.ok) {
+          return
+        }
+        if (!cancelled) {
+          setTransactions((data.data ?? []) as unknown as Transaction[])
         }
       } catch {
         // silently fail

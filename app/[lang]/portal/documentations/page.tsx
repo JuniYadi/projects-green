@@ -44,7 +44,7 @@ export default function PortalDocumentationsPage() {
       if (res?.ok) {
         setDocs(res.docs)
       } else {
-        setError(res.message || "Failed to load docs")
+        setError(res?.message || "Failed to load docs")
       }
     } catch (err) {
       setError(
@@ -74,7 +74,7 @@ export default function PortalDocumentationsPage() {
         setDocs((prev) => prev.filter((d) => d.id !== doc.id))
         if (selectedDoc?.id === doc.id) setSelectedDoc(null)
       } else {
-        setError(res.message || "Failed to delete")
+        setError(res?.message || "Failed to delete")
       }
     } catch (err) {
       setError(

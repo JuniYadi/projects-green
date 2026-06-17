@@ -153,14 +153,14 @@ export function LoginForm({
 
     try {
       const { data: payload } = await eden.api.auth.magic.verify.post({
-        email: emailResult.data,
-        code: codeResult.data,
-      }) as { data: { ok?: boolean; message?: string; fieldErrors?: Record<string, string[]> } | null }
+        email: emailResult.data ?? email,
+        code: codeResult.data ?? code,
+      })
 
-      if (!payload) {
-        setServerFieldErrors(payload?.fieldErrors ?? {})
+      if (!payload || !payload.ok) {
+        setServerFieldErrors((payload as { fieldErrors?: Record<string, string[]> })?.fieldErrors ?? {})
         setSubmitError(
-          payload?.message ?? "Invalid or expired code. Please try again."
+          (payload as { message?: string })?.message ?? "Invalid or expired code. Please try again."
         )
         return
       }

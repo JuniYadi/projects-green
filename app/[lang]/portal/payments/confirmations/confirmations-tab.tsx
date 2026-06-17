@@ -106,21 +106,11 @@ export function ConfirmationsTab() {
     try {
       const { data: payload } = await eden.api.portal.payments.confirmations.get()
 
-      if (!payload) {
-        setState({ status: "error", message: "Failed to load confirmations" })
+      if (!payload?.ok) {
+        setState({ status: "error", message: payload?.message || "Failed to load confirmations" })
         return
       }
-
-      const payload = await response.json()
-
-      if (payload.ok) {
-        setState({ status: "success", data: payload.data || [] })
-      } else {
-        setState({
-          status: "error",
-          message: payload.message || "Failed to load confirmations",
-        })
-      }
+      setState({ status: "success", data: payload.data || [] })
     } catch {
       setState({ status: "error", message: "Failed to load confirmations" })
     }
@@ -141,11 +131,11 @@ export function ConfirmationsTab() {
       const { data: payload } = await eden.api.portal.payments.confirmations[id][action].post({
         action,
         reason: action === "reject" ? reason?.trim() || "Rejected from portal review" : undefined,
-      })
+      } as never)
       if (!payload?.ok) {
         setState({
           status: "error",
-          message: payload.message || `Failed to ${action} confirmation`,
+          message: payload?.message || `Failed to ${action} confirmation`,
         })
         return
       }

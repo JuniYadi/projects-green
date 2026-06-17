@@ -118,12 +118,16 @@ export function VoucherManagementTable() {
         $query: Object.fromEntries(searchParams.entries()),
       })
 
-      if (data.ok) {
-        setVouchers(data.data)
-        setTotal(data.total)
-      } else {
-        setError(data.message || "Failed to load vouchers")
+      if (!data) {
+        setError("Failed to load vouchers")
+        return
       }
+      if (!data.ok) {
+        setError(data.message || "Failed to load vouchers")
+        return
+      }
+      setVouchers(data.data as never)
+      setTotal(data.total as never)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unexpected error occurred"
@@ -175,7 +179,7 @@ export function VoucherManagementTable() {
 
       const { data } = await eden.api.vouchers.portal.post(payload)
 
-      if (data.ok) {
+      if (data?.ok) {
         setDialogOpen(false)
         setCreateForm({
           prefix: "",
@@ -189,7 +193,7 @@ export function VoucherManagementTable() {
         // Reload the list from first page
         setOffset(0)
       } else {
-        setCreateError(data.message || "Failed to create voucher")
+        setCreateError(data?.message || "Failed to create voucher")
       }
     } catch (err) {
       setCreateError(

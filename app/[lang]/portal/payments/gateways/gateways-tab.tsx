@@ -215,7 +215,7 @@ export function GatewaysTab() {
     setTogglingId(gateway.id)
     try {
       const { data: payload } = await eden.api.portal.payments.gateways[gateway.id].toggle.patch()
-      if (payload.ok) {
+      if (payload?.ok) {
         await fetchGateways()
       }
     } catch {
@@ -236,17 +236,18 @@ export function GatewaysTab() {
     const currencies = readSupportedCurrencies(formData)
 
     try {
-      const { data: payload } = await eden.api.portal.payments.gateways.post({
+      const body = {
         name: String(formData.get("name") || ""),
         type: providerType,
         supportedCurrencies: currencies,
         config,
-      })
+      }
+      const { data: payload } = await eden.api.portal.payments.gateways.post(body as never)
 
       if (!payload?.ok) {
         setState({
           status: "error",
-          message: payload.message || "Failed to create gateway",
+          message: "message" in (payload ?? {}) ? (payload as { message: string }).message : "Failed to create gateway",
         })
         return
       }
@@ -272,15 +273,16 @@ export function GatewaysTab() {
     const currencies = readSupportedCurrencies(formData)
 
     try {
-      const { data: payload } = await eden.api.portal.payments.gateways[editingGateway.id].put({
+      const body = {
         name: String(formData.get("name") || ""),
         supportedCurrencies: currencies,
         config,
-      })
+      }
+      const { data: payload } = await eden.api.portal.payments.gateways[editingGateway.id].put(body as never)
       if (!payload?.ok) {
         setState({
           status: "error",
-          message: payload.message || "Failed to update gateway",
+          message: payload?.message || "Failed to update gateway",
         })
         return
       }

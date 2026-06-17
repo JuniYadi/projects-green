@@ -215,12 +215,12 @@ export function LogViewer() {
           $query: Object.fromEntries(params.entries()),
           $fetch: { signal: abortController.signal },
         })
-        if (data.ok) {
-          setLogs(data.data.logs)
-          setTotal(data.data.total)
-        } else {
-          setError(data.message || "Failed to load logs")
+        if (!data?.ok) {
+          setError(data?.message || "Failed to load logs")
+          return
         }
+        setLogs(data.data!.logs as never)
+        setTotal(data.data.total)
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
         setError(err instanceof Error ? err.message : "An error occurred")

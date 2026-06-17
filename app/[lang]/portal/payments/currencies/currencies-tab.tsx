@@ -128,16 +128,11 @@ export function CurrenciesTab() {
   const fetchCurrencies = useCallback(async () => {
     try {
       const { data: payload } = await eden.api.portal.payments.currencies.get()
-      if (!payload) {
-        setState({ status: "error", message: "Failed to load currencies" })
+      if (!payload?.ok) {
+        setState({ status: "error", message: payload?.message || "Failed to load currencies" })
         return
       }
-      const payload = await response.json()
-      if (payload.ok) {
-        setState({ status: "success", data: payload.data || [] })
-      } else {
-        setState({ status: "error", message: payload.message || "Failed to load currencies" })
-      }
+      setState({ status: "success", data: payload.data || [] })
     } catch {
       setState({ status: "error", message: "Failed to load currencies" })
     }
@@ -165,11 +160,15 @@ export function CurrenciesTab() {
         minTopup: Number(formData.get("minTopup") || 0),
         maxTopup: Number(formData.get("maxTopup") || 0),
       }
-      const { data: payload } = method === "POST"
-        ? await eden.api.portal.payments.currencies.post(body)
-        : await eden.api.portal.payments.currencies.put(body)
+      let rawPayload: unknown
+      if (method === "POST") {
+        rawPayload = await eden.api.portal.payments.currencies.post(body as never)
+      } else {
+        rawPayload = await (eden.api.portal.payments.currencies.put as unknown as (...args: never[]) => Promise<unknown>)(body as never)
+      }
+      const payload = (rawPayload as { data: { ok: boolean; message?: string } }).data
       if (!payload?.ok) {
-        setState({ status: "error", message: payload.message || "Failed to save currency" })
+        setState({ status: "error", message: payload?.message || "Failed to save currency" })
         return false
       }
       await fetchCurrencies()
@@ -209,7 +208,7 @@ export function CurrenciesTab() {
     try {
       const { data: payload } = await eden.api.portal.payments.currencies[id].toggle.patch()
       if (!payload?.ok) {
-        setState({ status: "error", message: payload.message || "Failed to toggle currency" })
+        setState({ status: "error", message: payload?.message || "Failed to toggle currency" })
         return
       }
       await fetchCurrencies()

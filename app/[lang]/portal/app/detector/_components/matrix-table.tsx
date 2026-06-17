@@ -253,11 +253,11 @@ export function MatrixTable() {
           $query: Object.fromEntries(params.entries()),
           $fetch: { signal: abortController.signal },
         })
-        if (data.ok) {
-          setMappings(data.data)
-        } else {
-          setError(data.message || "Failed to load mappings")
+        if (!data?.ok) {
+          setError(data?.message || "Failed to load mappings")
+          return
         }
+        setMappings(data.data)
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
         setError(err instanceof Error ? err.message : "An error occurred")
@@ -279,7 +279,7 @@ export function MatrixTable() {
       buildVersion: formData.buildVersion || undefined,
       priority: formData.priority,
     })
-    if (!data.ok) throw new Error(data.message)
+    if (!data?.ok) throw new Error(data?.message || "Failed to create mapping")
     toast.success("Mapping created successfully")
     refresh()
   }
@@ -294,21 +294,21 @@ export function MatrixTable() {
       buildVersion: formData.buildVersion || null,
       priority: formData.priority,
     })
-    if (!data.ok) throw new Error(data.message)
+    if (!data?.ok) throw new Error(data?.message || "Failed to update mapping")
     toast.success("Mapping updated successfully")
     refresh()
   }
 
   const handleToggleActive = async (mapping: RuntimeMapping) => {
     const { data } = await eden.api.admin.detector.mappings[mapping.id].patch({ isActive: !mapping.isActive })
-    if (data.ok) {
-      toast.success(
-        `Mapping ${mapping.isActive ? "deactivated" : "activated"} successfully`
-      )
-      refresh()
-    } else {
-      toast.error(data.message || "Failed to toggle mapping status")
+    if (!data?.ok) {
+      toast.error(data?.message || "Failed to toggle mapping status")
+      return
     }
+    toast.success(
+      `Mapping ${mapping.isActive ? "deactivated" : "activated"} successfully`
+    )
+    refresh()
   }
 
   const handleDelete = async (mapping: RuntimeMapping) => {
@@ -320,12 +320,12 @@ export function MatrixTable() {
       return
 
     const { data } = await eden.api.admin.detector.mappings[mapping.id].delete()
-    if (data.ok) {
-      toast.success("Mapping deleted successfully")
-      refresh()
-    } else {
-      toast.error(data.message || "Failed to delete mapping")
+    if (!data?.ok) {
+      toast.error(data?.message || "Failed to delete mapping")
+      return
     }
+    toast.success("Mapping deleted successfully")
+    refresh()
   }
 
   const columns: ColumnDef<RuntimeMapping>[] = [

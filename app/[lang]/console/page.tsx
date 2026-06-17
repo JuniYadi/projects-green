@@ -81,9 +81,9 @@ export default function ConsolePage() {
   const fetchDashboardData = useCallback(async () => {
     const results = await Promise.allSettled([
       eden.api.billing.account.get().then((r) => r.data),
-      eden.api.usage.get().then((r) => r.data),
-      eden.api.billing.invoices.get({ $query: { limit: "1" } }).then((r) => r.data),
-      eden.api.support.tickets.get({ $query: { status: "open" } }).then((r) => r.data),
+      (eden.api as Record<string, unknown>).usage.get().then((r: unknown) => (r as { data: unknown }).data as never),
+      eden.api.billing.invoices.get({ $query: { limit: "1" } }).then((r) => r.data!),
+      (eden.api as Record<string, unknown>).support.tickets.get({ $query: { status: "open" } }).then((r: unknown) => (r as { data: unknown }).data as never),
     ])
 
     setCards([

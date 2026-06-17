@@ -128,7 +128,7 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
         $fetch: { signal },
       })
 
-      if (!response.ok || !payload || payload.ok !== true) {
+      if (!payload || payload.ok !== true) {
         setState({
           status: "error",
           message: getErrorMessage(payload as InvoiceErrorResponse | null),

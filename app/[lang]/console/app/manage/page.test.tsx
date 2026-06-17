@@ -215,9 +215,10 @@ describe("ManagePage", () => {
 
     await waitFor(() => {
       const calls = (useRouter().replace as ReturnType<typeof mock>).mock.calls;
-      expect(calls.some((args: unknown) => (args as unknown[])[0] as string).includes("app=console-next-app")).toBe(
-        true
-      )
+      expect(calls.some((args: unknown) => {
+        const url = (args as unknown[])[0] as string
+        return url.includes("app=console-next-app")
+      })).toBe(true)
     })
   })
 })

@@ -53,16 +53,16 @@ export function OrganizationsTable() {
         if (search) searchParams.set("search", search)
 
         const { data } = await eden.api.admin.organizations.get({
-          $query: Object.fromEntries(searchParams.entries()),
+          $query: { limit: 10, ...(cursor.before && { before: cursor.before }), ...(cursor.after && { after: cursor.after }), ...(search && { search }) },
           $fetch: { signal: abortController.signal },
         })
 
-        if (data.ok) {
-          setOrganizations(data.data.organizations)
-          setListMetadata(data.data.listMetadata ?? {})
-        } else {
-          setError(data.message || "Failed to load organizations")
+        if (!data || !data.ok) {
+          setError(data && "message" in data ? data.message : "Failed to load organizations")
+          return
         }
+        setOrganizations(data.data.organizations)
+        setListMetadata(data.data.listMetadata ?? {})
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
         setError(err instanceof Error ? err.message : "An unexpected error occurred")

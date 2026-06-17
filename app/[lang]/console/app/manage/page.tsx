@@ -76,7 +76,7 @@ export default function ManagePage() {
       try {
         const { data: payload } = await eden.api.deploy.apps.get()
         if (!payload || !payload.ok || !Array.isArray(payload.data)) {
-          throw new Error(payload.message ?? "Unable to load applications.")
+          throw new Error(payload?.message ?? "Unable to load applications.")
         }
 
         if (cancelled) return
@@ -135,7 +135,7 @@ export default function ManagePage() {
         const { data: payload } = await eden.api.deploy.apps[selectedSlug].get()
         if (!payload || !payload.ok || !payload.data) {
           throw new Error(
-            payload.message ?? "Unable to load application state."
+            payload?.message ?? "Unable to load application state."
           )
         }
 

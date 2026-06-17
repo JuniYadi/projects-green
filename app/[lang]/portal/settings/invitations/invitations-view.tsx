@@ -54,11 +54,11 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
         eden.api.tenants[organizationId].invitations.get().then(r => r.data)
       ])
 
-      if (authRes.ok) setAuthorization(authRes)
-      if (invRes.ok) {
-        setInvitations(invRes.invitations)
+      if (authRes?.ok) setAuthorization(authRes as TenantAuthorizationResponse)
+      if (invRes?.ok) {
+        setInvitations((invRes as { invitations: TenantInvitationSummary[] }).invitations)
       } else {
-        setError(invRes.message || "Failed to load invitations")
+        setError((invRes as { message?: string })?.message || "Failed to load invitations")
       }
     } catch {
       setError("An unexpected error occurred")
@@ -80,13 +80,16 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     setIsSubmitting(true)
     setError(null)
     try {
-      const { data: res } = await eden.api.tenants[organizationId].invitations.post({ email, targetRole: role })
+      const { data: res } = await eden.api.tenants[organizationId].invitations.post({
+        email,
+        targetRole: role as "admin" | "owner" | "member"
+      })
 
       if (res?.ok) {
         setEmail("")
         void loadData()
       } else {
-        setError(res.message || "Failed to send invitation")
+        setError((res as { message?: string })?.message || "Failed to send invitation")
       }
     } catch {
       setError("An unexpected error occurred")

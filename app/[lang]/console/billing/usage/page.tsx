@@ -86,12 +86,12 @@ export default function UsagePage() {
           eden.api.billing.usage.trend.get({ $query: { days: "30" } }),
         ])
 
-        if (!summaryRes.data || !trendRes.data) {
+        if (!summaryRes.data || !trendRes.data || !summaryRes.data.success || !trendRes.data.success) {
           throw new Error("Failed to fetch usage data")
         }
 
-        setSummary(summaryRes.data.data)
-        setTrend(trendRes.data.data.trend)
+        setSummary(summaryRes.data!.data as never)
+        setTrend(trendRes.data!.data.trend as never)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error")
       } finally {

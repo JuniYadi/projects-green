@@ -77,11 +77,15 @@ export function VoucherDetail({ voucherId }: VoucherDetailProps) {
     try {
       const { data } = await eden.api.vouchers.portal[voucherId].get()
 
-      if (data.ok) {
-        setVoucher(data.data)
-      } else {
-        setError(data.message || "Failed to load voucher details")
+      if (!data) {
+        setError("Failed to load voucher details")
+        return
       }
+      if (!data.ok) {
+        setError(data.message || "Failed to load voucher details")
+        return
+      }
+      setVoucher(data.data as never)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unexpected error occurred"

@@ -40,16 +40,16 @@ export function Recommendations() {
     setIsGenerating(true)
     try {
       const { data } = await eden.api.admin.detector.recommend.post()
-      if (data.ok) {
-        setRecommendations(data.data)
-        setHasGenerated(true)
-        if (data.data.length === 0) {
-          toast.info(
-            "No new recommendations found. The system needs more inspection data."
-          )
-        }
-      } else {
-        toast.error(data.message || "Failed to generate recommendations")
+      if (!data?.ok) {
+        toast.error(data?.message || "Failed to generate recommendations")
+        return
+      }
+      setRecommendations(data.data)
+      setHasGenerated(true)
+      if (data.data.length === 0) {
+        toast.info(
+          "No new recommendations found. The system needs more inspection data."
+        )
       }
     } catch {
       toast.error("Failed to generate recommendations")
@@ -64,8 +64,8 @@ export function Recommendations() {
       const { data: res } = await eden.api.admin.detector.rules.post({
         name: rec.suggestedName,
         description: rec.suggestedDescription,
-        patternJson: rec.suggestedPatternJson,
-        implicationsJson: rec.suggestedImplicationsJson,
+        patternJson: rec.suggestedPatternJson as Record<string, unknown>,
+        implicationsJson: rec.suggestedImplicationsJson as Record<string, unknown>,
         confidenceWeight: rec.suggestedConfidenceWeight,
         priority: rec.suggestedPriority,
       })
@@ -73,7 +73,7 @@ export function Recommendations() {
         toast.success(`Rule "${rec.suggestedName}" created successfully`)
         setRecommendations((prev) => prev.filter((r) => r.id !== rec.id))
       } else {
-        toast.error(data.message || "Failed to create rule")
+        toast.error(res?.message || "Failed to create rule")
       }
     } catch {
       toast.error("Failed to create rule from recommendation")

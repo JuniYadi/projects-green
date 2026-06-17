@@ -51,11 +51,11 @@ export function MembersList({ organizationId }: MembersListProps) {
         eden.api.tenants[organizationId].members.get().then(r => r.data)
       ])
 
-      if (authRes.ok) setAuthorization(authRes)
-      if (membersRes.ok) {
-        setMembers(membersRes.members)
+      if (authRes?.ok) setAuthorization(authRes as TenantAuthorizationResponse)
+      if (membersRes?.ok) {
+        setMembers((membersRes as { members: TenantMembershipSummary[] }).members)
       } else {
-        setError(membersRes.message || "Failed to load members")
+        setError((membersRes as { message?: string })?.message || "Failed to load members")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred")

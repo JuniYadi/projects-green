@@ -66,9 +66,9 @@ export function AddDeviceDialog() {
     if (orgsLoaded) return
     setLoadingOrgs(true)
     try {
-      const { data: body } = await eden.api.admin.organizations.get()
+      const { data: body } = await eden.api.admin.organizations.get({ $query: { limit: 100 } })
       if (body?.ok) {
-        setOrganizations(body.data.organizations)
+        setOrganizations((body as { data: { organizations: Organization[] } }).data.organizations)
         setOrgsLoaded(true)
       }
     } catch {
@@ -112,10 +112,10 @@ export function AddDeviceDialog() {
         whatsappPhoneId: form.whatsappPhoneId || undefined,
         whatsappApplicationId: form.whatsappApplicationId || undefined,
         callbackUrl: form.callbackUrl || undefined,
-      })
+      } as never)
 
       if (!body?.ok) {
-        throw new Error(body.message || "Failed to add device.")
+        throw new Error((body as { message?: string })?.message || "Failed to add device.")
       }
 
       toast.success("Device added successfully.")

@@ -116,12 +116,12 @@ export function GithubEventsTable() {
       const { data: res } = await eden.api.admin.app.events.github.get({
         $query: Object.fromEntries(params.entries()),
       })
-      if (res.ok) {
-        setEvents(res.data.items)
-        setTotal(res.data.total)
-      } else {
+      if (!res || !res.ok) {
         setError("Failed to load events")
+        return
       }
+      setEvents(res.data!.items as never)
+      setTotal(res.data!.total as never)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An error occurred"
@@ -141,8 +141,8 @@ export function GithubEventsTable() {
     setJsonModalOpen(true)
     try {
       const { data: res } = await eden.api.admin.app.events.github[event.id].get()
-      if (res?.ok) {
-        setSelectedEvent(res.data)
+      if (res?.ok && res.data) {
+        setSelectedEvent(res.data as unknown as GithubEventDetail)
       } else {
         setError("Failed to load event detail")
       }

@@ -246,11 +246,11 @@ export function RulesTable() {
           $query: Object.fromEntries(params.entries()),
           $fetch: { signal: abortController.signal },
         })
-        if (data.ok) {
-          setRules(data.data)
-        } else {
-          setError(data.message || "Failed to load rules")
+        if (!data?.ok) {
+          setError(data?.message || "Failed to load rules")
+          return
         }
+        setRules(data.data as never)
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
         setError(err instanceof Error ? err.message : "An error occurred")
@@ -272,7 +272,7 @@ export function RulesTable() {
       confidenceWeight: formData.confidenceWeight,
       priority: formData.priority,
     })
-    if (!data.ok) throw new Error(data.message)
+    if (!data?.ok) throw new Error(data?.message || "Failed to create rule")
     toast.success("Rule created successfully")
     refresh()
   }
@@ -287,21 +287,21 @@ export function RulesTable() {
       confidenceWeight: formData.confidenceWeight,
       priority: formData.priority,
     })
-    if (!data.ok) throw new Error(data.message)
+    if (!data?.ok) throw new Error(data?.message || "Failed to update rule")
     toast.success("Rule updated successfully")
     refresh()
   }
 
   const handleToggleActive = async (rule: DetectorRule) => {
     const { data } = await eden.api.admin.detector.rules[rule.id].patch({ isActive: !rule.isActive })
-    if (data.ok) {
-      toast.success(
-        `Rule ${rule.isActive ? "deactivated" : "activated"} successfully`
-      )
-      refresh()
-    } else {
-      toast.error(data.message || "Failed to toggle rule status")
+    if (!data?.ok) {
+      toast.error(data?.message || "Failed to toggle rule status")
+      return
     }
+    toast.success(
+      `Rule ${rule.isActive ? "deactivated" : "activated"} successfully`
+    )
+    refresh()
   }
 
   const handleDelete = async (rule: DetectorRule) => {
@@ -311,12 +311,12 @@ export function RulesTable() {
       return
 
     const { data } = await eden.api.admin.detector.rules[rule.id].delete()
-    if (data.ok) {
-      toast.success("Rule deleted successfully")
-      refresh()
-    } else {
-      toast.error(data.message || "Failed to delete rule")
+    if (!data?.ok) {
+      toast.error(data?.message || "Failed to delete rule")
+      return
     }
+    toast.success("Rule deleted successfully")
+    refresh()
   }
 
   const columns: ColumnDef<DetectorRule>[] = [
