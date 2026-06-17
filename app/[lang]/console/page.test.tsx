@@ -9,19 +9,38 @@ let invoicesPayload: {
   invoices: [{ id: "inv_1", totalAmountIdr: 75000, status: "PAID" }],
 }
 
+const jsonResponse = (body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  })
+
 const mockFetch = mock((input: string | URL | Request) => {
   const url = input.toString()
-  const payload = url.includes("/api/billing/account")
-    ? { ok: true, formattedBalance: "IDR 250,000", accountAge: "3 months" }
-    : url.includes("/api/usage")
-      ? { success: true, data: { totalSpend: 125000, period: "June 2026" } }
-      : url.includes("/api/billing/invoices")
-        ? invoicesPayload
-        : { ok: true, tickets: [{ id: "ticket_1" }, { id: "ticket_2" }] }
 
-  return Promise.resolve({
-    json: () => Promise.resolve(payload),
-  } as Response)
+  if (url.includes("/api/billing/account")) {
+    return jsonResponse({
+      ok: true,
+      formattedBalance: "IDR 250,000",
+      accountAge: "3 months",
+    })
+  }
+
+  if (url.includes("/api/usage")) {
+    return jsonResponse({
+      success: true,
+      data: { totalSpend: 125000, period: "June 2026" },
+    })
+  }
+
+  if (url.includes("/api/billing/invoices")) {
+    return jsonResponse(invoicesPayload)
+  }
+
+  return jsonResponse({
+    ok: true,
+    tickets: [{ id: "ticket_1" }, { id: "ticket_2" }],
+  })
 })
 
 global.fetch = mockFetch as unknown as typeof fetch

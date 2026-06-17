@@ -55,9 +55,9 @@ export function OverviewTab() {
         pendingItems: confirmations.ok ? confirmations.data ?? [] : [],
         data: {
           totalGateways: gateways.ok ? (gateways.data?.length ?? 0) : 0,
-          activeGateways: gateways.ok ? (gateways.data?.length ?? 0) : 0,  // Note: status filter removed - type mismatch
+          activeGateways: gateways.ok ? (gateways.data?.filter((g) => g.isActive).length ?? 0) : 0,
           totalBankAccounts: bankAccounts.ok ? (bankAccounts.data?.length ?? 0) : 0,
-          verifiedBankAccounts: bankAccounts.ok ? (bankAccounts.data?.length ?? 0) : 0,  // Note: isVerified filter removed - type mismatch
+          verifiedBankAccounts: bankAccounts.ok ? (bankAccounts.data?.filter((b) => 'isVerified' in b ? (b as any).isVerified : true).length ?? 0) : 0,
           pendingConfirmations: confirmations.ok ? confirmations.data?.length ?? 0 : 0,
           totalProcessed: 0, // Would need separate API for this
         },

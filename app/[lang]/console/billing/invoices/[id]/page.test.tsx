@@ -43,7 +43,7 @@ describe("Billing InvoiceDetailPage", () => {
         return jsonResponse(invoicePayload())
       }
 
-      if (url === "/api/billing/account") {
+      if (url.includes("/api/billing/account")) {
         return jsonResponse({
           ok: true,
           tenantId: "tenant-1",
@@ -56,7 +56,7 @@ describe("Billing InvoiceDetailPage", () => {
         })
       }
 
-      if (url === "/api/payments/bank-accounts") {
+      if (url.includes("/api/payments/bank-accounts")) {
         return jsonResponse({
           ok: true,
           accounts: [
@@ -105,7 +105,7 @@ describe("Billing InvoiceDetailPage", () => {
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)
 
-      if (url === "/api/billing/invoices/inv-1") {
+      if (url.includes("/api/billing/invoices/")) {
         return jsonResponse(
           invoicePayload({
             paymentMethod: "PAYMENT_GATEWAY",
@@ -114,7 +114,7 @@ describe("Billing InvoiceDetailPage", () => {
         )
       }
 
-      if (url === "/api/billing/account") {
+      if (url.includes("/api/billing/account")) {
         return jsonResponse({
           ok: true,
           tenantId: "tenant-1",
@@ -127,7 +127,7 @@ describe("Billing InvoiceDetailPage", () => {
         })
       }
 
-      if (url === "/api/payments/bank-accounts") {
+      if (url.includes("/api/payments/bank-accounts")) {
         return jsonResponse({ ok: true, accounts: [] })
       }
 

@@ -18,4 +18,6 @@ export const getApiBaseUrl = () => {
   return DEV_FALLBACK_BASE_URL
 }
 
-export const eden = edenTreaty<App>(getApiBaseUrl())
+export const eden = edenTreaty<App>(getApiBaseUrl(), {
+  fetcher: (...args: Parameters<typeof fetch>) => fetch(...args),
+})

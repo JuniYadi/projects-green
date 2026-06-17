@@ -22,9 +22,9 @@ function mockPaymentFetch(overrides?: {
             overrides?.gateways ?? {
               ok: true,
               data: [
-                { id: "gw-1", status: "active" },
-                { id: "gw-2", status: "active" },
-                { id: "gw-3", status: "inactive" },
+                { id: "gw-1", isActive: true },
+                { id: "gw-2", isActive: true },
+                { id: "gw-3", isActive: false },
               ],
             }
           ),
@@ -223,10 +223,10 @@ describe("OverviewTab", () => {
         gateways: {
           ok: true,
           data: [
-            { id: "gw-1", status: "active" },
-            { id: "gw-2", status: "inactive" },
-            { id: "gw-3", status: "suspended" },
-            { id: "gw-4", status: "inactive" },
+            { id: "gw-1", isActive: true },
+            { id: "gw-2", isActive: false },
+            { id: "gw-3", isActive: false },
+            { id: "gw-4", isActive: false },
           ],
         },
         bankAccounts: { ok: true, data: [] },

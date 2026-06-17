@@ -63,7 +63,7 @@ describe("ConfirmationsTab", () => {
       expect(
         calls.some(
           (call) =>
-            call.url === "/api/portal/payments/confirmations/pc-1/approve" &&
+            new URL(call.url, "http://localhost").pathname === "/api/portal/payments/confirmations/pc-1/approve" &&
             call.init?.method === "POST"
         )
       ).toBe(true)
@@ -93,7 +93,7 @@ describe("ConfirmationsTab", () => {
     await waitFor(() => {
       const rejectCall = calls.find(
         (call) =>
-          call.url === "/api/portal/payments/confirmations/pc-1/reject" &&
+          new URL(call.url, "http://localhost").pathname === "/api/portal/payments/confirmations/pc-1/reject" &&
           call.init?.method === "POST"
       )
       expect(rejectCall).toBeDefined()

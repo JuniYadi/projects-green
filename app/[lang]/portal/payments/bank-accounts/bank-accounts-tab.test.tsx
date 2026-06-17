@@ -67,7 +67,7 @@ describe("BankAccountsTab", () => {
       expect(
         calls.some(
           (call) =>
-            call.url === "/api/portal/payments/bank-accounts/ba-1/toggle" &&
+            new URL(call.url, "http://localhost").pathname === "/api/portal/payments/bank-accounts/ba-1/toggle" &&
             call.init?.method === "PATCH"
         )
       ).toBe(true)
@@ -114,7 +114,7 @@ describe("BankAccountsTab", () => {
       expect(
         calls.some(
           (call) =>
-            call.url === "/api/portal/payments/bank-accounts/ba-1" &&
+            new URL(call.url, "http://localhost").pathname === "/api/portal/payments/bank-accounts/ba-1" &&
             call.init?.method === "PUT"
         )
       ).toBe(true)
