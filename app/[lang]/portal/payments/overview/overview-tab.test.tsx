@@ -38,9 +38,9 @@ function mockPaymentFetch(overrides?: {
             overrides?.bankAccounts ?? {
               ok: true,
               data: [
-                { id: "ba-1", isVerified: true },
-                { id: "ba-2", isVerified: true },
-                { id: "ba-3", isVerified: false },
+                { id: "ba-1", isDefault: true },
+                { id: "ba-2", isDefault: true },
+                { id: "ba-3", isDefault: false },
               ],
             }
           ),
@@ -127,7 +127,7 @@ describe("OverviewTab", () => {
       expect(boldNumbers[0].textContent).toBe("3")
     })
 
-    it("filters verified bank accounts (isVerified=true) correctly", async () => {
+    it("filters verified bank accounts (isDefault=true) correctly", async () => {
       let view: ReturnType<typeof render>
 
       await act(async () => {
@@ -250,10 +250,10 @@ describe("OverviewTab", () => {
         bankAccounts: {
           ok: true,
           data: [
-            { id: "ba-1", isVerified: true },
-            { id: "ba-2", isVerified: false },
-            { id: "ba-3", isVerified: true },
-            { id: "ba-4", isVerified: false },
+            { id: "ba-1", isDefault: true },
+            { id: "ba-2", isDefault: false },
+            { id: "ba-3", isDefault: true },
+            { id: "ba-4", isDefault: false },
           ],
         },
         confirmations: { ok: true, data: [] },
