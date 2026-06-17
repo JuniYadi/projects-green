@@ -88,8 +88,8 @@ mock.module("@/lib/prisma", () => ({
     billingInvoice: {
       findMany: mock(async () => []),
       findFirst: mock(async () => null),
-      create: mock(async (data: any) => ({ id: "inv-mock", ...data })),
-      update: mock(async (data: any) => data),
+      create: mock(async (data: unknown) => ({ id: "inv-mock", ...(data as Record<string, unknown>) })),
+      update: mock(async (data: unknown) => data),
     },
     $transaction: mock((fns: unknown[]) => Promise.all(fns)),
   },

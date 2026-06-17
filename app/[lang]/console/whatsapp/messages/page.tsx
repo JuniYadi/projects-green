@@ -184,7 +184,6 @@ function MessageBubble({ message }: { message: Message }) {
 export default function WhatsAppMessagesPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
   // State - conversations
   const [conversations, setConversations] = React.useState<
     ConversationListItem[]

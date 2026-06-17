@@ -1,6 +1,7 @@
 "use client"
 
 import type { ColumnDef } from "@tanstack/react-table"
+import { eden } from "@/lib/eden"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
@@ -119,17 +120,13 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
 
   const fetchInvoices = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch(
-        `/api/invoices?sortBy=${DEFAULT_INVOICE_SORT.sortBy}&sortDir=${DEFAULT_INVOICE_SORT.sortDir}`,
-        {
-          signal,
-        }
-      )
-
-      const payload = (await response.json().catch(() => null)) as
-        | InvoiceListSuccessResponse
-        | InvoiceErrorResponse
-        | null
+      const { data: payload } = await eden.api.invoices.get({
+        $query: {
+          sortBy: DEFAULT_INVOICE_SORT.sortBy,
+          sortDir: DEFAULT_INVOICE_SORT.sortDir,
+        },
+        $fetch: { signal },
+      })
 
       if (!response.ok || !payload || payload.ok !== true) {
         setState({

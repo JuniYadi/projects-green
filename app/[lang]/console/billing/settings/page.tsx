@@ -48,7 +48,8 @@ export default function BillingSettingsPage() {
   }, [])
 
   useEffect(() => {
-    void fetchSettings()
+    const run = async () => { await fetchSettings() }
+    run()
   }, [fetchSettings])
 
   const handleCurrencyChange = useCallback((value: string) => {

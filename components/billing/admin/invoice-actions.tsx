@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -59,15 +60,9 @@ export function InvoiceActions({
     setActionState("submitting")
 
     try {
-      const response = await fetch("/api/billing/admin/invoice-finalize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId }),
-      })
+      const { data } = await eden.api.billing.admin["invoice-finalize"].post({ invoiceId })
 
-      const data = await response.json()
-
-      if (!response.ok || data.ok === false) {
+      if (!data || data.ok === false) {
         throw new Error(data.message || "Failed to finalize invoice")
       }
 
@@ -87,15 +82,9 @@ export function InvoiceActions({
     setShowVoidDialog(false)
 
     try {
-      const response = await fetch("/api/billing/admin/invoice-void", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId }),
-      })
+      const { data } = await eden.api.billing.admin["invoice-void"].post({ invoiceId })
 
-      const data = await response.json()
-
-      if (!response.ok || data.ok === false) {
+      if (!data || data.ok === false) {
         throw new Error(data.message || "Failed to void invoice")
       }
 

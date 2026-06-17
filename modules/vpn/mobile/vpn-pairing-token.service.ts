@@ -38,7 +38,7 @@ function defaultSignJwt(
   },
   // `now` is accepted for interface symmetry with verifyJwt and the
   // injected sign function signature; signing itself is timestamp-agnostic.
-  _now: Date
+  _now: Date // eslint-disable-line @typescript-eslint/no-unused-vars
 ): string {
   const secret = getSecret()
   const header = { alg: "HS256", typ: "JWT" }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import {
   Table,
   TableBody,
@@ -46,8 +47,8 @@ export function MembersList({ organizationId }: MembersListProps) {
   const loadData = useCallback(async () => {
     try {
       const [authRes, membersRes] = await Promise.all([
-        fetch(`/api/tenants/${organizationId}/authorization`).then(r => r.json()),
-        fetch(`/api/tenants/${organizationId}/members`).then(r => r.json())
+        eden.api.tenants[organizationId].authorization.get().then(r => r.data),
+        eden.api.tenants[organizationId].members.get().then(r => r.data)
       ])
 
       if (authRes.ok) setAuthorization(authRes)
@@ -72,6 +73,7 @@ export function MembersList({ organizationId }: MembersListProps) {
     setPendingActionId(actionId)
     setError(null)
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

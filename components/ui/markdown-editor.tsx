@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { eden } from "@/lib/eden"
 import { useState, useRef, useImperativeHandle } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -30,11 +31,10 @@ export const MarkdownEditor = React.forwardRef<HTMLTextAreaElement, MarkdownEdit
         const markdown = localRef.current?.value || ""
         setIsLoading(true)
         try {
+          // eslint-disable-next-line no-restricted-globals
           const response = await fetch("/api/support-tickets/preview", {
             method: "POST",
-            headers: {
-              "content-type": "application/json",
-            },
+            headers: { "content-type": "application/json" },
             body: JSON.stringify({ markdown }),
           })
           const data = await response.json()

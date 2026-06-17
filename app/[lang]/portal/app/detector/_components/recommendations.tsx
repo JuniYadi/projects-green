@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -38,10 +39,7 @@ export function Recommendations() {
   const handleGenerate = async () => {
     setIsGenerating(true)
     try {
-      const res = await fetch("/api/admin/detector/recommend", {
-        method: "POST",
-      })
-      const data = await res.json()
+      const { data } = await eden.api.admin.detector.recommend.post()
       if (data.ok) {
         setRecommendations(data.data)
         setHasGenerated(true)
@@ -63,20 +61,15 @@ export function Recommendations() {
   const handleApprove = async (rec: RuleRecommendation) => {
     setApprovingId(rec.id)
     try {
-      const res = await fetch("/api/admin/detector/rules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: rec.suggestedName,
-          description: rec.suggestedDescription,
-          patternJson: rec.suggestedPatternJson,
-          implicationsJson: rec.suggestedImplicationsJson,
-          confidenceWeight: rec.suggestedConfidenceWeight,
-          priority: rec.suggestedPriority,
-        }),
+      const { data: res } = await eden.api.admin.detector.rules.post({
+        name: rec.suggestedName,
+        description: rec.suggestedDescription,
+        patternJson: rec.suggestedPatternJson,
+        implicationsJson: rec.suggestedImplicationsJson,
+        confidenceWeight: rec.suggestedConfidenceWeight,
+        priority: rec.suggestedPriority,
       })
-      const data = await res.json()
-      if (data.ok) {
+      if (res?.ok) {
         toast.success(`Rule "${rec.suggestedName}" created successfully`)
         setRecommendations((prev) => prev.filter((r) => r.id !== rec.id))
       } else {

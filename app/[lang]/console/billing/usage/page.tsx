@@ -1,5 +1,6 @@
 "use client"
 
+import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useCallback, useEffect, useState } from "react"
@@ -72,7 +73,6 @@ function exportToCSV(data: UsageBreakdown[], filename: string) {
 export default function UsagePage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
   const [summary, setSummary] = useState<UsageSummary | null>(null)
   const [trend, setTrend] = useState<DailyTrend[]>([])
   const [loading, setLoading] = useState(true)
@@ -82,19 +82,16 @@ export default function UsagePage() {
     async function fetchData() {
       try {
         const [summaryRes, trendRes] = await Promise.all([
-          fetch("/api/billing/usage/breakdown", { credentials: "include" }),
-          fetch("/api/billing/usage/trend?days=30", { credentials: "include" }),
+          eden.api.billing.usage.breakdown.get(),
+          eden.api.billing.usage.trend.get({ $query: { days: "30" } }),
         ])
 
-        if (!summaryRes.ok || !trendRes.ok) {
+        if (!summaryRes.data || !trendRes.data) {
           throw new Error("Failed to fetch usage data")
         }
 
-        const summaryData = await summaryRes.json()
-        const trendData = await trendRes.json()
-
-        setSummary(summaryData.data)
-        setTrend(trendData.data.trend)
+        setSummary(summaryRes.data.data)
+        setTrend(trendRes.data.data.trend)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error")
       } finally {

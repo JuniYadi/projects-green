@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
 import {
   Table,
@@ -51,8 +52,10 @@ export function OrganizationsTable() {
         if (cursor.after) searchParams.set("after", cursor.after)
         if (search) searchParams.set("search", search)
 
-        const res = await fetch(`/api/admin/organizations?${searchParams.toString()}`, { signal: abortController.signal })
-        const data = await res.json()
+        const { data } = await eden.api.admin.organizations.get({
+          $query: Object.fromEntries(searchParams.entries()),
+          $fetch: { signal: abortController.signal },
+        })
 
         if (data.ok) {
           setOrganizations(data.data.organizations)
@@ -80,9 +83,8 @@ export function OrganizationsTable() {
       await Promise.all(
         organizations.map(async (org) => {
           try {
-            const res = await fetch(`/api/admin/organizations/${org.id}/members`)
-            const data = await res.json()
-            if (data.ok) {
+            const { data } = await eden.api.admin.organizations[org.id].members.get()
+            if (data?.ok) {
               counts[org.id] = data.data.memberships.length
             }
           } catch {

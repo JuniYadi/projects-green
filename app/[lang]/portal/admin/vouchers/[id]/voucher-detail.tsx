@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -74,8 +75,7 @@ export function VoucherDetail({ voucherId }: VoucherDetailProps) {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/vouchers/portal/${voucherId}`)
-      const data = (await res.json()) as DetailResponse | ApiErrorResponse
+      const { data } = await eden.api.vouchers.portal[voucherId].get()
 
       if (data.ok) {
         setVoucher(data.data)

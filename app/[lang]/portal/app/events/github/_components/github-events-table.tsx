@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -112,9 +113,9 @@ export function GithubEventsTable() {
       if (processStatus) params.set("processStatus", processStatus)
       if (deletedState) params.set("deletedState", deletedState)
 
-      const res: EventListResponse = await fetch(
-        `/api/admin/app/events/github?${params}`
-      ).then((r) => r.json())
+      const { data: res } = await eden.api.admin.app.events.github.get({
+        $query: Object.fromEntries(params.entries()),
+      })
       if (res.ok) {
         setEvents(res.data.items)
         setTotal(res.data.total)
@@ -139,10 +140,8 @@ export function GithubEventsTable() {
     setIsLoadingDetail(true)
     setJsonModalOpen(true)
     try {
-      const res: EventDetailResponse = await fetch(
-        `/api/admin/app/events/github/${event.id}`
-      ).then((r) => r.json())
-      if (res.ok) {
+      const { data: res } = await eden.api.admin.app.events.github[event.id].get()
+      if (res?.ok) {
         setSelectedEvent(res.data)
       } else {
         setError("Failed to load event detail")

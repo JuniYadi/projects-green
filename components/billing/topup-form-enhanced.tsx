@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -115,12 +116,10 @@ export function TopupFormEnhanced({
     async function fetchMethods() {
       try {
         const params = new URLSearchParams({ currency })
-        const response = await fetch(
-          `/api/payments/topup/methods?${params.toString()}`,
-          { cache: "no-store" }
-        )
-        const data = await response.json()
-        if (data.ok && !cancelled) {
+        const { data } = await eden.api.payments.topup.methods.get({
+          $query: { currency },
+        })
+        if (data?.ok && !cancelled) {
           if (data.methods) {
             const nextMethods: Record<PaymentMethod, boolean> = {
               MANUAL_BANK: Boolean(data.methods.MANUAL_BANK),
@@ -167,16 +166,15 @@ export function TopupFormEnhanced({
 
     async function fetchBankAccounts() {
       try {
-        const response = await fetch("/api/payments/topup/bank-accounts")
-        const data = await response.json()
-        if (data.ok && !cancelled) {
+        const { data } = await eden.api.payments.topup["bank-accounts"].get()
+        if (data?.ok && !cancelled) {
           setBankAccounts(data.data || [])
           const defaultAccount = data.data?.find(
             (b: BankAccount) => b.isDefault
           )
           if (defaultAccount) {
             setSelectedBankAccount(defaultAccount.id)
-          } else if (data.data?.length > 0) {
+          } else if (data.data && data.data.length > 0) {
             setSelectedBankAccount(data.data[0].id)
           }
         }
@@ -232,29 +230,27 @@ export function TopupFormEnhanced({
     setErrorMessage(null)
 
     try {
-      const response = await fetch("/api/payments/topup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, paymentMethod }),
-      })
+      const { data: result } = await eden.api.payments.topup.post({ amount, paymentMethod } as never) as { data: { ok?: boolean; message?: string; invoice?: { id: string }; paymentUrl?: string } | null }
 
-      const result = await response.json()
-
-      if (!response.ok || !result.ok) {
-        throw new Error(result.message || "Topup failed. Please try again.")
+      if (!result || !result.ok) {
+        throw new Error(result?.message || "Topup failed. Please try again.")
       }
 
-      onSuccess?.({
-        invoiceId: result.invoice.id,
-        amount,
-        paymentMethod,
-      })
+      if (result.invoice?.id) {
+        onSuccess?.({
+          invoiceId: result.invoice.id,
+          amount,
+          paymentMethod,
+        })
+      }
 
       if (paymentMethod === "MANUAL_BANK") {
         setFormState("success")
         // Manual transfer lands on the invoice detail page so the customer can
         // review the destination account and exact amount before confirming.
-        router.push(`/console/billing/invoices/${result.invoice.id}`)
+        if (result.invoice?.id) {
+          router.push(`/console/billing/invoices/${result.invoice.id}`)
+        }
       } else if (
         paymentMethod === "VA" ||
         paymentMethod === "QRIS" ||
@@ -263,13 +259,15 @@ export function TopupFormEnhanced({
         if (result.paymentUrl) {
           setFormState("submitting")
           setTimeout(() => {
-            window.location.href = result.paymentUrl
+            window.location.href = result.paymentUrl ?? ""
           }, 150)
         } else {
           setFormState("success")
-          router.push(
-            `/console/billing/invoices/${result.invoice.id}?payment=pending`
-          )
+          if (result?.invoice?.id) {
+            router.push(
+              `/console/billing/invoices/${result.invoice.id}?payment=pending`
+            )
+          }
         }
       }
     } catch (err) {

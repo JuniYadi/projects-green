@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
@@ -80,10 +81,9 @@ export default function VouchersPage() {
 
     async function loadClaims() {
       try {
-        const res = await fetch("/api/vouchers/claims", {
-          signal: abortController.signal,
+        const { data } = await eden.api.vouchers.claims.get({
+          $fetch: { signal: abortController.signal },
         })
-        const data = (await res.json()) as ClaimsResponse | ApiErrorResponse
         if (data.ok) {
           setClaims(
             data.data.map((item) => ({
@@ -115,12 +115,7 @@ export default function VouchersPage() {
     setRedeemResult(null)
 
     try {
-      const res = await fetch("/api/vouchers/redeem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: trimmedCode }),
-      })
-      const data = (await res.json()) as RedeemResponse | ApiErrorResponse
+      const { data } = await eden.api.vouchers.redeem.post({ code: trimmedCode })
 
       if (data.ok) {
         setRedeemResult({
@@ -130,11 +125,8 @@ export default function VouchersPage() {
         setCode("")
 
         // Reload claims to include the new one
-        const claimsRes = await fetch("/api/vouchers/claims")
-        const claimsData = (await claimsRes.json()) as
-          | ClaimsResponse
-          | ApiErrorResponse
-        if (claimsData.ok) {
+        const { data: claimsData } = await eden.api.vouchers.claims.get()
+        if (claimsData?.ok) {
           setClaims(
             claimsData.data.map((item) => ({
               id: item.id,

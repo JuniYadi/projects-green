@@ -1,6 +1,7 @@
 "use client"
 
 import type { ColumnDef } from "@tanstack/react-table"
+import { eden } from "@/lib/eden"
 import { useEffect, useState } from "react"
 
 import { DataTable } from "@/components/data-table"
@@ -241,10 +242,10 @@ export function RulesTable() {
       try {
         const params = new URLSearchParams()
         if (includeInactive) params.set("includeInactive", "true")
-        const res = await fetch(`/api/admin/detector/rules?${params}`, {
-          signal: abortController.signal,
+        const { data } = await eden.api.admin.detector.rules.get({
+          $query: Object.fromEntries(params.entries()),
+          $fetch: { signal: abortController.signal },
         })
-        const data = await res.json()
         if (data.ok) {
           setRules(data.data)
         } else {
@@ -263,19 +264,14 @@ export function RulesTable() {
   }, [includeInactive, refreshKey])
 
   const handleCreate = async (formData: RuleFormData) => {
-    const res = await fetch("/api/admin/detector/rules", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: formData.name,
-        description: formData.description || undefined,
-        patternJson: JSON.parse(formData.patternJson),
-        implicationsJson: JSON.parse(formData.implicationsJson),
-        confidenceWeight: formData.confidenceWeight,
-        priority: formData.priority,
-      }),
+    const { data } = await eden.api.admin.detector.rules.post({
+      name: formData.name,
+      description: formData.description || undefined,
+      patternJson: JSON.parse(formData.patternJson),
+      implicationsJson: JSON.parse(formData.implicationsJson),
+      confidenceWeight: formData.confidenceWeight,
+      priority: formData.priority,
     })
-    const data = await res.json()
     if (!data.ok) throw new Error(data.message)
     toast.success("Rule created successfully")
     refresh()
@@ -283,31 +279,21 @@ export function RulesTable() {
 
   const handleUpdate = async (formData: RuleFormData) => {
     if (!editingRule) return
-    const res = await fetch(`/api/admin/detector/rules/${editingRule.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: formData.name,
-        description: formData.description || null,
-        patternJson: JSON.parse(formData.patternJson),
-        implicationsJson: JSON.parse(formData.implicationsJson),
-        confidenceWeight: formData.confidenceWeight,
-        priority: formData.priority,
-      }),
+    const { data } = await eden.api.admin.detector.rules[editingRule.id].patch({
+      name: formData.name,
+      description: formData.description || null,
+      patternJson: JSON.parse(formData.patternJson),
+      implicationsJson: JSON.parse(formData.implicationsJson),
+      confidenceWeight: formData.confidenceWeight,
+      priority: formData.priority,
     })
-    const data = await res.json()
     if (!data.ok) throw new Error(data.message)
     toast.success("Rule updated successfully")
     refresh()
   }
 
   const handleToggleActive = async (rule: DetectorRule) => {
-    const res = await fetch(`/api/admin/detector/rules/${rule.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !rule.isActive }),
-    })
-    const data = await res.json()
+    const { data } = await eden.api.admin.detector.rules[rule.id].patch({ isActive: !rule.isActive })
     if (data.ok) {
       toast.success(
         `Rule ${rule.isActive ? "deactivated" : "activated"} successfully`
@@ -324,10 +310,7 @@ export function RulesTable() {
     )
       return
 
-    const res = await fetch(`/api/admin/detector/rules/${rule.id}`, {
-      method: "DELETE",
-    })
-    const data = await res.json()
+    const { data } = await eden.api.admin.detector.rules[rule.id].delete()
     if (data.ok) {
       toast.success("Rule deleted successfully")
       refresh()

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
 import { Plus } from "@phosphor-icons/react"
 import { toast } from "sonner"
@@ -65,9 +66,8 @@ export function AddDeviceDialog() {
     if (orgsLoaded) return
     setLoadingOrgs(true)
     try {
-      const res = await fetch("/api/admin/organizations")
-      const body = await res.json()
-      if (body.ok) {
+      const { data: body } = await eden.api.admin.organizations.get()
+      if (body?.ok) {
         setOrganizations(body.data.organizations)
         setOrgsLoaded(true)
       }
@@ -102,24 +102,19 @@ export function AddDeviceDialog() {
 
     setIsSubmitting(true)
     try {
-      const res = await fetch("/api/admin/devices", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          organizationId: form.organizationId,
-          phoneNumber: form.phoneNumber,
-          name: form.name || "Admin Device",
-          displayName: form.displayName || undefined,
-          whatsappBusinessAccountId:
-            form.whatsappBusinessAccountId || undefined,
-          whatsappPhoneId: form.whatsappPhoneId || undefined,
-          whatsappApplicationId: form.whatsappApplicationId || undefined,
-          callbackUrl: form.callbackUrl || undefined,
-        }),
+      const { data: body } = await eden.api.admin.devices.post({
+        organizationId: form.organizationId,
+        phoneNumber: form.phoneNumber,
+        name: form.name || "Admin Device",
+        displayName: form.displayName || undefined,
+        whatsappBusinessAccountId:
+          form.whatsappBusinessAccountId || undefined,
+        whatsappPhoneId: form.whatsappPhoneId || undefined,
+        whatsappApplicationId: form.whatsappApplicationId || undefined,
+        callbackUrl: form.callbackUrl || undefined,
       })
-      const body = await res.json()
 
-      if (!body.ok) {
+      if (!body?.ok) {
         throw new Error(body.message || "Failed to add device.")
       }
 

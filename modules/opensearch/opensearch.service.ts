@@ -6,7 +6,6 @@
 
 import {
   OpenSearchClient,
-  buildOpenSearchConfig,
 } from "./opensearch.client"
 import type {
   OpenSearchSearchFilters,

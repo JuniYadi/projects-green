@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import { DocumentationForm } from "@/modules/docs/ui/documentation-form"
 import {
   Table,
@@ -39,8 +40,8 @@ export default function PortalDocumentationsPage() {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/docs/list").then((r) => r.json())
-      if (res.ok) {
+      const { data: res } = await eden.api.docs.list.get()
+      if (res?.ok) {
         setDocs(res.docs)
       } else {
         setError(res.message || "Failed to load docs")
@@ -68,10 +69,8 @@ export default function PortalDocumentationsPage() {
       return
     setIsDeleting(true)
     try {
-      const res = await fetch(`/api/docs/${doc.id}`, {
-        method: "DELETE",
-      }).then((r) => r.json())
-      if (res.ok) {
+      const { data: res } = await eden.api.docs[doc.id].delete()
+      if (res?.ok) {
         setDocs((prev) => prev.filter((d) => d.id !== doc.id))
         if (selectedDoc?.id === doc.id) setSelectedDoc(null)
       } else {

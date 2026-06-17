@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { eden } from "@/lib/eden"
 import {
   Card,
   CardContent,
@@ -79,10 +80,10 @@ export default function ConsolePage() {
 
   const fetchDashboardData = useCallback(async () => {
     const results = await Promise.allSettled([
-      fetch("/api/billing/account").then((r) => r.json()),
-      fetch("/api/usage").then((r) => r.json()),
-      fetch("/api/billing/invoices?limit=1").then((r) => r.json()),
-      fetch("/api/support-tickets?status=open").then((r) => r.json()),
+      eden.api.billing.account.get().then((r) => r.data),
+      eden.api.usage.get().then((r) => r.data),
+      eden.api.billing.invoices.get({ $query: { limit: "1" } }).then((r) => r.data),
+      eden.api.support.tickets.get({ $query: { status: "open" } }).then((r) => r.data),
     ])
 
     setCards([

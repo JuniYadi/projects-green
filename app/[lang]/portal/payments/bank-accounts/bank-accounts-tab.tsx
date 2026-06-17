@@ -1,5 +1,6 @@
 "use client"
 
+import { eden } from "@/lib/eden"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -152,9 +153,9 @@ export function BankAccountsTab() {
 
   const fetchBankAccounts = useCallback(async () => {
     try {
-      const response = await fetch("/api/portal/payments/bank-accounts")
+      const { data: payload } = await eden.api.portal.payments["bank-accounts"].get()
 
-      if (!response.ok) {
+      if (!payload) {
         setState({ status: "error", message: "Failed to load bank accounts" })
         return
       }
@@ -182,22 +183,17 @@ export function BankAccountsTab() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch("/api/portal/payments/bank-accounts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bankCode: String(formData.get("bankCode") || "OTHER"),
-          bankName: String(formData.get("bankName") || ""),
-          accountName: String(formData.get("accountName") || ""),
-          accountNumber: String(formData.get("accountNumber") || ""),
-          supportedCurrencies: getSupportedCurrencies(formData),
-          swiftCode: String(formData.get("swiftCode") || "") || null,
-          bankAddress: String(formData.get("bankAddress") || "") || null,
-        }),
+      const { data: payload } = await eden.api.portal.payments["bank-accounts"].post({
+        bankCode: String(formData.get("bankCode") || "OTHER"),
+        bankName: String(formData.get("bankName") || ""),
+        accountName: String(formData.get("accountName") || ""),
+        accountNumber: String(formData.get("accountNumber") || ""),
+        supportedCurrencies: getSupportedCurrencies(formData),
+        swiftCode: String(formData.get("swiftCode") || "") || null,
+        bankAddress: String(formData.get("bankAddress") || "") || null,
       })
-      const payload = await response.json()
 
-      if (!response.ok || !payload.ok) {
+      if (!payload?.ok) {
         setState({
           status: "error",
           message: payload.message || "Failed to create bank account",
@@ -221,24 +217,16 @@ export function BankAccountsTab() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch(
-        `/api/portal/payments/bank-accounts/${editingAccount.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bankName: String(formData.get("bankName") || ""),
-            accountName: String(formData.get("accountName") || ""),
-            accountNumber: String(formData.get("accountNumber") || ""),
-            supportedCurrencies: getSupportedCurrencies(formData),
-            swiftCode: String(formData.get("swiftCode") || "") || null,
-            bankAddress: String(formData.get("bankAddress") || "") || null,
-          }),
-        }
-      )
-      const payload = await response.json()
+      const { data: payload } = await eden.api.portal.payments["bank-accounts"][editingAccount.id].put({
+        bankName: String(formData.get("bankName") || ""),
+        accountName: String(formData.get("accountName") || ""),
+        accountNumber: String(formData.get("accountNumber") || ""),
+        supportedCurrencies: getSupportedCurrencies(formData),
+        swiftCode: String(formData.get("swiftCode") || "") || null,
+        bankAddress: String(formData.get("bankAddress") || "") || null,
+      })
 
-      if (!response.ok || !payload.ok) {
+      if (!payload?.ok) {
         setState({
           status: "error",
           message: payload.message || "Failed to update bank account",
@@ -258,12 +246,8 @@ export function BankAccountsTab() {
   async function handleSetDefault(accountId: string) {
     setIsSubmitting(true)
     try {
-      const response = await fetch(
-        `/api/portal/payments/bank-accounts/${accountId}/toggle`,
-        { method: "PATCH" }
-      )
-      const payload = await response.json()
-      if (!response.ok || !payload.ok) {
+      const { data: payload } = await eden.api.portal.payments["bank-accounts"][accountId].toggle.patch()
+      if (!payload?.ok) {
         setState({
           status: "error",
           message: payload.message || "Failed to set default bank account",

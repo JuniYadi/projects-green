@@ -79,7 +79,7 @@ const mapEcosystemToLanguage = (
 
 const mapDecisionStatus = (
   decisionStatus: string | undefined | null,
-  confidence: number
+  _confidence: number
 ): DetectionResult["status"] => {
   if (decisionStatus === "success") return "success"
   if (decisionStatus === "low_confidence") return "low_confidence"

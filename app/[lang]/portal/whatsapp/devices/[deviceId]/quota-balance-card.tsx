@@ -1,3 +1,5 @@
+import { eden } from "@/lib/eden"
+
 /**
  * Quota & Balance Card — Inline editable client component
  *
@@ -73,17 +75,10 @@ export function QuotaBalanceCard({
     setError(null)
 
     try {
-      const res = await fetch(
-        `/api/whatsapp/devices/${deviceId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            quotaBase,
-            dailyLimitMessage: dailyLimit,
-          }),
-        },
-      )
+      const { data: res } = await eden.api.whatsapp.devices[deviceId].patch({
+        quotaBase,
+        dailyLimitMessage: dailyLimit,
+      })
 
       const body = await res.json()
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { eden } from "@/lib/eden"
 import { useAuth } from "@workos-inc/authkit-nextjs/components"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -168,16 +169,15 @@ export function NavUser({
 
     const run = async () => {
       try {
+        // eslint-disable-next-line no-restricted-globals
         const sessionResponse = await fetch("/api/auth/session")
-        const sessionPayload = (await sessionResponse
-          .json()
-          .catch(() => null)) as AuthSessionInfo | null
+        const sessionPayload = await sessionResponse.json()
 
         if (!isActive) {
           return
         }
 
-        if (sessionResponse.ok && sessionPayload?.ok) {
+        if (sessionPayload?.ok) {
           setIdentityInfo(sessionPayload)
         } else {
           setIdentityInfo(null)

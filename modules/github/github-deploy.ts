@@ -4,7 +4,7 @@
  */
 
 import * as jsYaml from "js-yaml"
-import type { ApplicationHelmValues } from "../deploy/deploy.helm"
+
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 
@@ -358,7 +358,7 @@ export async function refreshGitHubAppToken(
   return { token: data.token, expiresAt: data.expires_at }
 }
 
-function generateAppJWT(appId: string, privateKey: string): string {
+function generateAppJWT(appId: string, _privateKey: string): string {
   // Minimal JWT generation without external deps
   // In production, use a proper JWT library (jose, jsonwebtoken)
   const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")

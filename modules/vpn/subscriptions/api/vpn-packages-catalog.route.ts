@@ -7,7 +7,7 @@ import {
   toVpnPublicPackageDetailDTO,
 } from "../vpn-package-public.dto"
 
-type RouteSet = { status?: number | string }
+
 
 type PrismaLike = Pick<typeof prisma, "vpnPackage">
 

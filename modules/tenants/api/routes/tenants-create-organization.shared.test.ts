@@ -47,6 +47,7 @@ const mockCreateTenantMembership = mock(
 const mockDeleteTenantOrganization = mock(async () => undefined)
 const mockGetBootstrapCreatorRoleSlug = mock(() => "user_owner")
 const mockListTenantBootstrapMembershipsForUser = mock(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async (userId: string): Promise<TenantBootstrapMembership[]> => [makeMembership()]
 )
 
@@ -168,7 +169,8 @@ describe("createTenantOrganizationWithCreator", () => {
     const set = makeSet()
     // Return a membership that IS active but has a non-owner role
     mockListTenantBootstrapMembershipsForUser.mockImplementation(
-      async (userId: string): Promise<TenantBootstrapMembership[]> => [
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async (userId: string): Promise<TenantBootstrapMembership[]> => [
         makeMembership({ roleSlug: "user_admin" }),
       ]
     )
@@ -193,6 +195,7 @@ describe("createTenantOrganizationWithCreator", () => {
   it("returns ROLLBACK_FAILED when delete fails after membership verification fails", async () => {
     const set = makeSet()
     mockListTenantBootstrapMembershipsForUser.mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       async (userId: string): Promise<TenantBootstrapMembership[]> => [
         makeMembership({ roleSlug: "user_admin" }),
       ]
@@ -385,6 +388,7 @@ describe("createTenantOrganizationWithCreator", () => {
   it("verifies bootstrap role for raw slug 'bootstrap'", async () => {
     const set = makeSet()
     mockListTenantBootstrapMembershipsForUser.mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       async (userId: string): Promise<TenantBootstrapMembership[]> => [
         makeMembership({ roleSlug: "bootstrap" }),
       ]
@@ -404,6 +408,7 @@ describe("createTenantOrganizationWithCreator", () => {
   it("verifies bootstrap role for raw slug 'user_bootstrap'", async () => {
     const set = makeSet()
     mockListTenantBootstrapMembershipsForUser.mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       async (userId: string): Promise<TenantBootstrapMembership[]> => [
         makeMembership({ roleSlug: "user_bootstrap" }),
       ]

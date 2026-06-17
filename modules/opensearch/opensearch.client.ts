@@ -7,13 +7,8 @@
 import type {
   OpenSearchConfig,
   OpenSearchRegionConfig,
-  OpenSearchSearchFilters,
-  OpenSearchSearchResult,
-  OpenSearchLogCounts,
   OpenSearchHealthCheck,
   OpenSearchConnectionTest,
-  OpenSearchIndexFields,
-  OpenSearchLogEntry,
 } from "./opensearch.types"
 
 // ─── Config Resolution ────────────────────────────────────────────────────────

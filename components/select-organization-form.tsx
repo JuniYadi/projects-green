@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+
 import {
   Field,
   FieldDescription,
@@ -71,27 +72,14 @@ export function SelectOrganizationForm({
     setIsSubmitting(true)
 
     try {
-      const response = await fetch(
-        "/api/auth/organization-selection/complete",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            organizationId,
-            pendingAuthenticationToken,
-          }),
-        }
-      )
+      const { data } = await eden.api.auth["organization-selection"].complete.post({
+        organizationId,
+        pendingAuthenticationToken,
+      }) as { data: { ok?: boolean; message?: string } | null }
 
-      const payload = (await response
-        .json()
-        .catch(() => null)) as ApiErrorPayload | null
-
-      if (!response.ok) {
+      if (!data?.ok) {
         setSubmitError(
-          payload?.message ??
+          data?.message ??
             "Failed to complete authentication. Please try again."
         )
         return

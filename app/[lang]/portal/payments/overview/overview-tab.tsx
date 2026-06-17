@@ -1,5 +1,6 @@
 "use client"
 
+import { eden } from "@/lib/eden"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
@@ -40,14 +41,14 @@ export function OverviewTab() {
     try {
       // Fetch stats in parallel
       const [gatewaysRes, bankAccountsRes, confirmationsRes] = await Promise.all([
-        fetch("/api/portal/payments/gateways"),
-        fetch("/api/portal/payments/bank-accounts"),
-        fetch("/api/portal/payments/confirmations"),
+        eden.api.portal.payments.gateways.get(),
+        eden.api.portal.payments["bank-accounts"].get(),
+        eden.api.portal.payments.confirmations.get(),
       ])
 
-      const gateways = gatewaysRes.ok ? await gatewaysRes.json() : { ok: false }
-      const bankAccounts = bankAccountsRes.ok ? await bankAccountsRes.json() : { ok: false }
-      const confirmations = confirmationsRes.ok ? await confirmationsRes.json() : { ok: false }
+      const gateways = gatewaysRes.data ?? { ok: false }
+      const bankAccounts = bankAccountsRes.data ?? { ok: false }
+      const confirmations = confirmationsRes.data ?? { ok: false }
 
       setState({
         status: "success",

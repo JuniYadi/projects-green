@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -270,12 +271,12 @@ export function BillingAlertsForm() {
         <CardContent>
           <p className="text-sm text-muted-foreground">
             Invoice notification preferences are now managed per contact on the{" "}
-            <a
+            <Link
               href="/console/billing/contacts"
               className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
             >
               Billing Contacts
-            </a>{" "}
+            </Link>{" "}
             page. Add or update contacts to control which email addresses receive
             invoice notifications.
           </p>

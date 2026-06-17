@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
 import {
   Table,
@@ -113,10 +114,9 @@ export function VoucherManagementTable() {
       searchParams.set("offset", String(offset))
       if (search) searchParams.set("prefix", search)
 
-      const res = await fetch(
-        `/api/vouchers/portal?${searchParams.toString()}`
-      )
-      const data = (await res.json()) as ListResponse | ApiErrorResponse
+      const { data } = await eden.api.vouchers.portal.get({
+        $query: Object.fromEntries(searchParams.entries()),
+      })
 
       if (data.ok) {
         setVouchers(data.data)
@@ -173,12 +173,7 @@ export function VoucherManagementTable() {
         payload.targetOrganizationId = createForm.targetOrganizationId.trim()
       }
 
-      const res = await fetch("/api/vouchers/portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      const data = (await res.json()) as CreateResponse | ApiErrorResponse
+      const { data } = await eden.api.vouchers.portal.post(payload)
 
       if (data.ok) {
         setDialogOpen(false)

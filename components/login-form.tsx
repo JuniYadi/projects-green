@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { eden } from "@/lib/eden"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
 import { XCircleIcon } from "@phosphor-icons/react"
@@ -94,20 +95,9 @@ export function LoginForm({
     setIsRequestingCode(true)
 
     try {
-      const response = await fetch("/api/auth/magic/request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: emailResult.data }),
-      })
+      const { data: payload } = await eden.api.auth.magic.request.post({ email: emailResult.data })
 
-      const payload = (await response.json().catch(() => null)) as
-        | ApiErrorPayload
-        | { message?: string }
-        | null
-
-      if (!response.ok) {
+      if (!payload) {
         setServerFieldErrors(
           (payload as ApiErrorPayload | null)?.fieldErrors ?? {}
         )
@@ -162,22 +152,12 @@ export function LoginForm({
     setIsVerifyingCode(true)
 
     try {
-      const response = await fetch("/api/auth/magic/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: emailResult.data,
-          code: codeResult.data,
-        }),
-      })
+      const { data: payload } = await eden.api.auth.magic.verify.post({
+        email: emailResult.data,
+        code: codeResult.data,
+      }) as { data: { ok?: boolean; message?: string; fieldErrors?: Record<string, string[]> } | null }
 
-      const payload = (await response
-        .json()
-        .catch(() => null)) as ApiErrorPayload | null
-
-      if (!response.ok) {
+      if (!payload) {
         setServerFieldErrors(payload?.fieldErrors ?? {})
         setSubmitError(
           payload?.message ?? "Invalid or expired code. Please try again."

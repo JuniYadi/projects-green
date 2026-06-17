@@ -40,7 +40,7 @@ export type PairingStatusResponse = {
 
 // ── API helpers ──────────────────────────────────────────────────────────
 
-type ApiOk<T> = { ok: true } & T
+
 type ApiError = { ok?: false; error?: { code: string; message: string } }
 
 async function fetchMobile<T>(

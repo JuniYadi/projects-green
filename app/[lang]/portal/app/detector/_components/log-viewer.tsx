@@ -1,6 +1,7 @@
 "use client"
 
 import type { ColumnDef } from "@tanstack/react-table"
+import { eden } from "@/lib/eden"
 import { useEffect, useState } from "react"
 
 import { DataTable } from "@/components/data-table"
@@ -196,7 +197,7 @@ export function LogViewer() {
   const limit = 20
   const [refreshKey, setRefreshKey] = useState(0)
 
-  const refresh = () => setRefreshKey((k) => k + 1)
+  const _refresh = () => setRefreshKey((k) => k + 1)
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -210,10 +211,10 @@ export function LogViewer() {
         params.set("offset", String(offset))
         if (statusFilter !== "all") params.set("status", statusFilter)
 
-        const res = await fetch(`/api/admin/detector/logs?${params}`, {
-          signal: abortController.signal,
+        const { data } = await eden.api.admin.detector.logs.get({
+          $query: Object.fromEntries(params.entries()),
+          $fetch: { signal: abortController.signal },
         })
-        const data = await res.json()
         if (data.ok) {
           setLogs(data.data.logs)
           setTotal(data.data.total)

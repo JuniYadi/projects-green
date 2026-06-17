@@ -1,9 +1,10 @@
 "use client"
 
+import { eden } from "@/lib/eden"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCallback, useEffect, useState, useMemo } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -103,9 +104,9 @@ export function ConfirmationsTab() {
 
   const fetchConfirmations = useCallback(async () => {
     try {
-      const response = await fetch("/api/portal/payments/confirmations")
+      const { data: payload } = await eden.api.portal.payments.confirmations.get()
 
-      if (!response.ok) {
+      if (!payload) {
         setState({ status: "error", message: "Failed to load confirmations" })
         return
       }
@@ -137,22 +138,11 @@ export function ConfirmationsTab() {
   ) {
     setPendingActionId(`${action}:${id}`)
     try {
-      const response = await fetch(
-        `/api/portal/payments/confirmations/${id}/${action}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body:
-            action === "reject"
-              ? JSON.stringify({
-                  action: "reject",
-                  reason: reason?.trim() || "Rejected from portal review",
-                })
-              : undefined,
-        }
-      )
-      const payload = await response.json()
-      if (!response.ok || !payload.ok) {
+      const { data: payload } = await eden.api.portal.payments.confirmations[id][action].post({
+        action,
+        reason: action === "reject" ? reason?.trim() || "Rejected from portal review" : undefined,
+      })
+      if (!payload?.ok) {
         setState({
           status: "error",
           message: payload.message || `Failed to ${action} confirmation`,

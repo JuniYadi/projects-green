@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { eden } from "@/lib/eden"
 import { useForm } from "@tanstack/react-form"
 import { RowsIcon } from "@phosphor-icons/react"
 import { useRouter } from "next/navigation"
@@ -82,19 +83,9 @@ export function SignupForm({
       setServerFieldErrors({})
 
       try {
-        const response = await fetch("/api/auth/signup", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(value),
-        })
+        const { data: payload } = await eden.api.auth.signup.post(value) as { data: { ok?: boolean; message?: string; fieldErrors?: Record<string, string[]> } | null }
 
-        const payload = (await response
-          .json()
-          .catch(() => null)) as ApiErrorPayload | null
-
-        if (!response.ok) {
+        if (!payload?.ok) {
           setServerFieldErrors(payload?.fieldErrors ?? {})
           setSubmitError(
             payload?.message ??

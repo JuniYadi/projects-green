@@ -58,7 +58,8 @@ export default function PortalVpnPage() {
   }, [])
 
   useEffect(() => {
-    void loadClients()
+    const run = async () => { await loadClients() }
+    run()
   }, [loadClients])
 
   const handleHealthCheck = async () => {
@@ -74,7 +75,7 @@ export default function PortalVpnPage() {
   }
 
   const handleDownload = (clientId: string) => {
-    window.location.href = `/api/vpn/clients/${clientId}/download`
+    window.location.assign(`/api/vpn/clients/${clientId}/download`)
   }
 
   const handleRevoke = async (clientId: string) => {

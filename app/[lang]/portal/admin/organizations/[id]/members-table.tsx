@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import {
   Table,
   TableBody,
@@ -69,8 +70,7 @@ export function MembersTable({ organizationId }: MembersTableProps) {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/admin/organizations/${organizationId}/members`)
-      const data = await res.json()
+      const { data } = await eden.api.admin.organizations[organizationId].members.get()
 
       if (data.ok) {
         setMemberships(data.data.memberships)

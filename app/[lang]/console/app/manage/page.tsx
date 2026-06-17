@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
 import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -72,13 +74,8 @@ export default function ManagePage() {
       setAppsError(null)
 
       try {
-        const response = await fetch("/api/deploy/apps")
-        if (!response.ok) {
-          throw new Error(`Request failed with ${response.status}.`)
-        }
-
-        const payload = (await response.json()) as AppsResponse
-        if (!payload.ok || !Array.isArray(payload.data)) {
+        const { data: payload } = await eden.api.deploy.apps.get()
+        if (!payload || !payload.ok || !Array.isArray(payload.data)) {
           throw new Error(payload.message ?? "Unable to load applications.")
         }
 
@@ -135,15 +132,8 @@ export default function ManagePage() {
       setOverviewError(null)
 
       try {
-        const response = await fetch(
-          `/api/deploy/apps/${encodeURIComponent(selectedSlug)}`
-        )
-        if (!response.ok) {
-          throw new Error(`Request failed with ${response.status}.`)
-        }
-
-        const payload = (await response.json()) as AppOverviewResponse
-        if (!payload.ok || !payload.data) {
+        const { data: payload } = await eden.api.deploy.apps[selectedSlug].get()
+        if (!payload || !payload.ok || !payload.data) {
           throw new Error(
             payload.message ?? "Unable to load application state."
           )

@@ -13,7 +13,6 @@ import { GlobeIcon, RocketLaunchIcon } from "@phosphor-icons/react"
 export default function SubscriptionPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
   const [data, setData] = useState<BillingSubscriptions | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -957,7 +957,7 @@ describe("supportTicketService", () => {
       repository,
     })
 
-    const session = await service.getAttachmentSession!({ // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const session = await service.getAttachmentSession!({  
       actor: { organizationId: "org_1", workosUserId: "user_requester" },
       attachmentId: "nonexistent_attachment",
     })
@@ -1015,7 +1015,7 @@ describe("supportTicketService", () => {
   })
 
   it("returns plain error when toSafeContentError receives non-encryption error", async () => {
-    const original = new Error("some random error")
+    const _original = new Error("some random error")
     // We import the service module to access toSafeContentError indirectly
     // by triggering a non-cipher error in createTicket
     const { repository } = createRepositoryStub()
@@ -1145,7 +1145,7 @@ describe("supportTicketService", () => {
       repository,
     })
 
-    const session = await service.getAttachmentSession!({ // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const session = await service.getAttachmentSession!({  
       actor: { organizationId: "org_1", workosUserId: "user_requester" },
       attachmentId: "att_1",
     })
@@ -1348,7 +1348,7 @@ describe("supportTicketService", () => {
     )
 
     const brokenCipher: SupportTicketContentCipher = {
-      encrypt(_value) {
+      encrypt(_value: unknown) {
         // Return stenc.v1.-prefixed value so isSupportTicketEncryptedPayload triggers decrypt
         return "stenc.v1.iv.authTag.ciphertext"
       },

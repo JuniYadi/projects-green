@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { MagnifyingGlass } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
+import { eden } from "@/lib/eden"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -40,7 +41,12 @@ export default function DocsPage() {
 
   const { data, isLoading } = useQuery<DocsListResponse>({
     queryKey: ["docs", "list", debouncedSearch],
-    queryFn: () => fetch(endpoint).then((res) => res.json()),
+    queryFn: async () => {
+      const { data } = debouncedSearch
+        ? await eden.api.docs.search.get({ $query: { q: debouncedSearch } })
+        : await eden.api.docs.list.get()
+      return data
+    },
   })
 
   const docs = data?.docs ?? []

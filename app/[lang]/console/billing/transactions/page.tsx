@@ -1,5 +1,6 @@
 "use client"
 
+import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useEffect, useState } from "react"
@@ -30,7 +31,6 @@ type FilterStatus = "ALL" | "OPEN" | "PAID" | "VOID"
 export default function TransactionsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<FilterStatus>("ALL")
@@ -40,8 +40,7 @@ export default function TransactionsPage() {
 
     async function loadTransactions() {
       try {
-        const response = await fetch("/api/payments/history")
-        const data = await response.json()
+        const { data } = await eden.api.payments.history.get()
         if (data.ok && !cancelled) {
           setTransactions(data.data || [])
         }

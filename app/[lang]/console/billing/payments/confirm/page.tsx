@@ -1,5 +1,6 @@
 "use client"
 
+import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from "react"
@@ -84,9 +85,8 @@ function ConfirmationPageContent() {
 
     async function fetchInvoice() {
       try {
-        const response = await fetch(`/api/payments/topup/invoice/${invoiceId}`)
-        const data = await response.json()
-        if (data.ok && !cancelled) {
+        const { data } = await eden.api.payments.topup.invoice[invoiceId].get()
+        if (data?.ok && !cancelled) {
           const totalAmount = data.invoice?.totalAmount
           const parsed =
             typeof totalAmount === "number"
@@ -120,8 +120,7 @@ function ConfirmationPageContent() {
 
     async function fetchBankAccounts() {
       try {
-        const response = await fetch("/api/payments/topup/bank-accounts")
-        const data = await response.json()
+        const { data } = await eden.api.payments.topup["bank-accounts"].get()
         if (data.ok && !cancelled) {
           setBankAccounts(data.data || [])
           if (data.data?.length > 0) {
@@ -178,12 +177,7 @@ function ConfirmationPageContent() {
       const formData = new FormData()
       formData.append("file", file)
 
-      const response = await fetch("/api/payments/upload-screenshot", {
-        method: "POST",
-        body: formData,
-      })
-
-      const result = await response.json()
+      const { data: result } = await eden.api.payments["upload-screenshot"].post(formData)
       if (!result.ok) throw new Error(result.message || "Upload failed")
 
       setScreenshotUrl(result.url)
@@ -244,12 +238,7 @@ function ConfirmationPageContent() {
     setErrorMessage(null)
 
     try {
-      const response = await fetch(
-        `/api/payments/topup/confirm/${invoiceId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      const { data: result } = await eden.api.payments.topup.confirm[invoiceId].post({
             bankAccountId,
             amount: displayAmount,
             paymentDateTime: new Date(
@@ -260,12 +249,9 @@ function ConfirmationPageContent() {
             senderAccount: senderAccount || undefined,
             screenshotUrl: screenshotUrl || undefined,
             notes: notes || undefined,
-          }),
-        },
-      )
+          })
 
-      const result = await response.json()
-      if (!response.ok || !result.ok) {
+      if (!result?.ok) {
         throw new Error(
           result.message || "Confirmation failed. Please try again.",
         )
@@ -669,7 +655,6 @@ function ConfirmationPageContent() {
 export default function ConfirmPaymentPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
   return (
     <Suspense
       fallback={
