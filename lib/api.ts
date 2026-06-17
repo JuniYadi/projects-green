@@ -180,6 +180,7 @@ export const app = new Elysia({ prefix: "/api" })
         { name: "liveness", href: `${base}/api/health/liveness` },
         { name: "readiness", href: `${base}/api/health/readiness` },
         { name: "healthz", href: `${base}/api/health/healthz` },
+        { name: "webhooks", href: `${base}/api/health/webhooks` },
       ],
     }
   })

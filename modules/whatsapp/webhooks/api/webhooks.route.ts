@@ -1,6 +1,35 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import {
+  createWebhookEvent,
+  recordProcessingResult,
+  listWebhookEvents,
+} from "../webhooks.service"
+
+/**
+ * Infer the webhook event type from the Meta payload structure.
+ */
+function determineEventType(payload: unknown): string {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "entry" in payload &&
+    Array.isArray((payload as Record<string, unknown>).entry)
+  ) {
+    const entry = (payload as Record<string, unknown>).entry as Record<string, unknown>[]
+    const changes = entry[0]?.changes as Record<string, unknown>[] | undefined
+    const value = changes?.[0]?.value as Record<string, unknown> | undefined
+
+    if (value?.messages && Array.isArray(value.messages) && value.messages.length > 0) {
+      return "inbound_message"
+    }
+    if (value?.statuses && Array.isArray(value.statuses) && value.statuses.length > 0) {
+      return "status_update"
+    }
+  }
+  return "unknown"
+}
 
 export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
 
@@ -182,25 +211,114 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
     }
   )
 
-  // POST /:id — Meta webhook incoming event (immediate 200, background processing)
-  .post("/:id", async ({ params, body }: any) => {
-    // Respond immediately to Meta's webhook
-    const { id } = params
+  // GET /:id/events — list webhook events for a device (paginated)
+  .get(
+    "/:id/events",
+    async ({ request, params, query, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      // Verify device exists and belongs to the org
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id: params.id },
+        select: { organizationId: true },
+      })
+
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      }
+
+      // Org-scoped filtering
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        device.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      const page = Math.max(Number(query.page) || 1, 1)
+      const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
+
+      const result = await listWebhookEvents({
+        organizationId: device.organizationId,
+        whatsappDeviceId: params.id,
+        eventType: query.type,
+        processingStatus: query.status,
+        from: query.from,
+        to: query.to,
+        page,
+        limit,
+      })
+
+      return {
+        ok: true,
+        data: result.data,
+        meta: result.meta,
+      }
+    },
+    {
+      query: t.Object({
+        type: t.Optional(t.String()),
+        status: t.Optional(t.String()),
+        from: t.Optional(t.String()),
+        to: t.Optional(t.String()),
+        page: t.Optional(t.String()),
+        limit: t.Optional(t.String()),
+      }),
+    },
+  )
+
+  // POST /:id — Meta webhook incoming event
+  // Inserts raw event BEFORE processing, then records outcome
+  .post("/:id", async ({ params, body, set }: any) => {
+    const deviceId = params.id
+
+    // Look up device to get organizationId
+    const device = await prisma.whatsappDevice.findUnique({
+      where: { id: deviceId },
+      select: { organizationId: true },
+    })
+
+    if (!device) {
+      // Device not found — still return 200 to Meta
+      return { status: "received" }
+    }
+
+    // Determine event type from payload structure
+    const eventType = determineEventType(body)
+
+    // 1. Insert raw webhook event BEFORE any processing
+    const eventId = await createWebhookEvent(
+      device.organizationId,
+      deviceId,
+      eventType,
+      body as any,
+    )
+
+    // 2. Process asynchronously
     ;(async () => {
       try {
         await prisma.whatsappLog.create({
           data: {
-            organizationId: "system",
-            whatsappDeviceId: id,
+            organizationId: device.organizationId,
+            whatsappDeviceId: deviceId,
             type: "INBOX",
             message: "Incoming Webhook Event",
             metadata: body as any,
           },
         })
+        await recordProcessingResult(eventId, "SUCCESS")
       } catch (e) {
         console.error("Error processing whatsapp webhook:", e)
+        await recordProcessingResult(eventId, "FAILED", String(e))
       }
     })().catch(console.error)
 
+    set.status = 200
     return { status: "received" }
   })

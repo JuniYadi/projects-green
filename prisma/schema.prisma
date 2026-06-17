@@ -9,12 +9,14 @@ datasource db {
 enum AuthApiKeyEnvironment {
   SANDBOX
   LIVE
+
   @@map("ApiKeyEnvironment")
 }
 
 enum AuthPlatformRole {
   NONE
   SUPER_ADMIN
+
   @@map("PlatformRole")
 }
 
@@ -27,30 +29,30 @@ model User {
 }
 
 model AuthPlatformUserRole {
-  id           String          @id @default(cuid())
-  workosUserId String          @unique
-  email        String?         @unique
+  id           String           @id @default(cuid())
+  workosUserId String           @unique
+  email        String?          @unique
   role         AuthPlatformRole @default(NONE)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@map("PlatformUserRole")
 }
 
 model AuthApiKey {
-  id             String              @id @default(cuid())
+  id             String                @id @default(cuid())
   name           String
   organizationId String
   keyHash        String
   environment    AuthApiKeyEnvironment @default(SANDBOX)
   scopes         String[]
-  active         Boolean             @default(true)
+  active         Boolean               @default(true)
   expiresAt      DateTime?
   createdBy      String?
   lastUsedAt     DateTime?
   lastUsedIp     String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 
   @@map("ApiKey")
 }
@@ -69,10 +71,10 @@ model DocsKnowledgeDocument {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  @@map("KnowledgeDocument")
   @@index([organizationId, path])
   @@index([organizationId, updatedAt(sort: Desc)])
   @@index([updatedAt(sort: Desc)])
+  @@map("KnowledgeDocument")
 }
 
 model GithubInstallStateNonce {
@@ -130,11 +132,11 @@ model GithubRepositoryConnection {
 
   installation GithubInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
 
+  stacks ApplicationStack[]
+
   @@unique([githubRepositoryId, installationId])
   @@index([installationId])
   @@index([fullName])
-
-  stacks ApplicationStack[]
 }
 
 enum StackStatus {
@@ -158,8 +160,8 @@ model DetectorRule {
   id               String   @id @default(cuid())
   name             String
   description      String?
-  patternJson      Json     // Match criteria: files, dependencies, etc.
-  implicationsJson Json     // Results: framework, runtime, build hints
+  patternJson      Json // Match criteria: files, dependencies, etc.
+  implicationsJson Json // Results: framework, runtime, build hints
   confidenceWeight Float    @default(1.0)
   isActive         Boolean  @default(true)
   priority         Int      @default(0)
@@ -171,11 +173,11 @@ model DetectorRule {
 
 model DetectorRuntimeMapping {
   id               String   @id(map: "DRM_pkey") @default(cuid())
-  frameworkId      String   // e.g., "laravel", "nextjs"
-  frameworkVersion String?  // e.g., "10", "14" (null = wildcard for all versions)
-  runtimeId        String   // e.g., "php", "node"
-  runtimeVersion   String   // e.g., "8.2", "20"
-  buildVersion     String?  // e.g., "node-20" for asset build step
+  frameworkId      String // e.g., "laravel", "nextjs"
+  frameworkVersion String? // e.g., "10", "14" (null = wildcard for all versions)
+  runtimeId        String // e.g., "php", "node"
+  runtimeVersion   String // e.g., "8.2", "20"
+  buildVersion     String? // e.g., "node-20" for asset build step
   isActive         Boolean  @default(true)
   priority         Int      @default(0) // Higher priority wins on conflict
   createdAt        DateTime @default(now())
@@ -187,21 +189,21 @@ model DetectorRuntimeMapping {
 }
 
 model DetectorInspectionLog {
-  id               String   @id(map: "DetectorInspectionLog_pkey") @default(cuid())
-  installationId   BigInt?  // GitHub installation ID (null if git-clone mode)
-  repoUrl          String
-  ref              String?
+  id                String   @id(map: "DetectorInspectionLog_pkey") @default(cuid())
+  installationId    BigInt? // GitHub installation ID (null if git-clone mode)
+  repoUrl           String
+  ref               String?
   detectedFramework String?
-  confidence       Float?
-  enforcedRuntimes Json?    // Array of {runtimeId, version} after policy enforcement
-  toolCalls        Json?    // Array of {tool, input, output} for AI tool calls
-  reasoning        String[] // AI reasoning steps
-  warnings         String[]
-  durationMs       Int?
-  status           String   @default("success") // success, blocked, error, unsupported
-  blockedByRuleId  String?  // DetectorRule ID if blocked
-  errorMessage     String?
-  createdAt        DateTime @default(now())
+  confidence        Float?
+  enforcedRuntimes  Json? // Array of {runtimeId, version} after policy enforcement
+  toolCalls         Json? // Array of {tool, input, output} for AI tool calls
+  reasoning         String[] // AI reasoning steps
+  warnings          String[]
+  durationMs        Int?
+  status            String   @default("success") // success, blocked, error, unsupported
+  blockedByRuleId   String? // DetectorRule ID if blocked
+  errorMessage      String?
+  createdAt         DateTime @default(now())
 
   @@index([repoUrl], map: "DetectorInspectionLog_repoUrl_idx")
   @@index([detectedFramework], map: "DetectorInspectionLog_detectedFramework_idx")
@@ -211,31 +213,31 @@ model DetectorInspectionLog {
 }
 
 model ApplicationStack {
-  id                     String         @id @default(cuid())
+  id                     String       @id @default(cuid())
   organizationId         String
   name                   String
   slug                   String
-  status                 StackStatus    @default(IDLE)
-  sourceType             DeploySource   @default(GITHUB)
+  status                 StackStatus  @default(IDLE)
+  sourceType             DeploySource @default(GITHUB)
   repositoryConnectionId String?
-  branchName             String         @default("main")
-  rootDirectory          String         @default("/")
+  branchName             String       @default("main")
+  rootDirectory          String       @default("/")
   framework              String?
   buildCommand           String?
-  dockerfileDetected     Boolean        @default(false)
+  dockerfileDetected     Boolean      @default(false)
   resourcePlanId         String?
-  billingMode            String?        @default("PAYG")
-  hourlyCost             Decimal?       @db.Decimal(10, 4)
+  billingMode            String?      @default("PAYG")
+  hourlyCost             Decimal?     @db.Decimal(10, 4)
   cpu                    Int?
   memory                 Int?
   customDomain           String?
   subdomain              String?
-  envVarsJson            Json           @default("[]")
+  envVarsJson            Json         @default("[]")
   metadataJson           Json?
   lastDeployedAt         DateTime?
   lastDeployStatus       StackStatus?
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   deployments          ApplicationDeployment[]
   repositoryConnection GithubRepositoryConnection? @relation(fields: [repositoryConnectionId], references: [id], onDelete: SetNull)
@@ -272,11 +274,11 @@ model ApplicationDeployment {
   events ApplicationDeployEvent[]
   logs   ApplicationDeploymentLog[]
 
-  @@map("Deployment")
   @@index([stackId])
   @@index([organizationId])
   @@index([status])
   @@index([createdAt(sort: Desc)])
+  @@map("Deployment")
 }
 
 enum ApplicationDeployEventType {
@@ -292,19 +294,19 @@ enum ApplicationDeployEventType {
 }
 
 model ApplicationDeployEvent {
-  id           String                   @id @default(cuid())
+  id           String                     @id @default(cuid())
   deploymentId String
   type         ApplicationDeployEventType
   message      String?
   metadataJson Json?
-  createdAt    DateTime                 @default(now())
+  createdAt    DateTime                   @default(now())
 
   deployment ApplicationDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
-  @@map("DeployEvent")
   @@index([deploymentId])
   @@index([type])
   @@index([createdAt(sort: Desc)])
+  @@map("DeployEvent")
 }
 
 model ApplicationDeploymentLog {
@@ -317,14 +319,14 @@ model ApplicationDeploymentLog {
 
   deployment ApplicationDeployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
 
-  @@map("DeploymentLog")
   @@index([deploymentId])
   @@index([timestamp(sort: Desc)])
+  @@map("DeploymentLog")
 }
 
 model GithubWebhookEvent {
   id                     String    @id @default(cuid())
-  deliveryId           String    @unique
+  deliveryId             String    @unique
   eventName              String
   action                 String?
   githubInstallationId   BigInt?
@@ -351,7 +353,7 @@ model GithubWebhookEvent {
   payloadSha256          String
   signatureValid         Boolean
   enqueueStatus          String    @default("queued")
-  processStatus        String    @default("pending")
+  processStatus          String    @default("pending")
   processError           String?
   receivedAt             DateTime  @default(now())
   processedAt            DateTime?
@@ -640,17 +642,17 @@ model SupportTicketAttachmentUploadSession {
 }
 
 model BillingAccount {
-  id             String               @id @default(cuid())
-  organizationId String               @unique
-  tenantId       String?
-  currency        String               @default("IDR")
-  preferredCurrency BillingCurrency    @default(USD)
-  timezone       String               @default("UTC")
-  status         BillingAccountStatus @default(ACTIVE)
-  balance        Decimal              @default(0) @db.Decimal(12, 2)
-  metadataJson   Json?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  id                String               @id @default(cuid())
+  organizationId    String               @unique
+  tenantId          String?
+  currency          String               @default("IDR")
+  preferredCurrency BillingCurrency      @default(USD)
+  timezone          String               @default("UTC")
+  status            BillingAccountStatus @default(ACTIVE)
+  balance           Decimal              @default(0) @db.Decimal(12, 2)
+  metadataJson      Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   subscriptions BillingSubscription[]
   usageEvents   BillingUsageEvent[]
@@ -663,18 +665,18 @@ model BillingAccount {
 }
 
 model BillingContact {
-  id                 String              @id @default(cuid())
-  billingAccountId  String
-  billingAccount     BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  id                 String             @id @default(cuid())
+  billingAccountId   String
+  billingAccount     BillingAccount     @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   email              String
   name               String?
-  role               BillingContactRole  @default(GENERAL)
-  notifyOnInvoice    Boolean             @default(true)
-  notifyOnLowBalance Boolean             @default(true)
-  notifyOnSupport    Boolean             @default(true)
-  isActive           Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  role               BillingContactRole @default(GENERAL)
+  notifyOnInvoice    Boolean            @default(true)
+  notifyOnLowBalance Boolean            @default(true)
+  notifyOnSupport    Boolean            @default(true)
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@unique([billingAccountId, email])
   @@index([billingAccountId])
@@ -692,7 +694,7 @@ model BillingSubscription {
   createdAt        DateTime                  @default(now())
   updatedAt        DateTime                  @updatedAt
 
-  billingAccount BillingAccount        @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  billingAccount BillingAccount               @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   versions       ServiceSubscriptionVersion[]
   usageEvents    BillingUsageEvent[]
   invoices       BillingInvoice[]
@@ -749,7 +751,7 @@ model BillingPlanTier {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  plan                 BillingPlan                 @relation(fields: [planId], references: [id], onDelete: Cascade)
+  plan                 BillingPlan                  @relation(fields: [planId], references: [id], onDelete: Cascade)
   subscriptionVersions ServiceSubscriptionVersion[]
   meterPrices          BillingMeterPrice[]
 
@@ -790,8 +792,8 @@ model BillingMeterPrice {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  meter       BillingMeter         @relation(fields: [meterId], references: [id], onDelete: Cascade)
-  planVersion BillingPlanTier      @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  meter       BillingMeter        @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  planVersion BillingPlanTier     @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
   ratedUsage  BillingRatedUsage[]
 
   @@unique([meterId, planVersionId, effectiveFrom])
@@ -838,11 +840,11 @@ model BillingRatedUsage {
   ratedAt               DateTime @default(now())
   createdAt             DateTime @default(now())
 
-  usageEvent          BillingUsageEvent    @relation(fields: [usageEventId], references: [id], onDelete: Cascade)
-  billingAccount      BillingAccount       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  usageEvent          BillingUsageEvent           @relation(fields: [usageEventId], references: [id], onDelete: Cascade)
+  billingAccount      BillingAccount              @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   subscriptionVersion ServiceSubscriptionVersion? @relation(fields: [subscriptionVersionId], references: [id], onDelete: SetNull)
-  meterPrice          BillingMeterPrice?   @relation(fields: [meterPriceId], references: [id], onDelete: SetNull)
-  invoiceLine         BillingInvoiceLine?  @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
+  meterPrice          BillingMeterPrice?          @relation(fields: [meterPriceId], references: [id], onDelete: SetNull)
+  invoiceLine         BillingInvoiceLine?         @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
 
   @@index([billingAccountId, ratedAt])
   @@index([invoiceLineId])
@@ -851,36 +853,36 @@ model BillingRatedUsage {
 }
 
 model BillingInvoice {
-  id               String              @id @default(cuid())
+  id               String               @id @default(cuid())
   billingAccountId String
   subscriptionId   String?
   billingRunId     String?
-  invoiceNumber    String              @unique
+  invoiceNumber    String               @unique
   periodStart      DateTime
   periodEnd        DateTime
   currency         String
   status           BillingInvoiceStatus @default(DRAFT)
-  subtotalAmount   Decimal       @default(0) @db.Decimal(18, 6)
-  taxAmount        Decimal       @default(0) @db.Decimal(18, 6)
-  discountAmount   Decimal       @default(0) @db.Decimal(18, 6)
-  totalAmount      Decimal       @default(0) @db.Decimal(18, 6)
+  subtotalAmount   Decimal              @default(0) @db.Decimal(18, 6)
+  taxAmount        Decimal              @default(0) @db.Decimal(18, 6)
+  discountAmount   Decimal              @default(0) @db.Decimal(18, 6)
+  totalAmount      Decimal              @default(0) @db.Decimal(18, 6)
   issuedAt         DateTime?
   dueAt            DateTime?
   paidAt           DateTime?
   // Payment module fields
-  type            String?  // "TOP_UP", "SERVICE", "RECURRING"
-  paymentMethod   String?  // "VA", "QRIS", "MANUAL_BANK"
-  gatewayId       String?
-  dueDate         DateTime?
-  metadata        Json?    // { duitkuReference, vaNumber, paymentUrl }
-  metadataJson    Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  type             String? // "TOP_UP", "SERVICE", "RECURRING"
+  paymentMethod    String? // "VA", "QRIS", "MANUAL_BANK"
+  gatewayId        String?
+  dueDate          DateTime?
+  metadata         Json? // { duitkuReference, vaNumber, paymentUrl }
+  metadataJson     Json?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
-  billingAccount       BillingAccount?          @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  subscription         BillingSubscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  billingRun           BillingRun?              @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
-  gateway              PaymentGateway?          @relation(fields: [gatewayId], references: [id])
+  billingAccount       BillingAccount?       @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  subscription         BillingSubscription?  @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  billingRun           BillingRun?           @relation(fields: [billingRunId], references: [id], onDelete: SetNull)
+  gateway              PaymentGateway?       @relation(fields: [gatewayId], references: [id])
   lines                BillingInvoiceLine[]
   adjustments          BillingAdjustment[]
   paymentConfirmations PaymentConfirmation[]
@@ -893,21 +895,21 @@ model BillingInvoice {
 }
 
 model BillingInvoiceLine {
-  id           String               @id @default(cuid())
+  id           String                 @id @default(cuid())
   invoiceId    String
   lineType     BillingInvoiceLineType
   description  String
-  quantity     Decimal         @db.Decimal(18, 6)
-  unitPrice    Decimal         @db.Decimal(18, 6)
-  amount       Decimal         @db.Decimal(18, 6)
+  quantity     Decimal                @db.Decimal(18, 6)
+  unitPrice    Decimal                @db.Decimal(18, 6)
+  amount       Decimal                @db.Decimal(18, 6)
   currency     String
   periodStart  DateTime?
   periodEnd    DateTime?
   metadataJson Json?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
 
-  invoice    BillingInvoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice    BillingInvoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   sources    BillingInvoiceLineSource[]
   ratedUsage BillingRatedUsage[]
 
@@ -917,13 +919,13 @@ model BillingInvoiceLine {
 }
 
 model BillingInvoiceLineSource {
-  id            String                     @id @default(cuid())
+  id            String                       @id @default(cuid())
   invoiceLineId String
   sourceType    BillingInvoiceLineSourceType
   sourceId      String
-  amount        Decimal               @db.Decimal(18, 6)
+  amount        Decimal                      @db.Decimal(18, 6)
   metadataJson  Json?
-  createdAt     DateTime              @default(now())
+  createdAt     DateTime                     @default(now())
 
   invoiceLine BillingInvoiceLine @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
 
@@ -946,8 +948,8 @@ model BillingAdjustment {
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
-  billingAccount BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  invoice        BillingInvoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  billingAccount BillingAccount  @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  invoice        BillingInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   @@index([billingAccountId, createdAt(sort: Desc)])
   @@index([invoiceId])
@@ -1007,14 +1009,14 @@ model ServiceRegion {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pricings  ServicePricing[]
+  pricings ServicePricing[]
 
-  @@map("Region")
   @@index([isActive])
+  @@map("Region")
 }
 
 model ServicePackage {
-  id          String       @id @default(cuid())
+  id          String      @id @default(cuid())
   code        ServiceType @unique
   name        String
   description String?
@@ -1022,11 +1024,11 @@ model ServicePackage {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  plans          ServicePlan[]
+  plans         ServicePlan[]
   subscriptions ServiceSubscription[]
 
-  @@map("Package")
   @@index([code])
+  @@map("Package")
 }
 
 model ServicePlan {
@@ -1054,43 +1056,43 @@ model ServicePricing {
   type            SubscriptionType
   billingMode     BillingMode
   basePriceIdr    Decimal          @db.Decimal(12, 2)
-  monthlyCapIdr   Decimal?        @db.Decimal(12, 2)
-  unitRateCpu     Decimal?        @db.Decimal(12, 4)
-  unitRateMem     Decimal?        @db.Decimal(12, 4)
-  unitRateMessage Decimal?        @db.Decimal(12, 4)
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  monthlyCapIdr   Decimal?         @db.Decimal(12, 2)
+  unitRateCpu     Decimal?         @db.Decimal(12, 4)
+  unitRateMem     Decimal?         @db.Decimal(12, 4)
+  unitRateMessage Decimal?         @db.Decimal(12, 4)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  servicePlan ServicePlan  @relation(fields: [planId], references: [id])
-  region        ServiceRegion          @relation(fields: [regionId], references: [id])
+  servicePlan   ServicePlan           @relation(fields: [planId], references: [id])
+  region        ServiceRegion         @relation(fields: [regionId], references: [id])
   subscriptions ServiceSubscription[]
 
-  @@map("Pricing")
   @@unique([planId, regionId, type, billingMode])
   @@index([planId])
   @@index([regionId])
+  @@map("Pricing")
 }
 
 model ServiceSubscription {
-  id                  String                   @id(map: "ServiceSubscription_pkey") @default(cuid())
-  organizationId      String                   @map("tenantId")
-  packageId           String
-  planId              String
-  pricingId           String
-  type                SubscriptionType
-  billingMode         BillingMode
-  status              BillingSubscriptionStatus2 @default(ACTIVE)
-  currentPeriodStart  DateTime
-  currentPeriodEnd    DateTime
-  allocatedConfig     Json?
-  metadata            Json?
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
+  id                 String                     @id(map: "ServiceSubscription_pkey") @default(cuid())
+  organizationId     String                     @map("tenantId")
+  packageId          String
+  planId             String
+  pricingId          String
+  type               SubscriptionType
+  billingMode        BillingMode
+  status             BillingSubscriptionStatus2 @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  allocatedConfig    Json?
+  metadata           Json?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
 
-  package      ServicePackage @relation(fields: [packageId], references: [id])
-  plan         ServicePlan    @relation(fields: [planId], references: [id])
-  pricing      ServicePricing @relation(fields: [pricingId], references: [id])
+  package      ServicePackage       @relation(fields: [packageId], references: [id])
+  plan         ServicePlan          @relation(fields: [planId], references: [id])
+  pricing      ServicePricing       @relation(fields: [pricingId], references: [id])
   usageLedgers BillingUsageLedger[]
   vpnClients   VpnClient[]
 
@@ -1126,13 +1128,13 @@ model VpnClient {
 }
 
 model VpnRegion {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
   countryCode String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   servers VpnServer[]
 
@@ -1175,8 +1177,8 @@ model VpnServer {
   region VpnRegion @relation(fields: [regionId], references: [id])
   sshKey VpnSshKey @relation(fields: [sshKeyId], references: [id])
 
-  packages        VpnPackageServer[]
-  serverAccounts  VpnServerAccount[]
+  packages       VpnPackageServer[]
+  serverAccounts VpnServerAccount[]
 
   @@index([regionId])
   @@index([sshKeyId])
@@ -1184,14 +1186,14 @@ model VpnServer {
 }
 
 model BillingUsageLedger {
-  id             String    @id @default(cuid())
-  organizationId String    @map("tenantId")
+  id             String   @id @default(cuid())
+  organizationId String   @map("tenantId")
   subscriptionId String
   period         String
   category       String?
-  amountIdr      Decimal?  @db.Decimal(12, 2)
+  amountIdr      Decimal? @db.Decimal(12, 2)
   metadata       Json?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime @default(now())
 
   subscription ServiceSubscription @relation(fields: [subscriptionId], references: [id])
 
@@ -1269,8 +1271,8 @@ model VpnSubscription {
   updatedAt          DateTime              @updatedAt
 
   serverAccounts VpnServerAccount[]
-  mobileDevices VpnMobileDevice[]
-  pairingTokens VpnPairingToken[]
+  mobileDevices  VpnMobileDevice[]
+  pairingTokens  VpnPairingToken[]
 
   @@index([organizationId, status])
   @@index([packageId])
@@ -1313,23 +1315,23 @@ enum VpnPairingMethod {
 }
 
 model VpnMobileDevice {
-  id               String           @id @default(cuid())
-  organizationId   String
-  subscriptionId   String
-  userId           String?
-  deviceName       String
+  id                String           @id @default(cuid())
+  organizationId    String
+  subscriptionId    String
+  userId            String?
+  deviceName        String
   deviceFingerprint String
-  platform         String
-  osVersion        String?
-  appVersion       String?
-  pairedVia        VpnPairingMethod
-  status           VpnDeviceStatus  @default(ACTIVE)
-  lastSeenAt       DateTime?
-  revokedAt        DateTime?
-  revokedReason    String?
-  revokedBy        String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  platform          String
+  osVersion         String?
+  appVersion        String?
+  pairedVia         VpnPairingMethod
+  status            VpnDeviceStatus  @default(ACTIVE)
+  lastSeenAt        DateTime?
+  revokedAt         DateTime?
+  revokedReason     String?
+  revokedBy         String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   subscription VpnSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
@@ -1341,13 +1343,13 @@ model VpnMobileDevice {
 }
 
 model VpnPairingToken {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   subscriptionId  String
-  token           String   @unique
+  token           String    @unique
   expiresAt       DateTime
   claimedAt       DateTime?
   claimedByDevice String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
 
   subscription VpnSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
@@ -1360,8 +1362,8 @@ model VpnAuditLog {
   id        String   @id @default(cuid())
   deviceId  String?
   userId    String?
-  action    String   // REGISTERED, REVOKED, CONFIG_DOWNLOADED
-  details   Json?    // { pairedVia, profileId, revokedBy, reason, etc }
+  action    String // REGISTERED, REVOKED, CONFIG_DOWNLOADED
+  details   Json? // { pairedVia, profileId, revokedBy, reason, etc }
   ip        String?
   userAgent String?
   createdAt DateTime @default(now())
@@ -1484,19 +1486,20 @@ model WhatsappDevice {
   createdAt                 DateTime             @default(now())
   updatedAt                 DateTime             @updatedAt
 
-  contacts             WhatsappContact[]
-  contactGroups        WhatsappContactGroup[]
-  templates            WhatsappTemplate[]
-  broadcastCampaigns   WhatsappBroadcastCampaign[]
-  messageConversations WhatsappConversation[]
-  dailyCounts          WhatsappDailyCount[]
-  monthlyCounts        WhatsappMonthlyCount[]
-  quotaSessions        WhatsappQuotaSession[]
-  billingLedgers       WhatsappBillingLedger[]
-  logs                 WhatsappLog[]
-  attachments          WhatsappAttachment[]
-  broadcastRateStates  WhatsappBroadcastRateState[]
-  webhooks             WhatsappWebhook[]
+  contacts              WhatsappContact[]
+  contactGroups         WhatsappContactGroup[]
+  templates             WhatsappTemplate[]
+  broadcastCampaigns    WhatsappBroadcastCampaign[]
+  messageConversations  WhatsappConversation[]
+  dailyCounts           WhatsappDailyCount[]
+  monthlyCounts         WhatsappMonthlyCount[]
+  quotaSessions         WhatsappQuotaSession[]
+  billingLedgers        WhatsappBillingLedger[]
+  logs                  WhatsappLog[]
+  attachments           WhatsappAttachment[]
+  broadcastRateStates   WhatsappBroadcastRateState[]
+  webhooks              WhatsappWebhook[]
+  whatsappWebhookEvents WhatsappWebhookEvent[]
 
   @@index([organizationId])
   @@index([whatsappBusinessAccountId])
@@ -1671,13 +1674,13 @@ model WhatsappMessage {
 }
 
 model WhatsappMessageStatus {
-  id              String                        @id @default(cuid())
-  messageId       String
-  message         WhatsappMessage               @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  status          WhatsappMessageDeliveryStatus
-  timestamp       DateTime?
-  error           String?
-  createdAt       DateTime                      @default(now())
+  id        String                        @id @default(cuid())
+  messageId String
+  message   WhatsappMessage               @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  status    WhatsappMessageDeliveryStatus
+  timestamp DateTime?
+  error     String?
+  createdAt DateTime                      @default(now())
 
   @@index([messageId, createdAt])
 }
@@ -1729,25 +1732,25 @@ model WhatsappQuotaSession {
 }
 
 model WhatsappBillingLedger {
-  id              String                @id @default(cuid())
-  organizationId  String
-  waMessageId     String
-  phoneNumber     String
-  category        WhatsappBillingCategory
-  quotaKey        String
-  quotaValue      Decimal               @db.Decimal(12, 2)
-  status          WhatsappBillingStatus @default(CHARGED_PENDING_VERIFY)
-  isReverted      Boolean               @default(false)
-  revertReason    String?
-  revertedAt      DateTime?
-  lastStatus      String?
-  pricingBillable Boolean?
-  pricingCategory String?
-  errorCode       String?
-  errorTitle      String?
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  whatsappDevice  WhatsappDevice?       @relation(fields: [whatsappDeviceId], references: [id])
+  id               String                  @id @default(cuid())
+  organizationId   String
+  waMessageId      String
+  phoneNumber      String
+  category         WhatsappBillingCategory
+  quotaKey         String
+  quotaValue       Decimal                 @db.Decimal(12, 2)
+  status           WhatsappBillingStatus   @default(CHARGED_PENDING_VERIFY)
+  isReverted       Boolean                 @default(false)
+  revertReason     String?
+  revertedAt       DateTime?
+  lastStatus       String?
+  pricingBillable  Boolean?
+  pricingCategory  String?
+  errorCode        String?
+  errorTitle       String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  whatsappDevice   WhatsappDevice?         @relation(fields: [whatsappDeviceId], references: [id])
   whatsappDeviceId String?
 
   @@index([organizationId, createdAt])
@@ -1783,65 +1786,106 @@ model WhatsappAttachment {
 }
 
 model WhatsappBroadcastRateState {
-  id                  String                 @id @default(cuid())
-  organizationId      String
-  whatsappContactGroupId String                 @unique
-  whatsappContactGroup WhatsappContactGroup    @relation(fields: [whatsappContactGroupId], references: [id], onDelete: Cascade)
-  lastMessageSentAt   DateTime?
-  messagesSentInWindow Int                    @default(0)
-  windowStartAt       DateTime?
-  createdAt           DateTime               @default(now())
-  updatedAt           DateTime               @updatedAt
-  whatsappDevice      WhatsappDevice?        @relation(fields: [whatsappDeviceId], references: [id])
-  whatsappDeviceId    String?
+  id                     String               @id @default(cuid())
+  organizationId         String
+  whatsappContactGroupId String               @unique
+  whatsappContactGroup   WhatsappContactGroup @relation(fields: [whatsappContactGroupId], references: [id], onDelete: Cascade)
+  lastMessageSentAt      DateTime?
+  messagesSentInWindow   Int                  @default(0)
+  windowStartAt          DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  whatsappDevice         WhatsappDevice?      @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId       String?
 
   @@index([organizationId])
 }
 
 model WhatsappApiKey {
-  id               String                   @id @default(cuid())
-  organizationId   String
-  name             String
-  key              String                   @unique
-  environment      WhatsappApiKeyEnvironment @default(SANDBOX)
-  isActive         Boolean                  @default(true)
-  lastUsedAt       DateTime?
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
+  id             String                    @id @default(cuid())
+  organizationId String
+  name           String
+  key            String                    @unique
+  environment    WhatsappApiKeyEnvironment @default(SANDBOX)
+  isActive       Boolean                   @default(true)
+  lastUsedAt     DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
 
   @@index([organizationId, key])
 }
 
 model WhatsappWebhook {
-  id                 String          @id @default(cuid())
-  organizationId     String
-  whatsappDeviceId   String
-  webhookUrl         String
-  verifyToken        String
-  active             Boolean         @default(true)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  whatsappDevice     WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
+  id               String          @id @default(cuid())
+  organizationId   String
+  whatsappDeviceId String
+  webhookUrl       String
+  verifyToken      String
+  active           Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  whatsappDevice   WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
 
   @@index([organizationId])
   @@index([whatsappDeviceId])
 }
 
+model WhatsappWebhookDeadLetter {
+  id             String    @id @default(cuid())
+  organizationId String?
+  deviceId       String
+  eventType      String
+  payloadJson    Json
+  errorMessage   String?
+  attempts       Int       @default(0)
+  status         String    @default("dead_lettered")
+  failedAt       DateTime  @default(now())
+  replayedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([organizationId, status])
+  @@index([deviceId, status])
+  @@index([failedAt(sort: Desc)])
+}
+
+model WhatsappWebhookEvent {
+  id               String    @id @default(cuid())
+  organizationId   String
+  whatsappDeviceId String
+  eventType        String
+  processingStatus String    @default("PENDING")
+  metaPayload      Json
+  waMessageId      String?
+  errorMessage     String?
+  processedAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  whatsappDevice WhatsappDevice @relation(fields: [whatsappDeviceId], references: [id])
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([whatsappDeviceId, createdAt(sort: Desc)])
+  @@index([eventType, createdAt(sort: Desc)])
+  @@index([processingStatus, createdAt(sort: Desc)])
+  @@index([waMessageId])
+  @@index([createdAt(sort: Desc)])
+}
+
 // ─── Payment Models ───────────────────────────────────────────────────────────
 
 model PaymentGateway {
-  id        String   @id @default(cuid())
-  name      String
-  type      String   // "GATEWAY" or "BANK_TRANSFER"
-  config    Json     // Encrypted JSON: { merchantCode, apiKey, sandboxUrl, productionUrl }
+  id                  String   @id @default(cuid())
+  name                String
+  type                String // "GATEWAY" or "BANK_TRANSFER"
+  config              Json // Encrypted JSON: { merchantCode, apiKey, sandboxUrl, productionUrl }
   // ISO currency codes this gateway can settle, e.g. ["IDR"], ["USD"], or both.
   // A gateway is offered when this list includes the account currency.
   supportedCurrencies String[] @default([])
-  isActive  Boolean  @default(false)
-  isDefault Boolean  @default(false)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive            Boolean  @default(false)
+  isDefault           Boolean  @default(false)
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   bankAccounts PaymentBankAccount[]
   invoices     BillingInvoice[]
@@ -1850,34 +1894,34 @@ model PaymentGateway {
 }
 
 model PaymentBankAccount {
-  id            String   @id @default(cuid())
-  gatewayId     String?
-  bankCode      String   // "BCA", "MANDIRI", "BRI", "BNI"
-  bankName      String   // "Bank Central Asia"
-  accountName   String   // AES-256 encrypted
-  accountNumber String   // AES-256 encrypted
+  id                  String   @id @default(cuid())
+  gatewayId           String?
+  bankCode            String // "BCA", "MANDIRI", "BRI", "BNI"
+  bankName            String // "Bank Central Asia"
+  accountName         String // AES-256 encrypted
+  accountNumber       String // AES-256 encrypted
   // Legacy/default ISO currency code. New filtering uses supportedCurrencies;
   // keep this for backward compatibility and as the primary display currency.
-  currency      String   @default("IDR")
+  currency            String   @default("IDR")
   // ISO currency codes this account can receive, e.g. ["IDR"], ["USD"],
   // or both. Manual bank transfer is offered when this list includes the
   // customer's billing currency.
   supportedCurrencies String[] @default([])
-  swiftCode     String?
-  bankAddress   String?
-  isActive      Boolean  @default(true)
-  isDefault     Boolean  @default(false)
-  sortOrder     Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  swiftCode           String?
+  bankAddress         String?
+  isActive            Boolean  @default(true)
+  isDefault           Boolean  @default(false)
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  gateway             PaymentGateway?          @relation(fields: [gatewayId], references: [id])
+  gateway              PaymentGateway?       @relation(fields: [gatewayId], references: [id])
   paymentConfirmations PaymentConfirmation[]
 
-  @@map("BankAccount")
   @@index([gatewayId, isActive])
   @@index([bankCode])
   @@index([currency, isActive])
+  @@map("BankAccount")
 }
 
 /// Supported billing currencies and their exchange rate against the base
@@ -1885,49 +1929,49 @@ model PaymentBankAccount {
 /// currency is derived by multiplying by `ratePerBase`. Exactly one row must
 /// have `isBase = true` (its `ratePerBase` is 1).
 model PaymentCurrency {
-  id          String   @id @default(cuid())
-  code        String   @unique // ISO 4217, e.g. "USD", "IDR"
-  name        String   // "US Dollar", "Indonesian Rupiah"
-  symbol      String   // "$", "Rp"
-  isBase      Boolean  @default(false)
+  id             String   @id @default(cuid())
+  code           String   @unique // ISO 4217, e.g. "USD", "IDR"
+  name           String // "US Dollar", "Indonesian Rupiah"
+  symbol         String // "$", "Rp"
+  isBase         Boolean  @default(false)
   // Units of this currency per 1 unit of the base currency.
   // USD (base) = 1, IDR = 18000 when 1 USD = 18,000 IDR.
-  ratePerBase Decimal  @default(1) @db.Decimal(18, 6)
+  ratePerBase    Decimal  @default(1) @db.Decimal(18, 6)
   // Top-up bounds expressed in THIS currency.
-  minTopup    Decimal  @db.Decimal(18, 2)
-  maxTopup    Decimal  @db.Decimal(18, 2)
+  minTopup       Decimal  @db.Decimal(18, 2)
+  maxTopup       Decimal  @db.Decimal(18, 2)
   // Low-balance warning threshold expressed in THIS currency. The billing UI
   // shows a top-up nudge once the balance drops below this value.
-  minBalanceWarn Decimal @default(0) @db.Decimal(18, 2)
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  minBalanceWarn Decimal  @default(0) @db.Decimal(18, 2)
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  @@map("Currency")
   @@index([isActive])
+  @@map("Currency")
 }
 
 model PaymentConfirmation {
   id              String    @id @default(cuid())
   invoiceId       String
   bankAccountId   String
-  amount          Decimal @db.Decimal(18, 2)
+  amount          Decimal   @db.Decimal(18, 2)
   paymentDateTime DateTime
   senderBankName  String?
   senderName      String?
   senderAccount   String?
   screenshotUrl   String?
   notes           String?
-  status          String   @default("PENDING")  // PENDING, APPROVED, REJECTED
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
   reviewedBy      String?
   reviewedAt      DateTime?
   rejectReason    String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  invoice     BillingInvoice @relation(fields: [invoiceId], references: [id])
-  bankAccount PaymentBankAccount  @relation(fields: [bankAccountId], references: [id])
+  invoice     BillingInvoice     @relation(fields: [invoiceId], references: [id])
+  bankAccount PaymentBankAccount @relation(fields: [bankAccountId], references: [id])
 
   @@index([invoiceId])
   @@index([bankAccountId])
@@ -1937,8 +1981,8 @@ model PaymentConfirmation {
 
 model PaymentAuditLog {
   id         String   @id @default(cuid())
-  action     String   // "PAYMENT_CREATED", "PAYMENT_CONFIRMED", etc.
-  entityType String   // "Invoice", "PaymentGateway", etc.
+  action     String // "PAYMENT_CREATED", "PAYMENT_CONFIRMED", etc.
+  entityType String // "Invoice", "PaymentGateway", etc.
   entityId   String
   actorId    String?
   details    Json
@@ -2003,12 +2047,12 @@ model VoucherClaim {
 }
 
 model CacheEntry {
-  id        String   @id @default(cuid())
-  key       String   @unique
+  id        String    @id @default(cuid())
+  key       String    @unique
   value     String
   expiresAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([key, expiresAt])
   @@map("CacheEntry")

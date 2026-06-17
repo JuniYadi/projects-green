@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma, WhatsappMessageDeliveryStatus } from "@prisma/client"
 
+import { toWebhookEventDTO, type WhatsappWebhookEventDTO } from "./webhooks.dto"
+
 export type ParsedMessagePayload = {
   from: string
   id: string
@@ -292,5 +294,134 @@ export async function processDeliveryStatus(
     statusId: statusRecord.id,
     messageId: message.id,
     status: mappedStatus,
+  }
+}
+
+// ─── Webhook Event Recording ──────────────────────────────────────────────────
+
+/**
+ * Params for listing webhook events.
+ */
+export type ListWebhookEventsParams = {
+  organizationId: string
+  whatsappDeviceId?: string
+  eventType?: string
+  processingStatus?: string
+  from?: string
+  to?: string
+  page?: number
+  limit?: number
+}
+
+/**
+ * Paginated result for webhook event lists.
+ */
+export type PaginatedWebhookEventsResult = {
+  data: WhatsappWebhookEventDTO[]
+  meta: {
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+  }
+}
+
+/**
+ * Create a raw webhook event record BEFORE processing.
+ * Returns the event ID so downstream can call recordProcessingResult().
+ */
+export async function createWebhookEvent(
+  orgId: string,
+  deviceId: string,
+  eventType: string,
+  metaPayload: Prisma.InputJsonValue,
+): Promise<string> {
+  const event = await prisma.whatsappWebhookEvent.create({
+    data: {
+      organizationId: orgId,
+      whatsappDeviceId: deviceId,
+      eventType,
+      metaPayload,
+    },
+  })
+  return event.id
+}
+
+/**
+ * Record the processing outcome for a previously inserted webhook event.
+ */
+export async function recordProcessingResult(
+  eventId: string,
+  status: string,
+  errorMessage?: string,
+): Promise<void> {
+  await prisma.whatsappWebhookEvent.update({
+    where: { id: eventId },
+    data: {
+      processingStatus: status,
+      errorMessage: errorMessage ?? null,
+      processedAt: new Date(),
+    },
+  })
+}
+
+/**
+ * List webhook events with org-scoped filtering and pagination.
+ */
+export async function listWebhookEvents(
+  params: ListWebhookEventsParams,
+): Promise<PaginatedWebhookEventsResult> {
+  const {
+    organizationId,
+    whatsappDeviceId,
+    eventType,
+    processingStatus,
+    from,
+    to,
+    page = 1,
+    limit = 20,
+  } = params
+
+  const where: Prisma.WhatsappWebhookEventWhereInput = { organizationId }
+
+  if (whatsappDeviceId) {
+    where.whatsappDeviceId = whatsappDeviceId
+  }
+  if (eventType) {
+    where.eventType = eventType
+  }
+  if (processingStatus) {
+    where.processingStatus = processingStatus
+  }
+  if (from || to) {
+    where.createdAt = {}
+    if (from) {
+      where.createdAt.gte = new Date(from)
+    }
+    if (to) {
+      where.createdAt.lte = new Date(to)
+    }
+  }
+
+  const skip = (page - 1) * limit
+
+  const [total, events] = await Promise.all([
+    prisma.whatsappWebhookEvent.count({ where }),
+    prisma.whatsappWebhookEvent.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+  ])
+
+  return {
+    data: events.map(toWebhookEventDTO),
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
   }
 }

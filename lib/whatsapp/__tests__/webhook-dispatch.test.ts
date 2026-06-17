@@ -37,12 +37,10 @@ afterEach(async () => {
 function createMetaPayload({
   messages = [],
   statuses = [],
-  eventId,
   phoneNumberId = "123456789",
 }: {
   messages?: unknown[]
   statuses?: unknown[]
-  eventId?: string
   phoneNumberId?: string
 } = {}) {
   return {
@@ -66,7 +64,6 @@ function createMetaPayload({
         ],
       },
     ],
-    ...(eventId ? { eventId } : {}),
   }
 }
 
@@ -130,22 +127,28 @@ describe("handleEventUseCase", () => {
     expect(result).toMatchObject({ code: 400, message: "INVALID_PAYLOAD" })
   })
 
-  it("returns duplicate true for duplicate eventId", async () => {
-    const payload = createMetaPayload({ eventId: "evt-duplicate" })
-    const payload2 = createMetaPayload({ eventId: "evt-duplicate" })
+  it("returns duplicate true for duplicate payload (content hash)", async () => {
+    const payload = createMetaPayload({ messages: [sampleTextMessage] })
+    const rawBody = JSON.stringify(payload)
 
-    await handleEventUseCase(payload)
-    const result = await handleEventUseCase(payload2)
+    await handleEventUseCase(payload, { rawBody })
+    const result = await handleEventUseCase(payload, { rawBody })
 
     expect(result).toHaveProperty("duplicate", true)
   })
 
-  it("accepts unique eventIds", async () => {
-    const payload = createMetaPayload({ eventId: "evt-1" })
-    const payload2 = createMetaPayload({ eventId: "evt-2" })
+  it("accepts unique payloads", async () => {
+    const payload1 = createMetaPayload({
+      messages: [{ ...sampleTextMessage, id: "msg-1" }],
+    })
+    const payload2 = createMetaPayload({
+      messages: [{ ...sampleTextMessage, id: "msg-2" }],
+    })
+    const rawBody1 = JSON.stringify(payload1)
+    const rawBody2 = JSON.stringify(payload2)
 
-    await handleEventUseCase(payload)
-    const result = await handleEventUseCase(payload2)
+    await handleEventUseCase(payload1, { rawBody: rawBody1 })
+    const result = await handleEventUseCase(payload2, { rawBody: rawBody2 })
 
     expect(result).toHaveProperty("code", 200)
     expect(result).not.toHaveProperty("duplicate")
@@ -225,15 +228,15 @@ describe("dispatchWebhookEvents", () => {
     expect(mockEnqueue).toHaveBeenCalledTimes(0)
   })
 
-  it("does not enqueue for duplicate eventId", async () => {
+  it("does not enqueue for duplicate payload", async () => {
     const payload = createMetaPayload({
       messages: [sampleTextMessage],
-      eventId: "evt-dup-dispatch",
     })
+    const rawBody = JSON.stringify(payload)
 
-    await dispatchWebhookEvents(payload)
+    await dispatchWebhookEvents(payload, rawBody)
     // Second call should be ignored as duplicate
-    await dispatchWebhookEvents(payload)
+    await dispatchWebhookEvents(payload, rawBody)
 
     // Only the first call should result in enqueue
     expect(mockEnqueue).toHaveBeenCalledTimes(1)
