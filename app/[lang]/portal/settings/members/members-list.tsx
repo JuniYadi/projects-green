@@ -69,22 +69,15 @@ export function MembersList({ organizationId }: MembersListProps) {
     void loadData()
   }, [loadData])
 
-  const handleAction = async (actionId: string, path: string, body?: { targetRole: string }) => {
+  const handleAction = async (actionId: string, edenCall: Promise<{ data?: { ok?: boolean; message?: string } | null; error?: unknown }>) => {
     setPendingActionId(actionId)
     setError(null)
     try {
-      // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: body ? JSON.stringify(body) : undefined
-      }).then(r => r.json())
-
-      if (res.ok) {
-         
+      const { data: res } = await edenCall
+      if (res?.ok) {
         void loadData()
       } else {
-        setError(res.message || "Action failed")
+        setError(res?.message || "Action failed")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred")
@@ -149,14 +142,14 @@ export function MembersList({ organizationId }: MembersListProps) {
                     <DropdownMenuContent align="end">
                       {member.role === "member" && allowedActions.has("promote_member") && (
                         <DropdownMenuItem
-                          onClick={() => handleAction(`promote-${member.id}`, `/api/tenants/${organizationId}/members/${member.id}/promote`, { targetRole: "admin" })}
+                          onClick={() => handleAction(`promote-${member.id}`, eden.api.tenants[organizationId].members[member.id].promote.post({ targetRole: "admin" }))}
                         >
                           Make Admin
                         </DropdownMenuItem>
                       )}
                       {member.role === "admin" && allowedActions.has("demote_admin") && (
                         <DropdownMenuItem
-                          onClick={() => handleAction(`demote-${member.id}`, `/api/tenants/${organizationId}/members/${member.id}/demote`)}
+                          onClick={() => handleAction(`demote-${member.id}`, eden.api.tenants[organizationId].members[member.id].demote.post())}
                         >
                           Demote to Member
                         </DropdownMenuItem>
@@ -166,7 +159,7 @@ export function MembersList({ organizationId }: MembersListProps) {
                           className="text-destructive focus:text-destructive"
                           onClick={() => {
                             if (confirm("Are you sure you want to remove this member?")) {
-                              handleAction(`remove-${member.id}`, `/api/tenants/${organizationId}/members/${member.id}/remove`)
+                              handleAction(`remove-${member.id}`, eden.api.tenants[organizationId].members[member.id].remove.post())
                             }
                           }}
                         >

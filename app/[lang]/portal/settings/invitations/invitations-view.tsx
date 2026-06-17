@@ -98,15 +98,14 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     }
   }
 
-  const handleAction = async (path: string) => {
+  const handleAction = async (edenCall: Promise<{ data?: { ok?: boolean; message?: string } | null; error?: unknown }>) => {
     setError(null)
     try {
-      // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(path, { method: "POST" }).then(r => r.json())
-      if (res.ok) {
+      const { data: res } = await edenCall
+      if (res?.ok) {
         void loadData()
       } else {
-        setError(res.message || "Action failed")
+        setError(res?.message || "Action failed")
       }
     } catch {
       setError("An unexpected error occurred")
@@ -202,14 +201,14 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleAction(`/api/tenants/${organizationId}/invitations/${invitation.id}/resend`)}>
+                        <DropdownMenuItem onClick={() => handleAction(eden.api.tenants[organizationId].invitations[invitation.id].resend.post())}>
                           Resend
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => {
                             if (confirm("Are you sure you want to revoke this invitation?")) {
-                              handleAction(`/api/tenants/${organizationId}/invitations/${invitation.id}/revoke`)
+                              handleAction(eden.api.tenants[organizationId].invitations[invitation.id].revoke.post())
                             }
                           }}
                         >
