@@ -1,18 +1,8 @@
-import { eden } from "@/lib/eden"
-
-/**
- * Quota & Balance Card — Inline editable client component
- *
- * Loading skeleton: rendered initially while React hydrates (or on re-fetch).
- * Error: inline error message with retry button.
- * Success: editable fields with save/cancel.
- */
-
 "use client"
 
+import { eden } from "@/lib/eden"
 import { useState, useCallback } from "react"
 import { toast } from "sonner"
-
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -25,6 +15,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Pen, Check, X, WarningCircle } from "@phosphor-icons/react"
+
+/**
+ * Quota & Balance Card — Inline editable client component
+ *
+ * Loading skeleton: rendered initially while React hydrates (or on re-fetch).
+ * Error: inline error message with retry button.
+ * Success: editable fields with save/cancel.
+ */
 
 type QuotaBalanceCardProps = {
   deviceId: string
