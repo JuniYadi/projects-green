@@ -61,10 +61,11 @@ function mockFetch(
   globalThis.fetch = Object.assign(
     async (url: string | URL | Request, init?: RequestInit) => {
       const urlStr = String(url)
+      const pathname = new URL(urlStr, "http://localhost").pathname
       calls.push({ url: urlStr, init })
 
       // Providers endpoint
-      if (urlStr === "/api/portal/payments/gateways/providers") {
+      if (pathname === "/api/portal/payments/gateways/providers") {
         return new Response(JSON.stringify(MOCK_PROVIDERS_RESPONSE), { status: 200 })
       }
 
@@ -126,7 +127,7 @@ describe("GatewaysTab", () => {
     expect(
       calls.some(
         (call) =>
-          call.url === "/api/portal/payments/gateways/gw-1" &&
+          new URL(call.url, "http://localhost").pathname === "/api/portal/payments/gateways/gw-1" &&
           call.init?.method === "PUT",
       )
     ).toBe(true)

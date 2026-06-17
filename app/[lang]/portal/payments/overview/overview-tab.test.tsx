@@ -22,9 +22,9 @@ function mockPaymentFetch(overrides?: {
             overrides?.gateways ?? {
               ok: true,
               data: [
-                { id: "gw-1", status: "active" },
-                { id: "gw-2", status: "active" },
-                { id: "gw-3", status: "inactive" },
+                { id: "gw-1", isActive: true },
+                { id: "gw-2", isActive: true },
+                { id: "gw-3", isActive: false },
               ],
             }
           ),
@@ -38,9 +38,9 @@ function mockPaymentFetch(overrides?: {
             overrides?.bankAccounts ?? {
               ok: true,
               data: [
-                { id: "ba-1", isVerified: true },
-                { id: "ba-2", isVerified: true },
-                { id: "ba-3", isVerified: false },
+                { id: "ba-1", isDefault: true },
+                { id: "ba-2", isDefault: true },
+                { id: "ba-3", isDefault: false },
               ],
             }
           ),
@@ -127,7 +127,7 @@ describe("OverviewTab", () => {
       expect(boldNumbers[0].textContent).toBe("3")
     })
 
-    it("filters verified bank accounts (isVerified=true) correctly", async () => {
+    it("filters verified bank accounts (isDefault=true) correctly", async () => {
       let view: ReturnType<typeof render>
 
       await act(async () => {
@@ -223,10 +223,10 @@ describe("OverviewTab", () => {
         gateways: {
           ok: true,
           data: [
-            { id: "gw-1", status: "active" },
-            { id: "gw-2", status: "inactive" },
-            { id: "gw-3", status: "suspended" },
-            { id: "gw-4", status: "inactive" },
+            { id: "gw-1", isActive: true },
+            { id: "gw-2", isActive: false },
+            { id: "gw-3", isActive: false },
+            { id: "gw-4", isActive: false },
           ],
         },
         bankAccounts: { ok: true, data: [] },
@@ -250,10 +250,10 @@ describe("OverviewTab", () => {
         bankAccounts: {
           ok: true,
           data: [
-            { id: "ba-1", isVerified: true },
-            { id: "ba-2", isVerified: false },
-            { id: "ba-3", isVerified: true },
-            { id: "ba-4", isVerified: false },
+            { id: "ba-1", isDefault: true },
+            { id: "ba-2", isDefault: false },
+            { id: "ba-3", isDefault: true },
+            { id: "ba-4", isDefault: false },
           ],
         },
         confirmations: { ok: true, data: [] },

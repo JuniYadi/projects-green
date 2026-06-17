@@ -183,7 +183,7 @@ describe("invoice service", () => {
       query: {},
     })
 
-    expect(list[0]?.issuedAt).toBeNull()
+    expect(list[0]?.issuedAt).toBe(nullDatesRecord.createdAt.toISOString())
     expect(list[0]?.dueAt).toBeNull()
     expect(list[0]?.totalAmount).toBe(0)
   })

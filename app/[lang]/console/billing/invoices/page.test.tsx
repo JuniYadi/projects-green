@@ -19,7 +19,7 @@ describe("Billing InvoicesPage", () => {
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)
 
-      if (url === "/api/billing/invoices") {
+      if (url.includes("/api/billing/invoices")) {
         return jsonResponse({ ok: true, invoices: [] })
       }
 
@@ -49,7 +49,7 @@ describe("Billing InvoicesPage", () => {
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)
 
-      if (url === "/api/billing/invoices") {
+      if (url.includes("/api/billing/invoices")) {
         return jsonResponse({
           ok: true,
           invoices: [

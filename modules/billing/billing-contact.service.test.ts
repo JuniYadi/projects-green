@@ -354,7 +354,7 @@ describe("updatePreferredCurrency", () => {
     expect(result.preferredCurrency).toBe("USD")
     expect(mockTx.billingAccount.update).toHaveBeenCalledWith({
       where: { organizationId: "org_123" },
-      data: { preferredCurrency: "USD" },
+      data: { currency: "USD", preferredCurrency: "USD" },
     })
   })
 

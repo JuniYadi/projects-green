@@ -1,27 +1,32 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 
-// Mock fetch for the docs list API call
+const mockDocsResponse = (body?: Record<string, unknown>) =>
+  new Response(
+    JSON.stringify({
+      ok: true,
+      docs: [
+        {
+          id: "1",
+          path: "/test",
+          title: "Test Doc",
+          purpose: "Testing",
+          howTo: ["step1"],
+          notes: [],
+          updatedAt: "2026-06-01",
+          score: 0,
+        },
+      ],
+      ...body,
+    }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }
+  )
+
 const mockFetch = mock(
-  (): Promise<Response> =>
-    Promise.resolve({
-      json: () =>
-        Promise.resolve({
-          ok: true,
-          docs: [
-            {
-              id: "1",
-              path: "/test",
-              title: "Test Doc",
-              purpose: "Testing",
-              howTo: ["step1"],
-              notes: [],
-              updatedAt: "2026-06-01",
-              score: 0,
-            },
-          ],
-        }),
-    } as unknown as Response)
+  (): Promise<Response> => Promise.resolve(mockDocsResponse())
 )
 
 global.fetch = mockFetch as unknown as typeof fetch
