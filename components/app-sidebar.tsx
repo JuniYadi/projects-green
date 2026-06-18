@@ -120,14 +120,28 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
       },
+    ],
+  },
+  {
+    context: "billing",
+    matches: (path) => startsWithRoute(path, "/portal/billing"),
+    navMainLabel: "Billing",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
       {
         title: "Vouchers",
         url: localizePathname({
-          pathname: "/portal/admin/vouchers",
+          pathname: "/portal/billing/voucher",
           locale,
         }),
         icon: <TicketIcon />,
-        isActive: startsWithRoute(path, "/portal/admin/vouchers"),
+        isActive: startsWithRoute(path, "/portal/billing/voucher"),
       },
     ],
   },

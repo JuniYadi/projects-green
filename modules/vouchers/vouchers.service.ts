@@ -7,6 +7,7 @@ import {
   VoucherExpiredError,
   VoucherDepletedError,
   VoucherDisabledError,
+  VoucherAlreadyClaimedError,
   VoucherTargetUserMismatchError,
   VoucherTargetOrgMismatchError,
 } from "./vouchers.errors"
@@ -251,7 +252,15 @@ export class VoucherService {
         throw new VoucherTargetOrgMismatchError(code)
       }
 
-      // 4. Guarded update: atomically increment claimedCount only if under maxClaims
+      // 4. Check if user already claimed this voucher
+      const existingClaim = await tx.voucherClaim.findFirst({
+        where: { voucherId: voucher.id, workosUserId },
+      })
+      if (existingClaim) {
+        throw new VoucherAlreadyClaimedError(code, workosUserId)
+      }
+
+      // 5. Guarded update: atomically increment claimedCount only if under maxClaims
       const guardedUpdate = await tx.voucher.updateMany({
         where: {
           id: voucher.id,
@@ -268,7 +277,7 @@ export class VoucherService {
         throw new VoucherDepletedError(code)
       }
 
-      // 5. Create claim record
+      // 6. Create claim record
       const claim = await tx.voucherClaim.create({
         data: {
           voucherId: voucher.id,
@@ -277,7 +286,7 @@ export class VoucherService {
         },
       })
 
-      // 6. If claimedCount has reached maxClaims, set status to DEPLETED
+      // 7. If claimedCount has reached maxClaims, set status to DEPLETED
       const updatedVoucher = await tx.voucher.findUniqueOrThrow({
         where: { id: voucher.id },
       })
@@ -289,7 +298,7 @@ export class VoucherService {
         })
       }
 
-      // 7. Apply billing credit — find or create billing account, then create adjustment
+      // 8. Apply billing credit — find or create billing account, then create adjustment
       let billingAccount = await tx.billingAccount.findUnique({
         where: { organizationId },
       })

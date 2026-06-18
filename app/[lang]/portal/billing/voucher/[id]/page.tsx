@@ -14,7 +14,7 @@ export default async function VoucherDetailPage({
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <div className="flex items-center gap-4">
-          <Link href="/portal/admin/vouchers">
+          <Link href="/portal/billing/voucher">
             <Button variant="ghost" size="icon">
               <ArrowLeftIcon className="h-4 w-4" />
             </Button>

@@ -37,6 +37,7 @@ import {
   PlusIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
+  CopySimpleIcon,
 } from "@phosphor-icons/react"
 import type { VoucherStatus } from "@prisma/client"
 
@@ -147,6 +148,13 @@ export function VoucherManagementTable() {
     setOffset(0)
   }
 
+  function copyCode(code: string, e: React.MouseEvent) {
+    e.stopPropagation()
+    navigator.clipboard.writeText(code).then(() => {
+      // brief visual feedback could be added later
+    })
+  }
+
   function handlePrevPage() {
     setOffset(Math.max(0, offset - PAGE_SIZE))
   }
@@ -192,6 +200,7 @@ export function VoucherManagementTable() {
         })
         // Reload the list from first page
         setOffset(0)
+        void fetchData()
       } else {
         setCreateError(data?.message || "Failed to create voucher")
       }
@@ -435,11 +444,20 @@ export function VoucherManagementTable() {
                   key={voucher.id}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() =>
-                    router.push(`/portal/admin/vouchers/${voucher.id}`)
+                    router.push(`/portal/billing/voucher/${voucher.id}`)
                   }
                 >
                   <TableCell className="font-mono text-xs font-medium">
-                    {voucher.code}
+                    <span className="flex items-center gap-1.5">
+                      {voucher.code}
+                      <button
+                        onClick={(e) => copyCode(voucher.code, e)}
+                        className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        title="Copy to clipboard"
+                      >
+                        <CopySimpleIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Badge

@@ -7,6 +7,7 @@ import {
   VoucherExpiredError,
   VoucherDepletedError,
   VoucherDisabledError,
+  VoucherAlreadyClaimedError,
   VoucherTargetUserMismatchError,
   VoucherTargetOrgMismatchError,
 } from "./vouchers.errors"
@@ -25,6 +26,7 @@ function createMockTx() {
       updateMany: mock(() => ({ count: 1 })),
     },
     voucherClaim: {
+      findFirst: mock(() => null),
       create: mock(() => ({ id: "claim_1" })),
       update: mock(() => ({})),
     },
@@ -466,6 +468,41 @@ describe("VoucherService", () => {
           organizationId: "other_org",
         }),
       ).rejects.toThrow(VoucherTargetOrgMismatchError)
+    })
+
+    it("rejects duplicate claim from same user", async () => {
+      const tx = createMockTx()
+      tx.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        code: "DUPLICATE1",
+        status: "ACTIVE",
+        maxClaims: 10,
+        claimedCount: 0,
+        expiresAt: new Date(Date.now() + 86400000),
+        amount: { toFixed: () => "50000" },
+        currency: "IDR",
+        targetWorkosUserId: null,
+        targetOrganizationId: null,
+      })) as never
+      tx.voucherClaim.findFirst = mock(() => ({
+        id: "existing_claim",
+        voucherId: "v_1",
+        workosUserId: "user_1",
+      })) as never
+
+      const prisma = createMockPrisma()
+      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
+        fn(tx),
+      )
+
+      const service = new VoucherService(prisma as PrismaClient)
+      await expect(
+        service.redeemVoucher({
+          code: "DUPLICATE1",
+          workosUserId: "user_1",
+          organizationId: "org_1",
+        }),
+      ).rejects.toThrow(VoucherAlreadyClaimedError)
     })
 
     it("handles guarded update returning zero rows (race condition)", async () => {
