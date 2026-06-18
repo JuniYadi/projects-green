@@ -1,12 +1,24 @@
 import { describe, expect, test, mock, beforeEach } from "bun:test"
+import type { CommitFileResult } from "@/modules/github/github.service"
+
+type CommitFileInput = {
+  installationId: number
+  owner: string
+  repo: string
+  filePath: string
+  content: string
+  message: string
+  branch?: string
+}
 
 // Mock the GitHub service before importing the module under test
-const mockCommitFileToRepo = mock(() =>
-  Promise.resolve({
-    commitSha: "abc123",
-    filePath: "jobs/pfnapp/app-test-dev.groovy",
-    action: "created" as const,
-  })
+const mockCommitFileToRepo = mock(
+  (): Promise<CommitFileResult> =>
+    Promise.resolve({
+      commitSha: "abc123",
+      filePath: "jobs/pfnapp/app-test-dev.groovy",
+      action: "created" as const,
+    })
 )
 
 mock.module("@/modules/github/github.service", () => ({
@@ -14,6 +26,12 @@ mock.module("@/modules/github/github.service", () => ({
 }))
 
 const { syncJenkinsPipeline } = await import("./jenkins-sync.service")
+
+function getMockCall(): CommitFileInput {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const calls = mockCommitFileToRepo.mock.calls as any[]
+  return calls[0]?.[0] as CommitFileInput
+}
 
 describe("syncJenkinsPipeline", () => {
   beforeEach(() => {
@@ -46,7 +64,7 @@ describe("syncJenkinsPipeline", () => {
     expect(result.action).toBe("created")
     expect(mockCommitFileToRepo).toHaveBeenCalledTimes(1)
 
-    const call = mockCommitFileToRepo.mock.calls[0][0]
+    const call = getMockCall()
     expect(call.owner).toBe("pfnapp")
     expect(call.repo).toBe("Jenkins")
     expect(call.filePath).toBe("jobs/pfnapp/app-test-dev.groovy")
@@ -63,7 +81,7 @@ describe("syncJenkinsPipeline", () => {
 
     expect(result.pipelineType).toBe("node")
 
-    const call = mockCommitFileToRepo.mock.calls[0][0]
+    const call = getMockCall()
     expect(call.content).toContain("nodejsPipeline")
   })
 
@@ -75,7 +93,7 @@ describe("syncJenkinsPipeline", () => {
 
     expect(result.pipelineType).toBe("node")
 
-    const call = mockCommitFileToRepo.mock.calls[0][0]
+    const call = getMockCall()
     expect(call.content).toContain("nodejsPipeline")
   })
 
@@ -87,7 +105,7 @@ describe("syncJenkinsPipeline", () => {
 
     expect(result.pipelineType).toBe("docker")
 
-    const call = mockCommitFileToRepo.mock.calls[0][0]
+    const call = getMockCall()
     expect(call.content).toContain("dockerPipeline")
   })
 
@@ -108,7 +126,7 @@ describe("syncJenkinsPipeline", () => {
       jenkinsRepo: "CustomJenkins",
     })
 
-    const call = mockCommitFileToRepo.mock.calls[0][0]
+    const call = getMockCall()
     expect(call.owner).toBe("custom-org")
     expect(call.repo).toBe("CustomJenkins")
   })
@@ -120,7 +138,7 @@ describe("syncJenkinsPipeline", () => {
       gitCredentialId: "custom-token",
     })
 
-    const call = mockCommitFileToRepo.mock.calls[0][0]
+    const call = getMockCall()
     expect(call.content).toContain("custom-token")
   })
 
@@ -149,7 +167,7 @@ describe("syncJenkinsPipeline", () => {
       env: "prod",
     })
 
-    const call = mockCommitFileToRepo.mock.calls[0][0]
+    const call = getMockCall()
     expect(call.filePath).toBe("jobs/pfnapp/app-my-cool-app-prod.groovy")
   })
 
@@ -159,7 +177,7 @@ describe("syncJenkinsPipeline", () => {
       framework: "laravel",
     })
 
-    const call = mockCommitFileToRepo.mock.calls[0][0]
+    const call = getMockCall()
     expect(call.content).toContain("https://github.com/pfnapp/pfnapp")
   })
 
@@ -170,7 +188,7 @@ describe("syncJenkinsPipeline", () => {
       framework: "node",
     })
 
-    const call = mockCommitFileToRepo.mock.calls[0][0]
+    const call = getMockCall()
     expect(call.content).toContain("develop")
   })
 })
