@@ -14,7 +14,7 @@ export class ApiCallTracker {
     // For now, setting it to undefined as per current modification.
     await prisma.whatsappApiCall.create({
       data: {
-        organizationId: undefined, // This needs to be correctly set if available
+        organizationId: params.organizationId ?? null,
         operation: params.operation,
         phoneNumberId: params.phoneNumberId,
         status: params.status,
