@@ -1,5 +1,4 @@
 import { MetaCloudError } from "./errors"
-import { apiCallTracker } from "@/modules/whatsapp/rate-limit/rate-limit.service"
 
 export type OperationHookEvent = {
   operation: string
@@ -76,13 +75,6 @@ export class MetaCloudHttpClient {
           status: response.status,
           response: responseData,
         })
-
-        // Fire-and-forget: record API call for rate-limit tracking
-        apiCallTracker.recordCall({
-          operation,
-          phoneNumberId: endpoint,
-          status: response.status,
-        }).catch(() => {})
 
         if (response.ok) {
           return responseData as T

@@ -19,7 +19,6 @@ import {
   BookOpenIcon,
   BuildingsIcon,
   CaretLeftIcon,
-  ChartLineIcon,
   CreditCardIcon,
   CrosshairIcon,
   DeviceMobileIcon,
@@ -346,15 +345,6 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <RocketLaunchIcon />,
         isActive: startsWithRoute(path, "/console/whatsapp/broadcasts"),
-      },
-      {
-        title: "Usage",
-        url: localizePathname({
-          pathname: "/console/whatsapp/usage",
-          locale,
-        }),
-        icon: <ChartLineIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/usage"),
       },
       {
         title: "Contacts",

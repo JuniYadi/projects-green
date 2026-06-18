@@ -17,8 +17,6 @@ import { conversationsRoutes } from "@/modules/whatsapp/conversations/api/conver
 import { messagesRoutes } from "@/modules/whatsapp/messages/api/messages.route"
 import { webhooksRoutes } from "@/modules/whatsapp/webhooks/api/webhooks.route"
 import { usersRoutes } from "@/modules/whatsapp/users/api/users.route"
-import { usageRoutes } from "@/modules/whatsapp/usage/api/usage.route"
-import { rateLimitRoutes } from "@/modules/whatsapp/rate-limit/api/rate-limit.route"
 
 export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(devicesRoutes)
@@ -31,5 +29,3 @@ export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(messagesRoutes)
   .use(webhooksRoutes)
   .use(usersRoutes)
-  .use(usageRoutes)
-  .use(rateLimitRoutes)

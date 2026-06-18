@@ -1,6 +1,5 @@
 import {
   Prisma,
-  WhatsappBillingCategory,
   WhatsappTemplateMetaStatus,
   WhatsappTemplateSyncStatus,
 } from "@prisma/client"
@@ -165,7 +164,7 @@ async function upsertTemplate(
   const data = {
     slug: slugifyTemplateName(template.name) || template.name,
     name: template.name,
-    category: template.category ? (template.category as WhatsappBillingCategory) : null,
+    description: template.category ?? null,
     syncStatus: WhatsappTemplateSyncStatus.SYNCED,
     metaStatus,
     lastSyncedAt: new Date(),

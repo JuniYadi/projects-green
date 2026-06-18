@@ -93,15 +93,6 @@ export class TestDecimal {
     const other = value instanceof TestDecimal ? value.#value : Number(value)
     return this.#value <= other
   }
-
-  // Prisma Decimal (decimal.js) aliases
-  add(value: number | string | TestDecimal) {
-    return this.plus(value)
-  }
-
-  sub(value: number | string | TestDecimal) {
-    return this.minus(value)
-  }
 }
 
 // ── Factory ─────────────────────────────────────────────

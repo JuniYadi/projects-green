@@ -1559,7 +1559,6 @@ model WhatsappTemplate {
   slug           String
   name           String
   description    String?
-  category       WhatsappBillingCategory?
   syncStatus     WhatsappTemplateSyncStatus  @default(NOT_SYNCED)
   metaStatus     WhatsappTemplateMetaStatus?
   lastSyncedAt   DateTime?
@@ -1756,18 +1755,6 @@ model WhatsappBillingLedger {
 
   @@index([organizationId, createdAt])
   @@index([waMessageId])
-}
-
-model WhatsappApiCall {
-  id              String   @id @default(cuid())
-  operation       String
-  phoneNumberId   String
-  status          Int
-  createdAt       DateTime @default(now())
-
-  @@index([phoneNumberId, createdAt(sort: Desc)])
-  @@index([createdAt(sort: Desc)])
-  @@map("WhatsappApiCall")
 }
 
 model WhatsappLog {

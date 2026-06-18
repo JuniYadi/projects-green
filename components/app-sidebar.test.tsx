@@ -180,7 +180,6 @@ describe("resolveSidebarMenu", () => {
       "Templates",
       "Messages",
       "Broadcasts",
-      "Usage",
       "Contacts",
     ])
     expect(

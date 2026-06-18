@@ -90,49 +90,6 @@ export async function processInboundMessage(
     },
   })
 
-  // Increment daily + monthly inbox counters
-  const now = new Date()
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-  const year = now.getUTCFullYear()
-  const month = now.getUTCMonth() + 1
-
-  await Promise.all([
-    prisma.whatsappDailyCount.upsert({
-      where: {
-        organizationId_date_whatsappDeviceId: {
-          organizationId,
-          date: today,
-          whatsappDeviceId: deviceId,
-        },
-      },
-      update: { messageInboxCount: { increment: 1 } },
-      create: {
-        organizationId,
-        date: today,
-        whatsappDeviceId: deviceId,
-        messageInboxCount: 1,
-      },
-    }),
-    prisma.whatsappMonthlyCount.upsert({
-      where: {
-        organizationId_year_month_whatsappDeviceId: {
-          organizationId,
-          year,
-          month,
-          whatsappDeviceId: deviceId,
-        },
-      },
-      update: { messageInboxCount: { increment: 1 } },
-      create: {
-        organizationId,
-        year,
-        month,
-        whatsappDeviceId: deviceId,
-        messageInboxCount: 1,
-      },
-    }),
-  ])
-
   return {
     messageId: whatsappMessage.id,
     conversationId: conversation.id,
