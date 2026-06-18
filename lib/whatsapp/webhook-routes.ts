@@ -13,6 +13,9 @@ import { verifySignature } from "./webhook"
 import { verifyWebhookUseCase } from "./verify-webhook"
 import { handleEventUseCase } from "./handle-event"
 import { enqueueWhatsAppWebhook } from "@/lib/queue/whatsapp-webhook"
+import { webhookMetrics } from "@/modules/health/webhook-metrics.service"
+import { prisma } from "@/lib/prisma"
+import { createWebhookEvent } from "@/modules/whatsapp/webhooks/webhooks.service"
 
 export const whatsappWebhookRoutes = new Elysia({ tags: ["WhatsApp Webhook"] })
   // Meta sends GET to verify webhook ownership
@@ -29,6 +32,8 @@ export const whatsappWebhookRoutes = new Elysia({ tags: ["WhatsApp Webhook"] })
   })
   // Receive webhook events from Meta
   .post("/whatsapp/webhook", async ({ body, set, request }) => {
+    webhookMetrics.incrementTotalRequests()
+
     const rawBody =
       body instanceof Uint8Array
         ? new TextDecoder().decode(body)
@@ -37,33 +42,49 @@ export const whatsappWebhookRoutes = new Elysia({ tags: ["WhatsApp Webhook"] })
     const signature = request.headers.get("x-hub-signature-256") || ""
     const isValid = verifySignature(rawBody, signature)
     if (!isValid) {
+      webhookMetrics.incrementHmacFailures()
       set.status = 403
       return { error: "Invalid signature" }
     }
 
     // Respond 200 to Meta immediately — processing happens async via BullMQ
-    void dispatchWebhookEvents(body).catch((err) => {
+    void dispatchWebhookEvents(body, rawBody).catch((err) => {
+      webhookMetrics.incrementProcessingErrors()
       console.error("[whatsapp-webhook] dispatch error:", err)
     })
 
     return { ok: true }
   })
 
-export async function dispatchWebhookEvents(body: unknown): Promise<void> {
-  const result = await handleEventUseCase(body)
+/**
+ * Look up a WhatsApp device by its Meta phone_number_id (whatsappPhoneId).
+ */
+async function lookupDeviceByPhoneId(phoneNumberId: string) {
+  if (!phoneNumberId) return null
+  return prisma.whatsappDevice.findFirst({
+    where: { whatsappPhoneId: phoneNumberId },
+    select: { id: true, organizationId: true },
+  })
+}
+
+export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Promise<void> {
+  const result = await handleEventUseCase(body, { rawBody })
 
   // Handle duplicate events first (no code property)
   if (result && "duplicate" in result && result.duplicate) {
+    webhookMetrics.incrementDuplicateEvents()
     console.info("[whatsapp-webhook] duplicate event ignored")
     return
   }
 
   if (!result || !("code" in result)) {
+    webhookMetrics.incrementProcessingErrors()
     console.warn("[whatsapp-webhook] unexpected handleEventUseCase result", result)
     return
   }
 
   if (result.code !== 200) {
+    webhookMetrics.incrementProcessingErrors()
     console.warn("[whatsapp-webhook] invalid payload:", result.message)
     return
   }
@@ -77,7 +98,10 @@ export async function dispatchWebhookEvents(body: unknown): Promise<void> {
   for (const entry of entries) {
     const phoneNumberId = entry.phoneNumberId
 
-    // Enqueue each message event
+    // Look up device to capture webhook events
+    const device = await lookupDeviceByPhoneId(phoneNumberId)
+
+    // Enqueue each message event + create webhook event record
     for (const message of entry.messages) {
       try {
         await enqueueWhatsAppWebhook("message", message, phoneNumberId)
@@ -87,9 +111,19 @@ export async function dispatchWebhookEvents(body: unknown): Promise<void> {
           err,
         )
       }
+
+      // Capture webhook event for this message
+      if (device) {
+        createWebhookEvent(
+          device.organizationId,
+          device.id,
+          "inbound_message",
+          message as any,
+        ).catch((err) => console.error("[whatsapp-webhook] failed to create webhook event:", err))
+      }
     }
 
-    // Enqueue each status event
+    // Enqueue each status event + create webhook event record
     for (const status of entry.statuses) {
       try {
         await enqueueWhatsAppWebhook("statuses", status, phoneNumberId)
@@ -98,6 +132,16 @@ export async function dispatchWebhookEvents(body: unknown): Promise<void> {
           "[whatsapp-webhook] failed to enqueue status event",
           err,
         )
+      }
+
+      // Capture webhook event for this status
+      if (device) {
+        createWebhookEvent(
+          device.organizationId,
+          device.id,
+          "status_update",
+          status as any,
+        ).catch((err) => console.error("[whatsapp-webhook] failed to create webhook event:", err))
       }
     }
   }

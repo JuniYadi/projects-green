@@ -10,6 +10,8 @@ import {
   processDeliveryStatus,
 } from "@/modules/whatsapp/webhooks/webhooks.service"
 import { prisma } from "@/lib/prisma"
+import { webhookMetrics } from "@/modules/health/webhook-metrics.service"
+import { Prisma } from "@prisma/client"
 
 const redisConnection = getWhatsAppWebhookRedisConnection()
 
@@ -167,6 +169,7 @@ async function handleStatusEvent(
 }
 
 worker.on("active", (job) => {
+  webhookMetrics.incrementTotalRequests()
   console.info(
     `[whatsapp-webhook-worker] processing ${job.name} id=${job.id} eventType=${job.data.eventType}`
   )
@@ -178,7 +181,7 @@ worker.on("completed", (job) => {
   )
 })
 
-worker.on("failed", (job, error) => {
+worker.on("failed", async (job, error) => {
   if (!job) {
     console.error(
       "[whatsapp-webhook-worker] failed job missing payload",
@@ -187,11 +190,50 @@ worker.on("failed", (job, error) => {
     return
   }
 
+  const { eventType, payload, deviceId, organizationId } = job.data
+  const attempts = job.attemptsMade ?? 0
+  const maxAttempts = job.opts?.attempts ?? 3
+
   console.error(
-    `[whatsapp-webhook-worker] failed ${job.name} id=${job.id} eventType=${job.data.eventType} attempts=${job.attemptsMade}`,
+    `[whatsapp-webhook-worker] failed ${job.name} id=${job.id} eventType=${eventType} deviceId=${deviceId} attempts=${attempts}`,
     error
   )
+
+  // Dead-letter: persist to DB when retries exhausted
+  if (attempts >= maxAttempts) {
+    webhookMetrics.incrementDeadLetterEvents()
+
+    try {
+      await prisma.whatsappWebhookDeadLetter.create({
+        data: {
+          organizationId: organizationId ?? null,
+          deviceId,
+          eventType,
+          payloadJson: payload as Prisma.InputJsonValue,
+          errorMessage: toErrorMessage(error),
+          attempts,
+          status: "dead_lettered",
+          failedAt: new Date(),
+        },
+      })
+
+      console.info(
+        `[whatsapp-webhook-worker] dead-lettered job id=${job.id} eventType=${eventType} deviceId=${deviceId}`
+      )
+    } catch (dlqError) {
+      console.error(
+        `[whatsapp-webhook-worker] failed to write dead-letter record for job id=${job.id}:`,
+        dlqError
+      )
+    }
+  }
 })
+
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === "string") return error
+  return String(error)
+}
 
 let shuttingDown = false
 

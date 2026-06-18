@@ -4,6 +4,7 @@ import {
   checkReadiness,
   checkStartup,
 } from "@/modules/health/health.service"
+import { webhookMetrics } from "@/modules/health/webhook-metrics.service"
 
 export const healthRoutes = new Elysia()
   .get("/health/startup", () => {
@@ -44,5 +45,32 @@ export const healthRoutes = new Elysia()
       ok: true as const,
       timestamp: new Date().toISOString(),
       checks: result.checks,
+    }
+  })
+  .get("/health/webhooks", () => {
+    const metrics = webhookMetrics.getMetrics()
+    const alerts = webhookMetrics.getAlerts()
+    const healthy = alerts.length === 0
+
+    if (!healthy) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          timestamp: new Date().toISOString(),
+          metrics,
+          alerts,
+        }),
+        {
+          status: 503,
+          headers: { "content-type": "application/json" },
+        },
+      )
+    }
+
+    return {
+      ok: true as const,
+      timestamp: new Date().toISOString(),
+      metrics,
+      alerts,
     }
   })
