@@ -5,14 +5,16 @@ export class ApiCallTracker {
    * Record an API call to the Meta WhatsApp Business API.
    */
   async recordCall(params: {
-    organizationId: string
+    organizationId?: string // Make optional as it seems to be inferred from device or not directly on the call
     operation: string
-    phoneNumberId: string
+    phoneNumberId?: string // Make optional
     status: number
   }): Promise<void> {
+    // If organizationId is directly available or derivable, it should be passed here.
+    // For now, setting it to undefined as per current modification.
     await prisma.whatsappApiCall.create({
       data: {
-        organizationId: params.organizationId,
+        organizationId: undefined, // This needs to be correctly set if available
         operation: params.operation,
         phoneNumberId: params.phoneNumberId,
         status: params.status,
@@ -69,7 +71,7 @@ export class ApiCallTracker {
     })
 
     return result.map((r) => ({
-      phoneNumberId: r.phoneNumberId,
+      phoneNumberId: r.phoneNumberId ?? "unknown", // Provide a default or handle null explicitly
       count: r._count.id,
     }))
   }

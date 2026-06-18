@@ -277,7 +277,7 @@ const githubRequest = async <T>({
   body,
 }: {
   path: string
-  method?: "GET" | "POST"
+  method?: "GET" | "POST" | "PUT" | "DELETE"
   token: string
   body?: unknown
 }) => {

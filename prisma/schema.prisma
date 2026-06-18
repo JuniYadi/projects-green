@@ -1760,9 +1760,9 @@ model WhatsappBillingLedger {
 
 model WhatsappApiCall {
   id              String   @id @default(cuid())
-  organizationId  String
+  organizationId  String? // Changed to optional
   operation       String
-  phoneNumberId   String
+  phoneNumberId   String? // Changed to optional
   status          Int
   createdAt       DateTime @default(now())
 

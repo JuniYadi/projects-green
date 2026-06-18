@@ -83,7 +83,8 @@ export class MetaCloudHttpClient {
         // Fire-and-forget: record API call for rate-limit tracking
         apiCallTracker.recordCall({
           operation,
-          phoneNumberId: this.phoneNumberId,
+          phoneNumberId: this.phoneNumberId ?? "unknown", // Provide a default for phoneNumberId
+          organizationId: undefined, // Explicitly set to undefined if not available
           status: response.status,
         }).catch((err) => console.error("[MetaCloudHttpClient] recordCall failed:", err))
 

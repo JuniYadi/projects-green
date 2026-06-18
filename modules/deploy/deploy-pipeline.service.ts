@@ -152,8 +152,16 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
   // Non-blocking: sync Jenkins pipeline after stack is created/updated
   // Determine env from slug (e.g., "app-myapp-prod" → "prod", default "dev")
-  const env = input.slug.endsWith("-prod") ? "prod" : "dev"
-  syncJenkinsPipelineForStack(input, env).catch(() => {
+  const env = stack.slug.endsWith("-prod") ? "prod" : "dev"
+  syncJenkinsPipelineForStack(
+    {
+      slug: stack.slug,
+      branchName: stack.branchName,
+      framework: stack.framework, // framework can be string | null
+      repositoryConnectionId: stack.repositoryConnectionId,
+    },
+    env,
+  ).catch(() => {
     // Already logged in the function
   })
 

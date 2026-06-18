@@ -14,7 +14,7 @@ import { decryptWhatsAppToken } from "../crypto"
 
 export class WhatsAppDeviceClient {
   private readonly httpClient: MetaCloudHttpClient
-  private readonly phoneNumberId: string
+  private readonly phoneNumberId: string // Marked as readonly here.
   private readonly wabaId: string
 
   constructor(options: {
@@ -23,12 +23,12 @@ export class WhatsAppDeviceClient {
     wabaId: string
     timeoutMs?: number
   }) {
+    this.phoneNumberId = options.phoneNumberId // Initialize here
     this.httpClient = new MetaCloudHttpClient({
       accessToken: options.accessToken,
       timeoutMs: options.timeoutMs,
       phoneNumberId: this.phoneNumberId,
     })
-    this.phoneNumberId = options.phoneNumberId
     this.wabaId = options.wabaId
   }
 
