@@ -1,6 +1,7 @@
 import { Elysia } from "elysia"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { apiCallTracker } from "../rate-limit.service"
+import { prisma } from "@/lib/prisma"
 
 export const rateLimitRoutes = new Elysia({ prefix: "/rate-limit" }).get(
   "/status",
@@ -20,12 +21,24 @@ export const rateLimitRoutes = new Elysia({ prefix: "/rate-limit" }).get(
     }
 
     const { deviceId } = query as { deviceId?: string }
-    const callsLastMinute = deviceId
-      ? await apiCallTracker.getCallCount(deviceId, 1)
-      : 0
-    const errorsLast5Min = deviceId
-      ? await apiCallTracker.getRecentErrors(deviceId, 5)
-      : 0
+    
+    if (!deviceId) {
+      set.status = 400
+      return { ok: false, error: "DEVICE_ID_REQUIRED" }
+    }
+
+    // Verify device ownership
+    const device = await prisma.whatsappDevice.findUnique({
+      where: { id: deviceId, organizationId: auth.organizationId },
+    })
+
+    if (!device) {
+      set.status = 404
+      return { ok: false, error: "DEVICE_NOT_FOUND_OR_UNAUTHORIZED" }
+    }
+
+    const callsLastMinute = await apiCallTracker.getCallCount(deviceId, 1)
+    const errorsLast5Min = await apiCallTracker.getRecentErrors(deviceId, 5)
 
     return { ok: true, callsLastMinute, errorsLast5Min }
   }

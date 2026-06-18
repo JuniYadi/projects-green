@@ -5,12 +5,14 @@ export class ApiCallTracker {
    * Record an API call to the Meta WhatsApp Business API.
    */
   async recordCall(params: {
+    organizationId: string
     operation: string
     phoneNumberId: string
     status: number
   }): Promise<void> {
     await prisma.whatsappApiCall.create({
       data: {
+        organizationId: params.organizationId,
         operation: params.operation,
         phoneNumberId: params.phoneNumberId,
         status: params.status,
@@ -60,7 +62,7 @@ export class ApiCallTracker {
     const result = await prisma.whatsappApiCall.groupBy({
       by: ["phoneNumberId"],
       where: {
-        phoneNumberId: { contains: organizationId },
+        organizationId: organizationId,
         createdAt: { gte: today },
       },
       _count: { id: true },

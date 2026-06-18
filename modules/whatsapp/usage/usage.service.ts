@@ -20,7 +20,8 @@ function toNum(v: any): number {
   if (typeof v === "object" && typeof v.toNumber === "function") {
     return v.toNumber()
   }
-  return Number(v)
+  const n = Number(v)
+  return isNaN(n) ? 0 : n
 }
 
 type DateRangeOpts = {

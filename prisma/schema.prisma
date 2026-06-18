@@ -1760,6 +1760,7 @@ model WhatsappBillingLedger {
 
 model WhatsappApiCall {
   id              String   @id @default(cuid())
+  organizationId  String
   operation       String
   phoneNumberId   String
   status          Int

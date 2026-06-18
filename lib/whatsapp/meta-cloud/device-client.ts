@@ -25,7 +25,8 @@ export class WhatsAppDeviceClient {
   }) {
     this.httpClient = new MetaCloudHttpClient({
       accessToken: options.accessToken,
-      timeoutMs: options.timeoutMs
+      timeoutMs: options.timeoutMs,
+      phoneNumberId: this.phoneNumberId,
     })
     this.phoneNumberId = options.phoneNumberId
     this.wabaId = options.wabaId
