@@ -275,6 +275,60 @@ export const messageService: MessageService = {
             },
           },
         })
+
+        // Increment daily + monthly outbound counters
+        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+        const year = now.getUTCFullYear()
+        const month = now.getUTCMonth() + 1
+
+        await Promise.all([
+          prisma.whatsappDailyCount.upsert({
+            where: {
+              organizationId_date_whatsappDeviceId: {
+                organizationId,
+                date: today,
+                whatsappDeviceId: device.id,
+              },
+            },
+            update: { messageOutboxCount: { increment: 1 } },
+            create: {
+              organizationId,
+              date: today,
+              whatsappDeviceId: device.id,
+              messageOutboxCount: 1,
+            },
+          }),
+          prisma.whatsappMonthlyCount.upsert({
+            where: {
+              organizationId_year_month_whatsappDeviceId: {
+                organizationId,
+                year,
+                month,
+                whatsappDeviceId: device.id,
+              },
+            },
+            update: { messageOutboxCount: { increment: 1 } },
+            create: {
+              organizationId,
+                year,
+                month,
+                whatsappDeviceId: device.id,
+                messageOutboxCount: 1,
+            },
+          }),
+          // Record per-message billing entry in WhatsApp Billing Ledger
+          prisma.whatsappBillingLedger.create({
+            data: {
+              organizationId,
+              waMessageId,
+              phoneNumber,
+              category: "SERVICE",
+              quotaKey: device.id,
+              quotaValue: messageRateIdr,
+              whatsappDeviceId: device.id,
+            },
+          }),
+        ])
       }
 
       // NOTE: Balance deduction is handled upfront by
