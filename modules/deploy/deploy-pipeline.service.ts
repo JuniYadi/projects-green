@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
 
 /**
  * PGREEN-070 — Deployment Orchestration
@@ -31,6 +32,62 @@ export type StackUpsertInput = {
 
 const IN_PROGRESS_STATUSES = ["QUEUED", "BUILDING", "DEPLOYING"] as const
 
+// ─── Jenkins Pipeline Sync ────────────────────────────────────────────────────
+
+/**
+ * Sync Jenkins pipeline DSL for a stack. Non-blocking — logs errors but
+ * does not fail stack creation if Jenkins sync fails.
+ */
+async function syncJenkinsPipelineForStack(
+  stack: {
+    slug: string
+    branchName: string
+    framework: string | null
+    repositoryConnectionId: string | null
+  },
+  env: "dev" | "prod" = "dev"
+): Promise<void> {
+  try {
+    // Need repositoryConnectionId to get installation info
+    if (!stack.repositoryConnectionId) {
+      console.log(`[jenkins-sync] Skipping — no repository connection for ${stack.slug}`)
+      return
+    }
+
+    // Look up connection and installation
+    const connection = await prisma.githubRepositoryConnection.findUnique({
+      where: { id: stack.repositoryConnectionId },
+      include: { installation: true },
+    })
+
+    if (!connection) {
+      console.log(`[jenkins-sync] Skipping — connection not found for ${stack.slug}`)
+      return
+    }
+
+    // Determine framework for pipeline type
+    const framework = stack.framework ?? "docker"
+
+    // Sync the pipeline
+    const result = await syncJenkinsPipeline({
+      installationId: Number(connection.installation.githubInstallationId),
+      owner: connection.ownerLogin,
+      repo: connection.repoName,
+      slug: stack.slug,
+      branch: stack.branchName,
+      framework,
+      env,
+    })
+
+    console.log(
+      `[jenkins-sync] ${result.action} pipeline for ${stack.slug}: ${result.filePath}`
+    )
+  } catch (error) {
+    // Non-blocking — log but don't fail stack creation
+    console.error(`[jenkins-sync] Failed to sync pipeline for ${stack.slug}:`, error)
+  }
+}
+
 /**
  * Create or update the ApplicationStack for an organization by slug.
  *
@@ -45,7 +102,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
   const envVarsJson = (input.envVars ?? []) as Prisma.InputJsonValue
 
-  return prisma.$transaction(async (tx) => {
+  const stack = await prisma.$transaction(async (tx) => {
     const existing = await tx.applicationStack.findUnique({
       where: {
         organizationId_slug: {
@@ -92,6 +149,23 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
     return tx.applicationStack.create({ data })
   })
+
+  // Non-blocking: sync Jenkins pipeline after stack is created/updated
+  // Determine env from slug (e.g., "app-myapp-prod" → "prod", default "dev")
+  const env = stack.slug.endsWith("-prod") ? "prod" : "dev"
+  syncJenkinsPipelineForStack(
+    {
+      slug: stack.slug,
+      branchName: stack.branchName,
+      framework: stack.framework, // framework can be string | null
+      repositoryConnectionId: stack.repositoryConnectionId,
+    },
+    env,
+  ).catch(() => {
+    // Already logged in the function
+  })
+
+  return stack
 }
 
 export async function triggerDeploy(params: {

@@ -16,31 +16,38 @@ export class WhatsAppDeviceClient {
   private readonly httpClient: MetaCloudHttpClient
   private readonly phoneNumberId: string
   private readonly wabaId: string
+  private readonly organizationId?: string
 
   constructor(options: {
     accessToken: string
     phoneNumberId: string
     wabaId: string
+    organizationId?: string
     timeoutMs?: number
   }) {
-    this.httpClient = new MetaCloudHttpClient({
-      accessToken: options.accessToken,
-      timeoutMs: options.timeoutMs
-    })
     this.phoneNumberId = options.phoneNumberId
     this.wabaId = options.wabaId
+    this.organizationId = options.organizationId
+    this.httpClient = new MetaCloudHttpClient({
+      accessToken: options.accessToken,
+      timeoutMs: options.timeoutMs,
+      phoneNumberId: this.phoneNumberId,
+      organizationId: this.organizationId,
+    })
   }
 
   static async fromDevice(device: {
     accessToken: string
     phoneNumberId: string
     wabaId: string
+    organizationId?: string
   }) {
     const token = await decryptWhatsAppToken(device.accessToken)
     return new WhatsAppDeviceClient({
       accessToken: token,
       phoneNumberId: device.phoneNumberId,
-      wabaId: device.wabaId
+      wabaId: device.wabaId,
+      organizationId: device.organizationId,
     })
   }
 

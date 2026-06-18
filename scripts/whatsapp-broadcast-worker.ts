@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { Prisma, WhatsappBillingCategory } from "@prisma/client"
 import { Queue, Worker, type Job } from "bullmq"
 import { randomUUID } from "crypto"
 
@@ -196,6 +196,7 @@ async function dispatchBroadcast(
       accessToken: device.tokenEncrypted,
       phoneNumberId: device.whatsappPhoneId,
       wabaId: device.whatsappBusinessAccountId,
+      organizationId: campaign.organizationId,
     })
     const fields = toTemplateFields(
       campaign.templateParams,
@@ -249,6 +250,72 @@ async function dispatchBroadcast(
         },
       },
     })
+
+    // Record billing ledger + daily/monthly counters
+    let templateCategory: string | null = null
+    try {
+      const tpl = await prisma.whatsappTemplate.findFirst({
+        where: { name: campaign.templateName, organizationId: campaign.organizationId },
+        select: { category: true },
+      })
+      templateCategory = tpl?.category ?? null
+    } catch {
+      // Non-critical
+    }
+
+    const _now = new Date()
+    const today = new Date(Date.UTC(_now.getUTCFullYear(), _now.getUTCMonth(), _now.getUTCDate()))
+    const _year = _now.getUTCFullYear()
+    const _month = _now.getUTCMonth() + 1
+
+    const deviceIdStr = campaign.whatsappDeviceId ?? `org-${campaign.organizationId}`
+    await Promise.all([
+      prisma.whatsappDailyCount.upsert({
+        where: {
+          organizationId_date_whatsappDeviceId: {
+            organizationId: campaign.organizationId,
+            date: today,
+            whatsappDeviceId: deviceIdStr,
+          },
+        },
+        update: { messageOutboxCount: { increment: 1 } },
+        create: {
+          organizationId: campaign.organizationId,
+          date: today,
+          whatsappDeviceId: deviceIdStr,
+          messageOutboxCount: 1,
+        },
+      }),
+      prisma.whatsappMonthlyCount.upsert({
+        where: {
+          organizationId_year_month_whatsappDeviceId: {
+            organizationId: campaign.organizationId,
+            year: _year,
+            month: _month,
+            whatsappDeviceId: deviceIdStr,
+          },
+        },
+        update: { messageOutboxCount: { increment: 1 } },
+        create: {
+          organizationId: campaign.organizationId,
+          year: _year,
+          month: _month,
+          whatsappDeviceId: deviceIdStr,
+          messageOutboxCount: 1,
+        },
+      }),
+      prisma.whatsappBillingLedger.create({
+        data: {
+          organizationId: campaign.organizationId,
+          waMessageId: result.providerMessageId,
+          phoneNumber: recipient.phoneNumber,
+          category: (templateCategory as WhatsappBillingCategory) ?? WhatsappBillingCategory.SERVICE,
+          quotaKey: device.id,
+          quotaValue: new Prisma.Decimal(0),
+          whatsappDeviceId: device.id,
+        },
+      }),
+    ])
 
     await prisma.whatsappBroadcastRecipient.update({
       where: { id: recipient.id },
