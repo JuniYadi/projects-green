@@ -196,6 +196,7 @@ async function dispatchBroadcast(
       accessToken: device.tokenEncrypted,
       phoneNumberId: device.whatsappPhoneId,
       wabaId: device.whatsappBusinessAccountId,
+      organizationId: campaign.organizationId,
     })
     const fields = toTemplateFields(
       campaign.templateParams,

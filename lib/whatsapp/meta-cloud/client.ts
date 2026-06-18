@@ -18,6 +18,7 @@ export interface MetaCloudHttpClientConfig {
   timeoutMs?: number
   operationHook?: OperationHook
   phoneNumberId?: string
+  organizationId?: string
 }
 
 export class MetaCloudHttpClient {
@@ -25,12 +26,14 @@ export class MetaCloudHttpClient {
   private readonly timeoutMs: number
   private readonly operationHook?: OperationHook
   private readonly phoneNumberId?: string
+  private readonly organizationId?: string
 
   constructor(config: MetaCloudHttpClientConfig) {
     this.accessToken = config.accessToken
     this.timeoutMs = config.timeoutMs ?? 10000
     this.operationHook = config.operationHook
     this.phoneNumberId = config.phoneNumberId
+    this.organizationId = config.organizationId
   }
 
   async request<T>(
@@ -83,8 +86,8 @@ export class MetaCloudHttpClient {
         // Fire-and-forget: record API call for rate-limit tracking
         apiCallTracker.recordCall({
           operation,
-          phoneNumberId: this.phoneNumberId ?? "unknown", // Provide a default for phoneNumberId
-          organizationId: undefined, // Explicitly set to undefined if not available
+          phoneNumberId: this.phoneNumberId,
+          organizationId: this.organizationId,
           status: response.status,
         }).catch((err) => console.error("[MetaCloudHttpClient] recordCall failed:", err))
 

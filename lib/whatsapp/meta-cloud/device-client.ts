@@ -14,34 +14,40 @@ import { decryptWhatsAppToken } from "../crypto"
 
 export class WhatsAppDeviceClient {
   private readonly httpClient: MetaCloudHttpClient
-  private readonly phoneNumberId: string // Marked as readonly here.
+  private readonly phoneNumberId: string
   private readonly wabaId: string
+  private readonly organizationId?: string
 
   constructor(options: {
     accessToken: string
     phoneNumberId: string
     wabaId: string
+    organizationId?: string
     timeoutMs?: number
   }) {
-    this.phoneNumberId = options.phoneNumberId // Initialize here
+    this.phoneNumberId = options.phoneNumberId
+    this.wabaId = options.wabaId
+    this.organizationId = options.organizationId
     this.httpClient = new MetaCloudHttpClient({
       accessToken: options.accessToken,
       timeoutMs: options.timeoutMs,
       phoneNumberId: this.phoneNumberId,
+      organizationId: this.organizationId,
     })
-    this.wabaId = options.wabaId
   }
 
   static async fromDevice(device: {
     accessToken: string
     phoneNumberId: string
     wabaId: string
+    organizationId?: string
   }) {
     const token = await decryptWhatsAppToken(device.accessToken)
     return new WhatsAppDeviceClient({
       accessToken: token,
       phoneNumberId: device.phoneNumberId,
-      wabaId: device.wabaId
+      wabaId: device.wabaId,
+      organizationId: device.organizationId,
     })
   }
 

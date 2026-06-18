@@ -162,6 +162,7 @@ export const messageService: MessageService = {
       accessToken: device.tokenEncrypted ?? "",
       phoneNumberId: device.whatsappPhoneId ?? "",
       wabaId: device.whatsappBusinessAccountId ?? "",
+      organizationId,
     })
 
     // Send message via Meta Cloud API

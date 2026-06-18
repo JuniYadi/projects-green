@@ -126,7 +126,7 @@ async function loadDevice(data: WhatsAppTemplateSyncJobData) {
     )
   }
 
-  return { accessToken, phoneNumberId, wabaId }
+  return { accessToken, phoneNumberId, wabaId, organizationId: data.organizationId }
 }
 
 async function createClient(data: WhatsAppTemplateSyncJobData) {
