@@ -1019,3 +1019,69 @@ export const readRepoFile = async (
     size: data.size,
   }
 }
+
+// --- File Commit API for Pipeline Sync ---
+
+export type CommitFileInput = {
+  installationId: number
+  owner: string
+  repo: string
+  filePath: string
+  content: string
+  message: string
+  branch?: string
+}
+
+export type CommitFileResult = {
+  commitSha: string
+  filePath: string
+  action: "created" | "updated"
+}
+
+/**
+ * Create or update a file in a repository using the GitHub Contents API.
+ * If the file already exists, it will be updated (requires the current SHA).
+ *
+ * @returns The commit SHA and whether the file was created or updated.
+ */
+export const commitFileToRepo = async (
+  input: CommitFileInput
+): Promise<CommitFileResult> => {
+  const token = await createInstallationToken(input.installationId)
+  const encodedContent = Buffer.from(input.content).toString("base64")
+
+  // Check if file exists to get SHA for update
+  let existingSha: string | undefined
+  try {
+    const existing = await githubRequest<GithubRepoContent>({
+      path: `/repos/${input.owner}/${input.repo}/contents/${input.filePath}`,
+      token,
+    })
+    existingSha = existing.sha
+  } catch {
+    // File doesn't exist — will create
+  }
+
+  const body: Record<string, unknown> = {
+    message: input.message,
+    content: encodedContent,
+    branch: input.branch ?? "main",
+  }
+
+  if (existingSha) {
+    body.sha = existingSha
+  }
+
+  const result = await githubRequest<{ commit: { sha: string } }>({
+    path: `/repos/${input.owner}/${input.repo}/contents/${input.filePath}`,
+    method: "PUT",
+    token,
+    body,
+  })
+
+  return {
+    commitSha: result.commit.sha,
+    filePath: input.filePath,
+    action: existingSha ? "updated" : "created",
+  }
+}
