@@ -24,13 +24,11 @@ export const rateLimitRoutes = new Elysia({ prefix: "/rate-limit" }).get(
       return { ok: false, error: "NO_ORGANIZATION" }
     }
 
-    const { deviceId: rawDeviceId } = query as { deviceId?: string | null };
-    if (!rawDeviceId) {
+    const { deviceId } = query as { deviceId?: string | null };
+    if (!deviceId) {
       set.status = 400;
       return { ok: false, error: "DEVICE_ID_REQUIRED" };
     }
-
-    const deviceId = rawDeviceId;
 
     // Verify device ownership
     const device = await prisma.whatsappDevice.findUnique({

@@ -1768,6 +1768,7 @@ model WhatsappApiCall {
 
   @@index([phoneNumberId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
+  @@index([phoneNumberId, status, createdAt(sort: Desc)])
   @@map("WhatsappApiCall")
 }
 
