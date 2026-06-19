@@ -191,7 +191,11 @@ export function OrgBillingDashboard({
 
         <div className="mt-6">
           {activeTab === "balance" && (
-            <BalanceTab lang={lang} orgId={orgId} />
+            <BalanceTab
+              lang={lang}
+              orgId={orgId}
+              orgDetail={orgDetail}
+            />
           )}
           {activeTab === "topup" && <TopupTab orgId={orgId} />}
           {activeTab === "invoices" && (
