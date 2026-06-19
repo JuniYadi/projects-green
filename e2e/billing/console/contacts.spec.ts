@@ -1,6 +1,8 @@
 /**
  * E2E tests for the Billing Contacts page (authenticated).
  *
+ * UC-16: Manage billing contacts and notification recipients
+ *
  * These tests require a valid auth session saved in `.auth/user.json`.
  * Run `bun run test:e2e:auth` first to set it up.
  */
