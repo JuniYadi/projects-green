@@ -231,6 +231,81 @@ describe("AdminMembersRoute", () => {
       const body = await response.json()
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
     })
+
+    it("scopes to provided orgId for super_admin", async () => {
+      const mockBillingAccounts = [
+        {
+          id: "acc-1",
+          organizationId: "org_target",
+          balance: new Decimal("100000.00"),
+          currency: "USD",
+          timezone: "UTC",
+          status: "ACTIVE",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]
+
+      mockFindMany.mockResolvedValueOnce(mockBillingAccounts)
+      mockFindManySubscription.mockResolvedValueOnce([])
+      mockFindManyUsage.mockResolvedValueOnce([])
+
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () => ({
+              user: { id: "admin-1" },
+              organizationId: "org-1",
+              role: "admin",
+            } as MockAuthContext),
+            getPlatformRole: async () =>
+              "super_admin" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/admin/members?orgId=550e8400-e29b-41d4-a716-446655440000"
+        )
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
+          }),
+        })
+      )
+    })
+
+    it("returns 403 when non-super_admin provides orgId", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () => ({
+              user: { id: "admin-1" },
+              organizationId: "org-1",
+              role: "admin",
+            } as MockAuthContext),
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/admin/members?orgId=550e8400-e29b-41d4-a716-446655440000"
+        )
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
   })
 
   describe("GET /admin/members/:userId", () => {

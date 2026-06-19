@@ -41,6 +41,7 @@ const defaultDeps: AdminUsageRouteDeps = {
 
 const querySchema = z.object({
   days: z.coerce.number().min(1).max(365).default(30),
+  orgId: z.string().uuid().optional(),
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -118,14 +119,19 @@ export const createAdminUsageRoutes = (
       }
     }
 
-    const { days } = parsed.data
+    const { days, orgId } = parsed.data
+
+    if (orgId && actor.platformRole !== "super_admin") {
+      return toForbidden(set, "Cannot filter by orgId")
+    }
 
     try {
       const startDate = new Date()
       startDate.setDate(startDate.getDate() - days)
 
-      const orgFilter: Prisma.BillingUsageLedgerWhereInput =
-        actor.platformRole !== "super_admin" && auth.organizationId
+      const orgFilter: Prisma.BillingUsageLedgerWhereInput = orgId
+        ? { organizationId: orgId }
+        : actor.platformRole !== "super_admin" && auth.organizationId
           ? { organizationId: auth.organizationId }
           : {}
 

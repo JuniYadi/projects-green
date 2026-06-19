@@ -1,5 +1,6 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
@@ -112,6 +113,10 @@ export interface MemberBillingDetail extends MemberBillingSummary {
   }>
 }
 
+const listQuerySchema = z.object({
+  orgId: z.string().uuid().optional(),
+})
+
 export const createAdminMembersRoutes = (
   deps: Partial<AdminMembersRouteDeps> = {}
 ) => {
@@ -122,28 +127,48 @@ export const createAdminMembersRoutes = (
 
   return new Elysia()
     // GET /billing/admin/members — List all tenant members with billing data
-    .get("/admin/members", async ({ set }) => {
-      const auth = await authenticate()
+    .get(
+      "/admin/members",
+      async ({ query, set }) => {
+        const auth = await authenticate()
 
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
 
-      // Check admin access
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(
-          set,
-          "Only administrators can view billing members."
-        )
-      }
+        // Check admin access
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(
+            set,
+            "Only administrators can view billing members."
+          )
+        }
 
-      try {
-        // Get all billing accounts with their organizations
-        // Super_admin sees all; admins see only their org via billing account
-        const billingAccountWhere = actor.platformRole !== "super_admin" && auth.organizationId
-          ? { organizationId: auth.organizationId }
-          : undefined
+        const parsedQuery = listQuerySchema.safeParse(query)
+        if (!parsedQuery.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Invalid query parameters.",
+          }
+        }
+
+        const { orgId } = parsedQuery.data
+
+        if (orgId && actor.platformRole !== "super_admin") {
+          return toForbidden(set, "Cannot filter by orgId")
+        }
+
+        try {
+          // Get all billing accounts with their organizations
+          // Super_admin sees all; admins see only their org via billing account
+          const billingAccountWhere = orgId
+            ? { organizationId: orgId }
+            : actor.platformRole !== "super_admin" && auth.organizationId
+              ? { organizationId: auth.organizationId }
+              : undefined
 
         const billingAccountsWithOrg = await prisma.billingAccount.findMany({
           where: billingAccountWhere,

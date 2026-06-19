@@ -14,6 +14,7 @@ const listQuerySchema = z.object({
   endDate: z.string().optional(),
   page: z.string().optional(),
   limit: z.string().optional(),
+  orgId: z.string().uuid().optional(),
 })
 
 type BillingAuthContext = {
@@ -128,7 +129,11 @@ export const createAdminAdjustmentsRoutes = (
             return toValidationError(set, parsedQuery.error.issues)
           }
 
-          const { type, startDate, endDate, page, limit } = parsedQuery.data
+          const { type, startDate, endDate, page, limit, orgId } = parsedQuery.data
+
+          if (orgId && actor.platformRole !== "super_admin") {
+            return toForbidden(set, "Cannot filter by orgId")
+          }
 
           const pageNum = Math.max(1, parseInt(page ?? "1", 10) || 1)
           const limitNum = Math.min(100, Math.max(1, parseInt(limit ?? "20", 10) || 20))
@@ -136,6 +141,12 @@ export const createAdminAdjustmentsRoutes = (
 
           // Build where clause
           const where: Prisma.BillingAdjustmentWhereInput = {}
+
+          if (orgId) {
+            where.billingAccount = { organizationId: orgId }
+          } else if (actor.platformRole !== "super_admin" && auth.organizationId) {
+            where.billingAccount = { organizationId: auth.organizationId }
+          }
 
           if (type) {
             where.adjustmentType = type
