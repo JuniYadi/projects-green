@@ -68,8 +68,12 @@ const toServerError = (set: RouteSet, message: string) => {
   }
 }
 
-// SECURITY NOTE: Consider adding rate limiting for admin topup to prevent
-// rapid balance manipulation. Current protection: super_admin-only access.
+// SECURITY NOTE: Rate limiting is intentionally omitted here because:
+// 1. This endpoint is restricted to super_admin role only (enforced by WorkOS)
+// 2. The $ transaction + MAX_BALANCE cap prevents runaway balance inflation
+// 3. All topups create an immutable BillingAdjustment audit trail
+// If rate limiting is needed in the future, use a per-user sliding window
+// (e.g., Upstash Ratelimit) — not in-memory, to work across serverless instances.
 export const createAdminTopupRoutes = (
   deps: Partial<AdminTopupRouteDeps> = {}
 ) => {

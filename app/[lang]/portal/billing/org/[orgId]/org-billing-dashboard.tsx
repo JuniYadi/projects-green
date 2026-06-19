@@ -199,7 +199,7 @@ export function OrgBillingDashboard({
           )}
           {activeTab === "topup" && <TopupTab orgId={orgId} />}
           {activeTab === "invoices" && (
-            <InvoicesTab orgId={orgId} />
+            <InvoicesTab orgId={orgId} recentInvoices={org.recentInvoices} />
           )}
           {activeTab === "usage" && <UsageTab orgId={orgId} />}
           {activeTab === "subscriptions" && (

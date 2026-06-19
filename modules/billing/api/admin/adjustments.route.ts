@@ -175,7 +175,7 @@ export const createAdminAdjustmentsRoutes = (
                 where,
                 orderBy: { createdAt: "desc" },
                 skip,
-                take: limitNum,
+                take: limit,
                 include: {
                   billingAccount: {
                     select: {

@@ -15,6 +15,13 @@ import { eden } from "@/lib/eden"
 
 type InvoicesTabProps = {
   orgId: string
+  recentInvoices?: Array<{
+    id: string
+    invoiceNumber: string
+    status: string
+    totalAmountIdr: string
+    createdAt: string
+  }>
 }
 
 function formatCurrency(amountIdr: string): string {
@@ -30,7 +37,7 @@ function formatDate(dateStr: string | null): string {
   }).format(new Date(dateStr))
 }
 
-export function InvoicesTab({ orgId }: InvoicesTabProps) {
+export function InvoicesTab({ orgId, recentInvoices: _recentInvoices }: InvoicesTabProps) {
   const router = useRouter()
   const [invoices, setInvoices] = useState<AdminInvoiceListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
