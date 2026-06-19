@@ -31,9 +31,19 @@ interface BankAccount {
   isDefault: boolean
 }
 
+interface CurrencyConfig {
+  symbol: string
+  ratePerBase: number
+  baseCode: string
+  presets: number[]
+  minTopup: number
+  maxTopup: number
+}
+
 interface TopupFormEnhancedProps {
   className?: string
   currency?: "IDR" | "USD"
+  onConfigChange?: (config: CurrencyConfig) => void
   onSuccess?: (result: {
     invoiceId: string
     amount: number
@@ -76,6 +86,7 @@ const ALL_PAYMENT_METHODS: {
 export function TopupFormEnhanced({
   className,
   currency = "IDR",
+  onConfigChange,
   onSuccess,
 }: TopupFormEnhancedProps) {
   const router = useRouter()
@@ -91,14 +102,7 @@ export function TopupFormEnhanced({
   const [availableMethods, setAvailableMethods] = useState<
     Record<PaymentMethod, boolean>
   >({ MANUAL_BANK: true, VA: false, QRIS: false, PAYPAL: false })
-  const [currencyConfig, setCurrencyConfig] = useState<{
-    symbol: string
-    ratePerBase: number
-    baseCode: string
-    presets: number[]
-    minTopup: number
-    maxTopup: number
-  }>({
+  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({
     symbol: currency === "USD" ? "$" : "Rp",
     ratePerBase: currency === "USD" ? 1 : 18000,
     baseCode: "USD",
@@ -109,6 +113,12 @@ export function TopupFormEnhanced({
     minTopup: currency === "USD" ? 10 : 50000,
     maxTopup: currency === "USD" ? 10000 : 200000000,
   })
+
+  // Report initial config to parent.
+  useEffect(() => {
+    onConfigChange?.(currencyConfig)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -139,6 +149,7 @@ export function TopupFormEnhanced({
           }
           if (data.config) {
             setCurrencyConfig(data.config)
+            onConfigChange?.(data.config)
             // Default the amount to the first preset for this currency.
             if (
               Array.isArray(data.config.presets) &&
