@@ -62,8 +62,7 @@ export async function updateDetectorRule(
   if (data.patternJson !== undefined)
     updateData.patternJson = data.patternJson as Prisma.InputJsonValue
   if (data.implicationsJson !== undefined)
-    updateData.implicationsJson =
-      data.implicationsJson as Prisma.InputJsonValue
+    updateData.implicationsJson = data.implicationsJson as Prisma.InputJsonValue
   if (data.confidenceWeight !== undefined)
     updateData.confidenceWeight = data.confidenceWeight
   if (data.isActive !== undefined) updateData.isActive = data.isActive
@@ -138,7 +137,10 @@ export async function updateRuntimeMapping(
   if (data.isActive !== undefined) updateData.isActive = data.isActive
   if (data.priority !== undefined) updateData.priority = data.priority
 
-  return prisma.detectorRuntimeMapping.update({ where: { id }, data: updateData })
+  return prisma.detectorRuntimeMapping.update({
+    where: { id },
+    data: updateData,
+  })
 }
 
 export async function deleteRuntimeMapping(
@@ -254,9 +256,10 @@ export async function generateRuleRecommendations(): Promise<
   const existingLaunchFrameworks = new Set(
     existingRules
       .filter((r) => {
-        const impl = r.implicationsJson as
-          | { impact?: string; framework?: string }
-          | null
+        const impl = r.implicationsJson as {
+          impact?: string
+          framework?: string
+        } | null
         return impl?.impact === "LAUNCH" && Boolean(impl.framework)
       })
       .map((r) => {
@@ -278,10 +281,7 @@ export async function generateRuleRecommendations(): Promise<
 
     // LAUNCH promotion: high confidence, supported pattern emerging, but no
     // existing LAUNCH rule — recommend promoting the framework.
-    if (
-      group.avgConfidence >= 0.8 &&
-      !existingLaunchFrameworks.has(fw)
-    ) {
+    if (group.avgConfidence >= 0.8 && !existingLaunchFrameworks.has(fw)) {
       recId++
       recommendations.push({
         id: `rec-${recId}`,

@@ -12,10 +12,7 @@ function hasOrgMembership(ctx: WorkOSScope): boolean {
   return ctx.organizationId !== null
 }
 
-function roleAtLeast(
-  userRole: OrgRole | null,
-  required: OrgRole
-): boolean {
+function roleAtLeast(userRole: OrgRole | null, required: OrgRole): boolean {
   if (!userRole) return false
   const hierarchy: OrgRole[] = ["member", "admin", "owner"]
   return hierarchy.indexOf(userRole) >= hierarchy.indexOf(required)
@@ -44,12 +41,17 @@ function getActionMessage(
   return "Request an upgrade from your organization owner."
 }
 
-export const guardOrgRead = (route: GuardedRoute): GuardedRoute =>
+export const guardOrgRead =
+  (route: GuardedRoute): GuardedRoute =>
   async (ctx) => {
     const auth: AuthContext = ctx.whatsappAuth
     if (!auth) {
       ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Authentication required." }
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Authentication required.",
+      }
     }
 
     // Platform API keys pass read access — routes are responsible for
@@ -73,12 +75,17 @@ export const guardOrgRead = (route: GuardedRoute): GuardedRoute =>
     return route(ctx)
   }
 
-export const guardOrgWrite = (route: GuardedRoute): GuardedRoute =>
+export const guardOrgWrite =
+  (route: GuardedRoute): GuardedRoute =>
   async (ctx) => {
     const auth: AuthContext = ctx.whatsappAuth
     if (!auth) {
       ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Authentication required." }
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Authentication required.",
+      }
     }
 
     // Platform API keys need platform:admin or * scope for write access.
@@ -129,12 +136,17 @@ export const guardOrgWrite = (route: GuardedRoute): GuardedRoute =>
     return route(ctx)
   }
 
-export const guardOrgFull = (route: GuardedRoute): GuardedRoute =>
+export const guardOrgFull =
+  (route: GuardedRoute): GuardedRoute =>
   async (ctx) => {
     const auth: AuthContext = ctx.whatsappAuth
     if (!auth) {
       ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Authentication required." }
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Authentication required.",
+      }
     }
 
     // Platform API keys need platform:admin or wildcard scope for full access.
@@ -185,23 +197,33 @@ export const guardOrgFull = (route: GuardedRoute): GuardedRoute =>
     return route(ctx)
   }
 
-export const guardSuperAdmin = (route: GuardedRoute): GuardedRoute =>
+export const guardSuperAdmin =
+  (route: GuardedRoute): GuardedRoute =>
   async (ctx) => {
     const auth: AuthContext = ctx.whatsappAuth
     if (!auth) {
       ctx.set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Authentication required." }
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Authentication required.",
+      }
     }
 
     const isAdmin =
       (auth.type === "platform" &&
         Array.isArray(auth.scopes) &&
-        (auth.scopes.includes("platform:admin") || auth.scopes.includes("*"))) ||
+        (auth.scopes.includes("platform:admin") ||
+          auth.scopes.includes("*"))) ||
       (auth.type === "workos" && isSuperAdmin(auth))
 
     if (!isAdmin) {
       ctx.set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "super_admin role required." }
+      return {
+        ok: false,
+        error: "FORBIDDEN",
+        message: "super_admin role required.",
+      }
     }
 
     return route(ctx)

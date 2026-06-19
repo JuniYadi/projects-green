@@ -52,8 +52,7 @@ export const computeHourlyCost = (input: {
     input.memory && input.memory > 0 ? input.memory : DEFAULT_PAYG_MEMORY
 
   const cost =
-    cpu * PAYG_CPU_RATE_PER_MILLI_HOUR +
-    memory * PAYG_MEMORY_RATE_PER_MIB_HOUR
+    cpu * PAYG_CPU_RATE_PER_MILLI_HOUR + memory * PAYG_MEMORY_RATE_PER_MIB_HOUR
 
   return round4(cost)
 }

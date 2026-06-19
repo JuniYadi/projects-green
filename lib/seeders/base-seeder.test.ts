@@ -13,7 +13,10 @@ const mockPrisma = {
   billingInvoice: {
     findMany: async () => [],
     findFirst: async () => null,
-    create: async (data: unknown) => ({ id: "inv-mock", ...(data as Record<string, unknown>) }),
+    create: async (data: unknown) => ({
+      id: "inv-mock",
+      ...(data as Record<string, unknown>),
+    }),
     update: async (data: unknown) => data,
   },
   billingAccount: {
@@ -362,10 +365,10 @@ describe("BaseSeeder", () => {
       await instance.seed()
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[TestSeeder]"),
+        expect.stringContaining("[TestSeeder]")
       )
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("seeding..."),
+        expect.stringContaining("seeding...")
       )
 
       consoleSpy.mockRestore()
@@ -382,11 +385,11 @@ describe("BaseSeeder", () => {
       }
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[ErrorSeeder]"),
+        expect.stringContaining("[ErrorSeeder]")
       )
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("⚠"))
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("watch out"),
+        expect.stringContaining("watch out")
       )
 
       consoleSpy.mockRestore()
@@ -403,7 +406,7 @@ describe("BaseSeeder", () => {
       await instance.unseed()
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("unseed() not implemented"),
+        expect.stringContaining("unseed() not implemented")
       )
 
       consoleSpy.mockRestore()

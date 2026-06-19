@@ -22,14 +22,18 @@ export class VpnSshKeyNotFoundError extends Error {
 }
 
 export class VpnSshKeyInUseError extends Error {
-  constructor(message = "SSH key is referenced by a server and cannot be deleted.") {
+  constructor(
+    message = "SSH key is referenced by a server and cannot be deleted."
+  ) {
     super(message)
     this.name = "VpnSshKeyInUseError"
   }
 }
 
 export class VpnSshKeyAlreadyExistsError extends Error {
-  constructor(message = "An SSH key with the same fingerprint already exists.") {
+  constructor(
+    message = "An SSH key with the same fingerprint already exists."
+  ) {
     super(message)
     this.name = "VpnSshKeyAlreadyExistsError"
   }

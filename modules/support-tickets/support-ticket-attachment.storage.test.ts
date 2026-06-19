@@ -54,7 +54,9 @@ describe("SupportTicketAttachmentStorage - Pure Functions", () => {
         "user_789"
       )
 
-      expect(prefix).toBe("support-ticket-attachments/org_123/reply/ticket_456/user_789")
+      expect(prefix).toBe(
+        "support-ticket-attachments/org_123/reply/ticket_456/user_789"
+      )
     })
 
     it("uses pending scope when ticketId is null", () => {
@@ -66,7 +68,9 @@ describe("SupportTicketAttachmentStorage - Pure Functions", () => {
         "user_789"
       )
 
-      expect(prefix).toBe("support-ticket-attachments/org_123/create/pending/user_789")
+      expect(prefix).toBe(
+        "support-ticket-attachments/org_123/create/pending/user_789"
+      )
     })
 
     it("sanitizes all segments", () => {
@@ -181,7 +185,9 @@ describe("SupportTicketAttachmentStorage - Error Classes", () => {
   })
 
   it("SupportTicketAttachmentUploadValidationError accepts custom message", () => {
-    const error = new SupportTicketAttachmentUploadValidationError("Size mismatch")
+    const error = new SupportTicketAttachmentUploadValidationError(
+      "Size mismatch"
+    )
     expect(error.name).toBe("SupportTicketAttachmentUploadValidationError")
     expect(error.message).toBe("Size mismatch")
   })
@@ -199,9 +205,8 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       process.env.S3_BUCKET = "test-bucket"
       process.env.S3_REGION = "us-east-1"
 
-      const { buildSupportTicketAttachmentStoragePrefix } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { buildSupportTicketAttachmentStoragePrefix } =
+        await import("./support-ticket-attachment.storage")
 
       const prefix = buildSupportTicketAttachmentStoragePrefix({
         organizationId: "org_123",
@@ -210,16 +215,17 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
         uploaderWorkosUserId: "user_789",
       })
 
-      expect(prefix).toBe("support-ticket-attachments/org_123/reply/ticket_456/user_789")
+      expect(prefix).toBe(
+        "support-ticket-attachments/org_123/reply/ticket_456/user_789"
+      )
     })
 
     it("uses pending for null ticketId", async () => {
       process.env.S3_BUCKET = "test-bucket"
       process.env.S3_REGION = "us-east-1"
 
-      const { buildSupportTicketAttachmentStoragePrefix } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { buildSupportTicketAttachmentStoragePrefix } =
+        await import("./support-ticket-attachment.storage")
 
       const prefix = buildSupportTicketAttachmentStoragePrefix({
         organizationId: "org_123",
@@ -228,16 +234,17 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
         uploaderWorkosUserId: "user_789",
       })
 
-      expect(prefix).toBe("support-ticket-attachments/org_123/create/pending/user_789")
+      expect(prefix).toBe(
+        "support-ticket-attachments/org_123/create/pending/user_789"
+      )
     })
 
     it("sanitizes segments with special characters", async () => {
       process.env.S3_BUCKET = "test-bucket"
       process.env.S3_REGION = "us-east-1"
 
-      const { buildSupportTicketAttachmentStoragePrefix } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { buildSupportTicketAttachmentStoragePrefix } =
+        await import("./support-ticket-attachment.storage")
 
       const prefix = buildSupportTicketAttachmentStoragePrefix({
         organizationId: "org/with/slashes",
@@ -255,9 +262,8 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       delete process.env.S3_BUCKET
       process.env.S3_REGION = "us-east-1"
 
-      const { buildSupportTicketAttachmentStoragePrefix } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { buildSupportTicketAttachmentStoragePrefix } =
+        await import("./support-ticket-attachment.storage")
 
       expect(() =>
         buildSupportTicketAttachmentStoragePrefix({
@@ -265,7 +271,7 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
           target: "create",
           ticketId: null,
           uploaderWorkosUserId: "user_1",
-        }),
+        })
       ).toThrow("Missing S3_BUCKET environment variable")
     })
 
@@ -273,9 +279,8 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       process.env.S3_BUCKET = "test-bucket"
       delete process.env.S3_REGION
 
-      const { buildSupportTicketAttachmentStoragePrefix } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { buildSupportTicketAttachmentStoragePrefix } =
+        await import("./support-ticket-attachment.storage")
 
       expect(() =>
         buildSupportTicketAttachmentStoragePrefix({
@@ -283,7 +288,7 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
           target: "create",
           ticketId: null,
           uploaderWorkosUserId: "user_1",
-        }),
+        })
       ).toThrow("Missing S3_REGION environment variable")
     })
   })
@@ -293,9 +298,8 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       process.env.S3_BUCKET = "test-bucket"
       process.env.S3_REGION = "us-east-1"
 
-      const { createSupportTicketAttachmentStorage } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { createSupportTicketAttachmentStorage } =
+        await import("./support-ticket-attachment.storage")
 
       const storage = createSupportTicketAttachmentStorage()
       const prefix = storage.getExpectedStorageKeyPrefix({
@@ -305,7 +309,9 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
         uploaderWorkosUserId: "user_1",
       })
 
-      expect(prefix).toBe("support-ticket-attachments/org_1/reply/ticket_1/user_1")
+      expect(prefix).toBe(
+        "support-ticket-attachments/org_1/reply/ticket_1/user_1"
+      )
     })
   })
 
@@ -316,9 +322,8 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       delete process.env.S3_VIRTUAL_HOSTED_STYLE
 
       // Re-import to pick up fresh env
-      const { createSupportTicketAttachmentStorage } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { createSupportTicketAttachmentStorage } =
+        await import("./support-ticket-attachment.storage")
 
       // Should not throw — virtualHostedStyle is undefined
       const storage = createSupportTicketAttachmentStorage()
@@ -330,9 +335,8 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       process.env.S3_REGION = "us-east-1"
       process.env.S3_VIRTUAL_HOSTED_STYLE = "true"
 
-      const { createSupportTicketAttachmentStorage } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { createSupportTicketAttachmentStorage } =
+        await import("./support-ticket-attachment.storage")
 
       const storage = createSupportTicketAttachmentStorage()
       expect(storage).toBeDefined()
@@ -343,9 +347,8 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       process.env.S3_REGION = "us-east-1"
       process.env.S3_VIRTUAL_HOSTED_STYLE = "0"
 
-      const { createSupportTicketAttachmentStorage } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { createSupportTicketAttachmentStorage } =
+        await import("./support-ticket-attachment.storage")
 
       const storage = createSupportTicketAttachmentStorage()
       expect(storage).toBeDefined()
@@ -368,9 +371,8 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
     })
 
     it("createPresignedUpload returns expected shape and builds storage key", async () => {
-      const { createSupportTicketAttachmentStorage } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { createSupportTicketAttachmentStorage } =
+        await import("./support-ticket-attachment.storage")
 
       const storage = createSupportTicketAttachmentStorage()
 
@@ -388,16 +390,17 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       })
 
       expect(result.bucket).toBe("test-bucket")
-      expect(result.key).toContain("support-ticket-attachments/org_1/create/pending/user_1/")
+      expect(result.key).toContain(
+        "support-ticket-attachments/org_1/create/pending/user_1/"
+      )
       expect(result.key).toEndWith(".pdf")
       expect(result.uploadUrl).toBeTruthy()
       expect(result.expiresAt).toBeTruthy()
     })
 
     it("getExpectedStorageKeyPrefix returns correct prefix via instance", async () => {
-      const { createSupportTicketAttachmentStorage } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { createSupportTicketAttachmentStorage } =
+        await import("./support-ticket-attachment.storage")
 
       const storage = createSupportTicketAttachmentStorage()
 
@@ -408,13 +411,14 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
         uploaderWorkosUserId: "user_1",
       })
 
-      expect(prefix).toBe("support-ticket-attachments/org_1/reply/ticket_1/user_1")
+      expect(prefix).toBe(
+        "support-ticket-attachments/org_1/reply/ticket_1/user_1"
+      )
     })
 
     it("getFile returns an S3File object", async () => {
-      const { createSupportTicketAttachmentStorage } = await import(
-        "./support-ticket-attachment.storage"
-      )
+      const { createSupportTicketAttachmentStorage } =
+        await import("./support-ticket-attachment.storage")
 
       const storage = createSupportTicketAttachmentStorage()
       const s3File = storage.getFile!("some/key.pdf")
@@ -429,8 +433,12 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       }
       const OriginalS3Client = Bun.S3Client
       const MockS3Client = class {
-        file() { return mockFile }
-        presign() { return "" }
+        file() {
+          return mockFile
+        }
+        presign() {
+          return ""
+        }
       }
       Bun.S3Client = MockS3Client as unknown as typeof Bun.S3Client
 
@@ -449,7 +457,7 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
             target: "create",
             ticketId: null,
             uploaderWorkosUserId: "user_1",
-          }),
+          })
         ).rejects.toBeInstanceOf(mod.SupportTicketAttachmentUploadNotFoundError)
       } finally {
         Bun.S3Client = OriginalS3Client
@@ -463,8 +471,12 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       }
       const OriginalS3Client = Bun.S3Client
       const MockS3Client = class {
-        file() { return mockFile }
-        presign() { return "" }
+        file() {
+          return mockFile
+        }
+        presign() {
+          return ""
+        }
       }
       Bun.S3Client = MockS3Client as unknown as typeof Bun.S3Client
 
@@ -484,8 +496,10 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
             target: "create",
             ticketId: null,
             uploaderWorkosUserId: "user_1",
-          }),
-        ).rejects.toBeInstanceOf(mod.SupportTicketAttachmentUploadValidationError)
+          })
+        ).rejects.toBeInstanceOf(
+          mod.SupportTicketAttachmentUploadValidationError
+        )
       } finally {
         Bun.S3Client = OriginalS3Client
       }
@@ -498,8 +512,12 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       }
       const OriginalS3Client = Bun.S3Client
       const MockS3Client = class {
-        file() { return mockFile }
-        presign() { return "" }
+        file() {
+          return mockFile
+        }
+        presign() {
+          return ""
+        }
       }
       Bun.S3Client = MockS3Client as unknown as typeof Bun.S3Client
 
@@ -518,8 +536,10 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
             target: "create",
             ticketId: null,
             uploaderWorkosUserId: "user_1",
-          }),
-        ).rejects.toBeInstanceOf(mod.SupportTicketAttachmentUploadValidationError)
+          })
+        ).rejects.toBeInstanceOf(
+          mod.SupportTicketAttachmentUploadValidationError
+        )
       } finally {
         Bun.S3Client = OriginalS3Client
       }
@@ -532,8 +552,12 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
       }
       const OriginalS3Client = Bun.S3Client
       const MockS3Client = class {
-        file() { return mockFile }
-        presign() { return "" }
+        file() {
+          return mockFile
+        }
+        presign() {
+          return ""
+        }
       }
       Bun.S3Client = MockS3Client as unknown as typeof Bun.S3Client
 
@@ -552,7 +576,7 @@ describe("SupportTicketAttachmentStorage - Prefix Building", () => {
             target: "create",
             ticketId: null,
             uploaderWorkosUserId: "user_1",
-          }),
+          })
         ).resolves.toBeUndefined()
       } finally {
         Bun.S3Client = OriginalS3Client

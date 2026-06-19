@@ -17,7 +17,9 @@ import { BillingTransactionService } from "@/modules/billing/billing-transaction
  * trigger route remains the authoritative gate; this route is for
  * pre-deploy visibility (use case 12).
  */
-export const billingGateRoutes = new Elysia({ prefix: "/deploy/billing-gate" }).post(
+export const billingGateRoutes = new Elysia({
+  prefix: "/deploy/billing-gate",
+}).post(
   "/quote",
   async ({ body, set }) => {
     const auth = await withAuth()
@@ -48,7 +50,8 @@ export const billingGateRoutes = new Elysia({ prefix: "/deploy/billing-gate" }).
       return {
         ok: false,
         error: "INVALID_HOURLY_COST",
-        message: "A positive hourly cost is required to compute the billing gate.",
+        message:
+          "A positive hourly cost is required to compute the billing gate.",
       }
     }
 

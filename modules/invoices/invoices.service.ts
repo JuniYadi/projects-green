@@ -58,13 +58,14 @@ export type InvoiceService = {
   getPaymentMethodOptions: () => InvoicePaymentMethod[]
 }
 
-const PRISMA_TO_APP_INVOICE_STATUS: Record<PrismaInvoiceStatus, InvoiceStatus> = {
-  DRAFT: "draft",
-  OPEN: "open",
-  PAID: "paid",
-  VOID: "canceled",
-  UNCOLLECTIBLE: "uncollectible",
-}
+const PRISMA_TO_APP_INVOICE_STATUS: Record<PrismaInvoiceStatus, InvoiceStatus> =
+  {
+    DRAFT: "draft",
+    OPEN: "open",
+    PAID: "paid",
+    VOID: "canceled",
+    UNCOLLECTIBLE: "uncollectible",
+  }
 
 type PrismaInvoiceLineType =
   | "SUBSCRIPTION"
@@ -73,13 +74,14 @@ type PrismaInvoiceLineType =
   | "TAX"
   | "CREDIT"
 
-const FALLBACK_LINE_DESCRIPTION_BY_TYPE: Record<PrismaInvoiceLineType, string> = {
-  SUBSCRIPTION: "Subscription charge",
-  METERED: "Metered usage",
-  ADJUSTMENT: "Adjustment",
-  TAX: "Tax",
-  CREDIT: "Credit",
-}
+const FALLBACK_LINE_DESCRIPTION_BY_TYPE: Record<PrismaInvoiceLineType, string> =
+  {
+    SUBSCRIPTION: "Subscription charge",
+    METERED: "Metered usage",
+    ADJUSTMENT: "Adjustment",
+    TAX: "Tax",
+    CREDIT: "Credit",
+  }
 
 const DEFAULT_PAYMENT_METHOD_OPTIONS: InvoicePaymentMethod[] = [
   {
@@ -118,8 +120,10 @@ const toInvoiceListItem = (invoice: {
   return {
     id: invoice.id,
     invoiceNumber: invoice.invoiceNumber,
-    issuedAt: invoice.issuedAt?.toISOString() ?? invoice.createdAt.toISOString(),
-    dueAt: invoice.dueAt?.toISOString() ?? invoice.dueDate?.toISOString() ?? null,
+    issuedAt:
+      invoice.issuedAt?.toISOString() ?? invoice.createdAt.toISOString(),
+    dueAt:
+      invoice.dueAt?.toISOString() ?? invoice.dueDate?.toISOString() ?? null,
     totalAmount: toNumber(invoice.totalAmount),
     currency: invoice.currency,
     status: toInvoiceStatus(invoice.status),
@@ -138,7 +142,8 @@ const toInvoiceLineItem = (line: {
   return {
     id: line.id,
     description:
-      line.description.trim() || FALLBACK_LINE_DESCRIPTION_BY_TYPE[line.lineType],
+      line.description.trim() ||
+      FALLBACK_LINE_DESCRIPTION_BY_TYPE[line.lineType],
     quantity: toNumber(line.quantity),
     unitPrice: toNumber(line.unitPrice),
     amount: toNumber(line.amount),
@@ -146,7 +151,9 @@ const toInvoiceLineItem = (line: {
   }
 }
 
-export const toInvoiceDetail = (invoice: InvoiceDetailRecord): InvoiceDetail => {
+export const toInvoiceDetail = (
+  invoice: InvoiceDetailRecord
+): InvoiceDetail => {
   return {
     ...toInvoiceListItem(invoice),
     subtotalAmount: toNumber(invoice.subtotalAmount),
@@ -168,7 +175,8 @@ type CreateInvoiceServiceOptions = {
 
 const createLazyDefaultRepository = (): InvoiceRepository => {
   const loadRepository = async () => {
-    const repositoryModule = await import("@/modules/invoices/invoices.repository")
+    const repositoryModule =
+      await import("@/modules/invoices/invoices.repository")
     return repositoryModule.createPrismaInvoiceRepository()
   }
 
@@ -253,7 +261,8 @@ export const createInvoiceService = (
       const idempotencyKey = `manual:mark-paid:${invoiceId}`
 
       await prisma.$transaction(async (tx) => {
-        const prismaClient = tx as unknown as import("@prisma/client").PrismaClient
+        const prismaClient =
+          tx as unknown as import("@prisma/client").PrismaClient
 
         // Idempotency check
         const existingLog = await tx.paymentAuditLog.findFirst({
@@ -376,9 +385,4 @@ export const createInvoiceService = (
     },
   }
 }
-type PrismaInvoiceStatus =
-  | "DRAFT"
-  | "OPEN"
-  | "PAID"
-  | "VOID"
-  | "UNCOLLECTIBLE"
+type PrismaInvoiceStatus = "DRAFT" | "OPEN" | "PAID" | "VOID" | "UNCOLLECTIBLE"

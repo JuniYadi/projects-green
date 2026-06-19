@@ -7,8 +7,7 @@ import { workosNodeMock } from "@/test/workos-node-mock"
 // isolated (no coverage) and single-process (coverage) mode.
 mock.module("@workos-inc/node", () => workosNodeMock)
 
-const { NotFoundException, UnprocessableEntityException } =
-  workosNodeMock
+const { NotFoundException, UnprocessableEntityException } = workosNodeMock
 
 import { createTenantsOrganizationRoutes } from "@/modules/tenants/api/routes/tenants-organization.route"
 import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
@@ -91,14 +90,12 @@ describe("tenantsOrganizationRoutes", () => {
     mockUpdateTenantOrganization.mockClear()
     mockDeleteTenantOrganization.mockClear()
 
-    mockRequireTenantActor.mockImplementation(
-      async () => ({
-        userId: "user_1",
-        organizationId: "org_1",
-        platformRole: "none",
-        tenantRole: "owner",
-      })
-    )
+    mockRequireTenantActor.mockImplementation(async () => ({
+      userId: "user_1",
+      organizationId: "org_1",
+      platformRole: "none",
+      tenantRole: "owner",
+    }))
     mockEnsureTenantContextAccess.mockImplementation((): true => true)
     mockCanManageTenant.mockImplementation((): boolean => true)
     mockCanTransferOwnership.mockImplementation((): boolean => true)
@@ -146,9 +143,9 @@ describe("tenantsOrganizationRoutes", () => {
   it("returns unauthorized error when actor cannot be resolved", async () => {
     // Create a custom mock for this test that returns an error and sets status
     const unauthorizedMock = mock(
-      async (
-        set: { status?: number | string }
-      ): Promise<TenantActorContext> => {
+      async (set: {
+        status?: number | string
+      }): Promise<TenantActorContext> => {
         set.status = 401
         return {
           ok: false,
@@ -414,7 +411,9 @@ describe("tenantsOrganizationRoutes", () => {
     expect(response.status).toBe(500)
     expect(body.ok).toBe(false)
     expect(body.error).toBe("ORGANIZATION_UPDATE_FAILED")
-    expect(body.message).toBe("Unable to update organization settings right now.")
+    expect(body.message).toBe(
+      "Unable to update organization settings right now."
+    )
   })
 
   it("blocks delete endpoint for non-owner and non-super-admin actors", async () => {
@@ -665,17 +664,15 @@ describe("tenantsOrganizationRoutes", () => {
   })
 
   it("returns 401 when requireTenantActor fails on update endpoint", async () => {
-    mockRequireTenantActor.mockImplementation(
-      ((set: { status?: number }) => {
-        set.status = 401
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          policyCode: "NO_SESSION",
-          message: "No active session.",
-        } as unknown as TenantActorContext
-      }) as unknown as typeof mockRequireTenantActor
-    )
+    mockRequireTenantActor.mockImplementation(((set: { status?: number }) => {
+      set.status = 401
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        policyCode: "NO_SESSION",
+        message: "No active session.",
+      } as unknown as TenantActorContext
+    }) as unknown as typeof mockRequireTenantActor)
 
     const app = await createApp()
 

@@ -74,7 +74,7 @@ class WebhookMetricsCollector {
     const windowStart = now - HMAC_FAILURE_WINDOW_MS
     // Prune old timestamps
     this.hmacFailureTimestamps = this.hmacFailureTimestamps.filter(
-      (ts) => ts >= windowStart,
+      (ts) => ts >= windowStart
     )
 
     if (this.hmacFailureTimestamps.length > HMAC_FAILURE_THRESHOLD) {

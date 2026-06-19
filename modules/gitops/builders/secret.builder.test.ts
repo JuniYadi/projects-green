@@ -14,7 +14,9 @@ describe("SecretBuilder", () => {
     expect(secret.metadata.name).toBe("my-secret")
     expect(secret.type).toBe("Opaque")
     // Base64 encoded
-    expect(secret.data!.DATABASE_PASSWORD).toBe(Buffer.from("supersecret").toString("base64"))
+    expect(secret.data!.DATABASE_PASSWORD).toBe(
+      Buffer.from("supersecret").toString("base64")
+    )
   })
 
   it("generates TLS Secret", () => {
@@ -29,8 +31,16 @@ describe("SecretBuilder", () => {
       .build()
 
     expect(secret.type).toBe("kubernetes.io/tls")
-    expect(secret.data!["tls.crt"]).toBe(Buffer.from("-----BEGIN CERTIFICATE-----\ncert-content\n-----END CERTIFICATE-----").toString("base64"))
-    expect(secret.data!["tls.key"]).toBe(Buffer.from("-----BEGIN PRIVATE KEY-----\nkey-content\n-----END PRIVATE KEY-----").toString("base64"))
+    expect(secret.data!["tls.crt"]).toBe(
+      Buffer.from(
+        "-----BEGIN CERTIFICATE-----\ncert-content\n-----END CERTIFICATE-----"
+      ).toString("base64")
+    )
+    expect(secret.data!["tls.key"]).toBe(
+      Buffer.from(
+        "-----BEGIN PRIVATE KEY-----\nkey-content\n-----END PRIVATE KEY-----"
+      ).toString("base64")
+    )
   })
 
   it("adds reloader annotation for auto-restart", () => {
@@ -39,7 +49,9 @@ describe("SecretBuilder", () => {
       .addReloaderAnnotation()
       .build()
 
-    expect(secret.metadata.annotations!["reloader.stakater.com/auto"]).toBe("true")
+    expect(secret.metadata.annotations!["reloader.stakater.com/auto"]).toBe(
+      "true"
+    )
   })
 
   it("generates Secret with stringData", () => {

@@ -37,7 +37,11 @@ const mockInvoice = {
 }
 
 const mockFindUnique = mock(async () => mockInvoice)
-const mockUpdate = mock(async () => ({ ...mockInvoice, status: "ISSUED", issuedAt: new Date() }))
+const mockUpdate = mock(async () => ({
+  ...mockInvoice,
+  status: "ISSUED",
+  issuedAt: new Date(),
+}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -67,7 +71,7 @@ describe("admin invoice default deps", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "ISSUED" }),
-      }),
+      })
     )
 
     // With super_admin role, should pass isAdmin check and update invoice
@@ -98,7 +102,7 @@ describe("admin invoice default deps", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "CANCELLED" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)

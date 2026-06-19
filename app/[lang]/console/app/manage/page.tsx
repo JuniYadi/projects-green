@@ -5,7 +5,12 @@ import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
-import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation"
+import {
+  useParams,
+  useRouter,
+  usePathname,
+  useSearchParams,
+} from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"

@@ -22,7 +22,12 @@ const services = [
     subtitle: "Deploy anything, anywhere",
     description:
       "Zero-config deployment for Next.js, React, Node.js, and more. Git-push to deploy with automatic SSL, CDN, and scaling.",
-    features: ["Auto-scaling", "Preview environments", "Zero downtime deploys", "Edge network"],
+    features: [
+      "Auto-scaling",
+      "Preview environments",
+      "Zero downtime deploys",
+      "Edge network",
+    ],
     badge: "Most popular",
     badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   },
@@ -52,7 +57,12 @@ const services = [
     subtitle: "S3-compatible object storage",
     description:
       "Fully compatible S3 API to store any file at any scale. Built-in CDN delivery, lifecycle policies, and access controls.",
-    features: ["S3-compatible API", "Global CDN", "Versioning", "Lifecycle rules"],
+    features: [
+      "S3-compatible API",
+      "Global CDN",
+      "Versioning",
+      "Lifecycle rules",
+    ],
     badge: null,
     badgeColor: "",
   },
@@ -67,7 +77,12 @@ const services = [
     subtitle: "LLM inference & embeddings",
     description:
       "Run AI models at scale with a single API. Embeddings, completions, and vision — all with token-level billing.",
-    features: ["OpenAI-compatible", "Low-latency inference", "Streaming", "Vector search"],
+    features: [
+      "OpenAI-compatible",
+      "Low-latency inference",
+      "Streaming",
+      "Vector search",
+    ],
     badge: "New",
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   },
@@ -97,7 +112,12 @@ const services = [
     subtitle: "Real-time insights",
     description:
       "Understand your users and infrastructure at a glance. Custom dashboards, alerts, and API usage metrics.",
-    features: ["Real-time metrics", "Custom dashboards", "Alerting", "Log aggregation"],
+    features: [
+      "Real-time metrics",
+      "Custom dashboards",
+      "Alerting",
+      "Log aggregation",
+    ],
     badge: "Coming soon",
     badgeColor: "bg-pink-500/20 text-pink-400 border-pink-500/30",
   },
@@ -105,47 +125,47 @@ const services = [
 
 export function ServicesSection() {
   return (
-    <section id="services" className="relative py-28 bg-[#060b18]">
+    <section id="services" className="relative bg-[#060b18] py-28">
       {/* Section glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_50%,rgba(16,185,129,0.06),transparent)]" />
 
-      <div className="relative max-w-7xl mx-auto px-6">
+      <div className="relative mx-auto max-w-7xl px-6">
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6">
-            <span className="text-xs font-semibold text-white/50 uppercase tracking-widest">
+        <div className="mb-16 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5">
+            <span className="text-xs font-semibold tracking-widest text-white/50 uppercase">
               Platform Services
             </span>
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-5 tracking-tight">
+          <h2 className="mb-5 text-4xl font-bold tracking-tight text-white lg:text-5xl">
             Everything you need to{" "}
             <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
               ship & scale
             </span>
           </h2>
-          <p className="text-lg text-white/40 max-w-2xl mx-auto">
-            One platform, six powerful services. Build your entire product stack without
-            juggling multiple vendors.
+          <p className="mx-auto max-w-2xl text-lg text-white/40">
+            One platform, six powerful services. Build your entire product stack
+            without juggling multiple vendors.
           </p>
         </div>
 
         {/* Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
             <div
               key={service.id}
               id={service.id}
-              className={`group relative bg-white/[0.03] border border-white/8 ${service.borderHover} rounded-2xl p-6 transition-all duration-300 hover:bg-white/[0.06] cursor-pointer`}
+              className={`group relative border border-white/8 bg-white/[0.03] ${service.borderHover} cursor-pointer rounded-2xl p-6 transition-all duration-300 hover:bg-white/[0.06]`}
             >
               {/* Glow on hover */}
               <div
-                className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${service.bgGlow} blur-xl -z-10`}
+                className={`absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${service.bgGlow} -z-10 blur-xl`}
               />
 
               {/* Badge */}
               {service.badge && (
                 <div
-                  className={`absolute top-4 right-4 text-xs font-semibold border rounded-full px-2.5 py-0.5 ${service.badgeColor}`}
+                  className={`absolute top-4 right-4 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${service.badgeColor}`}
                 >
                   {service.badge}
                 </div>
@@ -153,21 +173,27 @@ export function ServicesSection() {
 
               {/* Icon */}
               <div
-                className={`w-12 h-12 rounded-xl bg-gradient-to-br ${service.gradient} flex items-center justify-center mb-5 shadow-lg ${service.glow} group-hover:scale-110 transition-transform duration-300`}
+                className={`h-12 w-12 rounded-xl bg-gradient-to-br ${service.gradient} mb-5 flex items-center justify-center shadow-lg ${service.glow} transition-transform duration-300 group-hover:scale-110`}
               >
-                <service.icon weight="fill" className="w-6 h-6 text-white" />
+                <service.icon weight="fill" className="h-6 w-6 text-white" />
               </div>
 
-              <h3 className="text-lg font-bold text-white mb-1">{service.title}</h3>
-              <p className="text-xs text-white/40 mb-3 font-medium">{service.subtitle}</p>
-              <p className="text-sm text-white/50 leading-relaxed mb-5">{service.description}</p>
+              <h3 className="mb-1 text-lg font-bold text-white">
+                {service.title}
+              </h3>
+              <p className="mb-3 text-xs font-medium text-white/40">
+                {service.subtitle}
+              </p>
+              <p className="mb-5 text-sm leading-relaxed text-white/50">
+                {service.description}
+              </p>
 
               {/* Features */}
-              <div className="flex flex-wrap gap-2 mb-6">
+              <div className="mb-6 flex flex-wrap gap-2">
                 {service.features.map((f) => (
                   <span
                     key={f}
-                    className="text-xs bg-white/5 border border-white/8 text-white/50 rounded-md px-2 py-0.5"
+                    className="rounded-md border border-white/8 bg-white/5 px-2 py-0.5 text-xs text-white/50"
                   >
                     {f}
                   </span>
@@ -175,9 +201,9 @@ export function ServicesSection() {
               </div>
 
               {/* Link */}
-              <div className="flex items-center gap-1 text-sm font-medium text-white/40 group-hover:text-white transition-colors">
+              <div className="flex items-center gap-1 text-sm font-medium text-white/40 transition-colors group-hover:text-white">
                 Learn more
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
               </div>
             </div>
           ))}

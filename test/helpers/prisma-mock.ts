@@ -18,7 +18,10 @@ import { mock } from "bun:test"
 
 // ── Types ──────────────────────────────────────────────
 
-type ModelMethod = Record<string, ReturnType<typeof mock> | ((...args: unknown[]) => unknown)>
+type ModelMethod = Record<
+  string,
+  ReturnType<typeof mock> | ((...args: unknown[]) => unknown)
+>
 type ModelConfig = Record<string, string[]>
 
 // ── Simple Decimal polyfill for test fixtures ──────────
@@ -132,7 +135,7 @@ export type MockPrismaResult = {
  *   mock.module("@/lib/prisma", () => ({ prisma }))
  */
 export function createMockPrisma(
-  modelMethods: Record<string, string[]>,
+  modelMethods: Record<string, string[]>
 ): MockPrismaResult {
   const mocks: Record<string, Record<string, ReturnType<typeof mock>>> = {}
   const prisma: Record<string, Record<string, ReturnType<typeof mock>>> = {}

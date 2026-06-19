@@ -10,7 +10,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Warning } from "@phosphor-icons/react"
 import type {
@@ -25,7 +31,8 @@ type OwnershipViewProps = {
 
 export function OwnershipView({ organizationId }: OwnershipViewProps) {
   const [members, setMembers] = useState<TenantMembershipSummary[]>([])
-  const [authorization, setAuthorization] = useState<TenantAuthorizationResponse | null>(null)
+  const [authorization, setAuthorization] =
+    useState<TenantAuthorizationResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedAdminId, setSelectedAdminId] = useState<string>("")
@@ -34,18 +41,27 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
   const loadData = useCallback(async () => {
     try {
       const [authRes, membersRes] = await Promise.all([
-        eden.api.tenants[organizationId].authorization.get().then(r => r.data),
-        eden.api.tenants[organizationId].members.get().then(r => r.data)
+        eden.api.tenants[organizationId].authorization
+          .get()
+          .then((r) => r.data),
+        eden.api.tenants[organizationId].members.get().then((r) => r.data),
       ])
 
       if (authRes?.ok) setAuthorization(authRes as TenantAuthorizationResponse)
       if (membersRes?.ok) {
-        setMembers((membersRes as { members: TenantMembershipSummary[] }).members)
+        setMembers(
+          (membersRes as { members: TenantMembershipSummary[] }).members
+        )
       } else {
-        setError((membersRes as { message?: string })?.message || "Failed to load members")
+        setError(
+          (membersRes as { message?: string })?.message ||
+            "Failed to load members"
+        )
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      )
     } finally {
       setIsLoading(false)
     }
@@ -59,15 +75,21 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
   const handleTransfer = async () => {
     if (!selectedAdminId) return
 
-    if (!confirm("Are you sure you want to transfer ownership? This action will demote you to an admin and cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to transfer ownership? This action will demote you to an admin and cannot be undone."
+      )
+    ) {
       return
     }
 
     setIsSubmitting(true)
     setError(null)
     try {
-      const { data: res } = await eden.api.tenants[organizationId].ownership.transfer.post({
-        newOwnerMembershipId: selectedAdminId
+      const { data: res } = await eden.api.tenants[
+        organizationId
+      ].ownership.transfer.post({
+        newOwnerMembershipId: selectedAdminId,
       })
 
       if (res?.ok) {
@@ -76,7 +98,9 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
         setError((res as { message?: string })?.message || "Transfer failed")
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -91,9 +115,13 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
     )
   }
 
-  const currentOwner = members.find(m => m.role === "owner")
-  const admins = members.filter(m => m.role === "admin" && m.status === "active")
-  const allowedActions = new Set((authorization?.allowedActions as TenantAction[]) || [])
+  const currentOwner = members.find((m) => m.role === "owner")
+  const admins = members.filter(
+    (m) => m.role === "admin" && m.status === "active"
+  )
+  const allowedActions = new Set(
+    (authorization?.allowedActions as TenantAction[]) || []
+  )
   const canTransfer = allowedActions.has("transfer_ownership")
 
   return (
@@ -107,13 +135,19 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base font-medium">Current Owner</CardTitle>
-          <CardDescription>The user who currently owns this organization</CardDescription>
+          <CardDescription>
+            The user who currently owns this organization
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {currentOwner ? (
             <div className="flex flex-col">
-              <span className="font-medium text-lg">{currentOwner.displayName}</span>
-              <span className="text-sm text-muted-foreground">{currentOwner.email}</span>
+              <span className="text-lg font-medium">
+                {currentOwner.displayName}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {currentOwner.email}
+              </span>
             </div>
           ) : (
             <span className="text-muted-foreground">No owner found</span>
@@ -126,22 +160,28 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
           <CardHeader>
             <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
               <Warning className="h-5 w-5" />
-              <CardTitle className="text-base font-medium">Transfer Ownership</CardTitle>
+              <CardTitle className="text-base font-medium">
+                Transfer Ownership
+              </CardTitle>
             </div>
             <CardDescription className="text-amber-700 dark:text-amber-300">
-              Transferring ownership will demote you to an administrator role. The new owner will have full control over the organization.
+              Transferring ownership will demote you to an administrator role.
+              The new owner will have full control over the organization.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Select new owner</label>
-              <Select value={selectedAdminId} onValueChange={setSelectedAdminId}>
+              <Select
+                value={selectedAdminId}
+                onValueChange={setSelectedAdminId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select an administrator" />
                 </SelectTrigger>
                 <SelectContent>
                   {admins.length === 0 ? (
-                    <div className="p-2 text-sm text-center text-muted-foreground">
+                    <div className="p-2 text-center text-sm text-muted-foreground">
                       No other active administrators available
                     </div>
                   ) : (
@@ -167,7 +207,7 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
       )}
 
       {!canTransfer && (
-        <p className="text-sm text-center text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground">
           Only the current owner can transfer ownership.
         </p>
       )}

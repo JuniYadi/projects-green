@@ -5,7 +5,12 @@
  * Uses the Web Crypto API (subtle) + Buffer for universal Bun/Node compatibility.
  */
 
-import { createHash, randomBytes, createCipheriv, createDecipheriv } from "node:crypto"
+import {
+  createHash,
+  randomBytes,
+  createCipheriv,
+  createDecipheriv,
+} from "node:crypto"
 
 // ─── API Key hashing (PBKDF2-SHA256) ─────────────────────────────────────────
 
@@ -83,7 +88,10 @@ function getKeyBuffer(): Buffer {
   // Try base64url first, then base64
   let keyBuffer: Buffer
   try {
-    keyBuffer = Buffer.from(appKey.replace(/-/g, "+").replace(/_/g, "/"), "base64url")
+    keyBuffer = Buffer.from(
+      appKey.replace(/-/g, "+").replace(/_/g, "/"),
+      "base64url"
+    )
   } catch {
     try {
       keyBuffer = Buffer.from(appKey, "base64")
@@ -154,7 +162,9 @@ export async function encryptWithAppKey(plaintext: string): Promise<string> {
  * Decrypt a WhatsApp token (or any sensitive string) encrypted with APP_KEY.
  * Accepts format "v1.<iv>.<ciphertext>" (base64url).
  */
-export async function decryptWithAppKey(encryptedValue: string): Promise<string> {
+export async function decryptWithAppKey(
+  encryptedValue: string
+): Promise<string> {
   const parts = encryptedValue.split(".")
   if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
     throw new AppKeyCryptoError(
@@ -179,7 +189,8 @@ export async function decryptWithAppKey(encryptedValue: string): Promise<string>
     const normalizedCipher = parts[2].replace(/-/g, "+").replace(/_/g, "/")
     // Pad to valid base64 length
     const padIv = normalizedIv + "=".repeat((4 - (normalizedIv.length % 4)) % 4)
-    const padCipher = normalizedCipher + "=".repeat((4 - (normalizedCipher.length % 4)) % 4)
+    const padCipher =
+      normalizedCipher + "=".repeat((4 - (normalizedCipher.length % 4)) % 4)
     iv = Buffer.from(padIv, "base64")
     cipherBuffer = Buffer.from(padCipher, "base64")
   } catch {
@@ -224,10 +235,15 @@ export async function decryptWithAppKey(encryptedValue: string): Promise<string>
  * Generate a random API key (raw) and its corresponding hash.
  * Returns the raw key (shown once) and the hash (stored in DB).
  */
-export async function generateRawApiKey(prefix = "live_"): Promise<{ raw: string; hash: string }> {
+export async function generateRawApiKey(
+  prefix = "live_"
+): Promise<{ raw: string; hash: string }> {
   const bytes = randomBytes(32)
   const raw = prefix + bytes.toString("base64url")
-  const hash = await hashApiKey(raw.slice(prefix.length), process.env.API_KEY_HASH_SALT ?? "dev-salt-change-me")
+  const hash = await hashApiKey(
+    raw.slice(prefix.length),
+    process.env.API_KEY_HASH_SALT ?? "dev-salt-change-me"
+  )
   return { raw, hash }
 }
 
@@ -243,6 +259,8 @@ export async function encryptWhatsAppToken(token: string): Promise<string> {
  * Decrypt a WhatsApp Business token retrieved from DB.
  * Wraps decryptWithAppKey with error normalization.
  */
-export async function decryptWhatsAppToken(encryptedToken: string): Promise<string> {
+export async function decryptWhatsAppToken(
+  encryptedToken: string
+): Promise<string> {
   return decryptWithAppKey(encryptedToken)
 }

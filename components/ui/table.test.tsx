@@ -406,11 +406,26 @@ describe("Table - integration", () => {
     const { container } = view
 
     // Verify all structural elements
-    expect(container.querySelector("table")).toHaveAttribute("data-slot", "table")
-    expect(container.querySelector("caption")).toHaveAttribute("data-slot", "table-caption")
-    expect(container.querySelector("thead")).toHaveAttribute("data-slot", "table-header")
-    expect(container.querySelector("tbody")).toHaveAttribute("data-slot", "table-body")
-    expect(container.querySelector("tfoot")).toHaveAttribute("data-slot", "table-footer")
+    expect(container.querySelector("table")).toHaveAttribute(
+      "data-slot",
+      "table"
+    )
+    expect(container.querySelector("caption")).toHaveAttribute(
+      "data-slot",
+      "table-caption"
+    )
+    expect(container.querySelector("thead")).toHaveAttribute(
+      "data-slot",
+      "table-header"
+    )
+    expect(container.querySelector("tbody")).toHaveAttribute(
+      "data-slot",
+      "table-body"
+    )
+    expect(container.querySelector("tfoot")).toHaveAttribute(
+      "data-slot",
+      "table-footer"
+    )
     expect(container.querySelectorAll("tr")).toHaveLength(4)
     expect(container.querySelectorAll("th")).toHaveLength(2)
     // 2 body rows × 2 cells + 1 footer row × 2 cells = 6

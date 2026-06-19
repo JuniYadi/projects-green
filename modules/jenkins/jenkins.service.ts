@@ -40,7 +40,9 @@ export async function getJenkinsJobStatus(
       id: data.id,
       jobName,
       buildNumber: data.number,
-      status: (data.result as JenkinsBuild["status"]) ?? (data.building ? "BUILDING" : "PENDING"),
+      status:
+        (data.result as JenkinsBuild["status"]) ??
+        (data.building ? "BUILDING" : "PENDING"),
       url: data.url,
       timestamp: data.timestamp,
     }
@@ -57,8 +59,8 @@ export async function triggerJenkinsJob(
 }
 
 export async function listJenkinsJobs(): Promise<string[]> {
-  const data = (await jenkinsApiFetch(
-    "api/json?tree=jobs[name]"
-  )) as { jobs: Array<{ name: string }> }
+  const data = (await jenkinsApiFetch("api/json?tree=jobs[name]")) as {
+    jobs: Array<{ name: string }>
+  }
   return data.jobs.map((job) => job.name)
 }

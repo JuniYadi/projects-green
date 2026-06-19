@@ -138,7 +138,7 @@ function RuleFormDialog({
               <Label htmlFor="patternJson">Pattern (JSON)</Label>
               <textarea
                 id="patternJson"
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
                 value={form.patternJson}
                 onChange={(e) => {
                   setForm({ ...form, patternJson: e.target.value })
@@ -154,7 +154,7 @@ function RuleFormDialog({
               <Label htmlFor="implicationsJson">Implications (JSON)</Label>
               <textarea
                 id="implicationsJson"
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
                 value={form.implicationsJson}
                 onChange={(e) => {
                   setForm({ ...form, implicationsJson: e.target.value })
@@ -293,7 +293,9 @@ export function RulesTable() {
   }
 
   const handleToggleActive = async (rule: DetectorRule) => {
-    const { data } = await eden.api.admin.detector.rules[rule.id].patch({ isActive: !rule.isActive })
+    const { data } = await eden.api.admin.detector.rules[rule.id].patch({
+      isActive: !rule.isActive,
+    })
     if (!data?.ok) {
       toast.error(data?.message || "Failed to toggle rule status")
       return
@@ -305,9 +307,7 @@ export function RulesTable() {
   }
 
   const handleDelete = async (rule: DetectorRule) => {
-    if (
-      !window.confirm(`Are you sure you want to delete rule "${rule.name}"?`)
-    )
+    if (!window.confirm(`Are you sure you want to delete rule "${rule.name}"?`))
       return
 
     const { data } = await eden.api.admin.detector.rules[rule.id].delete()
@@ -323,9 +323,7 @@ export function RulesTable() {
     {
       accessorKey: "name",
       header: "Name",
-      cell: ({ row }) => (
-        <div className="font-medium">{row.original.name}</div>
-      ),
+      cell: ({ row }) => <div className="font-medium">{row.original.name}</div>,
     },
     {
       accessorKey: "implicationsJson",

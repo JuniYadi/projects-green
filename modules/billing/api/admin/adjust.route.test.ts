@@ -49,7 +49,7 @@ describe("AdminAdjustRoute", () => {
       const app = new Elysia()
         .use(
           createAdminBillingRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })
@@ -432,18 +432,20 @@ describe("AdminAdjustRoute", () => {
 
   describe("POST /admin/adjust — transaction callback coverage", () => {
     function makeMockTransactionWithCallback() {
-      mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          billingAccount: {
-            findUnique: mockFindUnique,
-            update: mockUpdate,
-          },
-          billingAdjustment: {
-            create: mockCreate,
-          },
+      mockTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            billingAccount: {
+              findUnique: mockFindUnique,
+              update: mockUpdate,
+            },
+            billingAdjustment: {
+              create: mockCreate,
+            },
+          }
+          return cb(tx)
         }
-        return cb(tx)
-      })
+      )
     }
 
     it("executes transaction callback on valid CREDIT", async () => {
@@ -668,18 +670,20 @@ describe("AdminAdjustRoute", () => {
 
   describe("POST /admin/adjust — default admin checks", () => {
     function makeMockTransactionWithCallback() {
-      mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          billingAccount: {
-            findUnique: mockFindUnique,
-            update: mockUpdate,
-          },
-          billingAdjustment: {
-            create: mockCreate,
-          },
+      mockTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            billingAccount: {
+              findUnique: mockFindUnique,
+              update: mockUpdate,
+            },
+            billingAdjustment: {
+              create: mockCreate,
+            },
+          }
+          return cb(tx)
         }
-        return cb(tx)
-      })
+      )
     }
 
     it("allows CREDIT when default isAdmin with super_admin", async () => {
@@ -688,7 +692,10 @@ describe("AdminAdjustRoute", () => {
         organizationId: "org-1",
         balance: new Decimal("50000.00"),
       })
-      mockUpdate.mockResolvedValueOnce({ id: "acc-1", balance: new Decimal("100000.00") })
+      mockUpdate.mockResolvedValueOnce({
+        id: "acc-1",
+        balance: new Decimal("100000.00"),
+      })
       mockCreate.mockResolvedValueOnce({
         id: "adj-1",
         billingAccountId: "acc-1",
@@ -703,11 +710,12 @@ describe("AdminAdjustRoute", () => {
       const app = new Elysia()
         .use(
           createAdminBillingRoutes({
-            authenticate: async () => ({
-              user: { id: "admin-1" },
-              organizationId: "org-1",
-              role: "admin",
-            } as unknown as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "super_admin" as PlatformAccessRole,
             // No isAdmin override
           })
@@ -718,7 +726,12 @@ describe("AdminAdjustRoute", () => {
         new Request("http://localhost/admin/adjust", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ organizationId: "550e8400-e29b-41d4-a716-446655440000", type: "CREDIT", amount: 50000, reason: "Credit" }),
+          body: JSON.stringify({
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
+            type: "CREDIT",
+            amount: 50000,
+            reason: "Credit",
+          }),
         })
       )
 
@@ -731,7 +744,10 @@ describe("AdminAdjustRoute", () => {
         organizationId: "org-1",
         balance: new Decimal("100000.00"),
       })
-      mockUpdate.mockResolvedValueOnce({ id: "acc-1", balance: new Decimal("50000.00") })
+      mockUpdate.mockResolvedValueOnce({
+        id: "acc-1",
+        balance: new Decimal("50000.00"),
+      })
       mockCreate.mockResolvedValueOnce({
         id: "adj-2",
         billingAccountId: "acc-1",
@@ -746,11 +762,12 @@ describe("AdminAdjustRoute", () => {
       const app = new Elysia()
         .use(
           createAdminBillingRoutes({
-            authenticate: async () => ({
-              user: { id: "owner-1" },
-              organizationId: "org-1",
-              role: "owner",
-            } as unknown as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "owner-1" },
+                organizationId: "org-1",
+                role: "owner",
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
             // No isAdmin override
           })
@@ -761,7 +778,12 @@ describe("AdminAdjustRoute", () => {
         new Request("http://localhost/admin/adjust", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ organizationId: "550e8400-e29b-41d4-a716-446655440000", type: "DEBIT", amount: 50000, reason: "Debit" }),
+          body: JSON.stringify({
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
+            type: "DEBIT",
+            amount: 50000,
+            reason: "Debit",
+          }),
         })
       )
 
@@ -772,11 +794,12 @@ describe("AdminAdjustRoute", () => {
       const app = new Elysia()
         .use(
           createAdminBillingRoutes({
-            authenticate: async () => ({
-              user: { id: "member-1" },
-              organizationId: "org-1",
-              role: "member",
-            } as unknown as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "member-1" },
+                organizationId: "org-1",
+                role: "member",
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
             // No isAdmin override
           })
@@ -787,7 +810,12 @@ describe("AdminAdjustRoute", () => {
         new Request("http://localhost/admin/adjust", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ organizationId: "550e8400-e29b-41d4-a716-446655440000", type: "CREDIT", amount: 50000, reason: "Unauthorized" }),
+          body: JSON.stringify({
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
+            type: "CREDIT",
+            amount: 50000,
+            reason: "Unauthorized",
+          }),
         })
       )
 

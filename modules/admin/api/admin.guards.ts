@@ -127,17 +127,17 @@ export const requireSuperAdmin = async (
  * `.use()` boundaries. Handlers that need the actor context should
  * call `requireSuperAdmin(set)` directly.
  */
-export const adminAuthGuard = new Elysia({ name: "admin-auth-guard" })
-  .onBeforeHandle({ as: "scoped" }, async ({ set }) => {
-    const actor = await requireSuperAdmin(set as RouteSet)
+export const adminAuthGuard = new Elysia({
+  name: "admin-auth-guard",
+}).onBeforeHandle({ as: "scoped" }, async ({ set }) => {
+  const actor = await requireSuperAdmin(set as RouteSet)
 
-    if (!actor.ok) {
-      const status =
-        typeof set.status === "number" ? set.status : 403
+  if (!actor.ok) {
+    const status = typeof set.status === "number" ? set.status : 403
 
-      return new Response(JSON.stringify(actor), {
-        status,
-        headers: { "Content-Type": "application/json" },
-      })
-    }
-  })
+    return new Response(JSON.stringify(actor), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+})

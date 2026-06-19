@@ -96,7 +96,8 @@ const collectSourceErrors = (
     return [
       {
         field: "source.sourceType",
-        message: "Only GitHub repository sources are supported for deploy drafts.",
+        message:
+          "Only GitHub repository sources are supported for deploy drafts.",
       },
     ]
   }

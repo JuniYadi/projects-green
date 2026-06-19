@@ -8,5 +8,7 @@ export default async function AdminPage({
 }>) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
-  redirect(localizePathname({ pathname: "/portal/admin/organizations", locale }))
+  redirect(
+    localizePathname({ pathname: "/portal/admin/organizations", locale })
+  )
 }

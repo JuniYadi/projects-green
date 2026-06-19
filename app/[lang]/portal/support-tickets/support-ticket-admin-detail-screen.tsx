@@ -67,31 +67,50 @@ const resolveInitials = (name: string, email?: string) => {
 
 const apiClient = createSupportTicketsClient()
 
-function SecureDetailsViewer({ content, label }: { content: string; label: string }) {
+function SecureDetailsViewer({
+  content,
+  label,
+}: {
+  content: string
+  label: string
+}) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/[0.02] p-4 text-sm space-y-2">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-1.5 text-yellow-500 font-medium">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+    <div className="space-y-2 rounded-lg border border-yellow-500/30 bg-yellow-500/[0.02] p-4 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 font-medium text-yellow-500">
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2.5"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            ></path>
           </svg>
           <span>{label}</span>
-          <span className="text-[10px] bg-yellow-500/10 px-1.5 py-0.5 rounded font-semibold">Encrypted</span>
+          <span className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-semibold">
+            Encrypted
+          </span>
         </div>
         <Button
           type="button"
           variant="outline"
           size="xs"
-          className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 hover:text-yellow-400 h-7"
+          className="h-7 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 hover:text-yellow-400"
           onClick={() => setIsOpen(!isOpen)}
         >
           {isOpen ? "Hide secure details" : "Show secure details"}
         </Button>
       </div>
       {isOpen && (
-        <pre className="mt-2 p-3 bg-background/50 rounded border border-border/50 text-xs font-mono text-foreground whitespace-pre-wrap break-all leading-relaxed">
+        <pre className="mt-2 rounded border border-border/50 bg-background/50 p-3 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-foreground">
           {content}
         </pre>
       )}
@@ -116,10 +135,10 @@ function AttachmentItem({
         e.preventDefault()
         onPreview(attachment)
       }}
-      className="w-full text-left relative group rounded-lg border border-border bg-card/50 p-2 flex items-center gap-3 hover:bg-accent/50 transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
+      className="group relative flex w-full cursor-pointer items-center gap-3 rounded-lg border border-border bg-card/50 p-2 text-left transition-all hover:bg-accent/50 focus:ring-1 focus:ring-ring focus:outline-none"
     >
       {isImage ? (
-        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-muted border border-border">
+        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={downloadUrl}
@@ -128,9 +147,9 @@ function AttachmentItem({
           />
         </div>
       ) : (
-        <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded bg-muted text-muted-foreground border border-border">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground">
           <svg
-            className="w-5 h-5"
+            className="h-5 w-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -146,7 +165,7 @@ function AttachmentItem({
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-foreground truncate group-hover:underline">
+        <p className="truncate text-xs font-medium text-foreground group-hover:underline">
           {attachment.fileName}
         </p>
         <p className="text-[10px] text-muted-foreground">
@@ -157,18 +176,25 @@ function AttachmentItem({
   )
 }
 
-export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicketAdminDetailScreenProps) {
+export function SupportTicketAdminDetailScreen({
+  ticketId,
+  lang,
+}: SupportTicketAdminDetailScreenProps) {
   const router = useRouter()
   const locale = resolveLocaleOrDefault(lang)
-  const listPath = localizePathname({ pathname: "/portal/support-tickets", locale })
+  const listPath = localizePathname({
+    pathname: "/portal/support-tickets",
+    locale,
+  })
 
   const [thread, setThread] = useState<SupportTicketThread | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  
+
   // Categorization Form States (Admin Editable)
-  const [department, setDepartment] = useState<SupportTicketDepartment>("technical")
+  const [department, setDepartment] =
+    useState<SupportTicketDepartment>("technical")
   const [priority, setPriority] = useState<SupportTicketPriority>("medium")
   const [service, setService] = useState<SupportTicketService | "none">("none")
   const [status, setStatus] = useState<SupportTicketStatus>("open")
@@ -181,7 +207,8 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
   const [isClosing, setIsClosing] = useState(false)
   const [isInternalNote, setIsInternalNote] = useState(false)
   const [activeTab, setActiveTab] = useState<"message" | "secure">("message")
-  const [activePreview, setActivePreview] = useState<SupportTicketAttachmentMetadata | null>(null)
+  const [activePreview, setActivePreview] =
+    useState<SupportTicketAttachmentMetadata | null>(null)
   const [isLoadingPreview, setIsLoadingPreview] = useState(false)
   const [previewContent, setPreviewContent] = useState<{
     type: "image" | "pdf" | "csv" | "unsupported"
@@ -190,7 +217,9 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
     blob: Blob
   } | null>(null)
 
-  const handleAttachmentClick = async (attachment: SupportTicketAttachmentMetadata) => {
+  const handleAttachmentClick = async (
+    attachment: SupportTicketAttachmentMetadata
+  ) => {
     setActivePreview(attachment)
     setIsLoadingPreview(true)
     setPreviewContent(null)
@@ -204,8 +233,12 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
 
       const mimeType = attachment.mimeType.toLowerCase()
       const isImg = mimeType.startsWith("image/")
-      const isPdf = mimeType === "application/pdf" || attachment.fileName.toLowerCase().endsWith(".pdf")
-      const isCsv = mimeType === "text/csv" || attachment.fileName.toLowerCase().endsWith(".csv")
+      const isPdf =
+        mimeType === "application/pdf" ||
+        attachment.fileName.toLowerCase().endsWith(".pdf")
+      const isCsv =
+        mimeType === "text/csv" ||
+        attachment.fileName.toLowerCase().endsWith(".csv")
 
       if (isImg) {
         setPreviewContent({
@@ -325,7 +358,7 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
       window.clearTimeout(timeoutId)
       requestSequenceRef.current += 1
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId])
 
   const ticket = thread?.ticket ?? null
@@ -340,7 +373,9 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
     const selected = Array.from(event.target.files ?? [])
     const nextFiles = selected.map((file) => ({
       file,
-      previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+      previewUrl: file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : undefined,
     }))
     setFiles((prev) => [...prev, ...nextFiles])
     event.currentTarget.value = ""
@@ -428,7 +463,9 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
       setSuccessMessage("Reply posted successfully.")
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to submit ticket reply."
+        error instanceof Error
+          ? error.message
+          : "Unable to submit ticket reply."
       )
     } finally {
       setIsSubmittingReply(false)
@@ -441,7 +478,8 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
     setErrorMessage(null)
     setSuccessMessage(null)
 
-    const isTransitioningToClosed = status === "closed" && ticket?.status !== "closed"
+    const isTransitioningToClosed =
+      status === "closed" && ticket?.status !== "closed"
 
     if (isTransitioningToClosed) {
       const confirmClose = window.confirm(
@@ -470,7 +508,9 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
       setSuccessMessage("Ticket categorization updated successfully.")
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to update support ticket categorization."
+        error instanceof Error
+          ? error.message
+          : "Unable to update support ticket categorization."
       )
     } finally {
       setIsUpdatingMetadata(false)
@@ -507,10 +547,14 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
         }
       })
       setStatus("closed")
-      setSuccessMessage("Ticket closed and secure form data wiped successfully.")
+      setSuccessMessage(
+        "Ticket closed and secure form data wiped successfully."
+      )
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to close support ticket."
+        error instanceof Error
+          ? error.message
+          : "Unable to close support ticket."
       )
     } finally {
       setIsClosing(false)
@@ -536,7 +580,9 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
       router.refresh()
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to delete support ticket."
+        error instanceof Error
+          ? error.message
+          : "Unable to delete support ticket."
       )
       setIsDeleting(false)
     }
@@ -559,7 +605,7 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
       {errorMessage ? (
         <Card className="border-destructive/30 bg-destructive/10">
           <CardContent className="pt-6">
-            <p className="text-sm text-destructive font-medium" role="alert">
+            <p className="text-sm font-medium text-destructive" role="alert">
               {errorMessage}
             </p>
           </CardContent>
@@ -569,7 +615,7 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
       {successMessage ? (
         <Card className="border-green-500/30 bg-green-500/10">
           <CardContent className="pt-6">
-            <p className="text-sm text-green-500 font-medium" role="status">
+            <p className="text-sm font-medium text-green-500" role="status">
               {successMessage}
             </p>
           </CardContent>
@@ -578,14 +624,29 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
 
       {/* Red Alert Closed Warning Banner */}
       {isClosed && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/[0.03] p-4 text-sm flex items-start gap-3 text-destructive animate-fade-in">
-          <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        <div className="animate-fade-in flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/[0.03] p-4 text-sm text-destructive">
+          <svg
+            className="mt-0.5 h-5 w-5 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            ></path>
           </svg>
           <div>
-            <p className="font-semibold text-sm">Secure Details Permanently Wiped</p>
-            <p className="mt-0.5 text-xs text-destructive/80 leading-relaxed">
-              This ticket is closed. For security compliance, all credentials and sensitive information in the secure fields have been permanently deleted and cannot be retrieved.
+            <p className="text-sm font-semibold">
+              Secure Details Permanently Wiped
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-destructive/80">
+              This ticket is closed. For security compliance, all credentials
+              and sensitive information in the secure fields have been
+              permanently deleted and cannot be retrieved.
             </p>
           </div>
         </div>
@@ -593,36 +654,58 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
 
       {/* Pre-close warning banner for open tickets */}
       {!isClosed && ticket.secureForm && (
-        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/[0.03] p-4 text-sm flex items-start gap-3 text-yellow-500 animate-fade-in">
-          <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        <div className="animate-fade-in flex items-start gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/[0.03] p-4 text-sm text-yellow-500">
+          <svg
+            className="mt-0.5 h-5 w-5 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            ></path>
           </svg>
           <div>
-            <p className="font-semibold text-sm">Active Secure Details Warning</p>
-            <p className="mt-0.5 text-xs text-yellow-500/80 leading-relaxed">
-              This ticket currently stores secure credential information. Closing this ticket will permanently wipe all secure credentials across the thread.
+            <p className="text-sm font-semibold">
+              Active Secure Details Warning
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-yellow-500/80">
+              This ticket currently stores secure credential information.
+              Closing this ticket will permanently wipe all secure credentials
+              across the thread.
             </p>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
         {/* Main Details Area */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="font-heading text-base font-semibold">{ticket.ticketNumber}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Organization: <span className="font-semibold text-foreground">{ticket.organizationName || ticket.organizationId}</span>
+                  <h2 className="font-heading text-base font-semibold">
+                    {ticket.ticketNumber}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Organization:{" "}
+                    <span className="font-semibold text-foreground">
+                      {ticket.organizationName || ticket.organizationId}
+                    </span>
                     {ticket.organizationName && (
-                      <span className="font-mono text-muted-foreground text-[10px] ml-1.5">({ticket.organizationId})</span>
+                      <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">
+                        ({ticket.organizationId})
+                      </span>
                     )}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground font-medium">
+                  <span className="text-sm font-medium text-muted-foreground">
                     Status: {SUPPORT_TICKET_STATUS_LABELS[ticket.status]}
                   </span>
                   <Button
@@ -632,57 +715,89 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                     disabled={isClosed || isClosing}
                     onClick={closeTicket}
                   >
-                    {isClosing ? "Closing..." : isClosed ? "Closed" : "Close Ticket"}
+                    {isClosing
+                      ? "Closing..."
+                      : isClosed
+                        ? "Closed"
+                        : "Close Ticket"}
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="rounded-lg bg-muted/30 p-4 text-sm border border-border/50">
+              <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm">
                 <p className="font-semibold text-foreground">Subject</p>
-                <p className="mt-1 text-muted-foreground leading-relaxed font-medium">{ticket.subject}</p>
+                <p className="mt-1 leading-relaxed font-medium text-muted-foreground">
+                  {ticket.subject}
+                </p>
               </div>
 
-              {ticket.organizationMetadata && Object.keys(ticket.organizationMetadata).length > 0 && (
-                <div className="rounded-lg bg-muted/30 p-4 text-sm border border-border/50 space-y-1.5 animate-fade-in">
-                  <p className="font-semibold text-foreground">Organization Billing/Support Details</p>
-                  <p className="text-xs font-medium text-foreground">
-                    Full Name: {ticket.organizationMetadata.billing_full_name || "—"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Address: {ticket.organizationMetadata.billing_address || "—"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    City, State: {[ticket.organizationMetadata.billing_city, ticket.organizationMetadata.billing_state].filter(Boolean).join(", ") || "—"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Country, Post Code: {[ticket.organizationMetadata.billing_country, ticket.organizationMetadata.billing_post_code].filter(Boolean).join(" ") || "—"}
-                  </p>
-                </div>
-              )}
+              {ticket.organizationMetadata &&
+                Object.keys(ticket.organizationMetadata).length > 0 && (
+                  <div className="animate-fade-in space-y-1.5 rounded-lg border border-border/50 bg-muted/30 p-4 text-sm">
+                    <p className="font-semibold text-foreground">
+                      Organization Billing/Support Details
+                    </p>
+                    <p className="text-xs font-medium text-foreground">
+                      Full Name:{" "}
+                      {ticket.organizationMetadata.billing_full_name || "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Address:{" "}
+                      {ticket.organizationMetadata.billing_address || "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      City, State:{" "}
+                      {[
+                        ticket.organizationMetadata.billing_city,
+                        ticket.organizationMetadata.billing_state,
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Country, Post Code:{" "}
+                      {[
+                        ticket.organizationMetadata.billing_country,
+                        ticket.organizationMetadata.billing_post_code,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || "—"}
+                    </p>
+                  </div>
+                )}
 
               {ticket.description ? (
-                <div className="rounded-lg bg-muted/30 p-4 text-sm border border-border/50">
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm">
                   <p className="font-semibold text-foreground">Message</p>
                   {ticket.descriptionHtml ? (
                     <div
-                      className="mt-1.5 text-muted-foreground text-sm space-y-3 leading-relaxed [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_a]:text-primary [&_a]:underline"
-                      dangerouslySetInnerHTML={{ __html: ticket.descriptionHtml }}
+                      className="mt-1.5 space-y-3 text-sm leading-relaxed text-muted-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
+                      dangerouslySetInnerHTML={{
+                        __html: ticket.descriptionHtml,
+                      }}
                     />
                   ) : (
-                    <p className="mt-1.5 whitespace-pre-wrap text-muted-foreground leading-relaxed">{ticket.description}</p>
+                    <p className="mt-1.5 leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                      {ticket.description}
+                    </p>
                   )}
                 </div>
               ) : null}
 
               {ticket.secureForm ? (
-                <SecureDetailsViewer content={ticket.secureForm} label="Secure details" />
+                <SecureDetailsViewer
+                  content={ticket.secureForm}
+                  label="Secure details"
+                />
               ) : null}
 
               {ticket.attachmentMetadata.length > 0 ? (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground">Attachments</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    Attachments
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {ticket.attachmentMetadata.map((attachment) => (
                       <AttachmentItem
                         key={attachment.id}
@@ -698,15 +813,19 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
 
           {/* Reply List */}
           <Card className="border-border bg-card text-card-foreground">
-            <CardHeader className="pb-3 border-b border-border/50">
+            <CardHeader className="border-b border-border/50 pb-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-heading text-base font-semibold">Thread</h3>
-                <p className="text-xs text-muted-foreground font-medium">{replyCountLabel}</p>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {replyCountLabel}
+                </p>
               </div>
             </CardHeader>
             <CardContent className="pt-5">
               {thread.replies.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic text-center py-4">No replies yet.</p>
+                <p className="py-4 text-center text-sm text-muted-foreground italic">
+                  No replies yet.
+                </p>
               ) : (
                 <div className="space-y-4">
                   {thread.replies.map((reply) => {
@@ -716,23 +835,30 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                       isStaff: false,
                     }
                     const initials = resolveInitials(author.name)
-                    
-                    let cardClasses = "rounded-lg border p-4 space-y-3 relative overflow-hidden"
+
+                    let cardClasses =
+                      "rounded-lg border p-4 space-y-3 relative overflow-hidden"
                     if (reply.isInternalNote) {
-                      cardClasses += " border-yellow-500/30 border-l-4 border-l-yellow-500 bg-yellow-500/[0.05] dark:bg-yellow-500/[0.02]"
+                      cardClasses +=
+                        " border-yellow-500/30 border-l-4 border-l-yellow-500 bg-yellow-500/[0.05] dark:bg-yellow-500/[0.02]"
                     } else if (author.isStaff) {
-                      cardClasses += " border-primary/30 border-l-4 border-l-primary bg-primary/[0.05] dark:bg-primary/[0.02] shadow-xs"
+                      cardClasses +=
+                        " border-primary/30 border-l-4 border-l-primary bg-primary/[0.05] dark:bg-primary/[0.02] shadow-xs"
                     } else {
-                      cardClasses += " border-border bg-muted/20 dark:bg-muted/10"
+                      cardClasses +=
+                        " border-border bg-muted/20 dark:bg-muted/10"
                     }
 
                     return (
                       <article key={reply.id} className={cardClasses}>
-                        <div className="flex items-start justify-between flex-wrap gap-4 pb-2 border-b border-border/30">
+                        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-2">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8 rounded-full border border-border bg-muted">
                               {author.avatarUrl ? (
-                                <AvatarImage src={author.avatarUrl} alt={author.name} />
+                                <AvatarImage
+                                  src={author.avatarUrl}
+                                  alt={author.name}
+                                />
                               ) : null}
                               <AvatarFallback className="rounded-full text-xs font-semibold">
                                 {initials}
@@ -740,19 +866,19 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                             </Avatar>
                             <div className="grid gap-0.5">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-foreground leading-none">
+                                <span className="text-sm leading-none font-semibold text-foreground">
                                   {author.name}
                                 </span>
                                 {reply.isInternalNote ? (
-                                  <span className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase">
+                                  <span className="rounded border border-yellow-500/30 bg-yellow-500/20 px-1.5 py-0.5 text-[10px] font-bold text-yellow-600 uppercase dark:text-yellow-400">
                                     Internal Note
                                   </span>
                                 ) : author.isStaff ? (
-                                  <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary border border-primary/30">
+                                  <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
                                     Support Team
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center rounded-full bg-muted/60 dark:bg-muted/30 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground border border-border">
+                                  <span className="inline-flex items-center rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground dark:bg-muted/30">
                                     Customer
                                   </span>
                                 )}
@@ -762,27 +888,34 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                               </span>
                             </div>
                           </div>
-                          <time className="text-[11px] text-muted-foreground font-medium self-center">
+                          <time className="self-center text-[11px] font-medium text-muted-foreground">
                             {new Date(reply.createdAt).toLocaleString()}
                           </time>
                         </div>
                         {reply.bodyHtml ? (
                           <div
-                            className="text-foreground text-sm space-y-3 leading-relaxed pt-1 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_a]:text-primary [&_a]:underline"
+                            className="space-y-3 pt-1 text-sm leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
                             dangerouslySetInnerHTML={{ __html: reply.bodyHtml }}
                           />
                         ) : (
-                          <p className="whitespace-pre-wrap text-sm text-foreground leading-relaxed pt-1">{reply.body}</p>
+                          <p className="pt-1 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                            {reply.body}
+                          </p>
                         )}
-                        
+
                         {reply.secureForm ? (
-                          <SecureDetailsViewer content={reply.secureForm} label="Secure details" />
+                          <SecureDetailsViewer
+                            content={reply.secureForm}
+                            label="Secure details"
+                          />
                         ) : null}
-                        
+
                         {reply.attachmentMetadata.length > 0 ? (
                           <div className="space-y-1.5 pt-2">
-                            <p className="text-[10px] font-semibold text-muted-foreground">Attachments</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <p className="text-[10px] font-semibold text-muted-foreground">
+                              Attachments
+                            </p>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                               {reply.attachmentMetadata.map((attachment) => (
                                 <AttachmentItem
                                   key={attachment.id}
@@ -803,10 +936,10 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
 
           {/* Reply Form */}
           <Card className="border-border bg-card text-card-foreground">
-            <CardHeader className="pb-3 border-b border-border/50">
+            <CardHeader className="border-b border-border/50 pb-3">
               <h3 className="font-heading text-base font-semibold">Reply</h3>
             </CardHeader>
-            <CardContent className="pt-5 space-y-6">
+            <CardContent className="space-y-6 pt-5">
               {/* Tabbed Editor Container */}
               <div className="space-y-4">
                 {/* Tabs list */}
@@ -815,9 +948,9 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                     type="button"
                     onClick={() => setActiveTab("message")}
                     disabled={isClosed}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-[1px] ${
+                    className={`-mb-[1px] border-b-2 px-4 py-2 text-sm font-medium transition-all ${
                       activeTab === "message"
-                        ? "border-primary text-foreground font-semibold"
+                        ? "border-primary font-semibold text-foreground"
                         : "border-transparent text-muted-foreground hover:text-foreground disabled:opacity-50"
                     }`}
                   >
@@ -827,25 +960,30 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                     type="button"
                     onClick={() => setActiveTab("secure")}
                     disabled={isClosed}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-all -mb-[1px] flex items-center gap-1.5 ${
+                    className={`-mb-[1px] flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-all ${
                       activeTab === "secure"
-                        ? "border-yellow-500 text-yellow-500 font-semibold"
+                        ? "border-yellow-500 font-semibold text-yellow-500"
                         : "border-transparent text-muted-foreground hover:text-foreground disabled:opacity-50"
                     }`}
                   >
                     <span className="relative flex h-2 w-2">
                       {activeTab === "secure" && (
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75"></span>
                       )}
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
                     </span>
                     Secure details
                   </button>
                 </div>
 
                 {/* General Message Tab */}
-                <div className={activeTab === "message" ? "space-y-2" : "hidden"}>
-                  <Label htmlFor="reply-body" className="text-xs font-semibold text-muted-foreground">
+                <div
+                  className={activeTab === "message" ? "space-y-2" : "hidden"}
+                >
+                  <Label
+                    htmlFor="reply-body"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
                     Message
                   </Label>
                   <MarkdownEditor
@@ -858,21 +996,37 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                 </div>
 
                 {/* Secure Details Tab */}
-                <div className={activeTab === "secure" ? "space-y-4" : "hidden"}>
-                  <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4 space-y-2">
+                <div
+                  className={activeTab === "secure" ? "space-y-4" : "hidden"}
+                >
+                  <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
                         Encrypted
                       </span>
-                      <span className="text-xs font-medium text-yellow-500/90 flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                      <span className="flex items-center gap-1 text-xs font-medium text-yellow-500/90">
+                        <svg
+                          className="h-3.5 w-3.5 text-yellow-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2.5"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          ></path>
                         </svg>
                         End-to-End Secure Channel
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Details entered here are encrypted end-to-end and only visible to engineers assigned to your ticket. Use this section for passwords, tokens, API keys, or sensitive credentials.
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Details entered here are encrypted end-to-end and only
+                      visible to engineers assigned to your ticket. Use this
+                      section for passwords, tokens, API keys, or sensitive
+                      credentials.
                     </p>
                   </div>
                   <div className="grid gap-2">
@@ -891,12 +1045,15 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
               </div>
 
               {/* Divider */}
-              <div className="border-t border-border my-4" />
+              <div className="my-4 border-t border-border" />
 
               {/* Attachments Section */}
               <div className="space-y-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="reply-files" className="text-xs font-semibold text-muted-foreground">
+                  <Label
+                    htmlFor="reply-files"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
                     Attachments (optional)
                   </Label>
                   <Input
@@ -905,21 +1062,21 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                     multiple
                     onChange={handleFileChange}
                     disabled={isClosed || isSubmittingReply}
-                    className="bg-background/50 border-border text-foreground file:text-foreground file:bg-primary/10 file:border-0 file:rounded-md cursor-pointer"
+                    className="cursor-pointer border-border bg-background/50 text-foreground file:rounded-md file:border-0 file:bg-primary/10 file:text-foreground"
                   />
                 </div>
 
                 {files.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {files.map((item, idx) => {
                       const isImage = item.file.type.startsWith("image/")
                       return (
                         <div
                           key={idx}
-                          className="relative group rounded-lg border border-border bg-card/50 p-2 flex items-center gap-3"
+                          className="group relative flex items-center gap-3 rounded-lg border border-border bg-card/50 p-2"
                         >
                           {isImage && item.previewUrl ? (
-                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-muted border border-border">
+                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={item.previewUrl}
@@ -928,9 +1085,9 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                               />
                             </div>
                           ) : (
-                            <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded bg-muted text-muted-foreground border border-border">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground">
                               <svg
-                                className="w-5 h-5"
+                                className="h-5 w-5"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -946,7 +1103,7 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-foreground truncate">
+                            <p className="truncate text-xs font-medium text-foreground">
                               {item.file.name}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
@@ -956,7 +1113,7 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                           <button
                             type="button"
                             onClick={() => handleRemoveFile(idx)}
-                            className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-full flex items-center justify-center text-[10px] transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
+                            className="absolute -top-1.5 -right-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-[10px] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-foreground focus:opacity-100"
                           >
                             ✕
                           </button>
@@ -972,10 +1129,15 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
                 <Checkbox
                   id="internal-note"
                   checked={isInternalNote}
-                  onCheckedChange={(checked) => setIsInternalNote(Boolean(checked))}
+                  onCheckedChange={(checked) =>
+                    setIsInternalNote(Boolean(checked))
+                  }
                   disabled={isClosed || isSubmittingReply}
                 />
-                <Label htmlFor="internal-note" className="text-sm font-medium text-yellow-500 cursor-pointer select-none">
+                <Label
+                  htmlFor="internal-note"
+                  className="cursor-pointer text-sm font-medium text-yellow-500 select-none"
+                >
                   Post as Internal Note (visible only to support agents/admins)
                 </Label>
               </div>
@@ -997,22 +1159,38 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
         <div className="space-y-6">
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground font-heading">Categorization & Control</CardTitle>
+              <CardTitle className="font-heading text-base font-semibold text-foreground">
+                Categorization & Control
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="ticket-status" className="text-xs font-semibold text-muted-foreground">Status</Label>
+                <Label
+                  htmlFor="ticket-status"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  Status
+                </Label>
                 <Select
                   value={status}
-                  onValueChange={(nextValue) => setStatus(nextValue as SupportTicketStatus)}
+                  onValueChange={(nextValue) =>
+                    setStatus(nextValue as SupportTicketStatus)
+                  }
                   disabled={isUpdatingMetadata}
                 >
-                  <SelectTrigger id="ticket-status" className="w-full bg-background/50 border-border text-foreground">
+                  <SelectTrigger
+                    id="ticket-status"
+                    className="w-full border-border bg-background/50 text-foreground"
+                  >
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-border">
+                  <SelectContent className="border-border bg-popover">
                     {SUPPORT_TICKET_STATUSES.map((statusValue) => (
-                      <SelectItem key={statusValue} value={statusValue} className="text-foreground hover:bg-muted">
+                      <SelectItem
+                        key={statusValue}
+                        value={statusValue}
+                        className="text-foreground hover:bg-muted"
+                      >
                         {SUPPORT_TICKET_STATUS_LABELS[statusValue]}
                       </SelectItem>
                     ))}
@@ -1021,18 +1199,32 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="ticket-department" className="text-xs font-semibold text-muted-foreground">Department</Label>
+                <Label
+                  htmlFor="ticket-department"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  Department
+                </Label>
                 <Select
                   value={department}
-                  onValueChange={(nextValue) => setDepartment(nextValue as SupportTicketDepartment)}
+                  onValueChange={(nextValue) =>
+                    setDepartment(nextValue as SupportTicketDepartment)
+                  }
                   disabled={isUpdatingMetadata}
                 >
-                  <SelectTrigger id="ticket-department" className="w-full bg-background/50 border-border text-foreground">
+                  <SelectTrigger
+                    id="ticket-department"
+                    className="w-full border-border bg-background/50 text-foreground"
+                  >
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-border">
+                  <SelectContent className="border-border bg-popover">
                     {SUPPORT_TICKET_DEPARTMENTS.map((departmentValue) => (
-                      <SelectItem key={departmentValue} value={departmentValue} className="text-foreground hover:bg-muted">
+                      <SelectItem
+                        key={departmentValue}
+                        value={departmentValue}
+                        className="text-foreground hover:bg-muted"
+                      >
                         {SUPPORT_TICKET_DEPARTMENT_LABELS[departmentValue]}
                       </SelectItem>
                     ))}
@@ -1041,19 +1233,38 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="ticket-service" className="text-xs font-semibold text-muted-foreground">Service (optional)</Label>
+                <Label
+                  htmlFor="ticket-service"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  Service (optional)
+                </Label>
                 <Select
                   value={service}
-                  onValueChange={(nextValue) => setService(nextValue as SupportTicketService | "none")}
+                  onValueChange={(nextValue) =>
+                    setService(nextValue as SupportTicketService | "none")
+                  }
                   disabled={isUpdatingMetadata}
                 >
-                  <SelectTrigger id="ticket-service" className="w-full bg-background/50 border-border text-foreground">
+                  <SelectTrigger
+                    id="ticket-service"
+                    className="w-full border-border bg-background/50 text-foreground"
+                  >
                     <SelectValue placeholder="Select service" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-border">
-                    <SelectItem value="none" className="text-foreground hover:bg-muted">None</SelectItem>
+                  <SelectContent className="border-border bg-popover">
+                    <SelectItem
+                      value="none"
+                      className="text-foreground hover:bg-muted"
+                    >
+                      None
+                    </SelectItem>
                     {SUPPORT_TICKET_SERVICES.map((serviceValue) => (
-                      <SelectItem key={serviceValue} value={serviceValue} className="text-foreground hover:bg-muted">
+                      <SelectItem
+                        key={serviceValue}
+                        value={serviceValue}
+                        className="text-foreground hover:bg-muted"
+                      >
                         {SUPPORT_TICKET_SERVICE_LABELS[serviceValue]}
                       </SelectItem>
                     ))}
@@ -1062,18 +1273,32 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="ticket-priority" className="text-xs font-semibold text-muted-foreground">Priority</Label>
+                <Label
+                  htmlFor="ticket-priority"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  Priority
+                </Label>
                 <Select
                   value={priority}
-                  onValueChange={(nextValue) => setPriority(nextValue as SupportTicketPriority)}
+                  onValueChange={(nextValue) =>
+                    setPriority(nextValue as SupportTicketPriority)
+                  }
                   disabled={isUpdatingMetadata}
                 >
-                  <SelectTrigger id="ticket-priority" className="w-full bg-background/50 border-border text-foreground">
+                  <SelectTrigger
+                    id="ticket-priority"
+                    className="w-full border-border bg-background/50 text-foreground"
+                  >
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-border">
+                  <SelectContent className="border-border bg-popover">
                     {SUPPORT_TICKET_PRIORITIES.map((priorityValue) => (
-                      <SelectItem key={priorityValue} value={priorityValue} className="text-foreground hover:bg-muted">
+                      <SelectItem
+                        key={priorityValue}
+                        value={priorityValue}
+                        className="text-foreground hover:bg-muted"
+                      >
                         {SUPPORT_TICKET_PRIORITY_LABELS[priorityValue]}
                       </SelectItem>
                     ))}
@@ -1095,11 +1320,14 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
           {/* Delete Ticket panel */}
           <Card className="border-destructive/20 bg-destructive/[0.02]">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold text-destructive font-heading">Danger Zone</CardTitle>
+              <CardTitle className="font-heading text-base font-semibold text-destructive">
+                Danger Zone
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Permanently delete this support ticket. All messages and attachments will be lost and cannot be recovered.
+                Permanently delete this support ticket. All messages and
+                attachments will be lost and cannot be recovered.
               </p>
               <Button
                 type="button"
@@ -1116,97 +1344,128 @@ export function SupportTicketAdminDetailScreen({ ticketId, lang }: SupportTicket
       </div>
 
       {activePreview && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-fade-in"
+        <div
+          className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs"
           onClick={closePreview}
         >
-          <div 
-            className="relative max-w-4xl w-full bg-card border border-border rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
+          <div
+            className="relative flex max-h-[90vh] w-full max-w-4xl animate-in flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl duration-200 zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-border/50 bg-muted/30">
+            <div className="flex items-center justify-between border-b border-border/50 bg-muted/30 p-4">
               <div className="min-w-0 flex-1 pr-4">
-                <h3 className="font-semibold text-sm truncate text-foreground">
+                <h3 className="truncate text-sm font-semibold text-foreground">
                   {activePreview.fileName}
                 </h3>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
                   {formatBytes(activePreview.sizeBytes)}
                 </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   disabled={isLoadingPreview}
                   onClick={triggerDownload}
-                  className="flex items-center gap-1.5 h-8 text-xs font-semibold"
+                  className="flex h-8 items-center gap-1.5 text-xs font-semibold"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    ></path>
                   </svg>
                   <span>Download</span>
                 </Button>
                 <button
                   type="button"
                   onClick={closePreview}
-                  className="h-8 w-8 rounded-md border border-border hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center text-xs transition-colors cursor-pointer"
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-border text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   ✕
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-black/5 dark:bg-black/20 min-h-0">
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-black/5 p-6 dark:bg-black/20">
               {isLoadingPreview ? (
                 <div className="flex flex-col items-center gap-2 py-12">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs text-muted-foreground">Loading preview...</span>
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                  <span className="text-xs text-muted-foreground">
+                    Loading preview...
+                  </span>
                 </div>
               ) : previewContent ? (
                 <>
-                  {previewContent.type === "image" && previewContent.blobUrl && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={previewContent.blobUrl}
-                      alt={activePreview.fileName}
-                      className="max-h-[60vh] object-contain rounded-lg border border-border/50 shadow-sm"
-                    />
-                  )}
+                  {previewContent.type === "image" &&
+                    previewContent.blobUrl && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={previewContent.blobUrl}
+                        alt={activePreview.fileName}
+                        className="max-h-[60vh] rounded-lg border border-border/50 object-contain shadow-sm"
+                      />
+                    )}
 
                   {previewContent.type === "pdf" && previewContent.blobUrl && (
                     <iframe
                       src={previewContent.blobUrl}
                       title={activePreview.fileName}
-                      className="w-full h-[60vh] border border-border/50 rounded-lg bg-background"
+                      className="h-[60vh] w-full rounded-lg border border-border/50 bg-background"
                     />
                   )}
 
-                  {previewContent.type === "csv" && previewContent.textContent && (
-                    <div className="w-full max-h-[60vh] overflow-auto bg-muted/40 p-4 border border-border/50 rounded-lg">
-                      <pre className="font-mono text-[11px] text-foreground whitespace-pre leading-relaxed text-left">
-                        {previewContent.textContent}
-                      </pre>
-                    </div>
-                  )}
+                  {previewContent.type === "csv" &&
+                    previewContent.textContent && (
+                      <div className="max-h-[60vh] w-full overflow-auto rounded-lg border border-border/50 bg-muted/40 p-4">
+                        <pre className="text-left font-mono text-[11px] leading-relaxed whitespace-pre text-foreground">
+                          {previewContent.textContent}
+                        </pre>
+                      </div>
+                    )}
 
                   {previewContent.type === "unsupported" && (
-                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
-                      <div className="h-14 w-14 bg-muted rounded-full flex items-center justify-center text-muted-foreground border border-border">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    <div className="flex flex-col items-center justify-center space-y-4 px-4 py-12 text-center">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground">
+                        <svg
+                          className="h-6 w-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          ></path>
                         </svg>
                       </div>
                       <div>
-                        <p className="font-semibold text-foreground text-sm">Preview Unavailable</p>
-                        <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
-                          A preview {"isn't"} available for this file type. Please download the file to view its contents.
+                        <p className="text-sm font-semibold text-foreground">
+                          Preview Unavailable
+                        </p>
+                        <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                          A preview {"isn't"} available for this file type.
+                          Please download the file to view its contents.
                         </p>
                       </div>
                     </div>
                   )}
                 </>
               ) : (
-                <span className="text-xs text-muted-foreground">Unable to load preview</span>
+                <span className="text-xs text-muted-foreground">
+                  Unable to load preview
+                </span>
               )}
             </div>
           </div>

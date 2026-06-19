@@ -29,7 +29,7 @@ export type OverageInput = {
 export class WhatsappBillingService {
   constructor(
     private prisma: PrismaClient,
-    private transactions: BillingTransactionService,
+    private transactions: BillingTransactionService
   ) {}
 
   /**
@@ -87,7 +87,7 @@ export class WhatsappBillingService {
    * WhatsApp has NO grace period — reject immediately if balance insufficient.
    */
   async consumeAllowanceOrChargeOverage(
-    input: OverageInput,
+    input: OverageInput
   ): Promise<WhatsappBillingDecision> {
     // ── Phase 1: Atomic allowance consumption ──────────────────────────
     const atomicResult = await this.prisma.whatsappDevice.updateMany({

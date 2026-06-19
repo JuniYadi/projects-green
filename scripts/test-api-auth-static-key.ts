@@ -68,9 +68,7 @@ async function run() {
       },
     })
     keyId = apiKey.id
-    console.log(
-      `Created test API key: ${keyId} (raw key printed below)\n`
-    )
+    console.log(`Created test API key: ${keyId} (raw key printed below)\n`)
 
     // Test 1: whoami with valid key → 200 + ok:true + type:platform
     {
@@ -81,9 +79,7 @@ async function run() {
       const auth = body.auth as Record<string, unknown> | null
       assert(
         "GET /api/auth/whoami (valid Bearer key) → 200 + ok:true + type:platform",
-        res.status === 200 &&
-          body.ok === true &&
-          auth?.type === "platform",
+        res.status === 200 && body.ok === true && auth?.type === "platform",
         `status=${res.status} ok=${body.ok} type=${auth?.type}`
       )
     }
@@ -144,9 +140,7 @@ async function run() {
   } finally {
     // Cleanup: delete the test key
     if (keyId) {
-      await prisma.authApiKey
-        .delete({ where: { id: keyId } })
-        .catch(() => {})
+      await prisma.authApiKey.delete({ where: { id: keyId } }).catch(() => {})
       console.log(`\nCleaned up test key: ${keyId}`)
     }
     await prisma.$disconnect()
@@ -155,9 +149,7 @@ async function run() {
   // Summary
   const passed = results.filter((r) => r.pass).length
   const failed = results.filter((r) => !r.pass).length
-  console.log(
-    `\n${passed} passed, ${failed} failed, ${results.length} total\n`
-  )
+  console.log(`\n${passed} passed, ${failed} failed, ${results.length} total\n`)
   process.exit(failed > 0 ? 1 : 0)
 }
 

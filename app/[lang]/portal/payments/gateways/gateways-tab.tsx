@@ -15,7 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -50,7 +56,9 @@ type ProviderOptionDTO = {
 }
 
 function readSupportedCurrencies(formData: FormData): string[] {
-  return CURRENCY_OPTIONS.filter((code) => formData.get(`currency_${code}`) === "on")
+  return CURRENCY_OPTIONS.filter(
+    (code) => formData.get(`currency_${code}`) === "on"
+  )
 }
 
 function readConfigValues(
@@ -71,12 +79,16 @@ type GatewaysRequestState =
   | { status: "error"; message: string }
 
 export function GatewaysTab() {
-  const [state, setState] = useState<GatewaysRequestState>({ status: "loading" })
+  const [state, setState] = useState<GatewaysRequestState>({
+    status: "loading",
+  })
   const [providers, setProviders] = useState<ProviderOptionDTO[]>([])
   const [, setProvidersLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null)
+  const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(
+    null
+  )
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
   // Track selected provider type for dynamic config fields
@@ -84,7 +96,9 @@ export function GatewaysTab() {
   const [editProviderType, setEditProviderType] = useState<string>("")
 
   const currentProvider = providers.find((p) => p.value === selectedProvider)
-  const editProvider = providers.find((p) => p.value === editProviderType) || providers.find((p) => p.value === editingGateway?.type)
+  const editProvider =
+    providers.find((p) => p.value === editProviderType) ||
+    providers.find((p) => p.value === editingGateway?.type)
 
   const gatewayColumns = useMemo<ColumnDef<PaymentGateway>[]>(
     () => [
@@ -98,8 +112,8 @@ export function GatewaysTab() {
           <div className="grid gap-1">
             <span className="font-medium">{row.original.name}</span>
             <span className="text-xs text-muted-foreground">
-              {providers.find((p) => p.value === row.original.type)
-                ?.label || row.original.type}
+              {providers.find((p) => p.value === row.original.type)?.label ||
+                row.original.type}
             </span>
           </div>
         ),
@@ -113,7 +127,8 @@ export function GatewaysTab() {
       },
       {
         id: "currencies",
-        accessorFn: (gateway) => gateway.supportedCurrencies?.join(", ") || "all",
+        accessorFn: (gateway) =>
+          gateway.supportedCurrencies?.join(", ") || "all",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Currencies" />
         ),
@@ -185,7 +200,10 @@ export function GatewaysTab() {
       if (payload.ok) {
         setState({ status: "success", data: payload.data || [] })
       } else {
-        setState({ status: "error", message: payload.message || "Failed to load gateways" })
+        setState({
+          status: "error",
+          message: payload.message || "Failed to load gateways",
+        })
       }
     } catch {
       setState({ status: "error", message: "Failed to load gateways" })
@@ -194,7 +212,8 @@ export function GatewaysTab() {
 
   const fetchProviders = useCallback(async () => {
     try {
-      const { data: payload } = await eden.api.portal.payments.gateways.providers.get()
+      const { data: payload } =
+        await eden.api.portal.payments.gateways.providers.get()
       if (payload?.ok) {
         setProviders(payload.data || [])
       }
@@ -214,7 +233,8 @@ export function GatewaysTab() {
   async function handleToggle(gateway: PaymentGateway) {
     setTogglingId(gateway.id)
     try {
-      const { data: payload } = await eden.api.portal.payments.gateways[gateway.id].toggle.patch()
+      const { data: payload } =
+        await eden.api.portal.payments.gateways[gateway.id].toggle.patch()
       if (payload?.ok) {
         await fetchGateways()
       }
@@ -232,7 +252,9 @@ export function GatewaysTab() {
 
     const providerType = String(formData.get("type") || "")
     const providerDef = providers.find((p) => p.value === providerType)
-    const config = providerDef ? readConfigValues(formData, providerDef.configFields) : {}
+    const config = providerDef
+      ? readConfigValues(formData, providerDef.configFields)
+      : {}
     const currencies = readSupportedCurrencies(formData)
 
     try {
@@ -242,12 +264,17 @@ export function GatewaysTab() {
         supportedCurrencies: currencies,
         config,
       }
-      const { data: payload } = await eden.api.portal.payments.gateways.post(body as never)
+      const { data: payload } = await eden.api.portal.payments.gateways.post(
+        body as never
+      )
 
       if (!payload?.ok) {
         setState({
           status: "error",
-          message: "message" in (payload ?? {}) ? (payload as { message: string }).message : "Failed to create gateway",
+          message:
+            "message" in (payload ?? {})
+              ? (payload as { message: string }).message
+              : "Failed to create gateway",
         })
         return
       }
@@ -268,8 +295,12 @@ export function GatewaysTab() {
     const formData = new FormData(event.currentTarget)
     setIsSubmitting(true)
 
-    const providerDef = providers.find((p) => p.value === (editProviderType || editingGateway.type))
-    const config = providerDef ? readConfigValues(formData, providerDef.configFields) : {}
+    const providerDef = providers.find(
+      (p) => p.value === (editProviderType || editingGateway.type)
+    )
+    const config = providerDef
+      ? readConfigValues(formData, providerDef.configFields)
+      : {}
     const currencies = readSupportedCurrencies(formData)
 
     try {
@@ -278,7 +309,9 @@ export function GatewaysTab() {
         supportedCurrencies: currencies,
         config,
       }
-      const { data: payload } = await eden.api.portal.payments.gateways[editingGateway.id].put(body as never)
+      const { data: payload } = await eden.api.portal.payments.gateways[
+        editingGateway.id
+      ].put(body as never)
       if (!payload?.ok) {
         setState({
           status: "error",
@@ -308,7 +341,7 @@ export function GatewaysTab() {
             <select
               name={field.key}
               defaultValue={defaults?.[field.key] || field.options[0].value}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             >
               {field.options.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -354,7 +387,12 @@ export function GatewaysTab() {
       <div className="rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
         {state.message}
         <div className="mt-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => void fetchGateways()}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void fetchGateways()}
+          >
             Retry
           </Button>
         </div>
@@ -408,29 +446,41 @@ export function GatewaysTab() {
                 </Select>
               </Label>
 
-              {currentProvider && renderConfigFields(currentProvider.configFields)}
+              {currentProvider &&
+                renderConfigFields(currentProvider.configFields)}
 
               <fieldset className="space-y-2 text-sm font-medium md:col-span-2">
                 <span>Supported currencies</span>
                 <div className="flex gap-4">
                   {CURRENCY_OPTIONS.map((code) => (
-                    <label key={code} className="flex items-center gap-2 font-normal">
+                    <label
+                      key={code}
+                      className="flex items-center gap-2 font-normal"
+                    >
                       <input
                         type="checkbox"
                         name={`currency_${code}`}
-                        defaultChecked={currentProvider?.supportedCurrencies.includes(code) || false}
+                        defaultChecked={
+                          currentProvider?.supportedCurrencies.includes(code) ||
+                          false
+                        }
                       />
                       <span>{code}</span>
                     </label>
                   ))}
                 </div>
                 <p className="text-xs font-normal text-muted-foreground">
-                  Defaults to the provider&apos;s supported currencies. Uncheck to restrict.
+                  Defaults to the provider&apos;s supported currencies. Uncheck
+                  to restrict.
                 </p>
               </fieldset>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button type="submit" size="sm" disabled={isSubmitting || !selectedProvider}>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isSubmitting || !selectedProvider}
+              >
                 {isSubmitting ? "Creating..." : "Create gateway"}
               </Button>
               <Button
@@ -465,22 +515,31 @@ export function GatewaysTab() {
 
               <Label className="space-y-2 text-sm font-medium md:col-span-2">
                 <span>Provider</span>
-                <div className="text-sm text-muted-foreground flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2 pt-1 text-sm text-muted-foreground">
                   <Badge variant="outline">{editingGateway.type}</Badge>
                 </div>
               </Label>
 
-              {editProvider && renderConfigFields(editProvider.configFields, editingGateway.config)}
+              {editProvider &&
+                renderConfigFields(
+                  editProvider.configFields,
+                  editingGateway.config
+                )}
 
               <fieldset className="space-y-2 text-sm font-medium md:col-span-2">
                 <span>Supported currencies</span>
                 <div className="flex gap-4">
                   {CURRENCY_OPTIONS.map((code) => (
-                    <label key={code} className="flex items-center gap-2 font-normal">
+                    <label
+                      key={code}
+                      className="flex items-center gap-2 font-normal"
+                    >
                       <input
                         type="checkbox"
                         name={`currency_${code}`}
-                        defaultChecked={editingGateway.supportedCurrencies?.includes(code)}
+                        defaultChecked={editingGateway.supportedCurrencies?.includes(
+                          code
+                        )}
                       />
                       <span>{code}</span>
                     </label>

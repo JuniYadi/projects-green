@@ -33,7 +33,9 @@ describe("CurrenciesTab", () => {
     const view = render(<CurrenciesTab />)
 
     expect(await view.findByRole("table")).toBeInTheDocument()
-    expect(view.getByRole("columnheader", { name: /currency/i })).toBeInTheDocument()
+    expect(
+      view.getByRole("columnheader", { name: /currency/i })
+    ).toBeInTheDocument()
     expect(view.getByLabelText("Filter currencies...")).toBeInTheDocument()
   })
 })

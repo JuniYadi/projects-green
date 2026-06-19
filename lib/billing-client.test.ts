@@ -33,15 +33,11 @@ describe("billing-client", () => {
     })
   }
 
-  function mockErrorResponse(
-    message: string,
-    status: number,
-    error = "ERROR"
-  ) {
-    return new Response(
-      JSON.stringify({ ok: false, error, message }),
-      { status, headers: { "content-type": "application/json" } }
-    )
+  function mockErrorResponse(message: string, status: number, error = "ERROR") {
+    return new Response(JSON.stringify({ ok: false, error, message }), {
+      status,
+      headers: { "content-type": "application/json" },
+    })
   }
 
   function mockReject(error: Error) {
@@ -81,9 +77,7 @@ describe("billing-client", () => {
     })
 
     it("throws on 401 error", async () => {
-      mockFetch.mockResolvedValueOnce(
-        mockErrorResponse("Unauthorized", 401)
-      )
+      mockFetch.mockResolvedValueOnce(mockErrorResponse("Unauthorized", 401))
 
       await expect(getAccount()).rejects.toThrow("Unauthorized")
     })
@@ -141,9 +135,7 @@ describe("billing-client", () => {
         mockErrorResponse("No subscriptions found", 404)
       )
 
-      await expect(getSubscriptions()).rejects.toThrow(
-        "No subscriptions found"
-      )
+      await expect(getSubscriptions()).rejects.toThrow("No subscriptions found")
     })
   })
 
@@ -183,9 +175,7 @@ describe("billing-client", () => {
         mockErrorResponse("Failed to fetch invoices", 500)
       )
 
-      await expect(getInvoices()).rejects.toThrow(
-        "Failed to fetch invoices"
-      )
+      await expect(getInvoices()).rejects.toThrow("Failed to fetch invoices")
     })
 
     it("throws when ok:false in 200 response", async () => {
@@ -244,9 +234,7 @@ describe("billing-client", () => {
         mockErrorResponse("Invoice not found", 404)
       )
 
-      await expect(getInvoice("inv_999")).rejects.toThrow(
-        "Invoice not found"
-      )
+      await expect(getInvoice("inv_999")).rejects.toThrow("Invoice not found")
     })
   })
 
@@ -286,7 +274,10 @@ describe("billing-client", () => {
         })
       )
 
-      const input = { amount: 50000, paymentMethod: "manual_bank_transfer" as const }
+      const input = {
+        amount: 50000,
+        paymentMethod: "manual_bank_transfer" as const,
+      }
       await topup(input)
 
       const init = mockFetch.mock.calls[0][1] as RequestInit
@@ -295,9 +286,7 @@ describe("billing-client", () => {
     })
 
     it("throws on error", async () => {
-      mockFetch.mockResolvedValueOnce(
-        mockErrorResponse("Topup failed", 400)
-      )
+      mockFetch.mockResolvedValueOnce(mockErrorResponse("Topup failed", 400))
 
       await expect(
         topup({ amount: 1000, paymentMethod: "manual_bank_transfer" })
@@ -335,9 +324,7 @@ describe("billing-client", () => {
     })
 
     it("throws on error", async () => {
-      mockFetch.mockResolvedValueOnce(
-        mockErrorResponse("Payment failed", 402)
-      )
+      mockFetch.mockResolvedValueOnce(mockErrorResponse("Payment failed", 402))
 
       await expect(payWithBalance("inv_1")).rejects.toThrow("Payment failed")
     })
@@ -386,9 +373,7 @@ describe("billing-client", () => {
         mockErrorResponse("Topup and pay failed", 500)
       )
 
-      await expect(topupAndPay("inv_1")).rejects.toThrow(
-        "Topup and pay failed"
-      )
+      await expect(topupAndPay("inv_1")).rejects.toThrow("Topup and pay failed")
     })
   })
 
@@ -426,9 +411,7 @@ describe("billing-client", () => {
         mockErrorResponse("No payment methods", 404)
       )
 
-      await expect(getPaymentMethods()).rejects.toThrow(
-        "No payment methods"
-      )
+      await expect(getPaymentMethods()).rejects.toThrow("No payment methods")
     })
   })
 
@@ -466,9 +449,9 @@ describe("billing-client", () => {
         mockErrorResponse("Account not found", 404)
       )
 
-      await expect(
-        setDefaultPaymentMethod("ba_999")
-      ).rejects.toThrow("Account not found")
+      await expect(setDefaultPaymentMethod("ba_999")).rejects.toThrow(
+        "Account not found"
+      )
     })
   })
 
@@ -531,9 +514,7 @@ describe("billing-client", () => {
     })
 
     it("throws on error", async () => {
-      mockFetch.mockResolvedValueOnce(
-        mockErrorResponse("Forbidden", 403)
-      )
+      mockFetch.mockResolvedValueOnce(mockErrorResponse("Forbidden", 403))
 
       await expect(getAdminMembers()).rejects.toThrow("Forbidden")
     })
@@ -591,9 +572,7 @@ describe("billing-client", () => {
       const result = await getAdminAdjustments()
       expect(result.ok).toBe(true)
       expect(result.adjustments).toEqual([])
-      expect(mockFetch.mock.calls[0][0]).toBe(
-        "/api/billing/admin/adjustments"
-      )
+      expect(mockFetch.mock.calls[0][0]).toBe("/api/billing/admin/adjustments")
     })
 
     it("builds query string from params", async () => {
@@ -678,9 +657,7 @@ describe("billing-client", () => {
         )
       )
 
-      await expect(topupAndPay("inv_1")).rejects.toThrow(
-        "Insufficient balance"
-      )
+      await expect(topupAndPay("inv_1")).rejects.toThrow("Insufficient balance")
     })
 
     it("throws for setDefaultPaymentMethod with ok:false on 200", async () => {
@@ -712,9 +689,7 @@ describe("billing-client", () => {
         )
       )
 
-      await expect(removePaymentMethod("ba_1")).rejects.toThrow(
-        "Cannot remove"
-      )
+      await expect(removePaymentMethod("ba_1")).rejects.toThrow("Cannot remove")
     })
   })
 })

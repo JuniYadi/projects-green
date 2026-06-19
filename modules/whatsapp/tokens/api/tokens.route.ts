@@ -11,115 +11,173 @@ const tokenBodySchema = t.Object({
 const tokenUpdateSchema = t.Partial(tokenBodySchema)
 
 export const tokensRoutes = new Elysia({ prefix: "/tokens" })
-  .get("/", async ({ request, set }: { request: any, set: any }) => {
+  .get("/", async ({ request, set }: { request: any; set: any }) => {
     const whatsappAuth = await resolveAuthContext(request)
     if (!whatsappAuth) {
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
     const tokens = await prisma.whatsappApiKey.findMany({
-      where: whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin" 
-        ? { organizationId: whatsappAuth.organizationId! } 
-        : {},
+      where:
+        whatsappAuth.type === "workos" &&
+        whatsappAuth.platformRole !== "super_admin"
+          ? { organizationId: whatsappAuth.organizationId! }
+          : {},
       orderBy: { createdAt: "desc" },
     })
     return { ok: true, tokens }
   })
-  .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+  .get(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const token = await prisma.whatsappApiKey.findUnique({
+        where: { id },
+      })
+
+      if (!token) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Token not found." }
+      }
+
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        token.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      return { ok: true, token }
     }
-    const token = await prisma.whatsappApiKey.findUnique({
-      where: { id },
-    })
+  )
+  .post(
+    "/",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: "Organization ID required.",
+        }
+      }
 
-    if (!token) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Token not found." }
+      const token = await prisma.whatsappApiKey.create({
+        data: {
+          ...body,
+          organizationId:
+            whatsappAuth.type === "workos"
+              ? whatsappAuth.organizationId!
+              : (body as any).organizationId,
+        },
+      })
+
+      return { ok: true, token }
+    },
+    {
+      body: tokenBodySchema,
     }
+  )
+  .patch(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      body,
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      body: any
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const token = await prisma.whatsappApiKey.findUnique({
+        where: { id },
+      })
 
-    if ((whatsappAuth as any).platformRole !== "super_admin" && token.organizationId !== whatsappAuth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      if (!token) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Token not found." }
+      }
+
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        token.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      const updated = await prisma.whatsappApiKey.update({
+        where: { id },
+        data: body,
+      })
+
+      return { ok: true, token: updated }
+    },
+    {
+      body: tokenUpdateSchema,
     }
+  )
+  .delete(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const token = await prisma.whatsappApiKey.findUnique({
+        where: { id },
+      })
 
-    return { ok: true, token }
-  })
-  .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      if (!token) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Token not found." }
+      }
+
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        token.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      await prisma.whatsappApiKey.delete({
+        where: { id },
+      })
+      return { ok: true, message: "Token deleted." }
     }
-    if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
-      set.status = 400
-      return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
-    }
-
-    const token = await prisma.whatsappApiKey.create({
-      data: {
-        ...body,
-        organizationId: whatsappAuth.type === "workos" ? whatsappAuth.organizationId! : (body as any).organizationId,
-      },
-    })
-
-    return { ok: true, token }
-  }, {
-    body: tokenBodySchema
-  })
-  .patch("/:id", async ({ request, params: { id }, body, set }: { request: any, params: { id: string }, body: any, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const token = await prisma.whatsappApiKey.findUnique({
-      where: { id },
-    })
-
-    if (!token) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Token not found." }
-    }
-
-    if ((whatsappAuth as any).platformRole !== "super_admin" && token.organizationId !== whatsappAuth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
-
-    const updated = await prisma.whatsappApiKey.update({
-      where: { id },
-      data: body,
-    })
-
-    return { ok: true, token: updated }
-  }, {
-    body: tokenUpdateSchema
-  })
-  .delete("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const token = await prisma.whatsappApiKey.findUnique({
-      where: { id },
-    })
-
-    if (!token) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Token not found." }
-    }
-
-    if ((whatsappAuth as any).platformRole !== "super_admin" && token.organizationId !== whatsappAuth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
-
-    await prisma.whatsappApiKey.delete({
-      where: { id },
-    })
-    return { ok: true, message: "Token deleted." }
-  })
+  )

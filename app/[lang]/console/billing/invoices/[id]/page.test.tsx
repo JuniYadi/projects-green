@@ -7,7 +7,6 @@ import InvoiceDetailPage from "./page"
 
 const originalFetch = globalThis.fetch
 
-
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -98,7 +97,9 @@ describe("Billing InvoiceDetailPage", () => {
 
     expect(view.getByText("1234567890")).toBeInTheDocument()
     expect(view.getByText("PFNApp Technologies Inc.")).toBeInTheDocument()
-    expect(view.getByRole("link", { name: /confirm payment/i })).toBeInTheDocument()
+    expect(
+      view.getByRole("link", { name: /confirm payment/i })
+    ).toBeInTheDocument()
   })
 
   it("shows a continue payment gateway action when gateway URL exists", async () => {

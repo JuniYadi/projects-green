@@ -18,9 +18,8 @@ mock.module("./jenkins.service", () => ({
 }))
 
 // 3. only then import the thing under test
-const { JenkinsWebhookHandler: Handler } = await import(
-  "./jenkins-webhook.handler"
-)
+const { JenkinsWebhookHandler: Handler } =
+  await import("./jenkins-webhook.handler")
 
 describe("JenkinsWebhookHandler", () => {
   const consoleWarn = console.warn
@@ -54,9 +53,7 @@ describe("JenkinsWebhookHandler", () => {
         const result = await handler.verifyToken(null)
         expect(result).toBe(false)
         expect(warnMessages.length).toBe(1)
-        expect(warnMessages[0]).toBe(
-          "JENKINS_WEBHOOK_TOKEN is not configured"
-        )
+        expect(warnMessages[0]).toBe("JENKINS_WEBHOOK_TOKEN is not configured")
       } finally {
         console.warn = consoleWarn
       }
@@ -71,9 +68,7 @@ describe("JenkinsWebhookHandler", () => {
         fullName: "org/test-app",
         buildConfigJson: null,
       }
-      mockPrisma.githubRepositoryConnection.findFirst.mockResolvedValue(
-        mockApp
-      )
+      mockPrisma.githubRepositoryConnection.findFirst.mockResolvedValue(mockApp)
 
       const result = await handler.resolveApplicationStack("test-app")
 

@@ -46,7 +46,7 @@ function createTestApp() {
 
 function getEventsUrl(
   deviceId: string,
-  query: Record<string, string> = {},
+  query: Record<string, string> = {}
 ): string {
   const params = new URLSearchParams(query).toString()
   return `http://localhost/webhooks/${deviceId}/events${params ? `?${params}` : ""}`
@@ -123,9 +123,7 @@ describe("webhooks routes — GET /:id/events", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(
-      new Request(getEventsUrl("device-1")),
-    )
+    const response = await app.handle(new Request(getEventsUrl("device-1")))
 
     expect(response.status).toBe(401)
     const body = await response.json()
@@ -140,9 +138,7 @@ describe("webhooks routes — GET /:id/events", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(
-      new Request(getEventsUrl("device-other")),
-    )
+    const response = await app.handle(new Request(getEventsUrl("device-other")))
 
     expect(response.status).toBe(403)
     const body = await response.json()
@@ -165,9 +161,7 @@ describe("webhooks routes — GET /:id/events", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(
-      new Request(getEventsUrl("device-other")),
-    )
+    const response = await app.handle(new Request(getEventsUrl("device-other")))
 
     expect(response.status).toBe(200)
     const body = await response.json()
@@ -182,7 +176,7 @@ describe("webhooks routes — GET /:id/events", () => {
     const app = createTestApp()
 
     const response = await app.handle(
-      new Request(getEventsUrl("device-missing")),
+      new Request(getEventsUrl("device-missing"))
     )
 
     expect(response.status).toBe(404)
@@ -196,9 +190,7 @@ describe("webhooks routes — GET /:id/events", () => {
   it("returns paginated events for a device", async () => {
     const app = createTestApp()
 
-    const response = await app.handle(
-      new Request(getEventsUrl("device-1")),
-    )
+    const response = await app.handle(new Request(getEventsUrl("device-1")))
 
     expect(response.status).toBe(200)
     const body = await response.json()
@@ -218,9 +210,7 @@ describe("webhooks routes — GET /:id/events", () => {
 
     const app = createTestApp()
 
-    const response = await app.handle(
-      new Request(getEventsUrl("device-1")),
-    )
+    const response = await app.handle(new Request(getEventsUrl("device-1")))
 
     expect(response.status).toBe(200)
     const body = await response.json()
@@ -235,13 +225,13 @@ describe("webhooks routes — GET /:id/events", () => {
     const app = createTestApp()
 
     await app.handle(
-      new Request(getEventsUrl("device-1", { type: "inbound_message" })),
+      new Request(getEventsUrl("device-1", { type: "inbound_message" }))
     )
 
     expect(mockWebhookEventCount).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ eventType: "inbound_message" }),
-      }),
+      })
     )
   })
 
@@ -249,13 +239,13 @@ describe("webhooks routes — GET /:id/events", () => {
     const app = createTestApp()
 
     await app.handle(
-      new Request(getEventsUrl("device-1", { status: "FAILED" })),
+      new Request(getEventsUrl("device-1", { status: "FAILED" }))
     )
 
     expect(mockWebhookEventCount).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ processingStatus: "FAILED" }),
-      }),
+      })
     )
   })
 
@@ -267,8 +257,8 @@ describe("webhooks routes — GET /:id/events", () => {
         getEventsUrl("device-1", {
           from: "2026-06-01T00:00:00.000Z",
           to: "2026-06-30T23:59:59.000Z",
-        }),
-      ),
+        })
+      )
     )
 
     expect(mockWebhookEventCount).toHaveBeenCalledWith(
@@ -279,7 +269,7 @@ describe("webhooks routes — GET /:id/events", () => {
             lte: new Date("2026-06-30T23:59:59.000Z"),
           },
         }),
-      }),
+      })
     )
   })
 
@@ -287,51 +277,47 @@ describe("webhooks routes — GET /:id/events", () => {
     const app = createTestApp()
 
     await app.handle(
-      new Request(getEventsUrl("device-1", { page: "3", limit: "10" })),
+      new Request(getEventsUrl("device-1", { page: "3", limit: "10" }))
     )
 
     expect(mockWebhookEventFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         skip: 20, // (3-1) * 10
         take: 10,
-      }),
+      })
     )
   })
 
-  it('clamps limit to max 100 when excessive', async () => {
+  it("clamps limit to max 100 when excessive", async () => {
     const app = createTestApp()
 
-    await app.handle(
-      new Request(getEventsUrl("device-1", { limit: "999" })),
-    )
+    await app.handle(new Request(getEventsUrl("device-1", { limit: "999" })))
 
     // findMany after the service clamps it
     expect(mockWebhookEventFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 100 }),
+      expect.objectContaining({ take: 100 })
     )
   })
 
-  it('uses page=1 when page param is 0 or negative', async () => {
+  it("uses page=1 when page param is 0 or negative", async () => {
     const app = createTestApp()
 
-    await app.handle(
-      new Request(getEventsUrl("device-1", { page: "0" })),
-    )
+    await app.handle(new Request(getEventsUrl("device-1", { page: "0" })))
 
     // Route uses Math.max(Number(query.page) || 1, 1)
     // Number("0") = 0 → 0 || 1 = 1 → Math.max(1, 1) = 1
     expect(mockWebhookEventFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ skip: 0 }),
+      expect.objectContaining({ skip: 0 })
     )
   })
 
-  it('uses limit=20 when limit param is missing', async () => {
+  it("uses limit=20 when limit param is missing", async () => {
     const app = createTestApp()
 
     await app.handle(new Request(getEventsUrl("device-1")))
 
     expect(mockWebhookEventFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 20 }),
+      expect.objectContaining({ take: 20 })
     )
   })
 
@@ -358,7 +344,7 @@ describe("webhooks routes — GET /:id/events", () => {
     expect(mockWebhookEventFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: { createdAt: "desc" },
-      }),
+      })
     )
   })
 })

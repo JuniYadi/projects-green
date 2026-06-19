@@ -32,7 +32,7 @@ import { prisma } from "@/lib/prisma"
 const rawArgs = process.argv.slice(2)
 
 const flags = new Set(
-  rawArgs.filter((a) => a.startsWith("-") && !a.includes("=")),
+  rawArgs.filter((a) => a.startsWith("-") && !a.includes("="))
 )
 
 const params = new Map(
@@ -41,7 +41,7 @@ const params = new Map(
     .map((a) => {
       const idx = a.indexOf("=")
       return [a.slice(0, idx), a.slice(idx + 1)] as const
-    }),
+    })
 )
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ async function runList(): Promise<void> {
       "Type".padEnd(10) +
       "Order".padEnd(7) +
       "Tag".padEnd(22) +
-      "Description",
+      "Description"
   )
   console.log("  " + "─".repeat(95))
 
@@ -88,7 +88,7 @@ async function runList(): Promise<void> {
         `${icon} ${c.classification}`.padEnd(10) +
         String(c.runOrder).padEnd(7) +
         tag.padEnd(22) +
-        c.description,
+        c.description
     )
   }
   console.log()
@@ -98,7 +98,7 @@ async function runList(): Promise<void> {
 
 async function runSeeders(
   mode: "seed" | "unseed",
-  classification?: SeedClassification,
+  classification?: SeedClassification
 ): Promise<void> {
   await discoverSeeders()
 
@@ -150,7 +150,7 @@ async function runSeeders(
  */
 async function runOne(
   SeederClass: SeederClass,
-  mode: "seed" | "unseed",
+  mode: "seed" | "unseed"
 ): Promise<RunStats> {
   const { seederName, classification } = SeederClass
 
@@ -158,7 +158,7 @@ async function runOne(
   const missing = SeederClass.validateEnv()
   if (missing.length > 0) {
     console.log(
-      `  ⏭️  ${seederName} — skipped (missing: ${missing.join(", ")})`,
+      `  ⏭️  ${seederName} — skipped (missing: ${missing.join(", ")})`
     )
     return {
       name: seederName,
@@ -209,7 +209,7 @@ function printSummary(stats: RunStats[]): void {
       "Deleted".padEnd(9) +
       "Skipped".padEnd(9) +
       "Errors".padEnd(8) +
-      "Time",
+      "Time"
   )
   console.log("  " + "─".repeat(90))
 
@@ -225,7 +225,7 @@ function printSummary(stats: RunStats[]): void {
         String(s.deleted).padEnd(9) +
         String(s.skipped).padEnd(9) +
         String(s.errors.length).padEnd(8) +
-        fmtDuration(s.durationMs),
+        fmtDuration(s.durationMs)
     )
 
     totals.created += s.created
@@ -247,7 +247,7 @@ function printSummary(stats: RunStats[]): void {
       String(totals.updated).padEnd(9) +
       String(totals.deleted).padEnd(9) +
       String(totals.skipped).padEnd(9) +
-      String(totals.errors).padEnd(8),
+      String(totals.errors).padEnd(8)
   )
   console.log()
 }
@@ -281,7 +281,7 @@ async function main(): Promise<void> {
     !params.has("--unseed")
   ) {
     console.log(
-      "Usage: seed-runner [--system|--dummy|--all|--list|--seed=Name|--unseed=Name]",
+      "Usage: seed-runner [--system|--dummy|--all|--list|--seed=Name|--unseed=Name]"
     )
     process.exit(1)
   }

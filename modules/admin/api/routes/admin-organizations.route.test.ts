@@ -61,24 +61,34 @@ mock.module("@/modules/admin/api/admin.guards", () => ({
   getAdminActorContext: mock<() => Promise<null>>(async () => null),
   toUnauthorizedError: (set: { status?: number | string }) => {
     set.status = 401
-    return { ok: false as const, error: "UNAUTHORIZED", message: "You must be signed in" }
+    return {
+      ok: false as const,
+      error: "UNAUTHORIZED",
+      message: "You must be signed in",
+    }
   },
   toForbiddenError: (set: { status?: number | string }) => {
     set.status = 403
-    return { ok: false as const, error: "FORBIDDEN", policyCode: "SUPER_ADMIN_REQUIRED", message: "Forbidden" }
+    return {
+      ok: false as const,
+      error: "FORBIDDEN",
+      policyCode: "SUPER_ADMIN_REQUIRED",
+      message: "Forbidden",
+    }
   },
 }))
 
-const { createAdminOrganizationsRoutes } = await import(
-  "@/modules/admin/api/routes/admin-organizations.route"
-)
+const { createAdminOrganizationsRoutes } =
+  await import("@/modules/admin/api/routes/admin-organizations.route")
 
 const BASE = "http://localhost/admin/organizations"
 
 describe("Admin Organizations Routes", () => {
   describe("GET /admin/organizations", () => {
     it("returns 200 with list of organizations when guard allows", async () => {
-      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
@@ -106,15 +116,17 @@ describe("Admin Organizations Routes", () => {
     })
 
     it("returns 403 when guard returns forbidden", async () => {
-      const forbiddenGuard = mock<(...args: unknown[]) => unknown>(async (set: unknown) => {
-        ;(set as { status?: number | string }).status = 403
-        return {
-          ok: false as const,
-          error: "FORBIDDEN" as const,
-          policyCode: "SUPER_ADMIN_REQUIRED" as const,
-          message: "This action requires super admin access.",
+      const forbiddenGuard = mock<(...args: unknown[]) => unknown>(
+        async (set: unknown) => {
+          ;(set as { status?: number | string }).status = 403
+          return {
+            ok: false as const,
+            error: "FORBIDDEN" as const,
+            policyCode: "SUPER_ADMIN_REQUIRED" as const,
+            message: "This action requires super admin access.",
+          }
         }
-      })
+      )
       const app = new Elysia().use(
         createAdminOrganizationsRoutes({ requireSuperAdmin: forbiddenGuard })
       )
@@ -128,7 +140,9 @@ describe("Admin Organizations Routes", () => {
     })
 
     it("calls listAdminOrganizations on success", async () => {
-      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
@@ -157,15 +171,17 @@ describe("Admin Organizations Routes", () => {
     })
 
     it("returns 403 when guard returns forbidden on POST", async () => {
-      const forbiddenGuard = mock<(...args: unknown[]) => unknown>(async (set: unknown) => {
-        ;(set as { status?: number | string }).status = 403
-        return {
-          ok: false as const,
-          error: "FORBIDDEN" as const,
-          policyCode: "SUPER_ADMIN_REQUIRED" as const,
-          message: "Forbidden",
+      const forbiddenGuard = mock<(...args: unknown[]) => unknown>(
+        async (set: unknown) => {
+          ;(set as { status?: number | string }).status = 403
+          return {
+            ok: false as const,
+            error: "FORBIDDEN" as const,
+            policyCode: "SUPER_ADMIN_REQUIRED" as const,
+            message: "Forbidden",
+          }
         }
-      })
+      )
       const app = new Elysia().use(
         createAdminOrganizationsRoutes({ requireSuperAdmin: forbiddenGuard })
       )
@@ -184,7 +200,9 @@ describe("Admin Organizations Routes", () => {
     })
 
     it("returns 201 with created organization on valid POST", async () => {
-      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
@@ -208,11 +226,15 @@ describe("Admin Organizations Routes", () => {
     })
 
     it("returns WorkOS error when createAdminOrganization throws", async () => {
-      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
-      mockCreateAdminOrganization.mockRejectedValueOnce(new Error("WORKOS_ERROR"))
+      mockCreateAdminOrganization.mockRejectedValueOnce(
+        new Error("WORKOS_ERROR")
+      )
 
       const app = new Elysia().use(
         createAdminOrganizationsRoutes({ requireSuperAdmin: allowedGuard })
@@ -234,13 +256,17 @@ describe("Admin Organizations Routes", () => {
   describe("GET /admin/organizations/:id/members", () => {
     it("returns 401 when guard returns unauthorized", async () => {
       const app = new Elysia().use(createAdminOrganizationsRoutes())
-      const res = await app.handle(new Request(`${BASE}/org_1/members`, { method: "GET" }))
+      const res = await app.handle(
+        new Request(`${BASE}/org_1/members`, { method: "GET" })
+      )
 
       expect(res.status).toBe(401)
     })
 
     it("returns 200 with members list when guard allows", async () => {
-      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
@@ -248,7 +274,9 @@ describe("Admin Organizations Routes", () => {
       const app = new Elysia().use(
         createAdminOrganizationsRoutes({ requireSuperAdmin: allowedGuard })
       )
-      const res = await app.handle(new Request(`${BASE}/org_1/members`, { method: "GET" }))
+      const res = await app.handle(
+        new Request(`${BASE}/org_1/members`, { method: "GET" })
+      )
 
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -258,16 +286,22 @@ describe("Admin Organizations Routes", () => {
     })
 
     it("returns WorkOS error when listAdminOrganizationMembers throws", async () => {
-      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
-      mockListAdminOrganizationMembers.mockRejectedValueOnce(new Error("WORKOS_ERROR"))
+      mockListAdminOrganizationMembers.mockRejectedValueOnce(
+        new Error("WORKOS_ERROR")
+      )
 
       const app = new Elysia().use(
         createAdminOrganizationsRoutes({ requireSuperAdmin: allowedGuard })
       )
-      const res = await app.handle(new Request(`${BASE}/org_1/members`, { method: "GET" }))
+      const res = await app.handle(
+        new Request(`${BASE}/org_1/members`, { method: "GET" })
+      )
 
       expect(res.status).toBe(500)
       const body = await res.json()
@@ -277,7 +311,9 @@ describe("Admin Organizations Routes", () => {
 
   describe("GET /admin/organizations — search filter", () => {
     it("filters organizations by search query", async () => {
-      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
@@ -285,7 +321,9 @@ describe("Admin Organizations Routes", () => {
       const app = new Elysia().use(
         createAdminOrganizationsRoutes({ requireSuperAdmin: allowedGuard })
       )
-      const res = await app.handle(new Request(`${BASE}/?search=acme`, { method: "GET" }))
+      const res = await app.handle(
+        new Request(`${BASE}/?search=acme`, { method: "GET" })
+      )
 
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -296,7 +334,9 @@ describe("Admin Organizations Routes", () => {
     })
 
     it("returns WorkOS error when listAdminOrganizations throws", async () => {
-      const allowedGuard = mock<() => Promise<{ userId: string; platformRole: "super_admin" }>>(async () => ({
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))

@@ -31,9 +31,7 @@ export type GithubEventListDTO = {
 }
 
 // Mappers — convert Prisma results to DTOs
-export const toEventRowDTO = (
-  event: unknown
-): GithubEventRowDTO => {
+export const toEventRowDTO = (event: unknown): GithubEventRowDTO => {
   const e = event as Record<string, unknown>
   return {
     id: String(e.id),
@@ -55,9 +53,7 @@ export const toEventRowDTO = (
   }
 }
 
-export const toEventDetailDTO = (
-  event: unknown
-): GithubEventDetailDTO => {
+export const toEventDetailDTO = (event: unknown): GithubEventDetailDTO => {
   const e = event as Record<string, unknown>
   return {
     ...toEventRowDTO(e),

@@ -37,7 +37,11 @@ const mockRequireTenantActor = mock(
 )
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(
-  (_orgId: string, _actor: MockActor, _set: MockRouteSet): true | TenantApiError => true
+  (
+    _orgId: string,
+    _actor: MockActor,
+    _set: MockRouteSet
+  ): true | TenantApiError => true
 )
 /* eslint-enable @typescript-eslint/no-unused-vars */
 

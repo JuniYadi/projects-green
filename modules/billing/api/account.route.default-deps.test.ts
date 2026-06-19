@@ -52,7 +52,9 @@ const mockTx = {
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    $transaction: mock(async (fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
+    $transaction: mock(async (fn: (tx: typeof mockTx) => unknown) =>
+      fn(mockTx)
+    ),
     billingAccount: {
       findUnique: mockFindUnique,
     },
@@ -70,9 +72,7 @@ describe("billing account default deps", () => {
     const { Elysia } = await import("elysia")
     const app = new Elysia().use(createBillingAccountRoutes())
 
-    const response = await app.handle(
-      new Request("http://localhost/account"),
-    )
+    const response = await app.handle(new Request("http://localhost/account"))
 
     // withAuth mocked to return user -> should try to process
     expect(response.status).toBe(200)
@@ -85,9 +85,7 @@ describe("billing account default deps", () => {
     const { Elysia } = await import("elysia")
     const app = new Elysia().use(createBillingAccountRoutes())
 
-    const response = await app.handle(
-      new Request("http://localhost/account"),
-    )
+    const response = await app.handle(new Request("http://localhost/account"))
 
     // Should succeed with mocked WorkOS
     expect(response.status).toBe(200)

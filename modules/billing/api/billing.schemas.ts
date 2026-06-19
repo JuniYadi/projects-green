@@ -5,7 +5,12 @@ import { z } from "zod"
 export const topupSchema = z.object({
   amount: z.number().int().min(1).max(1_000_000),
   paymentMethod: z.enum(["manual_bank_transfer"]),
-  referenceId: z.string().min(1).max(100).regex(/^[A-Z0-9-_]+$/i).optional(),
+  referenceId: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[A-Z0-9-_]+$/i)
+    .optional(),
 })
 
 export type TopupInput = z.infer<typeof topupSchema>
@@ -36,4 +41,6 @@ export const adminSubscriptionUpdateSchema = z.object({
   status: z.enum(["ACTIVE", "SUSPENDED", "CANCELLED"]).optional(),
 })
 
-export type AdminSubscriptionUpdateInput = z.infer<typeof adminSubscriptionUpdateSchema>
+export type AdminSubscriptionUpdateInput = z.infer<
+  typeof adminSubscriptionUpdateSchema
+>

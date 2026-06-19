@@ -52,7 +52,8 @@ export const classifyGithubWebhookEvent = async ({
     return ignored("missing_installation_or_repository")
   }
 
-  const installation = await store.findInstallationByGithubId(githubInstallationId)
+  const installation =
+    await store.findInstallationByGithubId(githubInstallationId)
 
   if (!installation) {
     return ignored("no_installation")

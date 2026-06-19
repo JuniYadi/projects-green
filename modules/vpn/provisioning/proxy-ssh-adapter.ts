@@ -1,9 +1,6 @@
 import crypto from "node:crypto"
 
-import {
-  VpnServerSshExecutor,
-  type SshTarget,
-} from "./vpn-server-ssh-executor"
+import { VpnServerSshExecutor, type SshTarget } from "./vpn-server-ssh-executor"
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_-]{2,63}$/
 
@@ -38,11 +35,13 @@ export class ProxySshAdapter {
   private readonly addUserScript: string
   private readonly generatePassword: () => string
 
-  constructor(options: {
-    executor?: VpnServerSshExecutor
-    addUserScript?: string
-    generatePassword?: () => string
-  } = {}) {
+  constructor(
+    options: {
+      executor?: VpnServerSshExecutor
+      addUserScript?: string
+      generatePassword?: () => string
+    } = {}
+  ) {
     this.executor = options.executor ?? new VpnServerSshExecutor()
     this.addUserScript =
       options.addUserScript ??

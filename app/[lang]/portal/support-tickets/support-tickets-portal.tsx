@@ -7,12 +7,7 @@ import Link from "next/link"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketTableSkeleton } from "@/modules/support-tickets/ui/ticket-table-skeleton"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
@@ -122,7 +117,9 @@ export function SupportTicketsPortal({ lang }: SupportTicketsPortalProps) {
       setTickets(items)
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to load support tickets."
+        error instanceof Error
+          ? error.message
+          : "Unable to load support tickets."
       )
     } finally {
       setIsLoading(false)
@@ -184,10 +181,12 @@ export function SupportTicketsPortal({ lang }: SupportTicketsPortalProps) {
                   columnId: "department",
                   label: "Department",
                   allLabel: "All departments",
-                  options: SUPPORT_TICKET_DEPARTMENTS.map((departmentValue) => ({
-                    label: SUPPORT_TICKET_DEPARTMENT_LABELS[departmentValue],
-                    value: departmentValue,
-                  })),
+                  options: SUPPORT_TICKET_DEPARTMENTS.map(
+                    (departmentValue) => ({
+                      label: SUPPORT_TICKET_DEPARTMENT_LABELS[departmentValue],
+                      value: departmentValue,
+                    })
+                  ),
                 },
                 {
                   columnId: "priority",

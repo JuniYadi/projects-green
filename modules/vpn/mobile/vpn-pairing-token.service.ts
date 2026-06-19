@@ -126,8 +126,7 @@ function defaultVerifyJwt(token: string, now: Date): PairingClaims {
 }
 
 function getSecret(): string {
-  const secret =
-    process.env.VPN_PAIRING_SECRET ?? process.env.JWT_SECRET ?? ""
+  const secret = process.env.VPN_PAIRING_SECRET ?? process.env.JWT_SECRET ?? ""
   if (!secret) {
     throw new Error(
       "Missing VPN_PAIRING_SECRET or JWT_SECRET environment variable."
@@ -138,10 +137,7 @@ function getSecret(): string {
 
 export type PairingTokenServiceDeps = {
   now?: () => Date
-  signJwt?: (
-    payload: PairingClaims,
-    now: Date
-  ) => string
+  signJwt?: (payload: PairingClaims, now: Date) => string
   verifyJwt?: (token: string, now: Date) => PairingClaims
   randomJti?: () => string
   deviceService?: VpnMobileDeviceService
@@ -183,10 +179,7 @@ export type PairingStatusResult = {
 export class VpnPairingTokenService {
   private readonly prisma: PrismaLike
   private readonly now: () => Date
-  private readonly signJwt: (
-    payload: PairingClaims,
-    now: Date
-  ) => string
+  private readonly signJwt: (payload: PairingClaims, now: Date) => string
   private readonly verifyJwt: (token: string, now: Date) => PairingClaims
   private readonly randomJti: () => string
   private readonly deviceService: VpnMobileDeviceService
@@ -207,9 +200,7 @@ export class VpnPairingTokenService {
   /**
    * Generate a one-time pairing token. Signs JWT, persists DB row.
    */
-  async generate(
-    input: PairingGenerateInput
-  ): Promise<PairingGenerateResult> {
+  async generate(input: PairingGenerateInput): Promise<PairingGenerateResult> {
     const now = this.now()
     const iat = Math.floor(now.getTime() / 1000)
     const exp = iat + PAIRING_TTL_SECONDS
@@ -262,7 +253,11 @@ export class VpnPairingTokenService {
    */
   async claim(
     input: PairingClaimInput
-  ): Promise<{ deviceId: string; subscriptionId: string; organizationId: string }> {
+  ): Promise<{
+    deviceId: string
+    subscriptionId: string
+    organizationId: string
+  }> {
     const claims = this.validate(input.pairingToken)
     const now = this.now()
 

@@ -1,7 +1,15 @@
 export interface KubernetesVolume {
   name: string
-  configMap?: { name: string; items?: Array<{ key: string; path: string }>; defaultMode?: number }
-  secret?: { secretName: string; items?: Array<{ key: string; path: string }>; defaultMode?: number }
+  configMap?: {
+    name: string
+    items?: Array<{ key: string; path: string }>
+    defaultMode?: number
+  }
+  secret?: {
+    secretName: string
+    items?: Array<{ key: string; path: string }>
+    defaultMode?: number
+  }
   persistentVolumeClaim?: { claimName: string; readOnly?: boolean }
   emptyDir?: Record<string, unknown>
 }
@@ -56,7 +64,10 @@ export class VolumeBuilder {
         base.secret = { secretName: this.name }
         break
       case "pvc":
-        base.persistentVolumeClaim = { claimName: this.name, readOnly: this.readOnly }
+        base.persistentVolumeClaim = {
+          claimName: this.name,
+          readOnly: this.readOnly,
+        }
         break
       case "emptyDir":
         base.emptyDir = {}

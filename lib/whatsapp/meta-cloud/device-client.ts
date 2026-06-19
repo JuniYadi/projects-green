@@ -1,14 +1,14 @@
 import { MetaCloudHttpClient } from "./client"
 import { ENDPOINTS } from "./endpoints"
-import { 
-  SendMessageInput, 
-  SendMessageResult, 
-  SendTemplateMessageInput, 
+import {
+  SendMessageInput,
+  SendMessageResult,
+  SendTemplateMessageInput,
   SendTemplateMessageResult,
   SendReplyInput,
   UploadMediaInput,
   UploadMediaResult,
-  PhoneNumberInfo
+  PhoneNumberInfo,
 } from "./types"
 import { decryptWhatsAppToken } from "../crypto"
 
@@ -56,9 +56,9 @@ export class WhatsAppDeviceClient {
       messaging_product: "whatsapp",
       to: input.to,
       type: input.type,
-      [input.type]: input.payload
+      [input.type]: input.payload,
     }
-    
+
     const result = await this.httpClient.request<any>(
       "SEND_MESSAGE",
       ENDPOINTS.MESSAGES(this.phoneNumberId),
@@ -68,28 +68,43 @@ export class WhatsAppDeviceClient {
 
     return {
       providerMessageId: result.messages[0].id,
-      accepted: true
+      accepted: true,
     }
   }
 
-  async sendTemplateMessage(input: SendTemplateMessageInput): Promise<SendTemplateMessageResult> {
+  async sendTemplateMessage(
+    input: SendTemplateMessageInput
+  ): Promise<SendTemplateMessageResult> {
     const components: any[] = []
-    
+
     if (input.header) {
       components.push({
         type: "header",
         parameters: [
-          input.header.type === "image" || input.header.type === "video" 
-            ? { type: input.header.type, [input.header.type]: { id: input.header.id, link: input.header.url } }
-            : { type: "document", document: { id: input.header.id, link: input.header.url, filename: (input.header as any).filename } }
-        ]
+          input.header.type === "image" || input.header.type === "video"
+            ? {
+                type: input.header.type,
+                [input.header.type]: {
+                  id: input.header.id,
+                  link: input.header.url,
+                },
+              }
+            : {
+                type: "document",
+                document: {
+                  id: input.header.id,
+                  link: input.header.url,
+                  filename: (input.header as any).filename,
+                },
+              },
+        ],
       })
     }
 
     if (input.fields && input.fields.length > 0) {
       components.push({
         type: "body",
-        parameters: input.fields.map(text => ({ type: "text", text }))
+        parameters: input.fields.map((text) => ({ type: "text", text })),
       })
     }
 
@@ -100,8 +115,8 @@ export class WhatsAppDeviceClient {
       template: {
         name: input.templateName,
         language: { code: input.templateLanguage },
-        components
-      }
+        components,
+      },
     }
 
     const result = await this.httpClient.request<any>(
@@ -113,7 +128,7 @@ export class WhatsAppDeviceClient {
 
     return {
       providerMessageId: result.messages[0].id,
-      accepted: true
+      accepted: true,
     }
   }
 
@@ -123,7 +138,8 @@ export class WhatsAppDeviceClient {
       recipient_type: "individual",
       to: input.to,
       type: input.type,
-      [input.type]: input.type === "text" ? { body: input.payload.body } : input.payload
+      [input.type]:
+        input.type === "text" ? { body: input.payload.body } : input.payload,
     }
 
     const result = await this.httpClient.request<any>(
@@ -135,7 +151,7 @@ export class WhatsAppDeviceClient {
 
     return {
       providerMessageId: result.messages[0].id,
-      accepted: true
+      accepted: true,
     }
   }
 
@@ -143,7 +159,7 @@ export class WhatsAppDeviceClient {
     const formData = new FormData()
     formData.append("messaging_product", "whatsapp")
     formData.append("type", input.type || "image")
-    
+
     const blob = new Blob([input.data], { type: input.mimeType })
     formData.append("file", blob, input.fileName)
 
@@ -155,7 +171,7 @@ export class WhatsAppDeviceClient {
     )
 
     return {
-      mediaId: result.id
+      mediaId: result.id,
     }
   }
 
@@ -175,7 +191,7 @@ export class WhatsAppDeviceClient {
       {
         messaging_product: "whatsapp",
         status: "read",
-        message_id: messageId
+        message_id: messageId,
       }
     )
     return { success: true }
@@ -197,11 +213,7 @@ export class WhatsAppDeviceClient {
       endpoint.searchParams.set("after", after)
     }
 
-    return this.httpClient.request(
-      "LIST_TEMPLATES",
-      endpoint.toString(),
-      "GET"
-    )
+    return this.httpClient.request("LIST_TEMPLATES", endpoint.toString(), "GET")
   }
 
   async refreshToken(): Promise<void> {

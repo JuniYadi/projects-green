@@ -1,13 +1,10 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 
-const mockAutoPagination = mock<
-  () => Promise<Array<{ role?: { slug: string } | null } | null>>
->()
-const mockListOrganizationMemberships = mock(
-  async () => ({
-    autoPagination: mockAutoPagination,
-  })
-)
+const mockAutoPagination =
+  mock<() => Promise<Array<{ role?: { slug: string } | null } | null>>>()
+const mockListOrganizationMemberships = mock(async () => ({
+  autoPagination: mockAutoPagination,
+}))
 
 mock.module("@workos-inc/node", () => ({
   createWorkOS: () => ({
@@ -26,27 +23,21 @@ describe("resolveOrgRole", () => {
   })
 
   it("returns 'owner' when role slug is user_owner", async () => {
-    mockAutoPagination.mockResolvedValue([
-      { role: { slug: "user_owner" } },
-    ])
+    mockAutoPagination.mockResolvedValue([{ role: { slug: "user_owner" } }])
 
     const result = await resolveOrgRole("user_1", "org_1")
     expect(result).toBe("owner")
   })
 
   it("returns 'admin' when role slug is user_admin", async () => {
-    mockAutoPagination.mockResolvedValue([
-      { role: { slug: "user_admin" } },
-    ])
+    mockAutoPagination.mockResolvedValue([{ role: { slug: "user_admin" } }])
 
     const result = await resolveOrgRole("user_1", "org_1")
     expect(result).toBe("admin")
   })
 
   it("returns 'member' when role slug is user_member", async () => {
-    mockAutoPagination.mockResolvedValue([
-      { role: { slug: "user_member" } },
-    ])
+    mockAutoPagination.mockResolvedValue([{ role: { slug: "user_member" } }])
 
     const result = await resolveOrgRole("user_1", "org_1")
     expect(result).toBe("member")
@@ -60,18 +51,14 @@ describe("resolveOrgRole", () => {
   })
 
   it("returns null when membership has no role slug", async () => {
-    mockAutoPagination.mockResolvedValue([
-      { role: null },
-    ])
+    mockAutoPagination.mockResolvedValue([{ role: null }])
 
     const result = await resolveOrgRole("user_1", "org_1")
     expect(result).toBeNull()
   })
 
   it("returns null for unknown role slug", async () => {
-    mockAutoPagination.mockResolvedValue([
-      { role: { slug: "user_custom" } },
-    ])
+    mockAutoPagination.mockResolvedValue([{ role: { slug: "user_custom" } }])
 
     const result = await resolveOrgRole("user_1", "org_1")
     expect(result).toBeNull()
@@ -85,9 +72,7 @@ describe("resolveOrgRole", () => {
   })
 
   it("calls listOrganizationMemberships with correct params", async () => {
-    mockAutoPagination.mockResolvedValue([
-      { role: { slug: "user_member" } },
-    ])
+    mockAutoPagination.mockResolvedValue([{ role: { slug: "user_member" } }])
 
     await resolveOrgRole("user_1", "org_1")
     expect(mockListOrganizationMemberships).toHaveBeenCalledWith({

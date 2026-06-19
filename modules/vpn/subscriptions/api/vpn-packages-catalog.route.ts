@@ -7,8 +7,6 @@ import {
   toVpnPublicPackageDetailDTO,
 } from "../vpn-package-public.dto"
 
-
-
 type PrismaLike = Pick<typeof prisma, "vpnPackage">
 
 type Deps = { db?: PrismaLike }

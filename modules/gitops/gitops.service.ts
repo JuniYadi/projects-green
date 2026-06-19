@@ -6,7 +6,8 @@ export interface GitFile {
 }
 
 export class GitOpsRepositoryService {
-  private repoBaseUrl = process.env.GITOPS_REPO_BASE_URL || "https://api.github.com"
+  private repoBaseUrl =
+    process.env.GITOPS_REPO_BASE_URL || "https://api.github.com"
   private pat = process.env.GITOPS_REPO_PAT
 
   /**
@@ -23,7 +24,7 @@ export class GitOpsRepositoryService {
     deletePaths: string[] = []
   ): Promise<{ sha: string }> {
     const branch = "main" // Default branch
-    
+
     // Use PAT if available, otherwise we'd need an installation ID.
     // For now, we assume GITOPS_REPO_PAT is configured or logic uses installationToken.
     const token = await this.getAccessToken()
@@ -64,7 +65,13 @@ export class GitOpsRepositoryService {
     const tree = await this.createTree(repo, treeItems, baseSha, token)
 
     // 5. Create commit
-    const commit = await this.createCommit(repo, message, tree.sha, [baseSha], token)
+    const commit = await this.createCommit(
+      repo,
+      message,
+      tree.sha,
+      [baseSha],
+      token
+    )
 
     // 6. Update branch ref
     await this.updateRef(repo, branch, commit.sha, token)
@@ -76,7 +83,11 @@ export class GitOpsRepositoryService {
    * Wrapped fetch with GitHub API rate limit handling.
    * Detects 403 with X-RateLimit-Remaining: 0, waits for reset, retries once.
    */
-  private async githubFetch(url: string, options: RequestInit, retried = false): Promise<Response> {
+  private async githubFetch(
+    url: string,
+    options: RequestInit,
+    retried = false
+  ): Promise<Response> {
     const res = await fetch(url, options)
 
     if (res.status === 403) {
@@ -84,8 +95,11 @@ export class GitOpsRepositoryService {
       if (remaining === "0" && !retried) {
         const resetEpoch = res.headers.get("X-RateLimit-Reset")
         if (resetEpoch) {
-          const waitMs = Math.max(0, parseInt(resetEpoch, 10) * 1000 - Date.now()) + 1000
-          console.warn(`[GitOps] Rate limited. Waiting ${Math.ceil(waitMs / 1000)}s...`)
+          const waitMs =
+            Math.max(0, parseInt(resetEpoch, 10) * 1000 - Date.now()) + 1000
+          console.warn(
+            `[GitOps] Rate limited. Waiting ${Math.ceil(waitMs / 1000)}s...`
+          )
           await new Promise((resolve) => setTimeout(resolve, waitMs))
           return this.githubFetch(url, options, true)
         }
@@ -129,7 +143,17 @@ export class GitOpsRepositoryService {
     return res.json() as Promise<{ sha: string }>
   }
 
-  private async createTree(repo: string, tree: { path: string, mode: "100644" | "100755" | "040000" | "160000" | "120000", type: "blob" | "tree" | "commit", sha: string | null }[], baseTree: string, token: string) {
+  private async createTree(
+    repo: string,
+    tree: {
+      path: string
+      mode: "100644" | "100755" | "040000" | "160000" | "120000"
+      type: "blob" | "tree" | "commit"
+      sha: string | null
+    }[],
+    baseTree: string,
+    token: string
+  ) {
     const res = await this.githubFetch(
       `${this.repoBaseUrl}/repos/${repo}/git/trees`,
       {
@@ -149,7 +173,13 @@ export class GitOpsRepositoryService {
     return res.json() as Promise<{ sha: string }>
   }
 
-  private async createCommit(repo: string, message: string, tree: string, parents: string[], token: string) {
+  private async createCommit(
+    repo: string,
+    message: string,
+    tree: string,
+    parents: string[],
+    token: string
+  ) {
     const res = await this.githubFetch(
       `${this.repoBaseUrl}/repos/${repo}/git/commits`,
       {
@@ -170,7 +200,12 @@ export class GitOpsRepositoryService {
     return res.json() as Promise<{ sha: string }>
   }
 
-  private async updateRef(repo: string, ref: string, sha: string, token: string) {
+  private async updateRef(
+    repo: string,
+    ref: string,
+    sha: string,
+    token: string
+  ) {
     const res = await this.githubFetch(
       `${this.repoBaseUrl}/repos/${repo}/git/refs/heads/${ref}`,
       {
@@ -189,7 +224,7 @@ export class GitOpsRepositoryService {
 
   private async getAccessToken(): Promise<string> {
     if (this.pat) return this.pat
-    
+
     // In production, we would use the installation ID to get a token
     // This requires GITHUB_APP_INSTALLATION_ID env var
     const installationId = process.env.GITOPS_REPO_INSTALLATION_ID
@@ -197,20 +232,28 @@ export class GitOpsRepositoryService {
       return this.createInstallationToken(BigInt(installationId))
     }
 
-    throw new Error("Neither GITOPS_REPO_PAT nor GITOPS_REPO_INSTALLATION_ID is set.")
+    throw new Error(
+      "Neither GITOPS_REPO_PAT nor GITOPS_REPO_INSTALLATION_ID is set."
+    )
   }
 
   async createInstallationToken(installationId: bigint): Promise<string> {
     const appJwt = this.generateAppJwt()
-    const res = await fetch(`${this.repoBaseUrl}/app/installations/${installationId}/access_tokens`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${appJwt}`,
-        Accept: "application/vnd.github.v3+json",
-      },
-    })
-    if (!res.ok) throw new Error(`Failed to create installation token: ${await res.text()}`)
-    const data = await res.json() as { token: string }
+    const res = await fetch(
+      `${this.repoBaseUrl}/app/installations/${installationId}/access_tokens`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${appJwt}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      }
+    )
+    if (!res.ok)
+      throw new Error(
+        `Failed to create installation token: ${await res.text()}`
+      )
+    const data = (await res.json()) as { token: string }
     return data.token
   }
 
@@ -218,11 +261,15 @@ export class GitOpsRepositoryService {
     const appId = process.env.GITHUB_APP_ID
     const privateKeyBase64 = process.env.GITHUB_APP_PRIVATE_KEY_BASE64
     if (!appId || !privateKeyBase64) {
-      throw new Error("GITHUB_APP_ID or GITHUB_APP_PRIVATE_KEY_BASE64 is not set")
+      throw new Error(
+        "GITHUB_APP_ID or GITHUB_APP_PRIVATE_KEY_BASE64 is not set"
+      )
     }
 
-    const privateKeyPem = Buffer.from(privateKeyBase64, "base64").toString("utf8")
-    
+    const privateKeyPem = Buffer.from(privateKeyBase64, "base64").toString(
+      "utf8"
+    )
+
     const issuedAt = Math.floor(Date.now() / 1000)
     // 8.5 min (9 min max minus 30s clock-skew buffer). GitHub allows up to 10 min
     // but our infra (NTP-synced) stays within ±2s of GPS time, so 30s is ample.

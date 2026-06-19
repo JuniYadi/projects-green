@@ -12,7 +12,10 @@ export type QuotaReconciliationJobData = {
 }
 
 export type QuotaReconciliationQueue = {
-  enqueue: (data: QuotaReconciliationJobData, opts?: JobsOptions) => Promise<void>
+  enqueue: (
+    data: QuotaReconciliationJobData,
+    opts?: JobsOptions
+  ) => Promise<void>
   close: () => Promise<void>
 }
 
@@ -126,10 +129,13 @@ const getSharedQueue = () => {
     return sharedQueue
   }
 
-  sharedQueue = new Queue<QuotaReconciliationJobData>(QUOTA_RECONCILIATION_QUEUE, {
-    connection: getQuotaReconciliationRedisConnection(),
-    defaultJobOptions: DEFAULT_JOB_OPTIONS,
-  })
+  sharedQueue = new Queue<QuotaReconciliationJobData>(
+    QUOTA_RECONCILIATION_QUEUE,
+    {
+      connection: getQuotaReconciliationRedisConnection(),
+      defaultJobOptions: DEFAULT_JOB_OPTIONS,
+    }
+  )
 
   return sharedQueue
 }

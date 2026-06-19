@@ -67,7 +67,11 @@ function formatSubmittedAt(value: string): string {
   }).format(new Date(value))
 }
 
-function PaymentStatusBadge({ status }: { status: PaymentConfirmation["status"] }) {
+function PaymentStatusBadge({
+  status,
+}: {
+  status: PaymentConfirmation["status"]
+}) {
   return (
     <Badge variant={STATUS_VARIANTS[status]} className="text-xs capitalize">
       {status}
@@ -78,7 +82,7 @@ function PaymentStatusBadge({ status }: { status: PaymentConfirmation["status"] 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         {label}
       </dt>
       <dd className="text-sm text-foreground">{value || "-"}</dd>
@@ -91,8 +95,6 @@ type ConfirmationsRequestState =
   | { status: "success"; data: PaymentConfirmation[] }
   | { status: "error"; message: string }
 
-
-
 export function ConfirmationsTab() {
   const [state, setState] = useState<ConfirmationsRequestState>({
     status: "loading",
@@ -104,10 +106,14 @@ export function ConfirmationsTab() {
 
   const fetchConfirmations = useCallback(async () => {
     try {
-      const { data: payload } = await eden.api.portal.payments.confirmations.get()
+      const { data: payload } =
+        await eden.api.portal.payments.confirmations.get()
 
       if (!payload?.ok) {
-        setState({ status: "error", message: payload?.message || "Failed to load confirmations" })
+        setState({
+          status: "error",
+          message: payload?.message || "Failed to load confirmations",
+        })
         return
       }
       setState({ status: "success", data: payload.data || [] })
@@ -128,9 +134,14 @@ export function ConfirmationsTab() {
   ) {
     setPendingActionId(`${action}:${id}`)
     try {
-      const { data: payload } = await eden.api.portal.payments.confirmations[id][action].post({
+      const { data: payload } = await eden.api.portal.payments.confirmations[
+        id
+      ][action].post({
         action,
-        reason: action === "reject" ? reason?.trim() || "Rejected from portal review" : undefined,
+        reason:
+          action === "reject"
+            ? reason?.trim() || "Rejected from portal review"
+            : undefined,
       } as never)
       if (!payload?.ok) {
         setState({
@@ -249,7 +260,12 @@ export function ConfirmationsTab() {
       <div className="rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
         {state.message}
         <div className="mt-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => void fetchConfirmations()}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void fetchConfirmations()}
+          >
             Retry
           </Button>
         </div>
@@ -273,8 +289,8 @@ export function ConfirmationsTab() {
         <CardContent className="space-y-4">
           <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
             Manual payment confirmations must be submitted from a customer
-            invoice/top-up flow so the invoice and organization context are known.
-            Use this tab to review pending confirmations.
+            invoice/top-up flow so the invoice and organization context are
+            known. Use this tab to review pending confirmations.
           </div>
 
           <DataTable
@@ -322,17 +338,14 @@ export function ConfirmationsTab() {
                   value={formatConfirmationAmount(selectedConfirmation)}
                 />
                 <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                     Status
                   </dt>
                   <dd>
                     <PaymentStatusBadge status={selectedConfirmation.status} />
                   </dd>
                 </div>
-                <DetailRow
-                  label="Bank"
-                  value={selectedConfirmation.bankName}
-                />
+                <DetailRow label="Bank" value={selectedConfirmation.bankName} />
                 <DetailRow
                   label="Account number"
                   value={selectedConfirmation.accountNumber}
@@ -348,7 +361,7 @@ export function ConfirmationsTab() {
               </dl>
 
               <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
-                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                   Notes
                 </dt>
                 <dd className="text-sm text-foreground">

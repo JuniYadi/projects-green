@@ -4,7 +4,6 @@ import { useRouter, usePathname } from "next/navigation"
 
 const originalFetch = globalThis.fetch
 
-
 const jsonResponse = (body: unknown, status = 200) => {
   return new Response(JSON.stringify(body), {
     status,
@@ -16,10 +15,12 @@ const jsonResponse = (body: unknown, status = 200) => {
 
 describe("InvoiceDetailPage", () => {
   beforeEach(() => {
-    (useRouter as ReturnType<typeof mock>).mockReturnValue({
+    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
       refresh: mock(() => {}),
     })
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console/invoices/inv_1")
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(
+      "/en/console/invoices/inv_1"
+    )
 
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -67,9 +68,8 @@ describe("InvoiceDetailPage", () => {
   })
 
   it("renders invoice detail from API data", async () => {
-    const { default: InvoiceDetailPage } = await import(
-      "@/app/[lang]/console/invoices/[invoiceId]/page"
-    )
+    const { default: InvoiceDetailPage } =
+      await import("@/app/[lang]/console/invoices/[invoiceId]/page")
 
     const ui = await InvoiceDetailPage({
       params: Promise.resolve({ lang: "en", invoiceId: "inv_1" }),

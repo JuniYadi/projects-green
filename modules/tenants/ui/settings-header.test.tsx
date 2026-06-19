@@ -22,9 +22,7 @@ describe("SettingsHeader", () => {
     )
 
     expect(view.getByText("Organization")).toBeInTheDocument()
-    expect(
-      view.getByText(/for/)
-    ).toBeInTheDocument()
+    expect(view.getByText(/for/)).toBeInTheDocument()
     expect(view.getByText("Acme Corp")).toBeInTheDocument()
     expect(view.getByText(/Settings/)).toBeInTheDocument()
   })
@@ -53,7 +51,11 @@ describe("SettingsHeader", () => {
 
   it("renders Card with correct className", () => {
     const view = render(
-      <SettingsHeader title="API" description="API Keys" organizationName="Org" />
+      <SettingsHeader
+        title="API"
+        description="API Keys"
+        organizationName="Org"
+      />
     )
 
     const card = view.container.querySelector(".rounded-none")

@@ -36,7 +36,9 @@ export async function jenkinsApiFetch(
   const url = `${JENKINS_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`
   const authHeader = getAuthHeader()
 
-  const headers = new Headers(options.headers as Record<string, string> | undefined)
+  const headers = new Headers(
+    options.headers as Record<string, string> | undefined
+  )
   headers.set("Authorization", authHeader)
 
   try {
@@ -71,7 +73,10 @@ export async function jenkinsApiFetch(
   }
 }
 
-export async function getCsrfCrumb(): Promise<{ field: string; value: string } | null> {
+export async function getCsrfCrumb(): Promise<{
+  field: string
+  value: string
+} | null> {
   try {
     const data = (await jenkinsApiFetch("crumbIssuer/api/json")) as {
       crumbRequestField: string

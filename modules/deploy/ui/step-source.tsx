@@ -84,31 +84,55 @@ export type StepSourceProps = {
 }
 
 // Beautiful Custom SVG Logos for templates
-const TemplateIcon = ({ id, size = "md" }: { id: DeployTemplateId; size?: "sm" | "md" }) => {
+const TemplateIcon = ({
+  id,
+  size = "md",
+}: {
+  id: DeployTemplateId
+  size?: "sm" | "md"
+}) => {
   const sizeClasses = size === "sm" ? "h-6 w-6" : "h-8 w-8"
   switch (id) {
     case "wordpress":
-      return <SiWordpress className={cn("text-[#21759b] shrink-0", sizeClasses)} />
+      return (
+        <SiWordpress className={cn("shrink-0 text-[#21759b]", sizeClasses)} />
+      )
     case "ghost":
-      return <SiGhost className={cn("text-[#000000] dark:text-white shrink-0", sizeClasses)} />
+      return (
+        <SiGhost
+          className={cn("shrink-0 text-[#000000] dark:text-white", sizeClasses)}
+        />
+      )
     case "strapi":
-      return <SiStrapi className={cn("text-[#4945ff] shrink-0", sizeClasses)} />
+      return <SiStrapi className={cn("shrink-0 text-[#4945ff]", sizeClasses)} />
     case "directus":
-      return <SiDirectus className={cn("text-[#64f5cb] shrink-0", sizeClasses)} />
+      return (
+        <SiDirectus className={cn("shrink-0 text-[#64f5cb]", sizeClasses)} />
+      )
     case "payload":
-      return <SiPayloadcms className={cn("text-[#000000] dark:text-white shrink-0", sizeClasses)} />
+      return (
+        <SiPayloadcms
+          className={cn("shrink-0 text-[#000000] dark:text-white", sizeClasses)}
+        />
+      )
     case "pocketbase":
-      return <SiPocketbase className={cn("text-[#b8dcfc] shrink-0", sizeClasses)} />
+      return (
+        <SiPocketbase className={cn("shrink-0 text-[#b8dcfc]", sizeClasses)} />
+      )
     case "umami":
-      return <SiUmami className={cn("text-[#2970ff] shrink-0", sizeClasses)} />
+      return <SiUmami className={cn("shrink-0 text-[#2970ff]", sizeClasses)} />
     case "plausible":
-      return <SiPlausibleanalytics className={cn("text-[#ee5137] shrink-0", sizeClasses)} />
+      return (
+        <SiPlausibleanalytics
+          className={cn("shrink-0 text-[#ee5137]", sizeClasses)}
+        />
+      )
     case "n8n":
-      return <SiN8N className={cn("text-[#ff6d5a] shrink-0", sizeClasses)} />
+      return <SiN8N className={cn("shrink-0 text-[#ff6d5a]", sizeClasses)} />
     case "openclaw":
-      return <SiDocker className={cn("text-[#2496ed] shrink-0", sizeClasses)} />
+      return <SiDocker className={cn("shrink-0 text-[#2496ed]", sizeClasses)} />
     default:
-      return <FileCode className={cn("text-[#6366f1] shrink-0", sizeClasses)} />
+      return <FileCode className={cn("shrink-0 text-[#6366f1]", sizeClasses)} />
   }
 }
 
@@ -175,7 +199,9 @@ export function StepSource({
     const res = DEPLOY_TEMPLATES.filter((template) => {
       const matchesSearch =
         template.name.toLowerCase().includes(templateFilter.toLowerCase()) ||
-        template.description.toLowerCase().includes(templateFilter.toLowerCase())
+        template.description
+          .toLowerCase()
+          .includes(templateFilter.toLowerCase())
       const matchesCategory =
         selectedCategory === "All" ||
         getTemplateCategory(template.id) === selectedCategory
@@ -209,37 +235,44 @@ export function StepSource({
       <CardContent className="space-y-6">
         <Tabs
           value={sourceType}
-          onValueChange={(value) => onSourceTypeChange(value as DeploySourceType)}
+          onValueChange={(value) =>
+            onSourceTypeChange(value as DeploySourceType)
+          }
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/50 rounded-lg">
+          <TabsList className="grid w-full grid-cols-2 rounded-lg bg-muted/50 p-1">
             <TabsTrigger
               value="github"
-              className="py-2.5 text-sm font-medium transition-all rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
-              <GithubLogo className="w-4 h-4 mr-2" />
+              <GithubLogo className="mr-2 h-4 w-4" />
               GitHub Repository
             </TabsTrigger>
             <TabsTrigger
               value="template"
-              className="py-2.5 text-sm font-medium transition-all rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
-              <FileCode className="w-4 h-4 mr-2" />
+              <FileCode className="mr-2 h-4 w-4" />
               Instant Templates
             </TabsTrigger>
           </TabsList>
 
           {/* GitHub Tab Content */}
-          <TabsContent value="github" className="space-y-6 pt-4 focus-visible:outline-none">
+          <TabsContent
+            value="github"
+            className="space-y-6 pt-4 focus-visible:outline-none"
+          >
             {/* GitHub Connection Info */}
-            <div className="rounded-xl border border-border p-4 bg-muted/20">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="rounded-xl border border-border bg-muted/20 p-4">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-foreground text-background">
-                    <GithubLogo className="w-5 h-5" />
+                  <div className="rounded-lg bg-foreground p-2 text-background">
+                    <GithubLogo className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold">GitHub Integration</h4>
+                    <h4 className="text-sm font-semibold">
+                      GitHub Integration
+                    </h4>
                     <p className="text-xs text-muted-foreground">
                       {githubReconnectRequired
                         ? "GitHub access expired or was revoked. Reconnect to continue."
@@ -252,8 +285,8 @@ export function StepSource({
 
                 <div className="flex items-center gap-3">
                   {githubConnectionStatus === "connected" && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-600">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                       Connected
                     </span>
                   )}
@@ -262,7 +295,7 @@ export function StepSource({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="shadow-sm font-medium border-border"
+                      className="border-border font-medium shadow-sm"
                       disabled={isConnectingGithub}
                       onClick={onConnectGithub}
                     >
@@ -279,11 +312,11 @@ export function StepSource({
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="p-2 h-8 w-8"
+                        className="h-8 w-8 p-2"
                         onClick={() => onOwnerSelect(selectedOwnerId)}
                         title="Refresh list"
                       >
-                        <ArrowRight className="w-4 h-4 rotate-[-90deg]" />
+                        <ArrowRight className="h-4 w-4 rotate-[-90deg]" />
                       </Button>
                     )}
                   </div>
@@ -291,8 +324,8 @@ export function StepSource({
               </div>
 
               {githubConnectionStatus === "error" && (
-                <div className="mt-3 p-2.5 rounded-lg border border-destructive/20 bg-destructive/5 text-xs text-destructive flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                <div className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-2.5 text-xs text-destructive">
+                  <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
                   GitHub connection failed. Please try connecting again.
                 </div>
               )}
@@ -300,9 +333,9 @@ export function StepSource({
               {githubReconnectRequired && (
                 <div
                   role="alert"
-                  className="mt-3 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2"
+                  className="mt-3 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                   GitHub access expired or was revoked. Reconnect GitHub to
                   continue listing repositories.
                 </div>
@@ -313,19 +346,22 @@ export function StepSource({
               <div className="grid gap-6">
                 {/* 1. Owner Selection */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                     Select Account / Organization
                   </label>
                   {ownerOptionsLoading ? (
-                    <div className="flex gap-2 items-center text-xs text-muted-foreground py-2">
-                      <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                    <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                       Loading installations...
                     </div>
                   ) : ownerOptionsError ? (
-                    <p className="text-xs text-destructive">{ownerOptionsError}</p>
+                    <p className="text-xs text-destructive">
+                      {ownerOptionsError}
+                    </p>
                   ) : owners.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      No accounts found. Please make sure the GitHub App is installed.
+                      No accounts found. Please make sure the GitHub App is
+                      installed.
                     </p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
@@ -337,13 +373,13 @@ export function StepSource({
                             type="button"
                             onClick={() => onOwnerSelect(owner.id)}
                             className={cn(
-                              "flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all shadow-sm",
+                              "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-sm transition-all",
                               isSelected
                                 ? "border-primary bg-primary/5 text-primary ring-1 ring-primary/30"
-                                : "border-border bg-background hover:bg-muted/50 text-foreground"
+                                : "border-border bg-background text-foreground hover:bg-muted/50"
                             )}
                           >
-                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px] uppercase font-bold text-muted-foreground border border-border">
+                            <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted text-[10px] font-bold text-muted-foreground uppercase">
                               {owner.name.charAt(0)}
                             </div>
                             {owner.name}
@@ -358,34 +394,38 @@ export function StepSource({
                 {selectedOwnerId && (
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-4">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                         Select Repository
                       </label>
                       <div className="relative w-full max-w-xs">
-                        <MagnifyingGlass className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                        <MagnifyingGlass className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           placeholder="Filter repositories..."
                           value={repoFilter}
                           onChange={(e) => setRepoFilter(e.target.value)}
-                          className="pl-9 h-9 text-xs"
+                          className="h-9 pl-9 text-xs"
                         />
                       </div>
                     </div>
 
                     {repositoryOptionsLoading ? (
-                      <div className="flex gap-2 items-center text-xs text-muted-foreground py-4 justify-center border border-dashed rounded-xl">
-                        <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                      <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed py-4 text-xs text-muted-foreground">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                         Loading repositories...
                       </div>
                     ) : repositoryOptionsError ? (
-                      <p className="text-xs text-destructive">{repositoryOptionsError}</p>
+                      <p className="text-xs text-destructive">
+                        {repositoryOptionsError}
+                      </p>
                     ) : filteredRepositories.length === 0 ? (
-                      <div className="text-center py-6 border border-dashed rounded-xl text-xs text-muted-foreground">
-                        {repoFilter ? "No repositories match your filter." : "No repositories found for this account."}
+                      <div className="rounded-xl border border-dashed py-6 text-center text-xs text-muted-foreground">
+                        {repoFilter
+                          ? "No repositories match your filter."
+                          : "No repositories found for this account."}
                       </div>
                     ) : (
-                      <div className="border border-border rounded-xl bg-background overflow-hidden shadow-sm">
-                        <div className="max-h-[240px] overflow-y-auto divide-y divide-border">
+                      <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+                        <div className="max-h-[240px] divide-y divide-border overflow-y-auto">
                           {filteredRepositories.map((repo) => {
                             const isSelected = selectedRepositoryId === repo.id
                             return (
@@ -394,36 +434,43 @@ export function StepSource({
                                 type="button"
                                 onClick={() => onRepositorySelect(repo.id)}
                                 className={cn(
-                                  "w-full flex items-center justify-between p-3 text-left transition-all text-xs hover:bg-muted/40",
+                                  "flex w-full items-center justify-between p-3 text-left text-xs transition-all hover:bg-muted/40",
                                   isSelected && "bg-primary/5 font-medium"
                                 )}
                               >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <Folder className={cn("w-4.5 h-4.5 shrink-0", isSelected ? "text-primary" : "text-muted-foreground")} />
+                                <div className="flex min-w-0 items-center gap-2.5">
+                                  <Folder
+                                    className={cn(
+                                      "h-4.5 w-4.5 shrink-0",
+                                      isSelected
+                                        ? "text-primary"
+                                        : "text-muted-foreground"
+                                    )}
+                                  />
                                   <span className="truncate font-semibold text-foreground">
                                     {repo.name}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex shrink-0 items-center gap-2">
                                   {repo.isPrivate ? (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 border border-amber-500/20 text-[10px]">
-                                      <Lock className="w-3 h-3" />
+                                    <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700">
+                                      <Lock className="h-3 w-3" />
                                       Private
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 text-[10px]">
-                                      <Globe className="w-3 h-3" />
+                                    <span className="inline-flex items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-700">
+                                      <Globe className="h-3 w-3" />
                                       Public
                                     </span>
                                   )}
                                   {repo.defaultBranch && (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border text-[10px]">
-                                      <GitBranch className="w-3 h-3" />
+                                    <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                      <GitBranch className="h-3 w-3" />
                                       {repo.defaultBranch}
                                     </span>
                                   )}
                                   {isSelected && (
-                                    <Check className="w-4 h-4 text-primary shrink-0 ml-1" />
+                                    <Check className="ml-1 h-4 w-4 shrink-0 text-primary" />
                                   )}
                                 </div>
                               </button>
@@ -437,46 +484,49 @@ export function StepSource({
 
                 {/* — Framework Detection — */}
                 {selectedRepositoryId && isDetecting && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                    <div className="w-3.5 h-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     Detecting framework from repository...
                   </div>
                 )}
                 {selectedRepositoryId && detectionError && (
-                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-400 mt-2">
+                  <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
                     {detectionError}
                   </div>
                 )}
 
                 {/* 3. Branch & Root Directory Config */}
                 {selectedRepositoryId && (
-                  <div className="grid gap-6 sm:grid-cols-2 border-t border-border pt-5">
+                  <div className="grid gap-6 border-t border-border pt-5 sm:grid-cols-2">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                          <GitBranch className="w-3.5 h-3.5" />
+                        <label className="flex items-center gap-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                          <GitBranch className="h-3.5 w-3.5" />
                           Deployment Branch
                         </label>
                       </div>
                       {branches.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No branches found.</p>
+                        <p className="text-xs text-muted-foreground">
+                          No branches found.
+                        </p>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {branches.map((branch) => {
-                            const isSelected = selectedBranchName === branch.name
+                            const isSelected =
+                              selectedBranchName === branch.name
                             return (
                               <button
                                 key={branch.id}
                                 type="button"
                                 onClick={() => onBranchSelect(branch.name)}
                                 className={cn(
-                                  "px-2.5 py-1.5 rounded-lg border text-[11px] font-medium transition-all shadow-sm flex items-center gap-1",
+                                  "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium shadow-sm transition-all",
                                   isSelected
                                     ? "border-primary bg-primary/5 text-primary ring-1 ring-primary/30"
-                                    : "border-border bg-background hover:bg-muted/50 text-foreground"
+                                    : "border-border bg-background text-foreground hover:bg-muted/50"
                                 )}
                               >
-                                <GitBranch className="w-3 h-3 opacity-70" />
+                                <GitBranch className="h-3 w-3 opacity-70" />
                                 {branch.name}
                               </button>
                             )
@@ -486,22 +536,25 @@ export function StepSource({
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                        <Folder className="w-3.5 h-3.5" />
+                      <label className="flex items-center gap-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                        <Folder className="h-3.5 w-3.5" />
                         Root Directory
                       </label>
                       <div className="relative">
-                        <Folder className="absolute left-3 top-2.5 w-4.5 h-4.5 text-muted-foreground" />
+                        <Folder className="absolute top-2.5 left-3 h-4.5 w-4.5 text-muted-foreground" />
                         <Input
                           aria-label="Root directory"
                           value={rootDirectory}
-                          onChange={(event) => onRootDirectoryChange(event.target.value)}
+                          onChange={(event) =>
+                            onRootDirectoryChange(event.target.value)
+                          }
                           placeholder="/"
-                          className="pl-9 text-xs h-9 border-border"
+                          className="h-9 border-border pl-9 text-xs"
                         />
                       </div>
                       <p className="text-[10px] text-muted-foreground">
-                        Where your application build files are located. Use root (/) by default.
+                        Where your application build files are located. Use root
+                        (/) by default.
                       </p>
                     </div>
                   </div>
@@ -511,13 +564,16 @@ export function StepSource({
           </TabsContent>
 
           {/* Templates Tab Content */}
-          <TabsContent value="template" className="space-y-4 pt-4 focus-visible:outline-none">
+          <TabsContent
+            value="template"
+            className="space-y-4 pt-4 focus-visible:outline-none"
+          >
             <div className="flex items-center justify-between gap-4">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Select Instant Template
               </label>
               <div className="relative w-full max-w-xs">
-                <MagnifyingGlass className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                <MagnifyingGlass className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="Search templates..."
@@ -525,13 +581,13 @@ export function StepSource({
                     setTemplateFilter(e.target.value)
                     setCurrentPage(1)
                   }}
-                  className="pl-9 h-9 text-xs"
+                  className="h-9 pl-9 text-xs"
                 />
               </div>
             </div>
 
             {/* Toolbar: Category Filters and View Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3">
+            <div className="flex flex-col justify-between gap-3 border-b border-border/60 pb-3 sm:flex-row sm:items-center">
               {/* Category Pills */}
               <div className="flex flex-wrap gap-1.5">
                 {CATEGORIES.map((category) => {
@@ -545,10 +601,10 @@ export function StepSource({
                         setCurrentPage(1)
                       }}
                       className={cn(
-                        "px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all shadow-sm cursor-pointer",
+                        "cursor-pointer rounded-lg px-3 py-1.5 text-[11px] font-medium shadow-sm transition-all",
                         isCatSelected
-                          ? "bg-primary text-primary-foreground font-semibold"
-                          : "bg-muted/40 hover:bg-muted/70 text-muted-foreground hover:text-foreground border border-border/50"
+                          ? "bg-primary font-semibold text-primary-foreground"
+                          : "border border-border/50 bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                       )}
                     >
                       {category}
@@ -563,96 +619,103 @@ export function StepSource({
                   type="button"
                   onClick={() => setViewMode("grid")}
                   className={cn(
-                    "p-1.5 rounded-lg border transition-all cursor-pointer",
+                    "cursor-pointer rounded-lg border p-1.5 transition-all",
                     viewMode === "grid"
-                      ? "bg-primary/5 text-primary border-primary/30"
-                      : "bg-background text-muted-foreground border-border hover:bg-muted/40"
+                      ? "border-primary/30 bg-primary/5 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted/40"
                   )}
                   title="Grid View"
                 >
-                  <SquaresFour className="w-4 h-4" />
+                  <SquaresFour className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode("list")}
                   className={cn(
-                    "p-1.5 rounded-lg border transition-all cursor-pointer",
+                    "cursor-pointer rounded-lg border p-1.5 transition-all",
                     viewMode === "list"
-                      ? "bg-primary/5 text-primary border-primary/30"
-                      : "bg-background text-muted-foreground border-border hover:bg-muted/40"
+                      ? "border-primary/30 bg-primary/5 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted/40"
                   )}
                   title="List View"
                 >
-                  <List className="w-4 h-4" />
+                  <List className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
             {filteredTemplates.length === 0 ? (
-              <div className="text-center py-8 border border-dashed rounded-xl text-xs text-muted-foreground">
+              <div className="rounded-xl border border-dashed py-8 text-center text-xs text-muted-foreground">
                 No templates match your search.
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="max-h-[380px] overflow-y-auto pr-1.5 scrollbar-thin">
+                <div className="max-h-[380px] scrollbar-thin overflow-y-auto pr-1.5">
                   {viewMode === "grid" ? (
-                    <div className="grid gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 pb-2">
+                    <div className="grid gap-2.5 pb-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                       {paginatedTemplates.map((template) => {
                         const isSelected = templateId === template.id
                         const cpuDisplay = `${(template.defaultCpu / 1000).toFixed(1)} vCPU`
-                        const memDisplay = template.defaultMemory >= 1024
-                          ? `${(template.defaultMemory / 1024).toFixed(0)} GB`
-                          : `${template.defaultMemory} MB`
-                        const stackText = template.build.useDockerfile ? "Docker" : `${template.build.language} (${template.build.framework})`
+                        const memDisplay =
+                          template.defaultMemory >= 1024
+                            ? `${(template.defaultMemory / 1024).toFixed(0)} GB`
+                            : `${template.defaultMemory} MB`
+                        const stackText = template.build.useDockerfile
+                          ? "Docker"
+                          : `${template.build.language} (${template.build.framework})`
 
                         return (
                           <button
                             key={template.id}
                             type="button"
                             className={cn(
-                              "group flex flex-col justify-between items-center text-center rounded-xl border p-2.5 transition-all duration-300 relative bg-background shadow-sm hover:shadow-md cursor-pointer",
+                              "group relative flex cursor-pointer flex-col items-center justify-between rounded-xl border bg-background p-2.5 text-center shadow-sm transition-all duration-300 hover:shadow-md",
                               isSelected
-                                ? "border-primary bg-primary/[0.02] ring-2 ring-primary/20 scale-[1.02]"
+                                ? "scale-[1.02] border-primary bg-primary/[0.02] ring-2 ring-primary/20"
                                 : "border-border hover:border-border/80 hover:bg-muted/[0.05]"
                             )}
                             onClick={() => onTemplateSelect(template.id)}
                           >
                             {/* Top Section */}
-                            <div className="w-full space-y-2 flex flex-col items-center">
-                              <div className="relative flex justify-center w-full">
-                                <div className="p-1.5 rounded-lg bg-muted/40 border border-border group-hover:bg-background transition-colors">
+                            <div className="flex w-full flex-col items-center space-y-2">
+                              <div className="relative flex w-full justify-center">
+                                <div className="rounded-lg border border-border bg-muted/40 p-1.5 transition-colors group-hover:bg-background">
                                   <TemplateIcon id={template.id} size="sm" />
                                 </div>
                                 {isSelected && (
-                                  <span className="absolute -top-1 -right-1 p-0.5 rounded-full bg-emerald-500 text-white shadow-sm z-20">
-                                    <Check className="w-2.5 h-2.5" />
+                                  <span className="absolute -top-1 -right-1 z-20 rounded-full bg-emerald-500 p-0.5 text-white shadow-sm">
+                                    <Check className="h-2.5 w-2.5" />
                                   </span>
                                 )}
                               </div>
 
                               <div className="flex flex-col items-center">
-                                <h4 className="font-bold text-foreground group-hover:text-primary transition-colors text-[12px] line-clamp-1">
+                                <h4 className="line-clamp-1 text-[12px] font-bold text-foreground transition-colors group-hover:text-primary">
                                   {template.name}
                                 </h4>
-                                <span className="inline-flex text-[7px] font-bold tracking-tighter text-muted-foreground uppercase bg-muted/60 px-1 py-0 rounded mt-0.5">
+                                <span className="mt-0.5 inline-flex rounded bg-muted/60 px-1 py-0 text-[7px] font-bold tracking-tighter text-muted-foreground uppercase">
                                   {stackText}
                                 </span>
-                                <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 leading-tight">
+                                <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-muted-foreground">
                                   {template.description}
                                 </p>
                               </div>
                             </div>
 
                             {/* Specs Section - Vertical Stack */}
-                            <div className="w-full mt-2.5 border-t border-border/80 pt-2">
+                            <div className="mt-2.5 w-full border-t border-border/80 pt-2">
                               <div className="flex flex-col items-center gap-0.5">
                                 <div className="flex items-center gap-1 text-muted-foreground">
-                                  <Cpu className="w-2.5 h-2.5 shrink-0 text-muted-foreground/75" />
-                                  <span className="font-medium text-foreground text-[9px]">{cpuDisplay}</span>
+                                  <Cpu className="h-2.5 w-2.5 shrink-0 text-muted-foreground/75" />
+                                  <span className="text-[9px] font-medium text-foreground">
+                                    {cpuDisplay}
+                                  </span>
                                 </div>
                                 <div className="flex items-center gap-1 text-muted-foreground">
-                                  <HardDrive className="w-2.5 h-2.5 shrink-0 text-muted-foreground/75" />
-                                  <span className="font-medium text-foreground text-[9px]">{memDisplay}</span>
+                                  <HardDrive className="h-2.5 w-2.5 shrink-0 text-muted-foreground/75" />
+                                  <span className="text-[9px] font-medium text-foreground">
+                                    {memDisplay}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -665,63 +728,70 @@ export function StepSource({
                       {paginatedTemplates.map((template) => {
                         const isSelected = templateId === template.id
                         const cpuDisplay = `${(template.defaultCpu / 1000).toFixed(1)} vCPU`
-                        const memDisplay = template.defaultMemory >= 1024 
-                          ? `${(template.defaultMemory / 1024).toFixed(0)} GB` 
-                          : `${template.defaultMemory} MB`
-                        const stackText = template.build.useDockerfile ? "Docker" : `${template.build.language} (${template.build.framework})`
+                        const memDisplay =
+                          template.defaultMemory >= 1024
+                            ? `${(template.defaultMemory / 1024).toFixed(0)} GB`
+                            : `${template.defaultMemory} MB`
+                        const stackText = template.build.useDockerfile
+                          ? "Docker"
+                          : `${template.build.language} (${template.build.framework})`
 
                         return (
                           <button
                             key={template.id}
                             type="button"
                             className={cn(
-                              "group flex items-center justify-between p-3 border rounded-xl bg-background shadow-sm hover:shadow-md transition-all duration-200 text-left cursor-pointer",
+                              "group flex cursor-pointer items-center justify-between rounded-xl border bg-background p-3 text-left shadow-sm transition-all duration-200 hover:shadow-md",
                               isSelected
                                 ? "border-primary bg-primary/[0.02] ring-1 ring-primary/20"
                                 : "border-border hover:border-border/80 hover:bg-muted/[0.05]"
                             )}
                             onClick={() => onTemplateSelect(template.id)}
                           >
-                            <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
+                            <div className="mr-4 flex min-w-0 flex-1 items-center gap-3">
                               {/* Icon */}
-                              <div className="p-2 rounded-xl bg-muted/40 border border-border group-hover:bg-background transition-colors shrink-0">
+                              <div className="shrink-0 rounded-xl border border-border bg-muted/40 p-2 transition-colors group-hover:bg-background">
                                 <TemplateIcon id={template.id} size="sm" />
                               </div>
                               {/* Title & Description */}
                               <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="font-bold text-foreground group-hover:text-primary transition-colors text-sm">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h4 className="text-sm font-bold text-foreground transition-colors group-hover:text-primary">
                                     {template.name}
                                   </h4>
-                                  <span className="inline-flex text-[9px] font-semibold tracking-wider text-muted-foreground uppercase bg-muted/60 px-1.5 py-0.5 rounded">
+                                  <span className="inline-flex rounded bg-muted/60 px-1.5 py-0.5 text-[9px] font-semibold tracking-wider text-muted-foreground uppercase">
                                     {stackText}
                                   </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 truncate max-w-[450px]">
+                                <p className="mt-0.5 line-clamp-1 max-w-[450px] truncate text-xs text-muted-foreground">
                                   {template.description}
                                 </p>
                               </div>
                             </div>
 
                             {/* Specs and selection indicator */}
-                            <div className="flex items-center gap-4 shrink-0">
-                              <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground border-r border-border/80 pr-4 py-1">
+                            <div className="flex shrink-0 items-center gap-4">
+                              <div className="hidden items-center gap-3 border-r border-border/80 py-1 pr-4 text-xs text-muted-foreground sm:flex">
                                 <div className="flex items-center gap-1">
-                                  <Cpu className="w-3.5 h-3.5 text-muted-foreground/75" />
-                                  <span className="font-medium text-foreground text-[11px]">{cpuDisplay}</span>
+                                  <Cpu className="h-3.5 w-3.5 text-muted-foreground/75" />
+                                  <span className="text-[11px] font-medium text-foreground">
+                                    {cpuDisplay}
+                                  </span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <HardDrive className="w-3.5 h-3.5 text-muted-foreground/75" />
-                                  <span className="font-medium text-foreground text-[11px]">{memDisplay}</span>
+                                  <HardDrive className="h-3.5 w-3.5 text-muted-foreground/75" />
+                                  <span className="text-[11px] font-medium text-foreground">
+                                    {memDisplay}
+                                  </span>
                                 </div>
                               </div>
 
                               {isSelected ? (
-                                <span className="p-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                                  <Check className="w-3.5 h-3.5" />
+                                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 p-1 text-emerald-600">
+                                  <Check className="h-3.5 w-3.5" />
                                 </span>
                               ) : (
-                                <span className="text-xs text-muted-foreground font-medium group-hover:text-primary transition-colors">
+                                <span className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-primary">
                                   Select
                                 </span>
                               )}
@@ -735,11 +805,24 @@ export function StepSource({
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between border-t border-border/60 pt-4 mt-2">
-                    <div className="text-[11px] text-muted-foreground font-medium">
-                      Showing <span className="font-semibold text-foreground">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span>-
-                      <span className="font-semibold text-foreground">{Math.min(filteredTemplates.length, currentPage * ITEMS_PER_PAGE)}</span> of{" "}
-                      <span className="font-semibold text-foreground">{filteredTemplates.length}</span> templates
+                  <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-4">
+                    <div className="text-[11px] font-medium text-muted-foreground">
+                      Showing{" "}
+                      <span className="font-semibold text-foreground">
+                        {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                      </span>
+                      -
+                      <span className="font-semibold text-foreground">
+                        {Math.min(
+                          filteredTemplates.length,
+                          currentPage * ITEMS_PER_PAGE
+                        )}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-semibold text-foreground">
+                        {filteredTemplates.length}
+                      </span>{" "}
+                      templates
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Button
@@ -747,13 +830,15 @@ export function StepSource({
                         variant="outline"
                         size="sm"
                         disabled={currentPage === 1}
-                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                        className="h-8 px-2.5 text-xs flex items-center gap-1 border-border font-medium shadow-sm"
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(1, prev - 1))
+                        }
+                        className="flex h-8 items-center gap-1 border-border px-2.5 text-xs font-medium shadow-sm"
                       >
-                        <CaretLeft className="w-3.5 h-3.5" />
+                        <CaretLeft className="h-3.5 w-3.5" />
                         Previous
                       </Button>
-                      <div className="text-xs font-semibold text-muted-foreground px-2">
+                      <div className="px-2 text-xs font-semibold text-muted-foreground">
                         {currentPage} / {totalPages}
                       </div>
                       <Button
@@ -761,11 +846,15 @@ export function StepSource({
                         variant="outline"
                         size="sm"
                         disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                        className="h-8 px-2.5 text-xs flex items-center gap-1 border-border font-medium shadow-sm"
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(totalPages, prev + 1)
+                          )
+                        }
+                        className="flex h-8 items-center gap-1 border-border px-2.5 text-xs font-medium shadow-sm"
                       >
                         Next
-                        <CaretRight className="w-3.5 h-3.5" />
+                        <CaretRight className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -776,12 +865,12 @@ export function StepSource({
         </Tabs>
       </CardContent>
 
-      <div className="flex items-center justify-between border-t border-border p-4 bg-muted/10 rounded-b-xl">
+      <div className="flex items-center justify-between rounded-b-xl border-t border-border bg-muted/10 p-4">
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
-          className="border-border shadow-sm text-xs font-semibold px-4 h-9"
+          className="h-9 border-border px-4 text-xs font-semibold shadow-sm"
         >
           Cancel
         </Button>
@@ -789,10 +878,10 @@ export function StepSource({
           type="button"
           onClick={onNext}
           disabled={!canProceed}
-          className="shadow-sm text-xs font-semibold px-4 h-9 flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          className="flex h-9 items-center gap-1 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
         >
           Next Step
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>
     </Card>

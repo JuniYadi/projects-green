@@ -18,7 +18,6 @@ import {
   vpnMobileDeviceService,
 } from "@/modules/vpn/mobile/vpn-mobile-device.service"
 
-
 type AuthContext = {
   organizationId?: string | null
   user: { id: string } | null
@@ -86,15 +85,14 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
     )
   }
 
-  return new Elysia()
+  return (
+    new Elysia()
 
-    /**
-     * List devices paired to current user's subscriptions.
-     * Auth: Bearer (session token — user or admin).
-     */
-    .get(
-      "/vpn/mobile/devices",
-      async ({ set }) => {
+      /**
+       * List devices paired to current user's subscriptions.
+       * Auth: Bearer (session token — user or admin).
+       */
+      .get("/vpn/mobile/devices", async ({ set }) => {
         const ctx = await resolveOrg(set)
         if ("error" in ctx) return ctx.error
 
@@ -120,106 +118,113 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
             revokedReason: device.revokedReason,
           })),
         }
-      }
-    )
+      })
 
-    /**
-     * Revoke a specific device.
-     * Auth: Bearer (session token).
-     * User can revoke own device; admin can revoke any device in their org.
-     */
-    .delete(
-      "/vpn/mobile/devices/:deviceId",
-      async ({ request, params, set }) => {
-        const ctx = await resolveOrg(set)
-        if ("error" in ctx) return ctx.error
+      /**
+       * Revoke a specific device.
+       * Auth: Bearer (session token).
+       * User can revoke own device; admin can revoke any device in their org.
+       */
+      .delete(
+        "/vpn/mobile/devices/:deviceId",
+        async ({ request, params, set }) => {
+          const ctx = await resolveOrg(set)
+          if ("error" in ctx) return ctx.error
 
-        // Fetch the device to check ownership.
-        const device = await prisma.vpnMobileDevice.findUnique({
-          where: { id: params.deviceId },
-          select: {
-            id: true,
-            organizationId: true,
-            userId: true,
-            status: true,
-          },
-        })
-
-        if (!device) return notFound(set)
-
-        // Check permission: user owns device OR user is org admin.
-        const isOwner = device.userId === ctx.userId
-        const isOrgAdmin = isAdmin(ctx.auth)
-
-        if (!isOwner && !isOrgAdmin) {
-          return forbidden(set, "You do not have permission to revoke this device.")
-        }
-
-        try {
-          await deviceService.revoke({
-            deviceId: device.id,
-            revokedBy: ctx.userId,
-            reason: "User-initiated revocation",
+          // Fetch the device to check ownership.
+          const device = await prisma.vpnMobileDevice.findUnique({
+            where: { id: params.deviceId },
+            select: {
+              id: true,
+              organizationId: true,
+              userId: true,
+              status: true,
+            },
           })
-        } catch (error) {
-          const err = error as Error & { name?: string }
-          if (err.name === "VpnMobileDeviceNotFoundError") return notFound(set)
-          if (err.name === "VpnMobileDeviceAlreadyRevokedError") {
-            return { ok: true as const }
+
+          if (!device) return notFound(set)
+
+          // Check permission: user owns device OR user is org admin.
+          const isOwner = device.userId === ctx.userId
+          const isOrgAdmin = isAdmin(ctx.auth)
+
+          if (!isOwner && !isOrgAdmin) {
+            return forbidden(
+              set,
+              "You do not have permission to revoke this device."
+            )
           }
-          throw error
+
+          try {
+            await deviceService.revoke({
+              deviceId: device.id,
+              revokedBy: ctx.userId,
+              reason: "User-initiated revocation",
+            })
+          } catch (error) {
+            const err = error as Error & { name?: string }
+            if (err.name === "VpnMobileDeviceNotFoundError")
+              return notFound(set)
+            if (err.name === "VpnMobileDeviceAlreadyRevokedError") {
+              return { ok: true as const }
+            }
+            throw error
+          }
+
+          // Audit: log device revocation
+          logAuditEvent({
+            deviceId: device.id,
+            userId: ctx.userId,
+            action: "DEVICE_REVOKED",
+            details: { reason: "User-initiated revocation" },
+            ip: getClientIp(request),
+            userAgent: request.headers.get("user-agent"),
+          }).catch(() => {})
+
+          return { ok: true as const }
         }
+      )
 
-        // Audit: log device revocation
-        logAuditEvent({
-          deviceId: device.id,
-          userId: ctx.userId,
-          action: "DEVICE_REVOKED",
-          details: { reason: "User-initiated revocation" },
-          ip: getClientIp(request),
-          userAgent: request.headers.get("user-agent"),
-        }).catch(() => {})
+      /**
+       * Update device name.
+       * Auth: Bearer (session token — device owner).
+       */
+      .patch(
+        "/vpn/mobile/devices/:deviceId",
+        async ({ params, body, set }) => {
+          const ctx = await resolveOrg(set)
+          if ("error" in ctx) return ctx.error
 
-        return { ok: true as const }
-      }
-    )
+          // Fetch device to check ownership.
+          const device = await prisma.vpnMobileDevice.findUnique({
+            where: { id: params.deviceId },
+            select: { id: true, userId: true, organizationId: true },
+          })
 
-    /**
-     * Update device name.
-     * Auth: Bearer (session token — device owner).
-     */
-    .patch(
-      "/vpn/mobile/devices/:deviceId",
-      async ({ params, body, set }) => {
-        const ctx = await resolveOrg(set)
-        if ("error" in ctx) return ctx.error
+          if (!device) return notFound(set)
 
-        // Fetch device to check ownership.
-        const device = await prisma.vpnMobileDevice.findUnique({
-          where: { id: params.deviceId },
-          select: { id: true, userId: true, organizationId: true },
-        })
+          // Only device owner or admin can rename.
+          const isOwner = device.userId === ctx.userId
+          const isOrgAdmin = isAdmin(ctx.auth)
 
-        if (!device) return notFound(set)
+          if (!isOwner && !isOrgAdmin) {
+            return forbidden(
+              set,
+              "You do not have permission to rename this device."
+            )
+          }
 
-        // Only device owner or admin can rename.
-        const isOwner = device.userId === ctx.userId
-        const isOrgAdmin = isAdmin(ctx.auth)
+          await deviceService.updateName(device.id, body.deviceName)
 
-        if (!isOwner && !isOrgAdmin) {
-          return forbidden(set, "You do not have permission to rename this device.")
+          return { ok: true as const }
+        },
+        {
+          body: t.Object({
+            deviceName: t.String({ minLength: 1, maxLength: 100 }),
+          }),
         }
-
-        await deviceService.updateName(device.id, body.deviceName)
-
-        return { ok: true as const }
-      },
-      {
-        body: t.Object({
-          deviceName: t.String({ minLength: 1, maxLength: 100 }),
-        }),
-      }
-    )
+      )
+  )
 }
 
 export const mobileDeviceRoutes = createMobileDeviceRoutes()

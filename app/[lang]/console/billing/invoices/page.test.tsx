@@ -73,10 +73,16 @@ describe("Billing InvoicesPage", () => {
     const view = render(<InvoicesPage />)
 
     await waitFor(() =>
-      expect(view.getByRole("columnheader", { name: /issued date/i })).toBeInTheDocument()
+      expect(
+        view.getByRole("columnheader", { name: /issued date/i })
+      ).toBeInTheDocument()
     )
 
-    expect(view.getByRole("columnheader", { name: /due date/i })).toBeInTheDocument()
-    expect(view.queryByRole("columnheader", { name: /period/i })).not.toBeInTheDocument()
+    expect(
+      view.getByRole("columnheader", { name: /due date/i })
+    ).toBeInTheDocument()
+    expect(
+      view.queryByRole("columnheader", { name: /period/i })
+    ).not.toBeInTheDocument()
   })
 })

@@ -4,7 +4,13 @@ import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 
 import { createAdminMembersRoutes } from "./members.route"
 import type { PlatformAccessRole } from "@/lib/platform-role"
-import { type MockAuthContext, defaultAuth, mockPlatformRole, mockIsAdmin, testIsAdmin } from "@/test/helpers/test-auth"
+import {
+  type MockAuthContext,
+  defaultAuth,
+  mockPlatformRole,
+  mockIsAdmin,
+  testIsAdmin,
+} from "@/test/helpers/test-auth"
 
 const mockFindMany = mock()
 const mockFindFirst = mock()
@@ -43,7 +49,7 @@ describe("AdminMembersRoute", () => {
       const app = new Elysia()
         .use(
           createAdminMembersRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })
@@ -197,19 +203,25 @@ describe("AdminMembersRoute", () => {
       expect(body.ok).toBe(true)
       expect(body.members).toHaveLength(2)
 
-      const org1Member = body.members.find((m: { organizationId: string }) => m.organizationId === "org_1")
+      const org1Member = body.members.find(
+        (m: { organizationId: string }) => m.organizationId === "org_1"
+      )
       expect(org1Member.subscriptionCount).toBe(2)
       expect(org1Member.monthlySpendIdr).toBe("25000.00")
       expect(org1Member.balanceIdr).toBe("150000.00")
 
-      const org2Member = body.members.find((m: { organizationId: string }) => m.organizationId === "org_2")
+      const org2Member = body.members.find(
+        (m: { organizationId: string }) => m.organizationId === "org_2"
+      )
       expect(org2Member.subscriptionCount).toBe(1)
       expect(org2Member.monthlySpendIdr).toBe("15000.00")
       expect(org2Member.balanceIdr).toBe("75000.50")
     })
 
     it("returns 500 on database error", async () => {
-      mockFindMany.mockRejectedValueOnce(new Error("Database connection failed"))
+      mockFindMany.mockRejectedValueOnce(
+        new Error("Database connection failed")
+      )
 
       const app = new Elysia()
         .use(
@@ -231,6 +243,82 @@ describe("AdminMembersRoute", () => {
       const body = await response.json()
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
     })
+
+    it("scopes to provided orgId for super_admin", async () => {
+      const mockBillingAccounts = [
+        {
+          id: "acc-1",
+          organizationId: "org_target",
+          balance: new Decimal("100000.00"),
+          currency: "USD",
+          timezone: "UTC",
+          status: "ACTIVE",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]
+
+      mockFindMany.mockResolvedValueOnce(mockBillingAccounts)
+      mockFindManySubscription.mockResolvedValueOnce([])
+      mockFindManyUsage.mockResolvedValueOnce([])
+
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as MockAuthContext,
+            getPlatformRole: async () => "super_admin" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/admin/members?orgId=550e8400-e29b-41d4-a716-446655440000"
+        )
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
+          }),
+        })
+      )
+    })
+
+    it("returns 403 when non-super_admin provides orgId", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/admin/members?orgId=550e8400-e29b-41d4-a716-446655440000"
+        )
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
   })
 
   describe("GET /admin/members/:userId", () => {
@@ -238,7 +326,7 @@ describe("AdminMembersRoute", () => {
       const app = new Elysia()
         .use(
           createAdminMembersRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })
@@ -451,7 +539,7 @@ describe("AdminMembersRoute", () => {
       const app = new Elysia()
         .use(
           createAdminMembersRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })
@@ -471,11 +559,12 @@ describe("AdminMembersRoute", () => {
       const app = new Elysia()
         .use(
           createAdminMembersRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1", email: "user@test.com" },
-              organizationId: "org_own",
-              role: "member",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1", email: "user@test.com" },
+                organizationId: "org_own",
+                role: "member",
+              }) as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
             isAdmin: () => false,
           })
@@ -501,11 +590,12 @@ describe("AdminMembersRoute", () => {
       const app = new Elysia()
         .use(
           createAdminMembersRoutes({
-            authenticate: async () => ({
-              user: { id: "admin-1", email: "admin@org_own.com" },
-              organizationId: "org_own",
-              role: "admin",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1", email: "admin@org_own.com" },
+                organizationId: "org_own",
+                role: "admin",
+              }) as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
             isAdmin: (actor) => actor.orgRole === "admin",
           })
@@ -528,21 +618,24 @@ describe("AdminMembersRoute", () => {
       // The caller is admin of org_own but asks about org_other.
       // The DB-scoping fix must restrict findFirst to caller's org (not target),
       // otherwise the WHERE clause would match and return a record instead of null.
-      mockFindFirst.mockImplementationOnce((where: { where?: { organizationId: string } }) => {
-        // If scoping is correct, findFirst is called with { where: { organizationId: "org_own" } }
-        // which won't match any record for "org_other" → null → 404
-        expect(where?.where?.organizationId).toBe("org_own")
-        return null
-      })
+      mockFindFirst.mockImplementationOnce(
+        (where: { where?: { organizationId: string } }) => {
+          // If scoping is correct, findFirst is called with { where: { organizationId: "org_own" } }
+          // which won't match any record for "org_other" → null → 404
+          expect(where?.where?.organizationId).toBe("org_own")
+          return null
+        }
+      )
 
       const app = new Elysia()
         .use(
           createAdminMembersRoutes({
-            authenticate: async () => ({
-              user: { id: "admin-1", email: "admin@org_own.com" },
-              organizationId: "org_own",
-              role: "admin",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1", email: "admin@org_own.com" },
+                organizationId: "org_own",
+                role: "admin",
+              }) as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
             isAdmin: (actor) => actor.orgRole === "admin",
           })
@@ -563,7 +656,10 @@ describe("AdminMembersRoute", () => {
 
     it("returns 200 when super_admin queries any org", async () => {
       // Super_admin bypasses org-scoping and can see any org's member
-      const otherOrgAccount = { ...mockBillingAccount, organizationId: "org_other" }
+      const otherOrgAccount = {
+        ...mockBillingAccount,
+        organizationId: "org_other",
+      }
       mockFindFirst.mockResolvedValueOnce(otherOrgAccount)
       mockFindManySubscription.mockResolvedValueOnce([])
       mockFindManyUsage.mockResolvedValueOnce([])
@@ -571,11 +667,12 @@ describe("AdminMembersRoute", () => {
       const app = new Elysia()
         .use(
           createAdminMembersRoutes({
-            authenticate: async () => ({
-              user: { id: "super-1", email: "super@test.com" },
-              organizationId: "org_own",
-              role: null,
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "super-1", email: "super@test.com" },
+                organizationId: "org_own",
+                role: null,
+              }) as MockAuthContext,
             getPlatformRole: async () => "super_admin" as PlatformAccessRole,
             isAdmin: (actor) => actor.platformRole === "super_admin",
           })

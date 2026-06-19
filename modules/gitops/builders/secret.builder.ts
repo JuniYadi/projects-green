@@ -67,11 +67,15 @@ export class SecretBuilder {
       metadata: {
         name: this.name,
         namespace: this.namespace,
-        annotations: Object.keys(this.annotations).length > 0 ? this.annotations : undefined,
+        annotations:
+          Object.keys(this.annotations).length > 0
+            ? this.annotations
+            : undefined,
       },
       type: this.type,
       data: Object.keys(this.data).length > 0 ? this.data : undefined,
-      stringData: Object.keys(this.stringData).length > 0 ? this.stringData : undefined,
+      stringData:
+        Object.keys(this.stringData).length > 0 ? this.stringData : undefined,
     }
   }
 }

@@ -40,13 +40,9 @@ export type PairingStatusResponse = {
 
 // ── API helpers ──────────────────────────────────────────────────────────
 
-
 type ApiError = { ok?: false; error?: { code: string; message: string } }
 
-async function fetchMobile<T>(
-  url: string,
-  options?: RequestInit
-): Promise<T> {
+async function fetchMobile<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     headers: {
       "content-type": "application/json",
@@ -59,7 +55,8 @@ async function fetchMobile<T>(
 
   if (!response.ok) {
     const errorData = data as ApiError
-    const message = errorData.error?.message ?? `Mobile API error: ${response.status}`
+    const message =
+      errorData.error?.message ?? `Mobile API error: ${response.status}`
     throw new Error(message)
   }
 
@@ -79,9 +76,7 @@ export async function listMobileDevices(): Promise<MobileDeviceEntry[]> {
 /**
  * Revoke a specific device.
  */
-export async function revokeMobileDevice(
-  deviceId: string
-): Promise<void> {
+export async function revokeMobileDevice(deviceId: string): Promise<void> {
   await fetchMobile(`/api/vpn/mobile/devices/${deviceId}`, {
     method: "DELETE",
   })

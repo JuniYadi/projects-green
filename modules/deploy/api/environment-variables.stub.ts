@@ -56,9 +56,7 @@ const createSeedData = (): EnvVariableRecord[] => {
   ]
 }
 
-const memoryStore: EnvironmentVariablesStore = new Map([
-  ["staging", []],
-])
+const memoryStore: EnvironmentVariablesStore = new Map([["staging", []]])
 
 const getEnvironmentRows = (
   environmentId: string,
@@ -100,10 +98,7 @@ const ensureKeyIsValid = (key: string) => {
   }
 
   if (!isValidEnvVarKey(normalizedKey)) {
-    return toValidationError(
-      "INVALID_KEY",
-      "Key must match ^[A-Z][A-Z0-9_]*$."
-    )
+    return toValidationError("INVALID_KEY", "Key must match ^[A-Z][A-Z0-9_]*$.")
   }
 
   return null
@@ -166,7 +161,10 @@ export const createEnvironmentVariable = (
   }
 
   if (input.value.trim().length === 0) {
-    return toValidationError("VALIDATION_ERROR", "Environment value is required.")
+    return toValidationError(
+      "VALIDATION_ERROR",
+      "Environment value is required."
+    )
   }
 
   if (hasDuplicateKey(envRows, normalizedKey)) {
@@ -257,8 +255,7 @@ export const updateEnvironmentVariable = (
     type: nextType,
     value: nextType === "secret" ? "" : nextValue,
     masked: nextType === "secret" ? true : current.masked,
-    isStoredSecret:
-      nextType === "secret" ? true : false,
+    isStoredSecret: nextType === "secret" ? true : false,
     lastUpdatedAt: nowIso(),
   }
 
@@ -316,7 +313,10 @@ export const importEnvironmentVariables = (
   }
 
   if (parsed.entries.length === 0) {
-    return toValidationError("VALIDATION_ERROR", "No variables found to import.")
+    return toValidationError(
+      "VALIDATION_ERROR",
+      "No variables found to import."
+    )
   }
 
   const duplicateKeys = new Set<string>()

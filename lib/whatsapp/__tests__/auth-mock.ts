@@ -71,8 +71,7 @@ export const whatsappAuthMock = {
       ;(ctx as any).whatsappAuth = auth
       return route(ctx)
     }
-    const isAdmin =
-      auth.orgRole === "admin" || auth.orgRole === "owner"
+    const isAdmin = auth.orgRole === "admin" || auth.orgRole === "owner"
     if (!isAdmin) {
       ctx.set.status = 403
       return { ok: false, error: "FORBIDDEN" }
@@ -175,8 +174,10 @@ export const whatsappAuthMock = {
       auth.platformRole === "super_admin"
     )
   },
-  requireSuperAdmin: () => mockAuthContext.current.platformRole === "super_admin",
-  requireWorkOSSession: () => (mockAuthContext.current.type as string) === "workos",
+  requireSuperAdmin: () =>
+    mockAuthContext.current.platformRole === "super_admin",
+  requireWorkOSSession: () =>
+    (mockAuthContext.current.type as string) === "workos",
   requireApiKey: () => (mockAuthContext.current.type as string) === "platform",
   requireTenantMember: () => mockAuthContext.current.organizationId !== null,
   isWorkOSScope: (ctx: any): ctx is WorkOSScope => ctx?.type === "workos",

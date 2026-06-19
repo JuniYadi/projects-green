@@ -96,7 +96,9 @@ describe("ResultPanel", () => {
         onEditSettings={mock()}
       />
     )
-    expect(view.getByText(/We hit an issue while deploying/)).toBeInTheDocument()
+    expect(
+      view.getByText(/We hit an issue while deploying/)
+    ).toBeInTheDocument()
   })
 
   it("returns null for unknown status", () => {

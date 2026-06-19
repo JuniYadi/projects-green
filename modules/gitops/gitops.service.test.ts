@@ -16,9 +16,8 @@ describe("GitOpsRepositoryService", () => {
     global.fetch = mockFetch as unknown as typeof global.fetch
     process.env.GITOPS_REPO_PAT = "test-pat"
     process.env.GITHUB_APP_ID = "12345"
-    process.env.GITHUB_APP_PRIVATE_KEY_BASE64 = Buffer.from(
-      "test-key"
-    ).toString("base64")
+    process.env.GITHUB_APP_PRIVATE_KEY_BASE64 =
+      Buffer.from("test-key").toString("base64")
 
     service = new GitOpsRepositoryService()
     mockFetch.mockClear()
@@ -46,11 +45,9 @@ describe("GitOpsRepositoryService", () => {
       json: async () => ({}),
     })
 
-    const result = await service.commitFiles(
-      "owner/repo",
-      "test message",
-      [{ path: "test.txt", content: "hello" }]
-    )
+    const result = await service.commitFiles("owner/repo", "test message", [
+      { path: "test.txt", content: "hello" },
+    ])
 
     expect(result.sha).toBe("commit-sha")
     expect(mockFetch).toHaveBeenCalledTimes(5)

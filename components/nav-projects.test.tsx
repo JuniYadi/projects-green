@@ -33,8 +33,8 @@ describe("NavProjects", () => {
     expect(
       view.getByRole("link", { name: "Overview" }).getAttribute("href")
     ).toBe("/console")
-    expect(view.getByRole("link", { name: "Invoices" }).getAttribute("href")).toBe(
-      "/console/invoices"
-    )
+    expect(
+      view.getByRole("link", { name: "Invoices" }).getAttribute("href")
+    ).toBe("/console/invoices")
   })
 })

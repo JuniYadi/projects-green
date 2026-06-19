@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test"
-import { generateJenkinsDsl, generatePhpDsl, generateNodeDsl, generateDockerDsl } from "./jenkins-dsl"
+import {
+  generateJenkinsDsl,
+  generatePhpDsl,
+  generateNodeDsl,
+  generateDockerDsl,
+} from "./jenkins-dsl"
 import type { JenkinsDslOptions } from "./jenkins-dsl"
 
 const baseOptions: JenkinsDslOptions = {
@@ -63,7 +68,10 @@ describe("jenkins-dsl", () => {
     })
 
     it("uses custom docker registry URL", () => {
-      const dsl = generateDockerDsl({ ...baseOptions, dockerRegistryUrl: "gcr.io/acme" })
+      const dsl = generateDockerDsl({
+        ...baseOptions,
+        dockerRegistryUrl: "gcr.io/acme",
+      })
       expect(dsl).toContain("dockerRegistryUrl: 'gcr.io/acme'")
     })
 
@@ -79,12 +87,20 @@ describe("jenkins-dsl", () => {
 
   describe("generateJenkinsDsl", () => {
     it("dispatches to PHP generator", () => {
-      const dsl = generateJenkinsDsl({ name: "app", type: "php", repositoryUrl: "https://github.com/acme/app" })
+      const dsl = generateJenkinsDsl({
+        name: "app",
+        type: "php",
+        repositoryUrl: "https://github.com/acme/app",
+      })
       expect(dsl).toContain("laravelPipeline([")
     })
 
     it("dispatches to Node generator", () => {
-      const dsl = generateJenkinsDsl({ name: "app", type: "node", repositoryUrl: "https://github.com/acme/app" })
+      const dsl = generateJenkinsDsl({
+        name: "app",
+        type: "node",
+        repositoryUrl: "https://github.com/acme/app",
+      })
       expect(dsl).toContain("nodejsPipeline([")
     })
 
@@ -101,7 +117,11 @@ describe("jenkins-dsl", () => {
     })
 
     it("uses main as default branch", () => {
-      const dsl = generateJenkinsDsl({ name: "app", type: "php", repositoryUrl: "https://github.com/acme/app" })
+      const dsl = generateJenkinsDsl({
+        name: "app",
+        type: "php",
+        repositoryUrl: "https://github.com/acme/app",
+      })
       expect(dsl).toContain("codeBranch: 'main'")
     })
   })

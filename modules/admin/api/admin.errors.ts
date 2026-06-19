@@ -10,10 +10,7 @@ import type { AdminApiError } from "@/modules/admin/api/admin.guards"
 
 export type RouteSet = { status?: number | string }
 
-export const toWorkosError = (
-  set: RouteSet,
-  error: unknown
-): AdminApiError => {
+export const toWorkosError = (set: RouteSet, error: unknown): AdminApiError => {
   if (error instanceof BadRequestException) {
     set.status = 400
     return {

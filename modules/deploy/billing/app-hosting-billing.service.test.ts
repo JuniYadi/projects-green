@@ -72,7 +72,7 @@ describe("AppHostingBillingService", () => {
     mockBillingTransactionService.creditBalance.mockReset()
     service = new AppHostingBillingService(
       mockPrisma as unknown as PrismaClient,
-      mockBillingTransactionService as never,
+      mockBillingTransactionService as never
     )
   })
 
@@ -148,7 +148,7 @@ describe("AppHostingBillingService", () => {
         service.quotePayg({
           organizationId: "org_1",
           hourlyCost: decimal("5.00"),
-        }),
+        })
       ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
     })
   })
@@ -156,7 +156,7 @@ describe("AppHostingBillingService", () => {
   describe("assertCanStartPayg", () => {
     it("returns quote when balance covers required buffer", async () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(
-        billingAccount({ balance: decimal("500.00") }),
+        billingAccount({ balance: decimal("500.00") })
       )
 
       const quote = await service.assertCanStartPayg({
@@ -170,7 +170,7 @@ describe("AppHostingBillingService", () => {
 
     it("rejects when balance is insufficient for buffer", async () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(
-        billingAccount({ balance: decimal("100.00") }),
+        billingAccount({ balance: decimal("100.00") })
       )
 
       await expect(
@@ -178,14 +178,14 @@ describe("AppHostingBillingService", () => {
           organizationId: "org_1",
           hourlyCost: decimal("5.00"),
           bufferHours: 48,
-        }),
+        })
       ).rejects.toThrow("INSUFFICIENT_PAYG_BUFFER")
     })
 
     it("rejects when balance exactly equals required", async () => {
       // balance 120, hourly 5, buffer 24 => required 120 => balance >= required, should pass
       mockPrisma.billingAccount.findUnique.mockResolvedValue(
-        billingAccount({ balance: decimal("120.00") }),
+        billingAccount({ balance: decimal("120.00") })
       )
 
       const quote = await service.assertCanStartPayg({
@@ -199,7 +199,7 @@ describe("AppHostingBillingService", () => {
 
     it("rejects when balance is just below required", async () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(
-        billingAccount({ balance: decimal("119.99") }),
+        billingAccount({ balance: decimal("119.99") })
       )
 
       await expect(
@@ -207,7 +207,7 @@ describe("AppHostingBillingService", () => {
           organizationId: "org_1",
           hourlyCost: decimal("5.00"),
           bufferHours: 24,
-        }),
+        })
       ).rejects.toThrow("INSUFFICIENT_PAYG_BUFFER")
     })
 
@@ -216,7 +216,7 @@ describe("AppHostingBillingService", () => {
         service.assertCanStartPayg({
           organizationId: "org_1",
           hourlyCost: decimal("0"),
-        }),
+        })
       ).rejects.toThrow("INVALID_HOURLY_COST")
     })
 
@@ -225,7 +225,7 @@ describe("AppHostingBillingService", () => {
         service.assertCanStartPayg({
           organizationId: "org_1",
           hourlyCost: decimal("-5"),
-        }),
+        })
       ).rejects.toThrow("INVALID_HOURLY_COST")
     })
   })
@@ -254,7 +254,9 @@ describe("AppHostingBillingService", () => {
       })
 
       expect(result.alreadyProcessed).toBe(false)
-      expect(mockBillingTransactionService.debitServiceBalance).toHaveBeenCalledWith(
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "org_1",
           amount: decimal("5.00"),
@@ -263,7 +265,7 @@ describe("AppHostingBillingService", () => {
             description: "App Hosting PAYG runtime hour",
             lineType: "USAGE",
           }),
-        }),
+        })
       )
     })
 
@@ -298,7 +300,7 @@ describe("AppHostingBillingService", () => {
       mockPrisma.applicationStack.findUnique.mockResolvedValue(stack)
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE"),
+        new Error("INSUFFICIENT_BALANCE")
       )
       mockPrisma.applicationStack.update.mockResolvedValue({ ...stack })
 
@@ -326,7 +328,7 @@ describe("AppHostingBillingService", () => {
       mockPrisma.applicationStack.findUnique.mockResolvedValue(stack)
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE"),
+        new Error("INSUFFICIENT_BALANCE")
       )
       mockPrisma.$executeRaw.mockResolvedValue(0)
 
@@ -353,7 +355,7 @@ describe("AppHostingBillingService", () => {
           stackId: "stack_1",
           hourlyCost: decimal("5.00"),
           occurredAt: new Date("2026-06-04T10:00:00Z"),
-        }),
+        })
       ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
     })
   })
@@ -381,7 +383,9 @@ describe("AppHostingBillingService", () => {
       })
 
       expect(result.alreadyProcessed).toBe(false)
-      expect(mockBillingTransactionService.debitServiceBalance).toHaveBeenCalledWith(
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "org_1",
           amount: decimal("200.00"),
@@ -390,7 +394,7 @@ describe("AppHostingBillingService", () => {
             description: "App Hosting monthly package",
             lineType: "SUBSCRIPTION",
           }),
-        }),
+        })
       )
     })
 
@@ -398,7 +402,7 @@ describe("AppHostingBillingService", () => {
       const account = billingAccount({ balance: decimal("50.00") })
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE"),
+        new Error("INSUFFICIENT_BALANCE")
       )
 
       await expect(
@@ -408,7 +412,7 @@ describe("AppHostingBillingService", () => {
           subscriptionId: "sub_1",
           stackId: "stack_1",
           idempotencyKey: "app-package:stack_1:2026-06",
-        }),
+        })
       ).rejects.toThrow("INSUFFICIENT_BALANCE")
     })
   })
@@ -438,7 +442,7 @@ describe("AppHostingBillingService", () => {
               billingState: "SUSPENDED",
             }),
           }),
-        }),
+        })
       )
     })
 
@@ -485,7 +489,7 @@ describe("AppHostingBillingService", () => {
               billingState: "PAYMENT_GRACE",
             }),
           }),
-        }),
+        })
       )
     })
 

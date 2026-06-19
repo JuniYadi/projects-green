@@ -27,8 +27,12 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
   }
 })
 
-
-import { redirect, useRouter, usePathname, useSearchParams } from "next/navigation"
+import {
+  redirect,
+  useRouter,
+  usePathname,
+  useSearchParams,
+} from "next/navigation"
 
 describe("NavUser", () => {
   afterEach(() => {
@@ -43,7 +47,9 @@ describe("NavUser", () => {
     mockPathname = "/en/console"
     mockSearchParams = new URLSearchParams()
     ;(usePathname as ReturnType<typeof mock>).mockReturnValue(mockPathname)
-    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(mockSearchParams)
+    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
+      mockSearchParams
+    )
     ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
       replace: mockReplace,
       refresh: mockRefresh,
@@ -165,15 +171,21 @@ describe("NavUser", () => {
     })
 
     fireEvent.pointerDown(view.getByRole("button"))
-    
+
     // Find and click the "Theme" submenu trigger
     const themeTrigger = await view.findByText("Theme")
     expect(themeTrigger).toBeInTheDocument()
     fireEvent.click(themeTrigger)
 
     // Verify Light, Dark, and System options exist
-    expect(await view.findByRole("menuitemradio", { name: /Light/ })).toBeInTheDocument()
-    expect(await view.findByRole("menuitemradio", { name: /Dark/ })).toBeInTheDocument()
-    expect(await view.findByRole("menuitemradio", { name: /System/ })).toBeInTheDocument()
+    expect(
+      await view.findByRole("menuitemradio", { name: /Light/ })
+    ).toBeInTheDocument()
+    expect(
+      await view.findByRole("menuitemradio", { name: /Dark/ })
+    ).toBeInTheDocument()
+    expect(
+      await view.findByRole("menuitemradio", { name: /System/ })
+    ).toBeInTheDocument()
   })
 })

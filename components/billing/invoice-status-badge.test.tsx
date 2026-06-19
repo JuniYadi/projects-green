@@ -21,7 +21,9 @@ describe("InvoiceStatusBadge", () => {
   })
 
   it("applies custom className", () => {
-    const view = render(<InvoiceStatusBadge status="PAID" className="custom-class" />)
+    const view = render(
+      <InvoiceStatusBadge status="PAID" className="custom-class" />
+    )
     const badge = view.getByText("Paid")
     expect(badge.className).toContain("custom-class")
   })

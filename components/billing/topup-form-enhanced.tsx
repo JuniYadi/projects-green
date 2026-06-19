@@ -31,9 +31,19 @@ interface BankAccount {
   isDefault: boolean
 }
 
+interface CurrencyConfig {
+  symbol: string
+  ratePerBase: number
+  baseCode: string
+  presets: number[]
+  minTopup: number
+  maxTopup: number
+}
+
 interface TopupFormEnhancedProps {
   className?: string
   currency?: "IDR" | "USD"
+  onConfigChange?: (config: CurrencyConfig) => void
   onSuccess?: (result: {
     invoiceId: string
     amount: number
@@ -76,6 +86,7 @@ const ALL_PAYMENT_METHODS: {
 export function TopupFormEnhanced({
   className,
   currency = "IDR",
+  onConfigChange,
   onSuccess,
 }: TopupFormEnhancedProps) {
   const router = useRouter()
@@ -91,14 +102,7 @@ export function TopupFormEnhanced({
   const [availableMethods, setAvailableMethods] = useState<
     Record<PaymentMethod, boolean>
   >({ MANUAL_BANK: true, VA: false, QRIS: false, PAYPAL: false })
-  const [currencyConfig, setCurrencyConfig] = useState<{
-    symbol: string
-    ratePerBase: number
-    baseCode: string
-    presets: number[]
-    minTopup: number
-    maxTopup: number
-  }>({
+  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({
     symbol: currency === "USD" ? "$" : "Rp",
     ratePerBase: currency === "USD" ? 1 : 18000,
     baseCode: "USD",
@@ -109,6 +113,12 @@ export function TopupFormEnhanced({
     minTopup: currency === "USD" ? 10 : 50000,
     maxTopup: currency === "USD" ? 10000 : 200000000,
   })
+
+  // Report initial config to parent.
+  useEffect(() => {
+    onConfigChange?.(currencyConfig)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -131,14 +141,14 @@ export function TopupFormEnhanced({
             setPaymentMethod((current) => {
               if (nextMethods[current]) return current
               return (
-                ALL_PAYMENT_METHODS.find(
-                  (method) => nextMethods[method.value]
-                )?.value ?? current
+                ALL_PAYMENT_METHODS.find((method) => nextMethods[method.value])
+                  ?.value ?? current
               )
             })
           }
           if (data.config) {
             setCurrencyConfig(data.config)
+            onConfigChange?.(data.config)
             // Default the amount to the first preset for this currency.
             if (
               Array.isArray(data.config.presets) &&
@@ -230,7 +240,17 @@ export function TopupFormEnhanced({
     setErrorMessage(null)
 
     try {
-      const { data: result } = await eden.api.payments.topup.post({ amount, paymentMethod } as never) as { data: { ok?: boolean; message?: string; invoice?: { id: string }; paymentUrl?: string } | null }
+      const { data: result } = (await eden.api.payments.topup.post({
+        amount,
+        paymentMethod,
+      } as never)) as {
+        data: {
+          ok?: boolean
+          message?: string
+          invoice?: { id: string }
+          paymentUrl?: string
+        } | null
+      }
 
       if (!result || !result.ok) {
         throw new Error(result?.message || "Topup failed. Please try again.")
@@ -354,32 +374,32 @@ export function TopupFormEnhanced({
           <div className="grid gap-3">
             {hasPaymentMethods ? (
               PAYMENT_METHODS.map((method) => (
-              <label
-                key={method.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                  paymentMethod === method.value
-                    ? "border-primary bg-primary/5"
-                    : "border-input hover:bg-muted/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={method.value}
-                  checked={paymentMethod === method.value}
-                  onChange={() => setPaymentMethod(method.value)}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <method.icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{method.label}</span>
+                <label
+                  key={method.value}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                    paymentMethod === method.value
+                      ? "border-primary bg-primary/5"
+                      : "border-input hover:bg-muted/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={method.value}
+                    checked={paymentMethod === method.value}
+                    onChange={() => setPaymentMethod(method.value)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <method.icon className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{method.label}</span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {method.description}
+                    </p>
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {method.description}
-                  </p>
-                </div>
-              </label>
+                </label>
               ))
             ) : (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">

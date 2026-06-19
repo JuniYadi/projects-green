@@ -63,27 +63,34 @@ const features = [
 ]
 
 const logos = [
-  "Next.js", "React", "Node.js", "Go", "Python", "Rust", "Docker", "Kubernetes",
+  "Next.js",
+  "React",
+  "Node.js",
+  "Go",
+  "Python",
+  "Rust",
+  "Docker",
+  "Kubernetes",
 ]
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="relative py-28 bg-[#07091a]">
+    <section id="features" className="relative bg-[#07091a] py-28">
       {/* Separator gradient from prev section */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="absolute top-0 right-0 left-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="absolute right-0 bottom-0 left-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="mx-auto max-w-7xl px-6">
         {/* Tech stack marquee */}
         <div className="mb-20">
-          <p className="text-center text-xs text-white/30 uppercase tracking-widest mb-6">
+          <p className="mb-6 text-center text-xs tracking-widest text-white/30 uppercase">
             Works with your stack
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             {logos.map((logo) => (
               <div
                 key={logo}
-                className="bg-white/5 border border-white/8 rounded-lg px-4 py-2 text-sm text-white/40 hover:text-white/70 hover:border-white/15 transition-all"
+                className="rounded-lg border border-white/8 bg-white/5 px-4 py-2 text-sm text-white/40 transition-all hover:border-white/15 hover:text-white/70"
               >
                 {logo}
               </div>
@@ -92,46 +99,50 @@ export function FeaturesSection() {
         </div>
 
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6">
-            <span className="text-xs font-semibold text-white/50 uppercase tracking-widest">
+        <div className="mb-16 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5">
+            <span className="text-xs font-semibold tracking-widest text-white/50 uppercase">
               Built for developers
             </span>
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-5 tracking-tight">
+          <h2 className="mb-5 text-4xl font-bold tracking-tight text-white lg:text-5xl">
             The platform that gets{" "}
             <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
               out of your way
             </span>
           </h2>
-          <p className="text-lg text-white/40 max-w-2xl mx-auto">
-            Sensible defaults, powerful overrides. Built by developers, for developers who
-            care about their craft.
+          <p className="mx-auto max-w-2xl text-lg text-white/40">
+            Sensible defaults, powerful overrides. Built by developers, for
+            developers who care about their craft.
           </p>
         </div>
 
         {/* Features grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
+        <div className="mb-16 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
             <div
               key={f.title}
-              className="group bg-white/[0.02] border border-white/8 hover:border-white/15 rounded-2xl p-6 transition-all duration-300 hover:bg-white/[0.05]"
+              className="group rounded-2xl border border-white/8 bg-white/[0.02] p-6 transition-all duration-300 hover:border-white/15 hover:bg-white/[0.05]"
             >
               <div
-                className={`w-10 h-10 ${f.bg} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
+                className={`h-10 w-10 ${f.bg} mb-4 flex items-center justify-center rounded-xl transition-transform group-hover:scale-110`}
               >
-                <f.icon weight="duotone" className={`w-5 h-5 ${f.color}`} />
+                <f.icon weight="duotone" className={`h-5 w-5 ${f.color}`} />
               </div>
-              <h3 className="text-base font-bold text-white mb-2">{f.title}</h3>
-              <p className="text-sm text-white/45 leading-relaxed">{f.description}</p>
+              <h3 className="mb-2 text-base font-bold text-white">{f.title}</h3>
+              <p className="text-sm leading-relaxed text-white/45">
+                {f.description}
+              </p>
             </div>
           ))}
         </div>
 
         {/* CTA bar */}
-        <div className="bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 border border-white/10 rounded-2xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="flex flex-col items-center justify-between gap-6 rounded-2xl border border-white/10 bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 p-8 sm:flex-row">
           <div>
-            <h3 className="text-xl font-bold text-white mb-1">Ready to build?</h3>
+            <h3 className="mb-1 text-xl font-bold text-white">
+              Ready to build?
+            </h3>
             <p className="text-sm text-white/40">
               Get started in 2 minutes. No credit card required.
             </p>
@@ -139,10 +150,10 @@ export function FeaturesSection() {
           <Link
             href="/signup"
             id="features-cta-signup"
-            className="group inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-7 py-3 rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 whitespace-nowrap"
+            className="group inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3 font-semibold whitespace-nowrap text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40"
           >
             Get started free
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
       </div>

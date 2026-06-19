@@ -3,8 +3,14 @@ import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
 import { triggerDeploy } from "../../deploy-pipeline.service"
-import { rollbackDeployment, getRollbackOptions } from "../../deploy-rollback.service"
-import { resolveTenantRoleFromClaims, hasScopedSuperAdminClaim } from "@/modules/tenants/tenant-policy"
+import {
+  rollbackDeployment,
+  getRollbackOptions,
+} from "../../deploy-rollback.service"
+import {
+  resolveTenantRoleFromClaims,
+  hasScopedSuperAdminClaim,
+} from "@/modules/tenants/tenant-policy"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { AppHostingBillingService } from "../../billing/app-hosting-billing.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
@@ -21,17 +27,30 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
 
       if (!auth.organizationId) {
         set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Organization required" }
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
       }
 
       // Check deploy permissions
       const platformRole = await getPlatformRoleForUser(auth.user)
-      const isSuperAdmin = platformRole === "super_admin" || hasScopedSuperAdminClaim(auth.role ?? null, auth.roles ?? null)
+      const isSuperAdmin =
+        platformRole === "super_admin" ||
+        hasScopedSuperAdminClaim(auth.role ?? null, auth.roles ?? null)
       if (!isSuperAdmin) {
-        const tenantRole = resolveTenantRoleFromClaims(auth.role ?? null, auth.roles ?? null)
+        const tenantRole = resolveTenantRoleFromClaims(
+          auth.role ?? null,
+          auth.roles ?? null
+        )
         if (tenantRole !== "owner" && tenantRole !== "admin") {
           set.status = 403
-          return { ok: false, error: "FORBIDDEN", message: "Admin/Owner role required for deploy operations" }
+          return {
+            ok: false,
+            error: "FORBIDDEN",
+            message: "Admin/Owner role required for deploy operations",
+          }
         }
       }
 
@@ -56,7 +75,8 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
         return {
           ok: false,
           error: "STACK_SUSPENDED",
-          message: "This stack is suspended due to payment issues. Please top up your balance.",
+          message:
+            "This stack is suspended due to payment issues. Please top up your balance.",
           topupUrl: "/console/billing/topup",
         }
       }
@@ -74,7 +94,10 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
         }
 
         const transactions = new BillingTransactionService(prisma)
-        const billingService = new AppHostingBillingService(prisma, transactions)
+        const billingService = new AppHostingBillingService(
+          prisma,
+          transactions
+        )
         try {
           await billingService.assertCanStartPayg({
             organizationId: auth.organizationId,
@@ -82,12 +105,16 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
             bufferHours: body.paygBufferHours,
           })
         } catch (error) {
-          if (error instanceof Error && error.message === "INSUFFICIENT_PAYG_BUFFER") {
+          if (
+            error instanceof Error &&
+            error.message === "INSUFFICIENT_PAYG_BUFFER"
+          ) {
             set.status = 402
             return {
               ok: false,
               error: "INSUFFICIENT_PAYG_BUFFER",
-              message: "Your balance must cover the configured runtime buffer before deploying PAYG apps.",
+              message:
+                "Your balance must cover the configured runtime buffer before deploying PAYG apps.",
               topupUrl: "/console/billing/topup",
             }
           }
@@ -122,17 +149,30 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
 
       if (!auth.organizationId) {
         set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Organization required" }
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
       }
 
       // Check deploy permissions
       const platformRole = await getPlatformRoleForUser(auth.user)
-      const isSuperAdmin = platformRole === "super_admin" || hasScopedSuperAdminClaim(auth.role ?? null, auth.roles ?? null)
+      const isSuperAdmin =
+        platformRole === "super_admin" ||
+        hasScopedSuperAdminClaim(auth.role ?? null, auth.roles ?? null)
       if (!isSuperAdmin) {
-        const tenantRole = resolveTenantRoleFromClaims(auth.role ?? null, auth.roles ?? null)
+        const tenantRole = resolveTenantRoleFromClaims(
+          auth.role ?? null,
+          auth.roles ?? null
+        )
         if (tenantRole !== "owner" && tenantRole !== "admin") {
           set.status = 403
-          return { ok: false, error: "FORBIDDEN", message: "Admin/Owner role required for deploy operations" }
+          return {
+            ok: false,
+            error: "FORBIDDEN",
+            message: "Admin/Owner role required for deploy operations",
+          }
         }
       }
 
@@ -157,7 +197,8 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
         return {
           ok: false,
           error: "STACK_SUSPENDED",
-          message: "This stack is suspended due to payment issues. Please top up your balance.",
+          message:
+            "This stack is suspended due to payment issues. Please top up your balance.",
           topupUrl: "/console/billing/topup",
         }
       }
@@ -167,19 +208,26 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
         const hourlyCost = stack.hourlyCost
         if (hourlyCost) {
           const transactions = new BillingTransactionService(prisma)
-          const billingService = new AppHostingBillingService(prisma, transactions)
+          const billingService = new AppHostingBillingService(
+            prisma,
+            transactions
+          )
           try {
             await billingService.assertCanStartPayg({
               organizationId: auth.organizationId,
               hourlyCost: new Prisma.Decimal(String(hourlyCost)),
             })
           } catch (error) {
-            if (error instanceof Error && error.message === "INSUFFICIENT_PAYG_BUFFER") {
+            if (
+              error instanceof Error &&
+              error.message === "INSUFFICIENT_PAYG_BUFFER"
+            ) {
               set.status = 402
               return {
                 ok: false,
                 error: "INSUFFICIENT_PAYG_BUFFER",
-                message: "Your balance must cover at least 24 hours of runtime before rolling back PAYG apps.",
+                message:
+                  "Your balance must cover at least 24 hours of runtime before rolling back PAYG apps.",
                 topupUrl: "/console/billing/topup",
               }
             }

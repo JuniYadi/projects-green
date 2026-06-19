@@ -119,7 +119,9 @@ export const buildSupportTicketAttachmentStoragePrefix = (
   context: Omit<SupportTicketAttachmentKeyContext, "extension">
 ) => {
   const config = loadStorageConfig()
-  const ticketScope = context.ticketId ? sanitizeSegment(context.ticketId) : "pending"
+  const ticketScope = context.ticketId
+    ? sanitizeSegment(context.ticketId)
+    : "pending"
 
   return [
     config.prefix,

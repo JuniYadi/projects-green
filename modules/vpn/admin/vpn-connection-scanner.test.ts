@@ -27,7 +27,12 @@ const makeServer = (over: Record<string, unknown> = {}) =>
     isActive: true,
     createdAt: new Date("2026-01-01T00:00:00Z"),
     updatedAt: new Date("2026-01-01T00:00:00Z"),
-    region: { id: "reg-1", name: "Indonesia", slug: "indonesia", countryCode: "id" },
+    region: {
+      id: "reg-1",
+      name: "Indonesia",
+      slug: "indonesia",
+      countryCode: "id",
+    },
     sshKey: { id: "key-1", name: "Prod Key", fingerprint: "SHA256:abc" },
     ...over,
   }) as any
@@ -60,12 +65,18 @@ const udpPass: UdpProber = async () => ({
 
 // SSH exec helpers — `ssExec(stdout)` simulates a successful `ss -ntulp`, while
 // `ssExecEmpty` yields no parseable output (forces the external-probe fallback).
-const ssExec = (stdout: string): SshExecer => async () => ({
+const ssExec =
+  (stdout: string): SshExecer =>
+  async () => ({
+    ok: true,
+    stdout,
+    stderr: "",
+  })
+const ssExecEmpty: SshExecer = async () => ({
   ok: true,
-  stdout,
+  stdout: "",
   stderr: "",
 })
-const ssExecEmpty: SshExecer = async () => ({ ok: true, stdout: "", stderr: "" })
 const resolveKeyOk = async () => "PRIVATE_KEY"
 
 describe("createVpnServerScanner", () => {
@@ -82,7 +93,9 @@ describe("createVpnServerScanner", () => {
     const result = await scan(makeServer())
     expect(result.status).toBe("completed")
     expect(result.summary.passed).toBe(2) // ssh + openvpn
-    expect(result.results.find((r) => r.check === "openvpn")?.status).toBe("pass")
+    expect(result.results.find((r) => r.check === "openvpn")?.status).toBe(
+      "pass"
+    )
   })
 
   it("skips disabled protocols with a clear reason", async () => {
@@ -158,7 +171,12 @@ describe("createVpnServerScanner", () => {
       udpProbe: udpPass,
     })
     const result = await scan(
-      makeServer({ hasOpenVpn: false, openVpnPort: null, hasProxy: true, proxyPort: 3128 })
+      makeServer({
+        hasOpenVpn: false,
+        openVpnPort: null,
+        hasProxy: true,
+        proxyPort: 3128,
+      })
     )
     const proxy = result.results.find((r) => r.check === "proxy")
     expect(proxy?.status).toBe("error")
@@ -403,7 +421,12 @@ describe("createVpnServerScanner — SSH-based port verification", () => {
       sshExec: ssExecEmpty,
     })
     const result = await scan(
-      makeServer({ hasOpenVpn: false, openVpnPort: null, hasProxy: true, proxyPort: 3128 })
+      makeServer({
+        hasOpenVpn: false,
+        openVpnPort: null,
+        hasProxy: true,
+        proxyPort: 3128,
+      })
     )
     const proxy = result.results.find((r) => r.check === "proxy")
     expect(proxy?.status).toBe("pass")

@@ -337,9 +337,7 @@ describe("detectorAdminRoutes", () => {
   describe("GET /admin/detector/logs", () => {
     it("returns logs list", async () => {
       const mockLogs = [createMockInspectionLog()]
-      const mockList = mock(() =>
-        Promise.resolve({ logs: mockLogs, total: 1 })
-      )
+      const mockList = mock(() => Promise.resolve({ logs: mockLogs, total: 1 }))
 
       const app = new Elysia().use(
         createDetectorAdminRoutes({
@@ -363,9 +361,7 @@ describe("detectorAdminRoutes", () => {
     })
 
     it("passes query filters", async () => {
-      const mockList = mock(() =>
-        Promise.resolve({ logs: [], total: 0 })
-      )
+      const mockList = mock(() => Promise.resolve({ logs: [], total: 0 }))
 
       const app = new Elysia().use(
         createDetectorAdminRoutes({

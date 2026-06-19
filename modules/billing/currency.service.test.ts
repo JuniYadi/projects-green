@@ -18,11 +18,8 @@ vi.mock("@/lib/prisma", () => ({
   prisma: mockPrisma as unknown as PrismaClient,
 }))
 
-const {
-  CurrencyService,
-  CurrencyNotFoundError,
-  BaseCurrencyMissingError,
-} = await import("./currency.service")
+const { CurrencyService, CurrencyNotFoundError, BaseCurrencyMissingError } =
+  await import("./currency.service")
 
 function decimal(value: string | number) {
   return new Prisma.Decimal(value)
@@ -147,7 +144,9 @@ describe("CurrencyService", () => {
       const tx = {
         paymentCurrency: {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-          create: vi.fn().mockImplementation(({ data }) => Promise.resolve(data)),
+          create: vi
+            .fn()
+            .mockImplementation(({ data }) => Promise.resolve(data)),
         },
       }
       mockPrisma.$transaction.mockImplementation((cb) => cb(tx))
@@ -174,7 +173,9 @@ describe("CurrencyService", () => {
       const tx = {
         paymentCurrency: {
           updateMany: vi.fn(),
-          create: vi.fn().mockImplementation(({ data }) => Promise.resolve(data)),
+          create: vi
+            .fn()
+            .mockImplementation(({ data }) => Promise.resolve(data)),
         },
       }
       mockPrisma.$transaction.mockImplementation((cb) => cb(tx))
@@ -199,7 +200,9 @@ describe("CurrencyService", () => {
         paymentCurrency: {
           findUnique: vi.fn().mockResolvedValue(USD),
           updateMany: vi.fn(),
-          update: vi.fn().mockImplementation(({ data }) => Promise.resolve(data)),
+          update: vi
+            .fn()
+            .mockImplementation(({ data }) => Promise.resolve(data)),
         },
       }
       mockPrisma.$transaction.mockImplementation((cb) => cb(tx))
@@ -218,9 +221,9 @@ describe("CurrencyService", () => {
       }
       mockPrisma.$transaction.mockImplementation((cb) => cb(tx))
 
-      await expect(service.update("missing", { name: "x" })).rejects.toBeInstanceOf(
-        CurrencyNotFoundError
-      )
+      await expect(
+        service.update("missing", { name: "x" })
+      ).rejects.toBeInstanceOf(CurrencyNotFoundError)
     })
   })
 })

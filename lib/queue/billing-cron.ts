@@ -9,5 +9,3 @@ export const BILLING_MONTHLY_RESET_JOB = "billing-monthly-reset-job"
 export const BILLING_MONTHLY_BILLING_JOB = "billing-monthly-billing-job"
 export const BILLING_INVOICE_STATUS_JOB = "billing-invoice-status-job"
 export const BILLING_PAYMENT_REMINDER_JOB = "billing-payment-reminder-job"
-
-

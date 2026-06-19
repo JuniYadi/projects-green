@@ -6,12 +6,7 @@ import type {
   InvoiceStatus,
 } from "@/modules/invoices/invoices.types"
 
-type PrismaInvoiceStatus =
-  | "DRAFT"
-  | "OPEN"
-  | "PAID"
-  | "VOID"
-  | "UNCOLLECTIBLE"
+type PrismaInvoiceStatus = "DRAFT" | "OPEN" | "PAID" | "VOID" | "UNCOLLECTIBLE"
 
 type InvoiceLineRecord = {
   id: string
@@ -177,7 +172,8 @@ export type InvoiceRepository = {
 }
 
 const getInvoiceDelegate = (): InvoiceDelegate => {
-  const delegate = (prisma as unknown as { billingInvoice?: InvoiceDelegate }).billingInvoice
+  const delegate = (prisma as unknown as { billingInvoice?: InvoiceDelegate })
+    .billingInvoice
 
   if (!delegate) {
     throw new Error("Invoice delegate is not available on Prisma client.")
@@ -201,10 +197,7 @@ export const createPrismaInvoiceRepository = (): InvoiceRepository => {
     async findByIdForOrganization({ organizationId, invoiceId }) {
       return getInvoiceDelegate().findFirst({
         where: {
-          OR: [
-            { id: invoiceId },
-            { invoiceNumber: invoiceId },
-          ],
+          OR: [{ id: invoiceId }, { invoiceNumber: invoiceId }],
           billingAccount: organizationId
             ? {
                 organizationId,
@@ -234,13 +227,14 @@ export const createPrismaInvoiceRepository = (): InvoiceRepository => {
         },
       })
     },
-    async updateStatusByIdForOrganization({ organizationId, invoiceId, status }) {
+    async updateStatusByIdForOrganization({
+      organizationId,
+      invoiceId,
+      status,
+    }) {
       await getInvoiceDelegate().updateMany({
         where: {
-          OR: [
-            { id: invoiceId },
-            { invoiceNumber: invoiceId },
-          ],
+          OR: [{ id: invoiceId }, { invoiceNumber: invoiceId }],
           billingAccount: organizationId
             ? {
                 organizationId,

@@ -36,9 +36,7 @@ export default function ConsoleVpnDevicesPage() {
         setState({
           phase: "error",
           message:
-            error instanceof Error
-              ? error.message
-              : "Failed to load devices.",
+            error instanceof Error ? error.message : "Failed to load devices.",
         })
       })
     }
@@ -111,7 +109,10 @@ export default function ConsoleVpnDevicesPage() {
       />
 
       <div>
-        <Button onClick={() => setPairOpen(true)} disabled={state.devices.length === 0}>
+        <Button
+          onClick={() => setPairOpen(true)}
+          disabled={state.devices.length === 0}
+        >
           <DeviceMobileIcon className="mr-2 h-4 w-4" />
           Pair New Device
         </Button>

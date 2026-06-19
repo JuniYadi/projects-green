@@ -14,19 +14,34 @@ import type { InvoiceLineItem } from "@/lib/billing-client"
 // ─── Helpers ───────────────────────────────────────────────────────────
 
 type Category = "vpn" | "app-hosting" | "whatsapp" | "other"
-type Grouped = Record<Category, { label: string; icon: React.ReactNode; items: InvoiceLineItem[] }>
+type Grouped = Record<
+  Category,
+  { label: string; icon: React.ReactNode; items: InvoiceLineItem[] }
+>
 
-const CATEGORY_META: Record<Category, { label: string; icon: React.ReactNode }> = {
+const CATEGORY_META: Record<
+  Category,
+  { label: string; icon: React.ReactNode }
+> = {
   vpn: { label: "VPN", icon: <GlobeIcon className="h-4 w-4" /> },
-  "app-hosting": { label: "App Hosting", icon: <RocketLaunchIcon className="h-4 w-4" /> },
-  whatsapp: { label: "WhatsApp API", icon: <WhatsappLogoIcon className="h-4 w-4" /> },
+  "app-hosting": {
+    label: "App Hosting",
+    icon: <RocketLaunchIcon className="h-4 w-4" />,
+  },
+  whatsapp: {
+    label: "WhatsApp API",
+    icon: <WhatsappLogoIcon className="h-4 w-4" />,
+  },
   other: { label: "Other", icon: <DotsThreeIcon className="h-4 w-4" /> },
 }
 
 function formatCurrency(amount: string): string {
   const num = Number.parseFloat(amount)
   if (Number.isNaN(num)) return amount
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(num)
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+  }).format(num)
 }
 
 function getCategory(item: InvoiceLineItem): Category {
@@ -34,8 +49,6 @@ function getCategory(item: InvoiceLineItem): Category {
   if (cat === "vpn" || cat === "app-hosting" || cat === "whatsapp") return cat
   return "other"
 }
-
-
 
 function extractDetail(line: InvoiceLineItem): string | null {
   const meta = line.metadata ?? {}
@@ -75,7 +88,7 @@ function GroupSection({
   const [open, setOpen] = useState(defaultOpen)
   const subtotal = items.reduce(
     (sum, item) => sum + Number.parseFloat(item.amountIdr),
-    0,
+    0
   )
 
   return (
@@ -96,7 +109,9 @@ function GroupSection({
           <span>{label}</span>
           <span className="text-muted-foreground">({items.length})</span>
         </div>
-        <span className="font-semibold">{formatCurrency(subtotal.toFixed(2))}</span>
+        <span className="font-semibold">
+          {formatCurrency(subtotal.toFixed(2))}
+        </span>
       </button>
 
       {/* Expanded content */}
@@ -124,7 +139,9 @@ function GroupSection({
                     <td className="px-4 py-2.5">
                       <p className="text-sm">{item.description}</p>
                       {detail && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {detail}
+                        </p>
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-right text-sm">
@@ -151,9 +168,15 @@ type InvoiceGroupedLinesProps = {
   periodLabel?: string
 }
 
-export function InvoiceGroupedLines({ lines, periodLabel }: InvoiceGroupedLinesProps) {
+export function InvoiceGroupedLines({
+  lines,
+  periodLabel,
+}: InvoiceGroupedLinesProps) {
   const grouped = groupLines(lines)
-  const categories = Object.entries(grouped) as [Category, { label: string; icon: React.ReactNode; items: InvoiceLineItem[] }][]
+  const categories = Object.entries(grouped) as [
+    Category,
+    { label: string; icon: React.ReactNode; items: InvoiceLineItem[] },
+  ][]
 
   // Default: open VPN if present, otherwise first category
   const defaultOpen = categories.length > 0 ? categories[0][0] : null
@@ -185,7 +208,9 @@ export function InvoiceFlatLine({ lines }: { lines: InvoiceLineItem[] }) {
     <table className="w-full">
       <thead>
         <tr className="border-b bg-muted/50">
-          <th className="px-4 py-3 text-left text-sm font-medium">Description</th>
+          <th className="px-4 py-3 text-left text-sm font-medium">
+            Description
+          </th>
           <th className="px-4 py-3 text-right text-sm font-medium">Qty</th>
           <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
         </tr>

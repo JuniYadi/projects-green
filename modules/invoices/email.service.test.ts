@@ -65,7 +65,9 @@ describe("invoiceEmailService", () => {
     process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3300"
 
     const module = await import("./email.service")
-    emailService = module.createInvoiceEmailService({ transporter: mockTransporter })
+    emailService = module.createInvoiceEmailService({
+      transporter: mockTransporter,
+    })
   })
 
   afterEach(() => {
@@ -80,7 +82,7 @@ describe("invoiceEmailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
-        }),
+        })
       )
     })
 
@@ -96,7 +98,7 @@ describe("invoiceEmailService", () => {
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           from: "Billing <billing@test.com>",
-        }),
+        })
       )
     })
   })
@@ -109,12 +111,12 @@ describe("invoiceEmailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("Reminder"),
-        }),
+        })
       )
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
-        }),
+        })
       )
     })
 
@@ -139,12 +141,12 @@ describe("invoiceEmailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("Payment Received"),
-        }),
+        })
       )
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
-        }),
+        })
       )
     })
   })
@@ -157,12 +159,12 @@ describe("invoiceEmailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("OVERDUE"),
-        }),
+        })
       )
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
-        }),
+        })
       )
     })
   })
@@ -174,18 +176,21 @@ describe("invoiceEmailService", () => {
     }
 
     it("sends cancellation email", async () => {
-      await emailService.sendInvoiceCancelled(canceledInvoice, "user@example.com")
+      await emailService.sendInvoiceCancelled(
+        canceledInvoice,
+        "user@example.com"
+      )
 
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("Cancelled"),
-        }),
+        })
       )
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
-        }),
+        })
       )
     })
 
@@ -193,14 +198,14 @@ describe("invoiceEmailService", () => {
       await emailService.sendInvoiceCancelled(
         canceledInvoice,
         "user@example.com",
-        "Test cancellation reason",
+        "Test cancellation reason"
       )
 
       // Verify sendMail was called (reason is passed to template, not render directly)
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "user@example.com",
-        }),
+        })
       )
     })
   })
@@ -213,7 +218,7 @@ describe("invoiceEmailService", () => {
       mockRender.mockImplementation(async () => "<html>Test</html>")
 
       await expect(
-        emailService.sendInvoiceCreated(mockInvoice, "user@example.com"),
+        emailService.sendInvoiceCreated(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send invoice created notification")
     })
 
@@ -224,7 +229,7 @@ describe("invoiceEmailService", () => {
       })
 
       await expect(
-        emailService.sendInvoiceCreated(mockInvoice, "user@example.com"),
+        emailService.sendInvoiceCreated(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send invoice created notification")
     })
 
@@ -235,7 +240,7 @@ describe("invoiceEmailService", () => {
       mockRender.mockImplementation(async () => "<html>Test</html>")
 
       await expect(
-        emailService.sendPaymentReminder(mockInvoice, "user@example.com"),
+        emailService.sendPaymentReminder(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send payment reminder notification")
     })
 
@@ -246,7 +251,7 @@ describe("invoiceEmailService", () => {
       })
 
       await expect(
-        emailService.sendPaymentReminder(mockInvoice, "user@example.com"),
+        emailService.sendPaymentReminder(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send payment reminder notification")
     })
 
@@ -257,7 +262,7 @@ describe("invoiceEmailService", () => {
       mockRender.mockImplementation(async () => "<html>Paid</html>")
 
       await expect(
-        emailService.sendInvoicePaid(mockInvoice, "user@example.com"),
+        emailService.sendInvoicePaid(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send invoice paid notification")
     })
 
@@ -268,7 +273,7 @@ describe("invoiceEmailService", () => {
       })
 
       await expect(
-        emailService.sendInvoicePaid(mockInvoice, "user@example.com"),
+        emailService.sendInvoicePaid(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send invoice paid notification")
     })
 
@@ -279,7 +284,7 @@ describe("invoiceEmailService", () => {
       mockRender.mockImplementation(async () => "<html>Overdue</html>")
 
       await expect(
-        emailService.sendInvoiceOverdue(mockInvoice, "user@example.com"),
+        emailService.sendInvoiceOverdue(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send invoice overdue notification")
     })
 
@@ -290,7 +295,7 @@ describe("invoiceEmailService", () => {
       })
 
       await expect(
-        emailService.sendInvoiceOverdue(mockInvoice, "user@example.com"),
+        emailService.sendInvoiceOverdue(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send invoice overdue notification")
     })
 
@@ -301,7 +306,7 @@ describe("invoiceEmailService", () => {
       mockRender.mockImplementation(async () => "<html>Cancelled</html>")
 
       await expect(
-        emailService.sendInvoiceCancelled(mockInvoice, "user@example.com"),
+        emailService.sendInvoiceCancelled(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send invoice cancelled notification")
     })
 
@@ -312,7 +317,7 @@ describe("invoiceEmailService", () => {
       })
 
       await expect(
-        emailService.sendInvoiceCancelled(mockInvoice, "user@example.com"),
+        emailService.sendInvoiceCancelled(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send invoice cancelled notification")
     })
   })
@@ -334,14 +339,16 @@ describe("invoiceEmailService", () => {
       delete process.env.EMAIL_FROM
 
       const module = await import("./email.service")
-      const service = module.createInvoiceEmailService({ transporter: mockTransporter })
+      const service = module.createInvoiceEmailService({
+        transporter: mockTransporter,
+      })
 
       await service.sendInvoiceCreated(mockInvoice, "user@example.com")
 
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           from: "Billing <billing@yourapp.com>",
-        }),
+        })
       )
     })
   })

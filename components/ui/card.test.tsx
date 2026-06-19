@@ -25,7 +25,9 @@ describe("Card", () => {
       </Card>
     )
 
-    expect(view.container.querySelector('[data-slot="card"]')).toBeInTheDocument()
+    expect(
+      view.container.querySelector('[data-slot="card"]')
+    ).toBeInTheDocument()
     expect(
       view.container.querySelector('[data-slot="card-header"]')
     ).toBeInTheDocument()

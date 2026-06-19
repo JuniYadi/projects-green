@@ -60,17 +60,22 @@ type WorkOSInvitation = {
   acceptedAt?: string | null
 }
 
-const toOrganizationSummary = (org: WorkOSOrganization): AdminOrganizationSummary => ({
+const toOrganizationSummary = (
+  org: WorkOSOrganization
+): AdminOrganizationSummary => ({
   id: org.id,
   name: org.name,
   externalId: org.externalId ?? null,
   domains: org.domains?.map((d) => d.domain) ?? [],
-  allowProfilesOutsideOrganization: org.allowProfilesOutsideOrganization ?? false,
+  allowProfilesOutsideOrganization:
+    org.allowProfilesOutsideOrganization ?? false,
   createdAt: org.createdAt,
   updatedAt: org.updatedAt,
 })
 
-const toInvitationSummary = (inv: WorkOSInvitation): AdminInvitationSummary => ({
+const toInvitationSummary = (
+  inv: WorkOSInvitation
+): AdminInvitationSummary => ({
   id: inv.id,
   email: inv.email,
   state: inv.state,

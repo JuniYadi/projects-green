@@ -42,9 +42,7 @@ export function useTemplates() {
       const result = await whatsappClient.templates.list()
       setTemplates(result.templates)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load templates.",
-      )
+      setError(err instanceof Error ? err.message : "Failed to load templates.")
     } finally {
       setLoading(false)
     }
@@ -71,9 +69,7 @@ export function useTemplate(id: string) {
       const result = await whatsappClient.templates.get(id)
       setTemplate(result.template)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load template.",
-      )
+      setError(err instanceof Error ? err.message : "Failed to load template.")
     } finally {
       setLoading(false)
     }
@@ -91,25 +87,22 @@ export function useCreateTemplate() {
   const [creating, setCreating] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  const create = React.useCallback(
-    async (input: TemplateFormInput) => {
-      setCreating(true)
-      setError(null)
+  const create = React.useCallback(async (input: TemplateFormInput) => {
+    setCreating(true)
+    setError(null)
 
-      try {
-        const result = await whatsappClient.templates.create(input)
-        return result.template
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to create template."
-        setError(message)
-        throw err
-      } finally {
-        setCreating(false)
-      }
-    },
-    [],
-  )
+    try {
+      const result = await whatsappClient.templates.create(input)
+      return result.template
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to create template."
+      setError(message)
+      throw err
+    } finally {
+      setCreating(false)
+    }
+  }, [])
 
   return { create, creating, error }
 }
@@ -135,7 +128,7 @@ export function useUpdateTemplate() {
         setUpdating(false)
       }
     },
-    [],
+    []
   )
 
   return { update, updating, error }

@@ -12,9 +12,8 @@ mock.module("@/lib/opensearch", () => ({
   getOpenSearchClient: () => mockClient,
 }))
 
-const { ensureLogIndex, getLogIndexName } = await import(
-  "./opensearch-index.service"
-)
+const { ensureLogIndex, getLogIndexName } =
+  await import("./opensearch-index.service")
 
 describe("OpenSearch Index Service", () => {
   beforeEach(() => {

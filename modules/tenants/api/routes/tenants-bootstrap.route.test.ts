@@ -501,17 +501,15 @@ describe("tenants-bootstrap routes", () => {
   })
 
   it("returns 401 status when requireTenantActor fails on GET", async () => {
-    mockRequireTenantActor.mockImplementation(
-      ((set: { status?: number }) => {
-        set.status = 401
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          policyCode: "NO_SESSION",
-          message: "No active session.",
-        } as TenantApiError
-      }) as unknown as typeof mockRequireTenantActor
-    )
+    mockRequireTenantActor.mockImplementation(((set: { status?: number }) => {
+      set.status = 401
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        policyCode: "NO_SESSION",
+        message: "No active session.",
+      } as TenantApiError
+    }) as unknown as typeof mockRequireTenantActor)
 
     const app = await getApp()
 

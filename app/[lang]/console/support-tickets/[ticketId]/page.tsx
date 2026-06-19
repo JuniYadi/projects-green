@@ -30,7 +30,8 @@ export default async function SupportTicketDetailPage({
         </Button>
         <h1 className="text-2xl font-semibold">Support Ticket Detail</h1>
         <p className="text-sm text-muted-foreground">
-          Review thread history, reply, upload attachments, and close the ticket.
+          Review thread history, reply, upload attachments, and close the
+          ticket.
         </p>
       </header>
 

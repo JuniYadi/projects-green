@@ -14,10 +14,7 @@ type MemberBillingTableProps = {
   isLoading?: boolean
 }
 
-export function MemberBillingTable({
-  members,
-  lang,
-}: MemberBillingTableProps) {
+export function MemberBillingTable({ members, lang }: MemberBillingTableProps) {
   const columns: ColumnDef<AdminMember, unknown>[] = [
     {
       accessorKey: "name",
@@ -59,7 +56,7 @@ export function MemberBillingTable({
       header: "Monthly Spend",
       cell: ({ row }) => {
         const spend = row.getValue("monthlySpendIdr") as string
-        return<span>{spend}</span>
+        return <span>{spend}</span>
       },
     },
     {

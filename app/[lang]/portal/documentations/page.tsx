@@ -47,9 +47,7 @@ export default function PortalDocumentationsPage() {
         setError(res?.message || "Failed to load docs")
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An error occurred"
-      )
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setIsLoading(false)
     }
@@ -77,9 +75,7 @@ export default function PortalDocumentationsPage() {
         setError(res?.message || "Failed to delete")
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An error occurred"
-      )
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setIsDeleting(false)
     }
@@ -145,9 +141,7 @@ export default function PortalDocumentationsPage() {
                     className={`cursor-pointer ${selectedDoc?.id === doc.id ? "bg-muted" : ""}`}
                     onClick={() => setSelectedDoc(doc)}
                   >
-                    <TableCell className="font-medium">
-                      {doc.title}
-                    </TableCell>
+                    <TableCell className="font-medium">{doc.title}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {doc.path}
                     </TableCell>
@@ -180,9 +174,7 @@ export default function PortalDocumentationsPage() {
       <section className="rounded-lg border border-border p-4 md:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            {selectedDoc
-              ? `Edit: ${selectedDoc.title}`
-              : "Create New Entry"}
+            {selectedDoc ? `Edit: ${selectedDoc.title}` : "Create New Entry"}
           </h2>
           {selectedDoc && (
             <Button
@@ -195,7 +187,10 @@ export default function PortalDocumentationsPage() {
             </Button>
           )}
         </div>
-        <DocumentationForm initialData={selectedDoc} onSuccess={() => void loadDocs()} />
+        <DocumentationForm
+          initialData={selectedDoc}
+          onSuccess={() => void loadDocs()}
+        />
       </section>
     </main>
   )

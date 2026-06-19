@@ -106,9 +106,15 @@ describe("PaymentService", () => {
         type: "TOP_UP",
       })
     )
-    mockPrisma.billingInvoice.update.mockImplementation(() => Promise.resolve({}))
-    mockPrisma.billingInvoice.findFirst.mockImplementation(() => Promise.resolve(null))
-    mockPrisma.billingInvoice.findMany.mockImplementation(() => Promise.resolve([]))
+    mockPrisma.billingInvoice.update.mockImplementation(() =>
+      Promise.resolve({})
+    )
+    mockPrisma.billingInvoice.findFirst.mockImplementation(() =>
+      Promise.resolve(null)
+    )
+    mockPrisma.billingInvoice.findMany.mockImplementation(() =>
+      Promise.resolve([])
+    )
     mockPrisma.billingAccount.findUnique.mockImplementation(() =>
       Promise.resolve({
         id: "ba-123",
@@ -124,8 +130,12 @@ describe("PaymentService", () => {
         currency: "IDR",
       })
     )
-    mockPrisma.billingAccount.update.mockImplementation(() => Promise.resolve({}))
-    mockPrisma.billingAdjustment.create.mockImplementation(() => Promise.resolve({}))
+    mockPrisma.billingAccount.update.mockImplementation(() =>
+      Promise.resolve({})
+    )
+    mockPrisma.billingAdjustment.create.mockImplementation(() =>
+      Promise.resolve({})
+    )
     mockBillingTransactions.creditBalance.mockImplementation(() =>
       Promise.resolve({
         billingAccountId: "ba-123",
@@ -151,7 +161,9 @@ describe("PaymentService", () => {
   }
 
   beforeEach(() => {
-    service = new PaymentService(mockBillingTransactions as unknown as BillingTransactionService)
+    service = new PaymentService(
+      mockBillingTransactions as unknown as BillingTransactionService
+    )
     resetMocks()
   })
 
@@ -188,13 +200,13 @@ describe("PaymentService", () => {
     })
 
     it("uses PaymentCurrency bounds when a row exists (IDR)", async () => {
-      ;(mockPrisma.paymentCurrency.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce(
-        {
-          code: "IDR",
-          minTopup: { toNumber: () => 250_000 },
-          maxTopup: { toNumber: () => 250_000_000 },
-        }
-      )
+      ;(
+        mockPrisma.paymentCurrency.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
+        code: "IDR",
+        minTopup: { toNumber: () => 250_000 },
+        maxTopup: { toNumber: () => 250_000_000 },
+      })
 
       const invoice = await service.createTopupInvoice({
         organizationId: "org-123",
@@ -206,13 +218,13 @@ describe("PaymentService", () => {
     })
 
     it("rejects below the IDR PaymentCurrency minimum", async () => {
-      ;(mockPrisma.paymentCurrency.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce(
-        {
-          code: "IDR",
-          minTopup: { toNumber: () => 250_000 },
-          maxTopup: { toNumber: () => 250_000_000 },
-        }
-      )
+      ;(
+        mockPrisma.paymentCurrency.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
+        code: "IDR",
+        minTopup: { toNumber: () => 250_000 },
+        maxTopup: { toNumber: () => 250_000_000 },
+      })
 
       await expect(
         service.createTopupInvoice({
@@ -223,9 +235,9 @@ describe("PaymentService", () => {
     })
 
     it("should create billing account if not exists", async () => {
-      ;(mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce(
-        null
-      )
+      ;(
+        mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce(null)
 
       await service.createTopupInvoice({
         organizationId: "org-new",
@@ -236,7 +248,9 @@ describe("PaymentService", () => {
     })
 
     it("uses account currency for top-up invoice", async () => {
-      ;(mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
         id: "ba-usd",
         organizationId: "org-usd",
         currency: "USD",
@@ -298,9 +312,9 @@ describe("PaymentService", () => {
     })
 
     it("should throw error when billing account not found", async () => {
-      ;(mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce(
-        null
-      )
+      ;(
+        mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce(null)
 
       await expect(
         service.creditBalance("org-notfound", 50000, "REF001")
@@ -310,7 +324,9 @@ describe("PaymentService", () => {
 
   describe("payWithBalance", () => {
     it("should debit via BillingTransactionService and mark invoice as paid", async () => {
-      ;(mockPrisma.billingInvoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.billingInvoice.findFirst as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
         id: "inv-123",
         status: "OPEN",
         totalAmount: { toNumber: () => 50000 },
@@ -337,7 +353,9 @@ describe("PaymentService", () => {
     })
 
     it("should throw error when invoice not found", async () => {
-      ;(mockPrisma.billingInvoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.billingInvoice.findFirst as ReturnType<typeof mock>
+      ).mockResolvedValueOnce(null)
 
       await expect(
         service.payWithBalance("inv-notfound", "org-123")
@@ -345,14 +363,18 @@ describe("PaymentService", () => {
     })
 
     it("should throw error when insufficient balance", async () => {
-      ;(mockPrisma.billingInvoice.findFirst as ReturnType<typeof mock>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.billingInvoice.findFirst as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
         id: "inv-123",
         status: "OPEN",
         totalAmount: { toNumber: () => 200000 },
         invoiceNumber: "TOP-ABC123",
         currency: "IDR",
       })
-      ;(mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
         id: "ba-123",
         organizationId: "org-123",
         balance: { toNumber: () => 50000 },

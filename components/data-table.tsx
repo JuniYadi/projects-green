@@ -76,9 +76,8 @@ export function DataTable<TData>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(
-    {}
-  )
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({})
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -144,7 +143,9 @@ export function DataTable<TData>({
                   <SelectValue placeholder={filter.label} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{filter.allLabel ?? "All"}</SelectItem>
+                  <SelectItem value="all">
+                    {filter.allLabel ?? "All"}
+                  </SelectItem>
                   {filter.options.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}

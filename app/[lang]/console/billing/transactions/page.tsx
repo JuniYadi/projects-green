@@ -62,9 +62,10 @@ export default function TransactionsPage() {
     }
   }, [])
 
-  const filtered = filter === "ALL"
-    ? transactions
-    : transactions.filter((t) => t.status === filter)
+  const filtered =
+    filter === "ALL"
+      ? transactions
+      : transactions.filter((t) => t.status === filter)
 
   function formatCurrency(amount: number): string {
     return new Intl.NumberFormat("id-ID", {

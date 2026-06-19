@@ -54,13 +54,14 @@ export const createUploadScreenshotRoutes = () =>
 
       if (!region || !bucket || !accessKeyId || !secretAccessKey) {
         console.error(
-          "[Upload Screenshot Error]: Missing S3 configuration — S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY must be set",
+          "[Upload Screenshot Error]: Missing S3 configuration — S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY must be set"
         )
         set.status = 503
         return {
           ok: false,
           error: "S3_CONFIG_ERROR",
-          message: "Screenshot upload is temporarily unavailable due to missing storage configuration.",
+          message:
+            "Screenshot upload is temporarily unavailable due to missing storage configuration.",
         }
       }
 
@@ -90,7 +91,8 @@ export const createUploadScreenshotRoutes = () =>
         return {
           ok: false,
           error: "UPLOAD_FAILED",
-          message: "Failed to upload screenshot. Please try again or contact support.",
+          message:
+            "Failed to upload screenshot. Please try again or contact support.",
         }
       }
     },
@@ -98,5 +100,5 @@ export const createUploadScreenshotRoutes = () =>
       body: t.Object({
         file: t.File(),
       }),
-    },
+    }
   )

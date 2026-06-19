@@ -122,7 +122,10 @@ describe("invoice service", () => {
     })
 
     await expect(
-      service.getInvoiceDetail({ organizationId: "org_1", invoiceId: "missing" })
+      service.getInvoiceDetail({
+        organizationId: "org_1",
+        invoiceId: "missing",
+      })
     ).rejects.toBeInstanceOf(InvoiceNotFoundError)
   })
 

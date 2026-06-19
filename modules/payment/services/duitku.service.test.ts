@@ -76,7 +76,9 @@ describe("DuitkuService", () => {
         paymentMethod: "VC",
       })
 
-      expect(result.paymentUrl).toBe("https://sandbox.duitku.com/payment/abc123")
+      expect(result.paymentUrl).toBe(
+        "https://sandbox.duitku.com/payment/abc123"
+      )
       expect(result.vaNumber).toBe("1234567890")
       expect(result.reference).toBe("REF001")
       expect(mockFetch).toHaveBeenCalledTimes(1)

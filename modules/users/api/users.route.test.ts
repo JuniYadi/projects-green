@@ -175,7 +175,8 @@ describe("usersRoutes", () => {
   })
 
   it("uses default service when service is not provided", async () => {
-    const { createUsersRoutes } = await import("@/modules/users/api/users.route")
+    const { createUsersRoutes } =
+      await import("@/modules/users/api/users.route")
     const app = new Elysia().use(createUsersRoutes())
 
     // Default service delegates to lazy imports — this should not throw

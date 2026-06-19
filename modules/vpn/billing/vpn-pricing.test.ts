@@ -1,7 +1,10 @@
 import { describe, expect, it } from "bun:test"
 import { Prisma } from "@prisma/client"
 
-import { resolveVpnMonthlyPrice, VpnPriceNotConfiguredError } from "./vpn-pricing"
+import {
+  resolveVpnMonthlyPrice,
+  VpnPriceNotConfiguredError,
+} from "./vpn-pricing"
 
 function decimal(value: string) {
   return new Prisma.Decimal(value)
@@ -42,7 +45,7 @@ describe("resolveVpnMonthlyPrice", () => {
       resolveVpnMonthlyPrice({
         regionCode: "MARS",
         planCode: "STANDARD",
-      }),
+      })
     ).toThrow(VpnPriceNotConfiguredError)
   })
 
@@ -51,7 +54,7 @@ describe("resolveVpnMonthlyPrice", () => {
       resolveVpnMonthlyPrice({
         regionCode: "INDONESIA",
         planCode: "GIGA_PREMIUM",
-      }),
+      })
     ).toThrow(VpnPriceNotConfiguredError)
   })
 

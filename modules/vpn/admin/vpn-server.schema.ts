@@ -58,39 +58,38 @@ const baseServerShape = {
  * - no duplicate port across enabled protocols
  */
 function refineServer<T extends z.ZodTypeAny>(schema: T) {
-  return schema
-    .superRefine((raw, ctx) => {
-      const value = raw as Record<string, unknown>
-      const openVpn = value.openVpnPort as number | undefined
-      const wireGuard = value.wireGuardPort as number | undefined
-      const proxy = value.proxyPort as number | undefined
+  return schema.superRefine((raw, ctx) => {
+    const value = raw as Record<string, unknown>
+    const openVpn = value.openVpnPort as number | undefined
+    const wireGuard = value.wireGuardPort as number | undefined
+    const proxy = value.proxyPort as number | undefined
 
-      const enabled = [openVpn, wireGuard, proxy].filter(
-        (p): p is number => typeof p === "number"
-      )
+    const enabled = [openVpn, wireGuard, proxy].filter(
+      (p): p is number => typeof p === "number"
+    )
 
-      if (enabled.length === 0) {
+    if (enabled.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one protocol port is required.",
+        path: ["openVpnPort"],
+      })
+      return
+    }
+
+    const seen = new Set<number>()
+    for (const port of enabled) {
+      if (seen.has(port)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "At least one protocol port is required.",
+          message: "Protocol ports must be unique on the same server.",
           path: ["openVpnPort"],
         })
-        return
+        break
       }
-
-      const seen = new Set<number>()
-      for (const port of enabled) {
-        if (seen.has(port)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Protocol ports must be unique on the same server.",
-            path: ["openVpnPort"],
-          })
-          break
-        }
-        seen.add(port)
-      }
-    })
+      seen.add(port)
+    }
+  })
 }
 
 export const createVpnServerSchema = refineServer(z.object(baseServerShape))

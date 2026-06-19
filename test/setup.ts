@@ -29,7 +29,7 @@ mock.module("react-icons/si", () => {
 
 mock.module("next/navigation", () => {
   const { mock } = require("bun:test")
-  
+
   const routerMock = {
     push: mock(),
     replace: mock(),

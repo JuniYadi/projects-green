@@ -35,8 +35,8 @@ export function TemplateDeleteDialog({
         <DialogHeader>
           <DialogTitle>Delete Template</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete{" "}
-            <strong>{templateName}</strong>? This action cannot be undone.
+            Are you sure you want to delete <strong>{templateName}</strong>?
+            This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -47,11 +47,7 @@ export function TemplateDeleteDialog({
           >
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={onConfirm}
-            disabled={deleting}
-          >
+          <Button variant="destructive" onClick={onConfirm} disabled={deleting}>
             {deleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>

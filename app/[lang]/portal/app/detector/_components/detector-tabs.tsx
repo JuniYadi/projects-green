@@ -22,8 +22,7 @@ export function DetectorTabs({ defaultTab }: { defaultTab?: string }) {
   const searchParams = useSearchParams()
 
   const rawTab = searchParams.get("tab") ?? defaultTab
-  const activeTab =
-    TABS.find((tab) => tab.value === rawTab)?.value ?? "rules"
+  const activeTab = TABS.find((tab) => tab.value === rawTab)?.value ?? "rules"
 
   function handleTabChange(value: string) {
     const params = new URLSearchParams(searchParams.toString())

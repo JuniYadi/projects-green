@@ -14,28 +14,28 @@ test.describe("Billing Contacts (authenticated)", () => {
 
   test("page has correct heading and description", async ({ page }) => {
     await expect(
-      page.getByRole("heading", { name: "Billing Contacts" }),
+      page.getByRole("heading", { name: "Billing Contacts" })
     ).toBeVisible()
     await expect(
-      page.getByText("Manage who receives billing notifications"),
+      page.getByText("Manage who receives billing notifications")
     ).toBeVisible()
   })
 
   test("shows add contact button", async ({ page }) => {
     await expect(
-      page.getByRole("button", { name: /Add Contact/i }),
+      page.getByRole("button", { name: /Add Contact/i })
     ).toBeVisible()
   })
 
   test("add contact dialog opens and can be cancelled", async ({ page }) => {
     await page.getByRole("button", { name: /Add Contact/i }).click()
     await expect(
-      page.getByRole("dialog", { name: "Add Billing Contact" }),
+      page.getByRole("dialog", { name: "Add Billing Contact" })
     ).toBeVisible()
 
     await page.getByRole("button", { name: "Cancel" }).click()
     await expect(
-      page.getByRole("dialog", { name: "Add Billing Contact" }),
+      page.getByRole("dialog", { name: "Add Billing Contact" })
     ).not.toBeVisible()
   })
 
@@ -55,7 +55,10 @@ test.describe("Billing Contacts (authenticated)", () => {
   test("navigates to billing settings page via sidebar", async ({ page }) => {
     // Existing sidebar link in the billing dashboard
     await page.goto("/en/console/billing")
-    await page.getByRole("link", { name: /Settings/i }).first().click()
+    await page
+      .getByRole("link", { name: /Settings/i })
+      .first()
+      .click()
     await expect(page).toHaveURL(/\/console\/billing\/settings/)
   })
 })

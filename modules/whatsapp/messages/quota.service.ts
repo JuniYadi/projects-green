@@ -15,9 +15,15 @@ export type QuotaCheckResult = {
 }
 
 export type QuotaService = {
-  checkQuota(organizationId: string, deviceId?: string): Promise<QuotaCheckResult>
+  checkQuota(
+    organizationId: string,
+    deviceId?: string
+  ): Promise<QuotaCheckResult>
   deductQuota(organizationId: string, deviceId?: string): Promise<void>
-  getMonthlyStats(organizationId: string, deviceId?: string): Promise<{ inCount: number; outCount: number }>
+  getMonthlyStats(
+    organizationId: string,
+    deviceId?: string
+  ): Promise<{ inCount: number; outCount: number }>
 }
 
 export const quotaService: QuotaService = {
@@ -34,9 +40,7 @@ export const quotaService: QuotaService = {
           where: { organizationId },
         })
 
-    const monthlyLimit = device?.quotaBaseOut
-      ? Number(device.quotaBaseOut)
-      : 0
+    const monthlyLimit = device?.quotaBaseOut ? Number(device.quotaBaseOut) : 0
 
     const monthlyCount = await prisma.whatsappMonthlyCount.findFirst({
       where: {
@@ -87,7 +91,9 @@ export const quotaService: QuotaService = {
           organizationId,
           year: currentYear,
           month: currentMonth,
-          ...(deviceId ? { whatsappDeviceId: deviceId } : { whatsappDeviceId: null }),
+          ...(deviceId
+            ? { whatsappDeviceId: deviceId }
+            : { whatsappDeviceId: null }),
         },
       })
 

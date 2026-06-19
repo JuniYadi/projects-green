@@ -137,10 +137,7 @@ export type VpnSubscriptionItem = {
  * Thin fetch wrapper for the admin VPN API. Throws an Error with the API
  * message on a non-ok response so callers can surface it to the user.
  */
-export async function vpnApi<T>(
-  path: string,
-  init?: RequestInit
-): Promise<T> {
+export async function vpnApi<T>(path: string, init?: RequestInit): Promise<T> {
   // eslint-disable-next-line no-restricted-globals
   const response = await fetch(`/api${path}`, {
     headers: { "Content-Type": "application/json" },

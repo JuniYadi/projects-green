@@ -53,9 +53,7 @@ import { InvoiceStatusManager } from "@/modules/billing/invoice-status.service"
 import { invoiceEmailService } from "@/modules/invoices/email.service"
 
 // ── OpenSearch Ingest ──────────────────────────────────────────────────────
-import {
-  OPENSEARCH_INGEST_QUEUE,
-} from "@/lib/queue/opensearch-ingest"
+import { OPENSEARCH_INGEST_QUEUE } from "@/lib/queue/opensearch-ingest"
 import { ingestLog } from "@/modules/deploy/opensearch/opensearch-log.service"
 import type { LogEntry } from "@/modules/deploy/opensearch"
 
@@ -104,7 +102,6 @@ allWorkers.push(GithubEventJob.createWorker())
 
 // ── Billing Cron Workers ────────────────────────────────────────────────────
 
-
 async function processDailyReset(): Promise<number> {
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - 90)
@@ -143,12 +140,12 @@ async function processMonthlyBilling(): Promise<{
   const billingCycle = new BillingCycleService(
     prisma,
     usageLedger,
-    invoiceEmailService,
+    invoiceEmailService
   )
   const result = await billingCycle.processMonthlyBilling()
 
   console.info(
-    `[billing-cron] monthly billing: processed=${result.processed} skipped=${result.skipped} invoices=${result.invoices.length}`,
+    `[billing-cron] monthly billing: processed=${result.processed} skipped=${result.skipped} invoices=${result.invoices.length}`
   )
 
   return { processed: result.processed, skipped: result.skipped }
@@ -162,7 +159,7 @@ async function processInvoiceStatusManager(): Promise<{
   const result = await statusManager.runDailyTransitions()
 
   console.info(
-    `[billing-cron] invoice status manager: issued=${result.issued} overdue=${result.overdue}`,
+    `[billing-cron] invoice status manager: issued=${result.issued} overdue=${result.overdue}`
   )
 
   return result
@@ -183,16 +180,16 @@ const billingDailyWorker = new Worker<BillingCronJobData>(
     if (job.name === BILLING_DAILY_RESET_JOB) {
       const deleted = await processDailyReset()
       console.info(
-        `[billing-cron] daily reset: deleted ${deleted} old daily count rows`,
+        `[billing-cron] daily reset: deleted ${deleted} old daily count rows`
       )
     } else if (job.name === BILLING_MONTHLY_RESET_JOB) {
       const deleted = await processMonthlyReset()
       console.info(
-        `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`,
+        `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`
       )
     }
   },
-  { connection: redisConnection, concurrency: 1 },
+  { connection: redisConnection, concurrency: 1 }
 )
 allWorkers.push(billingDailyWorker)
 
@@ -202,13 +199,13 @@ const billingMonthlyWorker = new Worker<BillingCronJobData>(
     if (job.name === BILLING_MONTHLY_RESET_JOB) {
       const deleted = await processMonthlyReset()
       console.info(
-        `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`,
+        `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`
       )
     } else if (job.name === BILLING_MONTHLY_BILLING_JOB) {
       await processMonthlyBilling()
     }
   },
-  { connection: redisConnection, concurrency: 1 },
+  { connection: redisConnection, concurrency: 1 }
 )
 allWorkers.push(billingMonthlyWorker)
 
@@ -219,7 +216,7 @@ const billingStatusWorker = new Worker<BillingCronJobData>(
       await processInvoiceStatusManager()
     }
   },
-  { connection: redisConnection, concurrency: 1 },
+  { connection: redisConnection, concurrency: 1 }
 )
 allWorkers.push(billingStatusWorker)
 
@@ -230,14 +227,14 @@ const billingReminderWorker = new Worker<BillingCronJobData>(
       await processPaymentReminder()
     }
   },
-  { connection: redisConnection, concurrency: 1 },
+  { connection: redisConnection, concurrency: 1 }
 )
 allWorkers.push(billingReminderWorker)
 
 // ── OpenSearch Ingest Worker ────────────────────────────────────────────────
 const opensearchConcurrency = parseInt(
   process.env.WORKER_CONCURRENCY ?? "4",
-  10,
+  10
 )
 
 const opensearchWorker = new Worker<LogEntry>(
@@ -246,12 +243,12 @@ const opensearchWorker = new Worker<LogEntry>(
     const success = await ingestLog(job.data)
     if (!success) {
       throw new Error(
-        `Failed to ingest log entry for tenant ${job.data.tenantSlug}`,
+        `Failed to ingest log entry for tenant ${job.data.tenantSlug}`
       )
     }
     return { ingested: true }
   },
-  { connection: redisConnection, concurrency: opensearchConcurrency },
+  { connection: redisConnection, concurrency: opensearchConcurrency }
 )
 allWorkers.push(opensearchWorker)
 
@@ -269,7 +266,7 @@ const quotaWorker = new Worker<QuotaReconciliationJobData>(
 
     if (!device) {
       console.error(
-        `[quota-reconciliation] Device not found: deviceId=${deviceId}`,
+        `[quota-reconciliation] Device not found: deviceId=${deviceId}`
       )
       return
     }
@@ -348,7 +345,7 @@ const quotaWorker = new Worker<QuotaReconciliationJobData>(
   {
     connection: redisConnection,
     concurrency: 4,
-  },
+  }
 )
 allWorkers.push(quotaWorker)
 
@@ -358,21 +355,21 @@ const whatsappBroadcastWorker = new Worker<WhatsAppBroadcastJobData>(
   async (job: Job<WhatsAppBroadcastJobData>) => {
     if (job.data.method === "dispatch") {
       console.info(
-        `[whatsapp-broadcast] would dispatch campaign=${job.data.campaignId} recipient=${job.data.recipientId}`,
+        `[whatsapp-broadcast] would dispatch campaign=${job.data.campaignId} recipient=${job.data.recipientId}`
       )
       return
     }
 
     if (job.data.method === "throttle") {
       console.info(
-        `[whatsapp-broadcast] throttle campaign=${job.data.campaignId} recipient=${job.data.recipientId}`,
+        `[whatsapp-broadcast] throttle campaign=${job.data.campaignId} recipient=${job.data.recipientId}`
       )
       return
     }
 
     if (job.data.method === "status-update") {
       console.info(
-        `[whatsapp-broadcast] status-update campaign=${job.data.campaignId} recipient=${job.data.recipientId}`,
+        `[whatsapp-broadcast] status-update campaign=${job.data.campaignId} recipient=${job.data.recipientId}`
       )
       return
     }
@@ -380,7 +377,7 @@ const whatsappBroadcastWorker = new Worker<WhatsAppBroadcastJobData>(
   {
     connection: redisConnection,
     concurrency: 4,
-  },
+  }
 )
 allWorkers.push(whatsappBroadcastWorker)
 
@@ -390,14 +387,14 @@ const whatsappTemplateSyncWorker = new Worker<WhatsAppTemplateSyncJobData>(
   async (job: Job<WhatsAppTemplateSyncJobData>) => {
     if (job.data.method === "sync-templates") {
       console.info(
-        `[whatsapp-template-sync] sync-templates org=${job.data.organizationId} device=${job.data.deviceId}`,
+        `[whatsapp-template-sync] sync-templates org=${job.data.organizationId} device=${job.data.deviceId}`
       )
       return
     }
 
     if (job.data.method === "sync-status") {
       console.info(
-        `[whatsapp-template-sync] sync-status org=${job.data.organizationId} device=${job.data.deviceId}`,
+        `[whatsapp-template-sync] sync-status org=${job.data.organizationId} device=${job.data.deviceId}`
       )
       return
     }
@@ -405,7 +402,7 @@ const whatsappTemplateSyncWorker = new Worker<WhatsAppTemplateSyncJobData>(
   {
     connection: redisConnection,
     concurrency: 2,
-  },
+  }
 )
 allWorkers.push(whatsappTemplateSyncWorker)
 
@@ -419,7 +416,7 @@ const vpnProvisioningWorker = new Worker<VpnProvisioningJobData>(
     connection: redisConnection,
     concurrency: VpnProvisioningJob.workerConcurrency,
     settings: { backoffStrategy: vpnStagedBackoff },
-  },
+  }
 )
 allWorkers.push(vpnProvisioningWorker)
 
@@ -442,7 +439,7 @@ for (const worker of allWorkers) {
     }
     console.error(
       `[${name}] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-      error,
+      error
     )
   })
 }
@@ -459,7 +456,7 @@ const deployMonitorInterval = setInterval(async () => {
     const results = await monitorActiveDeployments()
     if (results.length > 0) {
       console.info(
-        `[deploy-monitor] checked ${results.length} active deployment(s)`,
+        `[deploy-monitor] checked ${results.length} active deployment(s)`
       )
     }
   } catch (error) {
@@ -506,10 +503,7 @@ const appHostingBillingInterval = setInterval(async () => {
         }
       } catch (error) {
         errors++
-        console.error(
-          `[app-hosting-billing] stack=${stack.id} error:`,
-          error,
-        )
+        console.error(`[app-hosting-billing] stack=${stack.id} error:`, error)
       }
     }
 
@@ -530,13 +524,13 @@ const appHostingBillingInterval = setInterval(async () => {
       } catch (error) {
         console.error(
           `[app-hosting-billing] grace check stack=${stack.id} error:`,
-          error,
+          error
         )
       }
     }
 
     console.info(
-      `[app-hosting-billing] charged=${charged} grace=${graceEntered} suspended=${suspended} errors=${errors}`,
+      `[app-hosting-billing] charged=${charged} grace=${graceEntered} suspended=${suspended} errors=${errors}`
     )
   } catch (error) {
     console.error("[app-hosting-billing] cycle failed:", error)
@@ -591,7 +585,7 @@ const whatsappBillingInterval = setInterval(async () => {
 
           const { Prisma } = await import("@prisma/client")
           const basePrice = new Prisma.Decimal(
-            subscription.pricing.basePriceIdr.toString(),
+            subscription.pricing.basePriceIdr.toString()
           )
 
           if (basePrice.lte(0)) {
@@ -610,10 +604,7 @@ const whatsappBillingInterval = setInterval(async () => {
           charged++
         } catch (error) {
           errors++
-          console.error(
-            `[whatsapp-billing] device=${device.id} error:`,
-            error,
-          )
+          console.error(`[whatsapp-billing] device=${device.id} error:`, error)
         }
       }
 
@@ -621,7 +612,7 @@ const whatsappBillingInterval = setInterval(async () => {
     }
 
     console.info(
-      `[whatsapp-billing] charged=${charged} skipped=${skipped} errors=${errors} period=${period}`,
+      `[whatsapp-billing] charged=${charged} skipped=${skipped} errors=${errors} period=${period}`
     )
   } catch (error) {
     console.error("[whatsapp-billing] cycle failed:", error)
@@ -638,7 +629,7 @@ const vpnRenewalInterval = setInterval(async () => {
     const result = await renewalService.renewDueSubscriptions()
 
     console.info(
-      `[vpn-renewal] renewed=${result.renewed} retried=${result.retried} suspended=${result.suspended} expired=${result.expired} errors=${result.errors}`,
+      `[vpn-renewal] renewed=${result.renewed} retried=${result.retried} suspended=${result.suspended} expired=${result.expired} errors=${result.errors}`
     )
   } catch (error) {
     console.error("[vpn-renewal] cycle failed:", error)
@@ -691,7 +682,7 @@ try {
   const results = await monitorActiveDeployments()
   if (results.length > 0) {
     console.info(
-      `[deploy-monitor] initial check: ${results.length} active deployment(s)`,
+      `[deploy-monitor] initial check: ${results.length} active deployment(s)`
     )
   }
 } catch (error) {
@@ -700,8 +691,8 @@ try {
 
 console.info("[workers] unified worker process ready")
 console.info(
-  `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}`,
+  `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}`
 )
 console.info(
-  "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h)",
+  "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h)"
 )

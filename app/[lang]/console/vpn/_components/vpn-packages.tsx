@@ -55,9 +55,10 @@ export function VpnPackages({ topupUrl, onPurchased }: Props) {
   const [selected, setSelected] = useState<VpnPackageDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [purchasing, setPurchasing] = useState(false)
-  const [error, setError] = useState<{ message: string; topup: boolean } | null>(
-    null
-  )
+  const [error, setError] = useState<{
+    message: string
+    topup: boolean
+  } | null>(null)
 
   useEffect(() => {
     let active = true

@@ -19,22 +19,22 @@ const jsonResponse = (body: unknown, status = 200) => {
   })
 }
 
-const renderScreen = (lang = "en") => render(<SupportTicketCreateScreen lang={lang} />)
+const renderScreen = (lang = "en") =>
+  render(<SupportTicketCreateScreen lang={lang} />)
 
 const fillSubjectAndSubmit = (
   view: ReturnType<typeof renderScreen>,
   value = "My test issue"
 ) => {
-  const subjectInput = view.getByPlaceholderText("Describe your issue") as HTMLInputElement
+  const subjectInput = view.getByPlaceholderText(
+    "Describe your issue"
+  ) as HTMLInputElement
   const submitButton = view.getByRole("button", { name: "Submit Ticket" })
   subjectInput.value = value
   fireEvent.click(submitButton)
 }
 
-const attachFiles = (
-  view: ReturnType<typeof renderScreen>,
-  files: File[]
-) => {
+const attachFiles = (view: ReturnType<typeof renderScreen>, files: File[]) => {
   const fileInput = view.getByLabelText("Attachments (optional)")
   fireEvent.change(fileInput, { target: { files } })
 }
@@ -46,12 +46,14 @@ const expectRedirected = () => {
 
 describe("SupportTicketCreateScreen", () => {
   beforeEach(() => {
-    (useRouter as ReturnType<typeof mock>).mockReturnValue({
+    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
       push: mockRouterPush,
       refresh: mockRouterRefresh,
       replace: () => {},
     })
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console/support-tickets")
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(
+      "/en/console/support-tickets"
+    )
 
     mockRouterPush.mockClear()
     mockRouterRefresh.mockClear()
@@ -59,67 +61,78 @@ describe("SupportTicketCreateScreen", () => {
     globalThis.URL.createObjectURL = mock((file: File) => `blob:${file.name}`)
     globalThis.URL.revokeObjectURL = mock(() => {})
 
-    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input)
-      const method = init?.method ?? "GET"
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        const method = init?.method ?? "GET"
 
-      if (url === "/api/support-tickets" && method === "POST") {
-        return jsonResponse({
-          ok: true,
-          ticket: {
-            id: "ticket_new",
-            ticketNumber: "TCK-1002",
-            subject: "Testing subject",
-            department: "technical",
-            priority: "medium",
-            status: "open",
-            createdAt: "2026-05-22T00:00:00.000Z",
-          },
-        })
+        if (url === "/api/support-tickets" && method === "POST") {
+          return jsonResponse({
+            ok: true,
+            ticket: {
+              id: "ticket_new",
+              ticketNumber: "TCK-1002",
+              subject: "Testing subject",
+              department: "technical",
+              priority: "medium",
+              status: "open",
+              createdAt: "2026-05-22T00:00:00.000Z",
+            },
+          })
+        }
+
+        if (url === "/api/support-tickets/preview" && method === "POST") {
+          const bodyText = init?.body ? String(init.body) : "{}"
+          const bodyObj = JSON.parse(bodyText)
+          return jsonResponse({
+            ok: true,
+            html: `<p>parsed: ${bodyObj.markdown}</p>`,
+          })
+        }
+
+        if (
+          url === "/api/support-tickets/attachments/presign" &&
+          method === "POST"
+        ) {
+          return jsonResponse({
+            ok: true,
+            attachment: {
+              attachmentId: "att_123",
+              expiresAt: "2026-06-22T00:00:00.000Z",
+              storageBucket: "my-bucket",
+              storageKey: "my-key",
+              uploadUrl: "https://mock-s3.example.com/upload",
+            },
+          })
+        }
+
+        if (
+          url === "/api/support-tickets/attachments/upload" &&
+          method === "POST"
+        ) {
+          return jsonResponse({ ok: true })
+        }
+
+        if (
+          url === "/api/support-tickets/attachments/register" &&
+          method === "POST"
+        ) {
+          return jsonResponse({
+            ok: true,
+            attachment: {
+              id: "att_123",
+              fileName: "screenshot.png",
+              mimeType: "image/png",
+              sizeBytes: 1024,
+              storageBucket: "my-bucket",
+              storageKey: "my-key",
+            },
+          })
+        }
+
+        return jsonResponse({ ok: false, message: "Unhandled" }, 500)
       }
-
-      if (url === "/api/support-tickets/preview" && method === "POST") {
-        const bodyText = init?.body ? String(init.body) : "{}"
-        const bodyObj = JSON.parse(bodyText)
-        return jsonResponse({
-          ok: true,
-          html: `<p>parsed: ${bodyObj.markdown}</p>`,
-        })
-      }
-
-      if (url === "/api/support-tickets/attachments/presign" && method === "POST") {
-        return jsonResponse({
-          ok: true,
-          attachment: {
-            attachmentId: "att_123",
-            expiresAt: "2026-06-22T00:00:00.000Z",
-            storageBucket: "my-bucket",
-            storageKey: "my-key",
-            uploadUrl: "https://mock-s3.example.com/upload",
-          },
-        })
-      }
-
-      if (url === "/api/support-tickets/attachments/upload" && method === "POST") {
-        return jsonResponse({ ok: true })
-      }
-
-      if (url === "/api/support-tickets/attachments/register" && method === "POST") {
-        return jsonResponse({
-          ok: true,
-          attachment: {
-            id: "att_123",
-            fileName: "screenshot.png",
-            mimeType: "image/png",
-            sizeBytes: 1024,
-            storageBucket: "my-bucket",
-            storageKey: "my-key",
-          },
-        })
-      }
-
-      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
-    }) as unknown as typeof fetch
+    ) as unknown as typeof fetch
   })
 
   afterEach(() => {
@@ -165,11 +178,15 @@ describe("SupportTicketCreateScreen", () => {
   it("submits the ticket with attachments successfully", async () => {
     const view = renderScreen()
     const submitButton = view.getByRole("button", { name: "Submit Ticket" })
-    const subjectInput = view.getByPlaceholderText("Describe your issue") as HTMLInputElement
+    const subjectInput = view.getByPlaceholderText(
+      "Describe your issue"
+    ) as HTMLInputElement
 
     subjectInput.value = "Issue with attachments"
 
-    const docFile = new File(["file content"], "receipt.pdf", { type: "application/pdf" })
+    const docFile = new File(["file content"], "receipt.pdf", {
+      type: "application/pdf",
+    })
     attachFiles(view, [docFile])
 
     fireEvent.click(submitButton)
@@ -211,7 +228,9 @@ describe("SupportTicketCreateScreen", () => {
     expect(messageTabContent.className).not.toContain("hidden")
     expect(secureTabContent.className).toContain("hidden")
 
-    const secureTabButton = view.getByRole("button", { name: /secure details/i })
+    const secureTabButton = view.getByRole("button", {
+      name: /secure details/i,
+    })
     fireEvent.click(secureTabButton)
 
     expect(messageTabContent.className).toContain("hidden")
@@ -224,8 +243,12 @@ describe("SupportTicketCreateScreen", () => {
   it("renders image previews and document icons for attachments", async () => {
     const view = renderScreen()
 
-    const imgFile = new File(["dummy image"], "screenshot.png", { type: "image/png" })
-    const docFile = new File(["dummy doc"], "report.pdf", { type: "application/pdf" })
+    const imgFile = new File(["dummy image"], "screenshot.png", {
+      type: "image/png",
+    })
+    const docFile = new File(["dummy doc"], "report.pdf", {
+      type: "application/pdf",
+    })
 
     attachFiles(view, [imgFile, docFile])
 

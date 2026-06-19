@@ -81,7 +81,9 @@ export function PaymentMethodGatewayCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Payment Method &amp; Gateway</CardTitle>
+        <CardTitle className="text-base">
+          Payment Method &amp; Gateway
+        </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 text-sm">
         <div className="grid gap-4 md:grid-cols-2">
@@ -118,7 +120,9 @@ export function PaymentMethodGatewayCard({
             ) : null}
             {payment.reference.paymentUrl ? (
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Payment URL</span>
+                <span className="text-xs text-muted-foreground">
+                  Payment URL
+                </span>
                 <a
                   href={payment.reference.paymentUrl}
                   target="_blank"
@@ -182,7 +186,9 @@ export function PaymentConfirmationList({
                 <TableHead>Sender</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
-                {canManage ? <TableHead className="text-right">Action</TableHead> : null}
+                {canManage ? (
+                  <TableHead className="text-right">Action</TableHead>
+                ) : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -198,9 +204,7 @@ export function PaymentConfirmationList({
                       {confirmation.amount.toLocaleString()}{" "}
                       {confirmation.currency}
                     </TableCell>
-                    <TableCell>
-                      {confirmation.senderName ?? "—"}
-                    </TableCell>
+                    <TableCell>{confirmation.senderName ?? "—"}</TableCell>
                     <TableCell>
                       {new Date(
                         confirmation.paymentDateTime
@@ -221,9 +225,7 @@ export function PaymentConfirmationList({
                           type="button"
                           size="sm"
                           variant="outline"
-                          onClick={() =>
-                            setSelectedConfirmation(confirmation)
-                          }
+                          onClick={() => setSelectedConfirmation(confirmation)}
                         >
                           Review
                         </Button>
@@ -295,7 +297,7 @@ function PaymentTimeline({ timeline }: PaymentTimelineProps) {
       <CardContent>
         <div className="relative ml-3 space-y-0">
           {/* Vertical line */}
-          <div className="absolute left-[11px] top-2 h-[calc(100%-16px)] w-0.5 bg-border" />
+          <div className="absolute top-2 left-[11px] h-[calc(100%-16px)] w-0.5 bg-border" />
 
           {timeline.map((event, index) => {
             return (

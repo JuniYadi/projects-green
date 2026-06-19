@@ -52,7 +52,7 @@ const sampleInvoices: InvoiceListItem[] = [
     periodEnd: "2025-04-30T23:59:59.999Z",
     totalAmountIdr: "0",
     currency: "IDR",
-    lines: []
+    lines: [],
   },
 ]
 
@@ -85,10 +85,7 @@ describe("InvoiceTable", () => {
     const view = render(<InvoiceTable invoices={sampleInvoices} lang="en" />)
 
     const link = view.getByRole("link", { name: "INV-2025-0001" })
-    expect(link).toHaveAttribute(
-      "href",
-      "/en/console/billing/invoices/inv-001"
-    )
+    expect(link).toHaveAttribute("href", "/en/console/billing/invoices/inv-001")
   })
 
   it("renders formatted currency amounts", () => {

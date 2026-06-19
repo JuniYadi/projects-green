@@ -7,7 +7,11 @@ export type K8sEnvironment = {
   color: string
 }
 
-export type AppStatusType = "healthy" | "degraded" | "inaccessible" | "deploying"
+export type AppStatusType =
+  | "healthy"
+  | "degraded"
+  | "inaccessible"
+  | "deploying"
 
 export type CustomDomain = {
   id: string

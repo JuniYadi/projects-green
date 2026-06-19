@@ -31,14 +31,14 @@ export class VpnSubscriptionRefsNotFoundError extends Error {
  */
 export async function resolveVpnSubscriptionRefs(
   prisma: PrismaClient,
-  input: { planCode: string; regionCode: string },
+  input: { planCode: string; regionCode: string }
 ): Promise<VpnSubscriptionRefs> {
   const pkg = await prisma.servicePackage.findUnique({
     where: { code: "VPN" },
   })
   if (!pkg) {
     throw new VpnSubscriptionRefsNotFoundError(
-      "ServicePackage with code 'VPN' not found — did you run the billing seed?",
+      "ServicePackage with code 'VPN' not found — did you run the billing seed?"
     )
   }
 
@@ -49,7 +49,7 @@ export async function resolveVpnSubscriptionRefs(
   })
   if (!plan) {
     throw new VpnSubscriptionRefsNotFoundError(
-      `ServicePlan not found for package=VPN plan=${input.planCode}`,
+      `ServicePlan not found for package=VPN plan=${input.planCode}`
     )
   }
 
@@ -58,7 +58,7 @@ export async function resolveVpnSubscriptionRefs(
   })
   if (!region) {
     throw new VpnSubscriptionRefsNotFoundError(
-      `ServiceRegion not found: ${input.regionCode}`,
+      `ServiceRegion not found: ${input.regionCode}`
     )
   }
 
@@ -70,7 +70,7 @@ export async function resolveVpnSubscriptionRefs(
   })
   if (!pricing) {
     throw new VpnSubscriptionRefsNotFoundError(
-      `ServicePricing not found for plan=${input.planCode} region=${input.regionCode}`,
+      `ServicePricing not found for plan=${input.planCode} region=${input.regionCode}`
     )
   }
 

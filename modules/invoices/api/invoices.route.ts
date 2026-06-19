@@ -85,7 +85,9 @@ type InvoiceRouteDependencies = {
   }) => Promise<PlatformAccessRole>
   service: InvoiceService
   emailService: InvoiceEmailService
-  getOrganizationIdByBillingAccount: (billingAccountId: string) => Promise<string | null>
+  getOrganizationIdByBillingAccount: (
+    billingAccountId: string
+  ) => Promise<string | null>
 }
 
 const createDefaultDependencies = (): InvoiceRouteDependencies => ({
@@ -224,7 +226,9 @@ export const createInvoicesRoutes = (
             search: parsedQuery.data.search,
             status: parsedQuery.data.status,
             sortBy: parsedQuery.data.sortBy as InvoiceListSortBy | undefined,
-            sortDir: parsedQuery.data.sortDir as InvoiceSortDirection | undefined,
+            sortDir: parsedQuery.data.sortDir as
+              | InvoiceSortDirection
+              | undefined,
           },
         })
 
@@ -272,12 +276,12 @@ export const createInvoicesRoutes = (
 
         const billingAccountId = invoice.billingAccountId
         const orgId = billingAccountId
-          ? await dependencies.getOrganizationIdByBillingAccount(billingAccountId)
+          ? await dependencies.getOrganizationIdByBillingAccount(
+              billingAccountId
+            )
           : null
 
-        const org = orgId
-          ? await getTenantOrganizationById(orgId)
-          : null
+        const org = orgId ? await getTenantOrganizationById(orgId) : null
 
         return {
           ok: true as const,
@@ -289,15 +293,17 @@ export const createInvoicesRoutes = (
           canMarkPaid:
             canManuallyMarkPaid(actorRoles) && invoice.status === "open",
           canManageConfirmations: canManagePaymentConfirmations(actorRoles),
-          organization: org ? {
-            name: org.name,
-            billingFullName: org.metadata?.billing_full_name ?? null,
-            billingAddress: org.metadata?.billing_address ?? null,
-            billingCity: org.metadata?.billing_city ?? null,
-            billingState: org.metadata?.billing_state ?? null,
-            billingCountry: org.metadata?.billing_country ?? null,
-            billingPostCode: org.metadata?.billing_post_code ?? null,
-          } : null,
+          organization: org
+            ? {
+                name: org.name,
+                billingFullName: org.metadata?.billing_full_name ?? null,
+                billingAddress: org.metadata?.billing_address ?? null,
+                billingCity: org.metadata?.billing_city ?? null,
+                billingState: org.metadata?.billing_state ?? null,
+                billingCountry: org.metadata?.billing_country ?? null,
+                billingPostCode: org.metadata?.billing_post_code ?? null,
+              }
+            : null,
         }
       } catch (error) {
         if (error instanceof InvoiceNotFoundError) {
@@ -306,7 +312,7 @@ export const createInvoicesRoutes = (
 
         console.error(
           `[invoices] GET /invoices/:invoiceId —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         return toServerError(set, "Unable to load invoice detail right now.")
       }
@@ -342,22 +348,27 @@ export const createInvoicesRoutes = (
 
         const billingAccountId = invoice.billingAccountId
         const orgId = billingAccountId
-          ? await dependencies.getOrganizationIdByBillingAccount(billingAccountId)
+          ? await dependencies.getOrganizationIdByBillingAccount(
+              billingAccountId
+            )
           : null
 
-        const org = orgId
-          ? await getTenantOrganizationById(orgId)
-          : null
+        const org = orgId ? await getTenantOrganizationById(orgId) : null
 
-        const bytes = buildInvoicePdfBytes(invoice, org ? {
-          name: org.name,
-          billingFullName: org.metadata?.billing_full_name ?? null,
-          billingAddress: org.metadata?.billing_address ?? null,
-          billingCity: org.metadata?.billing_city ?? null,
-          billingState: org.metadata?.billing_state ?? null,
-          billingCountry: org.metadata?.billing_country ?? null,
-          billingPostCode: org.metadata?.billing_post_code ?? null,
-        } : null)
+        const bytes = buildInvoicePdfBytes(
+          invoice,
+          org
+            ? {
+                name: org.name,
+                billingFullName: org.metadata?.billing_full_name ?? null,
+                billingAddress: org.metadata?.billing_address ?? null,
+                billingCity: org.metadata?.billing_city ?? null,
+                billingState: org.metadata?.billing_state ?? null,
+                billingCountry: org.metadata?.billing_country ?? null,
+                billingPostCode: org.metadata?.billing_post_code ?? null,
+              }
+            : null
+        )
         const body = new Blob([new Uint8Array(bytes).buffer], {
           type: "application/pdf",
         })
@@ -377,7 +388,7 @@ export const createInvoicesRoutes = (
 
         console.error(
           `[invoices] GET /invoices/:invoiceId/pdf —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         return toServerError(set, "Unable to download invoice PDF right now.")
       }
@@ -420,9 +431,14 @@ export const createInvoicesRoutes = (
 
         // Send cancellation notification email
         if (auth.user?.email) {
-          dependencies.emailService.sendInvoiceCancelled(invoice, auth.user.email).catch((err) => {
-            console.error("[Invoices] Failed to send invoice cancelled email:", err)
-          })
+          dependencies.emailService
+            .sendInvoiceCancelled(invoice, auth.user.email)
+            .catch((err) => {
+              console.error(
+                "[Invoices] Failed to send invoice cancelled email:",
+                err
+              )
+            })
         }
 
         return {
@@ -440,7 +456,7 @@ export const createInvoicesRoutes = (
 
         console.error(
           `[invoices] POST /invoices/:invoiceId/cancel —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         return toServerError(set, "Unable to cancel invoice right now.")
       }
@@ -465,13 +481,16 @@ export const createInvoicesRoutes = (
       if (!parsedBody.success) {
         return toValidationError(set, parsedBody.error.issues)
       }
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail =
+        parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
 
       if (!recipientEmail) {
-        return toValidationError(set, [{
-          path: ["recipientEmail"],
-          message: "Recipient email is required when user has no email",
-        }])
+        return toValidationError(set, [
+          {
+            path: ["recipientEmail"],
+            message: "Recipient email is required when user has no email",
+          },
+        ])
       }
 
       try {
@@ -481,7 +500,10 @@ export const createInvoicesRoutes = (
         })
 
         if (!canManageInvoiceNotifications(actorRoles)) {
-          return toForbidden(set, "Only owner/admin members can send notifications.")
+          return toForbidden(
+            set,
+            "Only owner/admin members can send notifications."
+          )
         }
 
         const invoice = await dependencies.service.getInvoiceDetail({
@@ -489,9 +511,14 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
-        dependencies.emailService.sendInvoiceCreated(invoice, recipientEmail).catch((err) => {
-          console.error("[Invoices] Failed to send invoice created email:", err)
-        })
+        dependencies.emailService
+          .sendInvoiceCreated(invoice, recipientEmail)
+          .catch((err) => {
+            console.error(
+              "[Invoices] Failed to send invoice created email:",
+              err
+            )
+          })
 
         return {
           ok: true as const,
@@ -504,7 +531,7 @@ export const createInvoicesRoutes = (
 
         console.error(
           `[invoices] POST /invoices/:invoiceId/notify/created —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         return toServerError(set, "Unable to send notification right now.")
       }
@@ -529,13 +556,16 @@ export const createInvoicesRoutes = (
       if (!parsedBody.success) {
         return toValidationError(set, parsedBody.error.issues)
       }
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail =
+        parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
 
       if (!recipientEmail) {
-        return toValidationError(set, [{
-          path: ["recipientEmail"],
-          message: "Recipient email is required when user has no email",
-        }])
+        return toValidationError(set, [
+          {
+            path: ["recipientEmail"],
+            message: "Recipient email is required when user has no email",
+          },
+        ])
       }
 
       try {
@@ -545,7 +575,10 @@ export const createInvoicesRoutes = (
         })
 
         if (!canManageInvoiceNotifications(actorRoles)) {
-          return toForbidden(set, "Only owner/admin members can send notifications.")
+          return toForbidden(
+            set,
+            "Only owner/admin members can send notifications."
+          )
         }
 
         const invoice = await dependencies.service.getInvoiceDetail({
@@ -553,9 +586,11 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
-        dependencies.emailService.sendInvoicePaid(invoice, recipientEmail).catch((err) => {
-          console.error("[Invoices] Failed to send invoice paid email:", err)
-        })
+        dependencies.emailService
+          .sendInvoicePaid(invoice, recipientEmail)
+          .catch((err) => {
+            console.error("[Invoices] Failed to send invoice paid email:", err)
+          })
 
         return {
           ok: true as const,
@@ -568,7 +603,7 @@ export const createInvoicesRoutes = (
 
         console.error(
           `[invoices] POST /invoices/:invoiceId/notify/paid —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         return toServerError(set, "Unable to send notification right now.")
       }
@@ -593,13 +628,16 @@ export const createInvoicesRoutes = (
       if (!parsedBody.success) {
         return toValidationError(set, parsedBody.error.issues)
       }
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail =
+        parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
 
       if (!recipientEmail) {
-        return toValidationError(set, [{
-          path: ["recipientEmail"],
-          message: "Recipient email is required when user has no email",
-        }])
+        return toValidationError(set, [
+          {
+            path: ["recipientEmail"],
+            message: "Recipient email is required when user has no email",
+          },
+        ])
       }
 
       try {
@@ -609,7 +647,10 @@ export const createInvoicesRoutes = (
         })
 
         if (!canManageInvoiceNotifications(actorRoles)) {
-          return toForbidden(set, "Only owner/admin members can send notifications.")
+          return toForbidden(
+            set,
+            "Only owner/admin members can send notifications."
+          )
         }
 
         const invoice = await dependencies.service.getInvoiceDetail({
@@ -617,9 +658,14 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
-        dependencies.emailService.sendPaymentReminder(invoice, recipientEmail).catch((err) => {
-          console.error("[Invoices] Failed to send payment reminder email:", err)
-        })
+        dependencies.emailService
+          .sendPaymentReminder(invoice, recipientEmail)
+          .catch((err) => {
+            console.error(
+              "[Invoices] Failed to send payment reminder email:",
+              err
+            )
+          })
 
         return {
           ok: true as const,
@@ -632,7 +678,7 @@ export const createInvoicesRoutes = (
 
         console.error(
           `[invoices] POST /invoices/:invoiceId/notify/reminder —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         return toServerError(set, "Unable to send notification right now.")
       }
@@ -657,13 +703,16 @@ export const createInvoicesRoutes = (
       if (!parsedBody.success) {
         return toValidationError(set, parsedBody.error.issues)
       }
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail =
+        parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
 
       if (!recipientEmail) {
-        return toValidationError(set, [{
-          path: ["recipientEmail"],
-          message: "Recipient email is required when user has no email",
-        }])
+        return toValidationError(set, [
+          {
+            path: ["recipientEmail"],
+            message: "Recipient email is required when user has no email",
+          },
+        ])
       }
 
       try {
@@ -673,7 +722,10 @@ export const createInvoicesRoutes = (
         })
 
         if (!canManageInvoiceNotifications(actorRoles)) {
-          return toForbidden(set, "Only owner/admin members can send notifications.")
+          return toForbidden(
+            set,
+            "Only owner/admin members can send notifications."
+          )
         }
 
         const invoice = await dependencies.service.getInvoiceDetail({
@@ -681,9 +733,14 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
-        dependencies.emailService.sendInvoiceOverdue(invoice, recipientEmail).catch((err) => {
-          console.error("[Invoices] Failed to send invoice overdue email:", err)
-        })
+        dependencies.emailService
+          .sendInvoiceOverdue(invoice, recipientEmail)
+          .catch((err) => {
+            console.error(
+              "[Invoices] Failed to send invoice overdue email:",
+              err
+            )
+          })
 
         return {
           ok: true as const,
@@ -696,7 +753,7 @@ export const createInvoicesRoutes = (
 
         console.error(
           `[invoices] POST /invoices/:invoiceId/notify/overdue —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         return toServerError(set, "Unable to send notification right now.")
       }
@@ -721,14 +778,17 @@ export const createInvoicesRoutes = (
       if (!parsedBody.success) {
         return toValidationError(set, parsedBody.error.issues)
       }
-      const recipientEmail = parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
+      const recipientEmail =
+        parsedBody.data.recipientEmail ?? auth.user.email ?? undefined
       const reason = parsedBody.data.reason
 
       if (!recipientEmail) {
-        return toValidationError(set, [{
-          path: ["recipientEmail"],
-          message: "Recipient email is required when user has no email",
-        }])
+        return toValidationError(set, [
+          {
+            path: ["recipientEmail"],
+            message: "Recipient email is required when user has no email",
+          },
+        ])
       }
 
       try {
@@ -738,7 +798,10 @@ export const createInvoicesRoutes = (
         })
 
         if (!canManageInvoiceNotifications(actorRoles)) {
-          return toForbidden(set, "Only owner/admin members can send notifications.")
+          return toForbidden(
+            set,
+            "Only owner/admin members can send notifications."
+          )
         }
 
         const invoice = await dependencies.service.getInvoiceDetail({
@@ -746,13 +809,14 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
-        dependencies.emailService.sendInvoiceCancelled(
-          invoice,
-          recipientEmail,
-          reason,
-        ).catch((err) => {
-          console.error("[Invoices] Failed to send invoice cancelled email:", err)
-        })
+        dependencies.emailService
+          .sendInvoiceCancelled(invoice, recipientEmail, reason)
+          .catch((err) => {
+            console.error(
+              "[Invoices] Failed to send invoice cancelled email:",
+              err
+            )
+          })
 
         return {
           ok: true as const,
@@ -765,7 +829,7 @@ export const createInvoicesRoutes = (
 
         console.error(
           `[invoices] POST /invoices/:invoiceId/notify/cancelled —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         return toServerError(set, "Unable to send notification right now.")
       }
@@ -794,7 +858,10 @@ export const createInvoicesRoutes = (
         })
 
         if (!canManuallyMarkPaid(actorRoles)) {
-          return toForbidden(set, "Only super admins can manually mark invoices as paid.")
+          return toForbidden(
+            set,
+            "Only super admins can manually mark invoices as paid."
+          )
         }
 
         const invoice = await dependencies.service.markInvoiceAsPaid({
@@ -829,7 +896,7 @@ export const createInvoicesRoutes = (
 
         console.error(
           `[invoices] POST /invoices/:invoiceId/mark-paid —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         return toServerError(set, "Unable to mark invoice as paid right now.")
       }

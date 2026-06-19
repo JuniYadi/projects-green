@@ -11,7 +11,11 @@ export const BILLING_MODES = ["PACKAGE", "PAYG", "CUSTOM"] as const
 export type BillingMode = (typeof BILLING_MODES)[number]
 
 // Subscription status (mirrors BillingSubscriptionStatus2 enum in schema)
-export const SUBSCRIPTION_STATUSES = ["ACTIVE", "SUSPENDED", "CANCELLED"] as const
+export const SUBSCRIPTION_STATUSES = [
+  "ACTIVE",
+  "SUSPENDED",
+  "CANCELLED",
+] as const
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number]
 
 // Adjustment types (mirrors AdjustmentType enum in schema)

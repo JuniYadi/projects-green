@@ -188,12 +188,10 @@ export default function WhatsAppDashboardPage() {
 
   const quotaInfo = React.useMemo(() => {
     const totalBase = devices.reduce((sum, d) => sum + d.quotaBase, 0)
-    const totalRemaining = devices.reduce(
-      (sum, d) => sum + d.quotaBaseOut,
-      0,
-    )
+    const totalRemaining = devices.reduce((sum, d) => sum + d.quotaBaseOut, 0)
     const totalUsed = Math.max(0, totalBase - totalRemaining)
-    const percent = totalBase > 0 ? Math.round((totalUsed / totalBase) * 100) : 0
+    const percent =
+      totalBase > 0 ? Math.round((totalUsed / totalBase) * 100) : 0
     return { totalBase, totalRemaining, totalUsed, percent }
   }, [devices])
 
@@ -325,11 +323,7 @@ export default function WhatsAppDashboardPage() {
                   </CardContent>
                 </Card>
 
-                <Card
-                  className={
-                    hasLowBalance ? "border-warning" : undefined
-                  }
-                >
+                <Card className={hasLowBalance ? "border-warning" : undefined}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Balance
@@ -455,7 +449,8 @@ export default function WhatsAppDashboardPage() {
                             {device.phoneNumber}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Quota: {device.quotaBaseOut} / {device.quotaBase} remaining
+                            Quota: {device.quotaBaseOut} / {device.quotaBase}{" "}
+                            remaining
                             {device.dailyLimitMessage > 0 &&
                               ` · ${device.dailyLimitMessage} msg/day`}
                             {Number(device.balance) > 0 &&

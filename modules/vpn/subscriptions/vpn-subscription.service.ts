@@ -1,10 +1,6 @@
 import crypto from "node:crypto"
 
-import {
-  Prisma,
-  type PrismaClient,
-  type VpnProtocol,
-} from "@prisma/client"
+import { Prisma, type PrismaClient, type VpnProtocol } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
@@ -161,9 +157,7 @@ export class VpnSubscriptionService {
     })
   }
 
-  async purchase(
-    input: PurchaseInput
-  ): Promise<VpnSubscriptionWithAccounts> {
+  async purchase(input: PurchaseInput): Promise<VpnSubscriptionWithAccounts> {
     const pkg = await this.prisma.vpnPackage.findUnique({
       where: { id: input.packageId },
       include: { servers: { include: { server: true } } },
@@ -181,15 +175,7 @@ export class VpnSubscriptionService {
 
     // Align first period to end of current calendar month for pro-rata billing.
     const periodEnd = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999
-      )
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)
     )
     const period = `${now.getUTCFullYear()}-${String(
       now.getUTCMonth() + 1
@@ -280,7 +266,10 @@ export class VpnSubscriptionService {
       if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
         throw new VpnInsufficientBalanceError()
       }
-      if (error instanceof Error && error.message === "BILLING_ACCOUNT_NOT_FOUND") {
+      if (
+        error instanceof Error &&
+        error.message === "BILLING_ACCOUNT_NOT_FOUND"
+      ) {
         throw new VpnBillingAccountNotFoundError()
       }
       throw error

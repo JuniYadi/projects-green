@@ -170,12 +170,12 @@ describe("dispatchWebhookEvents", () => {
     expect(mockEnqueue).toHaveBeenCalledWith(
       "message",
       expect.objectContaining({ id: "msg-1" }),
-      "123456789",
+      "123456789"
     )
     expect(mockEnqueue).toHaveBeenCalledWith(
       "message",
       expect.objectContaining({ id: "msg-2" }),
-      "123456789",
+      "123456789"
     )
   })
 
@@ -193,12 +193,12 @@ describe("dispatchWebhookEvents", () => {
     expect(mockEnqueue).toHaveBeenCalledWith(
       "statuses",
       expect.objectContaining({ id: "st-1" }),
-      "123456789",
+      "123456789"
     )
     expect(mockEnqueue).toHaveBeenCalledWith(
       "statuses",
       expect.objectContaining({ id: "st-2" }),
-      "123456789",
+      "123456789"
     )
   })
 
@@ -214,12 +214,12 @@ describe("dispatchWebhookEvents", () => {
     expect(mockEnqueue).toHaveBeenCalledWith(
       "message",
       expect.objectContaining({ id: "wamid.abc123" }),
-      "123456789",
+      "123456789"
     )
     expect(mockEnqueue).toHaveBeenCalledWith(
       "statuses",
       expect.objectContaining({ id: "wamid.status456" }),
-      "123456789",
+      "123456789"
     )
   })
 
@@ -307,7 +307,10 @@ describe("verifySignature", () => {
 
   it("returns false for mismatched signature", () => {
     process.env.META_APP_SECRET = "test-secret"
-    const result = verifySignature('{"key":"value"}', "sha256=0000000000000000000000000000000000000000000000000000000000000000")
+    const result = verifySignature(
+      '{"key":"value"}',
+      "sha256=0000000000000000000000000000000000000000000000000000000000000000"
+    )
     expect(result).toBe(false)
   })
 })

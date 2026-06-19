@@ -17,10 +17,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMainLabel).toBe("Applications")
 
     // Flat menu structure under applications context
-    expect(navMain.map((item) => item.title)).toEqual([
-      "Deploy",
-      "Manage",
-    ])
+    expect(navMain.map((item) => item.title)).toEqual(["Deploy", "Manage"])
     expect(navMain.find((item) => item.title === "Manage")?.isActive).toBe(true)
 
     // Escape hatch in projects
@@ -52,19 +49,24 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(
-      billingMenu.projects.find((project) => project.name === "Billing")?.isActive
+      billingMenu.projects.find((project) => project.name === "Billing")
+        ?.isActive
     ).toBe(true)
-    expect(
-      billingMenu.projects.map((project) => project.name)
-    ).toEqual(["Overview", "Billing", "Support Tickets"])
+    expect(billingMenu.projects.map((project) => project.name)).toEqual([
+      "Overview",
+      "Billing",
+      "Support Tickets",
+    ])
 
     expect(
       supportMenu.projects.find((project) => project.name === "Support Tickets")
         ?.isActive
     ).toBe(true)
-    expect(
-      supportMenu.projects.map((project) => project.name)
-    ).toEqual(["Overview", "Billing", "Support Tickets"])
+    expect(supportMenu.projects.map((project) => project.name)).toEqual([
+      "Overview",
+      "Billing",
+      "Support Tickets",
+    ])
   })
 
   it("returns hub context when on /console page", () => {
@@ -82,9 +84,15 @@ describe("resolveSidebarMenu", () => {
       "Billing",
       "Support Tickets",
     ])
-    expect(projects.find((project) => project.name === "Overview")?.isActive).toBe(true)
+    expect(
+      projects.find((project) => project.name === "Overview")?.isActive
+    ).toBe(true)
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp", "VPN"])
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Applications",
+      "WhatsApp",
+      "VPN",
+    ])
     expect(navMain[0]?.isActive).toBe(false)
   })
 
@@ -99,7 +107,11 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(navMain.map((item) => item.title)).toEqual(["Applications", "WhatsApp", "VPN"])
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Applications",
+      "WhatsApp",
+      "VPN",
+    ])
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
       "Billing",
@@ -183,9 +195,9 @@ describe("resolveSidebarMenu", () => {
       "Usage",
       "Contacts",
     ])
-    expect(
-      navMain.find((item) => item.title === "Dashboard")?.isActive
-    ).toBe(true)
+    expect(navMain.find((item) => item.title === "Dashboard")?.isActive).toBe(
+      true
+    )
 
     expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
   })
@@ -198,9 +210,9 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMainLabel).toBe("WhatsApp")
-    expect(
-      navMain.find((item) => item.title === "Devices")?.isActive
-    ).toBe(true)
+    expect(navMain.find((item) => item.title === "Devices")?.isActive).toBe(
+      true
+    )
   })
 
   it("marks templates active for its routes", () => {
@@ -211,9 +223,9 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMainLabel).toBe("WhatsApp")
-    expect(
-      navMain.find((item) => item.title === "Templates")?.isActive
-    ).toBe(true)
+    expect(navMain.find((item) => item.title === "Templates")?.isActive).toBe(
+      true
+    )
   })
 
   it("marks messages active for its routes", () => {
@@ -224,9 +236,9 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMainLabel).toBe("WhatsApp")
-    expect(
-      navMain.find((item) => item.title === "Messages")?.isActive
-    ).toBe(true)
+    expect(navMain.find((item) => item.title === "Messages")?.isActive).toBe(
+      true
+    )
   })
 
   it("marks contacts active for its routes", () => {
@@ -237,8 +249,8 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMainLabel).toBe("WhatsApp")
-    expect(
-      navMain.find((item) => item.title === "Contacts")?.isActive
-    ).toBe(true)
+    expect(navMain.find((item) => item.title === "Contacts")?.isActive).toBe(
+      true
+    )
   })
 })

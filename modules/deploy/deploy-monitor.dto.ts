@@ -55,15 +55,11 @@ export const mapStackStatusToDeployStatus = (
   }
 }
 
-const normalizeLogScope = (
-  scope: string
-): Exclude<DeployLogScope, "all"> => {
+const normalizeLogScope = (scope: string): Exclude<DeployLogScope, "all"> => {
   return scope === "build" ? "build" : "runtime"
 }
 
-const normalizeLogStatus = (
-  status: string
-): Exclude<DeployStatus, "idle"> => {
+const normalizeLogStatus = (status: string): Exclude<DeployStatus, "idle"> => {
   const normalized = status.toLowerCase()
   if (
     normalized === "queued" ||
@@ -129,7 +125,9 @@ export const toDeploymentStatusDTO = (
  * Empty input yields an empty array so the UI shows an honest no-data state.
  */
 export const toDeployLogLines = (
-  logs: Array<Pick<ApplicationDeploymentLog, "id" | "scope" | "status" | "message">>
+  logs: Array<
+    Pick<ApplicationDeploymentLog, "id" | "scope" | "status" | "message">
+  >
 ): DeployLogLine[] => {
   return logs.map((log) => ({
     id: log.id,
@@ -165,7 +163,9 @@ export type DeployEventDTO = {
 }
 
 export const toDeployEventDTOs = (
-  events: Array<Pick<ApplicationDeployEvent, "id" | "type" | "message" | "createdAt">>
+  events: Array<
+    Pick<ApplicationDeployEvent, "id" | "type" | "message" | "createdAt">
+  >
 ): DeployEventDTO[] => {
   return events.map((event) => ({
     id: event.id,

@@ -31,17 +31,14 @@ export const InvoicePaidEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>
-        Payment Received - Invoice {invoiceNumber}
-      </Preview>
+      <Preview>Payment Received - Invoice {invoiceNumber}</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>
-            Payment Confirmed
-          </Heading>
+          <Heading style={styles.heading}>Payment Confirmed</Heading>
 
           <Text style={styles.intro}>
-            Thank you! We have received your payment for Invoice {invoiceNumber}. Your account is in good standing.
+            Thank you! We have received your payment for Invoice {invoiceNumber}
+            . Your account is in good standing.
           </Text>
 
           <Section style={styles.invoiceInfo}>
@@ -51,9 +48,7 @@ export const InvoicePaidEmail = ({
 
             <Text style={styles.amount}>{amount}</Text>
 
-            <Text style={styles.statusBadge}>
-              PAID
-            </Text>
+            <Text style={styles.statusBadge}>PAID</Text>
           </Section>
 
           <Hr style={styles.divider} />
@@ -67,7 +62,8 @@ export const InvoicePaidEmail = ({
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            Thank you for your business. If you have any questions, please contact our billing team.
+            Thank you for your business. If you have any questions, please
+            contact our billing team.
           </Text>
         </Container>
       </Body>

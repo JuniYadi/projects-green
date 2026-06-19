@@ -81,7 +81,8 @@ function ChartContainer({
   )
 }
 
-const COLOR_ALLOWLIST_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^rgba?\([\d.,\s%-]+\)$|^hsla?\([\d.,\s%-]+\)$|^transparent$/i
+const COLOR_ALLOWLIST_RE =
+  /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^rgba?\([\d.,\s%-]+\)$|^hsla?\([\d.,\s%-]+\)$|^transparent$/i
 
 function isValidColor(value: string): boolean {
   return COLOR_ALLOWLIST_RE.test(value) || CSS.supports("color", value)

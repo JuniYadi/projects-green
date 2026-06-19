@@ -15,7 +15,11 @@ import { githubRoutes } from "@/modules/github/api/github.route"
 import { githubEventLogRoutes } from "@/modules/github/api/github-event-log.route"
 import { jenkinsRoutes } from "@/modules/jenkins/api/jenkins.route"
 import { invoicesRoutes } from "@/modules/invoices/api/invoices.route"
-import { paymentRoutes, userPaymentRoutes, webhookRoutes } from "@/modules/payment/api"
+import {
+  paymentRoutes,
+  userPaymentRoutes,
+  webhookRoutes,
+} from "@/modules/payment/api"
 import { supportTicketAttachmentRoutes } from "@/modules/support-tickets/api/support-ticket-attachments.route"
 import { supportTicketRoutes } from "@/modules/support-tickets/api/support-tickets.route"
 import { tenantsRoutes } from "@/modules/tenants/api/tenants.route"
@@ -150,7 +154,9 @@ export const app = new Elysia({ prefix: "/api" })
     // Always log with a grep-friendly prefix so errors are easy to find.
     console.error(
       `[API ERROR] ${request.method} ${path} — INTERNAL_SERVER_ERROR${errorTag}`,
-      error instanceof Error ? `\n${error.stack ?? error.message}` : String(error),
+      error instanceof Error
+        ? `\n${error.stack ?? error.message}`
+        : String(error)
     )
 
     set.status = 500

@@ -20,10 +20,13 @@ type AnyFn = (...args: any[]) => any
 
 const TEST_ENCRYPTION_KEY = "a".repeat(64)
 
-const { privateKey: testPrivateKeyPem } = crypto.generateKeyPairSync("ed25519", {
-  privateKeyEncoding: { type: "pkcs8", format: "pem" },
-  publicKeyEncoding: { type: "spki", format: "pem" },
-})
+const { privateKey: testPrivateKeyPem } = crypto.generateKeyPairSync(
+  "ed25519",
+  {
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+    publicKeyEncoding: { type: "spki", format: "pem" },
+  }
+)
 
 const makeKey = (over: Record<string, unknown> = {}) => ({
   id: "key-1",
@@ -107,9 +110,7 @@ describe("computeSshKeyFingerprint", () => {
 
   it("rejects public key string", () => {
     expect(() =>
-      computeSshKeyFingerprint(
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILf4TEST"
-      )
+      computeSshKeyFingerprint("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILf4TEST")
     ).toThrow(VpnSshKeyError)
   })
 })
@@ -143,9 +144,7 @@ describe("parseSshPrivateKey", () => {
   })
 
   it("rejects complete garbage", () => {
-    expect(() => parseSshPrivateKey("not a key at all")).toThrow(
-      VpnSshKeyError
-    )
+    expect(() => parseSshPrivateKey("not a key at all")).toThrow(VpnSshKeyError)
   })
 })
 

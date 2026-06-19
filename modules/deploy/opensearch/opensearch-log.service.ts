@@ -8,7 +8,10 @@ import type {
 } from "./opensearch.types"
 
 function logError(context: string, error: unknown): void {
-  console.error(`[opensearch-log] ${context}:`, error instanceof Error ? error.message : String(error))
+  console.error(
+    `[opensearch-log] ${context}:`,
+    error instanceof Error ? error.message : String(error)
+  )
 }
 
 export async function ingestLog(entry: LogEntry): Promise<boolean> {
@@ -152,7 +155,7 @@ export async function queryLogs(
     const total =
       typeof body.hits.total === "object"
         ? body.hits.total.value
-        : (body.hits.total as number) ?? 0
+        : ((body.hits.total as number) ?? 0)
 
     return {
       hits,

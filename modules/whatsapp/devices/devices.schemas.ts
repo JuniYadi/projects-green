@@ -29,7 +29,7 @@ export const createDeviceSchema = z.object({
     .min(1, "Phone number is required")
     .regex(
       e164PhoneRegex,
-      "Phone number must be in E.164 format (e.g. +6281234567890)",
+      "Phone number must be in E.164 format (e.g. +6281234567890)"
     ),
   environment: deviceEnvironmentEnum.optional().default("LIVE"),
   displayName: z.string().trim().max(120).optional(),
@@ -41,10 +41,7 @@ export const createDeviceSchema = z.object({
 export type CreateDeviceInput = z.infer<typeof createDeviceSchema>
 
 export const adminCreateDeviceSchema = createDeviceSchema.extend({
-  organizationId: z
-    .string()
-    .trim()
-    .min(1, "Organization ID is required"),
+  organizationId: z.string().trim().min(1, "Organization ID is required"),
 })
 export type AdminCreateDeviceInput = z.infer<typeof adminCreateDeviceSchema>
 
@@ -56,7 +53,7 @@ export const updateDeviceSchema = z.object({
     .max(20)
     .regex(
       e164PhoneRegex,
-      "Phone number must be in E.164 format (e.g. +6281234567890)",
+      "Phone number must be in E.164 format (e.g. +6281234567890)"
     )
     .optional(),
   environment: deviceEnvironmentEnum.optional(),
@@ -96,7 +93,11 @@ export type DeviceDetail = DeviceListItem & {
 }
 
 export const topUpInputSchema = z.object({
-  amount: z.number().int().min(1, "Amount must be at least 1").max(1_000_000_000),
+  amount: z
+    .number()
+    .int()
+    .min(1, "Amount must be at least 1")
+    .max(1_000_000_000),
   reason: z.string().trim().min(1, "Reason is required").max(500),
 })
 export type TopUpInput = z.infer<typeof topUpInputSchema>
@@ -122,11 +123,22 @@ export class DeviceNotOwnedError extends Error {
 // ─── Service interface ───────────────────────────────────────────────────────
 
 export type DeviceService = {
-  listByOrganization: (organizationId: string | null) => Promise<DeviceListItem[]>
+  listByOrganization: (
+    organizationId: string | null
+  ) => Promise<DeviceListItem[]>
   findById: (id: string, organizationId: string | null) => Promise<DeviceDetail>
-  create: (input: CreateDeviceInput & { organizationId: string | null }) => Promise<DeviceDetail>
-  update: (id: string, input: UpdateDeviceInput, organizationId: string | null) => Promise<DeviceDetail>
+  create: (
+    input: CreateDeviceInput & { organizationId: string | null }
+  ) => Promise<DeviceDetail>
+  update: (
+    id: string,
+    input: UpdateDeviceInput,
+    organizationId: string | null
+  ) => Promise<DeviceDetail>
   delete: (id: string) => Promise<void>
   verify: (id: string, organizationId: string | null) => Promise<DeviceDetail>
-  reconnect: (id: string, organizationId: string | null) => Promise<DeviceDetail>
+  reconnect: (
+    id: string,
+    organizationId: string | null
+  ) => Promise<DeviceDetail>
 }

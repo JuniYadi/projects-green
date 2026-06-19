@@ -24,12 +24,20 @@ interface BootstrapOptions {
 }
 
 const bootstrapSuperAdmin = async (options: BootstrapOptions = {}) => {
-  const emails = options.email?.split(",").map((e) => e.trim()).filter(Boolean) ||
-    process.env[INITIAL_EMAIL_ENV_VAR]?.split(",").map((e) => e.trim()).filter(Boolean) ||
+  const emails =
+    options.email
+      ?.split(",")
+      .map((e) => e.trim())
+      .filter(Boolean) ||
+    process.env[INITIAL_EMAIL_ENV_VAR]?.split(",")
+      .map((e) => e.trim())
+      .filter(Boolean) ||
     []
 
   if (emails.length === 0) {
-    console.log("No initial super admin emails configured. Set INITIAL_SUPER_ADMIN_EMAIL env var.")
+    console.log(
+      "No initial super admin emails configured. Set INITIAL_SUPER_ADMIN_EMAIL env var."
+    )
     return
   }
 
@@ -38,20 +46,24 @@ const bootstrapSuperAdmin = async (options: BootstrapOptions = {}) => {
   })
 
   if (existingSuperAdmins.length > 0) {
-    console.log(`Found ${existingSuperAdmins.length} existing super admin(s). Skipping bootstrap.`)
+    console.log(
+      `Found ${existingSuperAdmins.length} existing super admin(s). Skipping bootstrap.`
+    )
     return
   }
 
   console.log("No super admins found. Bootstrapping from env var...")
 
   const createWorkosUserId = (email: string) => {
-  return `bootstrap:${createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 16)}`
-}
+    return `bootstrap:${createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 16)}`
+  }
 
-const entries: Array<{ email?: string; workosUserId: string }> = emails.map((email) => ({
-  email,
-  workosUserId: createWorkosUserId(email),
-}))
+  const entries: Array<{ email?: string; workosUserId: string }> = emails.map(
+    (email) => ({
+      email,
+      workosUserId: createWorkosUserId(email),
+    })
+  )
 
   if (options.dryRun) {
     console.log("[DRY RUN] Would create super admins:")
@@ -62,7 +74,9 @@ const entries: Array<{ email?: string; workosUserId: string }> = emails.map((ema
   for (const entry of entries) {
     const platformUserRole = await prisma.authPlatformUserRole.upsert({
       where: {
-        ...(entry.email ? { email: entry.email } : { workosUserId: entry.workosUserId! }),
+        ...(entry.email
+          ? { email: entry.email }
+          : { workosUserId: entry.workosUserId! }),
       },
       update: {},
       create: {
@@ -72,7 +86,9 @@ const entries: Array<{ email?: string; workosUserId: string }> = emails.map((ema
       },
     })
 
-    console.log(`Created super admin: ${platformUserRole.email || platformUserRole.workosUserId}`)
+    console.log(
+      `Created super admin: ${platformUserRole.email || platformUserRole.workosUserId}`
+    )
   }
 }
 

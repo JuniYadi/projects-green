@@ -126,7 +126,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
             </CardHeader>
             <CardContent>
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-4 w-full mb-3" />
+                <Skeleton key={i} className="mb-3 h-4 w-full" />
               ))}
             </CardContent>
           </Card>
@@ -141,7 +141,9 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Phone className="mb-3 size-10 text-muted-foreground" weight="fill" />
-          <p className="text-sm text-destructive">{errorMessage || "Device not found"}</p>
+          <p className="text-sm text-destructive">
+            {errorMessage || "Device not found"}
+          </p>
         </div>
       </main>
     )
@@ -153,9 +155,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Device Information</CardTitle>
-          <CardDescription>
-            Basic device details
-          </CardDescription>
+          <CardDescription>Basic device details</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="space-y-3">
@@ -190,9 +190,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Timestamps</CardTitle>
-          <CardDescription>
-            Device lifecycle dates
-          </CardDescription>
+          <CardDescription>Device lifecycle dates</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="space-y-3">

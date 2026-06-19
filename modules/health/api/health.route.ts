@@ -1,9 +1,6 @@
 import { Elysia } from "elysia"
 
-import {
-  checkReadiness,
-  checkStartup,
-} from "@/modules/health/health.service"
+import { checkReadiness, checkStartup } from "@/modules/health/health.service"
 import { webhookMetrics } from "@/modules/health/webhook-metrics.service"
 
 export const healthRoutes = new Elysia()
@@ -63,7 +60,7 @@ export const healthRoutes = new Elysia()
         {
           status: 503,
           headers: { "content-type": "application/json" },
-        },
+        }
       )
     }
 

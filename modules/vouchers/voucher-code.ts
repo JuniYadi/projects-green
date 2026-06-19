@@ -28,9 +28,14 @@ function randomAlphanumeric(length: number): string {
  *
  * @throws {Error} If prefix contains characters other than A-Z
  */
-export function generateVoucherCode(prefix?: string, randomLength?: number): string {
+export function generateVoucherCode(
+  prefix?: string,
+  randomLength?: number
+): string {
   const normalizedPrefix = prefix?.toUpperCase().trim() ?? ""
-  const len = randomLength ?? (normalizedPrefix ? PREFIX_RANDOM_LENGTH : DEFAULT_RANDOM_LENGTH)
+  const len =
+    randomLength ??
+    (normalizedPrefix ? PREFIX_RANDOM_LENGTH : DEFAULT_RANDOM_LENGTH)
   const random = randomAlphanumeric(len)
 
   if (normalizedPrefix) {
@@ -51,7 +56,7 @@ export function generateVoucherCode(prefix?: string, randomLength?: number): str
 export async function generateUniqueVoucherCode(
   createFn: (code: string) => Promise<boolean>,
   prefix?: string,
-  randomLength?: number,
+  randomLength?: number
 ): Promise<string> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const code = generateVoucherCode(prefix, randomLength)

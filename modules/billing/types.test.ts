@@ -39,7 +39,10 @@ describe("billing error classes", () => {
 
   it("PricingNotFoundError", () => {
     const err = new PricingNotFoundError(
-      "plan-1", "region-1", "PAYG", "SUBSCRIPTION"
+      "plan-1",
+      "region-1",
+      "PAYG",
+      "SUBSCRIPTION"
     )
     expect(err).toBeInstanceOf(Error)
     expect(err.name).toBe("PricingNotFoundError")
@@ -62,7 +65,9 @@ describe("billing error classes", () => {
 
   it("InvalidSubscriptionBillingModeError", () => {
     const err = new InvalidSubscriptionBillingModeError(
-      "sub-1", "SUBSCRIPTION", "PAYG"
+      "sub-1",
+      "SUBSCRIPTION",
+      "PAYG"
     )
     expect(err).toBeInstanceOf(Error)
     expect(err.name).toBe("InvalidSubscriptionBillingModeError")

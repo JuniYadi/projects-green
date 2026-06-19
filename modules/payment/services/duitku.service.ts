@@ -1,6 +1,10 @@
 import crypto from "crypto"
 import { GatewayService } from "./gateway.service"
-import type { DuitkuConfig, DuitkuInquiryRequest, DuitkuInquiryResponse } from "../types/payment.types"
+import type {
+  DuitkuConfig,
+  DuitkuInquiryRequest,
+  DuitkuInquiryResponse,
+} from "../types/payment.types"
 
 export class DuitkuService {
   private gatewayService: GatewayService
@@ -81,7 +85,8 @@ export class DuitkuService {
     }
 
     // Order: merchantCode + amount + merchantOrderId (berbeda dengan request signing)
-    const stringToSign = params.merchantCode + params.amount + params.merchantOrderId
+    const stringToSign =
+      params.merchantCode + params.amount + params.merchantOrderId
     const expectedSignature = crypto
       .createHmac("sha256", config.apiKey)
       .update(stringToSign)

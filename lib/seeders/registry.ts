@@ -9,7 +9,11 @@
 
 import { readdirSync, existsSync } from "node:fs"
 import { join } from "node:path"
-import { BaseSeeder, type SeedClassification, type SeederConfig } from "./base-seeder"
+import {
+  BaseSeeder,
+  type SeedClassification,
+  type SeederConfig,
+} from "./base-seeder"
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -84,9 +88,7 @@ export async function discoverSeeders(): Promise<void> {
  * Get registered seeders, optionally filtered by classification,
  * sorted by runOrder (ascending).
  */
-export function getSeeders(
-  classification?: SeedClassification,
-): SeederClass[] {
+export function getSeeders(classification?: SeedClassification): SeederClass[] {
   const all = Array.from(registry.values())
   const filtered = classification
     ? all.filter((s) => s.classification === classification)

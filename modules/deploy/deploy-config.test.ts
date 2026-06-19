@@ -65,7 +65,10 @@ describe("buildDeployConfig — happy path", () => {
     expect(result.config.environment.domain).toEqual({ mode: "generated" })
     expect(result.config.environment.billingMode).toBe("PAYG")
     expect(result.config.environment.paygBufferHours).toBe(24)
-    expect(result.config.detection).toEqual({ confidence: 92, status: "success" })
+    expect(result.config.detection).toEqual({
+      confidence: 92,
+      status: "success",
+    })
   })
 
   it("normalizes a custom domain into the domain contract", () => {
@@ -109,7 +112,12 @@ describe("buildDeployConfig — happy path", () => {
   it("treats build inputs as optional when detection is high confidence", () => {
     const result = buildDeployConfig({
       ...baseState(),
-      build: { language: "", framework: "", buildCommand: "", useDockerfile: false },
+      build: {
+        language: "",
+        framework: "",
+        buildCommand: "",
+        useDockerfile: false,
+      },
     })
 
     expect(result.ok).toBe(true)
@@ -146,8 +154,17 @@ describe("buildDeployConfig — unhappy path", () => {
   it("requires build inputs when detection is failed/low-confidence", () => {
     const result = buildDeployConfig({
       ...baseState(),
-      detectionResult: { ...highConfidenceDetection, confidence: 0, status: "failed" },
-      build: { language: "", framework: "", buildCommand: "", useDockerfile: false },
+      detectionResult: {
+        ...highConfidenceDetection,
+        confidence: 0,
+        status: "failed",
+      },
+      build: {
+        language: "",
+        framework: "",
+        buildCommand: "",
+        useDockerfile: false,
+      },
     })
 
     expect(result.ok).toBe(false)
@@ -167,7 +184,9 @@ describe("buildDeployConfig — unhappy path", () => {
 
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.errors.some((e) => e.field.startsWith("environment."))).toBe(true)
+    expect(result.errors.some((e) => e.field.startsWith("environment."))).toBe(
+      true
+    )
   })
 
   it("blocks on duplicate env var keys", () => {

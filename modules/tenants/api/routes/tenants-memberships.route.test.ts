@@ -59,7 +59,10 @@ const mockUpdateTenantMembershipRole = mock(async () => makeMembership())
 const mockDemoteTenantMembershipSafely = mock(
   async (): Promise<
     | { success: true; membership: TenantMembershipSummary }
-    | { success: false; reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED" }
+    | {
+        success: false
+        reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED"
+      }
   > => ({
     success: true as const,
     membership: makeMembership({ role: "member", roleSlug: "user_member" }),
@@ -76,7 +79,11 @@ const mockRequireTenantActor = mock(
 )
 /* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(
-  (_orgId: string, _actor: MockActor, _set: MockRouteSet): true | TenantApiError => true
+  (
+    _orgId: string,
+    _actor: MockActor,
+    _set: MockRouteSet
+  ): true | TenantApiError => true
 )
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
@@ -138,7 +145,10 @@ const resetAllMocks = () => {
   mockDemoteTenantMembershipSafely.mockImplementation(
     async (): Promise<
       | { success: true; membership: TenantMembershipSummary }
-      | { success: false; reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED" }
+      | {
+          success: false
+          reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED"
+        }
     > => ({
       success: true as const,
       membership: makeMembership({ role: "member", roleSlug: "user_member" }),
@@ -191,17 +201,15 @@ describe("tenants-memberships routes", () => {
     })
 
     it("returns 401 status when requireTenantActor fails", async () => {
-      mockRequireTenantActor.mockImplementation(
-        ((set: { status?: number }) => {
-          set.status = 401
-          return {
-            ok: false,
-            error: "UNAUTHORIZED",
-            policyCode: "NO_SESSION",
-            message: "No active session.",
-          } as TenantApiError
-        }) as unknown as typeof mockRequireTenantActor
-      )
+      mockRequireTenantActor.mockImplementation(((set: { status?: number }) => {
+        set.status = 401
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          policyCode: "NO_SESSION",
+          message: "No active session.",
+        } as TenantApiError
+      }) as unknown as typeof mockRequireTenantActor)
 
       const app = await getApp()
 

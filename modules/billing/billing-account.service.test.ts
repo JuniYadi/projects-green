@@ -164,7 +164,7 @@ describe("ensureBillingAccountForOrg", () => {
       ensureBillingAccountForOrg({
         organizationId: "org_123",
         getOrganizationAction: mockGetOrganizationAction,
-      }),
+      })
     ).rejects.toThrow("Failed to fetch organization org_123 from WorkOS")
     expect(mockPrisma.$transaction).not.toHaveBeenCalled()
   })
@@ -184,7 +184,10 @@ describe("isBillingAccountClean", () => {
       subscriptions: [],
     })
 
-    const result = await isBillingAccountClean(mockPrisma as unknown as PrismaClient, "ba_1")
+    const result = await isBillingAccountClean(
+      mockPrisma as unknown as PrismaClient,
+      "ba_1"
+    )
     expect(result).toBe(true)
   })
 
@@ -197,7 +200,10 @@ describe("isBillingAccountClean", () => {
       subscriptions: [],
     })
 
-    const result = await isBillingAccountClean(mockPrisma as unknown as PrismaClient, "ba_1")
+    const result = await isBillingAccountClean(
+      mockPrisma as unknown as PrismaClient,
+      "ba_1"
+    )
     expect(result).toBe(false)
   })
 
@@ -210,7 +216,10 @@ describe("isBillingAccountClean", () => {
       subscriptions: [],
     })
 
-    const result = await isBillingAccountClean(mockPrisma as unknown as PrismaClient, "ba_1")
+    const result = await isBillingAccountClean(
+      mockPrisma as unknown as PrismaClient,
+      "ba_1"
+    )
     expect(result).toBe(false)
   })
 
@@ -218,7 +227,7 @@ describe("isBillingAccountClean", () => {
     mockPrisma.billingAccount.findUnique.mockResolvedValue(null)
 
     await expect(
-      isBillingAccountClean(mockPrisma as unknown as PrismaClient, "ba_missing"),
+      isBillingAccountClean(mockPrisma as unknown as PrismaClient, "ba_missing")
     ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
   })
 })
@@ -251,7 +260,7 @@ describe("updateBillingCurrencyIfClean", () => {
     const result = await updateBillingCurrencyIfClean(
       mockPrisma as unknown as PrismaClient,
       "org_1",
-      "USD",
+      "USD"
     )
 
     expect(result.preferredCurrency).toBe("USD")
@@ -275,7 +284,11 @@ describe("updateBillingCurrencyIfClean", () => {
     })
 
     await expect(
-      updateBillingCurrencyIfClean(mockPrisma as unknown as PrismaClient, "org_1", "USD"),
+      updateBillingCurrencyIfClean(
+        mockPrisma as unknown as PrismaClient,
+        "org_1",
+        "USD"
+      )
     ).rejects.toThrow("BILLING_CURRENCY_LOCKED")
   })
 
@@ -293,7 +306,11 @@ describe("updateBillingCurrencyIfClean", () => {
     })
 
     await expect(
-      updateBillingCurrencyIfClean(mockPrisma as unknown as PrismaClient, "org_1", "USD"),
+      updateBillingCurrencyIfClean(
+        mockPrisma as unknown as PrismaClient,
+        "org_1",
+        "USD"
+      )
     ).rejects.toThrow("BILLING_CURRENCY_LOCKED")
   })
 })

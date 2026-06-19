@@ -92,7 +92,9 @@ export function InvoiceTable({
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
-            {formatDate(row.original.issuedAt ?? row.original.createdAt ?? null)}
+            {formatDate(
+              row.original.issuedAt ?? row.original.createdAt ?? null
+            )}
           </span>
         ),
         sortingFn: "datetime",

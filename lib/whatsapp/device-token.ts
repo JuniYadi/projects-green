@@ -4,7 +4,10 @@ import { encryptWhatsAppToken, decryptWhatsAppToken } from "./crypto"
 /**
  * Encrypt a WhatsApp device token and save it to the database.
  */
-export async function encryptDeviceToken(deviceId: string, plainToken: string): Promise<void> {
+export async function encryptDeviceToken(
+  deviceId: string,
+  plainToken: string
+): Promise<void> {
   const encrypted = await encryptWhatsAppToken(plainToken)
   const parts = encrypted.split(".")
 
@@ -24,7 +27,9 @@ export async function encryptDeviceToken(deviceId: string, plainToken: string): 
 /**
  * Decrypt a WhatsApp device token from the database.
  */
-export async function decryptDeviceToken(deviceId: string): Promise<string | null> {
+export async function decryptDeviceToken(
+  deviceId: string
+): Promise<string | null> {
   const device = await prisma.whatsappDevice.findUnique({
     where: { id: deviceId },
     select: {
@@ -37,7 +42,10 @@ export async function decryptDeviceToken(deviceId: string): Promise<string | nul
     return null
   }
 
-  const encryptedValue = decryptDeviceTokenRaw(device.tokenEncrypted, device.tokenIv)
+  const encryptedValue = decryptDeviceTokenRaw(
+    device.tokenEncrypted,
+    device.tokenIv
+  )
   return decryptWhatsAppToken(encryptedValue)
 }
 
@@ -52,7 +60,11 @@ export function decryptDeviceTokenRaw(encrypted: string, iv: string): string {
 /**
  * Migrate all devices that still have a plain token to encrypted format.
  */
-export async function migrateAllTokens(): Promise<{ migrated: number, skipped: number, errors: string[] }> {
+export async function migrateAllTokens(): Promise<{
+  migrated: number
+  skipped: number
+  errors: string[]
+}> {
   const devices = await prisma.whatsappDevice.findMany({
     where: {
       token: { not: null },
@@ -74,7 +86,9 @@ export async function migrateAllTokens(): Promise<{ migrated: number, skipped: n
       await encryptDeviceToken(device.id, device.token)
       migrated++
     } catch (error: any) {
-      errors.push(`Device ${device.id} (${device.phoneNumber}): ${error.message}`)
+      errors.push(
+        `Device ${device.id} (${device.phoneNumber}): ${error.message}`
+      )
     }
   }
 

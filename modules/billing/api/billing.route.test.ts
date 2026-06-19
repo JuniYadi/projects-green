@@ -44,7 +44,9 @@ const mockContact = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const mockAccountWithContacts = (contacts: Array<Record<string, unknown>> = []) => ({
+const mockAccountWithContacts = (
+  contacts: Array<Record<string, unknown>> = []
+) => ({
   id: "ba_1",
   organizationId: "org_1",
   tenantId: null,
@@ -57,12 +59,13 @@ const mockAccountWithContacts = (contacts: Array<Record<string, unknown>> = []) 
   contacts: contacts.map(mockContact),
 })
 
-const ownerContact = () => mockContact({
-  id: "bc_owner",
-  email: "owner@example.com",
-  name: "Organization Owner",
-  role: "OWNER" as const,
-})
+const ownerContact = () =>
+  mockContact({
+    id: "bc_owner",
+    email: "owner@example.com",
+    name: "Organization Owner",
+    role: "OWNER" as const,
+  })
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
@@ -88,15 +91,16 @@ describe("GET /account/detail", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
-      new Request("http://localhost/account/detail"),
+      new Request("http://localhost/account/detail")
     )
     expect(response.status).toBe(200)
 
@@ -120,15 +124,16 @@ describe("GET /account/detail", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
-      new Request("http://localhost/account/detail"),
+      new Request("http://localhost/account/detail")
     )
     expect(response.status).toBe(200)
 
@@ -138,20 +143,23 @@ describe("GET /account/detail", () => {
     expect(body.contacts[0].email).toBe("owner@example.com")
     expect(mockTx.billingContact.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ email: "owner@example.com", role: "OWNER" }),
-      }),
+        data: expect.objectContaining({
+          email: "owner@example.com",
+          role: "OWNER",
+        }),
+      })
     )
   })
 
   it("returns 401 when unauthenticated", async () => {
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({ user: null } as MockAuthContext),
-      }),
+        authenticate: async () => ({ user: null }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
-      new Request("http://localhost/account/detail"),
+      new Request("http://localhost/account/detail")
     )
     expect(response.status).toBe(401)
 
@@ -163,15 +171,16 @@ describe("GET /account/detail", () => {
   it("returns 403 when no organization", async () => {
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1" },
-          organizationId: null,
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1" },
+            organizationId: null,
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
-      new Request("http://localhost/account/detail"),
+      new Request("http://localhost/account/detail")
     )
     expect(response.status).toBe(403)
 
@@ -185,15 +194,16 @@ describe("GET /account/detail", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
-      new Request("http://localhost/account/detail"),
+      new Request("http://localhost/account/detail")
     )
     expect(response.status).toBe(500)
 
@@ -214,11 +224,12 @@ describe("POST /contacts", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -230,7 +241,7 @@ describe("POST /contacts", () => {
           name: "Finance Team",
           role: "FINANCE",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -247,11 +258,12 @@ describe("POST /contacts", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -262,7 +274,7 @@ describe("POST /contacts", () => {
           email: "finance@example.com",
           role: "FINANCE",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(409)
@@ -273,11 +285,12 @@ describe("POST /contacts", () => {
   it("returns 400 for invalid email", async () => {
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -288,7 +301,7 @@ describe("POST /contacts", () => {
           email: "not-an-email",
           role: "FINANCE",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(400)
@@ -299,8 +312,8 @@ describe("POST /contacts", () => {
   it("returns 401 when unauthenticated", async () => {
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({ user: null } as MockAuthContext),
-      }),
+        authenticate: async () => ({ user: null }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -308,7 +321,7 @@ describe("POST /contacts", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: "new@example.com" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(401)
@@ -321,11 +334,12 @@ describe("POST /contacts", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -333,7 +347,7 @@ describe("POST /contacts", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: "new@example.com", role: "FINANCE" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(500)
@@ -350,15 +364,19 @@ describe("PATCH /contacts/:contactId", () => {
   it("updates a non-OWNER contact name", async () => {
     const contact = mockContact()
     mockTx.billingContact.findFirst.mockResolvedValue(contact)
-    mockTx.billingContact.update.mockResolvedValue({ ...contact, name: "Updated Finance" })
+    mockTx.billingContact.update.mockResolvedValue({
+      ...contact,
+      name: "Updated Finance",
+    })
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -366,7 +384,7 @@ describe("PATCH /contacts/:contactId", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "Updated Finance" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -380,11 +398,12 @@ describe("PATCH /contacts/:contactId", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -392,7 +411,7 @@ describe("PATCH /contacts/:contactId", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "New Name" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(404)
@@ -403,11 +422,12 @@ describe("PATCH /contacts/:contactId", () => {
   it("returns 400 for invalid body fields", async () => {
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -415,7 +435,7 @@ describe("PATCH /contacts/:contactId", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: "not-a-boolean" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(400)
@@ -424,17 +444,25 @@ describe("PATCH /contacts/:contactId", () => {
   })
 
   it("allows notification toggle for OWNER contact", async () => {
-    const owner = mockContact({ id: "bc_owner", role: "OWNER" as const, email: "owner@example.com" })
+    const owner = mockContact({
+      id: "bc_owner",
+      role: "OWNER" as const,
+      email: "owner@example.com",
+    })
     mockTx.billingContact.findFirst.mockResolvedValue(owner)
-    mockTx.billingContact.update.mockResolvedValue({ ...owner, notifyOnInvoice: false })
+    mockTx.billingContact.update.mockResolvedValue({
+      ...owner,
+      notifyOnInvoice: false,
+    })
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -442,7 +470,7 @@ describe("PATCH /contacts/:contactId", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notifyOnInvoice: false }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -459,19 +487,23 @@ describe("DELETE /contacts/:contactId", () => {
   it("deactivates a non-OWNER contact", async () => {
     const contact = mockContact()
     mockTx.billingContact.findFirst.mockResolvedValue(contact)
-    mockTx.billingContact.update.mockResolvedValue({ ...contact, isActive: false })
+    mockTx.billingContact.update.mockResolvedValue({
+      ...contact,
+      isActive: false,
+    })
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
-      new Request("http://localhost/contacts/bc_1", { method: "DELETE" }),
+      new Request("http://localhost/contacts/bc_1", { method: "DELETE" })
     )
 
     expect(response.status).toBe(200)
@@ -481,7 +513,7 @@ describe("DELETE /contacts/:contactId", () => {
       expect.objectContaining({
         where: { id: "bc_1" },
         data: { isActive: false },
-      }),
+      })
     )
   })
 
@@ -491,15 +523,16 @@ describe("DELETE /contacts/:contactId", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
-      new Request("http://localhost/contacts/bc_owner", { method: "DELETE" }),
+      new Request("http://localhost/contacts/bc_owner", { method: "DELETE" })
     )
 
     expect(response.status).toBe(403)
@@ -512,15 +545,16 @@ describe("DELETE /contacts/:contactId", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
-      new Request("http://localhost/contacts/bc_unknown", { method: "DELETE" }),
+      new Request("http://localhost/contacts/bc_unknown", { method: "DELETE" })
     )
 
     expect(response.status).toBe(404)
@@ -550,11 +584,12 @@ describe("PATCH /currency", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -562,7 +597,7 @@ describe("PATCH /currency", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preferredCurrency: "USD" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -583,11 +618,12 @@ describe("PATCH /currency", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -595,7 +631,7 @@ describe("PATCH /currency", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preferredCurrency: "USD" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(409)
@@ -606,11 +642,12 @@ describe("PATCH /currency", () => {
   it("returns 400 for invalid currency value", async () => {
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -618,7 +655,7 @@ describe("PATCH /currency", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preferredCurrency: "EUR" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(400)
@@ -631,11 +668,12 @@ describe("PATCH /currency", () => {
 
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1", email: "owner@example.com" },
-          organizationId: "org_1",
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
     )
 
     const response = await app.handle(
@@ -643,7 +681,7 @@ describe("PATCH /currency", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preferredCurrency: "USD" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(404)
@@ -660,8 +698,8 @@ describe("auth guard (shared across endpoints)", () => {
   it("returns 401 for unauthenticated POST /contacts", async () => {
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({ user: null } as MockAuthContext),
-      }),
+        authenticate: async () => ({ user: null }) as MockAuthContext,
+      })
     )
 
     for (const [method, url, body] of [
@@ -674,7 +712,7 @@ describe("auth guard (shared across endpoints)", () => {
           method,
           headers: body ? { "Content-Type": "application/json" } : undefined,
           body,
-        }),
+        })
       )
 
       expect(response.status).toBe(401)
@@ -686,11 +724,12 @@ describe("auth guard (shared across endpoints)", () => {
   it("returns 403 when no organization", async () => {
     const app = new Elysia().use(
       createBillingRoutes({
-        authenticate: async () => ({
-          user: { id: "user_1" },
-          organizationId: null,
-        } as MockAuthContext),
-      }),
+        authenticate: async () =>
+          ({
+            user: { id: "user_1" },
+            organizationId: null,
+          }) as MockAuthContext,
+      })
     )
 
     for (const [method, url, body] of [
@@ -703,7 +742,7 @@ describe("auth guard (shared across endpoints)", () => {
           method,
           headers: body ? { "Content-Type": "application/json" } : undefined,
           body,
-        }),
+        })
       )
 
       expect(response.status).toBe(403)

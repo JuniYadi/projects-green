@@ -39,9 +39,9 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 }))
 
 // Mock platform role
-const mockGetPlatformRole: Mock<
-  (args?: unknown) => Promise<string>
-> = mock(() => Promise.resolve("none"))
+const mockGetPlatformRole: Mock<(args?: unknown) => Promise<string>> = mock(
+  () => Promise.resolve("none")
+)
 
 mock.module("@/lib/platform-role", () => ({
   getPlatformRoleForUser: mockGetPlatformRole,
@@ -88,7 +88,10 @@ mock.module("@/lib/prisma", () => ({
     billingInvoice: {
       findMany: mock(async () => []),
       findFirst: mock(async () => null),
-      create: mock(async (data: unknown) => ({ id: "inv-mock", ...(data as Record<string, unknown>) })),
+      create: mock(async (data: unknown) => ({
+        id: "inv-mock",
+        ...(data as Record<string, unknown>),
+      })),
       update: mock(async (data: unknown) => data),
     },
     $transaction: mock((fns: unknown[]) => Promise.all(fns)),
@@ -124,13 +127,14 @@ describe("User Bank Account Routes", () => {
     mockBillingAccountFindUnique.mockResolvedValue({ currency: "IDR" })
 
     const { Elysia } = await import("elysia")
-    const { createUserBankAccountRoutes } = await import(
-      "./user-bank-account.route"
-    )
+    const { createUserBankAccountRoutes } =
+      await import("./user-bank-account.route")
 
     const { Elysia: ElysiaImport } = await import("elysia")
     const elysiaApp: ReturnType<typeof ElysiaImport.prototype.compile> =
-      (new ElysiaImport().use(createUserBankAccountRoutes()) as unknown as ReturnType<typeof ElysiaImport.prototype.compile>)
+      new ElysiaImport().use(
+        createUserBankAccountRoutes()
+      ) as unknown as ReturnType<typeof ElysiaImport.prototype.compile>
     app = elysiaApp
   })
 
@@ -404,7 +408,9 @@ describe("User Bank Account Routes", () => {
       const updateCallArgs = mockBankAccountUpdate.mock.calls[0]
         ? (mockBankAccountUpdate.mock.calls[0][0] as Record<string, unknown>)
         : null
-      const updateData = updateCallArgs?.data as Record<string, unknown> | undefined
+      const updateData = updateCallArgs?.data as
+        | Record<string, unknown>
+        | undefined
       expect(updateData?.isActive).toBe(false)
     })
   })

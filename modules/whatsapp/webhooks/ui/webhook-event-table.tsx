@@ -59,21 +59,19 @@ export type WebhookEventTableProps = {
 
 // ─── Badge helpers ────────────────────────────────────────────────────────────
 
-const TYPE_BADGE_CONFIG: Record<
-  string,
-  { label: string; className: string }
-> = {
-  inbound_message: {
-    label: "Inbound Message",
-    className:
-      "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  },
-  status_update: {
-    label: "Status Update",
-    className:
-      "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-  },
-}
+const TYPE_BADGE_CONFIG: Record<string, { label: string; className: string }> =
+  {
+    inbound_message: {
+      label: "Inbound Message",
+      className:
+        "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    },
+    status_update: {
+      label: "Status Update",
+      className:
+        "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+    },
+  }
 
 function getTypeBadgeConfig(eventType: string) {
   return (
@@ -95,7 +93,7 @@ const STATUS_BADGE_VARIANT: Record<
 }
 
 function getStatusBadgeVariant(
-  status: string,
+  status: string
 ): "success" | "destructive" | "warning" | "default" {
   return STATUS_BADGE_VARIANT[status] ?? "default"
 }
@@ -113,12 +111,9 @@ export function WebhookEventTable({
 }: WebhookEventTableProps) {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
 
-  const handleRowToggle = useCallback(
-    (eventId: string) => {
-      setExpandedRowId((prev) => (prev === eventId ? null : eventId))
-    },
-    [],
-  )
+  const handleRowToggle = useCallback((eventId: string) => {
+    setExpandedRowId((prev) => (prev === eventId ? null : eventId))
+  }, [])
 
   const formatTimestamp = (iso: string) => {
     try {
@@ -195,7 +190,10 @@ export function WebhookEventTable({
   if (events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Broadcast className="mb-3 size-10 text-muted-foreground" weight="fill" />
+        <Broadcast
+          className="mb-3 size-10 text-muted-foreground"
+          weight="fill"
+        />
         <p className="text-sm text-muted-foreground">No webhook events yet</p>
         {emptyActionHref && (
           <Button variant="outline" className="mt-3" asChild>
@@ -226,7 +224,7 @@ export function WebhookEventTable({
               const isExpanded = expandedRowId === event.id
               const typeConfig = getTypeBadgeConfig(event.eventType)
               const statusVariant = getStatusBadgeVariant(
-                event.processingStatus,
+                event.processingStatus
               )
 
               return (
@@ -246,7 +244,7 @@ export function WebhookEventTable({
                     <span
                       className={cn(
                         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                        typeConfig.className,
+                        typeConfig.className
                       )}
                     >
                       {typeConfig.label}

@@ -161,7 +161,7 @@ export class CurrencySeeder extends BaseSeeder {
     }
 
     this.log(
-      `Done: ${this.result.created} created, ${this.result.updated} updated, ${this.result.skipped} unchanged`,
+      `Done: ${this.result.created} created, ${this.result.updated} updated, ${this.result.skipped} unchanged`
     )
   }
 }

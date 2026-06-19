@@ -44,7 +44,8 @@ const mockPrisma = {
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 // Now import the module under test
-const { createInvoicesRoutes } = await import("@/modules/invoices/api/invoices.route")
+const { createInvoicesRoutes } =
+  await import("@/modules/invoices/api/invoices.route")
 
 describe("invoices default deps", () => {
   beforeEach(() => {
@@ -59,9 +60,7 @@ describe("invoices default deps", () => {
     const app = new Elysia().use(createInvoicesRoutes())
 
     // withAuth returns a mock user, so this should succeed
-    const response = await app.handle(
-      new Request("http://localhost/invoices")
-    )
+    const response = await app.handle(new Request("http://localhost/invoices"))
 
     // with withAuth mocked to return a user, we should get a 200 or 403
     // (depends on whether listInvoices with default repo succeeds)
@@ -76,12 +75,13 @@ describe("invoices default deps", () => {
 
     const app = new Elysia().use(createInvoicesRoutes())
 
-    const response = await app.handle(
-      new Request("http://localhost/invoices")
-    )
+    const response = await app.handle(new Request("http://localhost/invoices"))
 
     // With mocked auth returning org, should get 200 with empty list
-    const payload = (await response.json()) as { ok: boolean; invoices: unknown[] }
+    const payload = (await response.json()) as {
+      ok: boolean
+      invoices: unknown[]
+    }
     expect(response.status).toBe(200)
     expect(payload.ok).toBe(true)
     expect(payload.invoices).toEqual([])

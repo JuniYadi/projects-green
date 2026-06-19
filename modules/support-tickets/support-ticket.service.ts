@@ -314,7 +314,9 @@ export const createSupportTicketService = (
       })
 
       try {
-        return tickets.map((ticket) => decryptTicketContent(contentCipher, ticket))
+        return tickets.map((ticket) =>
+          decryptTicketContent(contentCipher, ticket)
+        )
       } catch (error) {
         throw toSafeContentError(error)
       }
@@ -428,7 +430,9 @@ export const createSupportTicketService = (
       })
 
       try {
-        return tickets.map((ticket) => decryptTicketContent(contentCipher, ticket))
+        return tickets.map((ticket) =>
+          decryptTicketContent(contentCipher, ticket)
+        )
       } catch (error) {
         throw toSafeContentError(error)
       }

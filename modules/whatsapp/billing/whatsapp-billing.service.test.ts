@@ -104,7 +104,7 @@ describe("WhatsappBillingService", () => {
     const MockTxService = mockBillingTransactionService
     service = new WhatsappBillingService(
       mockPrisma as unknown as PrismaClient,
-      MockTxService as never,
+      MockTxService as never
     )
   })
 
@@ -136,7 +136,9 @@ describe("WhatsappBillingService", () => {
         period: "2026-06",
       })
 
-      expect(mockBillingTransactionService.debitServiceBalance).toHaveBeenCalledWith(
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "org_1",
           amount: decimal("50.00"),
@@ -147,14 +149,14 @@ describe("WhatsappBillingService", () => {
             description: expect.stringContaining("monthly base"),
             lineType: "SUBSCRIPTION",
           }),
-        }),
+        })
       )
 
       expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device_1" },
           data: { quotaBaseOut: 5000 },
-        }),
+        })
       )
 
       expect(result.adjustmentId).toBe("adj_monthly_1")
@@ -171,7 +173,7 @@ describe("WhatsappBillingService", () => {
           amount: decimal("50.00"),
           allowance: 5000,
           period: "2026-06",
-        }),
+        })
       ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
     })
 
@@ -198,7 +200,9 @@ describe("WhatsappBillingService", () => {
       })
 
       expect(result.alreadyProcessed).toBe(true)
-      expect(mockBillingTransactionService.debitServiceBalance).toHaveBeenCalledTimes(1)
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).toHaveBeenCalledTimes(1)
     })
 
     it("rejects monthly activation when base price cannot be covered", async () => {
@@ -206,7 +210,7 @@ describe("WhatsappBillingService", () => {
 
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE"),
+        new Error("INSUFFICIENT_BALANCE")
       )
 
       await expect(
@@ -216,7 +220,7 @@ describe("WhatsappBillingService", () => {
           amount: decimal("50.00"),
           allowance: 5000,
           period: "2026-06",
-        }),
+        })
       ).rejects.toThrow("INSUFFICIENT_BALANCE")
     })
   })
@@ -242,15 +246,19 @@ describe("WhatsappBillingService", () => {
       })
 
       expect(result.kind).toBe("ALLOWANCE")
-      expect((result as { remainingAllowance: number }).remainingAllowance).toBe(99)
+      expect(
+        (result as { remainingAllowance: number }).remainingAllowance
+      ).toBe(99)
 
       expect(mockPrisma.whatsappDevice.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device_1", quotaBaseOut: { gte: 1 } },
           data: { quotaBaseOut: { decrement: 1 } },
-        }),
+        })
       )
-      expect(mockBillingTransactionService.debitServiceBalance).not.toHaveBeenCalled()
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).not.toHaveBeenCalled()
       expect(mockBillingTransactionService.debitBalance).not.toHaveBeenCalled()
     })
 
@@ -290,7 +298,9 @@ describe("WhatsappBillingService", () => {
       // Allowance was already 0, so no update to zero it
       expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalled()
 
-      expect(mockBillingTransactionService.debitServiceBalance).toHaveBeenCalledWith(
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "org_1",
           amount: decimal("10.00"),
@@ -301,7 +311,7 @@ describe("WhatsappBillingService", () => {
             description: expect.stringContaining("overage"),
             lineType: "USAGE",
           }),
-        }),
+        })
       )
     })
 
@@ -313,7 +323,7 @@ describe("WhatsappBillingService", () => {
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue(device)
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE"),
+        new Error("INSUFFICIENT_BALANCE")
       )
 
       await expect(
@@ -323,7 +333,7 @@ describe("WhatsappBillingService", () => {
           messageCount: 1,
           unitPrice: decimal("10.00"),
           idempotencyKey: "wa-message:req_003",
-        }),
+        })
       ).rejects.toThrow("INSUFFICIENT_BALANCE")
 
       // Verify NO state mutation happened — charge failed before allowance was touched
@@ -367,7 +377,7 @@ describe("WhatsappBillingService", () => {
         expect.objectContaining({
           where: { id: "device_1" },
           data: { quotaBaseOut: 0 },
-        }),
+        })
       )
     })
 
@@ -384,7 +394,7 @@ describe("WhatsappBillingService", () => {
           messageCount: 1,
           unitPrice: decimal("10.00"),
           idempotencyKey: "wa-message:req_005",
-        }),
+        })
       ).rejects.toThrow("WHATSAPP_DEVICE_NOT_FOUND")
     })
 
@@ -404,12 +414,14 @@ describe("WhatsappBillingService", () => {
           messageCount: 1,
           unitPrice: decimal("10.00"),
           idempotencyKey: "wa-message:req_006",
-        }),
+        })
       ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
 
       // Verify NO state mutation happened (allowance not zeroed, no debit)
       expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalled()
-      expect(mockBillingTransactionService.debitServiceBalance).not.toHaveBeenCalled()
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).not.toHaveBeenCalled()
     })
   })
 

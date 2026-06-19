@@ -53,7 +53,9 @@ export default function InvoicesPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">{messages.console.billing.invoicesHeading}</h1>
+        <h1 className="text-2xl font-semibold">
+          {messages.console.billing.invoicesHeading}
+        </h1>
         <p className="text-sm text-muted-foreground">
           {messages.console.billing.invoicesDescription}
         </p>
@@ -67,7 +69,9 @@ export default function InvoicesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{messages.console.billing.billingHistory}</CardTitle>
+          <CardTitle className="text-base">
+            {messages.console.billing.billingHistory}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <InvoiceTable invoices={data?.invoices ?? []} lang="en" />

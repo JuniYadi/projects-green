@@ -276,7 +276,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
   },
 ]
 
-
 const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
   {
     context: "applications",
@@ -454,7 +453,10 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
     },
     {
       title: "WhatsApp",
-      url: localizePathname({ pathname: "/console/whatsapp/dashboard", locale }),
+      url: localizePathname({
+        pathname: "/console/whatsapp/dashboard",
+        locale,
+      }),
       icon: <WhatsappLogoIcon />,
       isActive: startsWithRoute(path, "/console/whatsapp"),
     },
@@ -604,9 +606,7 @@ export const resolveSidebarMenu = ({
   navMainLabel: string
 } => {
   if (surface === "portal") {
-    const matchingContext = PORTAL_CONTEXTS.find((cfg) =>
-      cfg.matches(pathname)
-    )
+    const matchingContext = PORTAL_CONTEXTS.find((cfg) => cfg.matches(pathname))
     if (matchingContext) {
       return {
         navMain: matchingContext.getNavMain(pathname, locale),

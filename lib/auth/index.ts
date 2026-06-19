@@ -8,8 +8,4 @@ export {
   guardOrgFull,
   guardSuperAdmin,
 } from "./guards"
-export {
-  getWorkOSSession,
-  resolveApiKey,
-  extractBearerToken,
-} from "./session"
+export { getWorkOSSession, resolveApiKey, extractBearerToken } from "./session"

@@ -48,7 +48,7 @@ export default async function DeployPage({ params }: DeployPageProps) {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Looking for deployment workflows? Those live in the console. {" "}
+        Looking for deployment workflows? Those live in the console.{" "}
         <Link
           href={appHref}
           className="font-medium text-primary underline-offset-4 hover:underline"

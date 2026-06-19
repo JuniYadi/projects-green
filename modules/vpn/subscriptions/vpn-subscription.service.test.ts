@@ -71,11 +71,7 @@ const activePackage = {
 
 const createdSub = {
   id: "sub-1",
-  serverAccounts: [
-    { id: "sa-1" },
-    { id: "sa-2" },
-    { id: "sa-3" },
-  ],
+  serverAccounts: [{ id: "sa-1" }, { id: "sa-2" }, { id: "sa-3" }],
 }
 
 beforeEach(() => {
@@ -129,7 +125,6 @@ describe("VpnSubscriptionService.purchase", () => {
     ).rejects.toBeInstanceOf(VpnPackageUnavailableError)
     expect(subCreate).not.toHaveBeenCalled()
   })
-
 
   it("maps INSUFFICIENT_BALANCE and cleans up the orphaned subscription", async () => {
     debitServiceBalance.mockRejectedValue(new Error("INSUFFICIENT_BALANCE"))
@@ -186,7 +181,9 @@ describe("VpnSubscriptionService.purchase", () => {
 
     // 17/30 = 0.5666... × 100000 = 56666.66, ROUND_DOWN → 56666.66
     expect(amount.toString()).toBe("56666.66")
-    expect(line.description).toBe('VPN package "Global Bundle" — 17/30 month (2026-06)')
+    expect(line.description).toBe(
+      'VPN package "Global Bundle" — 17/30 month (2026-06)'
+    )
     expect(line.unitPrice.toString()).toBe("100000")
   })
 
@@ -203,7 +200,9 @@ describe("VpnSubscriptionService.purchase", () => {
     const { amount, line } = debitServiceBalance.mock.calls[0][0]
 
     expect(amount.toString()).toBe("3333.33")
-    expect(line.description).toBe('VPN package "Global Bundle" — 1/30 month (2026-06)')
+    expect(line.description).toBe(
+      'VPN package "Global Bundle" — 1/30 month (2026-06)'
+    )
   })
 
   it("subscription period aligns to calendar month end", async () => {
@@ -216,9 +215,7 @@ describe("VpnSubscriptionService.purchase", () => {
     })
 
     const createdData = subCreate.mock.calls[0][0].data
-    const expectedEnd = new Date(
-      Date.UTC(2026, 6, 0, 23, 59, 59, 999)
-    )
+    const expectedEnd = new Date(Date.UTC(2026, 6, 0, 23, 59, 59, 999))
     expect(createdData.currentPeriodEnd.getTime()).toBe(expectedEnd.getTime())
   })
 })

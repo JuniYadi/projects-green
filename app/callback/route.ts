@@ -27,7 +27,7 @@ const acceptInviteFromToken = async (invitationToken: string) => {
   } catch (error) {
     console.error(
       "[auth] /callback invitation accept —",
-      error instanceof Error ? error.stack ?? error.message : error
+      error instanceof Error ? (error.stack ?? error.message) : error
     )
   }
 }
@@ -116,7 +116,10 @@ const authHandler = handleAuth({
           errorMessage = "Sign in failed. Please try again."
         } else if (errorDesc) {
           // Use description if available, but only if it's user-friendly
-          errorMessage = errorDesc.length < 100 ? errorDesc : "Sign in failed. Please try again."
+          errorMessage =
+            errorDesc.length < 100
+              ? errorDesc
+              : "Sign in failed. Please try again."
         } else {
           errorMessage = "Authentication failed. Please try again."
         }

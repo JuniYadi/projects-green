@@ -10,7 +10,16 @@ import { TopupFormEnhanced } from "@/components/billing/topup-form-enhanced"
 import { getAccount } from "@/lib/billing-client"
 import { ArrowLeftIcon } from "@phosphor-icons/react"
 
-function formatLimit(value: number, currency: "IDR" | "USD"): string {
+interface CurrencyConfig {
+  symbol: string
+  ratePerBase: number
+  baseCode: string
+  presets: number[]
+  minTopup: number
+  maxTopup: number
+}
+
+function formatCurrency(value: number, currency: "IDR" | "USD"): string {
   return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID", {
     style: "currency",
     currency,
@@ -53,6 +62,9 @@ function ImportantNotesSkeleton() {
 export default function TopupPage() {
   const [currency, setCurrency] = useState<"IDR" | "USD">("IDR")
   const [isLoadingCurrency, setIsLoadingCurrency] = useState(true)
+  const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig | null>(
+    null
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -105,7 +117,10 @@ export default function TopupPage() {
               {isLoadingCurrency ? (
                 <TopupFormSkeleton />
               ) : (
-                <TopupFormEnhanced currency={currency} />
+                <TopupFormEnhanced
+                  currency={currency}
+                  onConfigChange={setCurrencyConfig}
+                />
               )}
             </CardContent>
           </Card>
@@ -154,10 +169,16 @@ export default function TopupPage() {
               ) : (
                 <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
                   <li>
-                    Minimum topup amount is {formatLimit(10000, currency)}
+                    Minimum topup amount is{" "}
+                    {currencyConfig
+                      ? formatCurrency(currencyConfig.minTopup, currency)
+                      : "—"}
                   </li>
                   <li>
-                    Maximum topup amount is {formatLimit(100000000, currency)}
+                    Maximum topup amount is{" "}
+                    {currencyConfig
+                      ? formatCurrency(currencyConfig.maxTopup, currency)
+                      : "—"}
                   </li>
                   <li>Balance will be updated after payment verification</li>
                   <li>

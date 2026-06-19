@@ -59,7 +59,9 @@ describe("Sidebar", () => {
                     </SidebarMenuItem>
                     <SidebarMenuSub>
                       <SidebarMenuSubItem>
-                        <SidebarMenuSubButton href="#">Sub item</SidebarMenuSubButton>
+                        <SidebarMenuSubButton href="#">
+                          Sub item
+                        </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>
                   </SidebarMenu>
@@ -84,20 +86,18 @@ describe("Sidebar", () => {
     expect(
       view.container.querySelector('[data-slot="sidebar-rail"]')
     ).toBeInTheDocument()
-    expect(view.container.querySelector('[data-slot="sidebar"]')).toHaveAttribute(
-      "data-state",
-      "expanded"
-    )
+    expect(
+      view.container.querySelector('[data-slot="sidebar"]')
+    ).toHaveAttribute("data-state", "expanded")
 
     const trigger = view.container.querySelector(
       '[data-slot="sidebar-trigger"]'
     ) as HTMLButtonElement
     fireEvent.click(trigger)
 
-    expect(view.container.querySelector('[data-slot="sidebar"]')).toHaveAttribute(
-      "data-state",
-      "collapsed"
-    )
+    expect(
+      view.container.querySelector('[data-slot="sidebar"]')
+    ).toHaveAttribute("data-state", "collapsed")
   })
 
   it("renders non-collapsible mode", () => {

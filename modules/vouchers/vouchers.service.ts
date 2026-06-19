@@ -99,39 +99,37 @@ export class VoucherService {
   // ─── Portal: create voucher ─────────────────────────────────────────────────
 
   async createVoucher(data: CreateVoucherData) {
-    const code = await generateUniqueVoucherCode(
-      async (candidate) => {
-        try {
-          await this.prisma.voucher.create({
-            data: {
-              code: candidate,
-              prefix: data.prefix ?? null,
-              maxClaims: data.maxClaims,
-              expiresAt: new Date(data.expiresAt),
-              amount: new Prisma.Decimal(data.amount),
-              currency: data.currency ?? "IDR",
-              targetWorkosUserId: data.targetWorkosUserId ?? null,
-              targetOrganizationId: data.targetOrganizationId ?? null,
-              metadataJson: data.metadataJson !== undefined
+    const code = await generateUniqueVoucherCode(async (candidate) => {
+      try {
+        await this.prisma.voucher.create({
+          data: {
+            code: candidate,
+            prefix: data.prefix ?? null,
+            maxClaims: data.maxClaims,
+            expiresAt: new Date(data.expiresAt),
+            amount: new Prisma.Decimal(data.amount),
+            currency: data.currency ?? "IDR",
+            targetWorkosUserId: data.targetWorkosUserId ?? null,
+            targetOrganizationId: data.targetOrganizationId ?? null,
+            metadataJson:
+              data.metadataJson !== undefined
                 ? (data.metadataJson as Prisma.InputJsonValue)
                 : Prisma.JsonNull,
-              createdByWorkosUserId: data.createdByWorkosUserId,
-            },
-          })
-          return true
-        } catch (err) {
-          // P2002 = unique constraint violation (code collision)
-          if (
-            err instanceof Prisma.PrismaClientKnownRequestError &&
-            err.code === "P2002"
-          ) {
-            return false
-          }
-          throw err
+            createdByWorkosUserId: data.createdByWorkosUserId,
+          },
+        })
+        return true
+      } catch (err) {
+        // P2002 = unique constraint violation (code collision)
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === "P2002"
+        ) {
+          return false
         }
-      },
-      data.prefix,
-    )
+        throw err
+      }
+    }, data.prefix)
 
     const created = await this.prisma.voucher.findUniqueOrThrow({
       where: { code },
@@ -148,17 +146,22 @@ export class VoucherService {
       throw new VoucherNotFoundError(id)
     }
 
-    if (data.maxClaims !== undefined && data.maxClaims < existing.claimedCount) {
+    if (
+      data.maxClaims !== undefined &&
+      data.maxClaims < existing.claimedCount
+    ) {
       throw new Error(
-        `Cannot reduce maxClaims below current claimedCount (${existing.claimedCount})`,
+        `Cannot reduce maxClaims below current claimedCount (${existing.claimedCount})`
       )
     }
 
     const updateData: Prisma.VoucherUpdateInput = {}
 
     if (data.maxClaims !== undefined) updateData.maxClaims = data.maxClaims
-    if (data.expiresAt !== undefined) updateData.expiresAt = new Date(data.expiresAt)
-    if (data.amount !== undefined) updateData.amount = new Prisma.Decimal(data.amount)
+    if (data.expiresAt !== undefined)
+      updateData.expiresAt = new Date(data.expiresAt)
+    if (data.amount !== undefined)
+      updateData.amount = new Prisma.Decimal(data.amount)
     if (data.currency !== undefined) updateData.currency = data.currency
     if (data.targetWorkosUserId !== undefined) {
       updateData.targetWorkosUserId = data.targetWorkosUserId
@@ -236,12 +239,18 @@ export class VoucherService {
         throw new VoucherExpiredError(code)
       }
 
-      if (voucher.status === "DEPLETED" || voucher.claimedCount >= voucher.maxClaims) {
+      if (
+        voucher.status === "DEPLETED" ||
+        voucher.claimedCount >= voucher.maxClaims
+      ) {
         throw new VoucherDepletedError(code)
       }
 
       // 3. Validate targeting
-      if (voucher.targetWorkosUserId && voucher.targetWorkosUserId !== workosUserId) {
+      if (
+        voucher.targetWorkosUserId &&
+        voucher.targetWorkosUserId !== workosUserId
+      ) {
         throw new VoucherTargetUserMismatchError(code)
       }
 

@@ -32,7 +32,7 @@ class EmbeddingsSeeder extends BaseSeeder {
     const orgId = this.cliArgs.get("--org")?.trim()
 
     this.log(
-      `Mode: ${dryRun ? "DRY RUN (no changes)" : "LIVE (will update DB)"}`,
+      `Mode: ${dryRun ? "DRY RUN (no changes)" : "LIVE (will update DB)"}`
     )
     if (limit) this.log(`Limit: ${limit} documents`)
     if (orgId) this.log(`Organization: ${orgId}`)
@@ -66,9 +66,8 @@ class EmbeddingsSeeder extends BaseSeeder {
     }
 
     // Lazy import to avoid pulling in the service when dry-running
-    const { embedDocument } = await import(
-      "@/modules/docs/docs-embedding.service"
-    )
+    const { embedDocument } =
+      await import("@/modules/docs/docs-embedding.service")
 
     let processed = 0
     let errors = 0
@@ -117,7 +116,7 @@ class EmbeddingsSeeder extends BaseSeeder {
           this.trackUpdated()
           const pct = ((processed / total) * 100).toFixed(1)
           process.stdout.write(
-            `\r  [Embeddings] Progress: ${processed}/${total} (${pct}%)  `,
+            `\r  [Embeddings] Progress: ${processed}/${total} (${pct}%)  `
           )
         } catch (err) {
           errors++
@@ -142,7 +141,7 @@ class EmbeddingsSeeder extends BaseSeeder {
     this.log(
       orgId
         ? `Clearing embeddings for org=${orgId}`
-        : "Clearing all document embeddings",
+        : "Clearing all document embeddings"
     )
 
     const where: Record<string, unknown> = {}

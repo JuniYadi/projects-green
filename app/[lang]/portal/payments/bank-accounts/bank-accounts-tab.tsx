@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useCallback, useEffect, useState, type FormEvent, useMemo } from "react"
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type FormEvent,
+  useMemo,
+} from "react"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -48,7 +54,9 @@ type BankAccountsRequestState =
   | { status: "error"; message: string }
 
 export function BankAccountsTab() {
-  const [state, setState] = useState<BankAccountsRequestState>({ status: "loading" })
+  const [state, setState] = useState<BankAccountsRequestState>({
+    status: "loading",
+  })
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null)
@@ -73,7 +81,9 @@ export function BankAccountsTab() {
       {
         id: "account",
         accessorFn: (account) =>
-          [account.accountNumber, account.accountName].filter(Boolean).join(" "),
+          [account.accountNumber, account.accountName]
+            .filter(Boolean)
+            .join(" "),
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Account" />
         ),
@@ -153,17 +163,27 @@ export function BankAccountsTab() {
 
   const fetchBankAccounts = useCallback(async () => {
     try {
-      const { data: payload } = await eden.api.portal.payments["bank-accounts"].get()
+      const { data: payload } =
+        await eden.api.portal.payments["bank-accounts"].get()
 
       if (!payload) {
         setState({ status: "error", message: "Failed to load bank accounts" })
         return
       }
       if (!payload.ok) {
-        setState({ status: "error", message: "message" in payload ? (payload as { message: string }).message : "Failed to load bank accounts" })
+        setState({
+          status: "error",
+          message:
+            "message" in payload
+              ? (payload as { message: string }).message
+              : "Failed to load bank accounts",
+        })
         return
       }
-      setState({ status: "success", data: (payload.data || []) as unknown as BankAccount[] })
+      setState({
+        status: "success",
+        data: (payload.data || []) as unknown as BankAccount[],
+      })
     } catch {
       setState({ status: "error", message: "Failed to load bank accounts" })
     }
@@ -189,7 +209,9 @@ export function BankAccountsTab() {
         swiftCode: String(formData.get("swiftCode") || "") || null,
         bankAddress: String(formData.get("bankAddress") || "") || null,
       }
-      const { data: payload } = await eden.api.portal.payments["bank-accounts"].post(body as never)
+      const { data: payload } = await eden.api.portal.payments[
+        "bank-accounts"
+      ].post(body as never)
 
       if (!payload?.ok) {
         setState({
@@ -223,7 +245,9 @@ export function BankAccountsTab() {
         swiftCode: String(formData.get("swiftCode") || "") || null,
         bankAddress: String(formData.get("bankAddress") || "") || null,
       }
-      const { data: payload } = await eden.api.portal.payments["bank-accounts"][editingAccount.id].put(body as never)
+      const { data: payload } = await eden.api.portal.payments["bank-accounts"][
+        editingAccount.id
+      ].put(body as never)
 
       if (!payload?.ok) {
         setState({
@@ -245,7 +269,10 @@ export function BankAccountsTab() {
   async function handleSetDefault(accountId: string) {
     setIsSubmitting(true)
     try {
-      const { data: payload } = await eden.api.portal.payments["bank-accounts"][accountId].toggle.patch()
+      const { data: payload } =
+        await eden.api.portal.payments["bank-accounts"][
+          accountId
+        ].toggle.patch()
       if (!payload?.ok) {
         setState({
           status: "error",
@@ -255,7 +282,10 @@ export function BankAccountsTab() {
       }
       await fetchBankAccounts()
     } catch {
-      setState({ status: "error", message: "Failed to set default bank account" })
+      setState({
+        status: "error",
+        message: "Failed to set default bank account",
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -281,7 +311,12 @@ export function BankAccountsTab() {
       <div className="rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
         {state.message}
         <div className="mt-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => void fetchBankAccounts()}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void fetchBankAccounts()}
+          >
             Retry
           </Button>
         </div>
@@ -312,7 +347,11 @@ export function BankAccountsTab() {
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2 text-sm font-medium">
                 <span>Bank name</span>
-                <Input name="bankName" placeholder="Bank Central Asia" required />
+                <Input
+                  name="bankName"
+                  placeholder="Bank Central Asia"
+                  required
+                />
               </label>
               <label className="space-y-2 text-sm font-medium">
                 <span>Account number</span>
@@ -320,13 +359,20 @@ export function BankAccountsTab() {
               </label>
               <label className="space-y-2 text-sm font-medium md:col-span-2">
                 <span>Account holder</span>
-                <Input name="accountName" placeholder="PT Projects Green" required />
+                <Input
+                  name="accountName"
+                  placeholder="PT Projects Green"
+                  required
+                />
               </label>
               <fieldset className="space-y-2 text-sm font-medium">
                 <legend>Supported currencies</legend>
                 <div className="flex flex-wrap gap-3 rounded-md border p-3">
                   {CURRENCY_OPTIONS.map((code) => (
-                    <label key={code} className="flex items-center gap-2 text-sm">
+                    <label
+                      key={code}
+                      className="flex items-center gap-2 text-sm"
+                    >
                       <input
                         type="checkbox"
                         name="supportedCurrencies"
@@ -400,12 +446,17 @@ export function BankAccountsTab() {
                 <legend>Supported currencies</legend>
                 <div className="flex flex-wrap gap-3 rounded-md border p-3">
                   {CURRENCY_OPTIONS.map((code) => (
-                    <label key={code} className="flex items-center gap-2 text-sm">
+                    <label
+                      key={code}
+                      className="flex items-center gap-2 text-sm"
+                    >
                       <input
                         type="checkbox"
                         name="supportedCurrencies"
                         value={code}
-                        defaultChecked={getAccountCurrencies(editingAccount).includes(code)}
+                        defaultChecked={getAccountCurrencies(
+                          editingAccount
+                        ).includes(code)}
                       />
                       {code}
                     </label>

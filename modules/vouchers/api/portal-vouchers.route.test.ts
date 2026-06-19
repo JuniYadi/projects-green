@@ -12,11 +12,9 @@ function createDefaultService(): any {
     getVoucherById: () => {
       throw new VoucherNotFoundError("v_1")
     },
-    createVoucher: () =>
-      Promise.resolve({ id: "v_1", code: "TEST1234" }),
+    createVoucher: () => Promise.resolve({ id: "v_1", code: "TEST1234" }),
     updateVoucher: () => Promise.resolve({ id: "v_1" }),
-    disableVoucher: () =>
-      Promise.resolve({ id: "v_1", status: "DISABLED" }),
+    disableVoucher: () => Promise.resolve({ id: "v_1", status: "DISABLED" }),
     getVoucherClaims: () => Promise.resolve([]),
   }
 }
@@ -36,8 +34,7 @@ function createDeps() {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const toApp = (deps: any) =>
-  new Elysia().use(createPortalVoucherRoutes(deps))
+const toApp = (deps: any) => new Elysia().use(createPortalVoucherRoutes(deps))
 
 describe("Portal Voucher Routes", () => {
   describe("GET /vouchers/portal", () => {
@@ -50,11 +47,11 @@ describe("Portal Voucher Routes", () => {
           organizationId: null,
           role: null,
           roles: null,
-        }),
+        })
       )
 
       const res = await toApp(deps).handle(
-        new Request("http://localhost/vouchers/portal"),
+        new Request("http://localhost/vouchers/portal")
       )
 
       expect(res.status).toBe(401)
@@ -72,11 +69,11 @@ describe("Portal Voucher Routes", () => {
           organizationId: "org_1",
           role: "member",
           roles: ["member"],
-        }),
+        })
       )
 
       const res = await toApp(deps).handle(
-        new Request("http://localhost/vouchers/portal"),
+        new Request("http://localhost/vouchers/portal")
       )
 
       expect(res.status).toBe(403)
@@ -109,11 +106,11 @@ describe("Portal Voucher Routes", () => {
             },
           ],
           total: 1,
-        }),
+        })
       )
 
       const res = await toApp(deps).handle(
-        new Request("http://localhost/vouchers/portal"),
+        new Request("http://localhost/vouchers/portal")
       )
 
       expect(res.status).toBe(200)
@@ -144,7 +141,7 @@ describe("Portal Voucher Routes", () => {
           metadataJson: null,
           createdAt: new Date(),
           updatedAt: new Date(),
-        }),
+        })
       )
 
       const res = await toApp(deps).handle(
@@ -157,7 +154,7 @@ describe("Portal Voucher Routes", () => {
             amount: 50000,
             currency: "IDR",
           }),
-        }),
+        })
       )
 
       expect(res.status).toBe(201)
@@ -172,7 +169,7 @@ describe("Portal Voucher Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
-        }),
+        })
       )
 
       expect(res.status).toBe(422)
@@ -188,7 +185,7 @@ describe("Portal Voucher Routes", () => {
             expiresAt: new Date(Date.now() + 86400000).toISOString(),
             amount: 50000,
           }),
-        }),
+        })
       )
 
       expect(res.status).toBe(422)
@@ -217,11 +214,11 @@ describe("Portal Voucher Routes", () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           claims: [],
-        }),
+        })
       )
 
       const res = await toApp(deps).handle(
-        new Request("http://localhost/vouchers/portal/v_1"),
+        new Request("http://localhost/vouchers/portal/v_1")
       )
 
       expect(res.status).toBe(200)
@@ -231,7 +228,7 @@ describe("Portal Voucher Routes", () => {
 
     it("returns 404 for nonexistent voucher", async () => {
       const res = await toApp(createDeps()).handle(
-        new Request("http://localhost/vouchers/portal/nonexistent"),
+        new Request("http://localhost/vouchers/portal/nonexistent")
       )
 
       expect(res.status).toBe(404)
@@ -259,13 +256,13 @@ describe("Portal Voucher Routes", () => {
           metadataJson: null,
           createdAt: new Date(),
           updatedAt: new Date(),
-        }),
+        })
       )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal/v_1/disable", {
           method: "POST",
-        }),
+        })
       )
 
       expect(res.status).toBe(200)
@@ -290,11 +287,11 @@ describe("Portal Voucher Routes", () => {
             metadataJson: null,
             claimedAt: new Date(),
           },
-        ]),
+        ])
       )
 
       const res = await toApp(deps).handle(
-        new Request("http://localhost/vouchers/portal/v_1/claims"),
+        new Request("http://localhost/vouchers/portal/v_1/claims")
       )
 
       expect(res.status).toBe(200)

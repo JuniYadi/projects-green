@@ -49,13 +49,7 @@ function AdjustmentTypeBadge({ type }: { type: string }) {
   )
 }
 
-function AmountCell({
-  amountIdr,
-  type,
-}: {
-  amountIdr: string
-  type: string
-}) {
+function AmountCell({ amountIdr, type }: { amountIdr: string; type: string }) {
   const isCredit = type === "CREDIT"
   const formattedAmount = formatCurrency(amountIdr)
 
@@ -63,7 +57,9 @@ function AmountCell({
     <span
       className={cn(
         "font-medium",
-        isCredit ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+        isCredit
+          ? "text-green-600 dark:text-green-400"
+          : "text-red-600 dark:text-red-400"
       )}
     >
       {isCredit ? "+" : "-"}
@@ -87,9 +83,7 @@ export function AdjustmentTable({ adjustments }: AdjustmentTableProps) {
       {
         accessorKey: "type",
         header: "Type",
-        cell: ({ row }) => (
-          <AdjustmentTypeBadge type={row.original.type} />
-        ),
+        cell: ({ row }) => <AdjustmentTypeBadge type={row.original.type} />,
       },
       {
         accessorKey: "amountIdr",

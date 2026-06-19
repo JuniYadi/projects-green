@@ -15,7 +15,10 @@ const mockPrisma = {
   billingInvoice: {
     findMany: async () => [],
     findFirst: async () => null,
-    create: async (data: unknown) => ({ id: "inv-mock", ...(data as Record<string, unknown>) }),
+    create: async (data: unknown) => ({
+      id: "inv-mock",
+      ...(data as Record<string, unknown>),
+    }),
     update: async (data: unknown) => data,
   },
   billingAccount: {
@@ -29,13 +32,8 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const {
-  registerSeeder,
-  getSeeders,
-  getSeeder,
-  listSeeders,
-  clearRegistry,
-} = await import("@/lib/seeders/registry")
+const { registerSeeder, getSeeders, getSeeder, listSeeders, clearRegistry } =
+  await import("@/lib/seeders/registry")
 const { BaseSeeder } = await import("@/lib/seeders/base-seeder")
 
 // ── Test Seeders ──────────────────────────────────────────────────────────
@@ -115,7 +113,7 @@ describe("seeder registry", () => {
     it("throws on duplicate registration", () => {
       registerSeeder(AlphaSeeder)
       expect(() => registerSeeder(AlphaSeeder)).toThrow(
-        'Seeder "Alpha" is already registered',
+        'Seeder "Alpha" is already registered'
       )
     })
   })
@@ -308,7 +306,7 @@ describe("seeder registry", () => {
 
     it("validateEnv reflects requiredEnvVars", () => {
       expect(GammaSeeder.validateEnv()).toEqual(
-        expect.arrayContaining(["GAMMA_KEY"]),
+        expect.arrayContaining(["GAMMA_KEY"])
       )
       expect(BetaSeeder.validateEnv()).toEqual([])
     })

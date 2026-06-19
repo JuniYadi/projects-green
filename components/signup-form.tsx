@@ -83,7 +83,13 @@ export function SignupForm({
       setServerFieldErrors({})
 
       try {
-        const { data: payload } = await eden.api.auth.signup.post(value) as { data: { ok?: boolean; message?: string; fieldErrors?: Record<string, string[]> } | null }
+        const { data: payload } = (await eden.api.auth.signup.post(value)) as {
+          data: {
+            ok?: boolean
+            message?: string
+            fieldErrors?: Record<string, string[]>
+          } | null
+        }
 
         if (!payload?.ok) {
           setServerFieldErrors(payload?.fieldErrors ?? {})

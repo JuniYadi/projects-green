@@ -18,15 +18,17 @@ const env = {
 describe("sanitizeOpenVpnClientName", () => {
   it("allows deterministic org/subscription client names", () => {
     expect(sanitizeOpenVpnClientName("org_abc123_sub_456")).toBe(
-      "org_abc123_sub_456",
+      "org_abc123_sub_456"
     )
   })
 
   it("rejects shell metacharacters and path traversal", () => {
-    expect(() => sanitizeOpenVpnClientName("org_1; rm -rf /"))
-      .toThrow("Invalid OpenVPN client name")
-    expect(() => sanitizeOpenVpnClientName("../secret"))
-      .toThrow("Invalid OpenVPN client name")
+    expect(() => sanitizeOpenVpnClientName("org_1; rm -rf /")).toThrow(
+      "Invalid OpenVPN client name"
+    )
+    expect(() => sanitizeOpenVpnClientName("../secret")).toThrow(
+      "Invalid OpenVPN client name"
+    )
   })
 })
 
@@ -96,7 +98,7 @@ describe("OpenVpnSshAdapter", () => {
     const adapter = new OpenVpnSshAdapter({ env, run })
 
     await expect(adapter.createClient("bad;name")).rejects.toThrow(
-      "Invalid OpenVPN client name",
+      "Invalid OpenVPN client name"
     )
     expect(run).not.toHaveBeenCalled()
   })

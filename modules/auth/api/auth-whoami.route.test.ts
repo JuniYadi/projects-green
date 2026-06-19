@@ -10,9 +10,7 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
   resolveProxyAuth: mockResolveProxyAuth,
 }))
 
-const { authWhoamiRoute } = await import(
-  "@/modules/auth/api/auth-whoami.route"
-)
+const { authWhoamiRoute } = await import("@/modules/auth/api/auth-whoami.route")
 
 function createTestApp() {
   return authWhoamiRoute
@@ -28,9 +26,7 @@ describe("auth-whoami route", () => {
 
   it("returns 200 + ok:false when no auth", async () => {
     const app = createTestApp()
-    const res = await app.handle(
-      new Request("http://localhost/auth/whoami")
-    )
+    const res = await app.handle(new Request("http://localhost/auth/whoami"))
     expect(res.status).toBe(200)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const body = (await res.json()) as Record<string, any>
@@ -62,9 +58,7 @@ describe("auth-whoami route", () => {
     }))
 
     const app = createTestApp()
-    const res = await app.handle(
-      new Request("http://localhost/auth/whoami")
-    )
+    const res = await app.handle(new Request("http://localhost/auth/whoami"))
     expect(res.status).toBe(200)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const body = (await res.json()) as Record<string, any>
@@ -86,9 +80,7 @@ describe("auth-whoami route", () => {
     }))
 
     const app = createTestApp()
-    const res = await app.handle(
-      new Request("http://localhost/auth/whoami")
-    )
+    const res = await app.handle(new Request("http://localhost/auth/whoami"))
     expect(res.status).toBe(200)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const body = (await res.json()) as Record<string, any>

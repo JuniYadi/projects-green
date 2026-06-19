@@ -98,7 +98,12 @@ describe("deploy-monitor.dto", () => {
       const createdAt = new Date("2026-06-05T10:00:00.000Z")
       const events = toDeployEventDTOs([
         { id: "e1", type: "QUEUED", message: null, createdAt },
-        { id: "e2", type: "DEPLOY_FAILED" as const, message: "lockfile", createdAt },
+        {
+          id: "e2",
+          type: "DEPLOY_FAILED" as const,
+          message: "lockfile",
+          createdAt,
+        },
         { id: "e3", type: "CUSTOM" as unknown as any, message: "x", createdAt }, // eslint-disable-line @typescript-eslint/no-explicit-any
       ])
 

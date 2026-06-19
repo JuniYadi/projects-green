@@ -145,7 +145,9 @@ describe("HpaBuilder", () => {
       .setMinReplicas(1)
       .setMaxReplicas(5)
 
-    expect(() => builder.build()).toThrow("At least one metric must be configured")
+    expect(() => builder.build()).toThrow(
+      "At least one metric must be configured"
+    )
   })
 
   it("throws error when maxReplicas is less than minReplicas", () => {

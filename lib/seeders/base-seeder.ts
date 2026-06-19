@@ -90,7 +90,7 @@ export abstract class BaseSeeder {
    * Subclasses can override to accept constructor arguments.
    */
   static create(
-    cliArgs: Map<string, string> = new Map(),
+    cliArgs: Map<string, string> = new Map()
   ): InstanceType<typeof BaseSeeder> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return new (this as any)(cliArgs)
@@ -201,7 +201,7 @@ export abstract class BaseSeeder {
    */
   static validateEnv(): string[] {
     return this.requiredEnvVars.filter(
-      (varName) => !process.env[varName]?.trim(),
+      (varName) => !process.env[varName]?.trim()
     )
   }
 }

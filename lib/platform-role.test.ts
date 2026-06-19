@@ -32,9 +32,9 @@ describe("platform-role", () => {
 
   it("returns none when user has no id and no email", async () => {
     await expect(getPlatformRoleForUser({})).resolves.toBe("none")
-    await expect(getPlatformRoleForUser({ id: "   ", email: "   " })).resolves.toBe(
-      "none"
-    )
+    await expect(
+      getPlatformRoleForUser({ id: "   ", email: "   " })
+    ).resolves.toBe("none")
     expect(findFirstMock).not.toHaveBeenCalled()
   })
 

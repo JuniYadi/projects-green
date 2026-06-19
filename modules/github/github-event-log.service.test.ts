@@ -34,7 +34,10 @@ describe("github event log service", () => {
       },
     } as FakeEventLogPrisma
 
-    const result = await listGithubWebhookEvents({ prisma: prisma as FakeEventLogPrisma, query: {} })
+    const result = await listGithubWebhookEvents({
+      prisma: prisma as FakeEventLogPrisma,
+      query: {},
+    })
 
     expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 25 })
     expect(JSON.stringify(calls[0])).toContain("eventDisposition")

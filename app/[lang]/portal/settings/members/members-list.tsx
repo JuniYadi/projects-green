@@ -39,7 +39,8 @@ const toMemberInitials = (displayName: string) => {
 
 export function MembersList({ organizationId }: MembersListProps) {
   const [members, setMembers] = useState<TenantMembershipSummary[]>([])
-  const [authorization, setAuthorization] = useState<TenantAuthorizationResponse | null>(null)
+  const [authorization, setAuthorization] =
+    useState<TenantAuthorizationResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
@@ -47,18 +48,27 @@ export function MembersList({ organizationId }: MembersListProps) {
   const loadData = useCallback(async () => {
     try {
       const [authRes, membersRes] = await Promise.all([
-        eden.api.tenants[organizationId].authorization.get().then(r => r.data),
-        eden.api.tenants[organizationId].members.get().then(r => r.data)
+        eden.api.tenants[organizationId].authorization
+          .get()
+          .then((r) => r.data),
+        eden.api.tenants[organizationId].members.get().then((r) => r.data),
       ])
 
       if (authRes?.ok) setAuthorization(authRes as TenantAuthorizationResponse)
       if (membersRes?.ok) {
-        setMembers((membersRes as { members: TenantMembershipSummary[] }).members)
+        setMembers(
+          (membersRes as { members: TenantMembershipSummary[] }).members
+        )
       } else {
-        setError((membersRes as { message?: string })?.message || "Failed to load members")
+        setError(
+          (membersRes as { message?: string })?.message ||
+            "Failed to load members"
+        )
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      )
     } finally {
       setIsLoading(false)
     }
@@ -69,7 +79,13 @@ export function MembersList({ organizationId }: MembersListProps) {
     void loadData()
   }, [loadData])
 
-  const handleAction = async (actionId: string, edenCall: Promise<{ data?: { ok?: boolean; message?: string } | null; error?: unknown }>) => {
+  const handleAction = async (
+    actionId: string,
+    edenCall: Promise<{
+      data?: { ok?: boolean; message?: string } | null
+      error?: unknown
+    }>
+  ) => {
     setPendingActionId(actionId)
     setError(null)
     try {
@@ -80,7 +96,9 @@ export function MembersList({ organizationId }: MembersListProps) {
         setError(res?.message || "Action failed")
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      )
     } finally {
       setPendingActionId(null)
     }
@@ -96,7 +114,9 @@ export function MembersList({ organizationId }: MembersListProps) {
     )
   }
 
-  const allowedActions = new Set((authorization?.allowedActions as TenantAction[]) || [])
+  const allowedActions = new Set(
+    (authorization?.allowedActions as TenantAction[]) || []
+  )
 
   return (
     <div className="space-y-4">
@@ -122,44 +142,80 @@ export function MembersList({ organizationId }: MembersListProps) {
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={member.avatarUrl ?? undefined} />
-                      <AvatarFallback>{toMemberInitials(member.displayName)}</AvatarFallback>
+                      <AvatarFallback>
+                        {toMemberInitials(member.displayName)}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
                       <span className="font-medium">{member.displayName}</span>
-                      <span className="text-xs text-muted-foreground">{member.email}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {member.email}
+                      </span>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="capitalize">{member.role || "Member"}</TableCell>
+                <TableCell className="capitalize">
+                  {member.role || "Member"}
+                </TableCell>
                 <TableCell className="capitalize">{member.status}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!!pendingActionId}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={!!pendingActionId}
+                      >
                         <DotsThreeVerticalIcon className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {member.role === "member" && allowedActions.has("promote_member") && (
-                        <DropdownMenuItem
-                          onClick={() => handleAction(`promote-${member.id}`, eden.api.tenants[organizationId].members[member.id].promote.post({ targetRole: "admin" }))}
-                        >
-                          Make Admin
-                        </DropdownMenuItem>
-                      )}
-                      {member.role === "admin" && allowedActions.has("demote_admin") && (
-                        <DropdownMenuItem
-                          onClick={() => handleAction(`demote-${member.id}`, eden.api.tenants[organizationId].members[member.id].demote.post())}
-                        >
-                          Demote to Member
-                        </DropdownMenuItem>
-                      )}
+                      {member.role === "member" &&
+                        allowedActions.has("promote_member") && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleAction(
+                                `promote-${member.id}`,
+                                eden.api.tenants[organizationId].members[
+                                  member.id
+                                ].promote.post({ targetRole: "admin" })
+                              )
+                            }
+                          >
+                            Make Admin
+                          </DropdownMenuItem>
+                        )}
+                      {member.role === "admin" &&
+                        allowedActions.has("demote_admin") && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleAction(
+                                `demote-${member.id}`,
+                                eden.api.tenants[organizationId].members[
+                                  member.id
+                                ].demote.post()
+                              )
+                            }
+                          >
+                            Demote to Member
+                          </DropdownMenuItem>
+                        )}
                       {allowedActions.has("manage_tenant") && (
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => {
-                            if (confirm("Are you sure you want to remove this member?")) {
-                              handleAction(`remove-${member.id}`, eden.api.tenants[organizationId].members[member.id].remove.post())
+                            if (
+                              confirm(
+                                "Are you sure you want to remove this member?"
+                              )
+                            ) {
+                              handleAction(
+                                `remove-${member.id}`,
+                                eden.api.tenants[organizationId].members[
+                                  member.id
+                                ].remove.post()
+                              )
                             }
                           }}
                         >

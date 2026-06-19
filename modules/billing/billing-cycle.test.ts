@@ -66,9 +66,7 @@ function createMockPrisma() {
         ...data.data,
       })),
     },
-    $transaction: mock(async (fn: any) =>
-      fn(createMockPrisma()),
-    ) as any,
+    $transaction: mock(async (fn: any) => fn(createMockPrisma())) as any,
   }
 }
 
@@ -94,7 +92,7 @@ describe("BillingCycleService", () => {
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
-        mockUsageLedger as unknown as UsageLedgerService,
+        mockUsageLedger as unknown as UsageLedgerService
       )
       const result = await service.finalizeServiceInvoices()
 
@@ -114,14 +112,16 @@ describe("BillingCycleService", () => {
         periodEnd: new Date("2026-06-30"),
       }
 
-      mockPrisma.billingInvoice.findMany.mockImplementation(async () => [mockInvoice])
+      mockPrisma.billingInvoice.findMany.mockImplementation(async () => [
+        mockInvoice,
+      ])
       mockPrisma.billingInvoice.updateMany.mockImplementation(async () => ({
         count: 1,
       }))
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
-        mockUsageLedger as unknown as UsageLedgerService,
+        mockUsageLedger as unknown as UsageLedgerService
       )
       const result = await service.finalizeServiceInvoices()
 
@@ -132,7 +132,7 @@ describe("BillingCycleService", () => {
           data: expect.objectContaining({
             status: "PAID",
           }),
-        }),
+        })
       )
     })
 
@@ -144,7 +144,7 @@ describe("BillingCycleService", () => {
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
-        mockUsageLedger as unknown as UsageLedgerService,
+        mockUsageLedger as unknown as UsageLedgerService
       )
       const result = await service.finalizeServiceInvoices()
 
@@ -154,13 +154,11 @@ describe("BillingCycleService", () => {
 
   describe("processMonthlyBilling", () => {
     it("returns empty result when no active subscriptions exist", async () => {
-      mockPrisma.billingSubscription.findMany.mockImplementation(
-        async () => [],
-      )
+      mockPrisma.billingSubscription.findMany.mockImplementation(async () => [])
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
-        mockUsageLedger as unknown as UsageLedgerService,
+        mockUsageLedger as unknown as UsageLedgerService
       )
       const result = await service.processMonthlyBilling()
 
@@ -177,7 +175,7 @@ describe("BillingCycleService", () => {
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
-        mockUsageLedger as unknown as UsageLedgerService,
+        mockUsageLedger as unknown as UsageLedgerService
       )
       const result = await service.processMonthlyBilling()
 
@@ -206,7 +204,7 @@ describe("BillingCycleService", () => {
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
-        mockUsageLedger as unknown as UsageLedgerService,
+        mockUsageLedger as unknown as UsageLedgerService
       )
       const result = await service.processMonthlyBilling()
 
@@ -252,7 +250,7 @@ describe("BillingCycleService", () => {
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
-        mockUsageLedger as unknown as UsageLedgerService,
+        mockUsageLedger as unknown as UsageLedgerService
       )
       const result = await service.processMonthlyBilling()
 
@@ -291,8 +289,10 @@ describe("BillingCycleService", () => {
         balance: new Decimal(5000),
       }))
 
-      mockPrisma.$transaction.mockImplementation(async (fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>) =>
-        fn(mockPrisma),
+      mockPrisma.$transaction.mockImplementation(
+        async (
+          fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>
+        ) => fn(mockPrisma)
       )
 
       // When balance is insufficient, the gte check fails, so we go to OPEN
@@ -307,7 +307,7 @@ describe("BillingCycleService", () => {
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
-        mockUsageLedger as unknown as UsageLedgerService,
+        mockUsageLedger as unknown as UsageLedgerService
       )
       const result = await service.processMonthlyBilling()
 
@@ -356,13 +356,15 @@ describe("BillingCycleService", () => {
         },
       }))
 
-      mockPrisma.$transaction.mockImplementation(async (fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>) =>
-        fn(mockPrisma),
+      mockPrisma.$transaction.mockImplementation(
+        async (
+          fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>
+        ) => fn(mockPrisma)
       )
 
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
-        mockUsageLedger as unknown as UsageLedgerService,
+        mockUsageLedger as unknown as UsageLedgerService
       )
       const result = await service.processMonthlyBilling()
 
@@ -402,8 +404,10 @@ describe("BillingCycleService", () => {
         },
       }))
 
-      mockPrisma.$transaction.mockImplementation(async (fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>) =>
-        fn(mockPrisma),
+      mockPrisma.$transaction.mockImplementation(
+        async (
+          fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>
+        ) => fn(mockPrisma)
       )
 
       // Mock WorkOS to return admin email
@@ -424,7 +428,7 @@ describe("BillingCycleService", () => {
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
         mockUsageLedger as unknown as UsageLedgerService,
-        mockEmailService as any,
+        mockEmailService as any
       )
       const result = await service.processMonthlyBilling()
 
@@ -472,8 +476,10 @@ describe("BillingCycleService", () => {
         },
       }))
 
-      mockPrisma.$transaction.mockImplementation(async (fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>) =>
-        fn(mockPrisma),
+      mockPrisma.$transaction.mockImplementation(
+        async (
+          fn: (tx: ReturnType<typeof createMockPrisma>) => Promise<unknown>
+        ) => fn(mockPrisma)
       )
 
       // No admin/owner in memberships
@@ -493,7 +499,7 @@ describe("BillingCycleService", () => {
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
         mockUsageLedger as unknown as UsageLedgerService,
-        mockEmailService as any,
+        mockEmailService as any
       )
       const result = await service.processMonthlyBilling()
 
@@ -522,7 +528,7 @@ describe("BillingCycleService", () => {
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
         mockUsageLedger as unknown as UsageLedgerService,
-        mockEmailService as any,
+        mockEmailService as any
       )
       const result = await service.processMonthlyBilling()
 
@@ -546,8 +552,12 @@ describe("BillingCycleService", () => {
         periodEnd: new Date("2026-06-30"),
       }
 
-      mockPrisma.billingInvoice.findMany.mockImplementation(async () => [mockInvoice])
-      mockPrisma.billingInvoice.updateMany.mockImplementation(async () => ({ count: 1 }))
+      mockPrisma.billingInvoice.findMany.mockImplementation(async () => [
+        mockInvoice,
+      ])
+      mockPrisma.billingInvoice.updateMany.mockImplementation(async () => ({
+        count: 1,
+      }))
 
       mockPrisma.billingAccount.findUnique.mockImplementation(async () => ({
         organizationId: "tenant-1",
@@ -570,7 +580,7 @@ describe("BillingCycleService", () => {
       const service = new BillingCycleService(
         mockPrisma as unknown as PrismaClient,
         mockUsageLedger as unknown as UsageLedgerService,
-        mockEmailService as any,
+        mockEmailService as any
       )
       const result = await service.finalizeServiceInvoices()
 

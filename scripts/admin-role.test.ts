@@ -44,14 +44,18 @@ describe("parseAdminRoleArgs", () => {
   })
 
   it("parses --add with email", () => {
-    expect(parseAdminRoleArgs(["--add", "--email", "Admin@Example.com "])).toEqual({
+    expect(
+      parseAdminRoleArgs(["--add", "--email", "Admin@Example.com "])
+    ).toEqual({
       action: "add",
       email: "admin@example.com",
     })
   })
 
   it("parses --delete with workos user id", () => {
-    expect(parseAdminRoleArgs(["--delete", "--workos-user-id", " user_123 "])).toEqual({
+    expect(
+      parseAdminRoleArgs(["--delete", "--workos-user-id", " user_123 "])
+    ).toEqual({
       action: "delete",
       workosUserId: "user_123",
     })
@@ -65,7 +69,13 @@ describe("parseAdminRoleArgs", () => {
 
   it("rejects both identifiers", () => {
     expect(() =>
-      parseAdminRoleArgs(["--add", "--email", "a@example.com", "--workos-user-id", "user_123"])
+      parseAdminRoleArgs([
+        "--add",
+        "--email",
+        "a@example.com",
+        "--workos-user-id",
+        "user_123",
+      ])
     ).toThrow("Provide exactly one identifier")
   })
 })

@@ -1,8 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import {
-  ENV_VAR_MAX_VALUE_SIZE,
-} from "@/modules/deploy/environment-vars"
+import { ENV_VAR_MAX_VALUE_SIZE } from "@/modules/deploy/environment-vars"
 import {
   getEnvironmentValidationMessages,
   isValidCustomDomain,

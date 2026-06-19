@@ -36,7 +36,9 @@ export class MessageCostService {
     }
 
     // Unlimited / enterprise plans have no per-message cost
-    const resources = subscription.plan?.resources as Record<string, unknown> | undefined
+    const resources = subscription.plan?.resources as
+      | Record<string, unknown>
+      | undefined
     if (resources && resources.unlimited === true) {
       return new Decimal(0)
     }

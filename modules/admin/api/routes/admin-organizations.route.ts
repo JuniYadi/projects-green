@@ -82,23 +82,20 @@ export const createAdminOrganizationsRoutes = (deps = {}) => {
       },
       { body: adminCreateOrganizationSchema }
     )
-    .get(
-      "/admin/organizations/:id/members",
-      async ({ params, set }) => {
-        const actor = await guard(set)
-        if ("ok" in actor && !actor.ok) {
-          return actor as AdminApiError
-        }
-
-        try {
-          const result = await listAdminOrganizationMembers(params.id)
-          return {
-            ok: true,
-            data: result,
-          }
-        } catch (error) {
-          return toWorkosError(set, error)
-        }
+    .get("/admin/organizations/:id/members", async ({ params, set }) => {
+      const actor = await guard(set)
+      if ("ok" in actor && !actor.ok) {
+        return actor as AdminApiError
       }
-    )
+
+      try {
+        const result = await listAdminOrganizationMembers(params.id)
+        return {
+          ok: true,
+          data: result,
+        }
+      } catch (error) {
+        return toWorkosError(set, error)
+      }
+    })
 }

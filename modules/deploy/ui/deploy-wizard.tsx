@@ -157,8 +157,7 @@ function DeployWizardInner() {
   const [repositoryOptionsError, setRepositoryOptionsError] = useState<
     string | null
   >(null)
-  const [githubReconnectRequired, setGithubReconnectRequired] =
-    useState(false)
+  const [githubReconnectRequired, setGithubReconnectRequired] = useState(false)
   const [repositoryById, setRepositoryById] = useState<
     Record<string, Repository>
   >({})
@@ -480,12 +479,7 @@ function DeployWizardInner() {
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [
-    dispatch,
-    state.monitor.isActive,
-    state.monitor.deployId,
-    state.step,
-  ])
+  }, [dispatch, state.monitor.isActive, state.monitor.deployId, state.step])
 
   const handleOwnerSelect = (ownerId: string) => {
     setRepositorySearch("")
@@ -841,7 +835,9 @@ function DeployWizardInner() {
           submitError={submitError}
           sourceType={state.source.sourceType}
           buildState={state.build}
-          onEditBuildSettings={() => dispatch({ type: "set-step", payload: "build" })}
+          onEditBuildSettings={() =>
+            dispatch({ type: "set-step", payload: "build" })
+          }
           onBack={() => {
             const previous = getPreviousStep("environment", state)
             if (!previous) {

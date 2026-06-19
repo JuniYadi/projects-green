@@ -89,12 +89,7 @@ export function AppMonitor({
             </div>
 
             {targetDomain ? (
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
+              <Button asChild variant="outline" size="sm" className="gap-2">
                 <a
                   href={`https://${targetDomain}`}
                   target="_blank"
@@ -125,7 +120,7 @@ export function AppMonitor({
 
           <dl className="grid gap-3 text-xs sm:grid-cols-3">
             <div className="space-y-1">
-              <dt className="uppercase tracking-wide text-muted-foreground">
+              <dt className="tracking-wide text-muted-foreground uppercase">
                 Domain
               </dt>
               <dd className="font-medium text-foreground">
@@ -133,7 +128,7 @@ export function AppMonitor({
               </dd>
             </div>
             <div className="space-y-1">
-              <dt className="uppercase tracking-wide text-muted-foreground">
+              <dt className="tracking-wide text-muted-foreground uppercase">
                 Last deployed
               </dt>
               <dd className="font-medium text-foreground">
@@ -143,7 +138,7 @@ export function AppMonitor({
               </dd>
             </div>
             <div className="space-y-1">
-              <dt className="uppercase tracking-wide text-muted-foreground">
+              <dt className="tracking-wide text-muted-foreground uppercase">
                 Attempt
               </dt>
               <dd className="font-medium text-foreground">

@@ -41,7 +41,7 @@ export class QuotaGateService {
 
     if (!subscription) {
       throw new SubscriptionNotFoundError(
-        `No active WhatsApp subscription found for org=${organizationId}`,
+        `No active WhatsApp subscription found for org=${organizationId}`
       )
     }
 
@@ -54,7 +54,8 @@ export class QuotaGateService {
       },
       servicePlan: {
         code: subscription.plan.code,
-        resources: subscription.plan.resources as unknown as WhatsAppPlanResources,
+        resources: subscription.plan
+          .resources as unknown as WhatsAppPlanResources,
       },
     }
   }
@@ -65,7 +66,7 @@ export class QuotaGateService {
    */
   private resolveLimit(
     resources: WhatsAppPlanResources,
-    direction: "IN" | "OUT",
+    direction: "IN" | "OUT"
   ): { monthlyLimit: number | null; dailyLimit: number | null } {
     const monthlyLimit =
       direction === "IN"
@@ -82,11 +83,9 @@ export class QuotaGateService {
   async checkMessageQuota(
     organizationId: string,
     deviceId: string,
-    direction: "IN" | "OUT",
+    direction: "IN" | "OUT"
   ): Promise<QuotaCheckResult> {
-    const { servicePlan } = await this.getWhatsAppSubscription(
-      organizationId,
-    )
+    const { servicePlan } = await this.getWhatsAppSubscription(organizationId)
 
     const resources = servicePlan.resources
 
@@ -144,13 +143,13 @@ export class QuotaGateService {
 
     const dailyUsed =
       direction === "IN"
-        ? dailyCount?.messageInboxCount ?? 0
-        : dailyCount?.messageOutboxCount ?? 0
+        ? (dailyCount?.messageInboxCount ?? 0)
+        : (dailyCount?.messageOutboxCount ?? 0)
 
     const monthlyUsed =
       direction === "IN"
-        ? monthlyCount?.messageInboxCount ?? 0
-        : monthlyCount?.messageOutboxCount ?? 0
+        ? (monthlyCount?.messageInboxCount ?? 0)
+        : (monthlyCount?.messageOutboxCount ?? 0)
 
     const { monthlyLimit, dailyLimit } = this.resolveLimit(resources, direction)
 
@@ -183,7 +182,7 @@ export class QuotaGateService {
   async deductMessageQuota(
     organizationId: string,
     deviceId: string,
-    direction: "IN" | "OUT",
+    direction: "IN" | "OUT"
   ): Promise<QuotaCheckResult> {
     return this.prisma.$transaction(async (tx) => {
       // Re-check quota within transaction
@@ -245,16 +244,19 @@ export class QuotaGateService {
 
       const dailyUsed =
         direction === "IN"
-          ? dailyCount?.messageInboxCount ?? 0
-          : dailyCount?.messageOutboxCount ?? 0
+          ? (dailyCount?.messageInboxCount ?? 0)
+          : (dailyCount?.messageOutboxCount ?? 0)
 
       // Monthly counts should NOT fall back to daily counts.
       const monthlyUsed =
         direction === "IN"
-          ? monthlyCount?.messageInboxCount ?? 0
-          : monthlyCount?.messageOutboxCount ?? 0
+          ? (monthlyCount?.messageInboxCount ?? 0)
+          : (monthlyCount?.messageOutboxCount ?? 0)
 
-      const { monthlyLimit, dailyLimit } = this.resolveLimit(resources, direction)
+      const { monthlyLimit, dailyLimit } = this.resolveLimit(
+        resources,
+        direction
+      )
 
       const dailyExceeded =
         dailyLimit !== null && dailyLimit !== 0 && dailyUsed >= dailyLimit
@@ -268,7 +270,7 @@ export class QuotaGateService {
           organizationId,
           deviceId,
           dailyLimit,
-          dailyUsed,
+          dailyUsed
         )
       }
 
@@ -278,15 +280,28 @@ export class QuotaGateService {
           deviceId,
           direction,
           monthlyLimit,
-          monthlyUsed,
+          monthlyUsed
         )
       }
 
       // Upsert daily count
-      await this.upsertDailyCount(tx, organizationId, deviceId, today, direction)
+      await this.upsertDailyCount(
+        tx,
+        organizationId,
+        deviceId,
+        today,
+        direction
+      )
 
       // Upsert monthly count
-      await this.upsertMonthlyCount(tx, organizationId, deviceId, year, month, direction)
+      await this.upsertMonthlyCount(
+        tx,
+        organizationId,
+        deviceId,
+        year,
+        month,
+        direction
+      )
 
       return {
         allowed: true,
@@ -310,7 +325,7 @@ export class QuotaGateService {
     organizationId: string,
     deviceId: string,
     date: Date,
-    direction: "IN" | "OUT",
+    direction: "IN" | "OUT"
   ): Promise<void> {
     const inboxCount = direction === "IN" ? 1 : 0
     const outboxCount = direction === "OUT" ? 1 : 0
@@ -347,7 +362,7 @@ export class QuotaGateService {
     deviceId: string,
     year: number,
     month: number,
-    direction: "IN" | "OUT",
+    direction: "IN" | "OUT"
   ): Promise<void> {
     const inboxCount = direction === "IN" ? 1 : 0
     const outboxCount = direction === "OUT" ? 1 : 0
@@ -382,7 +397,7 @@ export class QuotaGateService {
    */
   async getQuotaStatus(
     organizationId: string,
-    deviceId?: string,
+    deviceId?: string
   ): Promise<QuotaCheckResult[]> {
     const { servicePlan } = await this.getWhatsAppSubscription(organizationId)
     const resources = servicePlan.resources
@@ -424,7 +439,9 @@ export class QuotaGateService {
     })
 
     const dailyMap = new Map(dailyCounts.map((d) => [d.whatsappDeviceId, d]))
-    const monthlyMap = new Map(monthlyCounts.map((m) => [m.whatsappDeviceId, m]))
+    const monthlyMap = new Map(
+      monthlyCounts.map((m) => [m.whatsappDeviceId, m])
+    )
 
     const results: QuotaCheckResult[] = []
 
@@ -435,20 +452,27 @@ export class QuotaGateService {
       for (const direction of ["IN", "OUT"] as const) {
         const dailyUsed =
           direction === "IN"
-            ? daily?.messageInboxCount ?? 0
-            : daily?.messageOutboxCount ?? 0
+            ? (daily?.messageInboxCount ?? 0)
+            : (daily?.messageOutboxCount ?? 0)
         const monthlyUsed =
           direction === "IN"
-            ? monthly?.messageInboxCount ?? 0
-            : monthly?.messageOutboxCount ?? 0
+            ? (monthly?.messageInboxCount ?? 0)
+            : (monthly?.messageOutboxCount ?? 0)
 
-        const { monthlyLimit, dailyLimit } = this.resolveLimit(resources, direction)
+        const { monthlyLimit, dailyLimit } = this.resolveLimit(
+          resources,
+          direction
+        )
 
         const allowed =
           resources.unlimited === true ||
           !(
-            (dailyLimit !== null && dailyLimit !== 0 && dailyUsed >= dailyLimit) ||
-            (monthlyLimit !== null && monthlyLimit !== 0 && monthlyUsed >= monthlyLimit)
+            (dailyLimit !== null &&
+              dailyLimit !== 0 &&
+              dailyUsed >= dailyLimit) ||
+            (monthlyLimit !== null &&
+              monthlyLimit !== 0 &&
+              monthlyUsed >= monthlyLimit)
           )
 
         results.push({

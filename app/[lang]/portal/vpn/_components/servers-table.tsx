@@ -177,7 +177,7 @@ export function ServersTable() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full sm:w-72">
-          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <MagnifyingGlassIcon className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
@@ -253,7 +253,8 @@ export function ServersTable() {
                 <TableRow key={server.id}>
                   <TableCell className="font-medium">{server.name}</TableCell>
                   <TableCell className="whitespace-nowrap">
-                    {server.region.countryCode.toUpperCase()} — {server.region.name}
+                    {server.region.countryCode.toUpperCase()} —{" "}
+                    {server.region.name}
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {server.hostname}

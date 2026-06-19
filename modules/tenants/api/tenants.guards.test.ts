@@ -27,21 +27,17 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 }))
 
 mock.module("@/lib/platform-role", () => ({
-  getPlatformRoleForUser: mock(
-    async (input: { id?: string | null }) => {
-      if (input.id === "super-user") return "super_admin" as PlatformAccessRole
-      return "none" as PlatformAccessRole
-    }
-  ),
+  getPlatformRoleForUser: mock(async (input: { id?: string | null }) => {
+    if (input.id === "super-user") return "super_admin" as PlatformAccessRole
+    return "none" as PlatformAccessRole
+  }),
 }))
 
 mock.module("@/modules/tenants/tenant-policy", () => ({
-  resolveTenantRoleFromClaims: mock(
-    (role: string | null) => {
-      if (role === "admin" || role === "owner") return role as TenantRole
-      return null
-    }
-  ),
+  resolveTenantRoleFromClaims: mock((role: string | null) => {
+    if (role === "admin" || role === "owner") return role as TenantRole
+    return null
+  }),
 }))
 
 const mockSet = { status: 0 as number | string }
@@ -171,7 +167,9 @@ describe("ensureTenantContextAccess", () => {
     const result = ensureTenantContextAccess("org-1", actor, mockSet)
     expect(result).toHaveProperty("error")
     expect((result as { error: string }).error).toBe("FORBIDDEN")
-    expect((result as { policyCode: string }).policyCode).toBe("TENANT_CONTEXT_REQUIRED")
+    expect((result as { policyCode: string }).policyCode).toBe(
+      "TENANT_CONTEXT_REQUIRED"
+    )
   })
 
   it("rejects when org does not match", () => {
@@ -184,7 +182,9 @@ describe("ensureTenantContextAccess", () => {
     const result = ensureTenantContextAccess("org-2", actor, mockSet)
     expect(result).toHaveProperty("error")
     expect((result as { error: string }).error).toBe("FORBIDDEN")
-    expect((result as { policyCode: string }).policyCode).toBe("TENANT_CONTEXT_MISMATCH")
+    expect((result as { policyCode: string }).policyCode).toBe(
+      "TENANT_CONTEXT_MISMATCH"
+    )
   })
 
   it("allows when user has no tenant role but valid org (fallback to member)", () => {

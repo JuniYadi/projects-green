@@ -107,7 +107,10 @@ export function ServerForm({
   // Any field change invalidates a prior connection-test result.
   const clearTestResult = () => setScanResult(null)
 
-  const setProtocol = (key: ProtocolKey, patch: Partial<ProtoState[ProtocolKey]>) => {
+  const setProtocol = (
+    key: ProtocolKey,
+    patch: Partial<ProtoState[ProtocolKey]>
+  ) => {
     clearTestResult()
     setProtocols((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))
   }
@@ -194,113 +197,115 @@ export function ServerForm({
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="server-name">Name</Label>
-            <Input
-              id="server-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="ID-01"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Region</Label>
-            <Select value={regionId} onValueChange={setRegionId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select region" />
-              </SelectTrigger>
-              <SelectContent>
-                {regions.map((region) => (
-                  <SelectItem key={region.id} value={region.id}>
-                    {region.countryCode.toUpperCase()} — {region.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="server-host">Hostname</Label>
-            <Input
-              id="server-host"
-              value={hostname}
-              onChange={(e) => {
-                clearTestResult()
-                setHostname(e.target.value)
-              }}
-              placeholder="vpn-id-01.example.net"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="server-ip">IP Address</Label>
-            <Input
-              id="server-ip"
-              value={ipAddress}
-              onChange={(e) => {
-                clearTestResult()
-                setIpAddress(e.target.value)
-              }}
-              placeholder="203.0.113.10 (optional)"
-            />
-            <p className="text-xs text-muted-foreground">
-              Optional — fallback if hostname DNS fails. IPv4 or IPv6.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="server-ssh-port">SSH Port</Label>
-            <Input
-              id="server-ssh-port"
-              type="number"
-              value={sshPort}
-              onChange={(e) => {
-                clearTestResult()
-                setSshPort(Number(e.target.value))
-              }}
-              placeholder="22"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>SSH Key</Label>
-            <Select
-              value={sshKeyId}
-              onValueChange={(value) => {
-                clearTestResult()
-                setSshKeyId(value)
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select SSH key" />
-              </SelectTrigger>
-              <SelectContent>
-                {sshKeys.map((key) => (
-                  <SelectItem
-                    key={key.id}
-                    value={key.id}
-                    title={`${key.name} — ${key.fingerprint}`}
-                  >
-                    <span className="flex max-w-[18rem] items-center gap-2">
-                      <span aria-hidden>🔑</span>
-                      <span className="truncate">{truncate(key.name, 40)}</span>
-                      <span className="truncate font-mono text-xs text-muted-foreground">
-                        {truncate(key.fingerprint, 12)}
+            <div className="space-y-2">
+              <Label htmlFor="server-name">Name</Label>
+              <Input
+                id="server-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="ID-01"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Region</Label>
+              <Select value={regionId} onValueChange={setRegionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select region" />
+                </SelectTrigger>
+                <SelectContent>
+                  {regions.map((region) => (
+                    <SelectItem key={region.id} value={region.id}>
+                      {region.countryCode.toUpperCase()} — {region.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="server-host">Hostname</Label>
+              <Input
+                id="server-host"
+                value={hostname}
+                onChange={(e) => {
+                  clearTestResult()
+                  setHostname(e.target.value)
+                }}
+                placeholder="vpn-id-01.example.net"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="server-ip">IP Address</Label>
+              <Input
+                id="server-ip"
+                value={ipAddress}
+                onChange={(e) => {
+                  clearTestResult()
+                  setIpAddress(e.target.value)
+                }}
+                placeholder="203.0.113.10 (optional)"
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional — fallback if hostname DNS fails. IPv4 or IPv6.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="server-ssh-port">SSH Port</Label>
+              <Input
+                id="server-ssh-port"
+                type="number"
+                value={sshPort}
+                onChange={(e) => {
+                  clearTestResult()
+                  setSshPort(Number(e.target.value))
+                }}
+                placeholder="22"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>SSH Key</Label>
+              <Select
+                value={sshKeyId}
+                onValueChange={(value) => {
+                  clearTestResult()
+                  setSshKeyId(value)
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select SSH key" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sshKeys.map((key) => (
+                    <SelectItem
+                      key={key.id}
+                      value={key.id}
+                      title={`${key.name} — ${key.fingerprint}`}
+                    >
+                      <span className="flex max-w-[18rem] items-center gap-2">
+                        <span aria-hidden>🔑</span>
+                        <span className="truncate">
+                          {truncate(key.name, 40)}
+                        </span>
+                        <span className="truncate font-mono text-xs text-muted-foreground">
+                          {truncate(key.fingerprint, 12)}
+                        </span>
                       </span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="server-ssh-user">SSH User</Label>
-            <Input
-              id="server-ssh-user"
-              value={sshUser}
-              onChange={(e) => {
-                clearTestResult()
-                setSshUser(e.target.value)
-              }}
-              placeholder="root"
-            />
-          </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="server-ssh-user">SSH User</Label>
+              <Input
+                id="server-ssh-user"
+                value={sshUser}
+                onChange={(e) => {
+                  clearTestResult()
+                  setSshUser(e.target.value)
+                }}
+                placeholder="root"
+              />
+            </div>
           </div>
 
           <div className="space-y-3">

@@ -32,8 +32,24 @@ export interface StackContainer {
   readinessProbePath?: string
   readinessProbePort?: number
   env?: Record<string, string>
-  configMaps?: Record<string, { value: Record<string, string>; mountPath?: string; subPath?: string; readOnly?: boolean }>
-  secrets?: Record<string, { value: Record<string, string>; mountPath?: string; subPath?: string; readOnly?: boolean }>
+  configMaps?: Record<
+    string,
+    {
+      value: Record<string, string>
+      mountPath?: string
+      subPath?: string
+      readOnly?: boolean
+    }
+  >
+  secrets?: Record<
+    string,
+    {
+      value: Record<string, string>
+      mountPath?: string
+      subPath?: string
+      readOnly?: boolean
+    }
+  >
   tlsSecrets?: Record<string, { cert: string; key: string; mountPath?: string }>
   storages?: Array<{
     name: string
@@ -86,14 +102,16 @@ export class ManifestBuilder {
         labels: {
           "app.kubernetes.io/name": this.stack.slug,
           "app.kubernetes.io/managed-by": "projects-green",
-          "team": this.stack.teamSlug,
+          team: this.stack.teamSlug,
         },
       },
     }
   }
 
   buildContainerDeployment(container: StackContainer): K8sResource {
-    const ports = container.ports ?? [{ name: "http", containerPort: 8080, protocol: "TCP" }]
+    const ports = container.ports ?? [
+      { name: "http", containerPort: 8080, protocol: "TCP" },
+    ]
     const replicas = container.replicas ?? 1
 
     const labels = this.baseLabels(container.name)
@@ -115,14 +133,20 @@ export class ManifestBuilder {
     // Probes
     if (container.startupProbeEnabled) {
       containerSpec.startupProbe = {
-        httpGet: { path: container.startupProbePath ?? "/health", port: container.startupProbePort ?? ports[0]?.containerPort ?? 8080 },
+        httpGet: {
+          path: container.startupProbePath ?? "/health",
+          port: container.startupProbePort ?? ports[0]?.containerPort ?? 8080,
+        },
         initialDelaySeconds: 30,
         periodSeconds: 10,
       }
     }
     if (container.readinessProbeEnabled) {
       containerSpec.readinessProbe = {
-        httpGet: { path: container.readinessProbePath ?? "/ready", port: container.readinessProbePort ?? ports[0]?.containerPort ?? 8080 },
+        httpGet: {
+          path: container.readinessProbePath ?? "/ready",
+          port: container.readinessProbePort ?? ports[0]?.containerPort ?? 8080,
+        },
         initialDelaySeconds: 5,
         periodSeconds: 10,
       }
@@ -151,7 +175,10 @@ export class ManifestBuilder {
     }
 
     // HPA
-    if (container.autoScalingEnabled && container.minReplicas !== container.maxReplicas) {
+    if (
+      container.autoScalingEnabled &&
+      container.minReplicas !== container.maxReplicas
+    ) {
       // HPA attached separately
     }
 
@@ -286,24 +313,37 @@ export class ManifestBuilder {
           },
         },
         spec: {
-          rules: [{
-            host: ing.host,
-            http: {
-              paths: [{
-                path: ing.path ?? "/",
-                pathType: "Prefix",
-                backend: {
-                  service: {
-                    name: ing.serviceName ?? container.name,
-                    port: { number: ing.servicePort ?? container.ports?.[0]?.containerPort ?? 80 },
+          rules: [
+            {
+              host: ing.host,
+              http: {
+                paths: [
+                  {
+                    path: ing.path ?? "/",
+                    pathType: "Prefix",
+                    backend: {
+                      service: {
+                        name: ing.serviceName ?? container.name,
+                        port: {
+                          number:
+                            ing.servicePort ??
+                            container.ports?.[0]?.containerPort ??
+                            80,
+                        },
+                      },
+                    },
                   },
-                },
-              }],
+                ],
+              },
             },
-          }],
-          ...(ing.tlsEnabled ? {
-            tls: [{ hosts: [ing.host], secretName: `${container.name}-tls` }],
-          } : {}),
+          ],
+          ...(ing.tlsEnabled
+            ? {
+                tls: [
+                  { hosts: [ing.host], secretName: `${container.name}-tls` },
+                ],
+              }
+            : {}),
         },
       }
     })
@@ -318,19 +358,34 @@ export class ManifestBuilder {
     if (container.targetCpuPercentage) {
       metrics.push({
         type: "Resource",
-        resource: { name: "cpu", target: { type: "Utilization", averageUtilization: container.targetCpuPercentage } },
+        resource: {
+          name: "cpu",
+          target: {
+            type: "Utilization",
+            averageUtilization: container.targetCpuPercentage,
+          },
+        },
       })
     }
     if (container.targetMemoryPercentage) {
       metrics.push({
         type: "Resource",
-        resource: { name: "memory", target: { type: "Utilization", averageUtilization: container.targetMemoryPercentage } },
+        resource: {
+          name: "memory",
+          target: {
+            type: "Utilization",
+            averageUtilization: container.targetMemoryPercentage,
+          },
+        },
       })
     }
     if (metrics.length === 0) {
       metrics.push({
         type: "Resource",
-        resource: { name: "cpu", target: { type: "Utilization", averageUtilization: 80 } },
+        resource: {
+          name: "cpu",
+          target: { type: "Utilization", averageUtilization: 80 },
+        },
       })
     }
 
@@ -343,7 +398,11 @@ export class ManifestBuilder {
         labels: this.baseLabels(container.name),
       },
       spec: {
-        scaleTargetRef: { apiVersion: "apps/v1", kind: "Deployment", name: container.name },
+        scaleTargetRef: {
+          apiVersion: "apps/v1",
+          kind: "Deployment",
+          name: container.name,
+        },
         minReplicas: container.minReplicas ?? 1,
         maxReplicas: container.maxReplicas ?? 10,
         metrics,
@@ -374,8 +433,15 @@ export class ManifestBuilder {
         },
         syncPolicy: {
           automated: { prune: true, selfHeal: true, allowEmpty: false },
-          syncOptions: ["CreateNamespace=true", "PrunePropagationPolicy=foreground", "PruneLast=true"],
-          retry: { limit: 5, backoff: { duration: "5s", factor: 2, maxDuration: "3m" } },
+          syncOptions: [
+            "CreateNamespace=true",
+            "PrunePropagationPolicy=foreground",
+            "PruneLast=true",
+          ],
+          retry: {
+            limit: 5,
+            backoff: { duration: "5s", factor: 2, maxDuration: "3m" },
+          },
         },
         revisionHistoryLimit: 10,
       },
@@ -389,21 +455,31 @@ export class ManifestBuilder {
       "app.kubernetes.io/version": this.stack.version ?? "latest",
       "app.kubernetes.io/part-of": this.stack.slug,
       "app.kubernetes.io/managed-by": "projects-green",
-      "team": this.stack.teamSlug,
+      team: this.stack.teamSlug,
     }
   }
 
-  private reloaderAnnotation(container: StackContainer): Record<string, string> {
-    if ((container.configMaps && Object.keys(container.configMaps).length > 0) ||
-        (container.secrets && Object.keys(container.secrets).length > 0) ||
-        (container.tlsSecrets && Object.keys(container.tlsSecrets).length > 0)) {
+  private reloaderAnnotation(
+    container: StackContainer
+  ): Record<string, string> {
+    if (
+      (container.configMaps && Object.keys(container.configMaps).length > 0) ||
+      (container.secrets && Object.keys(container.secrets).length > 0) ||
+      (container.tlsSecrets && Object.keys(container.tlsSecrets).length > 0)
+    ) {
       return { "reloader.stakater.com/auto": "true" }
     }
     return {}
   }
 
-  private buildEnv(container: StackContainer): Array<{ name: string; value?: string; valueFrom?: unknown }> {
-    const envVars: Array<{ name: string; value?: string; valueFrom?: unknown }> = []
+  private buildEnv(
+    container: StackContainer
+  ): Array<{ name: string; value?: string; valueFrom?: unknown }> {
+    const envVars: Array<{
+      name: string
+      value?: string
+      valueFrom?: unknown
+    }> = []
     if (container.env) {
       for (const [name, value] of Object.entries(container.env)) {
         envVars.push({ name, value })
@@ -412,10 +488,19 @@ export class ManifestBuilder {
     return envVars
   }
 
-  private buildResources(container: StackContainer): { requests: { cpu: string; memory: string }; limits: { cpu: string; memory: string } } {
+  private buildResources(container: StackContainer): {
+    requests: { cpu: string; memory: string }
+    limits: { cpu: string; memory: string }
+  } {
     return {
-      requests: { cpu: container.cpuRequest ?? "100m", memory: `${container.memoryRequestMb ?? 128}Mi` },
-      limits: { cpu: container.cpuLimit ?? "500m", memory: `${container.memoryLimitMb ?? 512}Mi` },
+      requests: {
+        cpu: container.cpuRequest ?? "100m",
+        memory: `${container.memoryRequestMb ?? 128}Mi`,
+      },
+      limits: {
+        cpu: container.cpuLimit ?? "500m",
+        memory: `${container.memoryLimitMb ?? 512}Mi`,
+      },
     }
   }
 
@@ -424,17 +509,31 @@ export class ManifestBuilder {
 
     if (container.configMaps) {
       for (const [name, cm] of Object.entries(container.configMaps)) {
-        mounts.push({ name, mountPath: cm.mountPath ?? `/config/${name}`, subPath: cm.subPath, readOnly: cm.readOnly ?? false })
+        mounts.push({
+          name,
+          mountPath: cm.mountPath ?? `/config/${name}`,
+          subPath: cm.subPath,
+          readOnly: cm.readOnly ?? false,
+        })
       }
     }
     if (container.secrets) {
       for (const [name, secret] of Object.entries(container.secrets)) {
-        mounts.push({ name, mountPath: secret.mountPath ?? `/secrets/${name}`, subPath: secret.subPath, readOnly: secret.readOnly ?? true })
+        mounts.push({
+          name,
+          mountPath: secret.mountPath ?? `/secrets/${name}`,
+          subPath: secret.subPath,
+          readOnly: secret.readOnly ?? true,
+        })
       }
     }
     if (container.tlsSecrets) {
       for (const [name, tls] of Object.entries(container.tlsSecrets)) {
-        mounts.push({ name, mountPath: tls.mountPath ?? `/etc/tls/${name}`, readOnly: true })
+        mounts.push({
+          name,
+          mountPath: tls.mountPath ?? `/etc/tls/${name}`,
+          readOnly: true,
+        })
       }
     }
     if (container.storages) {
@@ -466,7 +565,10 @@ export class ManifestBuilder {
     }
     if (container.storages) {
       for (const s of container.storages) {
-        volumes.push({ name: s.name, persistentVolumeClaim: { claimName: s.name } })
+        volumes.push({
+          name: s.name,
+          persistentVolumeClaim: { claimName: s.name },
+        })
       }
     }
 
@@ -495,7 +597,10 @@ export class StackSyncService {
   /**
    * Full lifecycle: generate all manifests per-container and push to GitOps repo.
    */
-  async syncStack(stack: AppStack, repoConfig: GitOpsRepoConfig): Promise<StackSyncResult> {
+  async syncStack(
+    stack: AppStack,
+    repoConfig: GitOpsRepoConfig
+  ): Promise<StackSyncResult> {
     const builder = new ManifestBuilder(stack)
     const files: Array<{ file: string; content: string }> = []
 
@@ -510,44 +615,68 @@ export class StackSyncService {
       const containerPath = `services-yaml/${stack.teamSlug}/${stack.slug}/${container.name}`
 
       // Deployment / StatefulSet
-      const resourceType = container.type === "statefulset" ? "statefulset.yml" : "deployment.yml"
-      files.push({ file: `${containerPath}/${resourceType}`, content: this.serialize(builder.buildContainerDeployment(container)) })
+      const resourceType =
+        container.type === "statefulset" ? "statefulset.yml" : "deployment.yml"
+      files.push({
+        file: `${containerPath}/${resourceType}`,
+        content: this.serialize(builder.buildContainerDeployment(container)),
+      })
 
       // Service
       const svc = builder.buildContainerService(container)
-      if (svc) files.push({ file: `${containerPath}/service.yml`, content: this.serialize(svc) })
+      if (svc)
+        files.push({
+          file: `${containerPath}/service.yml`,
+          content: this.serialize(svc),
+        })
 
       // ConfigMaps
       const cms = builder.buildConfigMaps(container)
       cms.forEach((cm, idx) => {
         const fn = idx === 0 ? "configmap.yml" : `configmap-${idx}.yml`
-        files.push({ file: `${containerPath}/${fn}`, content: this.serialize(cm) })
+        files.push({
+          file: `${containerPath}/${fn}`,
+          content: this.serialize(cm),
+        })
       })
 
       // Secrets
       const secrets = builder.buildSecrets(container)
       secrets.forEach((s, idx) => {
         const fn = idx === 0 ? "secret.yml" : `secret-${idx}.yml`
-        files.push({ file: `${containerPath}/${fn}`, content: this.serialize(s) })
+        files.push({
+          file: `${containerPath}/${fn}`,
+          content: this.serialize(s),
+        })
       })
 
       // PVCs
       const pvcs = builder.buildPVCs(container)
       pvcs.forEach((pvc, idx) => {
         const fn = idx === 0 ? "pvc.yml" : `pvc-${idx}.yml`
-        files.push({ file: `${containerPath}/${fn}`, content: this.serialize(pvc) })
+        files.push({
+          file: `${containerPath}/${fn}`,
+          content: this.serialize(pvc),
+        })
       })
 
       // Ingresses
       const ingresses = builder.buildIngresses(container)
       ingresses.forEach((ing, idx) => {
         const fn = idx === 0 ? "ingress.yml" : `ingress-${idx}.yml`
-        files.push({ file: `${containerPath}/${fn}`, content: this.serialize(ing) })
+        files.push({
+          file: `${containerPath}/${fn}`,
+          content: this.serialize(ing),
+        })
       })
 
       // HPA
       const hpa = builder.buildHPA(container)
-      if (hpa) files.push({ file: `${containerPath}/hpa.yml`, content: this.serialize(hpa) })
+      if (hpa)
+        files.push({
+          file: `${containerPath}/hpa.yml`,
+          content: this.serialize(hpa),
+        })
     }
 
     // ArgoCD Application
@@ -558,7 +687,10 @@ export class StackSyncService {
     })
 
     // Push to GitHub via Trees API
-    const filesFormatted = files.map(f => ({ path: f.file, content: f.content }))
+    const filesFormatted = files.map((f) => ({
+      path: f.file,
+      content: f.content,
+    }))
     const result = await this.gitops.commitFiles(
       fullRepo,
       `Deploy ${stack.name} to ${this.env} — ${stack.version ?? "latest"}`,
@@ -577,13 +709,21 @@ export class StackSyncService {
   /**
    * Delete all manifests for a stack from GitOps repo.
    */
-  async deleteStack(stack: AppStack, repoConfig: GitOpsRepoConfig): Promise<void> {
+  async deleteStack(
+    stack: AppStack,
+    repoConfig: GitOpsRepoConfig
+  ): Promise<void> {
     const fullRepo = `${repoConfig.owner}/${repoConfig.repo}`
     const deletePaths = [
       `services-yaml/${stack.teamSlug}/${stack.slug}`,
       `argocd-projects/${stack.teamSlug}-${stack.slug}.yml`,
     ]
-    await this.gitops.commitFiles(fullRepo, `Delete ${stack.name}`, [], deletePaths)
+    await this.gitops.commitFiles(
+      fullRepo,
+      `Delete ${stack.name}`,
+      [],
+      deletePaths
+    )
   }
 
   /**
@@ -602,8 +742,16 @@ export class StackSyncService {
 
       switch (type) {
         case "deployment": {
-          const resourceType = container.type === "statefulset" ? "statefulset.yml" : "deployment.yml"
-          files.push({ file: `${path}/${resourceType}`, content: this.serialize(builder.buildContainerDeployment(container)) })
+          const resourceType =
+            container.type === "statefulset"
+              ? "statefulset.yml"
+              : "deployment.yml"
+          files.push({
+            file: `${path}/${resourceType}`,
+            content: this.serialize(
+              builder.buildContainerDeployment(container)
+            ),
+          })
           break
         }
         case "configmap": {
@@ -644,8 +792,16 @@ export class StackSyncService {
     if (files.length === 0) return
 
     const fullRepo = `${repoConfig.owner}/${repoConfig.repo}`
-    const filesFormatted = files.map(f => ({ path: f.file, content: f.content }))
-    await this.gitops.commitFiles(fullRepo, `Update ${stack.name} manifests`, filesFormatted, [])
+    const filesFormatted = files.map((f) => ({
+      path: f.file,
+      content: f.content,
+    }))
+    await this.gitops.commitFiles(
+      fullRepo,
+      `Update ${stack.name} manifests`,
+      filesFormatted,
+      []
+    )
   }
 
   private serialize(obj: K8sResource): string {

@@ -25,7 +25,7 @@ function getEncryptionKey(): Buffer {
   const key = Buffer.from(raw, "hex")
   if (key.length !== 32) {
     throw new VpnCryptoError(
-      "ENCRYPTION_KEY must decode to exactly 32 bytes (64 hex characters) for AES-256-GCM",
+      "ENCRYPTION_KEY must decode to exactly 32 bytes (64 hex characters) for AES-256-GCM"
     )
   }
 

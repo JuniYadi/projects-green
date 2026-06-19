@@ -57,7 +57,10 @@ mock.module("@/lib/prisma", () => {
       billingInvoice: {
         findMany: mock(async () => []),
         findFirst: mock(async () => null),
-        create: mock(async (data: unknown) => ({ id: "inv-mock", ...(data as Record<string, unknown>) })),
+        create: mock(async (data: unknown) => ({
+          id: "inv-mock",
+          ...(data as Record<string, unknown>),
+        })),
         update: mock(async (data: unknown) => data),
       },
       billingAccount: {

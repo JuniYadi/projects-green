@@ -34,8 +34,12 @@ describe("ConfirmationsTab", () => {
     const view = render(<ConfirmationsTab />)
 
     expect(await view.findByRole("table")).toBeInTheDocument()
-    expect(view.getByRole("columnheader", { name: /amount/i })).toBeInTheDocument()
-    expect(view.getByRole("columnheader", { name: /bank account/i })).toBeInTheDocument()
+    expect(
+      view.getByRole("columnheader", { name: /amount/i })
+    ).toBeInTheDocument()
+    expect(
+      view.getByRole("columnheader", { name: /bank account/i })
+    ).toBeInTheDocument()
     expect(view.getByLabelText("Filter confirmations...")).toBeInTheDocument()
 
     fireEvent.click(view.getByRole("button", { name: "Review" }))
@@ -50,20 +54,25 @@ describe("ConfirmationsTab", () => {
     globalThis.fetch = Object.assign(
       async (url: string | URL | Request, init?: RequestInit) => {
         calls.push({ url: String(url), init })
-        return new Response(JSON.stringify(confirmationPayload), { status: 200 })
+        return new Response(JSON.stringify(confirmationPayload), {
+          status: 200,
+        })
       },
       { preconnect: () => {} }
     ) as typeof fetch
 
     const view = render(<ConfirmationsTab />)
     fireEvent.click(await view.findByRole("button", { name: "Review" }))
-    fireEvent.click(await view.findByRole("button", { name: "Approve received payment" }))
+    fireEvent.click(
+      await view.findByRole("button", { name: "Approve received payment" })
+    )
 
     await waitFor(() => {
       expect(
         calls.some(
           (call) =>
-            new URL(call.url, "http://localhost").pathname === "/api/portal/payments/confirmations/pc-1/approve" &&
+            new URL(call.url, "http://localhost").pathname ===
+              "/api/portal/payments/confirmations/pc-1/approve" &&
             call.init?.method === "POST"
         )
       ).toBe(true)
@@ -75,7 +84,9 @@ describe("ConfirmationsTab", () => {
     globalThis.fetch = Object.assign(
       async (url: string | URL | Request, init?: RequestInit) => {
         calls.push({ url: String(url), init })
-        return new Response(JSON.stringify(confirmationPayload), { status: 200 })
+        return new Response(JSON.stringify(confirmationPayload), {
+          status: 200,
+        })
       },
       { preconnect: () => {} }
     ) as typeof fetch
@@ -86,14 +97,17 @@ describe("ConfirmationsTab", () => {
       target: { value: "Amount does not match bank statement" },
     })
     await waitFor(() => {
-      expect(view.getByRole("button", { name: "Reject payment" })).not.toBeDisabled()
+      expect(
+        view.getByRole("button", { name: "Reject payment" })
+      ).not.toBeDisabled()
     })
     fireEvent.click(view.getByRole("button", { name: "Reject payment" }))
 
     await waitFor(() => {
       const rejectCall = calls.find(
         (call) =>
-          new URL(call.url, "http://localhost").pathname === "/api/portal/payments/confirmations/pc-1/reject" &&
+          new URL(call.url, "http://localhost").pathname ===
+            "/api/portal/payments/confirmations/pc-1/reject" &&
           call.init?.method === "POST"
       )
       expect(rejectCall).toBeDefined()

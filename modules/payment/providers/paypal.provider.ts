@@ -61,10 +61,14 @@ export const paypalProvider: PaymentProvider = {
     const environment = config.environment || "sandbox"
 
     if (!clientId || !clientSecret) {
-      throw new Error("PayPal gateway not configured: missing clientId or clientSecret")
+      throw new Error(
+        "PayPal gateway not configured: missing clientId or clientSecret"
+      )
     }
 
-    const baseUrl = PAYPAL_API_URLS[environment as keyof typeof PAYPAL_API_URLS] || PAYPAL_API_URLS.sandbox
+    const baseUrl =
+      PAYPAL_API_URLS[environment as keyof typeof PAYPAL_API_URLS] ||
+      PAYPAL_API_URLS.sandbox
 
     // 1. Get access token
     const token = await getAccessToken(baseUrl, clientId, clientSecret)
@@ -105,7 +109,10 @@ export const paypalProvider: PaymentProvider = {
     //   /v1/notifications/verify-webhook-signature
     // See: https://developer.paypal.com/docs/api/webhooks/v1/#verify-webhook-signature_post
     const eventType = String(payload.event_type || "")
-    if (eventType === "CHECKOUT.ORDER.APPROVED" || eventType === "PAYMENT.CAPTURE.COMPLETED") {
+    if (
+      eventType === "CHECKOUT.ORDER.APPROVED" ||
+      eventType === "PAYMENT.CAPTURE.COMPLETED"
+    ) {
       return true
     }
 
@@ -178,5 +185,8 @@ async function createOrder(
     throw new Error(`PayPal order error ${response.status}: ${errorBody}`)
   }
 
-  return response.json() as Promise<{ id: string; links: Array<{ rel: string; href: string }> }>
+  return response.json() as Promise<{
+    id: string
+    links: Array<{ rel: string; href: string }>
+  }>
 }

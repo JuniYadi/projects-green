@@ -13,10 +13,7 @@ import {
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@phosphor-icons/react"
-import {
-  getBillingAccount,
-  updateBillingCurrency,
-} from "@/lib/billing-client"
+import { getBillingAccount, updateBillingCurrency } from "@/lib/billing-client"
 
 type Currency = "USD" | "IDR"
 
@@ -48,7 +45,9 @@ export default function BillingSettingsPage() {
   }, [])
 
   useEffect(() => {
-    const run = async () => { await fetchSettings() }
+    const run = async () => {
+      await fetchSettings()
+    }
     run()
   }, [fetchSettings])
 

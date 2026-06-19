@@ -55,14 +55,17 @@ const mockPrisma = {
     create: mock(() => Promise.resolve({ id: "log-1" })),
     findMany: mock(() => Promise.resolve([])),
   },
-  $transaction: mock((fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
+  $transaction: mock((fn: (tx: typeof mockPrisma) => Promise<unknown>) =>
+    fn(mockPrisma)
+  ),
 }
 
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const { triggerDeploy, createOrUpdateStack } = await import("./deploy-pipeline.service")
+const { triggerDeploy, createOrUpdateStack } =
+  await import("./deploy-pipeline.service")
 
 describe("deploy-pipeline.service", () => {
   beforeEach(() => {

@@ -18,9 +18,7 @@ const main = async () => {
   const dryRun = isDryRun()
   const startTime = process.hrtime.bigint()
 
-  console.info(
-    `[cleanup-webhook-events] starting${dryRun ? " (DRY RUN)" : ""}`
-  )
+  console.info(`[cleanup-webhook-events] starting${dryRun ? " (DRY RUN)" : ""}`)
 
   // Calculate cutoff date: 90 days ago
   const cutoffDate = new Date()

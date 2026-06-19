@@ -25,19 +25,26 @@ const createAttachment = (id: string, mimeType: string, fileName: string) => ({
   uploadedAt: "2026-05-21T00:00:00.000Z",
 })
 
-const createThread = (ticketId: string, ticketNumber: string, overrides: {
-  attachmentMetadata?: ReturnType<typeof createAttachment>[]
-  replies?: Array<{
-    id: string
-    authorWorkosUserId: string
-    body: string
-    bodyHtml?: string
-    isInternalNote: boolean
-    secureForm?: string | null
+const createThread = (
+  ticketId: string,
+  ticketNumber: string,
+  overrides: {
     attachmentMetadata?: ReturnType<typeof createAttachment>[]
-  }>
-  users?: Record<string, { name: string; avatarUrl: string | null; isStaff: boolean }>
-} = {}) => ({
+    replies?: Array<{
+      id: string
+      authorWorkosUserId: string
+      body: string
+      bodyHtml?: string
+      isInternalNote: boolean
+      secureForm?: string | null
+      attachmentMetadata?: ReturnType<typeof createAttachment>[]
+    }>
+    users?: Record<
+      string,
+      { name: string; avatarUrl: string | null; isStaff: boolean }
+    >
+  } = {}
+) => ({
   ok: true,
   thread: {
     ticket: {
@@ -132,7 +139,10 @@ describe("SupportTicketDetailScreen", () => {
         return jsonResponse(createThread("ticket_new", "TCK-2002"))
       }
 
-      if (method === "POST" && url === "/api/support-tickets/ticket_1/replies") {
+      if (
+        method === "POST" &&
+        url === "/api/support-tickets/ticket_1/replies"
+      ) {
         return jsonResponse({
           ok: true,
           reply: { id: "reply_1" },
@@ -152,16 +162,21 @@ describe("SupportTicketDetailScreen", () => {
 
       return jsonResponse({ ok: false, message: "Unhandled request" }, 500)
     })
-    ;(globalThis as { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch
+    ;(globalThis as { fetch?: typeof fetch }).fetch =
+      fetchMock as unknown as typeof fetch
   })
 
   it("renders support ticket detail and thread state", async () => {
     const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
 
     // Component shows skeleton while loading
-    expect(view.container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument()
+    expect(
+      view.container.querySelector('[data-slot="skeleton"]')
+    ).toBeInTheDocument()
     await waitFor(() =>
-      expect(view.getByRole("heading", { name: "TCK-1001" })).toBeInTheDocument()
+      expect(
+        view.getByRole("heading", { name: "TCK-1001" })
+      ).toBeInTheDocument()
     )
     expect(view.getByText("No replies yet.")).toBeInTheDocument()
   })
@@ -173,30 +188,39 @@ describe("SupportTicketDetailScreen", () => {
     const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
 
     await waitFor(() =>
-      expect(view.getByText("Support ticket thread is unavailable.")).toBeInTheDocument()
+      expect(
+        view.getByText("Support ticket thread is unavailable.")
+      ).toBeInTheDocument()
     )
   })
 
   it("validates reply body before submit", async () => {
     const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
     await waitFor(() =>
-      expect(view.getByRole("heading", { name: "TCK-1001" })).toBeInTheDocument()
+      expect(
+        view.getByRole("heading", { name: "TCK-1001" })
+      ).toBeInTheDocument()
     )
 
     fireEvent.click(view.getByRole("button", { name: "Send Reply" }))
 
     await waitFor(() => {
-      expect(view.getByRole("alert")).toHaveTextContent("Reply message is required.")
+      expect(view.getByRole("alert")).toHaveTextContent(
+        "Reply message is required."
+      )
     })
   })
 
   it("closes ticket when confirmed", async () => {
     const confirmSpy = mock(() => true)
-    ;(window as unknown as { confirm: typeof confirm }).confirm = confirmSpy as unknown as typeof confirm
+    ;(window as unknown as { confirm: typeof confirm }).confirm =
+      confirmSpy as unknown as typeof confirm
 
     const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
     await waitFor(() =>
-      expect(view.getByRole("heading", { name: "TCK-1001" })).toBeInTheDocument()
+      expect(
+        view.getByRole("heading", { name: "TCK-1001" })
+      ).toBeInTheDocument()
     )
 
     fireEvent.click(view.getByRole("button", { name: "Close Ticket" }))
@@ -229,7 +253,9 @@ describe("SupportTicketDetailScreen", () => {
     nextRequest.resolve(jsonResponse(createThread("ticket_new", "TCK-2002")))
 
     await waitFor(() =>
-      expect(view.getByRole("heading", { name: "TCK-2002" })).toBeInTheDocument()
+      expect(
+        view.getByRole("heading", { name: "TCK-2002" })
+      ).toBeInTheDocument()
     )
 
     oldRequest.resolve(jsonResponse(createThread("ticket_1", "TCK-1001")))
@@ -248,7 +274,9 @@ describe("SupportTicketDetailScreen", () => {
         ],
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithAttachments))
+      fetchMock.mockImplementationOnce(async () =>
+        jsonResponse(threadWithAttachments)
+      )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
@@ -266,7 +294,9 @@ describe("SupportTicketDetailScreen", () => {
         ],
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithAttachments))
+      fetchMock.mockImplementationOnce(async () =>
+        jsonResponse(threadWithAttachments)
+      )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
@@ -274,8 +304,8 @@ describe("SupportTicketDetailScreen", () => {
       )
 
       const attachmentButtons = view.container.querySelectorAll("button")
-      const attachmentButton = Array.from(attachmentButtons).find(
-        (btn) => btn.textContent?.includes("my-image.png")
+      const attachmentButton = Array.from(attachmentButtons).find((btn) =>
+        btn.textContent?.includes("my-image.png")
       )
       expect(attachmentButton).toBeDefined()
     })
@@ -287,10 +317,15 @@ describe("SupportTicketDetailScreen", () => {
         ],
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithAttachments))
-      // Return blob for attachment download
       fetchMock.mockImplementationOnce(async () =>
-        new Response(new Blob(["fake image"], { type: "image/png" }), { status: 200 })
+        jsonResponse(threadWithAttachments)
+      )
+      // Return blob for attachment download
+      fetchMock.mockImplementationOnce(
+        async () =>
+          new Response(new Blob(["fake image"], { type: "image/png" }), {
+            status: 200,
+          })
       )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
@@ -300,8 +335,8 @@ describe("SupportTicketDetailScreen", () => {
 
       // Find and click the attachment button
       const attachmentButtons = view.container.querySelectorAll("button")
-      const attachmentButton = Array.from(attachmentButtons).find(
-        (btn) => btn.textContent?.includes("preview-me.png")
+      const attachmentButton = Array.from(attachmentButtons).find((btn) =>
+        btn.textContent?.includes("preview-me.png")
       )
       if (attachmentButton) {
         fireEvent.click(attachmentButton)
@@ -319,9 +354,14 @@ describe("SupportTicketDetailScreen", () => {
         ],
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithAttachments))
       fetchMock.mockImplementationOnce(async () =>
-        new Response(new Blob(["fake image data"], { type: "image/png" }), { status: 200 })
+        jsonResponse(threadWithAttachments)
+      )
+      fetchMock.mockImplementationOnce(
+        async () =>
+          new Response(new Blob(["fake image data"], { type: "image/png" }), {
+            status: 200,
+          })
       )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
@@ -330,8 +370,8 @@ describe("SupportTicketDetailScreen", () => {
       )
 
       const attachmentButtons = view.container.querySelectorAll("button")
-      const attachmentButton = Array.from(attachmentButtons).find(
-        (btn) => btn.textContent?.includes("my-photo.png")
+      const attachmentButton = Array.from(attachmentButtons).find((btn) =>
+        btn.textContent?.includes("my-photo.png")
       )
       if (attachmentButton) {
         fireEvent.click(attachmentButton)
@@ -341,10 +381,13 @@ describe("SupportTicketDetailScreen", () => {
         expect(view.getByText("Loading preview...")).toBeInTheDocument()
       })
 
-      await waitFor(() => {
-        const img = view.container.querySelector("img")
-        expect(img).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          const img = view.container.querySelector("img")
+          expect(img).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it("displays CSV text content in preview", async () => {
@@ -354,9 +397,15 @@ describe("SupportTicketDetailScreen", () => {
         ],
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithAttachments))
       fetchMock.mockImplementationOnce(async () =>
-        new Response(new Blob(["name,value\nfoo,bar"], { type: "text/csv" }), { status: 200 })
+        jsonResponse(threadWithAttachments)
+      )
+      fetchMock.mockImplementationOnce(
+        async () =>
+          new Response(
+            new Blob(["name,value\nfoo,bar"], { type: "text/csv" }),
+            { status: 200 }
+          )
       )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
@@ -365,16 +414,19 @@ describe("SupportTicketDetailScreen", () => {
       )
 
       const attachmentButtons = view.container.querySelectorAll("button")
-      const attachmentButton = Array.from(attachmentButtons).find(
-        (btn) => btn.textContent?.includes("report.csv")
+      const attachmentButton = Array.from(attachmentButtons).find((btn) =>
+        btn.textContent?.includes("report.csv")
       )
       if (attachmentButton) {
         fireEvent.click(attachmentButton)
       }
 
-      await waitFor(() => {
-        expect(view.getByText(/name,value/)).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(view.getByText(/name,value/)).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it("shows PDF preview with iframe", async () => {
@@ -384,9 +436,14 @@ describe("SupportTicketDetailScreen", () => {
         ],
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithAttachments))
       fetchMock.mockImplementationOnce(async () =>
-        new Response(new Blob(["%PDF-1.4"], { type: "application/pdf" }), { status: 200 })
+        jsonResponse(threadWithAttachments)
+      )
+      fetchMock.mockImplementationOnce(
+        async () =>
+          new Response(new Blob(["%PDF-1.4"], { type: "application/pdf" }), {
+            status: 200,
+          })
       )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
@@ -395,17 +452,20 @@ describe("SupportTicketDetailScreen", () => {
       )
 
       const attachmentButtons = view.container.querySelectorAll("button")
-      const attachmentButton = Array.from(attachmentButtons).find(
-        (btn) => btn.textContent?.includes("document.pdf")
+      const attachmentButton = Array.from(attachmentButtons).find((btn) =>
+        btn.textContent?.includes("document.pdf")
       )
       if (attachmentButton) {
         fireEvent.click(attachmentButton)
       }
 
-      await waitFor(() => {
-        const iframe = view.container.querySelector("iframe")
-        expect(iframe).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          const iframe = view.container.querySelector("iframe")
+          expect(iframe).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it("shows unsupported preview state for unknown file types", async () => {
@@ -415,9 +475,14 @@ describe("SupportTicketDetailScreen", () => {
         ],
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithAttachments))
       fetchMock.mockImplementationOnce(async () =>
-        new Response(new Blob(["PK fake zip"], { type: "application/zip" }), { status: 200 })
+        jsonResponse(threadWithAttachments)
+      )
+      fetchMock.mockImplementationOnce(
+        async () =>
+          new Response(new Blob(["PK fake zip"], { type: "application/zip" }), {
+            status: 200,
+          })
       )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
@@ -426,16 +491,19 @@ describe("SupportTicketDetailScreen", () => {
       )
 
       const attachmentButtons = view.container.querySelectorAll("button")
-      const attachmentButton = Array.from(attachmentButtons).find(
-        (btn) => btn.textContent?.includes("archive.zip")
+      const attachmentButton = Array.from(attachmentButtons).find((btn) =>
+        btn.textContent?.includes("archive.zip")
       )
       if (attachmentButton) {
         fireEvent.click(attachmentButton)
       }
 
-      await waitFor(() => {
-        expect(view.getByText("Preview Unavailable")).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(view.getByText("Preview Unavailable")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it("handles attachment download error by showing preview unavailable", async () => {
@@ -462,8 +530,8 @@ describe("SupportTicketDetailScreen", () => {
       )
 
       const attachmentButtons = view.container.querySelectorAll("button")
-      const attachmentButton = Array.from(attachmentButtons).find(
-        (btn) => btn.textContent?.includes("error-img.png")
+      const attachmentButton = Array.from(attachmentButtons).find((btn) =>
+        btn.textContent?.includes("error-img.png")
       )
       if (attachmentButton) {
         fireEvent.click(attachmentButton)
@@ -471,9 +539,12 @@ describe("SupportTicketDetailScreen", () => {
 
       // When fetch fails with non-ok status, the error is caught and sets type to "unsupported"
       // which shows "Preview Unavailable" message
-      await waitFor(() => {
-        expect(view.getByText("Preview Unavailable")).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(view.getByText("Preview Unavailable")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it("closes modal when close button is clicked", async () => {
@@ -483,9 +554,14 @@ describe("SupportTicketDetailScreen", () => {
         ],
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithAttachments))
       fetchMock.mockImplementationOnce(async () =>
-        new Response(new Blob(["image"], { type: "image/png" }), { status: 200 })
+        jsonResponse(threadWithAttachments)
+      )
+      fetchMock.mockImplementationOnce(
+        async () =>
+          new Response(new Blob(["image"], { type: "image/png" }), {
+            status: 200,
+          })
       )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
@@ -494,8 +570,8 @@ describe("SupportTicketDetailScreen", () => {
       )
 
       const attachmentButtons = view.container.querySelectorAll("button")
-      const attachmentButton = Array.from(attachmentButtons).find(
-        (btn) => btn.textContent?.includes("close-me.png")
+      const attachmentButton = Array.from(attachmentButtons).find((btn) =>
+        btn.textContent?.includes("close-me.png")
       )
       if (attachmentButton) {
         fireEvent.click(attachmentButton)
@@ -537,7 +613,9 @@ describe("SupportTicketDetailScreen", () => {
         },
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithStaff))
+      fetchMock.mockImplementationOnce(async () =>
+        jsonResponse(threadWithStaff)
+      )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
@@ -563,7 +641,9 @@ describe("SupportTicketDetailScreen", () => {
         },
       })
 
-      fetchMock.mockImplementationOnce(async () => jsonResponse(threadWithCustomer))
+      fetchMock.mockImplementationOnce(async () =>
+        jsonResponse(threadWithCustomer)
+      )
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>

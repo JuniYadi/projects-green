@@ -5,10 +5,7 @@ import type { Transporter } from "nodemailer"
 import { TicketCreatedEmail } from "./emails/ticket-created"
 import { TicketRepliedEmail } from "./emails/ticket-replied"
 import { TicketClosedEmail } from "./emails/ticket-closed"
-import type {
-  SupportTicket,
-  SupportTicketReply,
-} from "./support-ticket.types"
+import type { SupportTicket, SupportTicketReply } from "./support-ticket.types"
 import { SUPPORT_TICKET_STATUS_LABELS } from "./support-ticket.types"
 
 export class EmailServiceError extends Error {
@@ -21,17 +18,14 @@ export class EmailServiceError extends Error {
 export type EmailService = {
   sendTicketCreated(
     ticket: SupportTicket,
-    requesterEmail: string,
+    requesterEmail: string
   ): Promise<void>
   sendTicketReplied(
     ticket: SupportTicket,
     reply: SupportTicketReply,
-    requesterEmail: string,
+    requesterEmail: string
   ): Promise<void>
-  sendTicketClosed(
-    ticket: SupportTicket,
-    requesterEmail: string,
-  ): Promise<void>
+  sendTicketClosed(ticket: SupportTicket, requesterEmail: string): Promise<void>
 }
 
 type EmailServiceOptions = {
@@ -51,16 +45,14 @@ const createLazyDefaultTransporter = (): Transporter => {
 }
 
 export const createEmailService = (
-  options: EmailServiceOptions = {},
+  options: EmailServiceOptions = {}
 ): EmailService => {
   const transporter = options.transporter ?? createLazyDefaultTransporter()
 
   return {
     async sendTicketCreated(ticket: SupportTicket, requesterEmail: string) {
       try {
-        const html = await render(
-          <TicketCreatedEmail ticket={ticket} />,
-        )
+        const html = await render(<TicketCreatedEmail ticket={ticket} />)
 
         await transporter.sendMail({
           from: process.env.EMAIL_FROM || "Support <support@yourapp.com>",
@@ -71,7 +63,7 @@ export const createEmailService = (
       } catch (error) {
         console.error("Failed to send ticket created email:", error)
         throw new EmailServiceError(
-          `Failed to send ticket created notification: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to send ticket created notification: ${error instanceof Error ? error.message : String(error)}`
         )
       }
     },
@@ -79,11 +71,11 @@ export const createEmailService = (
     async sendTicketReplied(
       ticket: SupportTicket,
       reply: SupportTicketReply,
-      requesterEmail: string,
+      requesterEmail: string
     ) {
       try {
         const html = await render(
-          <TicketRepliedEmail ticket={ticket} reply={reply} />,
+          <TicketRepliedEmail ticket={ticket} reply={reply} />
         )
 
         await transporter.sendMail({
@@ -95,16 +87,14 @@ export const createEmailService = (
       } catch (error) {
         console.error("Failed to send ticket replied email:", error)
         throw new EmailServiceError(
-          `Failed to send ticket replied notification: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to send ticket replied notification: ${error instanceof Error ? error.message : String(error)}`
         )
       }
     },
 
     async sendTicketClosed(ticket: SupportTicket, requesterEmail: string) {
       try {
-        const html = await render(
-          <TicketClosedEmail ticket={ticket} />,
-        )
+        const html = await render(<TicketClosedEmail ticket={ticket} />)
 
         await transporter.sendMail({
           from: process.env.EMAIL_FROM || "Support <support@yourapp.com>",
@@ -115,7 +105,7 @@ export const createEmailService = (
       } catch (error) {
         console.error("Failed to send ticket closed email:", error)
         throw new EmailServiceError(
-          `Failed to send ticket closed notification: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to send ticket closed notification: ${error instanceof Error ? error.message : String(error)}`
         )
       }
     },

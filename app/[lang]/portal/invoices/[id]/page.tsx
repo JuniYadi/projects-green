@@ -11,7 +11,9 @@ type InvoiceDetailPageProps = {
   }>
 }
 
-export default async function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
+export default async function InvoiceDetailPage({
+  params,
+}: InvoiceDetailPageProps) {
   const { lang, id } = await params
   const locale = resolveLocaleOrDefault(lang)
 

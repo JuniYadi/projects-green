@@ -33,11 +33,21 @@ const UpdateCurrencySchema = z.object({
 async function requireSuperAdmin() {
   const auth = await withAuth()
   if (!auth.user || !auth.organizationId) {
-    return { ok: false as const, status: 401, error: "UNAUTHORIZED", message: "Authentication required" }
+    return {
+      ok: false as const,
+      status: 401,
+      error: "UNAUTHORIZED",
+      message: "Authentication required",
+    }
   }
   const platformRole = await getPlatformRoleForUser(auth.user)
   if (platformRole !== "super_admin") {
-    return { ok: false as const, status: 403, error: "FORBIDDEN", message: "Admin access required" }
+    return {
+      ok: false as const,
+      status: 403,
+      error: "FORBIDDEN",
+      message: "Admin access required",
+    }
   }
   return { ok: true as const }
 }
@@ -80,7 +90,10 @@ export const createAdminCurrencyRoutes = () =>
         return {
           ok: false,
           error: "CLIENT_ERROR",
-          message: error instanceof Error ? error.message : "Failed to create currency",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to create currency",
         }
       }
     })
@@ -110,7 +123,10 @@ export const createAdminCurrencyRoutes = () =>
         return {
           ok: false,
           error: "CLIENT_ERROR",
-          message: error instanceof Error ? error.message : "Failed to update currency",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to update currency",
         }
       }
     })
@@ -129,7 +145,10 @@ export const createAdminCurrencyRoutes = () =>
         return {
           ok: false,
           error: "CLIENT_ERROR",
-          message: error instanceof Error ? error.message : "Failed to toggle currency",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to toggle currency",
         }
       }
     })

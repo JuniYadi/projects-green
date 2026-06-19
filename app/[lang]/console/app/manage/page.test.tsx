@@ -11,7 +11,6 @@ const updateQueryFromUrl = (url: string) => {
   currentQuery = parts[1] ?? ""
 }
 
-
 const sampleApp = {
   id: "stack-1",
   name: "console-next-app",
@@ -75,10 +74,10 @@ const installFetch = () => {
 
     if (url.pathname.startsWith("/api/deploy/events/")) {
       return Promise.resolve(
-        new Response(
-          JSON.stringify({ ok: true, data: [], events: [] }),
-          { status: 200, headers: { "content-type": "application/json" } }
-        )
+        new Response(JSON.stringify({ ok: true, data: [], events: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
       )
     }
 
@@ -214,11 +213,13 @@ describe("ManagePage", () => {
     await renderPage()
 
     await waitFor(() => {
-      const calls = (useRouter().replace as ReturnType<typeof mock>).mock.calls;
-      expect(calls.some((args: unknown) => {
-        const url = (args as unknown[])[0] as string
-        return url.includes("app=console-next-app")
-      })).toBe(true)
+      const calls = (useRouter().replace as ReturnType<typeof mock>).mock.calls
+      expect(
+        calls.some((args: unknown) => {
+          const url = (args as unknown[])[0] as string
+          return url.includes("app=console-next-app")
+        })
+      ).toBe(true)
     })
   })
 })

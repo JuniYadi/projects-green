@@ -14,12 +14,7 @@ export type EnvVariableRecord = {
 
 export type EnvVariableActivity = {
   id: string
-  action:
-    | "created"
-    | "updated"
-    | "deleted"
-    | "imported"
-    | "validation_error"
+  action: "created" | "updated" | "deleted" | "imported" | "validation_error"
   message: string
   occurredAt: string
 }

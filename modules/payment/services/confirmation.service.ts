@@ -9,7 +9,8 @@ export class ConfirmationService {
 
   constructor(billingTransactions?: BillingTransactionService) {
     this.billingTransactions =
-      billingTransactions ?? new BillingTransactionService(prisma as unknown as PrismaClient)
+      billingTransactions ??
+      new BillingTransactionService(prisma as unknown as PrismaClient)
   }
 
   async create(input: {
@@ -93,7 +94,8 @@ export class ConfirmationService {
       })
 
       if (!confirmation) throw new Error("Confirmation not found")
-      if (confirmation.status !== "PENDING") throw new Error("Confirmation already processed")
+      if (confirmation.status !== "PENDING")
+        throw new Error("Confirmation already processed")
 
       const invoice = confirmation.invoice
       const amount = confirmation.amount
@@ -103,7 +105,9 @@ export class ConfirmationService {
       }
 
       // Credit balance via BillingTransactionService with transaction-scoped Prisma client
-      const billingTx = new BillingTransactionService(tx as unknown as PrismaClient)
+      const billingTx = new BillingTransactionService(
+        tx as unknown as PrismaClient
+      )
       await billingTx.creditBalance({
         organizationId: invoice.billingAccount.organizationId,
         amount: new Decimal(amount),
@@ -150,7 +154,8 @@ export class ConfirmationService {
     })
 
     if (!confirmation) throw new Error("Confirmation not found")
-    if (confirmation.status !== "PENDING") throw new Error("Confirmation already processed")
+    if (confirmation.status !== "PENDING")
+      throw new Error("Confirmation already processed")
 
     await prisma.paymentConfirmation.update({
       where: { id },

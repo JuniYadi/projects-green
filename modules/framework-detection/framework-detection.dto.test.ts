@@ -168,7 +168,8 @@ describe("framework-detection.dto", () => {
         confidence: 0,
         decision: {
           status: "unsupported",
-          message: "We couldn't verify a supported framework in this repository.",
+          message:
+            "We couldn't verify a supported framework in this repository.",
           isLaunchable: false,
         },
         evidence: [],
@@ -212,7 +213,9 @@ describe("framework-detection.dto", () => {
 
       expect(result.id).toBe("log-123")
       expect(result.detectedFramework).toBe("laravel")
-      expect(result.enforcedRuntimes).toEqual([{ runtimeId: "php", version: "8.2" }])
+      expect(result.enforcedRuntimes).toEqual([
+        { runtimeId: "php", version: "8.2" },
+      ])
       expect(result.status).toBe("success")
     })
   })

@@ -56,7 +56,9 @@ export const createWebhookRoutes = () =>
           })
 
           if (!invoice?.billingAccountId) {
-            console.error(`Invoice ${merchantOrderId} not found or missing billingAccountId`)
+            console.error(
+              `Invoice ${merchantOrderId} not found or missing billingAccountId`
+            )
             // Return 200 to prevent Duitku retries for invalid orders
             return { ok: true }
           }
@@ -66,7 +68,9 @@ export const createWebhookRoutes = () =>
           })
 
           if (!billingAccount?.organizationId) {
-            console.error(`Billing account not found for invoice ${merchantOrderId}`)
+            console.error(
+              `Billing account not found for invoice ${merchantOrderId}`
+            )
             return { ok: true }
           }
 
@@ -88,7 +92,10 @@ export const createWebhookRoutes = () =>
             },
           })
         } catch (error) {
-          console.error(`Failed to process payment for ${merchantOrderId}:`, error)
+          console.error(
+            `Failed to process payment for ${merchantOrderId}:`,
+            error
+          )
         }
       } else {
         console.log(`Payment failed for ${merchantOrderId}: ${resultCode}`)
@@ -97,7 +104,10 @@ export const createWebhookRoutes = () =>
       return { ok: true }
     })
     .get("/duitku/return", async ({ query, set }) => {
-      const { merchantOrderId, resultCode } = query as { merchantOrderId?: string; resultCode?: string }
+      const { merchantOrderId, resultCode } = query as {
+        merchantOrderId?: string
+        resultCode?: string
+      }
 
       if (!merchantOrderId) {
         set.status = 400
@@ -105,5 +115,8 @@ export const createWebhookRoutes = () =>
       }
 
       const status = resultCode === "00" ? "success" : "failed"
-      return { ok: true, redirect: `/console/billing/invoices/${merchantOrderId}?payment=${status}` }
+      return {
+        ok: true,
+        redirect: `/console/billing/invoices/${merchantOrderId}?payment=${status}`,
+      }
     })

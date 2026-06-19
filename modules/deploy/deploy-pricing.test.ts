@@ -18,12 +18,20 @@ describe("deploy-pricing", () => {
 
   it("scales PAYG cost with cpu and memory", () => {
     // 100m CPU * 0.00005 + 256MiB * 0.00001 = 0.005 + 0.00256 = 0.00756
-    expect(computeHourlyCost({ resourcePlanId: "payg", cpu: 100, memory: 256 })).toBe(
-      0.0076
-    )
+    expect(
+      computeHourlyCost({ resourcePlanId: "payg", cpu: 100, memory: 256 })
+    ).toBe(0.0076)
     // Larger compute costs more
-    const small = computeHourlyCost({ resourcePlanId: "payg", cpu: 100, memory: 256 })
-    const large = computeHourlyCost({ resourcePlanId: "payg", cpu: 2000, memory: 4096 })
+    const small = computeHourlyCost({
+      resourcePlanId: "payg",
+      cpu: 100,
+      memory: 256,
+    })
+    const large = computeHourlyCost({
+      resourcePlanId: "payg",
+      cpu: 2000,
+      memory: 4096,
+    })
     expect(large).toBeGreaterThan(small)
   })
 

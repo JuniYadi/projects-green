@@ -59,7 +59,9 @@ export class CurrencyService {
   }
 
   async getBase(): Promise<CurrencyRecord> {
-    const base = await this.db.paymentCurrency.findFirst({ where: { isBase: true } })
+    const base = await this.db.paymentCurrency.findFirst({
+      where: { isBase: true },
+    })
     if (!base) throw new BaseCurrencyMissingError()
     return base
   }
@@ -79,7 +81,8 @@ export class CurrencyService {
     from: string,
     to: string
   ): Promise<Prisma.Decimal> {
-    const value = amount instanceof Prisma.Decimal ? amount : new Prisma.Decimal(amount)
+    const value =
+      amount instanceof Prisma.Decimal ? amount : new Prisma.Decimal(amount)
     if (from === to) return value
 
     const [fromCurrency, toCurrency] = await Promise.all([
@@ -92,15 +95,23 @@ export class CurrencyService {
   }
 
   /** Convert an amount expressed in `code` into the base currency. */
-  async toBase(amount: Prisma.Decimal | number, code: string): Promise<Prisma.Decimal> {
-    const value = amount instanceof Prisma.Decimal ? amount : new Prisma.Decimal(amount)
+  async toBase(
+    amount: Prisma.Decimal | number,
+    code: string
+  ): Promise<Prisma.Decimal> {
+    const value =
+      amount instanceof Prisma.Decimal ? amount : new Prisma.Decimal(amount)
     const currency = await this.getByCode(code)
     return value.div(currency.ratePerBase)
   }
 
   /** Convert an amount expressed in the base currency into `code`. */
-  async fromBase(amount: Prisma.Decimal | number, code: string): Promise<Prisma.Decimal> {
-    const value = amount instanceof Prisma.Decimal ? amount : new Prisma.Decimal(amount)
+  async fromBase(
+    amount: Prisma.Decimal | number,
+    code: string
+  ): Promise<Prisma.Decimal> {
+    const value =
+      amount instanceof Prisma.Decimal ? amount : new Prisma.Decimal(amount)
     const currency = await this.getByCode(code)
     return value.mul(currency.ratePerBase)
   }
@@ -130,7 +141,9 @@ export class CurrencyService {
           symbol: input.symbol,
           isBase,
           // Base currency always has a rate of exactly 1 against itself.
-          ratePerBase: isBase ? new Prisma.Decimal(1) : new Prisma.Decimal(input.ratePerBase),
+          ratePerBase: isBase
+            ? new Prisma.Decimal(1)
+            : new Prisma.Decimal(input.ratePerBase),
           minTopup: new Prisma.Decimal(input.minTopup),
           maxTopup: new Prisma.Decimal(input.maxTopup),
           sortOrder: input.sortOrder ?? 0,
@@ -170,8 +183,10 @@ export class CurrencyService {
       if (input.isBase !== undefined) data.isBase = input.isBase
       if (input.isActive !== undefined) data.isActive = input.isActive
       if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder
-      if (input.minTopup !== undefined) data.minTopup = new Prisma.Decimal(input.minTopup)
-      if (input.maxTopup !== undefined) data.maxTopup = new Prisma.Decimal(input.maxTopup)
+      if (input.minTopup !== undefined)
+        data.minTopup = new Prisma.Decimal(input.minTopup)
+      if (input.maxTopup !== undefined)
+        data.maxTopup = new Prisma.Decimal(input.maxTopup)
 
       // The base currency is pinned to a rate of 1; ignore rate edits on it.
       const willBeBase = input.isBase ?? existing.isBase

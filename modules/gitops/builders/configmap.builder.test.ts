@@ -44,13 +44,17 @@ describe("ConfigMapBuilder", () => {
   })
 
   it("builds ConfigMap with binary data", () => {
-    const binaryData = { "key.bin": Buffer.from("binary content").toString("base64") }
+    const binaryData = {
+      "key.bin": Buffer.from("binary content").toString("base64"),
+    }
     const configMap = new ConfigMapBuilder("my-config", "default")
       .withBinaryData(binaryData)
       .build()
 
     expect(configMap.binaryData).toBeDefined()
-    expect(configMap.binaryData!["key.bin"]).toBe(Buffer.from("binary content").toString("base64"))
+    expect(configMap.binaryData!["key.bin"]).toBe(
+      Buffer.from("binary content").toString("base64")
+    )
   })
 
   it("chains multiple data entries", () => {
@@ -79,8 +83,9 @@ describe("ConfigMapBuilder", () => {
   })
 
   it("returns immutable copy of built ConfigMap", () => {
-    const builder = new ConfigMapBuilder("my-config", "default")
-      .withData({ KEY: "value" })
+    const builder = new ConfigMapBuilder("my-config", "default").withData({
+      KEY: "value",
+    })
 
     const configMap1 = builder.build()
     const configMap2 = builder.build()

@@ -38,7 +38,9 @@ function toWhatsappMessageStatusDTO(
 }
 
 export function toWhatsappMessageDTO(
-  message: Prisma.WhatsappMessageGetPayload<Prisma.WhatsappMessageDefaultArgs> | MessageWithStatusHistory
+  message:
+    | Prisma.WhatsappMessageGetPayload<Prisma.WhatsappMessageDefaultArgs>
+    | MessageWithStatusHistory
 ): WhatsappMessageDTO {
   return {
     id: message.id,
@@ -51,8 +53,9 @@ export function toWhatsappMessageDTO(
     metadata: message.metadata,
     createdAt: message.createdAt,
     updatedAt: message.updatedAt,
-    statusHistory: "statusHistory" in message
-      ? message.statusHistory.map(toWhatsappMessageStatusDTO)
-      : undefined,
+    statusHistory:
+      "statusHistory" in message
+        ? message.statusHistory.map(toWhatsappMessageStatusDTO)
+        : undefined,
   }
 }

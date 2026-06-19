@@ -70,7 +70,9 @@ export class BillingTransactionService {
    * Credit balance from top-up, admin adjustment, or manual transfer approval.
    * Idempotent — returns alreadyProcessed=true if the same idempotencyKey exists.
    */
-  async creditBalance(input: BalanceMutationInput): Promise<BalanceMutationResult> {
+  async creditBalance(
+    input: BalanceMutationInput
+  ): Promise<BalanceMutationResult> {
     return this.mutateBalance(input, "CREDIT")
   }
 
@@ -78,7 +80,9 @@ export class BillingTransactionService {
    * Debit balance for product charges (App Hosting, WhatsApp, VPN, etc.).
    * Idempotent — returns alreadyProcessed=true if the same idempotencyKey exists.
    */
-  async debitBalance(input: BalanceMutationInput): Promise<BalanceMutationResult> {
+  async debitBalance(
+    input: BalanceMutationInput
+  ): Promise<BalanceMutationResult> {
     return this.mutateBalance(input, "DEBIT")
   }
 
@@ -87,17 +91,22 @@ export class BillingTransactionService {
    * Creates a DRAFT service invoice if none exists for the current month.
    */
   async debitServiceBalance(
-    input: ServiceBalanceInput,
+    input: ServiceBalanceInput
   ): Promise<BalanceMutationResult> {
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.billingAccount.findUnique({
         where: { organizationId: input.organizationId },
       })
       if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
-      if (account.currency !== input.currency) throw new Error("CURRENCY_MISMATCH")
+      if (account.currency !== input.currency)
+        throw new Error("CURRENCY_MISMATCH")
 
       // Create or reuse current-month service invoice
-      const invoice = await this.ensureMonthlyServiceInvoice(tx, account.id, account.currency)
+      const invoice = await this.ensureMonthlyServiceInvoice(
+        tx,
+        account.id,
+        account.currency
+      )
 
       // Guard: reject adding lines to finalized/paid invoices
       if (invoice.status !== "DRAFT") {
@@ -108,7 +117,8 @@ export class BillingTransactionService {
       const line = await tx.billingInvoiceLine.create({
         data: {
           invoiceId: invoice.id,
-          lineType: input.line.lineType === "SUBSCRIPTION" ? "SUBSCRIPTION" : "METERED",
+          lineType:
+            input.line.lineType === "SUBSCRIPTION" ? "SUBSCRIPTION" : "METERED",
           description: input.line.description,
           quantity: input.line.quantity,
           unitPrice: input.line.unitPrice,
@@ -118,7 +128,8 @@ export class BillingTransactionService {
           periodEnd: invoice.periodEnd,
           metadataJson: {
             source: input.source,
-            category: input.line.category ?? inferCategory(input.line.description),
+            category:
+              input.line.category ?? inferCategory(input.line.description),
             _internal: { idempotencyKey: input.idempotencyKey },
           },
         },
@@ -140,7 +151,7 @@ export class BillingTransactionService {
         input,
         "DEBIT",
         invoice.id,
-        line.id,
+        line.id
       )
     })
   }
@@ -149,14 +160,15 @@ export class BillingTransactionService {
 
   private async mutateBalance(
     input: BalanceMutationInput,
-    direction: "CREDIT" | "DEBIT",
+    direction: "CREDIT" | "DEBIT"
   ): Promise<BalanceMutationResult> {
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.billingAccount.findUnique({
         where: { organizationId: input.organizationId },
       })
       if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
-      if (account.currency !== input.currency) throw new Error("CURRENCY_MISMATCH")
+      if (account.currency !== input.currency)
+        throw new Error("CURRENCY_MISMATCH")
 
       // Idempotency check — idempotencyKey is stored under _internal to avoid leaking into user-facing API responses
       const existing = await tx.billingAdjustment.findFirst({
@@ -186,7 +198,7 @@ export class BillingTransactionService {
         input,
         direction,
         input.invoiceId,
-        input.invoiceLineId,
+        input.invoiceLineId
       )
     })
   }
@@ -201,7 +213,7 @@ export class BillingTransactionService {
     input: BalanceMutationInput,
     direction: "CREDIT" | "DEBIT",
     invoiceId?: string,
-    invoiceLineId?: string,
+    invoiceLineId?: string
   ): Promise<BalanceMutationResult> {
     const balanceBefore = account.balance
     const balanceAfter =
@@ -252,12 +264,14 @@ export class BillingTransactionService {
   private async ensureMonthlyServiceInvoice(
     tx: TxClient,
     billingAccountId: string,
-    currency: string,
+    currency: string
   ) {
     const now = new Date()
-    const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    const periodStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+    )
     const periodEnd = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999),
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)
     )
 
     // Look for existing DRAFT service invoice for this period

@@ -59,7 +59,7 @@ export function testIsAdmin(
     platformRole: PlatformAccessRole
     [key: string]: string | null | undefined
   }) => boolean,
-  orgProp: "orgRole" | "tenantRole" = "orgRole",
+  orgProp: "orgRole" | "tenantRole" = "orgRole"
 ) {
   const role = (v: string | null | undefined) => ({ [orgProp]: v })
 
@@ -69,11 +69,15 @@ export function testIsAdmin(
     })
 
     it("returns true for super_admin with undefined role", () => {
-      expect(isAdmin({ platformRole: "super_admin", ...role(undefined) })).toBe(true)
+      expect(isAdmin({ platformRole: "super_admin", ...role(undefined) })).toBe(
+        true
+      )
     })
 
     it("returns true for super_admin with admin role", () => {
-      expect(isAdmin({ platformRole: "super_admin", ...role("admin") })).toBe(true)
+      expect(isAdmin({ platformRole: "super_admin", ...role("admin") })).toBe(
+        true
+      )
     })
 
     it("returns true for non-super_admin with admin role", () => {

@@ -86,7 +86,12 @@ export default function UsagePage() {
           eden.api.billing.usage.trend.get({ $query: { days: "30" } }),
         ])
 
-        if (!summaryRes.data || !trendRes.data || !summaryRes.data.success || !trendRes.data.success) {
+        if (
+          !summaryRes.data ||
+          !trendRes.data ||
+          !summaryRes.data.success ||
+          !trendRes.data.success
+        ) {
           throw new Error("Failed to fetch usage data")
         }
 
@@ -175,7 +180,9 @@ export default function UsagePage() {
       title: "Daily Average",
       value: formatCurrency(
         trend.length > 0
-          ? Math.round(trend.reduce((sum, d) => sum + d.amount, 0) / trend.length)
+          ? Math.round(
+              trend.reduce((sum, d) => sum + d.amount, 0) / trend.length
+            )
           : 0
       ),
       icon: PaperPlaneTiltIcon,

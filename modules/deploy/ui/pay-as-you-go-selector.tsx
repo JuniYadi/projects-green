@@ -30,7 +30,7 @@ export function PayAsYouGoSelector({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">CPU (m)</Label>
-          <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+          <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
             {cpu}m
           </span>
         </div>
@@ -49,7 +49,7 @@ export function PayAsYouGoSelector({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label className="text-sm font-medium">Memory (Mi)</Label>
-          <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+          <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
             {memory}Mi
           </span>
         </div>
@@ -91,7 +91,9 @@ export function PayAsYouGoSelector({
           <p className="text-xs text-muted-foreground">Required balance</p>
           <p className="text-sm font-medium">
             {hourlyCost !== undefined && (
-              <span>{hourlyCost.toLocaleString()} × {bufferHours}h = </span>
+              <span>
+                {hourlyCost.toLocaleString()} × {bufferHours}h ={" "}
+              </span>
             )}
             {requiredBalance.toLocaleString()}
           </p>

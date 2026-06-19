@@ -6,10 +6,12 @@ describe("OpenSearch Client", () => {
     process.env.OPENSEARCH_URL = "https://localhost:9200"
     process.env.OPENSEARCH_USER = "admin"
     process.env.OPENSEARCH_PASSWORD = "admin"
-    process.env.OPENSEARCH_US_EAST_1_URL = "https://us-east-1.opensearch.example.com:9200"
+    process.env.OPENSEARCH_US_EAST_1_URL =
+      "https://us-east-1.opensearch.example.com:9200"
     process.env.OPENSEARCH_US_EAST_1_USER = "admin"
     process.env.OPENSEARCH_US_EAST_1_PASSWORD = "password"
-    process.env.OPENSEARCH_EU_WEST_1_URL = "https://eu-west-1.opensearch.example.com:9200"
+    process.env.OPENSEARCH_EU_WEST_1_URL =
+      "https://eu-west-1.opensearch.example.com:9200"
     process.env.OPENSEARCH_EU_WEST_1_USER = "admin"
     process.env.OPENSEARCH_EU_WEST_1_PASSWORD = "password"
   })

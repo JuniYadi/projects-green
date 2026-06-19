@@ -106,63 +106,50 @@ const badRequest = (set: RouteSet, code: string, message: string) => {
 
 export const createMobilePairingRoutes = (deps: Deps = {}) => {
   const authenticate = deps.authenticate ?? (() => withAuth())
-  const pairingService =
-    deps.pairingService ?? vpnPairingTokenService
+  const pairingService = deps.pairingService ?? vpnPairingTokenService
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const deviceService =
-    deps.deviceService ?? vpnMobileDeviceService
+  const deviceService = deps.deviceService ?? vpnMobileDeviceService
 
   const resolveAuth = async (set: RouteSet) => {
     const auth = await authenticate()
     if (!auth.user) return { error: unauthorized(set) }
     if (!auth.organizationId) {
       return {
-        error: forbidden(
-          set,
-          "No active organization found."
-        ),
+        error: forbidden(set, "No active organization found."),
       }
     }
     return { auth }
   }
 
   const isAdmin = (auth: AuthContext) => {
-    const roles = new Set(
-      [auth.role, ...(auth.roles ?? [])].filter(Boolean)
+    const roles = new Set([auth.role, ...(auth.roles ?? [])].filter(Boolean))
+    return ["admin", "owner", "super_admin", "user_admin", "user_owner"].some(
+      (role) => roles.has(role)
     )
-    return [
-      "admin",
-      "owner",
-      "super_admin",
-      "user_admin",
-      "user_owner",
-    ].some((role) => roles.has(role))
   }
 
-  return new Elysia()
-    /**
-     * Generate a short-lived QR pairing token.
-     * Auth: user must own the subscription or be org admin.
-     */
-    .post(
-      "/vpn/mobile/pairing/generate",
-      async ({ body, set }) => {
-        const ctx = await resolveAuth(set)
-        if ("error" in ctx) return ctx.error
+  return (
+    new Elysia()
+      /**
+       * Generate a short-lived QR pairing token.
+       * Auth: user must own the subscription or be org admin.
+       */
+      .post(
+        "/vpn/mobile/pairing/generate",
+        async ({ body, set }) => {
+          const ctx = await resolveAuth(set)
+          if ("error" in ctx) return ctx.error
 
-        // Rate limit: 30/h per user (user is guaranteed non-null after resolveAuth)
-        const rateResult = generateRateLimiter(
-          ctx.auth.user!.id
-        )
-        if (!rateResult.allowed) {
-          set.status = 429
-          set.headers = rateLimitHeaders(rateResult)
-          return buildRateLimitResponse(rateResult)
-        }
+          // Rate limit: 30/h per user (user is guaranteed non-null after resolveAuth)
+          const rateResult = generateRateLimiter(ctx.auth.user!.id)
+          if (!rateResult.allowed) {
+            set.status = 429
+            set.headers = rateLimitHeaders(rateResult)
+            return buildRateLimitResponse(rateResult)
+          }
 
-        // Verify subscription exists and belongs to user's org.
-        const subscription =
-          await prisma.vpnSubscription.findUnique({
+          // Verify subscription exists and belongs to user's org.
+          const subscription = await prisma.vpnSubscription.findUnique({
             where: { id: body.subscriptionId },
             select: {
               id: true,
@@ -171,96 +158,91 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
             },
           })
 
-        if (!subscription) return notFound(set)
+          if (!subscription) return notFound(set)
 
-        // Check ownership: user must own the subscription or be admin.
-        if (
-          subscription.organizationId !== ctx.auth.organizationId &&
-          !isAdmin(ctx.auth)
-        ) {
-          return forbidden(
-            set,
-            "You do not have access to this subscription."
-          )
-        }
-
-        // Only active subscriptions can generate pairing tokens.
-        if (subscription.status !== "ACTIVE") {
-          set.status = 400
-          return {
-            error: {
-              code: "SUBSCRIPTION_NOT_ACTIVE" as const,
-              message:
-                "Subscription is not active. Only active subscriptions can pair devices.",
-              details: {},
-            },
+          // Check ownership: user must own the subscription or be admin.
+          if (
+            subscription.organizationId !== ctx.auth.organizationId &&
+            !isAdmin(ctx.auth)
+          ) {
+            return forbidden(
+              set,
+              "You do not have access to this subscription."
+            )
           }
-        }
 
-        const result = await pairingService.generate({
-          subscriptionId: subscription.id,
-          organizationId: ctx.auth.organizationId as string,
-        })
-
-        return toPairingGenerateResultDTO(
-          result.pairingToken,
-          result.expiresAt
-        )
-      },
-      {
-        body: t.Object({
-          subscriptionId: t.String({ minLength: 1 }),
-        }),
-      }
-    )
-
-    /**
-     * Claim a QR pairing token from the mobile app.
-     * Auth: None (token is the auth).
-     */
-    .post(
-      "/vpn/mobile/pairing/claim",
-      async ({ body, request, set }) => {
-        // Rate limit: 5/min per IP
-        const rateResult = claimRateLimiter(
-          getClientIp(request)
-        )
-        if (!rateResult.allowed) {
-          set.status = 429
-          set.headers = rateLimitHeaders(rateResult)
-          return buildRateLimitResponse(rateResult)
-        }
-
-        try {
-          const result = await pairingService.claim({
-            pairingToken: body.pairingToken,
-            deviceName: body.deviceName,
-            deviceFingerprint: body.deviceFingerprint,
-            platform: body.platform,
-            osVersion: body.osVersion ?? null,
-            appVersion: body.appVersion ?? null,
-          })
-
-          // Fetch subscription + server accounts for the DTO.
-          const subscription =
-            await prisma.vpnSubscription.findUnique({
-              where: { id: result.subscriptionId },
-            })
-
-          if (!subscription) {
-            set.status = 404
+          // Only active subscriptions can generate pairing tokens.
+          if (subscription.status !== "ACTIVE") {
+            set.status = 400
             return {
               error: {
-                code: "NOT_FOUND" as const,
+                code: "SUBSCRIPTION_NOT_ACTIVE" as const,
                 message:
-                  "Subscription not found after claiming token.",
+                  "Subscription is not active. Only active subscriptions can pair devices.",
                 details: {},
               },
             }
           }
 
-          const accounts =
-            await prisma.vpnServerAccount.findMany({
+          const result = await pairingService.generate({
+            subscriptionId: subscription.id,
+            organizationId: ctx.auth.organizationId as string,
+          })
+
+          return toPairingGenerateResultDTO(
+            result.pairingToken,
+            result.expiresAt
+          )
+        },
+        {
+          body: t.Object({
+            subscriptionId: t.String({ minLength: 1 }),
+          }),
+        }
+      )
+
+      /**
+       * Claim a QR pairing token from the mobile app.
+       * Auth: None (token is the auth).
+       */
+      .post(
+        "/vpn/mobile/pairing/claim",
+        async ({ body, request, set }) => {
+          // Rate limit: 5/min per IP
+          const rateResult = claimRateLimiter(getClientIp(request))
+          if (!rateResult.allowed) {
+            set.status = 429
+            set.headers = rateLimitHeaders(rateResult)
+            return buildRateLimitResponse(rateResult)
+          }
+
+          try {
+            const result = await pairingService.claim({
+              pairingToken: body.pairingToken,
+              deviceName: body.deviceName,
+              deviceFingerprint: body.deviceFingerprint,
+              platform: body.platform,
+              osVersion: body.osVersion ?? null,
+              appVersion: body.appVersion ?? null,
+            })
+
+            // Fetch subscription + server accounts for the DTO.
+            const subscription = await prisma.vpnSubscription.findUnique({
+              where: { id: result.subscriptionId },
+            })
+
+            if (!subscription) {
+              set.status = 404
+              return {
+                error: {
+                  code: "NOT_FOUND" as const,
+                  message: "Subscription not found after claiming token.",
+                  details: {},
+                },
+              }
+            }
+
+            const accounts = await prisma.vpnServerAccount.findMany({
               where: {
                 subscriptionId: result.subscriptionId,
               },
@@ -274,117 +256,98 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               },
             })
 
-          // Audit: log device registration via QR
-          logAuditEvent({
-            deviceId: result.deviceId,
-            action: "DEVICE_REGISTERED",
-            details: { pairedVia: "QR" },
-            ip: getClientIp(request),
-            userAgent: request.headers.get("user-agent"),
-          }).catch(() => {})
+            // Audit: log device registration via QR
+            logAuditEvent({
+              deviceId: result.deviceId,
+              action: "DEVICE_REGISTERED",
+              details: { pairedVia: "QR" },
+              ip: getClientIp(request),
+              userAgent: request.headers.get("user-agent"),
+            }).catch(() => {})
 
-          return toPairingClaimResultDTO(
-            result.deviceId,
-            subscription,
-            accounts
-          )
-        } catch (error) {
-          const err = error as Error & {
-            name?: string
-          }
-          if (
-            err.name ===
-            "VpnPairingTokenAlreadyUsedError"
-          ) {
-            return badRequest(
-              set,
-              "PAIRING_TOKEN_USED",
-              "This pairing code has already been used. Generate a new one from the portal."
+            return toPairingClaimResultDTO(
+              result.deviceId,
+              subscription,
+              accounts
             )
-          }
-          if (
-            err.name ===
-            "VpnPairingTokenExpiredError"
-          ) {
-            return badRequest(
-              set,
-              "PAIRING_TOKEN_EXPIRED",
-              "This pairing code has expired. Generate a new one from the portal."
-            )
-          }
-          if (
-            err.name ===
-            "VpnPairingTokenInvalidError"
-          ) {
-            return badRequest(
-              set,
-              "PAIRING_TOKEN_USED",
-              "Invalid pairing code."
-            )
-          }
-          if (
-            err.name ===
-            "VpnMobileDeviceAlreadyRevokedError"
-          ) {
-            set.status = 409
-            return {
-              error: {
-                code: "DEVICE_ALREADY_PAIRED" as const,
-                message:
-                  "This device was previously paired and revoked. Contact support.",
-                details: {},
-              },
+          } catch (error) {
+            const err = error as Error & {
+              name?: string
             }
+            if (err.name === "VpnPairingTokenAlreadyUsedError") {
+              return badRequest(
+                set,
+                "PAIRING_TOKEN_USED",
+                "This pairing code has already been used. Generate a new one from the portal."
+              )
+            }
+            if (err.name === "VpnPairingTokenExpiredError") {
+              return badRequest(
+                set,
+                "PAIRING_TOKEN_EXPIRED",
+                "This pairing code has expired. Generate a new one from the portal."
+              )
+            }
+            if (err.name === "VpnPairingTokenInvalidError") {
+              return badRequest(
+                set,
+                "PAIRING_TOKEN_USED",
+                "Invalid pairing code."
+              )
+            }
+            if (err.name === "VpnMobileDeviceAlreadyRevokedError") {
+              set.status = 409
+              return {
+                error: {
+                  code: "DEVICE_ALREADY_PAIRED" as const,
+                  message:
+                    "This device was previously paired and revoked. Contact support.",
+                  details: {},
+                },
+              }
+            }
+            throw error
           }
-          throw error
+        },
+        {
+          body: t.Object({
+            pairingToken: t.String({ minLength: 1 }),
+            deviceName: t.String({ minLength: 1 }),
+            deviceFingerprint: t.String({ minLength: 1 }),
+            platform: t.String({ minLength: 1 }),
+            osVersion: t.Optional(t.String()),
+            appVersion: t.Optional(t.String()),
+          }),
         }
-      },
-      {
-        body: t.Object({
-          pairingToken: t.String({ minLength: 1 }),
-          deviceName: t.String({ minLength: 1 }),
-          deviceFingerprint: t.String({ minLength: 1 }),
-          platform: t.String({ minLength: 1 }),
-          osVersion: t.Optional(t.String()),
-          appVersion: t.Optional(t.String()),
-        }),
-      }
-    )
+      )
 
-    /**
-     * Check pairing token status (used by portal QR UI for polling).
-     * Auth: Bearer (admin or subscription owner).
-     */
-    .get(
-      "/vpn/mobile/pairing/status/:token",
-      async ({ params, set }) => {
+      /**
+       * Check pairing token status (used by portal QR UI for polling).
+       * Auth: Bearer (admin or subscription owner).
+       */
+      .get("/vpn/mobile/pairing/status/:token", async ({ params, set }) => {
         const ctx = await resolveAuth(set)
         if ("error" in ctx) return ctx.error
 
         try {
-          const result = await pairingService.getStatus(
-            params.token
-          )
+          const result = await pairingService.getStatus(params.token)
           return result
         } catch (error) {
           const err = error as Error & { name?: string }
-          if (
-            err.name === "VpnPairingTokenInvalidError"
-          ) {
+          if (err.name === "VpnPairingTokenInvalidError") {
             set.status = 404
             return {
               error: {
                 code: "NOT_FOUND" as const,
-                message:
-                  "Pairing token not found.",
+                message: "Pairing token not found.",
                 details: {},
               },
             }
           }
           throw error
         }
-      }
-    )
+      })
+  )
 }
 
 export const mobilePairingRoutes = createMobilePairingRoutes()

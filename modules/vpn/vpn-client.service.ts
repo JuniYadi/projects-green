@@ -54,7 +54,7 @@ export class VpnClientService {
   constructor(private readonly prisma: VpnClientPrisma) {}
 
   async createActiveClient(
-    input: CreateActiveClientInput,
+    input: CreateActiveClientInput
   ): Promise<VpnClientRecord> {
     const encryptedConfig = encryptVpnConfig(input.ovpnConfig)
 
@@ -75,7 +75,7 @@ export class VpnClientService {
   }
 
   async createProvisioningFailure(
-    input: CreateProvisioningFailureInput,
+    input: CreateProvisioningFailureInput
   ): Promise<VpnClientRecord> {
     return this.prisma.vpnClient.create({
       data: {
@@ -95,7 +95,7 @@ export class VpnClientService {
   }
 
   async getActiveClientsForOrganization(
-    organizationId: string,
+    organizationId: string
   ): Promise<VpnClientRecord[]> {
     return this.prisma.vpnClient.findMany({
       where: {

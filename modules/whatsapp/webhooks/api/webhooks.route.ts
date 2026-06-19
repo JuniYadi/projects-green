@@ -18,14 +18,25 @@ function determineEventType(payload: unknown): string {
     "entry" in payload &&
     Array.isArray((payload as Record<string, unknown>).entry)
   ) {
-    const entry = (payload as Record<string, unknown>).entry as Record<string, unknown>[]
+    const entry = (payload as Record<string, unknown>).entry as Record<
+      string,
+      unknown
+    >[]
     const changes = entry[0]?.changes as Record<string, unknown>[] | undefined
     const value = changes?.[0]?.value as Record<string, unknown> | undefined
 
-    if (value?.messages && Array.isArray(value.messages) && value.messages.length > 0) {
+    if (
+      value?.messages &&
+      Array.isArray(value.messages) &&
+      value.messages.length > 0
+    ) {
       return "inbound_message"
     }
-    if (value?.statuses && Array.isArray(value.statuses) && value.statuses.length > 0) {
+    if (
+      value?.statuses &&
+      Array.isArray(value.statuses) &&
+      value.statuses.length > 0
+    ) {
       return "status_update"
     }
   }
@@ -52,7 +63,12 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
       if (query.deviceId) where.whatsappDeviceId = query.deviceId
 
       const [data, total] = await Promise.all([
-        prisma.whatsappWebhook.findMany({ where, take: limit, skip, orderBy: { createdAt: "desc" } }),
+        prisma.whatsappWebhook.findMany({
+          where,
+          take: limit,
+          skip,
+          orderBy: { createdAt: "desc" },
+        }),
         prisma.whatsappWebhook.count({ where }),
       ])
 
@@ -72,28 +88,30 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   )
 
   // GET /:id — get single webhook config
-  .get(
-    "/:id",
-    async ({ request, params, set }: any) => {
-      const whatsappAuth = await resolveAuthContext(request)
-      if (!whatsappAuth) {
-        set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-      }
-      const webhook = await prisma.whatsappWebhook.findUnique({ where: { id: params.id } })
-      if (!webhook) {
-        set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
-      }
-
-      if ((whatsappAuth as any).platformRole !== "super_admin" && webhook.organizationId !== whatsappAuth.organizationId) {
-        set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-      }
-
-      return webhook
+  .get("/:id", async ({ request, params, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
-  )
+    const webhook = await prisma.whatsappWebhook.findUnique({
+      where: { id: params.id },
+    })
+    if (!webhook) {
+      set.status = 404
+      return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
+    }
+
+    if (
+      (whatsappAuth as any).platformRole !== "super_admin" &&
+      webhook.organizationId !== whatsappAuth.organizationId
+    ) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
+    return webhook
+  })
 
   // POST / — create webhook config
   .post(
@@ -106,7 +124,11 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
       }
       if (!whatsappAuth.organizationId) {
         set.status = 400
-        return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: "Organization ID required.",
+        }
       }
       const webhook = await prisma.whatsappWebhook.create({
         data: {
@@ -137,18 +159,26 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      const webhook = await prisma.whatsappWebhook.findUnique({ where: { id: params.id } })
+      const webhook = await prisma.whatsappWebhook.findUnique({
+        where: { id: params.id },
+      })
       if (!webhook) {
         set.status = 404
         return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
       }
 
-      if ((whatsappAuth as any).platformRole !== "super_admin" && webhook.organizationId !== whatsappAuth.organizationId) {
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        webhook.organizationId !== whatsappAuth.organizationId
+      ) {
         set.status = 403
         return { ok: false, error: "FORBIDDEN", message: "Access denied." }
       }
 
-      const updated = await prisma.whatsappWebhook.update({ where: { id: params.id }, data: body })
+      const updated = await prisma.whatsappWebhook.update({
+        where: { id: params.id },
+        data: body,
+      })
       return { ok: true, data: updated }
     },
     {
@@ -163,37 +193,36 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   )
 
   // DELETE /:id — delete webhook config
-  .delete(
-    "/:id",
-    async ({ request, params, set }: any) => {
-      const whatsappAuth = await resolveAuthContext(request)
-      if (!whatsappAuth) {
-        set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-      }
-      const webhook = await prisma.whatsappWebhook.findUnique({ where: { id: params.id } })
-      if (!webhook) {
-        set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
-      }
-
-      if ((whatsappAuth as any).platformRole !== "super_admin" && webhook.organizationId !== whatsappAuth.organizationId) {
-        set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-      }
-
-      await prisma.whatsappWebhook.delete({ where: { id: params.id } })
-      return { ok: true }
+  .delete("/:id", async ({ request, params, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
-  )
+    const webhook = await prisma.whatsappWebhook.findUnique({
+      where: { id: params.id },
+    })
+    if (!webhook) {
+      set.status = 404
+      return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
+    }
+
+    if (
+      (whatsappAuth as any).platformRole !== "super_admin" &&
+      webhook.organizationId !== whatsappAuth.organizationId
+    ) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
+    await prisma.whatsappWebhook.delete({ where: { id: params.id } })
+    return { ok: true }
+  })
 
   // GET /:id/verify — Meta webhook verification endpoint
   .get(
     "/:id/verify",
-    async ({
-      params,
-      query,
-    }: any) => {
+    async ({ params, query }: any) => {
       const mode = query["hub.mode"]
       const challenge = query["hub.challenge"]
 
@@ -271,7 +300,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         page: t.Optional(t.String()),
         limit: t.Optional(t.String()),
       }),
-    },
+    }
   )
 
   // POST /:id — Meta webhook incoming event
@@ -298,14 +327,22 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
       device.organizationId,
       deviceId,
       eventType,
-      body as any,
+      body as any
     )
 
     // 2. Process asynchronously
     ;(async () => {
       try {
-        const result = await handleIncomingWebhook(body, deviceId, device.organizationId)
-        await recordProcessingResult(eventId, result.success ? "SUCCESS" : "FAILED", result.success ? undefined : result.error)
+        const result = await handleIncomingWebhook(
+          body,
+          deviceId,
+          device.organizationId
+        )
+        await recordProcessingResult(
+          eventId,
+          result.success ? "SUCCESS" : "FAILED",
+          result.success ? undefined : result.error
+        )
       } catch (e) {
         console.error("Error processing whatsapp webhook:", e)
         await recordProcessingResult(eventId, "FAILED", String(e))

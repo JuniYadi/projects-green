@@ -1,9 +1,7 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 
 const mockClient = {
-  index: mock(() =>
-    Promise.resolve({ body: { _id: "1", result: "created" } })
-  ),
+  index: mock(() => Promise.resolve({ body: { _id: "1", result: "created" } })),
   search: mock(() =>
     Promise.resolve({
       body: {
@@ -33,9 +31,8 @@ mock.module("./opensearch-index.service", () => ({
   getLogIndexName: mock(() => "deploy-logs-test-2026.06"),
 }))
 
-const { ingestLog, ingestLogBatch, queryLogs, getDeployAggregation } = await import(
-  "./opensearch-log.service"
-)
+const { ingestLog, ingestLogBatch, queryLogs, getDeployAggregation } =
+  await import("./opensearch-log.service")
 
 describe("OpenSearch Log Service", () => {
   beforeEach(() => {

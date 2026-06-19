@@ -120,21 +120,35 @@ describe("decryptWithAppKey errors", () => {
   })
 
   it("throws APP_KEY_DECRYPTION_INVALID_PAYLOAD for wrong number of parts", async () => {
-    await expect(decryptWithAppKey("only-one")).rejects.toThrow(AppKeyCryptoError)
-    await expect(decryptWithAppKey("one.two")).rejects.toThrow(AppKeyCryptoError)
-    await expect(decryptWithAppKey("one.two.three.four")).rejects.toThrow(AppKeyCryptoError)
+    await expect(decryptWithAppKey("only-one")).rejects.toThrow(
+      AppKeyCryptoError
+    )
+    await expect(decryptWithAppKey("one.two")).rejects.toThrow(
+      AppKeyCryptoError
+    )
+    await expect(decryptWithAppKey("one.two.three.four")).rejects.toThrow(
+      AppKeyCryptoError
+    )
   })
 
   it("throws APP_KEY_DECRYPTION_INVALID_PAYLOAD for empty parts", async () => {
-    await expect(decryptWithAppKey(".iv.cipher")).rejects.toThrow(AppKeyCryptoError)
-    await expect(decryptWithAppKey("v1..cipher")).rejects.toThrow(AppKeyCryptoError)
+    await expect(decryptWithAppKey(".iv.cipher")).rejects.toThrow(
+      AppKeyCryptoError
+    )
+    await expect(decryptWithAppKey("v1..cipher")).rejects.toThrow(
+      AppKeyCryptoError
+    )
     await expect(decryptWithAppKey("v1.iv.")).rejects.toThrow(AppKeyCryptoError)
     await expect(decryptWithAppKey("")).rejects.toThrow(AppKeyCryptoError)
   })
 
   it("throws APP_KEY_DECRYPTION_UNSUPPORTED_VERSION for unknown version", async () => {
-    await expect(decryptWithAppKey("v2.abc.abc")).rejects.toThrow(AppKeyCryptoError)
-    await expect(decryptWithAppKey("v0.abc.abc")).rejects.toThrow(AppKeyCryptoError)
+    await expect(decryptWithAppKey("v2.abc.abc")).rejects.toThrow(
+      AppKeyCryptoError
+    )
+    await expect(decryptWithAppKey("v0.abc.abc")).rejects.toThrow(
+      AppKeyCryptoError
+    )
   })
 
   it("throws APP_KEY_DECRYPTION_INVALID_PAYLOAD for tampered ciphertext", async () => {
@@ -150,7 +164,9 @@ describe("decryptWithAppKey errors", () => {
     // Manually construct a payload with wrong IV length (6 bytes instead of 12)
     const badIv = Buffer.alloc(6).toString("base64url")
     const cipher = Buffer.alloc(16).toString("base64url")
-    await expect(decryptWithAppKey(`v1.${badIv}.${cipher}`)).rejects.toThrow(AppKeyCryptoError)
+    await expect(decryptWithAppKey(`v1.${badIv}.${cipher}`)).rejects.toThrow(
+      AppKeyCryptoError
+    )
   })
 })
 

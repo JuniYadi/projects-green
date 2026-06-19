@@ -228,8 +228,12 @@ export default function InvoiceDetailPage() {
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">Invoice {invoice.invoiceNumber}</h1>
-          <InvoiceStatusBadge status={invoice.status as "OPEN" | "PENDING" | "PAID" | "VOID"} />
+          <h1 className="text-2xl font-semibold">
+            Invoice {invoice.invoiceNumber}
+          </h1>
+          <InvoiceStatusBadge
+            status={invoice.status as "OPEN" | "PENDING" | "PAID" | "VOID"}
+          />
         </div>
       </header>
 
@@ -238,9 +242,12 @@ export default function InvoiceDetailPage() {
         <div className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/10 p-4">
           <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
           <div>
-            <p className="font-medium text-green-600 dark:text-green-400">Payment Successful</p>
+            <p className="font-medium text-green-600 dark:text-green-400">
+              Payment Successful
+            </p>
             <p className="text-sm text-muted-foreground">
-              Your payment has been processed. The balance will be updated shortly.
+              Your payment has been processed. The balance will be updated
+              shortly.
             </p>
           </div>
         </div>
@@ -249,7 +256,9 @@ export default function InvoiceDetailPage() {
         <div className="flex items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
           <ClockIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
           <div>
-            <p className="font-medium text-yellow-600 dark:text-yellow-400">Payment Pending</p>
+            <p className="font-medium text-yellow-600 dark:text-yellow-400">
+              Payment Pending
+            </p>
             <p className="text-sm text-muted-foreground">
               Your payment is being processed. This may take a few minutes.
             </p>
@@ -260,7 +269,9 @@ export default function InvoiceDetailPage() {
         <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-4">
           <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
           <div>
-            <p className="font-medium text-red-600 dark:text-red-400">Payment Failed</p>
+            <p className="font-medium text-red-600 dark:text-red-400">
+              Payment Failed
+            </p>
             <p className="text-sm text-muted-foreground">
               The payment could not be processed. Please try again.
             </p>
@@ -291,7 +302,8 @@ export default function InvoiceDetailPage() {
             <div>
               <p className="text-sm text-muted-foreground">Billing Period</p>
               <p className="font-medium">
-                {formatPeriodDate(invoice.periodStart)} — {formatPeriodDate(invoice.periodEnd)}
+                {formatPeriodDate(invoice.periodStart)} —{" "}
+                {formatPeriodDate(invoice.periodEnd)}
               </p>
             </div>
             <div>
@@ -316,7 +328,11 @@ export default function InvoiceDetailPage() {
             ) : (
               <InvoiceGroupedLines
                 lines={invoice.lines}
-                periodLabel={formatPeriodDate(invoice.periodStart) + " — " + formatPeriodDate(invoice.periodEnd)}
+                periodLabel={
+                  formatPeriodDate(invoice.periodStart) +
+                  " — " +
+                  formatPeriodDate(invoice.periodEnd)
+                }
               />
             )}
           </div>
@@ -326,11 +342,15 @@ export default function InvoiceDetailPage() {
             <div className="w-64 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatCurrency(invoice.totalAmountIdr, invoice.currency)}</span>
+                <span>
+                  {formatCurrency(invoice.totalAmountIdr, invoice.currency)}
+                </span>
               </div>
               <div className="flex justify-between border-t pt-2 font-semibold">
                 <span>Total</span>
-                <span>{formatCurrency(invoice.totalAmountIdr, invoice.currency)}</span>
+                <span>
+                  {formatCurrency(invoice.totalAmountIdr, invoice.currency)}
+                </span>
               </div>
             </div>
           </div>
@@ -357,13 +377,17 @@ export default function InvoiceDetailPage() {
                         </span>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">Account Number</span>
+                        <span className="text-muted-foreground">
+                          Account Number
+                        </span>
                         <span className="font-medium">
                           {defaultPaymentMethod.accountNumber}
                         </span>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">Account Name</span>
+                        <span className="text-muted-foreground">
+                          Account Name
+                        </span>
                         <span className="font-medium">
                           {defaultPaymentMethod.accountName}
                         </span>
@@ -385,19 +409,24 @@ export default function InvoiceDetailPage() {
               ) : isGatewayPayment ? (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    Complete your payment through the payment gateway. Your balance
-                    will be updated automatically once the payment is confirmed.
+                    Complete your payment through the payment gateway. Your
+                    balance will be updated automatically once the payment is
+                    confirmed.
                   </p>
                   {invoice.paymentUrl ? (
                     <Button asChild>
-                      <Link href={invoice.paymentUrl} target="_blank" rel="noreferrer">
+                      <Link
+                        href={invoice.paymentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         Continue to Payment Gateway
                       </Link>
                     </Button>
                   ) : (
                     <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-300">
-                      The payment gateway link is not available for this invoice.
-                      Please create a new top-up or contact support.
+                      The payment gateway link is not available for this
+                      invoice. Please create a new top-up or contact support.
                     </p>
                   )}
                 </div>
@@ -415,7 +444,9 @@ export default function InvoiceDetailPage() {
               <h3 className="mb-4 font-medium">Payment Options</h3>
               {error && (
                 <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3">
-                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {error}
+                  </p>
                 </div>
               )}
               {paymentSuccess ? (

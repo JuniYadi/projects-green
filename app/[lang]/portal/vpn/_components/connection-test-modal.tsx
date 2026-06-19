@@ -65,7 +65,10 @@ function CheckRow({
         className={`flex items-center gap-2 py-1 text-sm ${STATUS_CLASS[check.status]}`}
       >
         <span className="w-5 shrink-0">{STATUS_ICON[check.status]}</span>
-        <span className="w-40 shrink-0 truncate font-medium" title={check.label}>
+        <span
+          className="w-40 shrink-0 truncate font-medium"
+          title={check.label}
+        >
           {check.label}
         </span>
         <span className="w-24 shrink-0 font-mono text-xs">

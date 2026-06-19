@@ -5,8 +5,7 @@ const LINE_THRESHOLD = 90
 
 const EXCLUDED_DIR_PATTERNS = ["whatsapp", "test/", "modules/deploy/"]
 
-export const stripAnsi = (value: string) =>
-  value.replace(/\x1b\[[0-9;]*m/g, "")
+export const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "")
 
 const isExcludedTestFile = (filePath: string): boolean =>
   EXCLUDED_DIR_PATTERNS.some((pattern) => filePath.includes(pattern))
@@ -64,7 +63,10 @@ export const collectCoverageSummary = (output: string) => {
       !line.includes("% Funcs") &&
       line.includes("All files") === false
     ) {
-      const columns = line.split("|").map((c) => c.trim()).filter(Boolean)
+      const columns = line
+        .split("|")
+        .map((c) => c.trim())
+        .filter(Boolean)
       if (columns.length >= 3) {
         const funcCov = Number(columns[1])
         const lineCov = Number(columns[2])
@@ -143,18 +145,12 @@ const main = async () => {
   // Base threshold - fail if below this
   const BASE_THRESHOLD = 80
 
-  if (
-    functionCoverage < COVERAGE_THRESHOLD ||
-    lineCoverage < LINE_THRESHOLD
-  ) {
+  if (functionCoverage < COVERAGE_THRESHOLD || lineCoverage < LINE_THRESHOLD) {
     console.error(
       `Coverage below target: functions=${functionCoverage.toFixed(2)}%, lines=${lineCoverage.toFixed(2)}%`
     )
     // Only fail if below base threshold
-    if (
-      functionCoverage < BASE_THRESHOLD ||
-      lineCoverage < BASE_THRESHOLD
-    ) {
+    if (functionCoverage < BASE_THRESHOLD || lineCoverage < BASE_THRESHOLD) {
       process.exit(1)
     }
     console.warn("Below target but above base - continuing.")

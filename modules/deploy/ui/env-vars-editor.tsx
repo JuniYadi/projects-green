@@ -10,9 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import {
-  createEnvironmentVariablesClient,
-} from "@/modules/deploy/api/environment-variables.client"
+import { createEnvironmentVariablesClient } from "@/modules/deploy/api/environment-variables.client"
 import type {
   EnvVariableActivity,
   EnvVariablesMutationError,
@@ -130,7 +128,9 @@ export function EnvVarsEditor({
   const [importRaw, setImportRaw] = useState("")
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [visibilityById, setVisibilityById] = useState<Record<string, boolean>>({})
+  const [visibilityById, setVisibilityById] = useState<Record<string, boolean>>(
+    {}
+  )
   const [toasts, setToasts] = useState<InlineToast[]>([])
   const [activities, setActivities] = useState<EnvVariableActivity[]>([])
 
@@ -456,7 +456,12 @@ export function EnvVarsEditor({
           onChange={(event) => setSearchQuery(event.target.value)}
         />
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={openImportPanel}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={openImportPanel}
+          >
             Import .env
           </Button>
           <Button type="button" size="sm" onClick={openCreatePanel}>
@@ -511,7 +516,9 @@ export function EnvVarsEditor({
               return (
                 <tr key={row.id} className="border-t border-border">
                   <td className="px-3 py-2 font-medium">{row.key}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{shownValue || "********"}</td>
+                  <td className="px-3 py-2 font-mono text-xs">
+                    {shownValue || "********"}
+                  </td>
                   <td className="px-3 py-2 text-xs uppercase">{row.type}</td>
                   <td className="px-3 py-2 text-xs uppercase">{row.scope}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
@@ -702,7 +709,10 @@ export function EnvVarsEditor({
                       setFormState((current) => {
                         return {
                           ...current,
-                          scope: event.target.value as "all" | "build" | "runtime",
+                          scope: event.target.value as
+                            | "all"
+                            | "build"
+                            | "runtime",
                         }
                       })
                     }}

@@ -38,7 +38,9 @@ export function decrypt(data: EncryptedData, key: Buffer): string {
   return decrypted
 }
 
-export function parseEncryptedField(value: string | null): EncryptedData | null {
+export function parseEncryptedField(
+  value: string | null
+): EncryptedData | null {
   if (!value) return null
   try {
     return JSON.parse(value) as EncryptedData

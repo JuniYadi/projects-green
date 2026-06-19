@@ -32,17 +32,15 @@ export const PaymentReminderEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>
-        Reminder: Invoice {invoiceNumber} Due Soon
-      </Preview>
+      <Preview>Reminder: Invoice {invoiceNumber} Due Soon</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>
-            Payment Reminder
-          </Heading>
+          <Heading style={styles.heading}>Payment Reminder</Heading>
 
           <Text style={styles.intro}>
-            This is a friendly reminder that Invoice {invoiceNumber} is due soon. Please ensure payment is made by the due date to avoid any service interruptions.
+            This is a friendly reminder that Invoice {invoiceNumber} is due
+            soon. Please ensure payment is made by the due date to avoid any
+            service interruptions.
           </Text>
 
           <Section style={styles.invoiceInfo}>
@@ -68,7 +66,8 @@ export const PaymentReminderEmail = ({
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have already made payment, please disregard this reminder. Contact us if you have any questions.
+            If you have already made payment, please disregard this reminder.
+            Contact us if you have any questions.
           </Text>
         </Container>
       </Body>

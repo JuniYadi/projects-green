@@ -33,7 +33,9 @@ type EventLogPrisma = {
       skip?: number
       take?: number
     }) => Promise<unknown[]>
-    count: (args: { where?: Prisma.GithubWebhookEventWhereInput }) => Promise<number>
+    count: (args: {
+      where?: Prisma.GithubWebhookEventWhereInput
+    }) => Promise<number>
     findUnique: (args: {
       where: { id: string }
       select?: Prisma.GithubWebhookEventSelect

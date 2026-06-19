@@ -5,17 +5,15 @@ const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})
 const mockConfirm = mock(() => true)
 
-
-
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 
 const originalFetch = globalThis.fetch
 const originalConfirm = window.confirm
 
-
-let cachedOrganizationAdminSurface: (typeof import("@/modules/tenants/ui/organization-admin-surface"))["OrganizationAdminSurface"] | null =
-  null
+let cachedOrganizationAdminSurface:
+  | (typeof import("@/modules/tenants/ui/organization-admin-surface"))["OrganizationAdminSurface"]
+  | null = null
 
 const loadOrganizationAdminSurface = async () => {
   if (!cachedOrganizationAdminSurface) {
@@ -176,7 +174,9 @@ beforeEach(() => {
     refresh: mockRouterRefresh,
     push: () => {},
   })
-  ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console/organization")
+  ;(usePathname as ReturnType<typeof mock>).mockReturnValue(
+    "/en/console/organization"
+  )
 })
 
 afterEach(() => {
@@ -198,9 +198,12 @@ describe("OrganizationAdminSurface", () => {
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
-    await waitFor(() => {
-      expect(view.getByText("Organization Administration")).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Organization Administration")).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
 
     expect(
       view.getByText(
@@ -210,11 +213,14 @@ describe("OrganizationAdminSurface", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Invitations" }))
 
-    await waitFor(() => {
-      expect(
-        view.getByText("You do not have permission to send invitations.")
-      ).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(
+          view.getByText("You do not have permission to send invitations.")
+        ).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
 
     const inviteButton = view.getByRole("button", { name: "Invite" })
     expect(inviteButton.hasAttribute("disabled")).toBe(true)
@@ -245,9 +251,12 @@ describe("OrganizationAdminSurface", () => {
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
-    await waitFor(() => {
-      expect(view.getByText("Member One")).toBeInTheDocument()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Member One")).toBeInTheDocument()
+      },
+      { timeout: 10000 }
+    )
 
     fireEvent.click(view.getByRole("button", { name: "Transfer Ownership" }))
 
@@ -276,17 +285,23 @@ describe("OrganizationAdminSurface", () => {
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
-    await waitFor(() => {
-      expect(
-        view.getByRole("button", { name: "Promote to Admin" })
-      ).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(
+          view.getByRole("button", { name: "Promote to Admin" })
+        ).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
 
     fireEvent.click(view.getByRole("button", { name: "Promote to Admin" }))
 
-    await waitFor(() => {
-      expect(view.getByText("Member promoted to admin.")).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Member promoted to admin.")).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
 
     expect(
       requests.some(
@@ -340,9 +355,12 @@ describe("OrganizationAdminSurface", () => {
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
-    await waitFor(() => {
-      expect(view.getByText("Owner Active")).toBeInTheDocument()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Owner Active")).toBeInTheDocument()
+      },
+      { timeout: 10000 }
+    )
 
     const resetButton = view.getByRole("button", { name: "Reset" })
     expect(resetButton.hasAttribute("disabled")).toBe(true)
@@ -351,28 +369,37 @@ describe("OrganizationAdminSurface", () => {
     fireEvent.change(view.getByLabelText("Filter by role"), {
       target: { value: "owner" },
     })
-    await waitFor(() => {
-      expect(view.getByText("Showing 1 of 3 members.")).toBeInTheDocument()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Showing 1 of 3 members.")).toBeInTheDocument()
+      },
+      { timeout: 10000 }
+    )
     expect(resetButton.hasAttribute("disabled")).toBe(false)
 
     fireEvent.change(view.getByLabelText("Filter by status"), {
       target: { value: "inactive" },
     })
 
-    await waitFor(() => {
-      expect(
-        view.getByText("No members match the current search and filters.")
-      ).toBeInTheDocument()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(
+          view.getByText("No members match the current search and filters.")
+        ).toBeInTheDocument()
+      },
+      { timeout: 10000 }
+    )
 
     fireEvent.click(
       view.getByRole("button", { name: "Clear search and filters" })
     )
 
-    await waitFor(() => {
-      expect(view.getByText("Owner Active")).toBeInTheDocument()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Owner Active")).toBeInTheDocument()
+      },
+      { timeout: 10000 }
+    )
 
     expect(view.getByText("Admin Pending")).toBeInTheDocument()
     expect(view.getByText("Member Inactive")).toBeInTheDocument()
@@ -410,23 +437,32 @@ describe("OrganizationAdminSurface", () => {
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
-    await waitFor(() => {
-      expect(view.getByText("First Member")).toBeInTheDocument()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("First Member")).toBeInTheDocument()
+      },
+      { timeout: 10000 }
+    )
 
     fireEvent.change(view.getByLabelText("Filter by status"), {
       target: { value: "active" },
     })
 
-    await waitFor(() => {
-      expect(view.queryByText("First Member")).toBeNull()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.queryByText("First Member")).toBeNull()
+      },
+      { timeout: 10000 }
+    )
 
     fireEvent.click(view.getByRole("button", { name: "Promote to Admin" }))
 
-    await waitFor(() => {
-      expect(view.getByText("Member promoted to admin.")).toBeInTheDocument()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Member promoted to admin.")).toBeInTheDocument()
+      },
+      { timeout: 10000 }
+    )
 
     expect(
       requests.some(
@@ -462,9 +498,12 @@ describe("OrganizationAdminSurface", () => {
     }
 
     // Wait for loaded state
-    await waitFor(() => {
-      expect(view.getByText("Organization Administration")).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Organization Administration")).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
 
     // Loaded state: the root wrapper should have the same classes
     const loadedWrapper = view.container.firstElementChild as HTMLElement
@@ -486,24 +525,25 @@ describe("OrganizationAdminSurface", () => {
     })
 
     // Override fetch to return error for authorization
-    globalThis.fetch = mock(
-      async (input: RequestInfo | URL) => {
-        const url = String(input)
-        if (url.endsWith("/authorization")) {
-          return jsonResponse(
-            { ok: false, error: "FORBIDDEN", message: "Access denied." },
-            403
-          )
-        }
-        return jsonResponse({ ok: true, members: [] })
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/authorization")) {
+        return jsonResponse(
+          { ok: false, error: "FORBIDDEN", message: "Access denied." },
+          403
+        )
       }
-    ) as unknown as typeof fetch
+      return jsonResponse({ ok: true, members: [] })
+    }) as unknown as typeof fetch
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
-    await waitFor(() => {
-      expect(view.getByText("Access denied.")).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Access denied.")).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
 
     expect(view.getByText("Retry")).toBeTruthy()
   })
@@ -532,7 +572,11 @@ describe("OrganizationAdminSurface", () => {
           return jsonResponse({
             ok: true,
             members: [
-              makeMember({ id: "m_1", displayName: "Test User", email: "test@example.com" }),
+              makeMember({
+                id: "m_1",
+                displayName: "Test User",
+                email: "test@example.com",
+              }),
             ],
           })
         }
@@ -564,18 +608,22 @@ describe("OrganizationAdminSurface", () => {
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
-    await waitFor(() => {
-      expect(view.getByText("Test User")).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Test User")).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
 
     // Click on Invitations tab
     fireEvent.click(view.getByRole("button", { name: "Invitations" }))
 
-    await waitFor(() => {
-      expect(
-        view.queryByText("No pending invitations.")
-      ).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.queryByText("No pending invitations.")).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
   })
 
   it("renders members tab with 'No members found' when members array is empty", async () => {
@@ -593,9 +641,12 @@ describe("OrganizationAdminSurface", () => {
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
-    await waitFor(() => {
-      expect(view.getByText("No members found.")).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("No members found.")).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
   })
 
   it("renders all three tab buttons", async () => {
@@ -613,23 +664,33 @@ describe("OrganizationAdminSurface", () => {
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
-    await waitFor(() => {
-      expect(view.getByText("Organization Administration")).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Organization Administration")).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
 
     expect(view.getByRole("button", { name: "Members" })).toBeTruthy()
     expect(view.getByRole("button", { name: "Invitations" })).toBeTruthy()
-    const settingsBtn = view.getByRole("button", { name: "Organization Settings" })
+    const settingsBtn = view.getByRole("button", {
+      name: "Organization Settings",
+    })
     expect(settingsBtn).toBeTruthy()
 
     // Click settings and verify description text changes
     fireEvent.click(settingsBtn)
 
-    await waitFor(() => {
-      expect(
-        view.getByText("Update organization profile and destructive settings.")
-      ).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(
+          view.getByText(
+            "Update organization profile and destructive settings."
+          )
+        ).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
   })
 
   it("shows refreshing indicator during data refresh", async () => {
@@ -642,20 +703,20 @@ describe("OrganizationAdminSurface", () => {
       resolveAuthorization = resolve
     })
 
-    globalThis.fetch = mock(
-      async (input: RequestInfo | URL) => {
-        const url = String(input)
-        if (url.endsWith("/authorization")) {
-          return authPromise
-        }
-        return jsonResponse({ ok: true, members: [] })
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith("/authorization")) {
+        return authPromise
       }
-    ) as unknown as typeof fetch
+      return jsonResponse({ ok: true, members: [] })
+    }) as unknown as typeof fetch
 
     const view = render(<OrganizationAdminSurface organizationId="org_123" />)
 
     // Should show skeleton loading state
-    expect(view.container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0)
+    expect(
+      view.container.querySelectorAll('[data-slot="skeleton"]').length
+    ).toBeGreaterThan(0)
 
     // Resolve the authorization to complete loading
     resolveAuthorization(
@@ -668,9 +729,11 @@ describe("OrganizationAdminSurface", () => {
       })
     )
 
-    await waitFor(() => {
-      expect(view.getByText("Organization Administration")).toBeTruthy()
-    }, { timeout: 10000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Organization Administration")).toBeTruthy()
+      },
+      { timeout: 10000 }
+    )
   })
 })
-

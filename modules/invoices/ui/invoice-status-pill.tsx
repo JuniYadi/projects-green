@@ -10,7 +10,10 @@ type InvoiceStatusPillProps = {
   className?: string
 }
 
-export function InvoiceStatusPill({ status, className }: InvoiceStatusPillProps) {
+export function InvoiceStatusPill({
+  status,
+  className,
+}: InvoiceStatusPillProps) {
   return (
     <span
       className={cn(

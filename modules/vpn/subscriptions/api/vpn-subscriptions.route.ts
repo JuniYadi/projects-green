@@ -190,7 +190,9 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
         if (error instanceof VpnSubscriptionNotFoundError) return notFound(set)
         console.error(
           "[VPN SUBSCRIPTION] billing info error:",
-          error instanceof Error ? error.stack ?? error.message : String(error),
+          error instanceof Error
+            ? (error.stack ?? error.message)
+            : String(error)
         )
         set.status = 500
         return {
@@ -212,10 +214,13 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           )
           return { ok: true as const, data: toVpnSubscriptionDTO(sub) }
         } catch (error) {
-          if (error instanceof VpnSubscriptionNotFoundError) return notFound(set)
+          if (error instanceof VpnSubscriptionNotFoundError)
+            return notFound(set)
           console.error(
             "[VPN SUBSCRIPTION] cancel error:",
-            error instanceof Error ? error.stack ?? error.message : String(error),
+            error instanceof Error
+              ? (error.stack ?? error.message)
+              : String(error)
           )
           set.status = 500
           return {
@@ -232,11 +237,19 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
 function toPurchaseError(set: RouteSet, error: unknown) {
   if (error instanceof VpnPackageUnavailableError) {
     set.status = 404
-    return { ok: false as const, error: "PACKAGE_UNAVAILABLE" as const, message: error.message }
+    return {
+      ok: false as const,
+      error: "PACKAGE_UNAVAILABLE" as const,
+      message: error.message,
+    }
   }
   if (error instanceof VpnDuplicateSubscriptionError) {
     set.status = 409
-    return { ok: false as const, error: "DUPLICATE_SUBSCRIPTION" as const, message: error.message }
+    return {
+      ok: false as const,
+      error: "DUPLICATE_SUBSCRIPTION" as const,
+      message: error.message,
+    }
   }
   if (error instanceof VpnInsufficientBalanceError) {
     set.status = 402
@@ -257,7 +270,7 @@ function toPurchaseError(set: RouteSet, error: unknown) {
   }
   console.error(
     "[VPN PURCHASE] unexpected error:",
-    error instanceof Error ? error.stack ?? error.message : String(error),
+    error instanceof Error ? (error.stack ?? error.message) : String(error)
   )
   set.status = 500
   return {

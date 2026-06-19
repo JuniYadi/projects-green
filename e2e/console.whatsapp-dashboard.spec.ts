@@ -13,7 +13,9 @@ test.describe("WhatsApp Dashboard (authenticated)", () => {
   })
 
   test("page has correct heading", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "WhatsApp Dashboard" })).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "WhatsApp Dashboard" })
+    ).toBeVisible()
   })
 
   test("shows stat cards (quota, devices, balance)", async ({ page }) => {
@@ -31,27 +33,44 @@ test.describe("WhatsApp Dashboard (authenticated)", () => {
     await expect(page.getByText("View Contacts")).toBeVisible()
   })
 
-  test("has Manage Devices and Send Message buttons in header", async ({ page }) => {
-    await expect(page.getByRole("link", { name: /Manage Devices/i })).toBeVisible()
-    await expect(page.getByRole("link", { name: /Send Message/i })).toBeVisible()
+  test("has Manage Devices and Send Message buttons in header", async ({
+    page,
+  }) => {
+    await expect(
+      page.getByRole("link", { name: /Manage Devices/i })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("link", { name: /Send Message/i })
+    ).toBeVisible()
   })
 
-  test("navigates to devices page via Manage Devices button", async ({ page }) => {
+  test("navigates to devices page via Manage Devices button", async ({
+    page,
+  }) => {
     await page.getByRole("link", { name: /Manage Devices/i }).click()
     await expect(page).toHaveURL(/\/console\/whatsapp\/devices/)
   })
 
-  test("navigates to messages page via Send Message header button", async ({ page }) => {
-    await page.getByRole("link", { name: /Send Message/i }).first().click()
+  test("navigates to messages page via Send Message header button", async ({
+    page,
+  }) => {
+    await page
+      .getByRole("link", { name: /Send Message/i })
+      .first()
+      .click()
     await expect(page).toHaveURL(/\/console\/whatsapp\/messages/)
   })
 
-  test("navigates to templates page via Use a Template card", async ({ page }) => {
+  test("navigates to templates page via Use a Template card", async ({
+    page,
+  }) => {
     await page.getByText("Use a Template").click()
     await expect(page).toHaveURL(/\/console\/whatsapp\/templates/)
   })
 
-  test("navigates to contacts page via View Contacts card", async ({ page }) => {
+  test("navigates to contacts page via View Contacts card", async ({
+    page,
+  }) => {
     await page.getByText("View Contacts").click()
     await expect(page).toHaveURL(/\/console\/whatsapp\/contacts/)
   })

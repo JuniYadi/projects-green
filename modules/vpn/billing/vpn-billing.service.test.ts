@@ -57,7 +57,7 @@ describe("VpnBillingService", () => {
 
     service = new VpnBillingService(
       mockPrisma as unknown as PrismaClient,
-      mockBillingTransactionService as never,
+      mockBillingTransactionService as never
     )
   })
 
@@ -85,7 +85,7 @@ describe("VpnBillingService", () => {
       })
 
       expect(
-        mockBillingTransactionService.debitServiceBalance,
+        mockBillingTransactionService.debitServiceBalance
       ).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: "org_1",
@@ -105,7 +105,7 @@ describe("VpnBillingService", () => {
             unitPrice: decimal("25.00"),
             lineType: "SUBSCRIPTION",
           }),
-        }),
+        })
       )
 
       expect(result.adjustmentId).toBe("adj_vpn_1")
@@ -138,11 +138,11 @@ describe("VpnBillingService", () => {
       // call within the same period returns alreadyProcessed without
       // debiting balance a second time.
       expect(
-        mockBillingTransactionService.debitServiceBalance,
+        mockBillingTransactionService.debitServiceBalance
       ).toHaveBeenCalledTimes(1)
       expect(
         mockBillingTransactionService.debitServiceBalance.mock.calls[0][0]
-          .idempotencyKey,
+          .idempotencyKey
       ).toBe("vpn-monthly:sub_vpn_1:2026-06")
       expect(result.alreadyProcessed).toBe(true)
     })
@@ -171,7 +171,7 @@ describe("VpnBillingService", () => {
 
       expect(
         mockBillingTransactionService.debitServiceBalance.mock.calls[0][0]
-          .idempotencyKey,
+          .idempotencyKey
       ).toBe("vpn-monthly:sub_vpn_1:2026-07")
     })
 
@@ -180,7 +180,7 @@ describe("VpnBillingService", () => {
 
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE"),
+        new Error("INSUFFICIENT_BALANCE")
       )
 
       await expect(
@@ -190,7 +190,7 @@ describe("VpnBillingService", () => {
           regionCode: "INDONESIA",
           amount: decimal("25.00"),
           period: "2026-06",
-        }),
+        })
       ).rejects.toThrow("INSUFFICIENT_BALANCE")
     })
 
@@ -204,11 +204,11 @@ describe("VpnBillingService", () => {
           regionCode: "INDONESIA",
           amount: decimal("25.00"),
           period: "2026-06",
-        }),
+        })
       ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
 
       expect(
-        mockBillingTransactionService.debitServiceBalance,
+        mockBillingTransactionService.debitServiceBalance
       ).not.toHaveBeenCalled()
     })
 
@@ -238,13 +238,13 @@ describe("VpnBillingService", () => {
       })
 
       expect(
-        mockBillingTransactionService.debitServiceBalance,
+        mockBillingTransactionService.debitServiceBalance
       ).toHaveBeenCalledWith(
         expect.objectContaining({
           currency: "USD",
           amount: decimal("0.50"),
           idempotencyKey: "vpn-monthly:sub_vpn_usd:2026-06",
-        }),
+        })
       )
     })
   })

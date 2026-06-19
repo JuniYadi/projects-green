@@ -29,8 +29,10 @@ const defaultPreferences: AlertPreferences = {
 }
 
 export function BillingAlertsForm() {
-  const [preferences, setPreferences] = useState<AlertPreferences>(defaultPreferences)
-  const [initialPrefs, setInitialPrefs] = useState<AlertPreferences>(defaultPreferences)
+  const [preferences, setPreferences] =
+    useState<AlertPreferences>(defaultPreferences)
+  const [initialPrefs, setInitialPrefs] =
+    useState<AlertPreferences>(defaultPreferences)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,28 +45,38 @@ export function BillingAlertsForm() {
       .then((account) => {
         if (cancelled) return
         const prefs = {
-          balanceThresholdEnabled: account.alertPreferences?.balanceThresholdEnabled ?? false,
-          balanceThresholdAmount: account.alertPreferences?.balanceThresholdAmount ?? 50000,
-          usageThresholdEnabled: account.alertPreferences?.usageThresholdEnabled ?? false,
-          usageThresholdAmount: account.alertPreferences?.usageThresholdAmount ?? 100000,
+          balanceThresholdEnabled:
+            account.alertPreferences?.balanceThresholdEnabled ?? false,
+          balanceThresholdAmount:
+            account.alertPreferences?.balanceThresholdAmount ?? 50000,
+          usageThresholdEnabled:
+            account.alertPreferences?.usageThresholdEnabled ?? false,
+          usageThresholdAmount:
+            account.alertPreferences?.usageThresholdAmount ?? 100000,
         }
         setPreferences(prefs)
         setInitialPrefs(prefs)
       })
       .catch((err) => {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : "Failed to load preferences")
+        setError(
+          err instanceof Error ? err.message : "Failed to load preferences"
+        )
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const isDirty =
-    preferences.balanceThresholdEnabled !== initialPrefs.balanceThresholdEnabled ||
-    preferences.balanceThresholdAmount !== initialPrefs.balanceThresholdAmount ||
+    preferences.balanceThresholdEnabled !==
+      initialPrefs.balanceThresholdEnabled ||
+    preferences.balanceThresholdAmount !==
+      initialPrefs.balanceThresholdAmount ||
     preferences.usageThresholdEnabled !== initialPrefs.usageThresholdEnabled ||
     preferences.usageThresholdAmount !== initialPrefs.usageThresholdAmount
 
@@ -73,7 +85,7 @@ export function BillingAlertsForm() {
       setPreferences((prev) => ({ ...prev, [key]: value }))
       setSaved(false)
     },
-    [],
+    []
   )
 
   const handleSave = useCallback(async () => {
@@ -91,17 +103,23 @@ export function BillingAlertsForm() {
     try {
       const account = await updateBillingAlerts(input)
       const prefs = {
-        balanceThresholdEnabled: account.alertPreferences?.balanceThresholdEnabled ?? false,
-        balanceThresholdAmount: account.alertPreferences?.balanceThresholdAmount ?? 50000,
-        usageThresholdEnabled: account.alertPreferences?.usageThresholdEnabled ?? false,
-        usageThresholdAmount: account.alertPreferences?.usageThresholdAmount ?? 100000,
+        balanceThresholdEnabled:
+          account.alertPreferences?.balanceThresholdEnabled ?? false,
+        balanceThresholdAmount:
+          account.alertPreferences?.balanceThresholdAmount ?? 50000,
+        usageThresholdEnabled:
+          account.alertPreferences?.usageThresholdEnabled ?? false,
+        usageThresholdAmount:
+          account.alertPreferences?.usageThresholdAmount ?? 100000,
       }
       setPreferences(prefs)
       setInitialPrefs(prefs)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save preferences")
+      setError(
+        err instanceof Error ? err.message : "Failed to save preferences"
+      )
     } finally {
       setSaving(false)
     }
@@ -117,7 +135,11 @@ export function BillingAlertsForm() {
     )
   }
 
-  if (error && !preferences.balanceThresholdEnabled && !preferences.usageThresholdEnabled) {
+  if (
+    error &&
+    !preferences.balanceThresholdEnabled &&
+    !preferences.usageThresholdEnabled
+  ) {
     return (
       <div className="space-y-6">
         <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
@@ -177,7 +199,7 @@ export function BillingAlertsForm() {
                   onChange={(e) =>
                     updatePreference(
                       "balanceThresholdAmount",
-                      parseInt(e.target.value) || 0,
+                      parseInt(e.target.value) || 0
                     )
                   }
                   className="w-40"
@@ -236,7 +258,7 @@ export function BillingAlertsForm() {
                   onChange={(e) =>
                     updatePreference(
                       "usageThresholdAmount",
-                      parseInt(e.target.value) || 0,
+                      parseInt(e.target.value) || 0
                     )
                   }
                   className="w-40"
@@ -277,8 +299,8 @@ export function BillingAlertsForm() {
             >
               Billing Contacts
             </Link>{" "}
-            page. Add or update contacts to control which email addresses receive
-            invoice notifications.
+            page. Add or update contacts to control which email addresses
+            receive invoice notifications.
           </p>
         </CardContent>
       </Card>
@@ -300,9 +322,7 @@ export function BillingAlertsForm() {
             Preferences saved successfully!
           </p>
         )}
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </div>
   )

@@ -60,10 +60,12 @@ export const sourceStepSchema = z.discriminatedUnion("sourceType", [
 const envVarSchema = z.object({
   id: z.string().trim().min(1),
   key: z.string().trim().min(1, "Environment key is required."),
-  value: z.string().max(
-    ENV_VAR_MAX_VALUE_SIZE,
-    `Environment value cannot exceed ${ENV_VAR_MAX_VALUE_SIZE} characters.`
-  ),
+  value: z
+    .string()
+    .max(
+      ENV_VAR_MAX_VALUE_SIZE,
+      `Environment value cannot exceed ${ENV_VAR_MAX_VALUE_SIZE} characters.`
+    ),
   type: z.enum(["plain", "secret"]).optional(),
   scope: z.enum(["all", "build", "runtime"]).optional(),
   lastUpdatedAt: z.string().optional(),

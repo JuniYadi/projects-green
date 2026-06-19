@@ -1,7 +1,4 @@
-import {
-  VpnServerSshExecutor,
-  type SshTarget,
-} from "./vpn-server-ssh-executor"
+import { VpnServerSshExecutor, type SshTarget } from "./vpn-server-ssh-executor"
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_-]{2,63}$/
 
@@ -28,10 +25,12 @@ export class WireGuardSshAdapter {
   private readonly executor: VpnServerSshExecutor
   private readonly addPeerScript: string
 
-  constructor(options: {
-    executor?: VpnServerSshExecutor
-    addPeerScript?: string
-  } = {}) {
+  constructor(
+    options: {
+      executor?: VpnServerSshExecutor
+      addPeerScript?: string
+    } = {}
+  ) {
     this.executor = options.executor ?? new VpnServerSshExecutor()
     this.addPeerScript =
       options.addPeerScript ??

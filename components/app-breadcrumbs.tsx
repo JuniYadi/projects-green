@@ -82,7 +82,10 @@ export function buildAppBreadcrumbItems({
   return breadcrumbSegments.map((segment, index) => {
     const isLast = index === breadcrumbSegments.length - 1
     const parentSegment = breadcrumbSegments[index - 1]
-    const hrefSegments = [...baseSegments, ...breadcrumbSegments.slice(0, index + 1)]
+    const hrefSegments = [
+      ...baseSegments,
+      ...breadcrumbSegments.slice(0, index + 1),
+    ]
 
     return {
       label: labelForSegment(segment, parentSegment),
@@ -103,11 +106,15 @@ export function AppBreadcrumbs({ rootSegment }: AppBreadcrumbsProps) {
 
           return (
             <Fragment key={`${item.href ?? item.label}-${index}`}>
-              <BreadcrumbItem className={index === 0 ? "hidden md:block" : undefined}>
+              <BreadcrumbItem
+                className={index === 0 ? "hidden md:block" : undefined}
+              >
                 {isLast ? (
                   <BreadcrumbPage>{item.label}</BreadcrumbPage>
                 ) : (
-                  <BreadcrumbLink href={item.href ?? "#"}>{item.label}</BreadcrumbLink>
+                  <BreadcrumbLink href={item.href ?? "#"}>
+                    {item.label}
+                  </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
               {!isLast ? (
@@ -137,7 +144,9 @@ function isDetailSegment(segment: string): boolean {
   return (
     /^\d+$/.test(segment) ||
     /^[a-z0-9]+_[a-z0-9]+$/i.test(segment) ||
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(segment)
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      segment
+    )
   )
 }
 

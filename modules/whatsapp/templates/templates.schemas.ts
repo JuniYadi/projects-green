@@ -79,7 +79,9 @@ export const templateBodySchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
   description: z.string().trim().max(500).optional(),
   whatsappDeviceId: z.string().trim().min(1).optional(),
-  languages: z.array(templateLanguageSchema).min(1, "At least one language variant is required"),
+  languages: z
+    .array(templateLanguageSchema)
+    .min(1, "At least one language variant is required"),
 })
 export type TemplateBodyInput = z.infer<typeof templateBodySchema>
 
@@ -148,8 +150,13 @@ export class TemplateNotOwnedError extends Error {
 // ─── Service interface ───────────────────────────────────────────────────────
 
 export type TemplateService = {
-  listByOrganization: (organizationId: string | null) => Promise<TemplateListItem[]>
-  findById: (id: string, organizationId: string | null) => Promise<TemplateDetail>
+  listByOrganization: (
+    organizationId: string | null
+  ) => Promise<TemplateListItem[]>
+  findById: (
+    id: string,
+    organizationId: string | null
+  ) => Promise<TemplateDetail>
   create: (
     input: TemplateBodyInput & { organizationId: string | null }
   ) => Promise<TemplateDetail>

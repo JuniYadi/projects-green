@@ -42,7 +42,7 @@ describe("AdminUsageRoute", () => {
       const app = new Elysia()
         .use(
           createAdminUsageRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })
@@ -189,7 +189,7 @@ describe("AdminUsageRoute", () => {
                 user: { id: "admin-1" },
                 organizationId: "org-1",
                 role: "admin",
-              } as unknown as MockAuthContext),
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
             isAdmin: () => true,
           })
@@ -264,7 +264,7 @@ describe("AdminUsageRoute", () => {
                 user: { id: "admin-1" },
                 organizationId: "org-1",
                 role: "admin",
-              } as unknown as MockAuthContext),
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "super_admin" as PlatformAccessRole,
           })
         )
@@ -286,7 +286,7 @@ describe("AdminUsageRoute", () => {
                 user: { id: "member-1" },
                 organizationId: "org-1",
                 role: "member",
-              } as unknown as MockAuthContext),
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
           })
         )
@@ -297,6 +297,67 @@ describe("AdminUsageRoute", () => {
       )
 
       expect(response.status).toBe(403)
+    })
+
+    it("scopes to provided orgId for super_admin", async () => {
+      mockFindMany.mockResolvedValueOnce([])
+      mockGroupBy.mockResolvedValueOnce([])
+
+      const app = new Elysia()
+        .use(
+          createAdminUsageRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as unknown as MockAuthContext,
+            getPlatformRole: async () => "super_admin" as PlatformAccessRole,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/admin/usage?orgId=550e8400-e29b-41d4-a716-446655440000"
+        )
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "550e8400-e29b-41d4-a716-446655440000",
+          }),
+        })
+      )
+    })
+
+    it("returns 403 when non-super_admin provides orgId", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminUsageRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as unknown as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/admin/usage?orgId=550e8400-e29b-41d4-a716-446655440000"
+        )
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
     })
   })
 })

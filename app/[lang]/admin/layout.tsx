@@ -63,7 +63,7 @@ export default async function AdminLayout({
   const workosUser = await getLatestWorkOSUser(auth.user)
   const sidebarUser = resolveSidebarUser(workosUser)
   const sidebarOrganization = await resolveSidebarOrganization(
-    auth.organizationId,
+    auth.organizationId
   )
 
   return (

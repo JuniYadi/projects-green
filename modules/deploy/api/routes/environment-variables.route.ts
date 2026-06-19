@@ -17,9 +17,9 @@ import { isTenantApiError } from "@/modules/tenants/contracts/tenant-api.contrac
 import { canManageTenant } from "@/modules/tenants/tenant-policy"
 
 type EnvironmentVariablesRouteDeps = {
-  requireActor: (set: RouteSet) => Promise<
-    Awaited<ReturnType<typeof requireTenantActor>>
-  >
+  requireActor: (
+    set: RouteSet
+  ) => Promise<Awaited<ReturnType<typeof requireTenantActor>>>
 }
 
 const defaultDependencies: EnvironmentVariablesRouteDeps = {
@@ -81,39 +81,47 @@ export const createEnvironmentVariablesRoutes = (
         items: listEnvironmentVariables(params.environmentId),
       }
     })
-    .post("/", async ({ params, body, set }) => {
-      const denied = await guard(set)
-      if (denied) {
-        return denied
-      }
+    .post(
+      "/",
+      async ({ params, body, set }) => {
+        const denied = await guard(set)
+        if (denied) {
+          return denied
+        }
 
-      return createEnvironmentVariable({
-        environmentId: params.environmentId,
-        key: body.key,
-        value: body.value,
-        type: body.type,
-        scope: body.scope,
-      })
-    }, {
-      body: createSchema,
-    })
-    .patch("/:variableId", async ({ params, body, set }) => {
-      const denied = await guard(set)
-      if (denied) {
-        return denied
+        return createEnvironmentVariable({
+          environmentId: params.environmentId,
+          key: body.key,
+          value: body.value,
+          type: body.type,
+          scope: body.scope,
+        })
+      },
+      {
+        body: createSchema,
       }
+    )
+    .patch(
+      "/:variableId",
+      async ({ params, body, set }) => {
+        const denied = await guard(set)
+        if (denied) {
+          return denied
+        }
 
-      return updateEnvironmentVariable({
-        environmentId: params.environmentId,
-        variableId: params.variableId,
-        key: body.key,
-        value: body.value,
-        type: body.type,
-        scope: body.scope,
-      })
-    }, {
-      body: updateSchema,
-    })
+        return updateEnvironmentVariable({
+          environmentId: params.environmentId,
+          variableId: params.variableId,
+          key: body.key,
+          value: body.value,
+          type: body.type,
+          scope: body.scope,
+        })
+      },
+      {
+        body: updateSchema,
+      }
+    )
     .delete("/:variableId", async ({ params, set }) => {
       const denied = await guard(set)
       if (denied) {
@@ -125,20 +133,24 @@ export const createEnvironmentVariablesRoutes = (
         variableId: params.variableId,
       })
     })
-    .post("/import", async ({ params, body, set }) => {
-      const denied = await guard(set)
-      if (denied) {
-        return denied
-      }
+    .post(
+      "/import",
+      async ({ params, body, set }) => {
+        const denied = await guard(set)
+        if (denied) {
+          return denied
+        }
 
-      return importEnvironmentVariables({
-        environmentId: params.environmentId,
-        raw: body.raw,
-        scope: body.scope,
-      })
-    }, {
-      body: importSchema,
-    })
+        return importEnvironmentVariables({
+          environmentId: params.environmentId,
+          raw: body.raw,
+          scope: body.scope,
+        })
+      },
+      {
+        body: importSchema,
+      }
+    )
 }
 
 export const environmentVariablesRoutes = createEnvironmentVariablesRoutes()

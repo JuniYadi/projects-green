@@ -27,9 +27,12 @@ export default async function SupportTicketCreatePage({
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
           <Link href={listPath}>Back to Support Tickets</Link>
         </Button>
-        <h1 className="text-2xl font-semibold">Create Support Ticket (Admin)</h1>
+        <h1 className="text-2xl font-semibold">
+          Create Support Ticket (Admin)
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Open a ticket on behalf of an organization with optional secure credentials and attachments.
+          Open a ticket on behalf of an organization with optional secure
+          credentials and attachments.
         </p>
       </header>
 

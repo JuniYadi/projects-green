@@ -97,9 +97,7 @@ export function MarkPaidDialog({
       onSuccess()
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to mark invoice as paid."
+        err instanceof Error ? err.message : "Unable to mark invoice as paid."
       )
     } finally {
       setLoading(false)
@@ -132,10 +130,7 @@ export function MarkPaidDialog({
             >
               Payment Method
             </label>
-            <Select
-              value={paymentMethod}
-              onValueChange={setPaymentMethod}
-            >
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
               <SelectTrigger id="payment-method">
                 <SelectValue placeholder="Select payment method" />
               </SelectTrigger>
@@ -180,9 +175,7 @@ export function MarkPaidDialog({
             />
           </div>
 
-          {error ? (
-            <p className="text-xs text-destructive">{error}</p>
-          ) : null}
+          {error ? <p className="text-xs text-destructive">{error}</p> : null}
         </div>
 
         <SheetFooter>

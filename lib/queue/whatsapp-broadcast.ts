@@ -125,10 +125,13 @@ const getSharedQueue = () => {
     return sharedQueue
   }
 
-  sharedQueue = new Queue<WhatsAppBroadcastJobData>(WHATSAPP_BROADCAST_QUEUE_NAME, {
-    connection: getWhatsAppBroadcastRedisConnection(),
-    defaultJobOptions: DEFAULT_JOB_OPTIONS,
-  })
+  sharedQueue = new Queue<WhatsAppBroadcastJobData>(
+    WHATSAPP_BROADCAST_QUEUE_NAME,
+    {
+      connection: getWhatsAppBroadcastRedisConnection(),
+      defaultJobOptions: DEFAULT_JOB_OPTIONS,
+    }
+  )
 
   return sharedQueue
 }

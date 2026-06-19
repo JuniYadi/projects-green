@@ -6,7 +6,11 @@
 
 "use client"
 
-import { WarningCircle, ArrowsClockwise, Lightning } from "@phosphor-icons/react"
+import {
+  WarningCircle,
+  ArrowsClockwise,
+  Lightning,
+} from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -93,7 +97,10 @@ export function TemplateDetailView({
   if (!template) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Lightning className="mb-3 size-10 text-muted-foreground" weight="fill" />
+        <Lightning
+          className="mb-3 size-10 text-muted-foreground"
+          weight="fill"
+        />
         <p className="text-sm text-muted-foreground">Template not found.</p>
       </div>
     )
@@ -191,10 +198,7 @@ export function TemplateDetailView({
             ) : (
               <div className="space-y-3">
                 {template.languages.map((lang) => (
-                  <div
-                    key={lang.id}
-                    className="rounded-md border p-3"
-                  >
+                  <div key={lang.id} className="rounded-md border p-3">
                     <div className="mb-1 flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">
                         {lang.lang}
@@ -206,7 +210,7 @@ export function TemplateDetailView({
                       )}
                     </div>
                     {lang.body && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
+                      <p className="line-clamp-2 text-sm text-muted-foreground">
                         {lang.body}
                       </p>
                     )}

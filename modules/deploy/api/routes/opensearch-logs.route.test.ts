@@ -17,9 +17,7 @@ mock.module("@/lib/platform-role", () => ({
 }))
 
 mock.module("@/modules/deploy/opensearch/opensearch-log.service", () => ({
-  queryLogs: mock(() =>
-    Promise.resolve({ hits: [], total: 0, took: 5 })
-  ),
+  queryLogs: mock(() => Promise.resolve({ hits: [], total: 0, took: 5 })),
   getDeployAggregation: mock(() =>
     Promise.resolve({
       deployFrequency: [],
@@ -50,7 +48,7 @@ describe("OpenSearch Logs Routes", () => {
       new Request("http://localhost/deploy/logs/other-org/search")
     )
     expect(response.status).toBe(403)
-    const body = await response.json() as { error: string }
+    const body = (await response.json()) as { error: string }
     expect(body.error).toBe("FORBIDDEN")
   })
 })

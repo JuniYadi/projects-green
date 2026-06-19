@@ -28,9 +28,12 @@ export default async function SupportTicketDetailPage({
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
           <Link href={listPath}>Back to Support Tickets</Link>
         </Button>
-        <h1 className="text-2xl font-semibold">Support Ticket Details (Admin)</h1>
+        <h1 className="text-2xl font-semibold">
+          Support Ticket Details (Admin)
+        </h1>
         <p className="text-sm text-muted-foreground">
-          View full thread details, change categorization, reply, or delete the ticket.
+          View full thread details, change categorization, reply, or delete the
+          ticket.
         </p>
       </header>
 

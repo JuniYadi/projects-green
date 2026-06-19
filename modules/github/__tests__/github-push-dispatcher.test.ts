@@ -159,6 +159,8 @@ describe("verifyGitHubSignature", () => {
   })
 
   it("returns false for invalid signature", () => {
-    expect(verifyGitHubSignature("body", "sha256=invalid", "secret")).toBe(false)
+    expect(verifyGitHubSignature("body", "sha256=invalid", "secret")).toBe(
+      false
+    )
   })
 })

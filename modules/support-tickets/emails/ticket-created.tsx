@@ -35,7 +35,8 @@ export const TicketCreatedEmail = ({ ticket }: TicketCreatedEmailProps) => {
           </Heading>
 
           <Text style={styles.intro}>
-            We&apos;ve received your support request and our team will review it shortly.
+            We&apos;ve received your support request and our team will review it
+            shortly.
           </Text>
 
           <Section style={styles.ticketInfo}>
@@ -44,13 +45,16 @@ export const TicketCreatedEmail = ({ ticket }: TicketCreatedEmailProps) => {
             </Heading>
 
             <Text style={styles.meta}>
-              <strong>Status:</strong> {SUPPORT_TICKET_STATUS_LABELS[ticket.status]}
+              <strong>Status:</strong>{" "}
+              {SUPPORT_TICKET_STATUS_LABELS[ticket.status]}
             </Text>
             <Text style={styles.meta}>
-              <strong>Department:</strong> {SUPPORT_TICKET_DEPARTMENT_LABELS[ticket.department]}
+              <strong>Department:</strong>{" "}
+              {SUPPORT_TICKET_DEPARTMENT_LABELS[ticket.department]}
             </Text>
             <Text style={styles.meta}>
-              <strong>Priority:</strong> {SUPPORT_TICKET_PRIORITY_LABELS[ticket.priority]}
+              <strong>Priority:</strong>{" "}
+              {SUPPORT_TICKET_PRIORITY_LABELS[ticket.priority]}
             </Text>
             {ticket.service && (
               <Text style={styles.meta}>
@@ -70,7 +74,8 @@ export const TicketCreatedEmail = ({ ticket }: TicketCreatedEmailProps) => {
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have additional information to add, please reply to this email or visit your support dashboard.
+            If you have additional information to add, please reply to this
+            email or visit your support dashboard.
           </Text>
         </Container>
       </Body>

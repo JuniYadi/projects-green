@@ -96,9 +96,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Device Information</CardTitle>
-          <CardDescription>
-            Core device details and identifiers
-          </CardDescription>
+          <CardDescription>Core device details and identifiers</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="space-y-3">
@@ -106,9 +104,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
             <InfoRow label="Name" value={device.name || "-"} />
             <InfoRow
               label="Environment"
-              value={
-                <Badge variant="outline">{device.environment}</Badge>
-              }
+              value={<Badge variant="outline">{device.environment}</Badge>}
             />
             <InfoRow
               label="WhatsApp Business Account ID"
@@ -118,14 +114,8 @@ export default async function PortalWhatsAppDeviceDetailPage({
               label="WhatsApp Phone ID"
               value={device.whatsappPhoneId || "-"}
             />
-            <InfoRow
-              label="Business ID"
-              value={device.businessId || "-"}
-            />
-            <InfoRow
-              label="Callback URL"
-              value={device.callbackUrl || "-"}
-            />
+            <InfoRow label="Business ID" value={device.businessId || "-"} />
+            <InfoRow label="Callback URL" value={device.callbackUrl || "-"} />
           </dl>
         </CardContent>
       </Card>
@@ -141,9 +131,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Organization</CardTitle>
-          <CardDescription>
-            Owner organization mapping
-          </CardDescription>
+          <CardDescription>Owner organization mapping</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="space-y-3">
@@ -162,9 +150,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Timestamps</CardTitle>
-          <CardDescription>
-            Creation and activity dates
-          </CardDescription>
+          <CardDescription>Creation and activity dates</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="space-y-3">
@@ -173,10 +159,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
               label="Last Updated"
               value={formatDate(device.updatedAt)}
             />
-            <InfoRow
-              label="Expires"
-              value={formatDate(device.expiredAt)}
-            />
+            <InfoRow label="Expires" value={formatDate(device.expiredAt)} />
           </dl>
         </CardContent>
       </Card>
@@ -196,7 +179,9 @@ export default async function PortalWhatsAppDeviceDetailPage({
       }}
       backHref={devicesPath}
       overviewChildren={overviewContent}
-      actions={<DeviceActions deviceId={device.id} deviceStatus={device.status} />}
+      actions={
+        <DeviceActions deviceId={device.id} deviceStatus={device.status} />
+      }
     />
   )
 }

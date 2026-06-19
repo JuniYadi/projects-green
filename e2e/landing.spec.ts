@@ -32,7 +32,9 @@ test.describe("Landing Page (/)", () => {
     await expect(link).toHaveText("Sign in")
   })
 
-  test("navbar has Get started free CTA linking to /signup", async ({ page }) => {
+  test("navbar has Get started free CTA linking to /signup", async ({
+    page,
+  }) => {
     const link = page.locator('header nav a[href="/signup"]').first()
     await expect(link).toBeVisible()
     await expect(link).toHaveText("Get started free")
@@ -73,10 +75,18 @@ test.describe("Landing Page (/)", () => {
   })
 
   test("pricing section has 4 plan tier headings", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Hobby", exact: true })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Pro", exact: true })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Team", exact: true })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Enterprise", exact: true })).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Hobby", exact: true })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Pro", exact: true })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Team", exact: true })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Enterprise", exact: true })
+    ).toBeVisible()
   })
 
   test("pricing plan cards have price elements", async ({ page }) => {
@@ -90,12 +100,20 @@ test.describe("Landing Page (/)", () => {
     await expect(page.locator("#pricing-plan-team")).toContainText("$79")
     await expect(page.locator("#pricing-plan-team")).toContainText("/mo")
 
-    await expect(page.locator("#pricing-plan-enterprise")).toContainText("Custom")
+    await expect(page.locator("#pricing-plan-enterprise")).toContainText(
+      "Custom"
+    )
   })
 
   test("pricing has Hobby plan features", async ({ page }) => {
-    await expect(page.locator("#pricing-plan-hobby").getByText("3 projects", { exact: true })).toBeVisible()
-    await expect(page.locator("#pricing-plan-hobby").getByText("100 GB bandwidth/mo")).toBeVisible()
+    await expect(
+      page
+        .locator("#pricing-plan-hobby")
+        .getByText("3 projects", { exact: true })
+    ).toBeVisible()
+    await expect(
+      page.locator("#pricing-plan-hobby").getByText("100 GB bandwidth/mo")
+    ).toBeVisible()
   })
 
   test("pricing Pro plan has correct trial link", async ({ page }) => {
@@ -106,7 +124,9 @@ test.describe("Landing Page (/)", () => {
   test("pricing toggles between Monthly and Yearly", async ({ page }) => {
     // Verify default state (yearly pricing)
     await expect(page.getByRole("button", { name: /Monthly/i })).toBeVisible()
-    await expect(page.getByRole("button", { name: /Yearly.*-20%/i })).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: /Yearly.*-20%/i })
+    ).toBeVisible()
     await expect(page.locator("#pricing-plan-pro")).toContainText("$23")
 
     // Click Monthly and verify prices update
@@ -119,17 +139,33 @@ test.describe("Landing Page (/)", () => {
   })
 
   test("features section heading is visible", async ({ page }) => {
-    await expect(page.getByText("The platform that gets out of your way")).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Git-native workflow" })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Deploy in seconds" })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Zero-trust security" })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Global edge network" })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Developer-first APIs" })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Auto-scaling infra" })).toBeVisible()
+    await expect(
+      page.getByText("The platform that gets out of your way")
+    ).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Git-native workflow" })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Deploy in seconds" })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Zero-trust security" })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Global edge network" })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Developer-first APIs" })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Auto-scaling infra" })
+    ).toBeVisible()
   })
 
   test("CTA section has Start building for free link", async ({ page }) => {
-    const startFree = page.getByRole("link", { name: /Get started free/i }).last()
+    const startFree = page
+      .getByRole("link", { name: /Get started free/i })
+      .last()
     await expect(startFree).toBeVisible()
     await expect(startFree).toHaveAttribute("href", "/signup")
   })
@@ -139,10 +175,18 @@ test.describe("Landing Page (/)", () => {
     await page.waitForTimeout(500)
 
     const footer = page.locator("footer")
-    await expect(footer.getByRole("heading", { name: "Product", exact: true })).toBeVisible()
-    await expect(footer.getByRole("heading", { name: "Developers", exact: true })).toBeVisible()
-    await expect(footer.getByRole("heading", { name: "Company", exact: true })).toBeVisible()
-    await expect(footer.getByRole("heading", { name: "Legal", exact: true })).toBeVisible()
+    await expect(
+      footer.getByRole("heading", { name: "Product", exact: true })
+    ).toBeVisible()
+    await expect(
+      footer.getByRole("heading", { name: "Developers", exact: true })
+    ).toBeVisible()
+    await expect(
+      footer.getByRole("heading", { name: "Company", exact: true })
+    ).toBeVisible()
+    await expect(
+      footer.getByRole("heading", { name: "Legal", exact: true })
+    ).toBeVisible()
   })
 
   test("footer copyright bar is visible", async ({ page }) => {
@@ -184,7 +228,9 @@ test.describe("Landing Page — Navigation", () => {
     await page.goto("/en")
     await page.locator('header nav a[href="#pricing"]').click()
     await page.waitForTimeout(1000)
-    const pricingHeading = page.getByRole("heading", { name: "Simple, transparent pricing" })
+    const pricingHeading = page.getByRole("heading", {
+      name: "Simple, transparent pricing",
+    })
     await expect(pricingHeading).toBeInViewport()
   })
 

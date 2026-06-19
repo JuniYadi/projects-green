@@ -23,7 +23,9 @@ describe("resolveVpnSubscriptionRefs", () => {
     mockPrisma.servicePlan.findUnique.mockResolvedValue({
       id: "plan_standard_id",
     })
-    mockPrisma.serviceRegion.findUnique.mockResolvedValue({ id: "region_id_id" })
+    mockPrisma.serviceRegion.findUnique.mockResolvedValue({
+      id: "region_id_id",
+    })
     mockPrisma.servicePricing.findFirst.mockResolvedValue({
       id: "pricing_id",
       basePriceIdr: decimal("0"),
@@ -31,7 +33,7 @@ describe("resolveVpnSubscriptionRefs", () => {
 
     const refs = await resolveVpnSubscriptionRefs(
       mockPrisma as unknown as PrismaClient,
-      { planCode: "STANDARD", regionCode: "INDONESIA" },
+      { planCode: "STANDARD", regionCode: "INDONESIA" }
     )
 
     expect(refs).toEqual({
@@ -46,10 +48,10 @@ describe("resolveVpnSubscriptionRefs", () => {
     mockPrisma.servicePackage.findUnique.mockResolvedValue(null)
 
     await expect(
-      resolveVpnSubscriptionRefs(
-        mockPrisma as unknown as PrismaClient,
-        { planCode: "STANDARD", regionCode: "INDONESIA" },
-      ),
+      resolveVpnSubscriptionRefs(mockPrisma as unknown as PrismaClient, {
+        planCode: "STANDARD",
+        regionCode: "INDONESIA",
+      })
     ).rejects.toThrow(VpnSubscriptionRefsNotFoundError)
   })
 
@@ -58,10 +60,10 @@ describe("resolveVpnSubscriptionRefs", () => {
     mockPrisma.servicePlan.findUnique.mockResolvedValue(null)
 
     await expect(
-      resolveVpnSubscriptionRefs(
-        mockPrisma as unknown as PrismaClient,
-        { planCode: "GIGA_PREMIUM", regionCode: "INDONESIA" },
-      ),
+      resolveVpnSubscriptionRefs(mockPrisma as unknown as PrismaClient, {
+        planCode: "GIGA_PREMIUM",
+        regionCode: "INDONESIA",
+      })
     ).rejects.toThrow(VpnSubscriptionRefsNotFoundError)
   })
 
@@ -73,10 +75,10 @@ describe("resolveVpnSubscriptionRefs", () => {
     mockPrisma.serviceRegion.findUnique.mockResolvedValue(null)
 
     await expect(
-      resolveVpnSubscriptionRefs(
-        mockPrisma as unknown as PrismaClient,
-        { planCode: "STANDARD", regionCode: "MARS" },
-      ),
+      resolveVpnSubscriptionRefs(mockPrisma as unknown as PrismaClient, {
+        planCode: "STANDARD",
+        regionCode: "MARS",
+      })
     ).rejects.toThrow(VpnSubscriptionRefsNotFoundError)
   })
 
@@ -85,14 +87,16 @@ describe("resolveVpnSubscriptionRefs", () => {
     mockPrisma.servicePlan.findUnique.mockResolvedValue({
       id: "plan_standard_id",
     })
-    mockPrisma.serviceRegion.findUnique.mockResolvedValue({ id: "region_id_id" })
+    mockPrisma.serviceRegion.findUnique.mockResolvedValue({
+      id: "region_id_id",
+    })
     mockPrisma.servicePricing.findFirst.mockResolvedValue(null)
 
     await expect(
-      resolveVpnSubscriptionRefs(
-        mockPrisma as unknown as PrismaClient,
-        { planCode: "STANDARD", regionCode: "INDONESIA" },
-      ),
+      resolveVpnSubscriptionRefs(mockPrisma as unknown as PrismaClient, {
+        planCode: "STANDARD",
+        regionCode: "INDONESIA",
+      })
     ).rejects.toThrow(VpnSubscriptionRefsNotFoundError)
   })
 })

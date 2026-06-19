@@ -50,7 +50,9 @@ async function syncJenkinsPipelineForStack(
   try {
     // Need repositoryConnectionId to get installation info
     if (!stack.repositoryConnectionId) {
-      console.log(`[jenkins-sync] Skipping — no repository connection for ${stack.slug}`)
+      console.log(
+        `[jenkins-sync] Skipping — no repository connection for ${stack.slug}`
+      )
       return
     }
 
@@ -61,7 +63,9 @@ async function syncJenkinsPipelineForStack(
     })
 
     if (!connection) {
-      console.log(`[jenkins-sync] Skipping — connection not found for ${stack.slug}`)
+      console.log(
+        `[jenkins-sync] Skipping — connection not found for ${stack.slug}`
+      )
       return
     }
 
@@ -84,7 +88,10 @@ async function syncJenkinsPipelineForStack(
     )
   } catch (error) {
     // Non-blocking — log but don't fail stack creation
-    console.error(`[jenkins-sync] Failed to sync pipeline for ${stack.slug}:`, error)
+    console.error(
+      `[jenkins-sync] Failed to sync pipeline for ${stack.slug}:`,
+      error
+    )
   }
 }
 
@@ -160,7 +167,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       framework: stack.framework, // framework can be string | null
       repositoryConnectionId: stack.repositoryConnectionId,
     },
-    env,
+    env
   ).catch(() => {
     // Already logged in the function
   })
@@ -183,7 +190,11 @@ export async function triggerDeploy(params: {
       where: { id: params.stackId },
     })
 
-    if (stack.status === "QUEUED" || stack.status === "BUILDING" || stack.status === "DEPLOYING") {
+    if (
+      stack.status === "QUEUED" ||
+      stack.status === "BUILDING" ||
+      stack.status === "DEPLOYING"
+    ) {
       throw new Error("A deployment is already in progress for this stack")
     }
 

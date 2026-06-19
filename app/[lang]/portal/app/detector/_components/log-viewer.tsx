@@ -59,7 +59,7 @@ function LogDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Inspection Log Detail</DialogTitle>
           <DialogDescription>
@@ -127,7 +127,7 @@ function LogDetailDialog({
                 {log.reasoning.map((reason, i) => (
                   <li
                     key={i}
-                    className="text-sm text-muted-foreground pl-4 border-l-2 border-muted"
+                    className="border-l-2 border-muted pl-4 text-sm text-muted-foreground"
                   >
                     {reason}
                   </li>
@@ -143,7 +143,7 @@ function LogDetailDialog({
                 {log.warnings.map((warning, i) => (
                   <li
                     key={i}
-                    className="text-sm text-amber-600 pl-4 border-l-2 border-amber-200"
+                    className="border-l-2 border-amber-200 pl-4 text-sm text-amber-600"
                   >
                     {warning}
                   </li>
@@ -157,7 +157,7 @@ function LogDetailDialog({
               <p className="text-sm font-medium text-destructive">
                 Blocked By Rule
               </p>
-              <p className="text-sm text-muted-foreground font-mono">
+              <p className="font-mono text-sm text-muted-foreground">
                 {log.blockedByRuleId}
               </p>
             </div>
@@ -168,7 +168,7 @@ function LogDetailDialog({
               <p className="text-sm font-medium text-destructive">
                 Error Message
               </p>
-              <pre className="mt-1 rounded-md bg-destructive/10 p-2 text-xs text-destructive overflow-x-auto">
+              <pre className="mt-1 overflow-x-auto rounded-md bg-destructive/10 p-2 text-xs text-destructive">
                 {log.errorMessage}
               </pre>
             </div>
@@ -251,7 +251,7 @@ export function LogViewer() {
         const match = url.match(/github\.com\/([^/]+\/[^/]+)/)
         const display = match ? match[1] : url
         return (
-          <div className="font-mono text-xs max-w-[200px] truncate">
+          <div className="max-w-[200px] truncate font-mono text-xs">
             {display}
           </div>
         )
@@ -263,9 +263,7 @@ export function LogViewer() {
       cell: ({ row }) => (
         <div>
           {row.original.detectedFramework ? (
-            <Badge variant="outline">
-              {row.original.detectedFramework}
-            </Badge>
+            <Badge variant="outline">{row.original.detectedFramework}</Badge>
           ) : (
             <span className="text-muted-foreground">—</span>
           )}

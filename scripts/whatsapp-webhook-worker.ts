@@ -55,9 +55,7 @@ const worker = new Worker<WhatsAppWebhookJobData>(
       return
     }
 
-    console.warn(
-      `[whatsapp-webhook-worker] unknown event type: ${eventType}`,
-    )
+    console.warn(`[whatsapp-webhook-worker] unknown event type: ${eventType}`)
   },
   {
     connection: redisConnection,
@@ -65,9 +63,7 @@ const worker = new Worker<WhatsAppWebhookJobData>(
   }
 )
 
-async function getDeviceOrganization(
-  deviceId: string,
-): Promise<string | null> {
+async function getDeviceOrganization(deviceId: string): Promise<string | null> {
   const device = await prisma.whatsappDevice.findFirst({
     where: { id: deviceId },
     select: { id: true, organizationId: true },
@@ -78,7 +74,7 @@ async function getDeviceOrganization(
 
 async function handleMessageEvent(
   payload: unknown,
-  deviceId: string,
+  deviceId: string
 ): Promise<void> {
   const messagePayload = payload as Record<string, unknown>
 
@@ -104,7 +100,7 @@ async function handleMessageEvent(
     const result = await processInboundMessage(
       messagePayload as any,
       deviceId,
-      organizationId,
+      organizationId
     )
 
     console.info(
@@ -113,7 +109,7 @@ async function handleMessageEvent(
   } catch (error) {
     console.error(
       `[whatsapp-webhook-worker] failed to process message from=${from} device=${deviceId}:`,
-      error,
+      error
     )
     throw error // Let BullMQ handle retry
   }
@@ -121,7 +117,7 @@ async function handleMessageEvent(
 
 async function handleStatusEvent(
   payload: unknown,
-  deviceId: string,
+  deviceId: string
 ): Promise<void> {
   const statusPayload = payload as Record<string, unknown>
 
@@ -147,7 +143,7 @@ async function handleStatusEvent(
     const result = await processDeliveryStatus(
       statusPayload as any,
       deviceId,
-      organizationId,
+      organizationId
     )
 
     if (result.messageId) {
@@ -162,7 +158,7 @@ async function handleStatusEvent(
   } catch (error) {
     console.error(
       `[whatsapp-webhook-worker] failed to process status waMessageId=${waMessageId} device=${deviceId}:`,
-      error,
+      error
     )
     throw error // Let BullMQ handle retry
   }
@@ -176,17 +172,12 @@ worker.on("active", (job) => {
 })
 
 worker.on("completed", (job) => {
-  console.info(
-    `[whatsapp-webhook-worker] completed ${job.name} id=${job.id}`
-  )
+  console.info(`[whatsapp-webhook-worker] completed ${job.name} id=${job.id}`)
 })
 
 worker.on("failed", async (job, error) => {
   if (!job) {
-    console.error(
-      "[whatsapp-webhook-worker] failed job missing payload",
-      error
-    )
+    console.error("[whatsapp-webhook-worker] failed job missing payload", error)
     return
   }
 

@@ -10,7 +10,11 @@ import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { adminCreateDeviceSchema, topUpInputSchema, updateDeviceSchema } from "../devices.schemas"
+import {
+  adminCreateDeviceSchema,
+  topUpInputSchema,
+  updateDeviceSchema,
+} from "../devices.schemas"
 import { createDeviceService } from "../devices.service"
 import {
   requireSuperAdmin,
@@ -172,10 +176,7 @@ export const createAdminDevicesRoutes = (
         const device = await service.update(id, parsed.data, null)
         return { ok: true as const, device }
       } catch (error) {
-        if (
-          error instanceof Error &&
-          error.name === "DeviceNotFoundError"
-        ) {
+        if (error instanceof Error && error.name === "DeviceNotFoundError") {
           set.status = 404
           return {
             ok: false as const,
@@ -197,10 +198,7 @@ export const createAdminDevicesRoutes = (
         await service.delete(id)
         return { ok: true as const, message: "Device deleted." }
       } catch (error) {
-        if (
-          error instanceof Error &&
-          error.name === "DeviceNotFoundError"
-        ) {
+        if (error instanceof Error && error.name === "DeviceNotFoundError") {
           set.status = 404
           return {
             ok: false as const,

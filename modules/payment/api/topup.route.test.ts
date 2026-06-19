@@ -95,44 +95,47 @@ describe("Topup Route", () => {
 
     const { prisma } = await import("@/lib/prisma")
     ;(prisma.billingAccount.findUnique as ReturnType<typeof mock>).mockClear()
-    ;(prisma.billingAccount.findUnique as ReturnType<typeof mock>).mockImplementation(
-      () =>
-        Promise.resolve({
-          id: "ba-123",
-          organizationId: "org-123",
-          currency: "IDR",
-          balance: { toNumber: () => 0 },
-        })
+    ;(
+      prisma.billingAccount.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(() =>
+      Promise.resolve({
+        id: "ba-123",
+        organizationId: "org-123",
+        currency: "IDR",
+        balance: { toNumber: () => 0 },
+      })
     )
     ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>).mockClear()
-    ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>).mockImplementation(
-      () => Promise.resolve([])
-    )
+    ;(
+      prisma.paymentGateway.findMany as ReturnType<typeof mock>
+    ).mockImplementation(() => Promise.resolve([]))
     ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockClear()
-    ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockImplementation(
-      () => Promise.resolve([])
-    )
+    ;(
+      prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
+    ).mockImplementation(() => Promise.resolve([]))
     ;(prisma.paymentCurrency.findUnique as ReturnType<typeof mock>).mockClear()
-    ;(prisma.paymentCurrency.findUnique as ReturnType<typeof mock>).mockImplementation(
-      () =>
-        Promise.resolve({
-          code: "USD",
-          symbol: "$",
-          ratePerBase: { toNumber: () => 1 },
-          minTopup: { toNumber: () => 10 },
-          maxTopup: { toNumber: () => 10000 },
-        })
+    ;(
+      prisma.paymentCurrency.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(() =>
+      Promise.resolve({
+        code: "USD",
+        symbol: "$",
+        ratePerBase: { toNumber: () => 1 },
+        minTopup: { toNumber: () => 10 },
+        maxTopup: { toNumber: () => 10000 },
+      })
     )
     ;(prisma.paymentCurrency.findFirst as ReturnType<typeof mock>).mockClear()
-    ;(prisma.paymentCurrency.findFirst as ReturnType<typeof mock>).mockImplementation(
-      () =>
-        Promise.resolve({
-          code: "USD",
-          symbol: "$",
-          ratePerBase: { toNumber: () => 1 },
-          minTopup: { toNumber: () => 10 },
-          maxTopup: { toNumber: () => 10000 },
-        })
+    ;(
+      prisma.paymentCurrency.findFirst as ReturnType<typeof mock>
+    ).mockImplementation(() =>
+      Promise.resolve({
+        code: "USD",
+        symbol: "$",
+        ratePerBase: { toNumber: () => 1 },
+        minTopup: { toNumber: () => 10 },
+        maxTopup: { toNumber: () => 10000 },
+      })
     )
 
     app = (
@@ -224,7 +227,9 @@ describe("Topup Route", () => {
 
     it("should create invoice and return success for MANUAL_BANK", async () => {
       const { prisma } = await import("@/lib/prisma")
-      ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([
+      ;(
+        prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
+      ).mockResolvedValueOnce([
         {
           id: "bank-idr",
           bankCode: "BCA",
@@ -266,7 +271,9 @@ describe("Topup Route", () => {
         currency: "USD",
         balance: { toNumber: () => 0 },
       })
-      ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([])
+      ;(
+        prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
+      ).mockResolvedValueOnce([])
 
       const response = await app.handle(
         new Request("http://localhost/topup", {
@@ -404,7 +411,9 @@ describe("Topup Route", () => {
         currency: "USD",
         balance: { toNumber: () => 0 },
       })
-      ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([])
+      ;(
+        prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
+      ).mockResolvedValueOnce([])
 
       const response = await app.handle(
         new Request("http://localhost/topup/methods")
@@ -476,7 +485,9 @@ describe("Topup Route", () => {
         currency: "USD",
         balance: { toNumber: () => 0 },
       })
-      ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockResolvedValueOnce([
+      ;(
+        prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
+      ).mockResolvedValueOnce([
         {
           id: "bank-usd",
           bankCode: "HSBC",

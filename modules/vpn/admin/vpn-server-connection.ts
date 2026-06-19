@@ -101,7 +101,10 @@ const defaultDial: SshDialer = (target) =>
       finish({
         ok: false,
         errorCode: "config_error",
-        message: err instanceof Error ? err.message : "Failed to start SSH connection.",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Failed to start SSH connection.",
       })
     }
   })
@@ -160,9 +163,7 @@ export type VpnServerConnectionTesterDeps = {
 }
 
 const defaultResolveKey =
-  (
-    prisma: Pick<PrismaClient, "vpnSshKey"> = defaultPrisma
-  ): KeyResolver =>
+  (prisma: Pick<PrismaClient, "vpnSshKey"> = defaultPrisma): KeyResolver =>
   async (sshKeyId) => {
     const key = await prisma.vpnSshKey.findUnique({
       where: { id: sshKeyId },
@@ -429,7 +430,8 @@ export const defaultSshExec: SshExecer = (target) =>
       done({
         ok: true,
         stdout: "",
-        stderr: err instanceof Error ? err.message : "Failed to start SSH exec.",
+        stderr:
+          err instanceof Error ? err.message : "Failed to start SSH exec.",
       })
     }
   })

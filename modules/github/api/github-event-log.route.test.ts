@@ -13,9 +13,7 @@ mock.module("@/modules/admin/api/admin.guards", () => ({
   requireSuperAdmin: mockRequireSuperAdmin,
 }))
 
-const { createGithubEventLogRoutes } = await import(
-  "./github-event-log.route"
-)
+const { createGithubEventLogRoutes } = await import("./github-event-log.route")
 
 describe("github event log routes", () => {
   it("requires super admin for list endpoint", async () => {

@@ -70,10 +70,7 @@ const mockVpnClients = {
   markRevoked: mock(),
 }
 
-const createRoute = (
-  auth: VpnAuthContext = validAuth,
-  billing = mockBilling,
-) =>
+const createRoute = (auth: VpnAuthContext = validAuth, billing = mockBilling) =>
   createVpnRoutes({
     authenticate: async () => auth,
     billing,
@@ -110,7 +107,7 @@ const setupPrismaDefaults = () => {
       ...args.data,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }),
+    })
   )
   mockPrisma.serviceSubscription.update.mockImplementation(
     async (args: { where: { id: string }; data: Record<string, unknown> }) => ({
@@ -118,7 +115,7 @@ const setupPrismaDefaults = () => {
       ...args.data,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }),
+    })
   )
 }
 
@@ -199,7 +196,7 @@ describe("GET /vpn/status", () => {
     })
     expect(JSON.stringify(body)).not.toContain("secret")
     expect(mockVpnClients.getActiveClientsForOrganization).toHaveBeenCalledWith(
-      "org_1",
+      "org_1"
     )
   })
 })
@@ -208,13 +205,15 @@ describe("GET /vpn/clients/:clientId/download", () => {
   it("returns ovpn as an attachment for the owning organization", async () => {
     const app = createRoute()
     const response = await app.handle(
-      new Request("http://localhost/clients/vpn_client_1/download"),
+      new Request("http://localhost/clients/vpn_client_1/download")
     )
 
     expect(response.status).toBe(200)
-    expect(response.headers.get("content-type")).toContain("application/x-openvpn-profile")
+    expect(response.headers.get("content-type")).toContain(
+      "application/x-openvpn-profile"
+    )
     expect(response.headers.get("content-disposition")).toBe(
-      'attachment; filename="org_org_1_sub_vpn_new.ovpn"',
+      'attachment; filename="org_org_1_sub_vpn_new.ovpn"'
     )
     expect(await response.text()).toBe("client\nsecret\n")
     expect(mockVpnClients.getDownloadForOrganization).toHaveBeenCalledWith({
@@ -230,13 +229,19 @@ describe("POST /vpn/clients/:clientId/revoke", () => {
     const response = await app.handle(
       new Request("http://localhost/clients/vpn_client_1/revoke", {
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body).toEqual({ ok: true, clientId: "vpn_client_1", status: "REVOKED" })
-    expect(mockOpenVpn.revokeClient).toHaveBeenCalledWith("org_org_1_sub_vpn_new")
+    expect(body).toEqual({
+      ok: true,
+      clientId: "vpn_client_1",
+      status: "REVOKED",
+    })
+    expect(mockOpenVpn.revokeClient).toHaveBeenCalledWith(
+      "org_org_1_sub_vpn_new"
+    )
     expect(mockVpnClients.markRevoked).toHaveBeenCalledWith({
       organizationId: "org_1",
       clientId: "vpn_client_1",
@@ -247,16 +252,23 @@ describe("POST /vpn/clients/:clientId/revoke", () => {
 describe("GET /vpn/admin/health", () => {
   it("returns OpenVPN server health for portal admins", async () => {
     const app = createRoute({ ...validAuth, role: "admin", roles: ["admin"] })
-    const response = await app.handle(new Request("http://localhost/admin/health"))
+    const response = await app.handle(
+      new Request("http://localhost/admin/health")
+    )
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ ok: true, health: { ok: true, output: "active" } })
+    expect(await response.json()).toEqual({
+      ok: true,
+      health: { ok: true, output: "active" },
+    })
     expect(mockOpenVpn.healthCheck).toHaveBeenCalledTimes(1)
   })
 
   it("forbids non-admin health checks", async () => {
     const app = createRoute({ ...validAuth, role: "member", roles: ["member"] })
-    const response = await app.handle(new Request("http://localhost/admin/health"))
+    const response = await app.handle(
+      new Request("http://localhost/admin/health")
+    )
 
     expect(response.status).toBe(403)
     expect(mockOpenVpn.healthCheck).not.toHaveBeenCalled()
@@ -279,7 +291,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -298,7 +310,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -323,7 +335,7 @@ describe("POST /vpn/subscriptions", () => {
         regionCode: "INDONESIA",
         amount: decimal("25000"),
         period: expect.stringMatching(/^\d{4}-\d{2}$/),
-      }),
+      })
     )
 
     // Issue 1: subscription created first as SUSPENDED (acting as pending payment)
@@ -338,11 +350,15 @@ describe("POST /vpn/subscriptions", () => {
           billingMode: "PACKAGE",
           status: "SUSPENDED",
         }),
-      }),
+      })
     )
 
-    expect(mockOpenVpn.createClient).toHaveBeenCalledWith("org_org_1_sub_vpn_new")
-    expect(mockOpenVpn.fetchConfig).toHaveBeenCalledWith("org_org_1_sub_vpn_new")
+    expect(mockOpenVpn.createClient).toHaveBeenCalledWith(
+      "org_org_1_sub_vpn_new"
+    )
+    expect(mockOpenVpn.fetchConfig).toHaveBeenCalledWith(
+      "org_org_1_sub_vpn_new"
+    )
     expect(mockVpnClients.createActiveClient).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: "org_1",
@@ -350,7 +366,7 @@ describe("POST /vpn/subscriptions", () => {
         clientName: "org_org_1_sub_vpn_new",
         createdBy: "user-1",
         ovpnConfig: "client\nsecret\n",
-      }),
+      })
     )
 
     // Issue 1: updated to ACTIVE after charge and provisioning succeed
@@ -358,7 +374,7 @@ describe("POST /vpn/subscriptions", () => {
       expect.objectContaining({
         where: { id: "sub_vpn_new" },
         data: { status: "ACTIVE" },
-      }),
+      })
     )
   })
 
@@ -385,7 +401,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -419,7 +435,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -441,13 +457,13 @@ describe("POST /vpn/subscriptions", () => {
       expect.objectContaining({
         where: { id: "sub_vpn_suspended" },
         data: { status: "ACTIVE" },
-      }),
+      })
     )
   })
 
   it("suspends PENDING subscription when upfront charge fails with 402 (Issue 1)", async () => {
     mockBilling.chargeMonthly.mockRejectedValue(
-      new Error("INSUFFICIENT_BALANCE"),
+      new Error("INSUFFICIENT_BALANCE")
     )
 
     const app = createRoute()
@@ -459,7 +475,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(402)
@@ -476,7 +492,7 @@ describe("POST /vpn/subscriptions", () => {
       expect.objectContaining({
         where: { id: "sub_vpn_new" },
         data: expect.objectContaining({ status: "SUSPENDED" }),
-      }),
+      })
     )
   })
 
@@ -492,7 +508,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(502)
@@ -508,7 +524,7 @@ describe("POST /vpn/subscriptions", () => {
         clientName: "org_org_1_sub_vpn_new",
         createdBy: "user-1",
         reason: "ssh failed",
-      }),
+      })
     )
   })
 
@@ -525,7 +541,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(401)
@@ -545,7 +561,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(403)
@@ -559,7 +575,7 @@ describe("POST /vpn/subscriptions", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ planCode: "STANDARD" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(422)
@@ -573,7 +589,7 @@ describe("POST /vpn/subscriptions", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ regionCode: "INDONESIA" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(422)
@@ -590,7 +606,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "MARS",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(422)
@@ -612,7 +628,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(422)
@@ -638,7 +654,7 @@ describe("POST /vpn/subscriptions", () => {
           regionCode: "INDONESIA",
           planCode: "STANDARD",
         }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)

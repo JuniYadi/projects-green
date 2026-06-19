@@ -58,8 +58,7 @@ const parseMaxFileSizeBytes = () => {
   return parsed
 }
 
-export const S3_ATTACHMENT_ALLOWED_EXTENSIONS =
-  parseAllowedExtensions()
+export const S3_ATTACHMENT_ALLOWED_EXTENSIONS = parseAllowedExtensions()
 
 export const S3_ATTACHMENT_MAX_SIZE_BYTES = parseMaxFileSizeBytes()
 

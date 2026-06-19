@@ -10,7 +10,10 @@ import {
 import { AppHostingBillingService } from "../../billing/app-hosting-billing.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { computeHourlyCostDecimal } from "../../deploy-pricing"
-import { createOrUpdateStack, triggerDeploy } from "../../deploy-pipeline.service"
+import {
+  createOrUpdateStack,
+  triggerDeploy,
+} from "../../deploy-pipeline.service"
 
 /**
  * PGREEN-071 — Console Deploy Journey truth path.
@@ -233,7 +236,9 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         t.Literal("pro"),
         t.Literal("payg"),
       ]),
-      billingMode: t.Optional(t.Union([t.Literal("PAYG"), t.Literal("PACKAGE")])),
+      billingMode: t.Optional(
+        t.Union([t.Literal("PAYG"), t.Literal("PACKAGE")])
+      ),
       cpu: t.Optional(t.Number()),
       memory: t.Optional(t.Number()),
       paygBufferHours: t.Optional(t.Number()),

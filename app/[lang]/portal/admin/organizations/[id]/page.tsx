@@ -21,7 +21,7 @@ export default async function OrganizationDetailPage({
           </Link>
           <div>
             <h1 className="text-2xl font-bold">Organization Details</h1>
-            <p className="text-sm text-muted-foreground font-mono">{id}</p>
+            <p className="font-mono text-sm text-muted-foreground">{id}</p>
           </div>
         </div>
       </header>

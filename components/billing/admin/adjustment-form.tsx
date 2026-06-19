@@ -99,7 +99,10 @@ export function AdjustmentForm({
       } as never)
 
       if (!data?.ok) {
-        throw new Error((data as { message?: string })?.message || "Failed to create adjustment")
+        throw new Error(
+          (data as { message?: string })?.message ||
+            "Failed to create adjustment"
+        )
       }
 
       toast.success("Adjustment created successfully")
@@ -107,7 +110,8 @@ export function AdjustmentForm({
       onOpenChange(false)
       onSuccess?.()
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create adjustment"
+      const message =
+        err instanceof Error ? err.message : "Failed to create adjustment"
       setServerError(message)
       toast.error(message)
     } finally {
@@ -128,7 +132,10 @@ export function AdjustmentForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field>
             <FieldLabel htmlFor="type">Type</FieldLabel>
-            <Select value={type} onValueChange={(value) => setType(value as AdjustmentType)}>
+            <Select
+              value={type}
+              onValueChange={(value) => setType(value as AdjustmentType)}
+            >
               <SelectTrigger id="type">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>

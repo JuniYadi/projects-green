@@ -82,9 +82,8 @@ export default function PortalWhatsAppWebhookEventsPage() {
   // UI state
   const [pageState, setPageState] = React.useState<PageState>("loading")
   const [errorMessage, setErrorMessage] = React.useState("")
-  const [filters, setFilters] = React.useState<WebhookEventFilterState>(
-    DEFAULT_FILTER_STATE,
-  )
+  const [filters, setFilters] =
+    React.useState<WebhookEventFilterState>(DEFAULT_FILTER_STATE)
   const [page, setPage] = React.useState(1)
 
   // ── Load devices on mount ────────────────────────────────────────────────
@@ -236,7 +235,10 @@ export default function PortalWhatsAppWebhookEventsPage() {
         <WebhookEventFilter
           eventTypes={EVENT_TYPES}
           statuses={PROCESSING_STATUSES}
-          devices={devices.map((d) => ({ id: d.id, label: makeDeviceLabel(d) }))}
+          devices={devices.map((d) => ({
+            id: d.id,
+            label: makeDeviceLabel(d),
+          }))}
           onFilterChange={handleFilterChange}
           initialFilters={filters}
           showDeviceFilter={false}

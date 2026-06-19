@@ -21,8 +21,14 @@ type RouteSet = {
 
 type AdminInvoicesListRouteDeps = {
   authenticate: () => Promise<BillingAuthContext>
-  getPlatformRole: (input: { id?: string | null; email?: string | null }) => Promise<PlatformAccessRole>
-  isAdmin: (actor: { platformRole: PlatformAccessRole; tenantRole: string | null | undefined }) => boolean
+  getPlatformRole: (input: {
+    id?: string | null
+    email?: string | null
+  }) => Promise<PlatformAccessRole>
+  isAdmin: (actor: {
+    platformRole: PlatformAccessRole
+    tenantRole: string | null | undefined
+  }) => boolean
 }
 
 const defaultDeps: AdminInvoicesListRouteDeps = {
@@ -37,7 +43,17 @@ const defaultDeps: AdminInvoicesListRouteDeps = {
 const querySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
-  status: z.enum(["DRAFT", "ISSUED", "PAID", "OVERDUE", "CANCELLED", "VOID", "UNCOLLECTIBLE"]).optional(),
+  status: z
+    .enum([
+      "DRAFT",
+      "ISSUED",
+      "PAID",
+      "OVERDUE",
+      "CANCELLED",
+      "VOID",
+      "UNCOLLECTIBLE",
+    ])
+    .optional(),
   organizationId: z.string().optional(),
 })
 
@@ -99,76 +115,75 @@ export const createAdminInvoicesListRoutes = (
     ...deps,
   }
 
-  return new Elysia()
-    .get("/admin/invoices", async ({ query, set }) => {
-      const auth = await authenticate()
+  return new Elysia().get("/admin/invoices", async ({ query, set }) => {
+    const auth = await authenticate()
 
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
+    if (!auth.user) {
+      return toUnauthorized(set)
+    }
 
-      const platformRole = await getPlatformRole({
-        id: auth.user?.id,
-        email: auth.user?.email,
-      })
-
-      if (!isAdmin({ platformRole, tenantRole: auth.role })) {
-        return toForbidden(set, "Only administrators can view all invoices.")
-      }
-
-      const parsed = querySchema.safeParse(query)
-      if (!parsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Invalid query parameters.",
-        }
-      }
-
-      const { page, limit, status, organizationId } = parsed.data
-      const skip = (page - 1) * limit
-
-      try {
-        const where: Prisma.BillingInvoiceWhereInput = {}
-        if (status) where.status = status
-        if (organizationId) {
-          where.billingAccount = { organizationId }
-        }
-
-        const [invoices, total] = await Promise.all([
-          prisma.billingInvoice.findMany({
-            where,
-            include: {
-              billingAccount: { select: { organizationId: true } },
-            },
-            orderBy: { createdAt: "desc" },
-            skip,
-            take: limit,
-          }),
-          prisma.billingInvoice.count({ where }),
-        ])
-
-        return {
-          ok: true as const,
-          invoices: invoices.map(formatInvoiceResponse),
-          pagination: {
-            page,
-            limit,
-            total,
-            totalPages: Math.ceil(total / limit),
-          },
-        }
-      } catch (error) {
-        console.error("[AdminInvoicesList] Error:", error)
-        set.status = 500
-        return {
-          ok: false as const,
-          error: "INTERNAL_SERVER_ERROR" as const,
-          message: "Unable to load invoices.",
-        }
-      }
+    const platformRole = await getPlatformRole({
+      id: auth.user?.id,
+      email: auth.user?.email,
     })
+
+    if (!isAdmin({ platformRole, tenantRole: auth.role })) {
+      return toForbidden(set, "Only administrators can view all invoices.")
+    }
+
+    const parsed = querySchema.safeParse(query)
+    if (!parsed.success) {
+      set.status = 422
+      return {
+        ok: false as const,
+        error: "VALIDATION_ERROR" as const,
+        message: "Invalid query parameters.",
+      }
+    }
+
+    const { page, limit, status, organizationId } = parsed.data
+    const skip = (page - 1) * limit
+
+    try {
+      const where: Prisma.BillingInvoiceWhereInput = {}
+      if (status) where.status = status
+      if (organizationId) {
+        where.billingAccount = { organizationId }
+      }
+
+      const [invoices, total] = await Promise.all([
+        prisma.billingInvoice.findMany({
+          where,
+          include: {
+            billingAccount: { select: { organizationId: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.billingInvoice.count({ where }),
+      ])
+
+      return {
+        ok: true as const,
+        invoices: invoices.map(formatInvoiceResponse),
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      }
+    } catch (error) {
+      console.error("[AdminInvoicesList] Error:", error)
+      set.status = 500
+      return {
+        ok: false as const,
+        error: "INTERNAL_SERVER_ERROR" as const,
+        message: "Unable to load invoices.",
+      }
+    }
+  })
 }
 
 export const adminInvoicesListRoutes = createAdminInvoicesListRoutes()

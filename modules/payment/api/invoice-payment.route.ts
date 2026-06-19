@@ -130,7 +130,11 @@ export const createInvoicePaymentRoutes = () =>
       try {
         // Get invoice details
         const invoice = await prisma.billingInvoice.findFirst({
-          where: { id: invoiceId, status: "OPEN", billingAccount: { organizationId } },
+          where: {
+            id: invoiceId,
+            status: "OPEN",
+            billingAccount: { organizationId },
+          },
         })
 
         if (!invoice) {
@@ -195,7 +199,9 @@ export const createInvoicePaymentRoutes = () =>
           ok: false as const,
           error: "INTERNAL_SERVER_ERROR" as const,
           message:
-            error instanceof Error ? error.message : "Unable to process request.",
+            error instanceof Error
+              ? error.message
+              : "Unable to process request.",
         }
       }
     })

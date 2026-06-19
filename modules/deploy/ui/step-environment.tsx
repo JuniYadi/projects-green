@@ -89,7 +89,9 @@ export function StepEnvironment({
   return (
     <Card className="border border-border bg-card shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl font-bold">Environment Settings</CardTitle>
+        <CardTitle className="text-xl font-bold">
+          Environment Settings
+        </CardTitle>
         <CardDescription>
           Configure domain mode, environment variables, and compute allocation.
         </CardDescription>
@@ -97,11 +99,11 @@ export function StepEnvironment({
       <CardContent className="space-y-6">
         {/* Build Configuration Summary (Only visible if source & build state are passed) */}
         {showBuildSummary && (
-          <div className="space-y-3 border border-border p-4 rounded-xl bg-muted/20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div>
-                <p className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
-                  <FileCode className="w-4.5 h-4.5 text-primary" />
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <FileCode className="h-4.5 w-4.5 text-primary" />
                   Build Configuration
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -115,31 +117,37 @@ export function StepEnvironment({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs font-semibold shadow-sm border-border"
+                  className="h-8 border-border text-xs font-semibold shadow-sm"
                   onClick={onEditBuildSettings}
                 >
-                  <Gear className="w-3.5 h-3.5 mr-1" />
+                  <Gear className="mr-1 h-3.5 w-3.5" />
                   Edit Build Settings
                 </Button>
               )}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3 text-xs bg-background p-3 rounded-lg border border-border/80 shadow-inner">
+            <div className="grid gap-4 rounded-lg border border-border/80 bg-background p-3 text-xs shadow-inner sm:grid-cols-3">
               <div className="space-y-1">
-                <span className="text-muted-foreground text-[10px] uppercase font-semibold">Language</span>
-                <span className="font-semibold text-foreground block">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                  Language
+                </span>
+                <span className="block font-semibold text-foreground">
                   {buildState.language || "N/A"}
                 </span>
               </div>
               <div className="space-y-1">
-                <span className="text-muted-foreground text-[10px] uppercase font-semibold">Framework</span>
-                <span className="font-semibold text-foreground block">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                  Framework
+                </span>
+                <span className="block font-semibold text-foreground">
                   {buildState.framework || "N/A"}
                 </span>
               </div>
               <div className="space-y-1">
-                <span className="text-muted-foreground text-[10px] uppercase font-semibold">Build Mode</span>
-                <span className="font-semibold text-foreground block">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                  Build Mode
+                </span>
+                <span className="block font-semibold text-foreground">
                   {buildState.useDockerfile
                     ? "Dockerfile"
                     : buildState.buildCommand
@@ -152,16 +160,17 @@ export function StepEnvironment({
         )}
 
         {/* Domain Mode Selector */}
-        <div className="space-y-3 border border-border p-4 rounded-xl">
+        <div className="space-y-3 rounded-xl border border-border p-4">
           <p className="text-sm font-semibold text-foreground">Domain Mode</p>
           <p className="text-xs text-muted-foreground">
-            Choose a managed subdomain for immediate launch, or point your custom domain.
+            Choose a managed subdomain for immediate launch, or point your
+            custom domain.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label
               className={cn(
-                "block cursor-pointer border p-3.5 rounded-lg transition-all",
+                "block cursor-pointer rounded-lg border p-3.5 transition-all",
                 useGeneratedSubdomain
                   ? "border-primary bg-primary/[0.02] ring-1 ring-primary/30"
                   : "border-border bg-background hover:bg-muted/[0.02]"
@@ -174,15 +183,18 @@ export function StepEnvironment({
                 checked={useGeneratedSubdomain}
                 onChange={() => onDomainToggleChange(true)}
               />
-              <p className="text-sm font-semibold text-foreground">Managed subdomain</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Use a generated <code>*.pfn.app</code> domain for immediate launch.
+              <p className="text-sm font-semibold text-foreground">
+                Managed subdomain
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Use a generated <code>*.pfn.app</code> domain for immediate
+                launch.
               </p>
             </label>
 
             <label
               className={cn(
-                "block cursor-pointer border p-3.5 rounded-lg transition-all",
+                "block cursor-pointer rounded-lg border p-3.5 transition-all",
                 !useGeneratedSubdomain
                   ? "border-primary bg-primary/[0.02] ring-1 ring-primary/30"
                   : "border-border bg-background hover:bg-muted/[0.02]"
@@ -195,15 +207,17 @@ export function StepEnvironment({
                 checked={!useGeneratedSubdomain}
                 onChange={() => onDomainToggleChange(false)}
               />
-              <p className="text-sm font-semibold text-foreground">Custom domain</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-sm font-semibold text-foreground">
+                Custom domain
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 Point your own domain, for example <code>app.example.com</code>.
               </p>
             </label>
           </div>
 
-          <div className="border border-border bg-muted/40 p-3 rounded-lg text-xs flex items-center gap-2 text-foreground">
-            <Globe className="w-4 h-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
+            <Globe className="h-4 w-4 text-muted-foreground" />
             <span>
               {useGeneratedSubdomain
                 ? `Preview domain: ${generatedSubdomain}`
@@ -213,13 +227,15 @@ export function StepEnvironment({
 
           {!useGeneratedSubdomain && (
             <label className="block space-y-1 pt-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Custom domain</span>
+              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Custom domain
+              </span>
               <Input
                 aria-label="Custom domain"
                 aria-invalid={hasMissingCustomDomain || hasInvalidCustomDomain}
                 value={customDomain}
                 className={cn(
-                  "h-9 text-xs border-border",
+                  "h-9 border-border text-xs",
                   (hasMissingCustomDomain || hasInvalidCustomDomain) &&
                     "border-destructive focus-visible:ring-destructive"
                 )}
@@ -241,8 +257,10 @@ export function StepEnvironment({
         </div>
 
         {/* Environment Variables */}
-        <div className="space-y-3 border border-border p-4 rounded-xl">
-          <p className="text-sm font-semibold text-foreground">Environment Variables</p>
+        <div className="space-y-3 rounded-xl border border-border p-4">
+          <p className="text-sm font-semibold text-foreground">
+            Environment Variables
+          </p>
           <EnvVarsEditor
             envVars={envVars}
             environmentId={environmentId}
@@ -251,7 +269,7 @@ export function StepEnvironment({
         </div>
 
         {/* Resource Plan */}
-        <div className="space-y-3 border border-border p-4 rounded-xl">
+        <div className="space-y-3 rounded-xl border border-border p-4">
           <p className="text-sm font-semibold text-foreground">Resource Plan</p>
           <ResourcePlanSelector
             selectedPlanId={resourcePlanId}
@@ -271,37 +289,45 @@ export function StepEnvironment({
         </div>
 
         {/* Attached Resources */}
-        <div className="space-y-2 border border-dashed border-border p-4 rounded-xl bg-muted/10">
-          <p className="text-sm font-semibold text-foreground">Attached Resources</p>
+        <div className="space-y-2 rounded-xl border border-dashed border-border bg-muted/10 p-4">
+          <p className="text-sm font-semibold text-foreground">
+            Attached Resources
+          </p>
           <p className="text-xs text-muted-foreground">
-            No databases attached. You can provision and attach PostgreSQL or Redis in one click after deployment.
+            No databases attached. You can provision and attach PostgreSQL or
+            Redis in one click after deployment.
           </p>
         </div>
 
         {/* Validation Errors & Deploy Status */}
         {validationMessages.length > 0 ? (
           <div
-            className="space-y-1 border border-destructive/20 bg-destructive/5 p-3 rounded-lg text-xs text-destructive"
+            className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
             role="alert"
           >
             <p className="font-semibold">Environment settings need attention</p>
-            <ul className="list-disc pl-4 space-y-0.5">
+            <ul className="list-disc space-y-0.5 pl-4">
               {validationMessages.map((message) => {
                 return <li key={message}>{message}</li>
               })}
             </ul>
           </div>
         ) : (
-          <div className="border border-border bg-muted/40 p-3 rounded-lg text-xs text-foreground">
+          <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
             Ready to deploy to <code>{targetDomain}</code> with {envVars.length}{" "}
             environment variable{envVars.length === 1 ? "" : "s"} on the{" "}
-            {resourcePlanId === "starter" ? "Starter" : resourcePlanId === "pro" ? "Pro" : "Pay-As-You-Go"} plan.
+            {resourcePlanId === "starter"
+              ? "Starter"
+              : resourcePlanId === "pro"
+                ? "Pro"
+                : "Pay-As-You-Go"}{" "}
+            plan.
           </div>
         )}
 
         {submitError ? (
           <div
-            className="space-y-1 border border-destructive/20 bg-destructive/5 p-3 rounded-lg text-xs text-destructive"
+            className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
             role="alert"
           >
             <p className="font-semibold">Unable to start deployment</p>
@@ -309,24 +335,24 @@ export function StepEnvironment({
           </div>
         ) : null}
       </CardContent>
-      <div className="flex items-center justify-between border-t border-border p-4 bg-muted/10 rounded-b-xl">
+      <div className="flex items-center justify-between rounded-b-xl border-t border-border bg-muted/10 p-4">
         <Button
           type="button"
           variant="outline"
           onClick={onBack}
-          className="border-border shadow-sm text-xs font-semibold px-4 h-9 flex items-center gap-1"
+          className="flex h-9 items-center gap-1 border-border px-4 text-xs font-semibold shadow-sm"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           Back
         </Button>
         <Button
           type="button"
           onClick={onDeploy}
           disabled={!canDeploy || isSubmitting}
-          className="shadow-sm text-xs font-semibold px-4 h-9 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1"
+          className="flex h-9 items-center gap-1 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
         >
           {isSubmitting ? "Starting deploy…" : "Deploy Application"}
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>
     </Card>

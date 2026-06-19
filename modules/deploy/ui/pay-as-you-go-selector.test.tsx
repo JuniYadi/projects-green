@@ -63,7 +63,9 @@ describe("PayAsYouGoSelector", () => {
       />
     )
 
-    const input = view.getByLabelText("Runtime buffer (hours)") as HTMLInputElement
+    const input = view.getByLabelText(
+      "Runtime buffer (hours)"
+    ) as HTMLInputElement
     expect(input.value).toBe("24")
   })
 

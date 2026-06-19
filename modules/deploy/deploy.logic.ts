@@ -12,14 +12,19 @@ import type {
   DetectionResult,
 } from "@/modules/deploy/deploy.types"
 
-export const getAvailableStepsList = (sourceType: DeploySourceType): DeployStep[] => {
+export const getAvailableStepsList = (
+  sourceType: DeploySourceType
+): DeployStep[] => {
   if (sourceType === "template") {
     return ["source", "environment", "monitor"]
   }
   return ["source", "build", "environment", "monitor"]
 }
 
-export const getStepIndex = (step: DeployStep, sourceType: DeploySourceType): number => {
+export const getStepIndex = (
+  step: DeployStep,
+  sourceType: DeploySourceType
+): number => {
   return getAvailableStepsList(sourceType).indexOf(step)
 }
 

@@ -94,11 +94,12 @@ async function chargeMonthlyBases(): Promise<{
         }
 
         const basePrice = new Prisma.Decimal(
-          subscription.pricing.basePriceIdr.toString(),
+          subscription.pricing.basePriceIdr.toString()
         )
 
         // Extract allowance from plan resources JSON
-        const resources = subscription.plan?.resources as WhatsAppPlanResources | null
+        const resources = subscription.plan
+          ?.resources as WhatsAppPlanResources | null
         const allowance = extractAllowance(resources)
 
         // Skip if base price is 0 — no charge needed (free plan)
@@ -122,13 +123,13 @@ async function chargeMonthlyBases(): Promise<{
 
         charged++
         console.info(
-          `[whatsapp-billing] device=${device.id} phone=${device.phoneNumber} charged ${basePrice.toString()} IDR, allowance reset to ${allowance}`,
+          `[whatsapp-billing] device=${device.id} phone=${device.phoneNumber} charged ${basePrice.toString()} IDR, allowance reset to ${allowance}`
         )
       } catch (error) {
         errors++
         console.error(
           `[whatsapp-billing] device=${device.id} phone=${device.phoneNumber} error:`,
-          error,
+          error
         )
       }
     }
@@ -147,7 +148,7 @@ async function main() {
   const result = await chargeMonthlyBases()
 
   console.info(
-    `[whatsapp-billing] Complete: ${result.charged} charged, ${result.skipped} skipped, ${result.errors} errors`,
+    `[whatsapp-billing] Complete: ${result.charged} charged, ${result.skipped} skipped, ${result.errors} errors`
   )
 
   if (result.errors > 0) {

@@ -1,8 +1,16 @@
 import { Elysia } from "elysia"
 import { z } from "zod"
 
-import { type JenkinsJobConfig, JenkinsApiError, JenkinsAuthError } from "../jenkins.types"
-import { getJenkinsJobStatus, triggerJenkinsJob, listJenkinsJobs } from "../jenkins.service"
+import {
+  type JenkinsJobConfig,
+  JenkinsApiError,
+  JenkinsAuthError,
+} from "../jenkins.types"
+import {
+  getJenkinsJobStatus,
+  triggerJenkinsJob,
+  listJenkinsJobs,
+} from "../jenkins.service"
 import { generateJenkinsDsl } from "../jenkins-dsl"
 import { jenkinsWebhookRoutes } from "./jenkins-webhook.route"
 
@@ -10,7 +18,9 @@ const JOB_TYPES = ["php", "node", "docker"] as const
 
 const buildTriggerSchema = z.object({
   jobName: z.string().trim().min(1),
-  parameters: z.record(z.string(), z.union([z.string(), z.boolean(), z.number()])).optional(),
+  parameters: z
+    .record(z.string(), z.union([z.string(), z.boolean(), z.number()]))
+    .optional(),
 })
 
 const jobDslSchema = z.object({
@@ -37,9 +47,18 @@ export const createJenkinsRoutes = () => {
     .get("/status", async () => {
       try {
         const jobs = await listJenkinsJobs()
-        return { ok: true as const, connected: true, jobCount: jobs.length, jobs }
+        return {
+          ok: true as const,
+          connected: true,
+          jobCount: jobs.length,
+          jobs,
+        }
       } catch {
-        return { ok: false as const, error: "CONNECTION_FAILED", message: "Cannot connect to Jenkins server" }
+        return {
+          ok: false as const,
+          error: "CONNECTION_FAILED",
+          message: "Cannot connect to Jenkins server",
+        }
       }
     })
     .get("/jobs", async ({ query, set }) => {
@@ -53,7 +72,11 @@ export const createJenkinsRoutes = () => {
         }
       } catch {
         set.status = 500
-        return { ok: false as const, error: "LIST_FAILED", message: "Failed to list Jenkins jobs" }
+        return {
+          ok: false as const,
+          error: "LIST_FAILED",
+          message: "Failed to list Jenkins jobs",
+        }
       }
     })
     .get("/jobs/:jobName/status", async ({ params, set }) => {
@@ -61,53 +84,91 @@ export const createJenkinsRoutes = () => {
         const status = await getJenkinsJobStatus(params.jobName)
         if (!status) {
           set.status = 404
-          return { ok: false as const, error: "JOB_NOT_FOUND", message: `Job '${params.jobName}' not found` }
+          return {
+            ok: false as const,
+            error: "JOB_NOT_FOUND",
+            message: `Job '${params.jobName}' not found`,
+          }
         }
         return { ok: true as const, build: status }
       } catch (error) {
         if (error instanceof JenkinsAuthError) {
           set.status = 401
-          return { ok: false as const, error: "AUTH_FAILED", message: "Jenkins authentication failed" }
+          return {
+            ok: false as const,
+            error: "AUTH_FAILED",
+            message: "Jenkins authentication failed",
+          }
         }
         console.error(
           `[jenkins] GET /integrations/jenkins/jobs/:jobName/status —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         set.status = 500
-        return { ok: false as const, error: "STATUS_FAILED", message: "Failed to fetch job status" }
+        return {
+          ok: false as const,
+          error: "STATUS_FAILED",
+          message: "Failed to fetch job status",
+        }
       }
     })
     .post("/jobs/build", async ({ body, set }) => {
       const parsed = buildTriggerSchema.safeParse(body)
       if (!parsed.success) {
         set.status = 400
-        return { ok: false as const, error: "INVALID_BODY", message: "Invalid job trigger body" }
+        return {
+          ok: false as const,
+          error: "INVALID_BODY",
+          message: "Invalid job trigger body",
+        }
       }
       try {
-        await triggerJenkinsJob(parsed.data.jobName, parsed.data.parameters ?? {})
-        return { ok: true as const, message: `Build triggered for job '${parsed.data.jobName}'` }
+        await triggerJenkinsJob(
+          parsed.data.jobName,
+          parsed.data.parameters ?? {}
+        )
+        return {
+          ok: true as const,
+          message: `Build triggered for job '${parsed.data.jobName}'`,
+        }
       } catch (error) {
         if (error instanceof JenkinsAuthError) {
           set.status = 401
-          return { ok: false as const, error: "AUTH_FAILED", message: "Jenkins authentication failed" }
+          return {
+            ok: false as const,
+            error: "AUTH_FAILED",
+            message: "Jenkins authentication failed",
+          }
         }
         if (error instanceof JenkinsApiError) {
           set.status = 502
-          return { ok: false as const, error: "API_ERROR", message: `Jenkins API error: ${error.message}` }
+          return {
+            ok: false as const,
+            error: "API_ERROR",
+            message: `Jenkins API error: ${error.message}`,
+          }
         }
         console.error(
           `[jenkins] POST /integrations/jenkins/jobs/build —`,
-          error instanceof Error ? error.stack ?? error.message : error
+          error instanceof Error ? (error.stack ?? error.message) : error
         )
         set.status = 500
-        return { ok: false as const, error: "TRIGGER_FAILED", message: "Failed to trigger Jenkins build" }
+        return {
+          ok: false as const,
+          error: "TRIGGER_FAILED",
+          message: "Failed to trigger Jenkins build",
+        }
       }
     })
     .post("/jobs/dsl/generate", async ({ body, set }) => {
       const parsed = jobDslSchema.safeParse(body)
       if (!parsed.success) {
         set.status = 400
-        return { ok: false as const, error: "INVALID_BODY", message: parsed.error.message }
+        return {
+          ok: false as const,
+          error: "INVALID_BODY",
+          message: parsed.error.message,
+        }
       }
       try {
         const config: JenkinsJobConfig = {
@@ -128,7 +189,9 @@ export const createJenkinsRoutes = () => {
           dockerRegistryCredentialId: parsed.data.dockerRegistryCredentialId,
           env: parsed.data.env,
           port: parsed.data.port,
-          environmentVariables: (parsed.data.environmentVariables as Record<string, string>) ?? undefined,
+          environmentVariables:
+            (parsed.data.environmentVariables as Record<string, string>) ??
+            undefined,
         })
         return { ok: true as const, dsl }
       } catch (error) {
@@ -141,9 +204,7 @@ export const createJenkinsRoutes = () => {
       }
     })
 
-  return new Elysia()
-    .use(apiRoutes)
-    .use(jenkinsWebhookRoutes)
+  return new Elysia().use(apiRoutes).use(jenkinsWebhookRoutes)
 }
 
 export const jenkinsRoutes = createJenkinsRoutes()

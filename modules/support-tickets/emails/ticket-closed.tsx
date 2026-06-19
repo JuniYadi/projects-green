@@ -26,7 +26,8 @@ export const TicketClosedEmail = ({ ticket }: TicketClosedEmailProps) => {
     <Html>
       <Head />
       <Preview>
-        Support ticket #{ticket.ticketNumber} has been {statusLabel.toLowerCase()}
+        Support ticket #{ticket.ticketNumber} has been{" "}
+        {statusLabel.toLowerCase()}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
@@ -50,12 +51,14 @@ export const TicketClosedEmail = ({ ticket }: TicketClosedEmailProps) => {
             </Text>
             {ticket.resolvedAt && (
               <Text style={styles.meta}>
-                <strong>Resolved:</strong> {new Date(ticket.resolvedAt).toLocaleDateString()}
+                <strong>Resolved:</strong>{" "}
+                {new Date(ticket.resolvedAt).toLocaleDateString()}
               </Text>
             )}
             {ticket.closedAt && (
               <Text style={styles.meta}>
-                <strong>Closed:</strong> {new Date(ticket.closedAt).toLocaleDateString()}
+                <strong>Closed:</strong>{" "}
+                {new Date(ticket.closedAt).toLocaleDateString()}
               </Text>
             )}
           </Section>
@@ -65,7 +68,8 @@ export const TicketClosedEmail = ({ ticket }: TicketClosedEmailProps) => {
           <Section style={styles.actions}>
             {isResolved && (
               <Text style={styles.reopenNote}>
-                Need more help? You can reopen this ticket by replying to this email or visiting the ticket page.
+                Need more help? You can reopen this ticket by replying to this
+                email or visiting the ticket page.
               </Text>
             )}
             <Button href={ticketUrl} style={styles.button}>
@@ -76,7 +80,8 @@ export const TicketClosedEmail = ({ ticket }: TicketClosedEmailProps) => {
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            Thank you for using our support services. If you have any other questions, please don&apos;t hesitate to reach out.
+            Thank you for using our support services. If you have any other
+            questions, please don&apos;t hesitate to reach out.
           </Text>
         </Container>
       </Body>

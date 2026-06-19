@@ -12,13 +12,17 @@ import {
 
 function getDailyResetAt(): string {
   const now = new Date()
-  const reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+  const reset = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+  )
   return reset.toISOString()
 }
 
 function getMonthlyResetAt(): string {
   const now = new Date()
-  const reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+  const reset = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+  )
   return reset.toISOString()
 }
 
@@ -34,14 +38,16 @@ const messageBodySchema = t.Object({
 
 const sendSchema = t.Object({
   phoneNumber: t.String(),
-  type: t.Optional(t.Union([
-    t.Literal("text"),
-    t.Literal("image"),
-    t.Literal("document"),
-    t.Literal("audio"),
-    t.Literal("video"),
-    t.Literal("location"),
-  ])),
+  type: t.Optional(
+    t.Union([
+      t.Literal("text"),
+      t.Literal("image"),
+      t.Literal("document"),
+      t.Literal("audio"),
+      t.Literal("video"),
+      t.Literal("location"),
+    ])
+  ),
   message: t.Optional(t.String()),
   mediaUrl: t.Optional(t.String()),
   caption: t.Optional(t.String()),
@@ -72,7 +78,10 @@ function validateSendBody(body: any): string | null {
   }
 
   if (type === "location") {
-    if (typeof body.latitude !== "number" || typeof body.longitude !== "number") {
+    if (
+      typeof body.latitude !== "number" ||
+      typeof body.longitude !== "number"
+    ) {
       return "latitude and longitude are required for location messages"
     }
   }
@@ -84,187 +93,227 @@ const MAX_LIMIT = 100
 
 function getPagination(query: Record<string, unknown>) {
   const page = Math.max(Number(query.page) || 1, 1)
-  const limit = Math.min(Math.max(Number(query.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)
+  const limit = Math.min(
+    Math.max(Number(query.limit) || DEFAULT_LIMIT, 1),
+    MAX_LIMIT
+  )
   return { page, limit, skip: (page - 1) * limit }
 }
 
 export const messagesRoutes = new Elysia({ prefix: "/messages" })
-  .get("/", async ({ request, set, query }: { request: any, set: any, query: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const { conversationId, direction, messageType } = query as any
-    const { page, limit, skip } = getPagination(query)
-
-    const where: any = {
-      conversation: {
-        organizationId: whatsappAuth.organizationId!,
+  .get(
+    "/",
+    async ({ request, set, query }: { request: any; set: any; query: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-    }
+      const { conversationId, direction, messageType } = query as any
+      const { page, limit, skip } = getPagination(query)
 
-    if (conversationId) where.conversationId = conversationId
-    if (direction) where.direction = direction
-    if (messageType) where.messageType = messageType
-
-    const [total, messages] = await Promise.all([
-      prisma.whatsappMessage.count({ where }),
-      prisma.whatsappMessage.findMany({
-        where,
-        include: {
-          statusHistory: true
+      const where: any = {
+        conversation: {
+          organizationId: whatsappAuth.organizationId!,
         },
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-      }),
-    ])
-    const data = messages.map(toWhatsappMessageDTO)
-    return {
-      ok: true,
-      messages: data,
-      data,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-    }
-  })
-  .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const message = await prisma.whatsappMessage.findFirst({
-      where: {
-        id,
-        conversation: {
-          organizationId: whatsappAuth.organizationId!
-        }
-      },
-      include: {
-        statusHistory: true
       }
-    })
 
-    if (!message) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Message not found." }
-    }
+      if (conversationId) where.conversationId = conversationId
+      if (direction) where.direction = direction
+      if (messageType) where.messageType = messageType
 
-    return { ok: true, message: toWhatsappMessageDTO(message) }
-  })
-  .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    // Validate conversation belongs to organization
-    const conversation = await prisma.whatsappConversation.findFirst({
-      where: {
-        id: body.conversationId,
-        organizationId: whatsappAuth.organizationId!
+      const [total, messages] = await Promise.all([
+        prisma.whatsappMessage.count({ where }),
+        prisma.whatsappMessage.findMany({
+          where,
+          include: {
+            statusHistory: true,
+          },
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+      ])
+      const data = messages.map(toWhatsappMessageDTO)
+      return {
+        ok: true,
+        messages: data,
+        data,
+        meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       }
-    })
-
-    if (!conversation) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Conversation not found or access denied." }
     }
+  )
+  .get(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const message = await prisma.whatsappMessage.findFirst({
+        where: {
+          id,
+          conversation: {
+            organizationId: whatsappAuth.organizationId!,
+          },
+        },
+        include: {
+          statusHistory: true,
+        },
+      })
 
-    const message = await prisma.whatsappMessage.create({
-      data: {
-        ...body,
-      },
-    })
+      if (!message) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Message not found." }
+      }
 
-    return { ok: true, message: toWhatsappMessageDTO(message) }
-  }, {
-    body: messageBodySchema
-  })
-  .patch("/:id", async ({ request, params: { id }, body, set }: { request: any, params: { id: string }, body: any, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      return { ok: true, message: toWhatsappMessageDTO(message) }
     }
-    const message = await prisma.whatsappMessage.findFirst({
-      where: {
-        id,
-        conversation: {
-          organizationId: whatsappAuth.organizationId!
+  )
+  .post(
+    "/",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      // Validate conversation belongs to organization
+      const conversation = await prisma.whatsappConversation.findFirst({
+        where: {
+          id: body.conversationId,
+          organizationId: whatsappAuth.organizationId!,
+        },
+      })
+
+      if (!conversation) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Conversation not found or access denied.",
         }
-      },
-    })
+      }
 
-    if (!message) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Message not found." }
+      const message = await prisma.whatsappMessage.create({
+        data: {
+          ...body,
+        },
+      })
+
+      return { ok: true, message: toWhatsappMessageDTO(message) }
+    },
+    {
+      body: messageBodySchema,
     }
+  )
+  .patch(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      body,
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      body: any
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const message = await prisma.whatsappMessage.findFirst({
+        where: {
+          id,
+          conversation: {
+            organizationId: whatsappAuth.organizationId!,
+          },
+        },
+      })
 
-    const updated = await prisma.whatsappMessage.update({
-      where: { id },
-      data: body,
-    })
+      if (!message) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Message not found." }
+      }
 
-    return { ok: true, message: toWhatsappMessageDTO(updated) }
-  }, {
-    body: messageUpdateSchema
-  })
-  .delete("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      const updated = await prisma.whatsappMessage.update({
+        where: { id },
+        data: body,
+      })
+
+      return { ok: true, message: toWhatsappMessageDTO(updated) }
+    },
+    {
+      body: messageUpdateSchema,
     }
-    const message = await prisma.whatsappMessage.findFirst({
-      where: {
-        id,
-        conversation: {
-          organizationId: whatsappAuth.organizationId!
+  )
+  .delete(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const message = await prisma.whatsappMessage.findFirst({
+        where: {
+          id,
+          conversation: {
+            organizationId: whatsappAuth.organizationId!,
+          },
+        },
+      })
+
+      if (!message) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Message not found." }
+      }
+
+      await prisma.whatsappMessage.delete({
+        where: { id },
+      })
+      return { ok: true, message: "Message deleted." }
+    }
+  )
+  .post(
+    "/send",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const validationError = validateSendBody(body)
+      if (validationError) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: validationError,
         }
-      },
-    })
+      }
 
-    if (!message) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Message not found." }
-    }
-
-    await prisma.whatsappMessage.delete({
-      where: { id },
-    })
-    return { ok: true, message: "Message deleted." }
-  })
-  .post("/send", async ({ request, body, set }: { request: any, body: any, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const validationError = validateSendBody(body)
-    if (validationError) {
-      set.status = 422
-      return { ok: false, error: "VALIDATION_ERROR", message: validationError }
-    }
-
-    const {
-      phoneNumber,
-      type,
-      message,
-      mediaUrl,
-      caption,
-      filename,
-      latitude,
-      longitude,
-      name,
-      address,
-      deviceId,
-    } = body
-
-    try {
-      const result = await messageService.sendMessage({
-        organizationId: whatsappAuth.organizationId!,
+      const {
         phoneNumber,
         type,
         message,
@@ -276,118 +325,160 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         name,
         address,
         deviceId,
-      })
+      } = body
 
-      return {
-        ok: true,
-        jobId: result.jobId,
-        messageId: result.messageId,
-        waMessageId: result.waMessageId,
-        status: result.status,
-      }
-    } catch (error) {
-      // Handle billing-related errors with appropriate HTTP status codes
-      if (error instanceof InsufficientBalanceError) {
-        set.status = 402
+      try {
+        const result = await messageService.sendMessage({
+          organizationId: whatsappAuth.organizationId!,
+          phoneNumber,
+          type,
+          message,
+          mediaUrl,
+          caption,
+          filename,
+          latitude,
+          longitude,
+          name,
+          address,
+          deviceId,
+        })
+
         return {
-          ok: false,
-          error: "INSUFFICIENT_BALANCE",
-          message: "Insufficient balance for WhatsApp messaging. Please top up your balance.",
-          balance: error.available.toString(),
-          estimatedCost: error.required.toString(),
+          ok: true,
+          jobId: result.jobId,
+          messageId: result.messageId,
+          waMessageId: result.waMessageId,
+          status: result.status,
         }
-      }
-
-      if (error instanceof QuotaExceededError) {
-        set.status = 429
-        return {
-          ok: false,
-          error: "MONTHLY_QUOTA_EXCEEDED",
-          message: `Monthly outbound quota exceeded. Limit: ${error.monthlyLimit}, Used: ${error.monthlyUsed}`,
-          resetAt: getMonthlyResetAt(),
-        }
-      }
-
-      if (error instanceof DailyLimitExceededError) {
-        set.status = 429
-        return {
-          ok: false,
-          error: "DAILY_QUOTA_EXCEEDED",
-          message: `Daily limit exceeded. Limit: ${error.dailyLimit}, Used: ${error.dailyUsed}`,
-          resetAt: getDailyResetAt(),
-        }
-      }
-
-      // Handle "NO_BILLING_ACCOUNT" error - org has no billing setup
-      if (error instanceof Error && error.message === "NO_BILLING_ACCOUNT") {
-        set.status = 400
-        return {
-          ok: false,
-          error: "BILLING_NOT_CONFIGURED",
-          message: "No billing account configured for this organization.",
-        }
-      }
-
-      if (error instanceof InsufficientQuotaError) {
-        set.status = 422
-        return { ok: false, error: "INSUFFICIENT_QUOTA", message: error.message }
-      }
-
-      console.error("[messages] send error:", error)
-      set.status = 500
-      return { ok: false, error: "INTERNAL_ERROR", message: "Failed to send message" }
-    }
-  }, {
-    body: sendSchema
-  })
-  .get("/:id/media", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    // Find message with media
-    const message = await prisma.whatsappMessage.findFirst({
-      where: {
-        id,
-        conversation: {
-          organizationId: whatsappAuth.organizationId!
-        }
-      },
-      include: {
-        conversation: {
-          include: {
-            whatsappDevice: true
+      } catch (error) {
+        // Handle billing-related errors with appropriate HTTP status codes
+        if (error instanceof InsufficientBalanceError) {
+          set.status = 402
+          return {
+            ok: false,
+            error: "INSUFFICIENT_BALANCE",
+            message:
+              "Insufficient balance for WhatsApp messaging. Please top up your balance.",
+            balance: error.available.toString(),
+            estimatedCost: error.required.toString(),
           }
         }
-      }
-    })
 
-    if (!message || !message.mediaUrl) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Media not found" }
-    }
+        if (error instanceof QuotaExceededError) {
+          set.status = 429
+          return {
+            ok: false,
+            error: "MONTHLY_QUOTA_EXCEEDED",
+            message: `Monthly outbound quota exceeded. Limit: ${error.monthlyLimit}, Used: ${error.monthlyUsed}`,
+            resetAt: getMonthlyResetAt(),
+          }
+        }
 
-    // If media is a Meta media ID, return download URL
-    if (message.mediaUrl.startsWith("__media:")) {
-      const mediaId = message.mediaUrl.replace("__media:", "")
-      const device = message.conversation.whatsappDevice
+        if (error instanceof DailyLimitExceededError) {
+          set.status = 429
+          return {
+            ok: false,
+            error: "DAILY_QUOTA_EXCEEDED",
+            message: `Daily limit exceeded. Limit: ${error.dailyLimit}, Used: ${error.dailyUsed}`,
+            resetAt: getDailyResetAt(),
+          }
+        }
 
-      if (!device?.tokenEncrypted) {
+        // Handle "NO_BILLING_ACCOUNT" error - org has no billing setup
+        if (error instanceof Error && error.message === "NO_BILLING_ACCOUNT") {
+          set.status = 400
+          return {
+            ok: false,
+            error: "BILLING_NOT_CONFIGURED",
+            message: "No billing account configured for this organization.",
+          }
+        }
+
+        if (error instanceof InsufficientQuotaError) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "INSUFFICIENT_QUOTA",
+            message: error.message,
+          }
+        }
+
+        console.error("[messages] send error:", error)
         set.status = 500
-        return { ok: false, error: "NO_DEVICE_TOKEN", message: "Device not configured" }
+        return {
+          ok: false,
+          error: "INTERNAL_ERROR",
+          message: "Failed to send message",
+        }
+      }
+    },
+    {
+      body: sendSchema,
+    }
+  )
+  .get(
+    "/:id/media",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      // Find message with media
+      const message = await prisma.whatsappMessage.findFirst({
+        where: {
+          id,
+          conversation: {
+            organizationId: whatsappAuth.organizationId!,
+          },
+        },
+        include: {
+          conversation: {
+            include: {
+              whatsappDevice: true,
+            },
+          },
+        },
+      })
+
+      if (!message || !message.mediaUrl) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Media not found" }
       }
 
+      // If media is a Meta media ID, return download URL
+      if (message.mediaUrl.startsWith("__media:")) {
+        const mediaId = message.mediaUrl.replace("__media:", "")
+        const device = message.conversation.whatsappDevice
+
+        if (!device?.tokenEncrypted) {
+          set.status = 500
+          return {
+            ok: false,
+            error: "NO_DEVICE_TOKEN",
+            message: "Device not configured",
+          }
+        }
+
+        return {
+          ok: true,
+          mediaId,
+          downloadUrl: `/api/whatsapp/media/${mediaId}?deviceId=${device.id}`,
+        }
+      }
+
+      // Return existing public URL
       return {
         ok: true,
-        mediaId,
-        downloadUrl: `/api/whatsapp/media/${mediaId}?deviceId=${device.id}`
+        mediaUrl: message.mediaUrl,
       }
     }
-
-    // Return existing public URL
-    return {
-      ok: true,
-      mediaUrl: message.mediaUrl
-    }
-  })
+  )

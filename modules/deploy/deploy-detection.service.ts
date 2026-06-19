@@ -48,24 +48,24 @@ const ECOSYSTEM_TO_LANGUAGE: Record<string, string> = {
 
 const KNOWN_BUILD_COMMANDS: Record<string, string> = {
   "Next.js": "npm run build",
-  "React": "npm run build",
+  React: "npm run build",
   "Vue.js": "npm run build",
-  "Angular": "npm run build",
-  "Svelte": "npm run build",
-  "Express": "npm run build",
-  "NestJS": "npm run build",
-  "Fastify": "npm run build",
-  "Django": "pip install -r requirements.txt && python manage.py collectstatic",
-  "Flask": "pip install -r requirements.txt",
-  "FastAPI": "pip install -r requirements.txt",
-  "Laravel": "composer install --no-dev --optimize-autoloader",
-  "Symfony": "composer install --no-dev --optimize-autoloader",
-  "Rails": "bundle install && rails assets:precompile",
+  Angular: "npm run build",
+  Svelte: "npm run build",
+  Express: "npm run build",
+  NestJS: "npm run build",
+  Fastify: "npm run build",
+  Django: "pip install -r requirements.txt && python manage.py collectstatic",
+  Flask: "pip install -r requirements.txt",
+  FastAPI: "pip install -r requirements.txt",
+  Laravel: "composer install --no-dev --optimize-autoloader",
+  Symfony: "composer install --no-dev --optimize-autoloader",
+  Rails: "bundle install && rails assets:precompile",
   "Spring Boot": "./mvnw package -DskipTests",
-  "Gin": "go build -o main .",
-  "Echo": "go build -o main .",
+  Gin: "go build -o main .",
+  Echo: "go build -o main .",
   "Actix Web": "cargo build --release",
-  "Rocket": "cargo build --release",
+  Rocket: "cargo build --release",
 }
 
 // --- Helpers ---
@@ -163,7 +163,8 @@ export const fetchFrameworkDetection = async (
     )
   }
 
-  const body: FrameworkDetectionResponse = (await response.json()) as FrameworkDetectionResponse
+  const body: FrameworkDetectionResponse =
+    (await response.json()) as FrameworkDetectionResponse
 
   if (!body.ok || body.primaryFramework == null) {
     throw new DetectionError(
@@ -175,7 +176,8 @@ export const fetchFrameworkDetection = async (
   const blockedStatuses = ["blocked", "unsupported"]
   if (blockedStatuses.includes(body.decision.status)) {
     throw new DetectionError(
-      body.decision.message ?? "Detection is not supported for this repository.",
+      body.decision.message ??
+        "Detection is not supported for this repository.",
       "DETECTION_BLOCKED"
     )
   }

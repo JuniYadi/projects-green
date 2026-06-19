@@ -12,7 +12,7 @@ function createDefaultService() {
         amount: "50000",
         currency: "IDR",
         adjustmentId: "adj_1",
-      }),
+      })
     ),
     getUserClaims: () => Promise.resolve([]),
   }
@@ -45,7 +45,7 @@ describe("Console Voucher Routes", () => {
           organizationId: null,
           role: null,
           roles: null,
-        }),
+        })
       )
 
       const res = await toApp(deps).handle(
@@ -53,7 +53,7 @@ describe("Console Voucher Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: "TEST1234" }),
-        }),
+        })
       )
 
       expect(res.status).toBe(401)
@@ -70,7 +70,7 @@ describe("Console Voucher Routes", () => {
           organizationId: null,
           role: null,
           roles: null,
-        }),
+        })
       )
 
       const res = await toApp(deps).handle(
@@ -78,7 +78,7 @@ describe("Console Voucher Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: "TEST1234" }),
-        }),
+        })
       )
 
       expect(res.status).toBe(403)
@@ -95,7 +95,7 @@ describe("Console Voucher Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: "TEST1234" }),
-        }),
+        })
       )
 
       expect(res.status).toBe(200)
@@ -114,11 +114,11 @@ describe("Console Voucher Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: "test1234" }),
-        }),
+        })
       )
 
       expect(deps.service.redeemVoucher).toHaveBeenCalledWith(
-        expect.objectContaining({ code: "TEST1234" }),
+        expect.objectContaining({ code: "TEST1234" })
       )
     })
 
@@ -128,7 +128,7 @@ describe("Console Voucher Routes", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: "" }),
-        }),
+        })
       )
 
       expect(res.status).toBe(422)
@@ -145,11 +145,11 @@ describe("Console Voucher Routes", () => {
           organizationId: null,
           role: null,
           roles: null,
-        }),
+        })
       )
 
       const res = await toApp(deps).handle(
-        new Request("http://localhost/vouchers/claims"),
+        new Request("http://localhost/vouchers/claims")
       )
 
       expect(res.status).toBe(401)
@@ -173,11 +173,11 @@ describe("Console Voucher Routes", () => {
               currency: "IDR",
             },
           },
-        ]),
+        ])
       )
 
       const res = await toApp(deps).handle(
-        new Request("http://localhost/vouchers/claims"),
+        new Request("http://localhost/vouchers/claims")
       )
 
       expect(res.status).toBe(200)

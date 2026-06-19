@@ -56,22 +56,30 @@ export class CostingService {
     if (!subscription?.pricing) {
       return {
         category: "hosting",
-        quantity: params.vcpuHours + params.memoryGbHours + params.storageGbMonths,
+        quantity:
+          params.vcpuHours + params.memoryGbHours + params.storageGbMonths,
         unitPrice: new Decimal(0),
         totalCost: new Decimal(0),
         serviceType: "APP_HOSTING",
       }
     }
 
-    const cpuCost = new Decimal(subscription.pricing.unitRateCpu ?? 0).mul(params.vcpuHours)
-    const memCost = new Decimal(subscription.pricing.unitRateMem ?? 0).mul(params.memoryGbHours)
-    const storageCost = new Decimal(STORAGE_RATE_PER_GB_MONTH_IDR).mul(params.storageGbMonths)
+    const cpuCost = new Decimal(subscription.pricing.unitRateCpu ?? 0).mul(
+      params.vcpuHours
+    )
+    const memCost = new Decimal(subscription.pricing.unitRateMem ?? 0).mul(
+      params.memoryGbHours
+    )
+    const storageCost = new Decimal(STORAGE_RATE_PER_GB_MONTH_IDR).mul(
+      params.storageGbMonths
+    )
 
     const totalCost = cpuCost.plus(memCost).plus(storageCost)
 
     return {
       category: "hosting",
-      quantity: params.vcpuHours + params.memoryGbHours + params.storageGbMonths,
+      quantity:
+        params.vcpuHours + params.memoryGbHours + params.storageGbMonths,
       unitPrice: new Decimal(0),
       totalCost,
       serviceType: "APP_HOSTING",
@@ -80,7 +88,7 @@ export class CostingService {
 
   async getUsageBreakdown(
     organizationId: string,
-    period: string,
+    period: string
   ): Promise<UsageBreakdown[]> {
     const entries = await this.prisma.billingUsageLedger.findMany({
       where: {
@@ -89,11 +97,17 @@ export class CostingService {
       },
     })
 
-    const categoryMap = new Map<string, { totalCost: Decimal; entryCount: number }>()
+    const categoryMap = new Map<
+      string,
+      { totalCost: Decimal; entryCount: number }
+    >()
 
     for (const entry of entries) {
       const category = entry.category ?? "unknown"
-      const existing = categoryMap.get(category) ?? { totalCost: new Decimal(0), entryCount: 0 }
+      const existing = categoryMap.get(category) ?? {
+        totalCost: new Decimal(0),
+        entryCount: 0,
+      }
       existing.totalCost = existing.totalCost.plus(entry.amountIdr ?? 0)
       existing.entryCount += 1
       categoryMap.set(category, existing)
@@ -101,7 +115,7 @@ export class CostingService {
 
     const totalSpend = Array.from(categoryMap.values()).reduce(
       (sum, val) => sum.plus(val.totalCost),
-      new Decimal(0),
+      new Decimal(0)
     )
 
     const breakdown: UsageBreakdown[] = []

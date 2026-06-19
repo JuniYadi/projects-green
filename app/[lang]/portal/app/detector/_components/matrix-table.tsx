@@ -104,9 +104,7 @@ function MappingFormDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {isEditing
-              ? "Edit Runtime Mapping"
-              : "Create Runtime Mapping"}
+            {isEditing ? "Edit Runtime Mapping" : "Create Runtime Mapping"}
           </DialogTitle>
           <DialogDescription>
             {isEditing
@@ -178,9 +176,7 @@ function MappingFormDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="buildVersion">
-                Build Version (optional)
-              </Label>
+              <Label htmlFor="buildVersion">Build Version (optional)</Label>
               <Input
                 id="buildVersion"
                 value={form.buildVersion}
@@ -286,7 +282,9 @@ export function MatrixTable() {
 
   const handleUpdate = async (formData: MappingFormData) => {
     if (!editingMapping) return
-    const { data } = await eden.api.admin.detector.mappings[editingMapping.id].patch({
+    const { data } = await eden.api.admin.detector.mappings[
+      editingMapping.id
+    ].patch({
       frameworkId: formData.frameworkId,
       frameworkVersion: formData.frameworkVersion || null,
       runtimeId: formData.runtimeId,
@@ -300,7 +298,9 @@ export function MatrixTable() {
   }
 
   const handleToggleActive = async (mapping: RuntimeMapping) => {
-    const { data } = await eden.api.admin.detector.mappings[mapping.id].patch({ isActive: !mapping.isActive })
+    const { data } = await eden.api.admin.detector.mappings[mapping.id].patch({
+      isActive: !mapping.isActive,
+    })
     if (!data?.ok) {
       toast.error(data?.message || "Failed to toggle mapping status")
       return

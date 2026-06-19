@@ -17,28 +17,18 @@ type Props = {
   onBack: () => void
 }
 
-const STATUS_VARIANT: Record<
-  string,
-  "default" | "secondary" | "destructive"
-> = {
-  ACTIVE: "default",
-  SUSPENDED: "secondary",
-  REVOKED: "destructive",
-}
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"> =
+  {
+    ACTIVE: "default",
+    SUSPENDED: "secondary",
+    REVOKED: "destructive",
+  }
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string
-  value: string | null
-}) {
+function DetailRow({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex items-baseline justify-between border-b py-2 text-sm last:border-0">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">
-        {value ?? "—"}
-      </span>
+      <span className="font-medium">{value ?? "—"}</span>
     </div>
   )
 }
@@ -50,9 +40,7 @@ export function VpnDeviceDetail({ device, onRevoke, onBack }: Props) {
         <div className="flex items-start justify-between">
           <div>
             <CardTitle>{device.deviceName}</CardTitle>
-            <CardDescription>
-              Device ID: {device.id}
-            </CardDescription>
+            <CardDescription>Device ID: {device.id}</CardDescription>
           </div>
           <Badge variant={STATUS_VARIANT[device.status] ?? "outline"}>
             {device.status}
@@ -66,10 +54,7 @@ export function VpnDeviceDetail({ device, onRevoke, onBack }: Props) {
           <DetailRow label="Paired Via" value={device.pairedVia} />
           <DetailRow label="Paired At" value={device.pairedAt} />
           <DetailRow label="Last Seen" value={device.lastSeenAt} />
-          <DetailRow
-            label="Subscription"
-            value={device.subscriptionId}
-          />
+          <DetailRow label="Subscription" value={device.subscriptionId} />
           <DetailRow
             label="Organization"
             value={device.organizationName ?? device.organizationId}
@@ -77,10 +62,7 @@ export function VpnDeviceDetail({ device, onRevoke, onBack }: Props) {
           {device.status === "REVOKED" && (
             <>
               <DetailRow label="Revoked At" value={device.revokedAt} />
-              <DetailRow
-                label="Revoked Reason"
-                value={device.revokedReason}
-              />
+              <DetailRow label="Revoked Reason" value={device.revokedReason} />
             </>
           )}
         </div>

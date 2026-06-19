@@ -37,12 +37,11 @@ export const InvoiceCreatedEmail = ({
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>
-            Invoice {invoiceNumber}
-          </Heading>
+          <Heading style={styles.heading}>Invoice {invoiceNumber}</Heading>
 
           <Text style={styles.intro}>
-            A new invoice has been created for your account. Please review the details below and process payment by the due date.
+            A new invoice has been created for your account. Please review the
+            details below and process payment by the due date.
           </Text>
 
           <Section style={styles.invoiceInfo}>
@@ -71,7 +70,8 @@ export const InvoiceCreatedEmail = ({
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have any questions about this invoice, please contact our billing team.
+            If you have any questions about this invoice, please contact our
+            billing team.
           </Text>
         </Container>
       </Body>

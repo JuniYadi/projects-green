@@ -41,7 +41,9 @@ export class BankAccountService {
   }
 
   async findById(id: string): Promise<BankAccountResponse | null> {
-    const account = await prisma.paymentBankAccount.findUnique({ where: { id } })
+    const account = await prisma.paymentBankAccount.findUnique({
+      where: { id },
+    })
     if (!account) return null
     return this.toResponse(account)
   }
@@ -78,7 +80,9 @@ export class BankAccountService {
     id: string,
     input: Partial<BankAccountInput> & { isActive?: boolean }
   ): Promise<BankAccountResponse> {
-    const existing = await prisma.paymentBankAccount.findUnique({ where: { id } })
+    const existing = await prisma.paymentBankAccount.findUnique({
+      where: { id },
+    })
     if (!existing) throw new Error("Bank account not found")
 
     if (input.isDefault && !existing.isDefault) {
@@ -119,7 +123,9 @@ export class BankAccountService {
   }
 
   async toggle(id: string): Promise<BankAccountResponse> {
-    const account = await prisma.paymentBankAccount.findUnique({ where: { id } })
+    const account = await prisma.paymentBankAccount.findUnique({
+      where: { id },
+    })
     if (!account) throw new Error("Bank account not found")
 
     const updated = await prisma.paymentBankAccount.update({

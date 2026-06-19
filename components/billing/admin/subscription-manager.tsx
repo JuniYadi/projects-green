@@ -51,7 +51,9 @@ function getSubscriptionType(type: string): SubscriptionType {
   return "APP_HOSTING" // default
 }
 
-function getStatusBadgeVariant(status: string): "success" | "warning" | "secondary" | "destructive" {
+function getStatusBadgeVariant(
+  status: string
+): "success" | "warning" | "secondary" | "destructive" {
   switch (status.toUpperCase()) {
     case "ACTIVE":
       return "success"
@@ -119,9 +121,7 @@ function SubscriptionCard({
       router.refresh()
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to update subscription"
+        error instanceof Error ? error.message : "Failed to update subscription"
       toast.error(message)
     } finally {
       setUpdateState("idle")
@@ -154,7 +154,9 @@ function SubscriptionCard({
       router.refresh()
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to update VPN subscription"
+        error instanceof Error
+          ? error.message
+          : "Failed to update VPN subscription"
       toast.error(message)
     } finally {
       setUpdateState("idle")
@@ -172,7 +174,9 @@ function SubscriptionCard({
       router.refresh()
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to update WhatsApp subscription"
+        error instanceof Error
+          ? error.message
+          : "Failed to update WhatsApp subscription"
       toast.error(message)
     } finally {
       setUpdateState("idle")
@@ -202,7 +206,8 @@ function SubscriptionCard({
           )}
         </div>
         <CardDescription>
-          Package: {subscription.packageCode} | Region: {subscription.regionCode}
+          Package: {subscription.packageCode} | Region:{" "}
+          {subscription.regionCode}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -265,7 +270,9 @@ function SubscriptionCard({
                 disabled={updateState === "submitting"}
                 className="w-full"
               >
-                {updateState === "submitting" ? "Updating..." : "Update Subscription"}
+                {updateState === "submitting"
+                  ? "Updating..."
+                  : "Update Subscription"}
               </Button>
             )}
           </>
@@ -310,7 +317,9 @@ function SubscriptionCard({
                 disabled={updateState === "submitting"}
                 className="w-full"
               >
-                {updateState === "submitting" ? "Updating..." : "Update VPN Subscription"}
+                {updateState === "submitting"
+                  ? "Updating..."
+                  : "Update VPN Subscription"}
               </Button>
             )}
           </>
@@ -348,8 +357,8 @@ function SubscriptionCard({
               {subscription.quotaIn && subscription.quotaOut && (
                 <div className="rounded-lg bg-muted/50 p-3 text-sm">
                   <p>
-                    Quota: {subscription.quotaIn} in / {subscription.quotaOut} out
-                    per month
+                    Quota: {subscription.quotaIn} in / {subscription.quotaOut}{" "}
+                    out per month
                   </p>
                   {subscription.dailyPerDevice && (
                     <p>Daily per device: {subscription.dailyPerDevice}</p>
@@ -379,11 +388,14 @@ function SubscriptionCard({
         {subscription.currentPeriodEnd && (
           <p className="text-xs text-muted-foreground">
             Current period ends:{" "}
-            {new Date(subscription.currentPeriodEnd).toLocaleDateString("id-ID", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            {new Date(subscription.currentPeriodEnd).toLocaleDateString(
+              "id-ID",
+              {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }
+            )}
           </p>
         )}
       </CardContent>
@@ -395,14 +407,20 @@ async function updateSubscription(
   id: string,
   updates: Partial<SubscriptionItem>
 ): Promise<void> {
-  const { data } = await eden.api.billing.admin.subscriptions[id].patch(updates as never)
+  const { data } = await eden.api.billing.admin.subscriptions[id].patch(
+    updates as never
+  )
 
   if (!data?.ok) {
-    throw new Error((data as { message?: string })?.message || "Failed to update subscription")
+    throw new Error(
+      (data as { message?: string })?.message || "Failed to update subscription"
+    )
   }
 }
 
-export function SubscriptionManager({ subscriptions }: SubscriptionManagerProps) {
+export function SubscriptionManager({
+  subscriptions,
+}: SubscriptionManagerProps) {
   if (subscriptions.length === 0) {
     return (
       <Card>
@@ -423,7 +441,7 @@ export function SubscriptionManager({ subscriptions }: SubscriptionManagerProps)
         />
       ))}
 
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="text-center text-xs text-muted-foreground">
         Changes take effect at the next billing cycle.
       </p>
     </div>

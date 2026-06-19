@@ -11,7 +11,10 @@ import { QuotaGateService } from "@/modules/billing/quota-gate.service"
 import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
 import { MessageCostService } from "@/modules/billing/message-cost.service"
 import { USAGE_CATEGORY_WHATSAPP_OUT } from "@/modules/billing/constants"
-import { WhatsappBillingService, type WhatsappBillingDecision } from "@/modules/whatsapp/billing/whatsapp-billing.service"
+import {
+  WhatsappBillingService,
+  type WhatsappBillingDecision,
+} from "@/modules/whatsapp/billing/whatsapp-billing.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import {
   InsufficientBalanceError,
@@ -51,7 +54,11 @@ export type SendMessageOptions = {
 
 export type MessageService = {
   sendMessage(options: SendMessageOptions): Promise<SendMessageResult>
-  getOrCreateConversation(organizationId: string, phoneNumber: string, deviceId?: string): Promise<string>
+  getOrCreateConversation(
+    organizationId: string,
+    phoneNumber: string,
+    deviceId?: string
+  ): Promise<string>
 }
 
 export const messageService: MessageService = {
@@ -90,7 +97,10 @@ export const messageService: MessageService = {
     const quotaGate = new QuotaGateService(prisma)
     const usageLedger = new UsageLedgerService(prisma)
     const messageCostService = new MessageCostService(prisma)
-    const whatsappBilling = new WhatsappBillingService(prisma, new BillingTransactionService(prisma))
+    const whatsappBilling = new WhatsappBillingService(
+      prisma,
+      new BillingTransactionService(prisma)
+    )
 
     // 1. Check WhatsApp allowance or charge overage BEFORE Meta API call
     const unitPrice = await messageCostService.estimateMessageCost({
@@ -168,52 +178,58 @@ export const messageService: MessageService = {
     // Send message via Meta Cloud API
     let waMessageId: string | undefined
     try {
-      const result = type === "text"
-        ? await client.sendMessage({
-            to: phoneNumber,
-            type: "text",
-            payload: { text: message ?? "" },
-          })
-        : type === "location"
+      const result =
+        type === "text"
           ? await client.sendMessage({
               to: phoneNumber,
-              type: "location",
-              payload: {
-                latitude: latitude ?? 0,
-                longitude: longitude ?? 0,
-                name,
-                address,
-              },
+              type: "text",
+              payload: { text: message ?? "" },
             })
-          : type === "document"
+          : type === "location"
             ? await client.sendMessage({
                 to: phoneNumber,
-                type: "document",
-                payload: { link: mediaUrl ?? "", caption, filename },
+                type: "location",
+                payload: {
+                  latitude: latitude ?? 0,
+                  longitude: longitude ?? 0,
+                  name,
+                  address,
+                },
               })
-            : type === "audio"
+            : type === "document"
               ? await client.sendMessage({
                   to: phoneNumber,
-                  type: "audio",
-                  payload: { link: mediaUrl ?? "" },
+                  type: "document",
+                  payload: { link: mediaUrl ?? "", caption, filename },
                 })
-              : await client.sendMessage({
-                  to: phoneNumber,
-                  type,
-                  payload: { link: mediaUrl ?? "", caption },
-                })
+              : type === "audio"
+                ? await client.sendMessage({
+                    to: phoneNumber,
+                    type: "audio",
+                    payload: { link: mediaUrl ?? "" },
+                  })
+                : await client.sendMessage({
+                    to: phoneNumber,
+                    type,
+                    payload: { link: mediaUrl ?? "", caption },
+                  })
       waMessageId = result.providerMessageId
     } catch (err) {
       console.error("[messageService] Failed to send via Meta API:", err)
       // Compensate: restore allowance if it was consumed
       if (billingDecision?.kind === "ALLOWANCE") {
-        whatsappBilling.restoreAllowance(device.id, messageCount).catch((restoreErr) => {
-          console.error("[messageService] Failed to restore allowance:", restoreErr)
-        })
+        whatsappBilling
+          .restoreAllowance(device.id, messageCount)
+          .catch((restoreErr) => {
+            console.error(
+              "[messageService] Failed to restore allowance:",
+              restoreErr
+            )
+          })
       } else if (billingDecision?.kind === "OVERAGE_CHARGED") {
         console.warn(
           "[messageService] Overage charged but Meta API failed. Balance not auto-refunded.",
-          { adjustmentId: billingDecision.adjustmentId, jobId },
+          { adjustmentId: billingDecision.adjustmentId, jobId }
         )
       }
       // Continue to enqueue for retry
@@ -228,7 +244,10 @@ export const messageService: MessageService = {
         // QuotaExceededError or DailyLimitExceededError
         // Message already sent, enqueue reconciliation job for async repair
         quotaPending = true
-        console.error("[messageService] Quota deduction failed, enqueuing reconciliation:", error)
+        console.error(
+          "[messageService] Quota deduction failed, enqueuing reconciliation:",
+          error
+        )
 
         // Fire-and-forget: enqueue reconciliation job
         enqueueQuotaReconciliation(
@@ -238,7 +257,10 @@ export const messageService: MessageService = {
           jobId,
           new Date()
         ).catch((err) => {
-          console.error("[messageService] Failed to enqueue quota reconciliation:", err)
+          console.error(
+            "[messageService] Failed to enqueue quota reconciliation:",
+            err
+          )
         })
       }
 
@@ -278,7 +300,9 @@ export const messageService: MessageService = {
         })
 
         // Increment daily + monthly outbound counters
-        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+        const today = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+        )
         const year = now.getUTCFullYear()
         const month = now.getUTCMonth() + 1
 
@@ -311,10 +335,10 @@ export const messageService: MessageService = {
             update: { messageOutboxCount: { increment: 1 } },
             create: {
               organizationId,
-                year,
-                month,
-                whatsappDeviceId: device.id,
-                messageOutboxCount: 1,
+              year,
+              month,
+              whatsappDeviceId: device.id,
+              messageOutboxCount: 1,
             },
           }),
           // Record per-message billing entry in WhatsApp Billing Ledger
@@ -376,7 +400,11 @@ export const messageService: MessageService = {
     }
   },
 
-  async getOrCreateConversation(organizationId: string, phoneNumber: string, deviceId?: string) {
+  async getOrCreateConversation(
+    organizationId: string,
+    phoneNumber: string,
+    deviceId?: string
+  ) {
     let conversation = await prisma.whatsappConversation.findFirst({
       where: {
         organizationId,

@@ -308,16 +308,16 @@ describe("VpnMobileDeviceService", () => {
 
     it("throws VpnMobileDeviceNotFoundError when device missing", async () => {
       findUnique.mockResolvedValue(null)
-      await expect(
-        service.revoke({ deviceId: "missing" })
-      ).rejects.toThrow(VpnMobileDeviceNotFoundError)
+      await expect(service.revoke({ deviceId: "missing" })).rejects.toThrow(
+        VpnMobileDeviceNotFoundError
+      )
     })
 
     it("throws VpnMobileDeviceAlreadyRevokedError when already REVOKED", async () => {
       findUnique.mockResolvedValue(revokedDevice)
-      await expect(
-        service.revoke({ deviceId: "dev-revoked" })
-      ).rejects.toThrow(VpnMobileDeviceAlreadyRevokedError)
+      await expect(service.revoke({ deviceId: "dev-revoked" })).rejects.toThrow(
+        VpnMobileDeviceAlreadyRevokedError
+      )
       expect(prismaMock.vpnMobileDevice.update).not.toHaveBeenCalled()
     })
   })
@@ -337,7 +337,9 @@ describe("VpnMobileDeviceService", () => {
         },
       })
       // Verify revokedAt is NOT in the data payload.
-      const call = update.mock.calls[0]?.[0] as { data: Record<string, unknown> }
+      const call = update.mock.calls[0]?.[0] as {
+        data: Record<string, unknown>
+      }
       expect(call.data).not.toHaveProperty("revokedAt")
     })
 

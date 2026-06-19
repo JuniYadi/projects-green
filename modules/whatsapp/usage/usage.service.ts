@@ -64,10 +64,7 @@ export class WhatsappUsageService {
    * Query WhatsappMonthlyCount with year/month range and optional device
    * filter.
    */
-  async getMonthlyCounts(
-    organizationId: string,
-    opts: MonthRangeOpts = {}
-  ) {
+  async getMonthlyCounts(organizationId: string, opts: MonthRangeOpts = {}) {
     const where: Record<string, unknown> = { organizationId }
 
     if (opts.year) {
@@ -103,10 +100,7 @@ export class WhatsappUsageService {
     })
 
     let total = 0
-    const categoryMap = new Map<
-      string,
-      { count: number; total: number }
-    >()
+    const categoryMap = new Map<string, { count: number; total: number }>()
 
     for (const row of rows) {
       const amount = toNum(row.amountIdr)
@@ -153,10 +147,7 @@ export class WhatsappUsageService {
       },
     })
 
-    const categoryMap = new Map<
-      string,
-      { count: number; total: number }
-    >()
+    const categoryMap = new Map<string, { count: number; total: number }>()
 
     for (const row of rows) {
       const amount = toNum(row.amountIdr)
@@ -212,16 +203,12 @@ export class WhatsappUsageService {
     const cost = await this.getCostSummary(organizationId, period)
 
     // Build device summary from monthly counts
-    const deviceIds = [
-      ...new Set(monthlyCounts.map((r) => r.whatsappDeviceId)),
-    ]
+    const deviceIds = [...new Set(monthlyCounts.map((r) => r.whatsappDeviceId))]
 
     // Lookup device phone numbers
     const deviceMap = new Map<string | null, string | null>()
     if (deviceIds.length > 0) {
-      const filteredIds = deviceIds.filter(
-        (id): id is string => id !== null
-      )
+      const filteredIds = deviceIds.filter((id): id is string => id !== null)
       if (filteredIds.length > 0) {
         const devices = await prisma.whatsappDevice.findMany({
           where: {

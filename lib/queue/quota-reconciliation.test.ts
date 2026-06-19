@@ -313,7 +313,9 @@ describe("enqueueQuotaReconciliation", () => {
 
     expect(queueAddMock).toHaveBeenCalledTimes(1)
     // @ts-expect-error - mock queue call arg resolution
-    const callArg = queueAddMock.mock.calls[0]?.[1] as Record<string, unknown> | undefined
+    const callArg = queueAddMock.mock.calls[0]?.[1] as
+      | Record<string, unknown>
+      | undefined
 
     expect(callArg).toBeDefined()
     expect(callArg!.organizationId).toBe("org-now")

@@ -18,7 +18,10 @@ interface TicketRepliedEmailProps {
   reply: SupportTicketReply
 }
 
-export const TicketRepliedEmail = ({ ticket, reply }: TicketRepliedEmailProps) => {
+export const TicketRepliedEmail = ({
+  ticket,
+  reply,
+}: TicketRepliedEmailProps) => {
   const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/console/support-tickets/${ticket.id}`
 
   return (
@@ -43,7 +46,8 @@ export const TicketRepliedEmail = ({ ticket, reply }: TicketRepliedEmailProps) =
             </Heading>
 
             <Text style={styles.meta}>
-              <strong>Status:</strong> {SUPPORT_TICKET_STATUS_LABELS[ticket.status]}
+              <strong>Status:</strong>{" "}
+              {SUPPORT_TICKET_STATUS_LABELS[ticket.status]}
             </Text>
           </Section>
 
@@ -63,7 +67,8 @@ export const TicketRepliedEmail = ({ ticket, reply }: TicketRepliedEmailProps) =
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            You can reply directly to this email to add more information to your ticket.
+            You can reply directly to this email to add more information to your
+            ticket.
           </Text>
         </Container>
       </Body>

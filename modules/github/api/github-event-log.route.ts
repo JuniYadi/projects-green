@@ -29,9 +29,7 @@ const listQuerySchema = z.object({
   branch: z.string().trim().optional(),
   from: z.string().trim().optional(),
   until: z.string().trim().optional(),
-  deletedState: z
-    .enum(["active", "deleted", "include_deleted"])
-    .optional(),
+  deletedState: z.enum(["active", "deleted", "include_deleted"]).optional(),
   sort: z
     .enum([
       "receivedAt",

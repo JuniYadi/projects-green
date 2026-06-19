@@ -3,19 +3,15 @@ import { render, fireEvent, act } from "@testing-library/react"
 import { MarkdownEditor } from "./markdown-editor"
 
 // Mock global fetch
-const mockFetch = mock<
-  (url: string, options?: RequestInit) => Promise<Response>
->()
+const mockFetch =
+  mock<(url: string, options?: RequestInit) => Promise<Response>>()
 beforeEach(() => {
   mockFetch.mockReset()
   // Default successful response
   mockFetch.mockResolvedValue(
-    new Response(
-      JSON.stringify({ ok: true, html: "<p>Preview content</p>" }),
-      {
-        headers: { "content-type": "application/json" },
-      }
-    )
+    new Response(JSON.stringify({ ok: true, html: "<p>Preview content</p>" }), {
+      headers: { "content-type": "application/json" },
+    })
   )
   global.fetch = mockFetch as unknown as typeof global.fetch
 })
@@ -437,8 +433,7 @@ describe("MarkdownEditor - edge cases", () => {
   })
 
   it("renders preview content safely via dangerouslySetInnerHTML", async () => {
-    const htmlWithHtml =
-      "<strong>Bold text</strong><em>Italic text</em>"
+    const htmlWithHtml = "<strong>Bold text</strong><em>Italic text</em>"
     mockFetch.mockReset()
     mockFetch.mockResolvedValue(
       new Response(JSON.stringify({ ok: true, html: htmlWithHtml }), {

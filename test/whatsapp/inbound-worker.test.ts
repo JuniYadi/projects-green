@@ -40,9 +40,8 @@ mock.module("@/lib/prisma", () => ({
 
 // ─── Imports under test ──────────────────────────────────────────────────────────
 
-const { processInboundMessage } = await import(
-  "@/modules/whatsapp/webhooks/webhooks.service"
-)
+const { processInboundMessage } =
+  await import("@/modules/whatsapp/webhooks/webhooks.service")
 
 beforeEach(() => {
   // Reset all mocks
@@ -97,7 +96,7 @@ describe("processInboundMessage", () => {
     const result = await processInboundMessage(
       sampleTextPayload,
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     expect(result.conversationId).toBe("conv-new")
@@ -113,7 +112,7 @@ describe("processInboundMessage", () => {
           lastDirection: "INBOX",
           whatsappDeviceId: "device-1",
         }),
-      }),
+      })
     )
   })
 
@@ -134,7 +133,7 @@ describe("processInboundMessage", () => {
     const result = await processInboundMessage(
       sampleTextPayload,
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     expect(result.conversationId).toBe("conv-existing")
@@ -147,7 +146,7 @@ describe("processInboundMessage", () => {
         data: expect.objectContaining({
           lastDirection: "INBOX",
         }),
-      }),
+      })
     )
   })
 
@@ -171,7 +170,7 @@ describe("processInboundMessage", () => {
           body: "Hello from customer!",
           waMessageId: "wamid.text.abc123",
         }),
-      }),
+      })
     )
   })
 
@@ -193,7 +192,7 @@ describe("processInboundMessage", () => {
           messageType: "image",
           mediaUrl: "__media:media-id-789",
         }),
-      }),
+      })
     )
     // Verify body is not set for media-only messages
     const createCall = mockMessage.create.mock.calls[0][0] as {
@@ -208,12 +207,19 @@ describe("processInboundMessage", () => {
       id: "wamid.doc.ghi789",
       timestamp: "1680000002",
       type: "document",
-      document: { id: "media-doc-123", mime_type: "application/pdf", filename: "doc.pdf" },
+      document: {
+        id: "media-doc-123",
+        mime_type: "application/pdf",
+        filename: "doc.pdf",
+      },
     }
 
     mockConversation.findFirst.mockResolvedValue({ id: "conv-3" })
     mockConversation.update.mockResolvedValue({ id: "conv-3" })
-    mockMessage.create.mockResolvedValue({ id: "msg-doc", conversationId: "conv-3" })
+    mockMessage.create.mockResolvedValue({
+      id: "msg-doc",
+      conversationId: "conv-3",
+    })
 
     await processInboundMessage(docPayload, "device-1", "org-1")
 
@@ -223,7 +229,7 @@ describe("processInboundMessage", () => {
           messageType: "document",
           mediaUrl: "__media:media-doc-123",
         }),
-      }),
+      })
     )
   })
 
@@ -231,7 +237,7 @@ describe("processInboundMessage", () => {
     const invalidPayload = { id: "wamid.no-from", type: "text" }
 
     await expect(
-      processInboundMessage(invalidPayload as any, "device-1", "org-1"),
+      processInboundMessage(invalidPayload as any, "device-1", "org-1")
     ).rejects.toThrow("Invalid message payload")
   })
 
@@ -239,7 +245,7 @@ describe("processInboundMessage", () => {
     const invalidPayload = { from: "+15551234567", type: "text" }
 
     await expect(
-      processInboundMessage(invalidPayload as any, "device-1", "org-1"),
+      processInboundMessage(invalidPayload as any, "device-1", "org-1")
     ).rejects.toThrow("Invalid message payload")
   })
 
@@ -253,9 +259,16 @@ describe("processInboundMessage", () => {
 
     mockConversation.findFirst.mockResolvedValue({ id: "conv-4" })
     mockConversation.update.mockResolvedValue({ id: "conv-4" })
-    mockMessage.create.mockResolvedValue({ id: "msg-unk", conversationId: "conv-4" })
+    mockMessage.create.mockResolvedValue({
+      id: "msg-unk",
+      conversationId: "conv-4",
+    })
 
-    const result = await processInboundMessage(unknownPayload, "device-1", "org-1")
+    const result = await processInboundMessage(
+      unknownPayload,
+      "device-1",
+      "org-1"
+    )
 
     expect(result.messageId).toBe("msg-unk")
     const createCall = mockMessage.create.mock.calls[0][0] as {
@@ -269,7 +282,10 @@ describe("processInboundMessage", () => {
   it("includes metadata in message record", async () => {
     mockConversation.findFirst.mockResolvedValue({ id: "conv-5" })
     mockConversation.update.mockResolvedValue({ id: "conv-5" })
-    mockMessage.create.mockResolvedValue({ id: "msg-meta", conversationId: "conv-5" })
+    mockMessage.create.mockResolvedValue({
+      id: "msg-meta",
+      conversationId: "conv-5",
+    })
 
     await processInboundMessage(sampleTextPayload, "device-1", "org-1")
 

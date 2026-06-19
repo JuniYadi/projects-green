@@ -70,7 +70,9 @@ const _toDeviceDetail = (d: PrismaDeviceFields): DeviceDetail => ({
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
-export const createDeviceService = (options: { prisma?: typeof prisma } = {}): DeviceService => {
+export const createDeviceService = (
+  options: { prisma?: typeof prisma } = {}
+): DeviceService => {
   const db = options.prisma ?? prisma
 
   return {
@@ -97,8 +99,7 @@ export const createDeviceService = (options: { prisma?: typeof prisma } = {}): D
           organizationId: input.organizationId ?? "",
           phoneNumber: input.phoneNumber,
           status: "ACTIVE",
-          whatsappBusinessAccountId:
-            input.whatsappBusinessAccountId ?? null,
+          whatsappBusinessAccountId: input.whatsappBusinessAccountId ?? null,
           whatsappPhoneId: input.whatsappPhoneId ?? null,
           whatsappApplicationId: input.whatsappApplicationId ?? null,
           callbackUrl: input.callbackUrl || null,

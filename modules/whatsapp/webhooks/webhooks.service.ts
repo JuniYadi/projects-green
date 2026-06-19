@@ -10,10 +10,20 @@ export type ParsedMessagePayload = {
   type: string
   text?: { body: string }
   image?: { id: string; mime_type?: string; sha256?: string }
-  document?: { id: string; mime_type?: string; sha256?: string; filename?: string }
+  document?: {
+    id: string
+    mime_type?: string
+    sha256?: string
+    filename?: string
+  }
   audio?: { id: string; mime_type?: string }
   video?: { id: string; mime_type?: string }
-  location?: { latitude: number; longitude: number; name?: string; address?: string }
+  location?: {
+    latitude: number
+    longitude: number
+    name?: string
+    address?: string
+  }
   [key: string]: unknown
 }
 
@@ -30,7 +40,7 @@ export type ProcessMessageResult = {
 export async function processInboundMessage(
   payload: ParsedMessagePayload,
   deviceId: string,
-  organizationId: string,
+  organizationId: string
 ): Promise<ProcessMessageResult> {
   const from = payload.from
   if (!from || !payload.id) {
@@ -92,7 +102,9 @@ export async function processInboundMessage(
 
   // Increment daily + monthly inbox counters
   const now = new Date()
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  )
   const year = now.getUTCFullYear()
   const month = now.getUTCMonth() + 1
 
@@ -161,13 +173,14 @@ function extractMessageBody(payload: ParsedMessagePayload): string | null {
       interactive.button_reply &&
       typeof interactive.button_reply === "object"
     ) {
-      return String((interactive.button_reply as Record<string, unknown>).title ?? "")
+      return String(
+        (interactive.button_reply as Record<string, unknown>).title ?? ""
+      )
     }
-    if (
-      interactive.list_reply &&
-      typeof interactive.list_reply === "object"
-    ) {
-      return String((interactive.list_reply as Record<string, unknown>).title ?? "")
+    if (interactive.list_reply && typeof interactive.list_reply === "object") {
+      return String(
+        (interactive.list_reply as Record<string, unknown>).title ?? ""
+      )
     }
   }
 
@@ -260,7 +273,7 @@ const STATUS_MAP: Record<string, WhatsappMessageDeliveryStatus> = {
 export async function processDeliveryStatus(
   payload: ParsedStatusPayload,
   deviceId: string,
-  organizationId: string,
+  organizationId: string
 ): Promise<ProcessStatusResult> {
   const waMessageId = payload.id
   const metaStatus = payload.status
@@ -278,7 +291,7 @@ export async function processDeliveryStatus(
 
   if (!message) {
     console.warn(
-      `[whatsapp-webhook] status for unknown waMessageId: ${waMessageId}, device=${deviceId}`,
+      `[whatsapp-webhook] status for unknown waMessageId: ${waMessageId}, device=${deviceId}`
     )
     return {
       statusId: "",
@@ -322,16 +335,18 @@ export async function processDeliveryStatus(
   })
 
   // Update conversation lastMessageAt
-  await prisma.whatsappConversation.update({
-    where: { id: message.conversationId },
-    data: { lastMessageAt: new Date() },
-  }).catch((err: unknown) => {
-    // Non-critical — log but don't fail the status update
-    console.warn(
-      `[whatsapp-webhook] failed to update conversation timestamp: ${message.conversationId}`,
-      err,
-    )
-  })
+  await prisma.whatsappConversation
+    .update({
+      where: { id: message.conversationId },
+      data: { lastMessageAt: new Date() },
+    })
+    .catch((err: unknown) => {
+      // Non-critical — log but don't fail the status update
+      console.warn(
+        `[whatsapp-webhook] failed to update conversation timestamp: ${message.conversationId}`,
+        err
+      )
+    })
 
   return {
     statusId: statusRecord.id,
@@ -349,8 +364,10 @@ export async function processDeliveryStatus(
 export async function handleIncomingWebhook(
   body: unknown,
   deviceId: string,
-  organizationId: string,
-): Promise<{ success: true; data?: unknown } | { success: false; error: string }> {
+  organizationId: string
+): Promise<
+  { success: true; data?: unknown } | { success: false; error: string }
+> {
   try {
     // Parse the Meta webhook envelope
     const payload = body as Record<string, unknown>
@@ -369,7 +386,7 @@ export async function handleIncomingWebhook(
       const result = await processInboundMessage(
         messagePayload as ParsedMessagePayload,
         deviceId,
-        organizationId,
+        organizationId
       )
       return { success: true, data: result }
     }
@@ -381,7 +398,7 @@ export async function handleIncomingWebhook(
       const result = await processDeliveryStatus(
         statusPayload as ParsedStatusPayload,
         deviceId,
-        organizationId,
+        organizationId
       )
       return { success: true, data: result }
     }
@@ -429,7 +446,7 @@ export async function createWebhookEvent(
   orgId: string,
   deviceId: string,
   eventType: string,
-  metaPayload: Prisma.InputJsonValue,
+  metaPayload: Prisma.InputJsonValue
 ): Promise<string> {
   const event = await prisma.whatsappWebhookEvent.create({
     data: {
@@ -448,7 +465,7 @@ export async function createWebhookEvent(
 export async function recordProcessingResult(
   eventId: string,
   status: string,
-  errorMessage?: string,
+  errorMessage?: string
 ): Promise<void> {
   await prisma.whatsappWebhookEvent.update({
     where: { id: eventId },
@@ -464,7 +481,7 @@ export async function recordProcessingResult(
  * List webhook events with org-scoped filtering and pagination.
  */
 export async function listWebhookEvents(
-  params: ListWebhookEventsParams,
+  params: ListWebhookEventsParams
 ): Promise<PaginatedWebhookEventsResult> {
   const {
     organizationId,

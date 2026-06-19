@@ -1,6 +1,9 @@
 import { cn } from "@/lib/utils"
 import { DEPLOY_STEPS } from "@/modules/deploy/deploy.constants"
-import type { DeploySourceType, DeployStep } from "@/modules/deploy/deploy.types"
+import type {
+  DeploySourceType,
+  DeployStep,
+} from "@/modules/deploy/deploy.types"
 
 type DeployStepperProps = {
   currentStep: DeployStep
@@ -44,15 +47,17 @@ export function DeployStepper({
                 isActive
                   ? "border-primary bg-primary/5 text-primary shadow-sm ring-1 ring-primary/30"
                   : isUnlocked
-                    ? "border-border bg-background hover:bg-muted/50 cursor-pointer"
-                    : "border-border bg-muted/10 opacity-50 cursor-not-allowed"
+                    ? "cursor-pointer border-border bg-background hover:bg-muted/50"
+                    : "cursor-not-allowed border-border bg-muted/10 opacity-50"
               )}
             >
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              <p className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Step {index + 1}
               </p>
-              <p className="font-semibold text-foreground text-sm">{step.label}</p>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+              <p className="text-sm font-semibold text-foreground">
+                {step.label}
+              </p>
+              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                 {step.description}
               </p>
             </button>

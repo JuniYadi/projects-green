@@ -3,10 +3,7 @@
  * This polyfill is applied once at module scope.
  */
 
-if (
-  typeof Element !== "undefined" &&
-  !Element.prototype.scrollIntoView
-) {
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {}
 }
 
@@ -38,7 +35,7 @@ const defaultStatuses = ["SUCCESS", "FAILED", "PENDING"]
  */
 function getSelectTrigger(
   view: ReturnType<typeof render>,
-  labelText: string,
+  labelText: string
 ): HTMLElement {
   const label = view.getByText(labelText)
   const group = label.closest('[class*="flex flex-col gap-1.5"]')
@@ -55,14 +52,12 @@ function getSelectTrigger(
 function selectOption(labelText: string): void {
   const options = document.body.querySelectorAll('[role="option"]')
   const option = Array.from(options).find(
-    (o) => o.textContent?.trim() === labelText,
+    (o) => o.textContent?.trim() === labelText
   )
   if (!option) {
-    const allText = Array.from(options).map(
-      (o) => `"${o.textContent?.trim()}"`,
-    )
+    const allText = Array.from(options).map((o) => `"${o.textContent?.trim()}"`)
     throw new Error(
-      `Option "${labelText}" not found. Available: [${allText.join(", ")}]`,
+      `Option "${labelText}" not found. Available: [${allText.join(", ")}]`
     )
   }
   fireEvent.click(option)
@@ -79,13 +74,11 @@ describe("WebhookEventFilter", () => {
           onFilterChange={mock(() => {})}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       expect(view.getByText("Event Type")).toBeTruthy()
-      expect(
-        view.container.querySelector('[role="combobox"]'),
-      ).toBeTruthy()
+      expect(view.container.querySelector('[role="combobox"]')).toBeTruthy()
     })
 
     it("renders status label and select trigger", () => {
@@ -97,12 +90,12 @@ describe("WebhookEventFilter", () => {
           onFilterChange={mock(() => {})}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       expect(view.getByText("Status")).toBeTruthy()
       expect(
-        view.container.querySelectorAll('[role="combobox"]').length,
+        view.container.querySelectorAll('[role="combobox"]').length
       ).toBeGreaterThanOrEqual(2)
     })
 
@@ -115,15 +108,14 @@ describe("WebhookEventFilter", () => {
           onFilterChange={mock(() => {})}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       expect(view.getByText("From")).toBeTruthy()
       expect(view.getByText("To")).toBeTruthy()
 
-      const dateInputs = view.container.querySelectorAll<HTMLInputElement>(
-        'input[type="date"]',
-      )
+      const dateInputs =
+        view.container.querySelectorAll<HTMLInputElement>('input[type="date"]')
       expect(dateInputs.length).toBe(2)
     })
 
@@ -136,7 +128,7 @@ describe("WebhookEventFilter", () => {
           onFilterChange={mock(() => {})}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={true}
-        />,
+        />
       )
 
       expect(view.getByText("Device")).toBeTruthy()
@@ -151,7 +143,7 @@ describe("WebhookEventFilter", () => {
           onFilterChange={mock(() => {})}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       expect(view.queryByText("Device")).toBeNull()
@@ -166,7 +158,7 @@ describe("WebhookEventFilter", () => {
           onFilterChange={mock(() => {})}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={true}
-        />,
+        />
       )
 
       expect(view.queryByText("Device")).toBeNull()
@@ -175,9 +167,7 @@ describe("WebhookEventFilter", () => {
 
   describe("filter changes", () => {
     it("calls onFilterChange when event type is changed via Select", async () => {
-      const onFilterChange = mock<
-        (filters: WebhookEventFilterState) => void
-      >()
+      const onFilterChange = mock<(filters: WebhookEventFilterState) => void>()
       const view = render(
         <WebhookEventFilter
           eventTypes={defaultEventTypes}
@@ -186,7 +176,7 @@ describe("WebhookEventFilter", () => {
           onFilterChange={onFilterChange}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       const trigger = getSelectTrigger(view, "Event Type")
@@ -199,14 +189,12 @@ describe("WebhookEventFilter", () => {
       })
 
       expect(onFilterChange).toHaveBeenCalledWith(
-        expect.objectContaining({ eventType: "inbound_message" }),
+        expect.objectContaining({ eventType: "inbound_message" })
       )
     })
 
     it("calls onFilterChange when status is changed via Select", async () => {
-      const onFilterChange = mock<
-        (filters: WebhookEventFilterState) => void
-      >()
+      const onFilterChange = mock<(filters: WebhookEventFilterState) => void>()
       const view = render(
         <WebhookEventFilter
           eventTypes={defaultEventTypes}
@@ -215,7 +203,7 @@ describe("WebhookEventFilter", () => {
           onFilterChange={onFilterChange}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       const trigger = getSelectTrigger(view, "Status")
@@ -228,14 +216,12 @@ describe("WebhookEventFilter", () => {
       })
 
       expect(onFilterChange).toHaveBeenCalledWith(
-        expect.objectContaining({ processingStatus: "FAILED" }),
+        expect.objectContaining({ processingStatus: "FAILED" })
       )
     })
 
     it("calls onFilterChange when device is changed via Select", async () => {
-      const onFilterChange = mock<
-        (filters: WebhookEventFilterState) => void
-      >()
+      const onFilterChange = mock<(filters: WebhookEventFilterState) => void>()
       const view = render(
         <WebhookEventFilter
           eventTypes={defaultEventTypes}
@@ -244,7 +230,7 @@ describe("WebhookEventFilter", () => {
           onFilterChange={onFilterChange}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={true}
-        />,
+        />
       )
 
       const trigger = getSelectTrigger(view, "Device")
@@ -257,7 +243,7 @@ describe("WebhookEventFilter", () => {
       })
 
       expect(onFilterChange).toHaveBeenCalledWith(
-        expect.objectContaining({ deviceId: "device_1" }),
+        expect.objectContaining({ deviceId: "device_1" })
       )
     })
 
@@ -270,12 +256,11 @@ describe("WebhookEventFilter", () => {
           onFilterChange={mock(() => {})}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={false}
-        />,
+        />
       )
 
-      const dateInputs = view.container.querySelectorAll<HTMLInputElement>(
-        'input[type="date"]',
-      )
+      const dateInputs =
+        view.container.querySelectorAll<HTMLInputElement>('input[type="date"]')
       expect(dateInputs.length).toBe(2)
 
       // Verify initial empty state
@@ -301,7 +286,7 @@ describe("WebhookEventFilter", () => {
           onFilterChange={mock(() => {})}
           initialFilters={DEFAULT_FILTER_STATE}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       expect(view.queryByRole("button", { name: /reset/i })).toBeNull()
@@ -319,7 +304,7 @@ describe("WebhookEventFilter", () => {
             eventType: "inbound_message",
           }}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       expect(view.getByRole("button", { name: /reset/i })).toBeTruthy()
@@ -337,16 +322,14 @@ describe("WebhookEventFilter", () => {
             dateFrom: "2026-06-01",
           }}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       expect(view.getByRole("button", { name: /reset/i })).toBeTruthy()
     })
 
     it("calls onFilterChange with DEFAULT_FILTER_STATE when reset is clicked", () => {
-      const onFilterChange = mock<
-        (filters: WebhookEventFilterState) => void
-      >()
+      const onFilterChange = mock<(filters: WebhookEventFilterState) => void>()
       const view = render(
         <WebhookEventFilter
           eventTypes={defaultEventTypes}
@@ -358,7 +341,7 @@ describe("WebhookEventFilter", () => {
             eventType: "inbound_message",
           }}
           showDeviceFilter={false}
-        />,
+        />
       )
 
       fireEvent.click(view.getByRole("button", { name: /reset/i }))
