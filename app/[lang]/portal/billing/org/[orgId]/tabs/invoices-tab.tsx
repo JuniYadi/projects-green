@@ -38,6 +38,7 @@ export function InvoicesTab({ orgId }: InvoicesTabProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
+    // Fetches full paginated invoice list — distinct from org.recentInvoices summary
     getAdminInvoices({ organizationId: orgId })
       .then((res) => setInvoices(res.invoices))
       .catch((err) => setError(err.message))
