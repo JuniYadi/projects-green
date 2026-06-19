@@ -413,15 +413,12 @@ export async function getAdminSubscriptions(params?: {
   page?: number
   limit?: number
   status?: string
-  organizationId?: string
   orgId?: string
 }): Promise<AdminSubscriptionsResponse> {
   const searchParams = new URLSearchParams()
   if (params?.page) searchParams.set("page", String(params.page))
   if (params?.limit) searchParams.set("limit", String(params.limit))
   if (params?.status) searchParams.set("status", params.status)
-  if (params?.organizationId)
-    searchParams.set("organizationId", params.organizationId)
   if (params?.orgId) searchParams.set("orgId", params.orgId)
 
   const endpoint = searchParams.toString()
@@ -510,42 +507,6 @@ export type AdminTopupResponse = {
   type: "CREDIT"
 }
 
-// ─── Admin Usage ─────────────────────────────────────────────────────────────
-
-export type AdminUsageBreakdown = {
-  category: string
-  quantity: number
-  totalCost: number
-  percentage: number
-}
-
-export type AdminUsageTrend = {
-  date: string
-  amount: number
-}
-
-export type AdminUsageResponse = {
-  ok: true
-  data: {
-    breakdown: AdminUsageBreakdown[]
-    trend: AdminUsageTrend[]
-  }
-}
-
-export async function getAdminUsage(
-  params?: { days?: number; orgId?: string }
-): Promise<AdminUsageResponse> {
-  const searchParams = new URLSearchParams()
-  if (params?.days) searchParams.set("days", String(params.days))
-  if (params?.orgId) searchParams.set("orgId", params.orgId)
-
-  const endpoint = searchParams.toString()
-    ? `/api/billing/admin/usage?${searchParams.toString()}`
-    : "/api/billing/admin/usage"
-
-  return fetchBilling<AdminUsageResponse>(endpoint)
-}
-
 // ─── Admin Stats ────────────────────────────────────────────────────────
 
 export async function getAdminStats(): Promise<AdminStats> {
@@ -588,6 +549,42 @@ export async function adminTopup(
     method: "POST",
     body: JSON.stringify(input),
   })
+}
+
+// ─── Admin Usage ─────────────────────────────────────────────────────────────
+
+export type AdminUsageBreakdown = {
+  category: string
+  quantity: number
+  totalCost: number
+  percentage: number
+}
+
+export type AdminUsageTrend = {
+  date: string
+  amount: number
+}
+
+export type AdminUsageResponse = {
+  ok: true
+  data: {
+    breakdown: AdminUsageBreakdown[]
+    trend: AdminUsageTrend[]
+  }
+}
+
+export async function getAdminUsage(
+  params?: { days?: number; orgId?: string }
+): Promise<AdminUsageResponse> {
+  const searchParams = new URLSearchParams()
+  if (params?.days) searchParams.set("days", String(params.days))
+  if (params?.orgId) searchParams.set("orgId", params.orgId)
+
+  const endpoint = searchParams.toString()
+    ? `/api/billing/admin/usage?${searchParams.toString()}`
+    : "/api/billing/admin/usage"
+
+  return fetchBilling<AdminUsageResponse>(endpoint)
 }
 
 // ─── Billing Contacts ──────────────────────────────────────────────────────────
