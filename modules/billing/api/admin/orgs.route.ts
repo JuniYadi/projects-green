@@ -174,6 +174,7 @@ export const createAdminOrgsRoutes = (
         currency: account.currency,
         activeSubscriptions: subCountMap.get(account.organizationId) ?? 0,
         monthlySpend: (spendMap.get(account.organizationId) ?? 0).toFixed(2),
+        lastTopUp: null,
       }))
 
       return {
