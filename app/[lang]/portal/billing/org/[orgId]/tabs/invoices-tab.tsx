@@ -37,20 +37,23 @@ function formatDate(dateStr: string | null): string {
   }).format(new Date(dateStr))
 }
 
-export function InvoicesTab({ orgId, recentInvoices: _recentInvoices }: InvoicesTabProps) {
+export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
   const router = useRouter()
-  const [invoices, setInvoices] = useState<AdminInvoiceListItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [invoices, setInvoices] = useState<AdminInvoiceListItem[]>(
+    recentInvoices ? (recentInvoices as AdminInvoiceListItem[]) : []
+  )
+  const [isLoading, setIsLoading] = useState(!recentInvoices || recentInvoices.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
-    // Fetches full paginated invoice list — distinct from org.recentInvoices summary
-    getAdminInvoices({ organizationId: orgId })
-      .then((res) => setInvoices(res.invoices))
-      .catch((err) => setError(err.message))
-      .finally(() => setIsLoading(false))
-  }, [orgId])
+    if (!recentInvoices || recentInvoices.length === 0) {
+      getAdminInvoices({ organizationId: orgId })
+        .then((res) => setInvoices(res.invoices))
+        .catch((err) => setError(err.message))
+        .finally(() => setIsLoading(false))
+    }
+  }, [orgId, recentInvoices])
 
   async function handleStatusChange(
     invoiceId: string,
