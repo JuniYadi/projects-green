@@ -295,12 +295,14 @@ export type AdjustmentsResponse = {
 
 // Admin billing functions
 
-export async function getAdminMembers(): Promise<{
-  ok: true
-  members: AdminMember[]
-}> {
+export async function getAdminMembers(params?: {
+  orgId?: string
+}): Promise<{ ok: true; members: AdminMember[] }> {
+  const searchParams = new URLSearchParams()
+  if (params?.orgId) searchParams.set("orgId", params.orgId)
+  const qs = searchParams.toString()
   return fetchBilling<{ ok: true; members: AdminMember[] }>(
-    "/api/billing/admin/members"
+    `/api/billing/admin/members${qs ? `?${qs}` : ""}`
   )
 }
 
@@ -318,6 +320,7 @@ export async function getAdminAdjustments(params?: {
   endDate?: string
   page?: number
   limit?: number
+  orgId?: string
 }): Promise<AdjustmentsResponse> {
   const searchParams = new URLSearchParams()
   if (params?.type) searchParams.set("type", params.type)
@@ -326,6 +329,7 @@ export async function getAdminAdjustments(params?: {
   if (params?.page !== undefined) searchParams.set("page", String(params.page))
   if (params?.limit !== undefined)
     searchParams.set("limit", String(params.limit))
+  if (params?.orgId) searchParams.set("orgId", params.orgId)
 
   const endpoint = searchParams.toString()
     ? `/api/billing/admin/adjustments?${searchParams.toString()}`
@@ -410,6 +414,7 @@ export async function getAdminSubscriptions(params?: {
   limit?: number
   status?: string
   organizationId?: string
+  orgId?: string
 }): Promise<AdminSubscriptionsResponse> {
   const searchParams = new URLSearchParams()
   if (params?.page) searchParams.set("page", String(params.page))
@@ -417,12 +422,92 @@ export async function getAdminSubscriptions(params?: {
   if (params?.status) searchParams.set("status", params.status)
   if (params?.organizationId)
     searchParams.set("organizationId", params.organizationId)
+  if (params?.orgId) searchParams.set("orgId", params.orgId)
 
   const endpoint = searchParams.toString()
     ? `/api/billing/admin/subscriptions?${searchParams.toString()}`
     : "/api/billing/admin/subscriptions"
 
   return fetchBilling<AdminSubscriptionsResponse>(endpoint)
+}
+
+// ─── Admin Stats ────────────────────────────────────────────────────────
+
+export type AdminStats = {
+  ok: true
+  totalBalance: string
+  activeOrgs: number
+  totalSpend: string
+  lowBalanceOrgs: number
+}
+
+// ─── Admin Orgs ─────────────────────────────────────────────────────────
+
+export type AdminOrgSummary = {
+  orgId: string
+  orgName: string
+  balance: string
+  currency: string
+  activeSubscriptions: number
+  monthlySpend: string
+  lastTopUp: string | null
+}
+
+export type AdminOrgsResponse = {
+  ok: true
+  orgs: AdminOrgSummary[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+// ─── Admin Org Detail ───────────────────────────────────────────────────
+
+export type AdminOrgDetail = {
+  ok: true
+  org: {
+    orgId: string
+    orgName: string
+    balance: string
+    currency: string
+    status: string
+    createdAt: string
+    subscriptions: {
+      id: string
+      packageCode: string
+      planCode: string
+      status: string
+      billingMode: string
+    }[]
+    contacts: number
+    monthlySpend: string
+    recentInvoices: {
+      id: string
+      invoiceNumber: string
+      status: string
+      totalAmountIdr: string
+      createdAt: string
+    }[]
+  }
+}
+
+// ─── Admin Topup ────────────────────────────────────────────────────────
+
+export type AdminTopupInput = {
+  orgId: string
+  amount: number
+  reason?: string
+}
+
+export type AdminTopupResponse = {
+  ok: true
+  adjustmentId: string
+  newBalanceIdr: string
+  amountIdr: string
+  type: "CREDIT"
 }
 
 // ─── Admin Usage ─────────────────────────────────────────────────────────────
@@ -448,16 +533,61 @@ export type AdminUsageResponse = {
 }
 
 export async function getAdminUsage(
-  params?: { days?: number }
+  params?: { days?: number; orgId?: string }
 ): Promise<AdminUsageResponse> {
   const searchParams = new URLSearchParams()
   if (params?.days) searchParams.set("days", String(params.days))
+  if (params?.orgId) searchParams.set("orgId", params.orgId)
 
   const endpoint = searchParams.toString()
     ? `/api/billing/admin/usage?${searchParams.toString()}`
     : "/api/billing/admin/usage"
 
   return fetchBilling<AdminUsageResponse>(endpoint)
+}
+
+// ─── Admin Stats ────────────────────────────────────────────────────────
+
+export async function getAdminStats(): Promise<AdminStats> {
+  return fetchBilling<AdminStats>("/api/billing/admin/stats")
+}
+
+// ─── Admin Orgs ─────────────────────────────────────────────────────────
+
+export async function getAdminOrgs(params?: {
+  page?: number
+  limit?: number
+  search?: string
+}): Promise<AdminOrgsResponse> {
+  const searchParams = new URLSearchParams()
+  if (params?.page) searchParams.set("page", String(params.page))
+  if (params?.limit) searchParams.set("limit", String(params.limit))
+  if (params?.search) searchParams.set("search", params.search)
+  const qs = searchParams.toString()
+  return fetchBilling<AdminOrgsResponse>(
+    `/api/billing/admin/orgs${qs ? `?${qs}` : ""}`
+  )
+}
+
+// ─── Admin Org Detail ───────────────────────────────────────────────────
+
+export async function getAdminOrgDetail(
+  orgId: string
+): Promise<AdminOrgDetail> {
+  return fetchBilling<AdminOrgDetail>(
+    `/api/billing/admin/orgs/${orgId}`
+  )
+}
+
+// ─── Admin Topup ────────────────────────────────────────────────────────
+
+export async function adminTopup(
+  input: AdminTopupInput
+): Promise<AdminTopupResponse> {
+  return fetchBilling<AdminTopupResponse>("/api/billing/admin/topup", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
 }
 
 // ─── Billing Contacts ──────────────────────────────────────────────────────────
