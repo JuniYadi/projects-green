@@ -108,7 +108,7 @@ export const createAdminOrgsRoutes = (
       const accountWhere: Prisma.BillingAccountWhereInput = {
         status: "ACTIVE",
       }
-      // Note: search by organizationId since no direct org relation in schema
+      // Note: search by organizationId (UUID) until org name relation is added to BillingAccount
       if (search) {
         accountWhere.organizationId = {
           contains: search,
