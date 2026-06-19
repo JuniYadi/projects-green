@@ -68,6 +68,8 @@ const toServerError = (set: RouteSet, message: string) => {
   }
 }
 
+// SECURITY NOTE: Consider adding rate limiting for admin topup to prevent
+// rapid balance manipulation. Current protection: super_admin-only access.
 export const createAdminTopupRoutes = (
   deps: Partial<AdminTopupRouteDeps> = {}
 ) => {
@@ -125,7 +127,7 @@ export const createAdminTopupRoutes = (
           throw new Error("BALANCE_LIMIT_EXCEEDED")
         }
 
-        const userId = auth.user?.id ?? "unknown"
+        const userId = auth.user.id
 
         const [updatedAccount, adjustment] = await Promise.all([
           tx.billingAccount.update({
@@ -168,13 +170,15 @@ export const createAdminTopupRoutes = (
         }
       }
 
-      if (error instanceof Error && error.message === "BALANCE_LIMIT_EXCEEDED") {
+      if (
+        error instanceof Error &&
+        error.message === "BALANCE_LIMIT_EXCEEDED"
+      ) {
         set.status = 400
         return {
           ok: false as const,
           error: "BALANCE_LIMIT_EXCEEDED" as const,
-          message:
-            "Adding this amount would exceed the maximum balance.",
+          message: "Adding this amount would exceed the maximum balance.",
         }
       }
 
