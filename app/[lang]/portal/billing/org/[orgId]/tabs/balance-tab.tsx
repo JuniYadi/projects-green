@@ -1,20 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   WalletIcon,
   WarningIcon,
 } from "@phosphor-icons/react"
-import {
-  getAdminOrgDetail,
-  type AdminOrgDetail,
-} from "@/lib/billing-client"
+import type { AdminOrgDetail } from "@/lib/billing-client"
 
 type BalanceTabProps = {
   orgId: string
   lang?: string
+  orgDetail: AdminOrgDetail
 }
 
 function formatCurrency(amount: string): string {
@@ -36,39 +32,7 @@ function getBalanceColor(balance: string): string {
   return "text-red-600 dark:text-red-400"
 }
 
-export function BalanceTab({ orgId }: BalanceTabProps) {
-  const [orgDetail, setOrgDetail] = useState<AdminOrgDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    getAdminOrgDetail(orgId)
-      .then(setOrgDetail)
-      .catch((err) => setError(err.message))
-      .finally(() => setIsLoading(false))
-  }, [orgId])
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-40" />
-        <Skeleton className="h-64" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="py-6 text-center text-destructive">
-          Failed to load balance: {error}
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (!orgDetail) return null
-
+export function BalanceTab({ orgDetail }: BalanceTabProps) {
   const org = orgDetail.org
 
   return (
