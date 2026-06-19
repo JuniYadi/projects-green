@@ -14,6 +14,10 @@ test.describe("Org Billing Detail (admin)", () => {
     // Navigate to first org's billing detail
     await page.goto("/en/portal/billing")
     const firstOrgLink = page.locator("table a").first()
+
+    // Skip if no orgs exist in the test environment
+    test.skip(await firstOrgLink.count() === 0, "No orgs available in test environment")
+
     await firstOrgLink.click()
     await page.waitForURL(/\/portal\/billing\/org\//)
   })
