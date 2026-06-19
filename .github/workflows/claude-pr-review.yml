@@ -71,6 +71,8 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: true
           show_full_output: true
+          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
+          plugins: 'ponytail@ponytail'
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
             --max-turns 50
