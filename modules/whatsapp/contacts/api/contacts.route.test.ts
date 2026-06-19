@@ -10,16 +10,20 @@ import { workosNodeMock } from "../../../../test/workos-node-mock"
 // ─── Prisma mock ────────────────────────────────────────────────────────────
 
 const mockGroupFindFirst = mock(async (): Promise<any> => null)
-const mockGroupCreate = mock(async (): Promise<any> => ({
-  id: "group_default",
-  organizationId: "org_1",
-  name: "Ungrouped",
-}))
+const mockGroupCreate = mock(
+  async (): Promise<any> => ({
+    id: "group_default",
+    organizationId: "org_1",
+    name: "Ungrouped",
+  })
+)
 const mockContactFindFirst = mock(async (): Promise<any> => null)
-const mockContactCreate = mock(async (args: any): Promise<any> => ({
-  id: "contact_1",
-  ...args.data,
-}))
+const mockContactCreate = mock(
+  async (args: any): Promise<any> => ({
+    id: "contact_1",
+    ...args.data,
+  })
+)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -89,7 +93,7 @@ describe("contacts routes — create", () => {
         phoneNumber: "+62811111111",
         name: "John Doe",
         email: "john@example.com",
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -117,7 +121,7 @@ describe("contacts routes — create", () => {
         phoneNumber: "+62822222222",
         name: "Jane Doe",
         email: "jane@example.com",
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -143,7 +147,7 @@ describe("contacts routes — create", () => {
         name: "VIP Contact",
         email: "vip@example.com",
         contactGroupId: "group_provided",
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -165,7 +169,7 @@ describe("contacts routes — create", () => {
         name: "Bad Group",
         email: "bad@example.com",
         contactGroupId: "group_other_org",
-      }),
+      })
     )
 
     expect(response.status).toBe(400)

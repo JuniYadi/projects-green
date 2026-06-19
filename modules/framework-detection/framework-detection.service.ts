@@ -62,8 +62,12 @@ export type AiDecisionResult = {
 }
 
 export type GithubApiDetectorDependencies = {
-  listFiles?: (input: ListRepoFilesInput) => Promise<{ files: string[]; truncated: boolean }>
-  readFile?: (input: ReadRepoFileInput) => Promise<{ content: string; path: string; sha: string; size: number }>
+  listFiles?: (
+    input: ListRepoFilesInput
+  ) => Promise<{ files: string[]; truncated: boolean }>
+  readFile?: (
+    input: ReadRepoFileInput
+  ) => Promise<{ content: string; path: string; sha: string; size: number }>
   resolveWithAiToolCalling?: (
     input: GithubApiDetectionInput,
     fileList: string[],
@@ -98,7 +102,9 @@ export type RuntimeMappingRecord = {
 const AI_DECISION_SCHEMA = z.object({
   primaryFrameworkId: z.string().trim().min(1),
   frameworkVersion: z.string().trim().optional(),
-  ecosystem: z.enum(["node", "php", "python", "ruby", "java", "go", "rust", "unknown"]).optional(),
+  ecosystem: z
+    .enum(["node", "php", "python", "ruby", "java", "go", "rust", "unknown"])
+    .optional(),
   confidence: z.number().min(0).max(1),
   requiredRuntimeIds: z.array(
     z.enum(["node", "php", "python", "ruby", "java", "go", "rust"])
@@ -749,7 +755,9 @@ const inferFrameworkName = (id: string) => {
   return mapping[id] ?? id
 }
 
-const inferFrameworkEcosystem = (id: string): DetectedFramework["ecosystem"] => {
+const inferFrameworkEcosystem = (
+  id: string
+): DetectedFramework["ecosystem"] => {
   const mapping: Record<string, DetectedFramework["ecosystem"]> = {
     laravel: "php",
     nextjs: "node",
@@ -789,8 +797,15 @@ const buildDetectorRuleHints = (rules: DetectorRuleRecord[]): string => {
   }
 
   const hints = rules.map((rule) => {
-    const pattern = rule.patternJson as { files?: string[]; dependencies?: string[] } | null
-    const implications = rule.implicationsJson as { framework?: string; runtime?: string; impact?: string } | null
+    const pattern = rule.patternJson as {
+      files?: string[]
+      dependencies?: string[]
+    } | null
+    const implications = rule.implicationsJson as {
+      framework?: string
+      runtime?: string
+      impact?: string
+    } | null
     const fileList = pattern?.files?.join(", ") ?? "none"
     const depList = pattern?.dependencies?.join(", ") ?? "none"
     const framework = implications?.framework ?? "unknown"
@@ -829,19 +844,20 @@ const resolveWithAiToolCalling = async (
     "Use the available tools to inspect files as needed.",
     "Always check package.json, composer.json, or other manifest files to determine the exact framework and version.",
     buildDetectorRuleHints(detectorRules),
-    '',
+    "",
     "Return your final answer as a JSON object with:",
     "- primaryFrameworkId: the framework identifier (e.g., 'laravel', 'nextjs', 'react')",
     "- confidence: a number between 0 and 1",
     "- requiredRuntimeIds: array of runtime IDs needed (e.g., ['node', 'php'])",
     "- reasoning: array of strings explaining your reasoning",
-  ].join('\n')
+  ].join("\n")
 
   const toolDefinitions = {
     list_repo_files: tool({
-      description: 'List all files in the repository. Returns a flat list of file paths.',
+      description:
+        "List all files in the repository. Returns a flat list of file paths.",
       inputSchema: z.object({
-        path: z.string().optional().describe('Subdirectory to list (optional)'),
+        path: z.string().optional().describe("Subdirectory to list (optional)"),
       }),
       execute: async ({ path: subPath }) => {
         const result = await listFilesFn({
@@ -851,13 +867,16 @@ const resolveWithAiToolCalling = async (
           ref: input.ref,
           path: subPath,
         })
-        return { files: result.files.slice(0, 500), truncated: result.truncated }
+        return {
+          files: result.files.slice(0, 500),
+          truncated: result.truncated,
+        }
       },
     }),
     read_repo_file: tool({
-      description: 'Read the content of a single file from the repository.',
+      description: "Read the content of a single file from the repository.",
       inputSchema: z.object({
-        filePath: z.string().describe('Path to the file to read'),
+        filePath: z.string().describe("Path to the file to read"),
       }),
       execute: async ({ filePath }) => {
         const result = await readFileFn({
@@ -869,9 +888,10 @@ const resolveWithAiToolCalling = async (
         })
         // Truncate large files to avoid token limits
         const maxContentLength = 10_000
-        const content = result.content.length > maxContentLength
-          ? result.content.slice(0, maxContentLength) + '\n... (truncated)'
-          : result.content
+        const content =
+          result.content.length > maxContentLength
+            ? result.content.slice(0, maxContentLength) + "\n... (truncated)"
+            : result.content
         return { content, path: result.path, size: result.size }
       },
     }),
@@ -879,15 +899,17 @@ const resolveWithAiToolCalling = async (
 
   const userPrompt = [
     `Repository: ${input.owner}/${input.repo}`,
-    input.ref ? `Branch/Ref: ${input.ref}` : 'Using default branch',
-    input.subdir ? `Subdirectory: ${input.subdir}` : '',
-    '',
-    'Initial file listing:',
-    fileList.slice(0, 200).join('\n'),
-    fileList.length > 200 ? `... and ${fileList.length - 200} more files` : '',
-    '',
-    'Use the tools to inspect key files (package.json, composer.json, etc.) to determine the framework and its version.',
-  ].filter(Boolean).join('\n')
+    input.ref ? `Branch/Ref: ${input.ref}` : "Using default branch",
+    input.subdir ? `Subdirectory: ${input.subdir}` : "",
+    "",
+    "Initial file listing:",
+    fileList.slice(0, 200).join("\n"),
+    fileList.length > 200 ? `... and ${fileList.length - 200} more files` : "",
+    "",
+    "Use the tools to inspect key files (package.json, composer.json, etc.) to determine the framework and its version.",
+  ]
+    .filter(Boolean)
+    .join("\n")
 
   const result = await generateText({
     model: provider(modelName),
@@ -899,13 +921,15 @@ const resolveWithAiToolCalling = async (
 
   // Map tool calls to audit-friendly records, matching with results
   const toolCalls: ToolCallRecord[] = result.toolCalls.map((tc) => {
-    const toolResult = result.toolResults.find((tr) => tr.toolCallId === tc.toolCallId)
+    const toolResult = result.toolResults.find(
+      (tr) => tr.toolCallId === tc.toolCallId
+    )
     return {
       toolCallId: tc.toolCallId,
       toolName: tc.toolName,
       input: tc.input,
       output: toolResult?.output,
-      error: 'error' in tc && tc.error ? String(tc.error) : undefined,
+      error: "error" in tc && tc.error ? String(tc.error) : undefined,
     }
   })
 
@@ -922,7 +946,9 @@ const resolveWithAiToolCalling = async (
     // Fall through to error
   }
 
-  throw new Error(`AI failed to return a valid decision. Response: ${finalText}`)
+  throw new Error(
+    `AI failed to return a valid decision. Response: ${finalText}`
+  )
 }
 
 // --- RuntimeMapping Enforcement ---
@@ -931,7 +957,7 @@ const enforceRuntimeMappings = async (
   frameworkId: string,
   frameworkVersion: string | null,
   suggestedRuntimes: RequiredDependency[],
-  prismaClient?: GithubApiDetectorDependencies['prisma']
+  prismaClient?: GithubApiDetectorDependencies["prisma"]
 ): Promise<{ enforced: RequiredDependency[]; appliedMappings: string[] }> => {
   const client = prismaClient ?? (await import("@/lib/prisma")).prisma
   const mappings = await client.detectorRuntimeMapping.findMany({
@@ -942,7 +968,7 @@ const enforceRuntimeMappings = async (
         { frameworkId, frameworkVersion: null }, // wildcard
       ],
     },
-    orderBy: [{ frameworkVersion: 'desc' }, { priority: 'desc' }],
+    orderBy: [{ frameworkVersion: "desc" }, { priority: "desc" }],
   })
 
   if (mappings.length === 0) {
@@ -960,7 +986,7 @@ const enforceRuntimeMappings = async (
       // Override with enforced version
       enforced.push({
         ...existing,
-        reason: `Enforced by RuntimeMapping: ${mapping.frameworkId} ${mapping.frameworkVersion ?? '*'} -> ${mapping.runtimeId} ${mapping.runtimeVersion}`,
+        reason: `Enforced by RuntimeMapping: ${mapping.frameworkId} ${mapping.frameworkVersion ?? "*"} -> ${mapping.runtimeId} ${mapping.runtimeVersion}`,
         confidence: 1.0,
       })
       appliedMappings.push(`${mapping.runtimeId} ${mapping.runtimeVersion}`)
@@ -968,10 +994,10 @@ const enforceRuntimeMappings = async (
       // Add as new runtime requirement
       enforced.push({
         id: mapping.runtimeId as RuntimeId,
-        kind: 'runtime',
-        requiredFor: 'app_runtime',
+        kind: "runtime",
+        requiredFor: "app_runtime",
         confidence: 1.0,
-        reason: `Required by RuntimeMapping: ${mapping.frameworkId} ${mapping.frameworkVersion ?? '*'} -> ${mapping.runtimeId} ${mapping.runtimeVersion}`,
+        reason: `Required by RuntimeMapping: ${mapping.frameworkId} ${mapping.frameworkVersion ?? "*"} -> ${mapping.runtimeId} ${mapping.runtimeVersion}`,
       })
       appliedMappings.push(`${mapping.runtimeId} ${mapping.runtimeVersion}`)
     }
@@ -991,15 +1017,19 @@ const enforceRuntimeMappings = async (
 
 const checkForBlockedFrameworks = (
   fileList: string[],
-  detectorRules: DetectorRuleRecord[]): { blocked: boolean; rule?: DetectorRuleRecord; matchedFiles: string[] } => {
+  detectorRules: DetectorRuleRecord[]
+): { blocked: boolean; rule?: DetectorRuleRecord; matchedFiles: string[] } => {
   // Sort rules by priority (highest first)
   const sortedRules = [...detectorRules].sort((a, b) => b.priority - a.priority)
 
   for (const rule of sortedRules) {
-    const pattern = rule.patternJson as { files?: string[]; dependencies?: string[] } | null
+    const pattern = rule.patternJson as {
+      files?: string[]
+      dependencies?: string[]
+    } | null
     const implications = rule.implicationsJson as { impact?: string } | null
 
-    if (implications?.impact !== 'BLOCK') {
+    if (implications?.impact !== "BLOCK") {
       continue
     }
 
@@ -1032,7 +1062,7 @@ const checkForBlockedFrameworks = (
  *  4. Otherwise, return unsupported with a message listing the supported set.
  */
 export const evaluateSupportDecision = (
-  result: Pick<DetectionResult, 'primaryFramework' | 'confidence' | 'evidence'>,
+  result: Pick<DetectionResult, "primaryFramework" | "confidence" | "evidence">,
   rules: DetectorRuleRecord[]
 ): DetectionDecision => {
   const frameworkId = result.primaryFramework?.id
@@ -1040,27 +1070,27 @@ export const evaluateSupportDecision = (
 
   // 1. BLOCK (signaled by an evidence entry with value "blocked")
   const blockedEvidence = result.evidence.find(
-    (entry) => entry.value === 'blocked'
+    (entry) => entry.value === "blocked"
   )
 
   if (blockedEvidence) {
     const blockRule = rules.find(
       (rule) =>
         rule.implicationsJson &&
-        (rule.implicationsJson as { impact?: string }).impact === 'BLOCK' &&
+        (rule.implicationsJson as { impact?: string }).impact === "BLOCK" &&
         blockedEvidence.detail?.includes(rule.name)
     )
 
     return {
-      status: 'blocked',
-      message: `Deployment blocked by admin rule: ${blockRule?.name ?? 'unknown rule'}`,
+      status: "blocked",
+      message: `Deployment blocked by admin rule: ${blockRule?.name ?? "unknown rule"}`,
       isLaunchable: false,
     }
   }
 
   if (!frameworkId) {
     return {
-      status: 'unsupported',
+      status: "unsupported",
       message: "We couldn't verify a supported framework in this repository.",
       isLaunchable: false,
     }
@@ -1068,12 +1098,13 @@ export const evaluateSupportDecision = (
 
   // 2. LAUNCH match
   const launchRule = rules.find((rule) => {
-    const implications = rule.implicationsJson as
-      | { impact?: string; framework?: string }
-      | null
+    const implications = rule.implicationsJson as {
+      impact?: string
+      framework?: string
+    } | null
     const pattern = rule.patternJson as { frameworkId?: string } | null
 
-    if (implications?.impact !== 'LAUNCH') {
+    if (implications?.impact !== "LAUNCH") {
       return false
     }
 
@@ -1087,8 +1118,7 @@ export const evaluateSupportDecision = (
     // Derive supported frameworks from LAUNCH rules
     const launchFrameworks = rules
       .filter(
-        (r) =>
-          (r.implicationsJson as { impact?: string })?.impact === 'LAUNCH'
+        (r) => (r.implicationsJson as { impact?: string })?.impact === "LAUNCH"
       )
       .map((r) => {
         const impl = r.implicationsJson as { framework?: string }
@@ -1099,32 +1129,32 @@ export const evaluateSupportDecision = (
 
     const supportedList =
       launchFrameworks.length > 0
-        ? launchFrameworks.join(', ')
-        : 'no frameworks'
+        ? launchFrameworks.join(", ")
+        : "no frameworks"
 
     return {
-      status: 'unsupported',
+      status: "unsupported",
       message: `Your framework was detected as ${result.primaryFramework?.name ?? frameworkId}, but we currently only support ${supportedList}.`,
       isLaunchable: false,
     }
   }
 
-  const implications = launchRule.implicationsJson as
-    | { minConfidence?: number }
-    | null
+  const implications = launchRule.implicationsJson as {
+    minConfidence?: number
+  } | null
   const minConfidence = implications?.minConfidence ?? 0.8
 
   if (confidence < minConfidence) {
     return {
-      status: 'low_confidence',
+      status: "low_confidence",
       message: `We detected ${result.primaryFramework?.name ?? frameworkId} but with low confidence (${(confidence * 100).toFixed(0)}%). Please verify your repository structure.`,
       isLaunchable: false,
     }
   }
 
   return {
-    status: 'success',
-    message: 'Ready to deploy.',
+    status: "success",
+    message: "Ready to deploy.",
     isLaunchable: true,
   }
 }
@@ -1304,7 +1334,8 @@ export const detectFrameworkFromGithubApi = async (
   const evidence: DetectionEvidence[] = []
 
   // Resolve prisma dependency
-  const prismaClient = dependencies.prisma ?? (await import("@/lib/prisma")).prisma
+  const prismaClient =
+    dependencies.prisma ?? (await import("@/lib/prisma")).prisma
 
   // 1. Fetch repository file listing via GitHub API
   const listFilesFn = dependencies.listFiles ?? listRepoFiles
@@ -1317,28 +1348,30 @@ export const detectFrameworkFromGithubApi = async (
   })
 
   if (truncated) {
-    warnings.push('File listing was truncated by GitHub API')
+    warnings.push("File listing was truncated by GitHub API")
     evidence.push({
-      type: 'file',
-      value: 'truncated-listing',
-      detail: 'GitHub API returned truncated file tree',
+      type: "file",
+      value: "truncated-listing",
+      detail: "GitHub API returned truncated file tree",
     })
   }
 
   // 2. Check for blocked frameworks
   const detectorRules = await prismaClient.detectorRule.findMany({
     where: { isActive: true },
-    orderBy: { priority: 'desc' },
+    orderBy: { priority: "desc" },
   })
 
   const blockCheck = checkForBlockedFrameworks(fileList, detectorRules)
 
   if (blockCheck.blocked && blockCheck.rule) {
-    const blockedFramework = blockCheck.rule.implicationsJson as { framework?: string } | null
+    const blockedFramework = blockCheck.rule.implicationsJson as {
+      framework?: string
+    } | null
     evidence.push({
-      type: 'file',
-      value: 'blocked',
-      detail: `Blocked by rule "${blockCheck.rule.name}": matched files ${blockCheck.matchedFiles.join(', ')}`,
+      type: "file",
+      value: "blocked",
+      detail: `Blocked by rule "${blockCheck.rule.name}": matched files ${blockCheck.matchedFiles.join(", ")}`,
     })
 
     // Log the blocked inspection (best-effort)
@@ -1348,8 +1381,8 @@ export const detectFrameworkFromGithubApi = async (
           installationId: BigInt(input.installationId),
           repoUrl: `https://github.com/${input.owner}/${input.repo}`,
           ref: input.ref,
-          detectedFramework: blockedFramework?.framework ?? 'unknown',
-          status: 'blocked',
+          detectedFramework: blockedFramework?.framework ?? "unknown",
+          status: "blocked",
           blockedByRuleId: blockCheck.rule.id,
           toolCalls: [],
           reasoning: [`Blocked by rule: ${blockCheck.rule.name}`],
@@ -1358,15 +1391,15 @@ export const detectFrameworkFromGithubApi = async (
       })
     } catch (logError) {
       warnings.push(
-        `Failed to log blocked inspection: ${logError instanceof Error ? logError.message : 'unknown error'}`
+        `Failed to log blocked inspection: ${logError instanceof Error ? logError.message : "unknown error"}`
       )
     }
 
     return {
       primaryFramework: {
-        id: blockedFramework?.framework ?? 'unknown',
-        name: blockedFramework?.framework ?? 'Unknown',
-        ecosystem: 'unknown',
+        id: blockedFramework?.framework ?? "unknown",
+        name: blockedFramework?.framework ?? "Unknown",
+        ecosystem: "unknown",
         confidence: 0,
         reasons: [`Blocked by admin rule: ${blockCheck.rule.name}`],
       },
@@ -1374,12 +1407,15 @@ export const detectFrameworkFromGithubApi = async (
       alternatives: [],
       confidence: 0,
       decision: {
-        status: 'blocked',
+        status: "blocked",
         message: `Deployment blocked by admin rule: ${blockCheck.rule.name}`,
         isLaunchable: false,
       },
       evidence,
-      warnings: [...warnings, `Framework blocked by rule: ${blockCheck.rule.name}`],
+      warnings: [
+        ...warnings,
+        `Framework blocked by rule: ${blockCheck.rule.name}`,
+      ],
       source: {
         repoUrl: `https://github.com/${input.owner}/${input.repo}`,
         ref: input.ref,
@@ -1394,15 +1430,17 @@ export const detectFrameworkFromGithubApi = async (
   let capturedToolCalls: ToolCallRecord[] = []
 
   try {
-    const resolver = dependencies.resolveWithAiToolCalling ?? (
-      (inp, files, rules) => resolveWithAiToolCalling(inp, files, rules, dependencies)
-    )
+    const resolver =
+      dependencies.resolveWithAiToolCalling ??
+      ((inp, files, rules) =>
+        resolveWithAiToolCalling(inp, files, rules, dependencies))
     const resolverResult = await resolver(input, fileList, detectorRules)
     aiDecision = resolverResult.decision
     capturedToolCalls = resolverResult.toolCalls
   } catch (error) {
     const durationMs = Date.now() - startTime
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error"
 
     // Log the error (best-effort)
     try {
@@ -1411,18 +1449,18 @@ export const detectFrameworkFromGithubApi = async (
           installationId: BigInt(input.installationId),
           repoUrl: `https://github.com/${input.owner}/${input.repo}`,
           ref: input.ref,
-          status: 'error',
+          status: "error",
           errorMessage,
           durationMs,
           toolCalls: [],
           reasoning: [],
-        warnings,
-      },
-    })
+          warnings,
+        },
+      })
     } catch (logError) {
       // Audit log failure should not fail the detection
       warnings.push(
-        `Failed to log error inspection: ${logError instanceof Error ? logError.message : 'unknown error'}`
+        `Failed to log error inspection: ${logError instanceof Error ? logError.message : "unknown error"}`
       )
     }
 
@@ -1432,36 +1470,41 @@ export const detectFrameworkFromGithubApi = async (
   // 4. Build detection result
   const frameworkId = aiDecision.primaryFrameworkId
   const frameworkVersion = aiDecision.frameworkVersion ?? null
-  const frameworkEcosystem = aiDecision.ecosystem ?? inferFrameworkEcosystem(frameworkId)
+  const frameworkEcosystem =
+    aiDecision.ecosystem ?? inferFrameworkEcosystem(frameworkId)
   const frameworkName = inferFrameworkName(frameworkId)
 
   evidence.push({
-    type: 'ai',
-    value: 'tool-calling-detection',
+    type: "ai",
+    value: "tool-calling-detection",
     detail: `AI agent selected ${frameworkId} with confidence ${aiDecision.confidence}`,
   })
 
-  const requiredDependencies: RequiredDependency[] = aiDecision.requiredRuntimeIds.map((runtimeId) => ({
-    id: runtimeId,
-    kind: 'runtime',
-    requiredFor: 'app_runtime',
-    confidence: aiDecision.confidence,
-    reason: aiDecision.reasoning[0] ?? 'AI agent identified this runtime requirement',
-  }))
+  const requiredDependencies: RequiredDependency[] =
+    aiDecision.requiredRuntimeIds.map((runtimeId) => ({
+      id: runtimeId,
+      kind: "runtime",
+      requiredFor: "app_runtime",
+      confidence: aiDecision.confidence,
+      reason:
+        aiDecision.reasoning[0] ??
+        "AI agent identified this runtime requirement",
+    }))
 
   // 5. Enforce RuntimeMappings
-  const { enforced: enforcedDependencies, appliedMappings } = await enforceRuntimeMappings(
-    frameworkId,
-    frameworkVersion,
-    requiredDependencies,
-    prismaClient
-  )
+  const { enforced: enforcedDependencies, appliedMappings } =
+    await enforceRuntimeMappings(
+      frameworkId,
+      frameworkVersion,
+      requiredDependencies,
+      prismaClient
+    )
 
   if (appliedMappings.length > 0) {
     evidence.push({
-      type: 'ai',
-      value: 'runtime-mapping-enforced',
-      detail: `Applied runtime mappings: ${appliedMappings.join(', ')}`,
+      type: "ai",
+      value: "runtime-mapping-enforced",
+      detail: `Applied runtime mappings: ${appliedMappings.join(", ")}`,
     })
   }
 
@@ -1470,7 +1513,7 @@ export const detectFrameworkFromGithubApi = async (
   // Build enforced runtimes for audit log (with version from mapping)
   const enforcedRuntimes = enforcedDependencies.map((d) => {
     const mapping = appliedMappings.find((m) => m.startsWith(d.id))
-    const version = mapping ? mapping.replace(`${d.id} `, '') : 'unknown'
+    const version = mapping ? mapping.replace(`${d.id} `, "") : "unknown"
     return { runtimeId: d.id, version }
   })
 
@@ -1488,13 +1531,13 @@ export const detectFrameworkFromGithubApi = async (
         reasoning: aiDecision.reasoning,
         warnings,
         durationMs,
-        status: 'success',
+        status: "success",
       },
     })
   } catch (logError) {
     // Audit log failure should not fail the detection
     warnings.push(
-      `Failed to log inspection: ${logError instanceof Error ? logError.message : 'unknown error'}`
+      `Failed to log inspection: ${logError instanceof Error ? logError.message : "unknown error"}`
     )
   }
 

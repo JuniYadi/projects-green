@@ -46,10 +46,12 @@ const mockRedirect = mock((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
 
-const mockGetPlatformAccessForUser = mock(async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
-  exists: false,
-  role: "none",
-}))
+const mockGetPlatformAccessForUser = mock(
+  async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
+    exists: false,
+    role: "none",
+  })
+)
 
 mock.module("@workos-inc/authkit-nextjs", () => {
   return createAuthMock({
@@ -58,7 +60,6 @@ mock.module("@workos-inc/authkit-nextjs", () => {
     getOrganization: mockGetOrganization,
   })
 })
-
 
 mock.module("@/lib/platform-role", () => {
   return {
@@ -156,7 +157,9 @@ describe("ConsoleLayout", () => {
     ;(usePathname as unknown as ReturnType<typeof mock>).mockReturnValue(
       "/en/console"
     )
-    ;(redirect as unknown as ReturnType<typeof mock>).mockImplementation(mockRedirect)
+    ;(redirect as unknown as ReturnType<typeof mock>).mockImplementation(
+      mockRedirect
+    )
   })
 
   it("renders shared console shell around children", async () => {
@@ -173,7 +176,9 @@ describe("ConsoleLayout", () => {
     expect(mockGetOrganization).toHaveBeenCalledWith("org_123")
 
     expect(view.getByTestId("sidebar-provider")).toBeInTheDocument()
-    expect(view.getByText("Sidebar:console:Jane Doe:Acme Inc")).toBeInTheDocument()
+    expect(
+      view.getByText("Sidebar:console:Jane Doe:Acme Inc")
+    ).toBeInTheDocument()
     expect(view.getByText("AI Help")).toBeInTheDocument()
     expect(view.getByText("Console")).toBeInTheDocument()
     expect(view.queryByText("Workspace")).not.toBeInTheDocument()

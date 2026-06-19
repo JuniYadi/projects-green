@@ -52,7 +52,7 @@ describe("AdminSubscriptionRoute", () => {
       const app = new Elysia()
         .use(
           createAdminSubscriptionRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })
@@ -191,7 +191,15 @@ describe("AdminSubscriptionRoute", () => {
         status: "ACTIVE",
         allocatedConfig: null,
         currentPeriodEnd: new Date("2026-06-30"),
-        plan: { code: "WHATSAPP_STANDARD", resources: { quotaIn: 1000, quotaOut: 500, dailyPerDevice: 100, devices: 5 } },
+        plan: {
+          code: "WHATSAPP_STANDARD",
+          resources: {
+            quotaIn: 1000,
+            quotaOut: 500,
+            dailyPerDevice: 100,
+            devices: 5,
+          },
+        },
         pricing: {
           billingMode: "SUBSCRIPTION",
           type: "STANDARD",
@@ -238,7 +246,15 @@ describe("AdminSubscriptionRoute", () => {
         status: "SUSPENDED",
         allocatedConfig: null,
         currentPeriodEnd: new Date("2026-06-30"),
-        plan: { code: "WHATSAPP_STANDARD", resources: { quotaIn: 1000, quotaOut: 500, dailyPerDevice: 100, devices: 5 } },
+        plan: {
+          code: "WHATSAPP_STANDARD",
+          resources: {
+            quotaIn: 1000,
+            quotaOut: 500,
+            dailyPerDevice: 100,
+            devices: 5,
+          },
+        },
         pricing: {
           billingMode: "SUBSCRIPTION",
           type: "STANDARD",
@@ -288,7 +304,15 @@ describe("AdminSubscriptionRoute", () => {
         status: "ACTIVE",
         allocatedConfig: { devices: 10 },
         currentPeriodEnd: new Date("2026-06-30"),
-        plan: { code: "WHATSAPP_STANDARD", resources: { quotaIn: 1000, quotaOut: 500, dailyPerDevice: 100, devices: 5 } },
+        plan: {
+          code: "WHATSAPP_STANDARD",
+          resources: {
+            quotaIn: 1000,
+            quotaOut: 500,
+            dailyPerDevice: 100,
+            devices: 5,
+          },
+        },
         pricing: {
           billingMode: "SUBSCRIPTION",
           type: "STANDARD",
@@ -369,7 +393,13 @@ describe("AdminSubscriptionRoute", () => {
           allocatedConfig: null,
           currentPeriodEnd: new Date("2026-06-30"),
           plan: { code: "STANDARD", resources: {} },
-          pricing: { billingMode: "SUBSCRIPTION", type: "STANDARD", basePriceIdr: new Decimal("100000"), region: { code: "GLOBAL" }, servicePlan: { code: "S", packageId: "pkg-1" } },
+          pricing: {
+            billingMode: "SUBSCRIPTION",
+            type: "STANDARD",
+            basePriceIdr: new Decimal("100000"),
+            region: { code: "GLOBAL" },
+            servicePlan: { code: "S", packageId: "pkg-1" },
+          },
           package: { code: "NON_WHATSAPP" },
         })
       mockUpdate.mockResolvedValueOnce({ id: "sub-1", status: "SUSPENDED" })
@@ -377,11 +407,12 @@ describe("AdminSubscriptionRoute", () => {
       const app = new Elysia()
         .use(
           createAdminSubscriptionRoutes({
-            authenticate: async () => ({
-              user: { id: "admin-1" },
-              organizationId: "org-1",
-              role: "admin",
-            } as unknown as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "super_admin" as PlatformAccessRole,
             // No isAdmin override
           })
@@ -409,7 +440,13 @@ describe("AdminSubscriptionRoute", () => {
           allocatedConfig: null,
           currentPeriodEnd: new Date("2026-06-30"),
           plan: { code: "STANDARD", resources: {} },
-          pricing: { billingMode: "SUBSCRIPTION", type: "STANDARD", basePriceIdr: new Decimal("100000"), region: { code: "GLOBAL" }, servicePlan: { code: "S", packageId: "pkg-1" } },
+          pricing: {
+            billingMode: "SUBSCRIPTION",
+            type: "STANDARD",
+            basePriceIdr: new Decimal("100000"),
+            region: { code: "GLOBAL" },
+            servicePlan: { code: "S", packageId: "pkg-1" },
+          },
           package: { code: "NON_WHATSAPP" },
         })
       mockUpdate.mockResolvedValueOnce({ id: "sub-2", status: "SUSPENDED" })
@@ -417,11 +454,12 @@ describe("AdminSubscriptionRoute", () => {
       const app = new Elysia()
         .use(
           createAdminSubscriptionRoutes({
-            authenticate: async () => ({
-              user: { id: "owner-1" },
-              organizationId: "org-1",
-              role: "owner",
-            } as unknown as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "owner-1" },
+                organizationId: "org-1",
+                role: "owner",
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
           })
         )
@@ -442,11 +480,12 @@ describe("AdminSubscriptionRoute", () => {
       const app = new Elysia()
         .use(
           createAdminSubscriptionRoutes({
-            authenticate: async () => ({
-              user: { id: "member-1" },
-              organizationId: "org-1",
-              role: "member",
-            } as unknown as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "member-1" },
+                organizationId: "org-1",
+                role: "member",
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
           })
         )
@@ -469,7 +508,7 @@ describe("AdminSubscriptionRoute", () => {
       const app = new Elysia()
         .use(
           createAdminSubscriptionRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })
@@ -617,7 +656,7 @@ describe("AdminSubscriptionRoute", () => {
                 user: { id: "admin-1" },
                 organizationId: "org-1",
                 role: "admin",
-              } as unknown as MockAuthContext),
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
             isAdmin: () => true,
           })

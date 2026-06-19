@@ -2,10 +2,12 @@ import { z } from "zod"
 
 // ─── Validation helpers ──────────────────────────────────────────────────────
 
-const futureDate = z.string().datetime().refine(
-  (val) => new Date(val) > new Date(),
-  { message: "expiresAt must be a future date" },
-)
+const futureDate = z
+  .string()
+  .datetime()
+  .refine((val) => new Date(val) > new Date(), {
+    message: "expiresAt must be a future date",
+  })
 
 const positiveAmount = z.number().positive("amount must be positive")
 

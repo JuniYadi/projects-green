@@ -19,10 +19,7 @@ interface CurrencyConfig {
   maxTopup: number
 }
 
-function formatCurrency(
-  value: number,
-  currency: "IDR" | "USD"
-): string {
+function formatCurrency(value: number, currency: "IDR" | "USD"): string {
   return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID", {
     style: "currency",
     currency,

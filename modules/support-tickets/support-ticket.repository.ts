@@ -362,9 +362,7 @@ export type SupportTicketRepository = {
     status: SupportTicketStatus
     ticketId: string
   }): Promise<SupportTicket>
-  listAllTickets(input: {
-    limit?: number
-  }): Promise<SupportTicket[]>
+  listAllTickets(input: { limit?: number }): Promise<SupportTicket[]>
   updateTicket(input: {
     ticketId: string
     data: {
@@ -403,11 +401,13 @@ export const supportTicketRepository: SupportTicketRepository = {
     return mapUploadSessionRecord(record)
   },
   async getUploadSessionById(id) {
-    const record = await prisma.supportTicketAttachmentUploadSession.findUnique({
-      where: {
-        id,
-      },
-    })
+    const record = await prisma.supportTicketAttachmentUploadSession.findUnique(
+      {
+        where: {
+          id,
+        },
+      }
+    )
 
     if (!record) {
       return null
@@ -416,11 +416,12 @@ export const supportTicketRepository: SupportTicketRepository = {
     return mapUploadSessionRecord(record)
   },
   async markUploadSessionRegistered(input) {
-    const existing = await prisma.supportTicketAttachmentUploadSession.findUnique({
-      where: {
-        id: input.id,
-      },
-    })
+    const existing =
+      await prisma.supportTicketAttachmentUploadSession.findUnique({
+        where: {
+          id: input.id,
+        },
+      })
 
     if (!existing) {
       throw new Error("Attachment upload session was not found.")
@@ -463,7 +464,9 @@ export const supportTicketRepository: SupportTicketRepository = {
           requesterWorkosUserId: input.requesterWorkosUserId,
           department: DOMAIN_TO_PRISMA_DEPARTMENT[input.department],
           priority: DOMAIN_TO_PRISMA_PRIORITY[input.priority],
-          service: input.service ? DOMAIN_TO_PRISMA_SERVICE[input.service] : null,
+          service: input.service
+            ? DOMAIN_TO_PRISMA_SERVICE[input.service]
+            : null,
           status: "OPEN",
           subject: input.subject,
           description: input.description ?? null,
@@ -501,7 +504,8 @@ export const supportTicketRepository: SupportTicketRepository = {
       }
 
       const updatedTicket =
-        uploadAttachments.length > 0 || (input.attachmentMetadata ?? []).length > 0
+        uploadAttachments.length > 0 ||
+        (input.attachmentMetadata ?? []).length > 0
           ? await tx.supportTicket.update({
               where: {
                 id: created.id,
@@ -627,7 +631,9 @@ export const supportTicketRepository: SupportTicketRepository = {
       updateData.priority = DOMAIN_TO_PRISMA_PRIORITY[input.data.priority]
     }
     if (input.data.service !== undefined) {
-      updateData.service = input.data.service ? DOMAIN_TO_PRISMA_SERVICE[input.data.service] : null
+      updateData.service = input.data.service
+        ? DOMAIN_TO_PRISMA_SERVICE[input.data.service]
+        : null
     }
     if (input.data.subject !== undefined) {
       updateData.subject = input.data.subject
@@ -639,7 +645,8 @@ export const supportTicketRepository: SupportTicketRepository = {
       updateData.status = DOMAIN_TO_PRISMA_STATUS[input.data.status]
     }
     if (input.data.assignedAgentWorkosUserId !== undefined) {
-      updateData.assignedAgentWorkosUserId = input.data.assignedAgentWorkosUserId
+      updateData.assignedAgentWorkosUserId =
+        input.data.assignedAgentWorkosUserId
     }
 
     if (input.clearSecureForm) {
@@ -740,7 +747,8 @@ export const supportTicketRepository: SupportTicketRepository = {
       }
 
       const updatedReply =
-        uploadAttachments.length > 0 || (input.attachmentMetadata ?? []).length > 0
+        uploadAttachments.length > 0 ||
+        (input.attachmentMetadata ?? []).length > 0
           ? await tx.supportTicketReply.update({
               where: {
                 id: created.id,

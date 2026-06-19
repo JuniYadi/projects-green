@@ -139,99 +139,101 @@ const toErrorResponse = (set: RouteSet, error: unknown) => {
   console.error("[Console Vouchers] Error:", error)
   return toServerError(
     set,
-    error instanceof Error ? error.message : "An unexpected error occurred.",
+    error instanceof Error ? error.message : "An unexpected error occurred."
   )
 }
 
 export const createConsoleVoucherRoutes = (
-  deps: Partial<ConsoleVoucherRouteDeps> = {},
+  deps: Partial<ConsoleVoucherRouteDeps> = {}
 ) => {
   const { authenticate, service } = {
     ...defaultDeps,
     ...deps,
   }
 
-  return new Elysia({ prefix: "/vouchers" })
-    // POST /vouchers/redeem — redeem a voucher by code
-    .post("/redeem", async ({ body, set }) => {
-      const auth = await authenticate()
+  return (
+    new Elysia({ prefix: "/vouchers" })
+      // POST /vouchers/redeem — redeem a voucher by code
+      .post("/redeem", async ({ body, set }) => {
+        const auth = await authenticate()
 
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      if (!auth.organizationId) {
-        return toForbidden(set, "No active organization found.")
-      }
-
-      const parsed = redeemVoucherSchema.safeParse(body)
-      if (!parsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+        if (!auth.user) {
+          return toUnauthorized(set)
         }
-      }
 
-      try {
-        const result = await service.redeemVoucher({
-          code: parsed.data.code,
-          workosUserId: auth.user.id,
-          organizationId: auth.organizationId,
-        })
-
-        return {
-          ok: true as const,
-          data: result,
+        if (!auth.organizationId) {
+          return toForbidden(set, "No active organization found.")
         }
-      } catch (error) {
-        return toErrorResponse(set, error)
-      }
-    })
 
-    // GET /vouchers/claims — user claim history
-    .get("/claims", async ({ set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      if (!auth.organizationId) {
-        return toForbidden(set, "No active organization found.")
-      }
-
-      try {
-        const claims = await service.getUserClaims(
-          auth.user.id,
-          auth.organizationId,
-        )
-
-        const result = claims.map((claim) => ({
-          ...toVoucherClaimDTO(claim),
-          voucher: {
-            code: claim.voucher.code,
-            amount: claim.voucher.amount.toFixed(2),
-            currency: claim.voucher.currency,
-          },
-        }))
-
-        return {
-          ok: true as const,
-          data: result,
+        const parsed = redeemVoucherSchema.safeParse(body)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          }
         }
-      } catch (error) {
-        console.error("[Console Vouchers] Error:", error)
-        return toServerError(
-          set,
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred.",
-        )
-      }
-    })
+
+        try {
+          const result = await service.redeemVoucher({
+            code: parsed.data.code,
+            workosUserId: auth.user.id,
+            organizationId: auth.organizationId,
+          })
+
+          return {
+            ok: true as const,
+            data: result,
+          }
+        } catch (error) {
+          return toErrorResponse(set, error)
+        }
+      })
+
+      // GET /vouchers/claims — user claim history
+      .get("/claims", async ({ set }) => {
+        const auth = await authenticate()
+
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        if (!auth.organizationId) {
+          return toForbidden(set, "No active organization found.")
+        }
+
+        try {
+          const claims = await service.getUserClaims(
+            auth.user.id,
+            auth.organizationId
+          )
+
+          const result = claims.map((claim) => ({
+            ...toVoucherClaimDTO(claim),
+            voucher: {
+              code: claim.voucher.code,
+              amount: claim.voucher.amount.toFixed(2),
+              currency: claim.voucher.currency,
+            },
+          }))
+
+          return {
+            ok: true as const,
+            data: result,
+          }
+        } catch (error) {
+          console.error("[Console Vouchers] Error:", error)
+          return toServerError(
+            set,
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred."
+          )
+        }
+      })
+  )
 }
 
 export const consoleVoucherRoutes = createConsoleVoucherRoutes()

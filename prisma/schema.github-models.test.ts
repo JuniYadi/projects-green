@@ -10,7 +10,7 @@ describe("github prisma models", () => {
     expect(schema).toContain("@@index([organizationId])")
 
     expect(schema).toContain("model GithubRepositoryConnection {")
-    expect(schema).toContain("branchFilters      String[]  @default([\"main\"])")
+    expect(schema).toContain('branchFilters      String[]  @default(["main"])')
     expect(schema).toContain("@@unique([githubRepositoryId, installationId])")
     expect(schema).toContain(
       "@relation(fields: [installationId], references: [id], onDelete: Cascade)"

@@ -106,8 +106,7 @@ const serverError = (set: RouteSet, message: string) => {
 }
 
 export const createMobileAuthRoutes = (deps: Deps = {}) => {
-  const deviceService =
-    deps.deviceService ?? vpnMobileDeviceService
+  const deviceService = deps.deviceService ?? vpnMobileDeviceService
   const now = deps.now ?? (() => new Date())
   const signJwt = deps.signJwt ?? signSessionJwt
 
@@ -116,9 +115,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
       "/vpn/mobile/auth/exchange",
       async ({ body, request, set }) => {
         // Rate limit: 10/h per IP
-        const rateResult = exchangeRateLimiter(
-          getClientIp(request)
-        )
+        const rateResult = exchangeRateLimiter(getClientIp(request))
         if (!rateResult.allowed) {
           set.status = 429
           set.headers = rateLimitHeaders(rateResult)
@@ -132,9 +129,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
               // Use default WorkOS auth — but we skip importing
               // withAuth here to keep this side-effect free at
               // import time. The real auth happens at request time.
-              const { withAuth } = await import(
-                "@workos-inc/authkit-nextjs"
-              )
+              const { withAuth } = await import("@workos-inc/authkit-nextjs")
               return withAuth()
             })()
 
@@ -144,26 +139,24 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           return {
             error: {
               code: "FORBIDDEN" as const,
-              message:
-                "No active organization found.",
+              message: "No active organization found.",
               details: {},
             },
           }
         }
 
         // Find the user's active subscription FIRST.
-        const subscription =
-          await prisma.vpnSubscription.findFirst({
-            where: {
-              organizationId: auth.organizationId,
-              status: "ACTIVE",
-            },
-            select: {
-              id: true,
-              status: true,
-              currentPeriodEnd: true,
-            },
-          })
+        const subscription = await prisma.vpnSubscription.findFirst({
+          where: {
+            organizationId: auth.organizationId,
+            status: "ACTIVE",
+          },
+          select: {
+            id: true,
+            status: true,
+            currentPeriodEnd: true,
+          },
+        })
 
         if (!subscription) {
           set.status = 403
@@ -195,16 +188,13 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
         } catch (error) {
           console.error(
             "[MobileAuth] Device registration failed:",
-            error instanceof Error
-              ? error.message
-              : String(error)
+            error instanceof Error ? error.message : String(error)
           )
           set.status = 500
           return {
             error: {
               code: "INTERNAL_ERROR" as const,
-              message:
-                "Device registration failed.",
+              message: "Device registration failed.",
               details: {},
             },
           }
@@ -243,8 +233,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
             ? {
                 id: subscription.id,
                 status: subscription.status,
-                currentPeriodEnd:
-                  subscription.currentPeriodEnd.toISOString(),
+                currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
               }
             : null,
         }
@@ -261,9 +250,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
       "/vpn/mobile/auth/refresh",
       async ({ request, set }) => {
         // Rate limit: 30/h per IP
-        const rateResult = refreshRateLimiter(
-          getClientIp(request)
-        )
+        const rateResult = refreshRateLimiter(getClientIp(request))
         if (!rateResult.allowed) {
           set.status = 429
           set.headers = rateLimitHeaders(rateResult)

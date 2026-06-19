@@ -26,7 +26,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DotsThreeVerticalIcon, PaperPlaneTiltIcon } from "@phosphor-icons/react"
+import {
+  DotsThreeVerticalIcon,
+  PaperPlaneTiltIcon,
+} from "@phosphor-icons/react"
 import { Skeleton } from "@/components/ui/skeleton"
 import type {
   TenantInvitationSummary,
@@ -40,7 +43,8 @@ type InvitationsViewProps = {
 
 export function InvitationsView({ organizationId }: InvitationsViewProps) {
   const [invitations, setInvitations] = useState<TenantInvitationSummary[]>([])
-  const [authorization, setAuthorization] = useState<TenantAuthorizationResponse | null>(null)
+  const [authorization, setAuthorization] =
+    useState<TenantAuthorizationResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [email, setEmail] = useState("")
@@ -50,15 +54,22 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
   const loadData = useCallback(async () => {
     try {
       const [authRes, invRes] = await Promise.all([
-        eden.api.tenants[organizationId].authorization.get().then(r => r.data),
-        eden.api.tenants[organizationId].invitations.get().then(r => r.data)
+        eden.api.tenants[organizationId].authorization
+          .get()
+          .then((r) => r.data),
+        eden.api.tenants[organizationId].invitations.get().then((r) => r.data),
       ])
 
       if (authRes?.ok) setAuthorization(authRes as TenantAuthorizationResponse)
       if (invRes?.ok) {
-        setInvitations((invRes as { invitations: TenantInvitationSummary[] }).invitations)
+        setInvitations(
+          (invRes as { invitations: TenantInvitationSummary[] }).invitations
+        )
       } else {
-        setError((invRes as { message?: string })?.message || "Failed to load invitations")
+        setError(
+          (invRes as { message?: string })?.message ||
+            "Failed to load invitations"
+        )
       }
     } catch {
       setError("An unexpected error occurred")
@@ -80,16 +91,20 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     setIsSubmitting(true)
     setError(null)
     try {
-      const { data: res } = await eden.api.tenants[organizationId].invitations.post({
+      const { data: res } = await eden.api.tenants[
+        organizationId
+      ].invitations.post({
         email,
-        targetRole: role as "admin" | "owner" | "member"
+        targetRole: role as "admin" | "owner" | "member",
       })
 
       if (res?.ok) {
         setEmail("")
         void loadData()
       } else {
-        setError((res as { message?: string })?.message || "Failed to send invitation")
+        setError(
+          (res as { message?: string })?.message || "Failed to send invitation"
+        )
       }
     } catch {
       setError("An unexpected error occurred")
@@ -98,7 +113,12 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     }
   }
 
-  const handleAction = async (edenCall: Promise<{ data?: { ok?: boolean; message?: string } | null; error?: unknown }>) => {
+  const handleAction = async (
+    edenCall: Promise<{
+      data?: { ok?: boolean; message?: string } | null
+      error?: unknown
+    }>
+  ) => {
     setError(null)
     try {
       const { data: res } = await edenCall
@@ -121,8 +141,11 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     )
   }
 
-  const allowedActions = new Set((authorization?.allowedActions as TenantAction[]) || [])
-  const canInvite = allowedActions.has("invite_member") || allowedActions.has("invite_admin")
+  const allowedActions = new Set(
+    (authorization?.allowedActions as TenantAction[]) || []
+  )
+  const canInvite =
+    allowedActions.has("invite_member") || allowedActions.has("invite_admin")
 
   return (
     <div className="space-y-6">
@@ -135,10 +158,15 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
       {canInvite && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base font-medium">Invite New Member</CardTitle>
+            <CardTitle className="text-base font-medium">
+              Invite New Member
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleInvite} className="flex flex-col gap-4 sm:flex-row">
+            <form
+              onSubmit={handleInvite}
+              className="flex flex-col gap-4 sm:flex-row"
+            >
               <div className="flex-1">
                 <Input
                   type="email"
@@ -183,16 +211,25 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
           <TableBody>
             {invitations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={4}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   No pending invitations
                 </TableCell>
               </TableRow>
             ) : (
               invitations.map((invitation) => (
                 <TableRow key={invitation.id}>
-                  <TableCell className="font-medium">{invitation.email}</TableCell>
-                  <TableCell className="capitalize">{invitation.roleSlug || "Member"}</TableCell>
-                  <TableCell>{new Date(invitation.expiresAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="font-medium">
+                    {invitation.email}
+                  </TableCell>
+                  <TableCell className="capitalize">
+                    {invitation.roleSlug || "Member"}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(invitation.expiresAt).toLocaleDateString()}
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -201,14 +238,30 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleAction(eden.api.tenants[organizationId].invitations[invitation.id].resend.post())}>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            handleAction(
+                              eden.api.tenants[organizationId].invitations[
+                                invitation.id
+                              ].resend.post()
+                            )
+                          }
+                        >
                           Resend
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => {
-                            if (confirm("Are you sure you want to revoke this invitation?")) {
-                              handleAction(eden.api.tenants[organizationId].invitations[invitation.id].revoke.post())
+                            if (
+                              confirm(
+                                "Are you sure you want to revoke this invitation?"
+                              )
+                            ) {
+                              handleAction(
+                                eden.api.tenants[organizationId].invitations[
+                                  invitation.id
+                                ].revoke.post()
+                              )
                             }
                           }}
                         >

@@ -49,9 +49,7 @@ async function run() {
     const body = (await res.json()) as Record<string, unknown>
     assert(
       "GET /api/auth/whoami?strict=1 (no auth) → 401",
-      res.status === 401 &&
-        body.ok === false &&
-        body.error === "UNAUTHORIZED",
+      res.status === 401 && body.ok === false && body.error === "UNAUTHORIZED",
       `status=${res.status} ok=${body.ok} error=${body.error}`
     )
   }
@@ -101,9 +99,7 @@ async function run() {
     const body = (await res.json()) as Record<string, unknown>
     assert(
       "GET /api/whatsapp/devices (no auth) → 401",
-      res.status === 401 &&
-        body.ok === false &&
-        body.error === "UNAUTHORIZED",
+      res.status === 401 && body.ok === false && body.error === "UNAUTHORIZED",
       `status=${res.status} ok=${body.ok} error=${body.error}`
     )
   }
@@ -111,9 +107,7 @@ async function run() {
   // Summary
   const passed = results.filter((r) => r.pass).length
   const failed = results.filter((r) => !r.pass).length
-  console.log(
-    `\n${passed} passed, ${failed} failed, ${results.length} total\n`
-  )
+  console.log(`\n${passed} passed, ${failed} failed, ${results.length} total\n`)
   process.exit(failed > 0 ? 1 : 0)
 }
 

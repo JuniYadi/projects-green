@@ -114,7 +114,11 @@ describe("monitoringRoutes", () => {
       events: unknown[]
     }
     expect(body.ok).toBe(true)
-    expect(body.data.map((item) => item.id)).toEqual(["prep", "build", "deploy"])
+    expect(body.data.map((item) => item.id)).toEqual([
+      "prep",
+      "build",
+      "deploy",
+    ])
     expect(Array.isArray(body.events)).toBe(true)
   })
 

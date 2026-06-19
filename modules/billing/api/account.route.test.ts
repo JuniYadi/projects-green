@@ -3,7 +3,11 @@ import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 import type { Organization } from "@workos-inc/node"
 
 import { createBillingAccountRoutes } from "./account.route"
-import { topupSchema, adminAdjustSchema, adminSubscriptionUpdateSchema } from "./billing.schemas"
+import {
+  topupSchema,
+  adminAdjustSchema,
+  adminSubscriptionUpdateSchema,
+} from "./billing.schemas"
 
 describe("GET /account - JIT upsert", () => {
   const mockEnsureBillingAccountForOrg = vi.fn()
@@ -18,7 +22,9 @@ describe("GET /account - JIT upsert", () => {
     createBillingAccountRoutes({
       authenticate: async () => mockAuth,
       ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg,
-      getOrganizationAction: mockGetOrganizationAction as (orgId: string) => Promise<Organization>,
+      getOrganizationAction: mockGetOrganizationAction as (
+        orgId: string
+      ) => Promise<Organization>,
     })
 
   beforeEach(() => {
@@ -284,7 +290,6 @@ describe("GET /account - JIT upsert", () => {
     expect(body.accountAge).toBe("3 days")
   })
 })
-
 
 // Test schema validation
 describe("billingSchemas", () => {

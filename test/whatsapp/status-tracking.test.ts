@@ -40,9 +40,8 @@ mock.module("@/lib/prisma", () => ({
 
 // ─── Imports under test ──────────────────────────────────────────────────────────
 
-const { processDeliveryStatus } = await import(
-  "@/modules/whatsapp/webhooks/webhooks.service"
-)
+const { processDeliveryStatus } =
+  await import("@/modules/whatsapp/webhooks/webhooks.service")
 
 beforeEach(() => {
   for (const m of [mockMessage, mockStatus, mockConversation]) {
@@ -131,7 +130,7 @@ describe("processDeliveryStatus", () => {
     const result = await processDeliveryStatus(
       sampleStatusSent,
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     expect(result.status).toBe("SENT")
@@ -144,7 +143,7 @@ describe("processDeliveryStatus", () => {
           messageId: "msg-123",
           status: "SENT",
         }),
-      }),
+      })
     )
   })
 
@@ -156,14 +155,14 @@ describe("processDeliveryStatus", () => {
     const result = await processDeliveryStatus(
       sampleStatusDelivered,
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     expect(result.status).toBe("DELIVERED")
     expect(mockStatus.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: "DELIVERED" }),
-      }),
+      })
     )
   })
 
@@ -175,14 +174,14 @@ describe("processDeliveryStatus", () => {
     const result = await processDeliveryStatus(
       sampleStatusRead,
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     expect(result.status).toBe("READ")
     expect(mockStatus.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: "READ" }),
-      }),
+      })
     )
   })
 
@@ -194,7 +193,7 @@ describe("processDeliveryStatus", () => {
     const result = await processDeliveryStatus(
       sampleStatusFailed,
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     expect(result.status).toBe("FAILED")
@@ -204,7 +203,7 @@ describe("processDeliveryStatus", () => {
           status: "FAILED",
           error: expect.stringContaining("130429"),
         }),
-      }),
+      })
     )
   })
 
@@ -214,7 +213,7 @@ describe("processDeliveryStatus", () => {
     const result = await processDeliveryStatus(
       sampleStatusSent,
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     expect(result.messageId).toBeNull()
@@ -231,11 +230,7 @@ describe("processDeliveryStatus", () => {
     mockStatus.create.mockResolvedValue({ id: "st-conv-update" })
     mockConversation.update.mockResolvedValue({ id: "conv-456" })
 
-    await processDeliveryStatus(
-      sampleStatusDelivered,
-      "device-1",
-      "org-1",
-    )
+    await processDeliveryStatus(sampleStatusDelivered, "device-1", "org-1")
 
     expect(mockConversation.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -243,7 +238,7 @@ describe("processDeliveryStatus", () => {
         data: expect.objectContaining({
           lastMessageAt: expect.any(Date),
         }),
-      }),
+      })
     )
   })
 
@@ -254,7 +249,7 @@ describe("processDeliveryStatus", () => {
     }
 
     await expect(
-      processDeliveryStatus(invalidStatus, "device-1", "org-1"),
+      processDeliveryStatus(invalidStatus, "device-1", "org-1")
     ).rejects.toThrow('Unknown delivery status: "unknown_status"')
   })
 
@@ -270,7 +265,7 @@ describe("processDeliveryStatus", () => {
         data: expect.objectContaining({
           timestamp: expect.any(Date),
         }),
-      }),
+      })
     )
 
     // 1680000000 seconds since epoch
@@ -290,7 +285,7 @@ describe("processDeliveryStatus", () => {
     await processDeliveryStatus(
       { ...sampleStatusSent, id: "wamid-same" },
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     // Second: delivered
@@ -298,7 +293,7 @@ describe("processDeliveryStatus", () => {
     await processDeliveryStatus(
       { ...sampleStatusDelivered, id: "wamid-same" },
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     // Third: read
@@ -306,7 +301,7 @@ describe("processDeliveryStatus", () => {
     await processDeliveryStatus(
       { ...sampleStatusRead, id: "wamid-same" },
       "device-1",
-      "org-1",
+      "org-1"
     )
 
     // Verify 3 status records were created

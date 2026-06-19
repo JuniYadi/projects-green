@@ -8,7 +8,7 @@ export type OpenVpnCommandResult = {
 
 export type OpenVpnCommandRunner = (
   command: string,
-  args: string[],
+  args: string[]
 ) => Promise<OpenVpnCommandResult>
 
 export type OpenVpnSshEnv = {
@@ -51,7 +51,10 @@ function assertSafeAbsolutePath(path: string, label: string): string {
   return path
 }
 
-function defaultRun(command: string, args: string[]): Promise<OpenVpnCommandResult> {
+function defaultRun(
+  command: string,
+  args: string[]
+): Promise<OpenVpnCommandResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] })
     const stdout: Buffer[] = []
@@ -81,7 +84,10 @@ export class OpenVpnSshAdapter {
 
   async createClient(clientName: string): Promise<void> {
     const safeName = sanitizeOpenVpnClientName(clientName)
-    const script = assertSafeAbsolutePath(this.env.createScript, "create script")
+    const script = assertSafeAbsolutePath(
+      this.env.createScript,
+      "create script"
+    )
 
     await this.runChecked([script, safeName], "create OpenVPN client")
   }
@@ -90,12 +96,12 @@ export class OpenVpnSshAdapter {
     const safeName = sanitizeOpenVpnClientName(clientName)
     const directory = assertSafeAbsolutePath(
       this.env.configDirectory,
-      "config directory",
+      "config directory"
     )
 
     const result = await this.runChecked(
       ["cat", `${directory}/${safeName}.ovpn`],
-      "fetch OpenVPN config",
+      "fetch OpenVPN config"
     )
 
     return result.stdout
@@ -103,7 +109,10 @@ export class OpenVpnSshAdapter {
 
   async revokeClient(clientName: string): Promise<void> {
     const safeName = sanitizeOpenVpnClientName(clientName)
-    const script = assertSafeAbsolutePath(this.env.revokeScript, "revoke script")
+    const script = assertSafeAbsolutePath(
+      this.env.revokeScript,
+      "revoke script"
+    )
 
     await this.runChecked([script, safeName], "revoke OpenVPN client")
   }
@@ -126,7 +135,7 @@ export class OpenVpnSshAdapter {
 
   private async runChecked(
     remoteArgs: string[],
-    action: string,
+    action: string
   ): Promise<OpenVpnCommandResult> {
     const result = await this.run("ssh", [
       "-i",

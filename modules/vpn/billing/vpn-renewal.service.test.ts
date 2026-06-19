@@ -50,10 +50,7 @@ function subscription(overrides: Record<string, unknown> = {}) {
 }
 
 const createService = () =>
-  new VpnRenewalService(
-    mockPrisma as never,
-    mockTransactions as never
-  )
+  new VpnRenewalService(mockPrisma as never, mockTransactions as never)
 
 beforeEach(() => {
   mockPrisma.vpnSubscription.findMany.mockReset()
@@ -110,9 +107,7 @@ describe("VpnRenewalService", () => {
 
       // Verify calendar-month alignment: extendPeriod should extend to
       // end of July 2026 (month+2=8, day 0 = July 31)
-      const expectedPeriodEnd = new Date(
-        Date.UTC(2026, 7, 0, 23, 59, 59, 999)
-      )
+      const expectedPeriodEnd = new Date(Date.UTC(2026, 7, 0, 23, 59, 59, 999))
       expect(mockPrisma.vpnSubscription.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -303,7 +298,7 @@ describe("VpnRenewalService", () => {
         .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
         .mockResolvedValueOnce([])
       mockTransactions.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE"),
+        new Error("INSUFFICIENT_BALANCE")
       )
 
       const result = await createService().renewDueSubscriptions(NOW)
@@ -321,7 +316,7 @@ describe("VpnRenewalService", () => {
         .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
         .mockResolvedValueOnce([])
       mockTransactions.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE"),
+        new Error("INSUFFICIENT_BALANCE")
       )
 
       const result = await createService().renewDueSubscriptions(NOW)

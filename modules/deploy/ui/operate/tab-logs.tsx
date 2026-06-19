@@ -112,7 +112,10 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
   }, [logs, logFilterQuery, logFilterLevel])
 
   return (
-    <Card size="sm" className="border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+    <Card
+      size="sm"
+      className="border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+    >
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div className="space-y-1">
           <CardTitle className="text-base font-bold text-white">
@@ -123,7 +126,10 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
           </CardDescription>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground select-none cursor-pointer" onClick={() => setIsLiveTailing(!isLiveTailing)}>
+          <span
+            className="cursor-pointer text-xs text-muted-foreground select-none"
+            onClick={() => setIsLiveTailing(!isLiveTailing)}
+          >
             Live Tail
           </span>
           <button
@@ -148,14 +154,14 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
           <div className="relative min-w-[240px] flex-1">
             <MagnifyingGlass
               size={15}
-              className="absolute top-1/2 -translate-y-1/2 left-3 text-muted-foreground"
+              className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
             />
             <Input
               type="text"
               placeholder="Search logs (e.g. nginx, connect, database)..."
               value={logFilterQuery}
               onChange={(e) => setLogFilterQuery(e.target.value)}
-              className="h-8 bg-black/50 border-white/[0.08] pl-9 text-xs rounded-lg focus:border-primary/50"
+              className="h-8 rounded-lg border-white/[0.08] bg-black/50 pl-9 text-xs focus:border-primary/50"
             />
           </div>
 
@@ -177,13 +183,13 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
                   onClick={() => setLogFilterLevel(lvl)}
                   variant={isActive ? "default" : "outline"}
                   size="xs"
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold h-8 transition-all flex items-center gap-1.5 ${
+                  className={`flex h-8 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
                     isActive
-                      ? "text-white bg-primary hover:bg-primary/95"
-                      : "bg-black/40 text-muted-foreground hover:text-white border-white/[0.08] hover:bg-white/[0.02]"
+                      ? "bg-primary text-white hover:bg-primary/95"
+                      : "border-white/[0.08] bg-black/40 text-muted-foreground hover:bg-white/[0.02] hover:text-white"
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                  <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
                   {lvl}
                 </Button>
               )
@@ -211,20 +217,22 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
             return (
               <div
                 key={idx}
-                className="flex items-start gap-3 rounded-lg px-2 py-1 select-text hover:bg-white/[0.03] transition-colors border border-transparent hover:border-white/[0.03]"
+                className="flex items-start gap-3 rounded-lg border border-transparent px-2 py-1 transition-colors select-text hover:border-white/[0.03] hover:bg-white/[0.03]"
               >
-                <span className="shrink-0 text-muted-foreground/60 font-semibold select-none">
+                <span className="shrink-0 font-semibold text-muted-foreground/60 select-none">
                   {log.timestamp}
                 </span>
                 <span
-                  className={`shrink-0 font-bold px-1.5 py-0.2 rounded border text-[9px] uppercase tracking-wider ${levelBadgeStyle}`}
+                  className={`py-0.2 shrink-0 rounded border px-1.5 text-[9px] font-bold tracking-wider uppercase ${levelBadgeStyle}`}
                 >
                   {log.level}
                 </span>
-                <span className={`shrink-0 font-semibold text-[10px] ${sourceBadgeStyle}`}>
+                <span
+                  className={`shrink-0 text-[10px] font-semibold ${sourceBadgeStyle}`}
+                >
                   [{log.source}]
                 </span>
-                <span className="break-all text-white/90 leading-relaxed font-medium">
+                <span className="leading-relaxed font-medium break-all text-white/90">
                   {log.message}
                 </span>
               </div>
@@ -232,7 +240,7 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
           })}
 
           {filteredLogs.length === 0 && (
-            <div className="p-10 text-center font-sans text-xs text-muted-foreground/80 font-medium">
+            <div className="p-10 text-center font-sans text-xs font-medium text-muted-foreground/80">
               No log outputs correspond to the search queries.
             </div>
           )}

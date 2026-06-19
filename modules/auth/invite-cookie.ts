@@ -18,10 +18,7 @@ const isHttps = (requestUrl?: string) => {
   }
 }
 
-export const buildInviteCookieHeader = (
-  token: string,
-  requestUrl?: string
-) => {
+export const buildInviteCookieHeader = (token: string, requestUrl?: string) => {
   const parts = [
     `${INVITE_COOKIE_NAME}=${encodeURIComponent(token)}`,
     "Path=/",

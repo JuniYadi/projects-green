@@ -10,7 +10,10 @@ export type WhatsAppTemplateSyncJobData = {
 }
 
 export type WhatsAppTemplateSyncQueue = {
-  enqueue: (data: WhatsAppTemplateSyncJobData, opts?: JobsOptions) => Promise<void>
+  enqueue: (
+    data: WhatsAppTemplateSyncJobData,
+    opts?: JobsOptions
+  ) => Promise<void>
   close: () => Promise<void>
 }
 

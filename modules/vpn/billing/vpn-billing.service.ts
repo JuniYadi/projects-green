@@ -33,7 +33,7 @@ export type ChargeMonthlyInput = {
 export class VpnBillingService {
   constructor(
     private prisma: PrismaClient,
-    private transactions: BillingTransactionService,
+    private transactions: BillingTransactionService
   ) {}
 
   /**

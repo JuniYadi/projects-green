@@ -52,11 +52,7 @@ function formatDate(value: string | null): string {
 
 function PlatformBadge({ platform }: { platform: string }) {
   const label =
-    platform === "ios"
-      ? "iOS"
-      : platform === "android"
-        ? "Android"
-        : platform
+    platform === "ios" ? "iOS" : platform === "android" ? "Android" : platform
   return (
     <Badge variant="outline" className="font-mono text-xs">
       {label}
@@ -105,10 +101,7 @@ function RevokeButton({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-          >
+          <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button
@@ -126,20 +119,14 @@ function RevokeButton({
   )
 }
 
-export function VpnDevicesList({
-  devices,
-  onRevoke,
-  revoking,
-}: Props) {
+export function VpnDevicesList({ devices, onRevoke, revoking }: Props) {
   if (devices.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-        <p className="text-sm text-muted-foreground">
-          No devices paired yet.
-        </p>
+        <p className="text-sm text-muted-foreground">No devices paired yet.</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pair a device from the My Subscriptions page or use the
-          mobile app QR scan.
+          Pair a device from the My Subscriptions page or use the mobile app QR
+          scan.
         </p>
       </div>
     )
@@ -162,9 +149,7 @@ export function VpnDevicesList({
         <TableBody>
           {devices.map((device) => (
             <TableRow key={device.id}>
-              <TableCell className="font-medium">
-                {device.deviceName}
-              </TableCell>
+              <TableCell className="font-medium">{device.deviceName}</TableCell>
               <TableCell>
                 <PlatformBadge platform={device.platform} />
                 {device.osVersion && (
@@ -174,11 +159,7 @@ export function VpnDevicesList({
                 )}
               </TableCell>
               <TableCell>
-                <Badge
-                  variant={
-                    STATUS_VARIANT[device.status] ?? "outline"
-                  }
-                >
+                <Badge variant={STATUS_VARIANT[device.status] ?? "outline"}>
                   {device.status}
                 </Badge>
               </TableCell>

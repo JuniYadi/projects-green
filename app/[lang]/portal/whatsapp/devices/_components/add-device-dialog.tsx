@@ -66,9 +66,14 @@ export function AddDeviceDialog() {
     if (orgsLoaded) return
     setLoadingOrgs(true)
     try {
-      const { data: body } = await eden.api.admin.organizations.get({ $query: { limit: 100 } })
+      const { data: body } = await eden.api.admin.organizations.get({
+        $query: { limit: 100 },
+      })
       if (body?.ok) {
-        setOrganizations((body as { data: { organizations: Organization[] } }).data.organizations)
+        setOrganizations(
+          (body as { data: { organizations: Organization[] } }).data
+            .organizations
+        )
         setOrgsLoaded(true)
       }
     } catch {
@@ -94,9 +99,7 @@ export function AddDeviceDialog() {
     }
 
     if (!e164PhoneRegex.test(form.phoneNumber.trim())) {
-      toast.error(
-        "Phone number must be in E.164 format (e.g. +6281234567890)",
-      )
+      toast.error("Phone number must be in E.164 format (e.g. +6281234567890)")
       return
     }
 
@@ -107,15 +110,16 @@ export function AddDeviceDialog() {
         phoneNumber: form.phoneNumber,
         name: form.name || "Admin Device",
         displayName: form.displayName || undefined,
-        whatsappBusinessAccountId:
-          form.whatsappBusinessAccountId || undefined,
+        whatsappBusinessAccountId: form.whatsappBusinessAccountId || undefined,
         whatsappPhoneId: form.whatsappPhoneId || undefined,
         whatsappApplicationId: form.whatsappApplicationId || undefined,
         callbackUrl: form.callbackUrl || undefined,
       } as never)
 
       if (!body?.ok) {
-        throw new Error((body as { message?: string })?.message || "Failed to add device.")
+        throw new Error(
+          (body as { message?: string })?.message || "Failed to add device."
+        )
       }
 
       toast.success("Device added successfully.")
@@ -123,9 +127,7 @@ export function AddDeviceDialog() {
       setForm(emptyForm)
       router.refresh()
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to add device."
-      )
+      toast.error(err instanceof Error ? err.message : "Failed to add device.")
     } finally {
       setIsSubmitting(false)
     }
@@ -139,7 +141,7 @@ export function AddDeviceDialog() {
           Add Device
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add WhatsApp Device</DialogTitle>
           <DialogDescription>
@@ -187,9 +189,7 @@ export function AddDeviceDialog() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-display-name">
-              WhatsApp Display Name
-            </Label>
+            <Label htmlFor="add-display-name">WhatsApp Display Name</Label>
             <Input
               id="add-display-name"
               value={form.displayName}
@@ -203,9 +203,7 @@ export function AddDeviceDialog() {
             </p>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-waba-id">
-              WhatsApp Business Account ID
-            </Label>
+            <Label htmlFor="add-waba-id">WhatsApp Business Account ID</Label>
             <Input
               id="add-waba-id"
               value={form.whatsappBusinessAccountId}
@@ -230,9 +228,7 @@ export function AddDeviceDialog() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-app-id">
-              WhatsApp Application ID
-            </Label>
+            <Label htmlFor="add-app-id">WhatsApp Application ID</Label>
             <Input
               id="add-app-id"
               value={form.whatsappApplicationId}
@@ -267,10 +263,7 @@ export function AddDeviceDialog() {
           >
             Cancel
           </Button>
-          <Button
-            onClick={() => void handleSubmit()}
-            disabled={isSubmitting}
-          >
+          <Button onClick={() => void handleSubmit()} disabled={isSubmitting}>
             {isSubmitting ? "Adding..." : "Add Device"}
           </Button>
         </DialogFooter>

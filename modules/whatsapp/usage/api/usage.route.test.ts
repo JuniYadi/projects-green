@@ -187,9 +187,7 @@ describe("Usage Routes", () => {
       ])
 
       const app = createTestApp()
-      const res = await app.handle(
-        new Request("http://localhost/usage/daily")
-      )
+      const res = await app.handle(new Request("http://localhost/usage/daily"))
 
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -216,15 +214,11 @@ describe("Usage Routes", () => {
 
   describe("GET /usage/monthly", () => {
     it("returns monthly counts", async () => {
-      mockFindMany.mockImplementation(async () => [
-        makeMonthlyCount(),
-      ])
+      mockFindMany.mockImplementation(async () => [makeMonthlyCount()])
 
       const app = createTestApp()
       const res = await app.handle(
-        new Request(
-          "http://localhost/usage/monthly?year=2026&month=6"
-        )
+        new Request("http://localhost/usage/monthly?year=2026&month=6")
       )
 
       expect(res.status).toBe(200)
@@ -267,9 +261,7 @@ describe("Usage Routes", () => {
 
     it("returns 422 when period is missing", async () => {
       const app = createTestApp()
-      const res = await app.handle(
-        new Request("http://localhost/usage/cost")
-      )
+      const res = await app.handle(new Request("http://localhost/usage/cost"))
 
       expect(res.status).toBe(422)
       const body = await res.json()

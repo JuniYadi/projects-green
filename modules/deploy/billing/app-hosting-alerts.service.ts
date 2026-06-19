@@ -7,7 +7,7 @@ const LOW_BALANCE_THRESHOLD_HOURS = 24
  */
 export function calculateHoursRemaining(
   balance: Prisma.Decimal,
-  hourlyCost: Prisma.Decimal,
+  hourlyCost: Prisma.Decimal
 ): number {
   if (hourlyCost.lte(0)) return Infinity
   return balance.div(hourlyCost).floor().toNumber()
@@ -18,7 +18,7 @@ export function calculateHoursRemaining(
  */
 export function isLowBalance(
   balance: Prisma.Decimal,
-  hourlyCost: Prisma.Decimal,
+  hourlyCost: Prisma.Decimal
 ): boolean {
   const hoursRemaining = calculateHoursRemaining(balance, hourlyCost)
   return hoursRemaining <= LOW_BALANCE_THRESHOLD_HOURS
@@ -29,7 +29,7 @@ export function isLowBalance(
  */
 export function getLowBalanceMessage(
   balance: Prisma.Decimal,
-  hourlyCost: Prisma.Decimal,
+  hourlyCost: Prisma.Decimal
 ): string | null {
   if (!isLowBalance(balance, hourlyCost)) return null
 

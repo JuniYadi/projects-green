@@ -80,48 +80,47 @@ export const createBillingAccountRoutes = (
     ...deps,
   }
 
-  return new Elysia()
-    .get("/account", async ({ set }) => {
-      const auth = await authenticate()
+  return new Elysia().get("/account", async ({ set }) => {
+    const auth = await authenticate()
 
-      if (!auth.user) {
-        return toUnauthorized(set)
+    if (!auth.user) {
+      return toUnauthorized(set)
+    }
+
+    if (!auth.organizationId) {
+      return toForbidden(set, "No active organization found for billing.")
+    }
+
+    try {
+      // JIT upsert: find or create BillingAccount for org
+      const account = await ensureBillingAccountForOrg({
+        organizationId: auth.organizationId,
+        getOrganizationAction,
+      })
+
+      const balance = account.balance
+      // Single source of truth: `currency` drives both transactions and
+      // display. `preferredCurrency` is deprecated (see CURRENCY-FIX-STRATEGY).
+      const currency = account.currency
+      const isPositive = balance.gt(0)
+      const isAboveWarn = balance.gte(MINIMUM_BALANCE_WARN_IDR)
+      const accountAge = daysSince(account.createdAt)
+
+      return {
+        ok: true as const,
+        organizationId: account.organizationId,
+        currency,
+        balanceIdr: balance.toFixed(2),
+        formattedBalance: formatBalance(balance, currency),
+        isAboveWarn,
+        isPositive,
+        accountAge,
       }
-
-      if (!auth.organizationId) {
-        return toForbidden(set, "No active organization found for billing.")
-      }
-
-      try {
-        // JIT upsert: find or create BillingAccount for org
-        const account = await ensureBillingAccountForOrg({
-          organizationId: auth.organizationId,
-          getOrganizationAction,
-        })
-
-        const balance = account.balance
-        // Single source of truth: `currency` drives both transactions and
-        // display. `preferredCurrency` is deprecated (see CURRENCY-FIX-STRATEGY).
-        const currency = account.currency
-        const isPositive = balance.gt(0)
-        const isAboveWarn = balance.gte(MINIMUM_BALANCE_WARN_IDR)
-        const accountAge = daysSince(account.createdAt)
-
-        return {
-          ok: true as const,
-          organizationId: account.organizationId,
-          currency,
-          balanceIdr: balance.toFixed(2),
-          formattedBalance: formatBalance(balance, currency),
-          isAboveWarn,
-          isPositive,
-          accountAge,
-        }
-      } catch (error) {
-        console.error("[BillingAccount] Error:", error)
-        return toServerError(set, "Unable to load billing account right now.")
-      }
-    })
+    } catch (error) {
+      console.error("[BillingAccount] Error:", error)
+      return toServerError(set, "Unable to load billing account right now.")
+    }
+  })
 }
 
 export const billingAccountRoutes = createBillingAccountRoutes()

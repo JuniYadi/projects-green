@@ -28,13 +28,9 @@ export type MobileSessionClaims = {
   typ: "mobile-session"
 }
 
-export type VerifySessionJwt = (
-  token: string
-) => MobileSessionClaims
+export type VerifySessionJwt = (token: string) => MobileSessionClaims
 
-export type GetDeviceStatus = (
-  deviceId: string
-) => Promise<{
+export type GetDeviceStatus = (deviceId: string) => Promise<{
   status: string
   subscriptionStatus: string
 } | null>
@@ -174,10 +170,8 @@ export async function requireMobileSession(
   set: { status?: number | string },
   deps: Deps = {}
 ): Promise<MobileAuthResult> {
-  const verifySessionJwt =
-    deps.verifySessionJwt ?? defaultVerifySessionJwt
-  const getDeviceStatus =
-    deps.getDeviceStatus ?? defaultGetDeviceStatus
+  const verifySessionJwt = deps.verifySessionJwt ?? defaultVerifySessionJwt
+  const getDeviceStatus = deps.getDeviceStatus ?? defaultGetDeviceStatus
 
   const token = extractBearerToken(request.headers)
 

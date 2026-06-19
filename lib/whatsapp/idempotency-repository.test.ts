@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test"
 
 const redisStore = new Map<string, string>()
 const mockRedisGet = mock(async (key: string) => redisStore.get(key) ?? null)

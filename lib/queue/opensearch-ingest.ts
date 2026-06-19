@@ -25,9 +25,7 @@ export async function enqueueLogEntry(entry: LogEntry): Promise<void> {
   })
 }
 
-export async function enqueueLogBatch(
-  entries: LogEntry[]
-): Promise<void> {
+export async function enqueueLogBatch(entries: LogEntry[]): Promise<void> {
   const jobs = entries.map((entry) => ({
     name: "ingest",
     data: entry,

@@ -70,15 +70,23 @@ export function VerifyEmailForm({
           setIsSubmitting(true)
 
           try {
-            const { data } = await eden.api.auth["email-verification"].complete.post({
+            const { data } = await eden.api.auth[
+              "email-verification"
+            ].complete.post({
               code,
               pendingAuthenticationToken,
             })
 
             if (!data?.ok) {
-              setServerFieldErrors((data as Record<string, unknown>)?.fieldErrors as Record<string, string[]> ?? {})
+              setServerFieldErrors(
+                ((data as Record<string, unknown>)?.fieldErrors as Record<
+                  string,
+                  string[]
+                >) ?? {}
+              )
               setSubmitError(
-                (data as Record<string, unknown>)?.message as string ?? "Invalid or expired verification code."
+                ((data as Record<string, unknown>)?.message as string) ??
+                  "Invalid or expired verification code."
               )
               return
             }

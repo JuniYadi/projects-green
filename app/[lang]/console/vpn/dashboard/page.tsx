@@ -6,10 +6,7 @@ import { useParams } from "next/navigation"
 import { startTransition } from "react"
 
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  localizePathname,
-  resolveLocaleOrDefault,
-} from "@/lib/i18n/pathname"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { listVpnSubscriptions, type VpnSubscription } from "@/lib/vpn-client"
 
 import { VpnPackages } from "../_components/vpn-packages"
@@ -76,10 +73,7 @@ export default function ConsoleVpnDashboardPage() {
       {hasSubscriptions && (
         <section className="space-y-4">
           <h2 className="text-lg font-medium">My VPN Subscriptions</h2>
-          <VpnMyServices
-            subscriptions={state.subscriptions}
-            onChanged={load}
-          />
+          <VpnMyServices subscriptions={state.subscriptions} onChanged={load} />
         </section>
       )}
 

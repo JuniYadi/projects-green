@@ -43,9 +43,7 @@ const mockRequireTenantActor = mock(
   }
 )
 const mockListTenantBootstrapMembershipsForUser = mock(
-  async (): Promise<TenantBootstrapMembership[]> => [
-    makeBootstrapMembership(),
-  ]
+  async (): Promise<TenantBootstrapMembership[]> => [makeBootstrapMembership()]
 )
 const mockCreateTenantOrganization = mock(async () => ({
   id: "org_new",
@@ -372,18 +370,16 @@ describe("tenants-organizations routes", () => {
   })
 
   it("returns 401 status when requireTenantActor returns error", async () => {
-    mockRequireTenantActor.mockImplementation(
-      async (...args: unknown[]) => {
-        const set = args[0] as { status?: number }
-        set.status = 401
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          policyCode: "NO_SESSION",
-          message: "No active session.",
-        } as TenantApiError
-      }
-    )
+    mockRequireTenantActor.mockImplementation(async (...args: unknown[]) => {
+      const set = args[0] as { status?: number }
+      set.status = 401
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        policyCode: "NO_SESSION",
+        message: "No active session.",
+      } as TenantApiError
+    })
 
     const app = await getApp()
 

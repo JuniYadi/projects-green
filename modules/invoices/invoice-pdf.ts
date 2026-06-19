@@ -1,8 +1,14 @@
-import { formatInvoiceCurrency, formatInvoiceDate } from "@/modules/invoices/invoices.helpers"
+import {
+  formatInvoiceCurrency,
+  formatInvoiceDate,
+} from "@/modules/invoices/invoices.helpers"
 import type { InvoiceDetail } from "@/modules/invoices/invoices.types"
 
 const escapePdfText = (value: string) => {
-  return value.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)")
+  return value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("(", "\\(")
+    .replaceAll(")", "\\)")
 }
 
 const toPdfLines = (
@@ -51,12 +57,18 @@ const toPdfLines = (
   }
 
   lines.push("")
-  lines.push(`Subtotal: ${formatInvoiceCurrency(invoice.subtotalAmount, invoice.currency)}`)
-  lines.push(`Tax: ${formatInvoiceCurrency(invoice.taxAmount, invoice.currency)}`)
+  lines.push(
+    `Subtotal: ${formatInvoiceCurrency(invoice.subtotalAmount, invoice.currency)}`
+  )
+  lines.push(
+    `Tax: ${formatInvoiceCurrency(invoice.taxAmount, invoice.currency)}`
+  )
   lines.push(
     `Discount: ${formatInvoiceCurrency(invoice.discountAmount, invoice.currency)}`
   )
-  lines.push(`Total: ${formatInvoiceCurrency(invoice.totalAmount, invoice.currency)}`)
+  lines.push(
+    `Total: ${formatInvoiceCurrency(invoice.totalAmount, invoice.currency)}`
+  )
 
   return lines
 }

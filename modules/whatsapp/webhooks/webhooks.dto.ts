@@ -35,7 +35,7 @@ export type WhatsappWebhookEventDetailDTO = Pick<
 >
 
 export function toWebhookEventDTO(
-  event: Prisma.WhatsappWebhookEventGetPayload<Prisma.WhatsappWebhookEventDefaultArgs>,
+  event: Prisma.WhatsappWebhookEventGetPayload<Prisma.WhatsappWebhookEventDefaultArgs>
 ): WhatsappWebhookEventDTO {
   return {
     id: event.id,
@@ -51,7 +51,7 @@ export function toWebhookEventDTO(
 }
 
 export function toWebhookEventDetailDTO(
-  event: Prisma.WhatsappWebhookEventGetPayload<Prisma.WhatsappWebhookEventDefaultArgs>,
+  event: Prisma.WhatsappWebhookEventGetPayload<Prisma.WhatsappWebhookEventDefaultArgs>
 ): WhatsappWebhookEventDetailDTO {
   return {
     id: event.id,

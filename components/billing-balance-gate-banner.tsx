@@ -1,7 +1,12 @@
 import Link from "next/link"
 import { FiAlertTriangle } from "react-icons/fi"
 
-import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 type BillingBalanceGateBannerProps = {

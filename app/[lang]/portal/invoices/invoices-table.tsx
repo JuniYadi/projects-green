@@ -177,7 +177,12 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
       <div className="grid gap-3 rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm">
         <p className="text-destructive">{state.message}</p>
         <div>
-          <Button type="button" size="sm" variant="outline" onClick={() => void loadInvoices()}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void loadInvoices()}
+          >
             Retry
           </Button>
         </div>

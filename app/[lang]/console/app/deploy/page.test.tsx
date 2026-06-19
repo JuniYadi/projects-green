@@ -7,10 +7,10 @@ mock.module("@/modules/deploy/ui/deploy-wizard", () => {
   }
 })
 
-
 describe("DeployPage", () => {
   it("renders deploy wizard", async () => {
-    const deployPageModule = await import("@/app/[lang]/console/app/deploy/page")
+    const deployPageModule =
+      await import("@/app/[lang]/console/app/deploy/page")
     const view = render(<deployPageModule.default />)
 
     expect(view.getByText("Deploy Wizard Mock")).toBeTruthy()

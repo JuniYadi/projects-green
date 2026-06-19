@@ -28,7 +28,8 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
-const { createBillingSubscriptionsRoutes } = await import("./subscriptions.route")
+const { createBillingSubscriptionsRoutes } =
+  await import("./subscriptions.route")
 
 describe("billing subscriptions default deps", () => {
   beforeEach(() => {
@@ -40,7 +41,7 @@ describe("billing subscriptions default deps", () => {
     const app = new Elysia().use(createBillingSubscriptionsRoutes())
 
     const response = await app.handle(
-      new Request("http://localhost/subscriptions"),
+      new Request("http://localhost/subscriptions")
     )
 
     expect(response.status).toBe(200)
@@ -54,7 +55,7 @@ describe("billing subscriptions default deps", () => {
     const app = new Elysia().use(createBillingSubscriptionsRoutes())
 
     const response = await app.handle(
-      new Request("http://localhost/subscriptions"),
+      new Request("http://localhost/subscriptions")
     )
 
     expect(response.status).toBe(200)

@@ -13,12 +13,20 @@ export const createAdminConfirmationRoutes = () =>
     .get("/", async ({ query }) => {
       const auth = await withAuth()
       if (!auth.user) {
-        return { ok: false, error: "UNAUTHORIZED", message: "Authentication required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Authentication required",
+        }
       }
 
       const platformRole = await getPlatformRoleForUser(auth.user)
       if (platformRole !== "super_admin") {
-        return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Admin access required",
+        }
       }
 
       const limit = parseInt(query?.limit || "20")
@@ -31,17 +39,29 @@ export const createAdminConfirmationRoutes = () =>
     .get("/:id", async ({ params }) => {
       const auth = await withAuth()
       if (!auth.user) {
-        return { ok: false, error: "UNAUTHORIZED", message: "Authentication required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Authentication required",
+        }
       }
 
       const platformRole = await getPlatformRoleForUser(auth.user)
       if (platformRole !== "super_admin") {
-        return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Admin access required",
+        }
       }
 
       const confirmation = await confirmationService.findById(params.id)
       if (!confirmation) {
-        return { ok: false, error: "NOT_FOUND", message: "Confirmation not found" }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Confirmation not found",
+        }
       }
 
       return { ok: true, data: toPaymentConfirmationDTO(confirmation) }
@@ -50,12 +70,20 @@ export const createAdminConfirmationRoutes = () =>
     .post("/:id/approve", async ({ params }) => {
       const auth = await withAuth()
       if (!auth.user) {
-        return { ok: false, error: "UNAUTHORIZED", message: "Authentication required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Authentication required",
+        }
       }
 
       const platformRole = await getPlatformRoleForUser(auth.user)
       if (platformRole !== "super_admin") {
-        return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Admin access required",
+        }
       }
 
       await confirmationService.approve(params.id, auth.user.id)
@@ -65,19 +93,35 @@ export const createAdminConfirmationRoutes = () =>
     .post("/:id/reject", async ({ params, body }) => {
       const auth = await withAuth()
       if (!auth.user) {
-        return { ok: false, error: "UNAUTHORIZED", message: "Authentication required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Authentication required",
+        }
       }
 
       const platformRole = await getPlatformRoleForUser(auth.user)
       if (platformRole !== "super_admin") {
-        return { ok: false, error: "FORBIDDEN", message: "Admin access required" }
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Admin access required",
+        }
       }
 
       const parseResult = ReviewConfirmationSchema.safeParse(body)
       if (!parseResult.success || parseResult.data.action !== "reject") {
-        return { ok: false, error: "VALIDATION_ERROR", message: "Invalid action" }
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: "Invalid action",
+        }
       }
 
-      await confirmationService.reject(params.id, auth.user.id, parseResult.data.reason || "")
+      await confirmationService.reject(
+        params.id,
+        auth.user.id,
+        parseResult.data.reason || ""
+      )
       return { ok: true, message: "Payment rejected" }
     })

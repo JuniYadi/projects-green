@@ -8,12 +8,17 @@ import { ConfirmPaymentSchema } from "../types/payment.types"
 const confirmationService = new ConfirmationService()
 
 export const createConfirmRoutes = () =>
-  new Elysia({ prefix: "/topup/confirm" })
-    .post("/:id", async ({ params, body, set }) => {
+  new Elysia({ prefix: "/topup/confirm" }).post(
+    "/:id",
+    async ({ params, body, set }) => {
       const auth = await withAuth()
       if (!auth.organizationId) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Organization required" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required",
+        }
       }
 
       const parseResult = ConfirmPaymentSchema.safeParse(body)
@@ -27,7 +32,16 @@ export const createConfirmRoutes = () =>
         }
       }
 
-      const { bankAccountId, amount, paymentDateTime, senderBankName, senderName, senderAccount, screenshotUrl, notes } = parseResult.data
+      const {
+        bankAccountId,
+        amount,
+        paymentDateTime,
+        senderBankName,
+        senderName,
+        senderAccount,
+        screenshotUrl,
+        notes,
+      } = parseResult.data
 
       // Look up invoice to determine correct organizationId
       const invoice = await prisma.billingInvoice.findFirst({
@@ -36,7 +50,11 @@ export const createConfirmRoutes = () =>
 
       if (!invoice) {
         set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Invoice not found or not open" }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Invoice not found or not open",
+        }
       }
 
       try {
@@ -68,7 +86,11 @@ export const createConfirmRoutes = () =>
         return {
           ok: false,
           error: "CREATE_FAILED",
-          message: error instanceof Error ? error.message : "Failed to create confirmation",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to create confirmation",
         }
       }
-    })
+    }
+  )

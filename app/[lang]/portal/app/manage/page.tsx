@@ -33,7 +33,9 @@ export default async function PortalManagePage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Runtime management lives in console</h1>
+        <h1 className="text-2xl font-semibold">
+          Runtime management lives in console
+        </h1>
         <p className="text-sm text-muted-foreground">
           Operating deployed apps is a customer-facing workflow and is not part
           of the portal admin scope for the App Hosting MVP.

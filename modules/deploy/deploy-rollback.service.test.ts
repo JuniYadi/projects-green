@@ -36,16 +36,17 @@ const mockPrisma = {
   applicationDeployEvent: {
     create: mock(() => Promise.resolve({ id: "evt-1" })),
   },
-  $transaction: mock((fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
+  $transaction: mock((fn: (tx: typeof mockPrisma) => Promise<unknown>) =>
+    fn(mockPrisma)
+  ),
 }
 
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const { rollbackDeployment, getRollbackOptions } = await import(
-  "./deploy-rollback.service"
-)
+const { rollbackDeployment, getRollbackOptions } =
+  await import("./deploy-rollback.service")
 
 describe("deploy-rollback.service", () => {
   beforeEach(() => {

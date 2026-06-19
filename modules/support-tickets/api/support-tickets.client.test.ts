@@ -52,14 +52,15 @@ const jsonResponse = (payload: unknown, status = 200) =>
     },
   })
 
-const fetchMock = mock<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
-  async () => jsonResponse({})
-)
+const fetchMock = mock<
+  (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+>(async () => jsonResponse({}))
 
 describe("support tickets client", () => {
   beforeEach(() => {
     fetchMock.mockReset()
-    ;(globalThis as { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch
+    ;(globalThis as { fetch?: typeof fetch }).fetch =
+      fetchMock as unknown as typeof fetch
   })
 
   afterEach(() => {
@@ -80,7 +81,9 @@ describe("support tickets client", () => {
   })
 
   it("throws fallback error when non-json response fails", async () => {
-    fetchMock.mockResolvedValueOnce(new Response("upstream error", { status: 500 }))
+    fetchMock.mockResolvedValueOnce(
+      new Response("upstream error", { status: 500 })
+    )
     const client = createSupportTicketsClient()
 
     await expect(client.listTickets()).rejects.toThrow(
@@ -92,7 +95,10 @@ describe("support tickets client", () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ ok: true, ticket: ticketFixture }))
       .mockResolvedValueOnce(
-        jsonResponse({ ok: true, thread: { ticket: ticketFixture, replies: [] } })
+        jsonResponse({
+          ok: true,
+          thread: { ticket: ticketFixture, replies: [] },
+        })
       )
       .mockResolvedValueOnce(jsonResponse({ ok: true, reply: replyFixture }))
     const client = createSupportTicketsClient()
@@ -152,9 +158,7 @@ describe("support tickets client", () => {
           },
         })
       )
-      .mockResolvedValueOnce(
-        jsonResponse({ ok: true })
-      )
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
       .mockResolvedValueOnce(
         jsonResponse({ ok: true, attachment: attachmentFixture })
       )
@@ -187,7 +191,9 @@ describe("support tickets client", () => {
   })
 
   it("throws when upload object request fails", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: false, error: "UPLOAD_FAILED" }, 502))
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ok: false, error: "UPLOAD_FAILED" }, 502)
+    )
     const client = createSupportTicketsClient()
 
     await expect(
@@ -200,7 +206,10 @@ describe("support tickets client", () => {
 
   it("lists admin tickets", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse({ ok: true, tickets: [ticketFixture, { ...ticketFixture, id: "ticket_2" }] })
+      jsonResponse({
+        ok: true,
+        tickets: [ticketFixture, { ...ticketFixture, id: "ticket_2" }],
+      })
     )
     const client = createSupportTicketsClient()
 
@@ -209,11 +218,16 @@ describe("support tickets client", () => {
     expect(tickets).toHaveLength(2)
     expect(tickets[0]?.id).toBe("ticket_1")
     expect(tickets[1]?.id).toBe("ticket_2")
-    expect(fetchMock).toHaveBeenCalledWith("/api/support-tickets/admin", undefined)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/support-tickets/admin",
+      undefined
+    )
   })
 
   it("throws error on admin tickets failure", async () => {
-    fetchMock.mockResolvedValueOnce(new Response("upstream error", { status: 500 }))
+    fetchMock.mockResolvedValueOnce(
+      new Response("upstream error", { status: 500 })
+    )
     const client = createSupportTicketsClient()
 
     await expect(client.listAdminTickets()).rejects.toThrow(
@@ -242,9 +256,7 @@ describe("support tickets client", () => {
   })
 
   it("throws error on admin ticket creation failure", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ ok: false }, 403)
-    )
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: false }, 403))
     const client = createSupportTicketsClient()
 
     await expect(
@@ -277,9 +289,7 @@ describe("support tickets client", () => {
   })
 
   it("deletes admin ticket with DELETE", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ ok: true })
-    )
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
     const client = createSupportTicketsClient()
 
     const result = await client.deleteAdminTicket("ticket_1")
@@ -288,7 +298,9 @@ describe("support tickets client", () => {
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
       method: "DELETE",
     })
-    expect(fetchMock.mock.calls[0]?.[0]).toContain("/api/support-tickets/admin/ticket_1")
+    expect(fetchMock.mock.calls[0]?.[0]).toContain(
+      "/api/support-tickets/admin/ticket_1"
+    )
   })
 
   it("lists admin organizations", async () => {
@@ -314,7 +326,9 @@ describe("support tickets client", () => {
   })
 
   it("throws error on admin organizations failure", async () => {
-    fetchMock.mockResolvedValueOnce(new Response("upstream error", { status: 500 }))
+    fetchMock.mockResolvedValueOnce(
+      new Response("upstream error", { status: 500 })
+    )
     const client = createSupportTicketsClient()
 
     await expect(client.listAdminOrganizations()).rejects.toThrow(

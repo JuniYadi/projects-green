@@ -22,8 +22,14 @@ type RouteSet = {
 
 type AdminInvoiceRouteDeps = {
   authenticate: () => Promise<BillingAuthContext>
-  getPlatformRole: (input: { id?: string | null; email?: string | null }) => Promise<PlatformAccessRole>
-  isAdmin: (actor: { platformRole: PlatformAccessRole; tenantRole: string | null | undefined }) => boolean
+  getPlatformRole: (input: {
+    id?: string | null
+    email?: string | null
+  }) => Promise<PlatformAccessRole>
+  isAdmin: (actor: {
+    platformRole: PlatformAccessRole
+    tenantRole: string | null | undefined
+  }) => boolean
 }
 
 const defaultDeps: AdminInvoiceRouteDeps = {
@@ -132,97 +138,99 @@ export const createAdminInvoiceRoutes = (
     ...deps,
   }
 
-  return new Elysia()
-    // PATCH /admin/invoices/:id — Update invoice status (issue, cancel)
-    .patch("/admin/invoices/:id", async ({ params, body, set }) => {
-      const auth = await authenticate()
+  return (
+    new Elysia()
+      // PATCH /admin/invoices/:id — Update invoice status (issue, cancel)
+      .patch("/admin/invoices/:id", async ({ params, body, set }) => {
+        const auth = await authenticate()
 
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      // Validate params
-      const paramsParsed = invoiceParamsSchema.safeParse(params)
-      if (!paramsParsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Invalid invoice ID.",
-        }
-      }
-
-      // Validate body
-      const bodyParsed = patchInvoiceSchema.safeParse(body)
-      if (!bodyParsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(bodyParsed.error.issues),
-        }
-      }
-
-      const { id } = paramsParsed.data
-      const { status: targetStatus } = bodyParsed.data
-
-      // Check admin access
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(
-          set,
-          "Only administrators can update invoice status."
-        )
-      }
-
-      try {
-        const invoice = await prisma.billingInvoice.findUnique({
-          where: { id },
-        })
-
-        if (!invoice) {
-          return toNotFound(set, "Invoice not found.")
+        if (!auth.user) {
+          return toUnauthorized(set)
         }
 
-        // Validate status transitions
-        const validTransitions: Record<string, string[]> = {
-          DRAFT: ["ISSUED", "CANCELLED"],
-          ISSUED: ["CANCELLED"],
-        }
-
-        const allowed = validTransitions[invoice.status] ?? []
-        if (!allowed.includes(targetStatus)) {
+        // Validate params
+        const paramsParsed = invoiceParamsSchema.safeParse(params)
+        if (!paramsParsed.success) {
           set.status = 422
           return {
             ok: false as const,
-            error: "INVALID_STATUS" as const,
-            message: `Cannot transition from ${invoice.status} to ${targetStatus}.`,
+            error: "VALIDATION_ERROR" as const,
+            message: "Invalid invoice ID.",
           }
         }
 
-        const updateData: Prisma.BillingInvoiceUpdateInput = {
-          status: targetStatus as BillingInvoiceStatus,
+        // Validate body
+        const bodyParsed = patchInvoiceSchema.safeParse(body)
+        if (!bodyParsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(bodyParsed.error.issues),
+          }
         }
 
-        if (targetStatus === "ISSUED") {
-          updateData.issuedAt = new Date()
+        const { id } = paramsParsed.data
+        const { status: targetStatus } = bodyParsed.data
+
+        // Check admin access
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(
+            set,
+            "Only administrators can update invoice status."
+          )
         }
 
-        const updatedInvoice = await prisma.billingInvoice.update({
-          where: { id },
-          data: updateData,
-        })
+        try {
+          const invoice = await prisma.billingInvoice.findUnique({
+            where: { id },
+          })
 
-        return {
-          ok: true as const,
-          invoice: formatInvoiceResponse(updatedInvoice),
+          if (!invoice) {
+            return toNotFound(set, "Invoice not found.")
+          }
+
+          // Validate status transitions
+          const validTransitions: Record<string, string[]> = {
+            DRAFT: ["ISSUED", "CANCELLED"],
+            ISSUED: ["CANCELLED"],
+          }
+
+          const allowed = validTransitions[invoice.status] ?? []
+          if (!allowed.includes(targetStatus)) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "INVALID_STATUS" as const,
+              message: `Cannot transition from ${invoice.status} to ${targetStatus}.`,
+            }
+          }
+
+          const updateData: Prisma.BillingInvoiceUpdateInput = {
+            status: targetStatus as BillingInvoiceStatus,
+          }
+
+          if (targetStatus === "ISSUED") {
+            updateData.issuedAt = new Date()
+          }
+
+          const updatedInvoice = await prisma.billingInvoice.update({
+            where: { id },
+            data: updateData,
+          })
+
+          return {
+            ok: true as const,
+            invoice: formatInvoiceResponse(updatedInvoice),
+          }
+        } catch (error) {
+          console.error("[AdminInvoiceUpdate] Error:", error)
+          return toServerError(set, "Unable to update invoice.")
         }
-      } catch (error) {
-        console.error("[AdminInvoiceUpdate] Error:", error)
-        return toServerError(set, "Unable to update invoice.")
-      }
-    })
+      })
+  )
 }
 
 export const adminInvoiceRoutes = createAdminInvoiceRoutes()

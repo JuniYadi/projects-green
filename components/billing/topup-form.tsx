@@ -11,15 +11,27 @@ import { CheckCircleIcon } from "@phosphor-icons/react"
 type TopupFormProps = {
   className?: string
   currency?: "IDR" | "USD"
-  onSuccess?: (result: { adjustmentId: string; newBalanceIdr: string; amountIdr: string }) => void
+  onSuccess?: (result: {
+    adjustmentId: string
+    newBalanceIdr: string
+    amountIdr: string
+  }) => void
 }
 
 type FormState = "idle" | "submitting" | "success" | "error"
 
-export function TopupForm({ className, currency = "IDR", onSuccess }: TopupFormProps) {
+export function TopupForm({
+  className,
+  currency = "IDR",
+  onSuccess,
+}: TopupFormProps) {
   const [formState, setFormState] = useState<FormState>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [successData, setSuccessData] = useState<{ adjustmentId: string; newBalanceIdr: string; amountIdr: string } | null>(null)
+  const [successData, setSuccessData] = useState<{
+    adjustmentId: string
+    newBalanceIdr: string
+    amountIdr: string
+  } | null>(null)
 
   const [amount, setAmount] = useState<number>(50000)
   const [referenceId, setReferenceId] = useState<string>("")
@@ -53,7 +65,9 @@ export function TopupForm({ className, currency = "IDR", onSuccess }: TopupFormP
       setFormState("success")
       onSuccess?.(result)
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Topup failed. Please try again.")
+      setErrorMessage(
+        err instanceof Error ? err.message : "Topup failed. Please try again."
+      )
       setFormState("error")
     }
   }
@@ -76,7 +90,9 @@ export function TopupForm({ className, currency = "IDR", onSuccess }: TopupFormP
 
   if (formState === "success" && successData) {
     return (
-      <div className={`rounded-lg border border-green-500/20 bg-green-500/10 p-6 ${className}`}>
+      <div
+        className={`rounded-lg border border-green-500/20 bg-green-500/10 p-6 ${className}`}
+      >
         <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
           <CheckCircleIcon className="h-8 w-8" />
           <div>
@@ -89,11 +105,15 @@ export function TopupForm({ className, currency = "IDR", onSuccess }: TopupFormP
         <div className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Amount Added</span>
-            <span className="font-medium">{formatCurrency(successData.amountIdr)}</span>
+            <span className="font-medium">
+              {formatCurrency(successData.amountIdr)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">New Balance</span>
-            <span className="font-medium">{formatCurrency(successData.newBalanceIdr)}</span>
+            <span className="font-medium">
+              {formatCurrency(successData.newBalanceIdr)}
+            </span>
           </div>
         </div>
         <Button variant="outline" className="mt-4 w-full" onClick={handleReset}>
@@ -114,15 +134,21 @@ export function TopupForm({ className, currency = "IDR", onSuccess }: TopupFormP
             max={maxLimit}
             step={currency === "USD" ? 1 : 1000}
             value={amount}
-            onChange={(e) => setAmount(Number.parseInt(e.target.value, 10) || 0)}
+            onChange={(e) =>
+              setAmount(Number.parseInt(e.target.value, 10) || 0)
+            }
             placeholder={`Enter amount (min ${formatCurrency(String(minLimit))})`}
             disabled={formState === "submitting"}
           />
           {amount > 0 && amount < minLimit && (
-            <p className="mt-1 text-sm text-destructive">Minimum topup is {formatCurrency(String(minLimit))}</p>
+            <p className="mt-1 text-sm text-destructive">
+              Minimum topup is {formatCurrency(String(minLimit))}
+            </p>
           )}
           {amount > maxLimit && (
-            <p className="mt-1 text-sm text-destructive">Maximum topup is {formatCurrency(String(maxLimit))}</p>
+            <p className="mt-1 text-sm text-destructive">
+              Maximum topup is {formatCurrency(String(maxLimit))}
+            </p>
           )}
         </Field>
 

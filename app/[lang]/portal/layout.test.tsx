@@ -46,10 +46,12 @@ const mockRedirect = mock((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
 
-const mockGetPlatformAccessForUser = mock(async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
-  exists: true,
-  role: "super_admin",
-}))
+const mockGetPlatformAccessForUser = mock(
+  async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
+    exists: true,
+    role: "super_admin",
+  })
+)
 
 mock.module("@workos-inc/authkit-nextjs", () => {
   return createAuthMock({
@@ -58,7 +60,6 @@ mock.module("@workos-inc/authkit-nextjs", () => {
     getOrganization: mockGetOrganization,
   })
 })
-
 
 // Next/navigation mock handled by setup.ts centralized mock
 
@@ -158,7 +159,9 @@ describe("PortalLayout", () => {
     ;(usePathname as unknown as ReturnType<typeof mock>).mockReturnValue(
       "/en/portal/documentations"
     )
-    ;(redirect as unknown as ReturnType<typeof mock>).mockImplementation(mockRedirect)
+    ;(redirect as unknown as ReturnType<typeof mock>).mockImplementation(
+      mockRedirect
+    )
   })
 
   it("renders shared portal shell around children", async () => {
@@ -175,7 +178,9 @@ describe("PortalLayout", () => {
     expect(mockGetOrganization).toHaveBeenCalledWith("org_123")
 
     expect(view.getByTestId("sidebar-provider")).toBeInTheDocument()
-    expect(view.getByText("Sidebar:portal:Jane Doe:Acme Inc")).toBeInTheDocument()
+    expect(
+      view.getByText("Sidebar:portal:Jane Doe:Acme Inc")
+    ).toBeInTheDocument()
     expect(view.getByText("AI Help")).toBeInTheDocument()
     expect(view.getByText("Portal")).toBeInTheDocument()
     expect(view.getByText("Documentation")).toBeInTheDocument()

@@ -7,7 +7,13 @@ export type CheckTransport = "tcp" | "udp"
 /** Outcome of a single port probe. */
 export type PortCheckOutcome =
   | { ok: true; latencyMs: number; message: string; detail?: string }
-  | { ok: false; kind: "fail" | "error"; message: string; detail?: string; latencyMs: number | null }
+  | {
+      ok: false
+      kind: "fail" | "error"
+      message: string
+      detail?: string
+      latencyMs: number | null
+    }
 
 /** Low-level TCP dialer — resolves once the socket connects or errors. */
 export type TcpDialer = (
@@ -52,7 +58,10 @@ export function classifyTcpError(err: NodeJS.ErrnoException): {
   if (code === "ETIMEDOUT") {
     return { kind: "error", message: "Connection timed out" }
   }
-  return { kind: "error", message: err.message || "Unexpected connection error" }
+  return {
+    kind: "error",
+    message: err.message || "Unexpected connection error",
+  }
 }
 
 /** Map a UDP-triggered ICMP error code into a human-readable reason. */

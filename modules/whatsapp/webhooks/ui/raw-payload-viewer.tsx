@@ -30,9 +30,7 @@ export function RawPayloadViewer({
 
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(
-        JSON.stringify(payload, null, 2),
-      )
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -73,7 +71,7 @@ export function RawPayloadViewer({
           className={cn(
             "p-3 text-xs leading-relaxed",
             "text-foreground/80",
-            "min-w-0",
+            "min-w-0"
           )}
         >
           <code>{JSON.stringify(payload, null, 2)}</code>

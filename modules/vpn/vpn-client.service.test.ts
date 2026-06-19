@@ -46,7 +46,7 @@ describe("VpnClientService", () => {
     expect(client.regionCode).toBe("INDONESIA")
     expect(client.encryptedConfig).not.toBe("client\nsecret-cert\n")
     expect(decryptVpnConfig(client.encryptedConfig!)).toBe(
-      "client\nsecret-cert\n",
+      "client\nsecret-cert\n"
     )
     expect(mockPrisma.vpnClient.create).toHaveBeenCalledWith({
       data: expect.objectContaining({

@@ -41,7 +41,7 @@ const MIN_BUFFER_HOURS = 24
 export class AppHostingBillingService {
   constructor(
     private prisma: PrismaClient,
-    private transactions: BillingTransactionService,
+    private transactions: BillingTransactionService
   ) {}
 
   /**

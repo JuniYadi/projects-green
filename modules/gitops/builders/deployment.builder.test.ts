@@ -16,22 +16,33 @@ describe("DeploymentBuilder", () => {
       .addReloaderAnnotation()
       .build()
 
-    expect(deployment.spec.template.spec.containers[0].env).toContainEqual(
-      { name: "NODE_ENV", value: "production" }
-    )
+    expect(deployment.spec.template.spec.containers[0].env).toContainEqual({
+      name: "NODE_ENV",
+      value: "production",
+    })
     expect(deployment.spec.template.spec.containers[0].envFrom).toContainEqual({
       configMapRef: { name: "app-config", items: [{ key: "DATABASE_URL" }] },
     })
     expect(deployment.spec.template.spec.containers[0].envFrom).toContainEqual({
       secretRef: { name: "app-secrets", items: [{ key: "API_KEY" }] },
     })
-    expect(deployment.spec.template.spec.containers[0].volumeMounts).toContainEqual(
-      { name: "config", mountPath: "/etc/config", readOnly: false }
+    expect(
+      deployment.spec.template.spec.containers[0].volumeMounts
+    ).toContainEqual({
+      name: "config",
+      mountPath: "/etc/config",
+      readOnly: false,
+    })
+    expect(
+      deployment.spec.template.spec.containers[0].volumeMounts
+    ).toContainEqual({
+      name: "secrets",
+      mountPath: "/etc/secrets",
+      readOnly: true,
+    })
+    expect(deployment.metadata.annotations!["reloader.stakater.com/auto"]).toBe(
+      "true"
     )
-    expect(deployment.spec.template.spec.containers[0].volumeMounts).toContainEqual(
-      { name: "secrets", mountPath: "/etc/secrets", readOnly: true }
-    )
-    expect(deployment.metadata.annotations!["reloader.stakater.com/auto"]).toBe("true")
   })
 
   it("creates deployment with volumes and HPA", () => {
@@ -50,7 +61,11 @@ describe("DeploymentBuilder", () => {
       name: "config",
       configMap: { name: "my-config" },
     })
-    expect(deployment.metadata.annotations?.["autoscaling.kubernetes.io/current-replicas"]).toBeUndefined()
+    expect(
+      deployment.metadata.annotations?.[
+        "autoscaling.kubernetes.io/current-replicas"
+      ]
+    ).toBeUndefined()
   })
 
   it("creates deployment with custom replicas and health check path", () => {
@@ -105,11 +120,17 @@ describe("DeploymentBuilder", () => {
     expect(hpa!.spec.metrics).toHaveLength(2)
     expect(hpa!.spec.metrics).toContainEqual({
       type: "Resource",
-      resource: { name: "cpu", target: { type: "Utilization", averageUtilization: 70 } },
+      resource: {
+        name: "cpu",
+        target: { type: "Utilization", averageUtilization: 70 },
+      },
     })
     expect(hpa!.spec.metrics).toContainEqual({
       type: "Resource",
-      resource: { name: "memory", target: { type: "AverageValue", averageValue: "80Mi" } },
+      resource: {
+        name: "memory",
+        target: { type: "AverageValue", averageValue: "80Mi" },
+      },
     })
   })
 })

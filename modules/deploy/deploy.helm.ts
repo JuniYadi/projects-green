@@ -35,7 +35,7 @@ export interface Probe {
   periodSeconds?: number
   failureThreshold?: number
   timeoutSeconds?: number
- successThreshold?: number
+  successThreshold?: number
 }
 
 export interface VolumeMount {
@@ -192,23 +192,71 @@ export class DeploymentBuilder {
     this.labels = { app: name }
   }
 
-  setImage(image: string): this { this.image = image; return this }
-  setReplicas(replicas: number): this { this.replicas = replicas; return this }
-  setEnv(env: EnvVar[]): this { this.env = env; return this }
-  setPorts(ports: Port[]): this { this.ports = ports; return this }
-  setResources(resources: ResourceRequirements): this { this.resources = resources; return this }
-  setLabels(labels: Record<string, string>): this { this.labels = { ...this.labels, ...labels }; return this }
-  setNodeSelector(ns: Record<string, string>): this { this.nodeSelector = ns; return this }
-  setTolerations(t: Toleration[]): this { this.tolerations = t; return this }
-  setAffinity(a: Record<string, unknown>): this { this.affinity = a; return this }
-  setLivenessProbe(p: Probe): this { this.livenessProbe = p; return this }
-  setReadinessProbe(p: Probe): this { this.readinessProbe = p; return this }
-  setStartupProbe(p: Probe): this { this.startupProbe = p; return this }
-  setSecurityContext(sc: unknown): this { this.securityContext = sc; return this }
-  setPodSecurityContext(psc: unknown): this { this.podSecurityContext = psc; return this }
-  setServiceAccountName(sa: string): this { this.serviceAccountName = sa; return this }
+  setImage(image: string): this {
+    this.image = image
+    return this
+  }
+  setReplicas(replicas: number): this {
+    this.replicas = replicas
+    return this
+  }
+  setEnv(env: EnvVar[]): this {
+    this.env = env
+    return this
+  }
+  setPorts(ports: Port[]): this {
+    this.ports = ports
+    return this
+  }
+  setResources(resources: ResourceRequirements): this {
+    this.resources = resources
+    return this
+  }
+  setLabels(labels: Record<string, string>): this {
+    this.labels = { ...this.labels, ...labels }
+    return this
+  }
+  setNodeSelector(ns: Record<string, string>): this {
+    this.nodeSelector = ns
+    return this
+  }
+  setTolerations(t: Toleration[]): this {
+    this.tolerations = t
+    return this
+  }
+  setAffinity(a: Record<string, unknown>): this {
+    this.affinity = a
+    return this
+  }
+  setLivenessProbe(p: Probe): this {
+    this.livenessProbe = p
+    return this
+  }
+  setReadinessProbe(p: Probe): this {
+    this.readinessProbe = p
+    return this
+  }
+  setStartupProbe(p: Probe): this {
+    this.startupProbe = p
+    return this
+  }
+  setSecurityContext(sc: unknown): this {
+    this.securityContext = sc
+    return this
+  }
+  setPodSecurityContext(psc: unknown): this {
+    this.podSecurityContext = psc
+    return this
+  }
+  setServiceAccountName(sa: string): this {
+    this.serviceAccountName = sa
+    return this
+  }
   setHPA(min: number, max: number, metrics: unknown[] = []): this {
-    this.hpaMinReplicas = min; this.hpaMaxReplicas = max; this.hpaMetrics = metrics; return this
+    this.hpaMinReplicas = min
+    this.hpaMaxReplicas = max
+    this.hpaMetrics = metrics
+    return this
   }
 
   addEnvVar(name: string, value: string): this {
@@ -217,12 +265,18 @@ export class DeploymentBuilder {
   }
 
   addEnvFromConfigMap(name: string, configMapName: string, key: string): this {
-    this.env.push({ name, valueFrom: { configMapKeyRef: { name: configMapName, key } } })
+    this.env.push({
+      name,
+      valueFrom: { configMapKeyRef: { name: configMapName, key } },
+    })
     return this
   }
 
   addEnvFromSecret(name: string, secretName: string, key: string): this {
-    this.env.push({ name, valueFrom: { secretKeyRef: { name: secretName, key } } })
+    this.env.push({
+      name,
+      valueFrom: { secretKeyRef: { name: secretName, key } },
+    })
     return this
   }
 
@@ -238,43 +292,84 @@ export class DeploymentBuilder {
   }
 
   addPVC(pvcName: string, mountPath: string, readOnly = false): this {
-    this.volumes.push({ name: pvcName, persistentVolumeClaim: { claimName: pvcName } })
+    this.volumes.push({
+      name: pvcName,
+      persistentVolumeClaim: { claimName: pvcName },
+    })
     this.volumeMounts.push({ name: pvcName, mountPath, readOnly })
     return this
   }
 
-  addConfigMapMount(configMapName: string, mountPath: string, volumeName?: string, items: unknown[] = [], defaultMode = 0o644): this {
+  addConfigMapMount(
+    configMapName: string,
+    mountPath: string,
+    volumeName?: string,
+    items: unknown[] = [],
+    defaultMode = 0o644
+  ): this {
     const volName = volumeName ?? configMapName
-    this.volumes.push({ name: volName, configMap: { name: configMapName, items, defaultMode } })
+    this.volumes.push({
+      name: volName,
+      configMap: { name: configMapName, items, defaultMode },
+    })
     this.volumeMounts.push({ name: volName, mountPath })
     return this
   }
 
-  addSecretMount(secretName: string, mountPath: string, volumeName?: string, items: unknown[] = [], defaultMode = 0o644): this {
+  addSecretMount(
+    secretName: string,
+    mountPath: string,
+    volumeName?: string,
+    items: unknown[] = [],
+    defaultMode = 0o644
+  ): this {
     const volName = volumeName ?? secretName
-    this.volumes.push({ name: volName, secret: { secretName, items, defaultMode } })
+    this.volumes.push({
+      name: volName,
+      secret: { secretName, items, defaultMode },
+    })
     this.volumeMounts.push({ name: volName, mountPath })
     return this
   }
 
-  addEmptyDirMount(volumeName: string, mountPath: string, sizeLimit?: string, medium = ""): this {
-    this.volumes.push({ name: volumeName, emptyDir: sizeLimit ? { sizeLimit, medium } : { medium } })
+  addEmptyDirMount(
+    volumeName: string,
+    mountPath: string,
+    sizeLimit?: string,
+    medium = ""
+  ): this {
+    this.volumes.push({
+      name: volumeName,
+      emptyDir: sizeLimit ? { sizeLimit, medium } : { medium },
+    })
     this.volumeMounts.push({ name: volumeName, mountPath })
     return this
   }
 
-  addHostPathMount(volumeName: string, hostPath: string, mountPath: string, type = "DirectoryOrCreate", readOnly = false): this {
+  addHostPathMount(
+    volumeName: string,
+    hostPath: string,
+    mountPath: string,
+    type = "DirectoryOrCreate",
+    readOnly = false
+  ): this {
     this.volumes.push({ name: volumeName, hostPath: { path: hostPath, type } })
     this.volumeMounts.push({ name: volumeName, mountPath, readOnly })
     return this
   }
 
   build(): { content: unknown; helm: { deployment: HelmValues } } {
-    const ports = this.ports.length > 0 ? this.ports : [{ name: "http", containerPort: 8080, protocol: "TCP" }]
-    const resources = Object.keys(this.resources).length > 0 ? this.resources : {
-      requests: { cpu: "100m", memory: "128Mi" },
-      limits: { cpu: "500m", memory: "512Mi" },
-    }
+    const ports =
+      this.ports.length > 0
+        ? this.ports
+        : [{ name: "http", containerPort: 8080, protocol: "TCP" }]
+    const resources =
+      Object.keys(this.resources).length > 0
+        ? this.resources
+        : {
+            requests: { cpu: "100m", memory: "128Mi" },
+            limits: { cpu: "500m", memory: "512Mi" },
+          }
 
     const containers = [
       {
@@ -284,26 +379,41 @@ export class DeploymentBuilder {
         env: this.env,
         resources,
         volumeMounts: this.volumeMounts,
-        ...(Object.keys(this.livenessProbe).length > 0 && { livenessProbe: this.livenessProbe }),
-        ...(Object.keys(this.readinessProbe).length > 0 && { readinessProbe: this.readinessProbe }),
-        ...(Object.keys(this.startupProbe).length > 0 && { startupProbe: this.startupProbe }),
-        ...(Object.keys(this.securityContext as object).length > 0 && { securityContext: this.securityContext }),
+        ...(Object.keys(this.livenessProbe).length > 0 && {
+          livenessProbe: this.livenessProbe,
+        }),
+        ...(Object.keys(this.readinessProbe).length > 0 && {
+          readinessProbe: this.readinessProbe,
+        }),
+        ...(Object.keys(this.startupProbe).length > 0 && {
+          startupProbe: this.startupProbe,
+        }),
+        ...(Object.keys(this.securityContext as object).length > 0 && {
+          securityContext: this.securityContext,
+        }),
       },
       ...this.extraContainers,
     ]
 
     const podSpec: Record<string, unknown> = { containers }
     if (this.volumes.length > 0) podSpec.volumes = this.volumes
-    if (Object.keys(this.nodeSelector).length > 0) podSpec.nodeSelector = this.nodeSelector
+    if (Object.keys(this.nodeSelector).length > 0)
+      podSpec.nodeSelector = this.nodeSelector
     if (this.tolerations.length > 0) podSpec.tolerations = this.tolerations
     if (Object.keys(this.affinity).length > 0) podSpec.affinity = this.affinity
-    if (Object.keys(this.podSecurityContext as object).length > 0) podSpec.securityContext = this.podSecurityContext
-    if (this.serviceAccountName) podSpec.serviceAccountName = this.serviceAccountName
+    if (Object.keys(this.podSecurityContext as object).length > 0)
+      podSpec.securityContext = this.podSecurityContext
+    if (this.serviceAccountName)
+      podSpec.serviceAccountName = this.serviceAccountName
 
     const deployment = {
       apiVersion: "apps/v1",
       kind: "Deployment",
-      metadata: { name: this.name, namespace: this.namespace, labels: this.labels },
+      metadata: {
+        name: this.name,
+        namespace: this.namespace,
+        labels: this.labels,
+      },
       spec: {
         replicas: this.replicas,
         selector: { matchLabels: this.labels },
@@ -320,15 +430,26 @@ export class DeploymentBuilder {
 
     return {
       content: deployment,
-      helm: { deployment: this.buildHelmValues(ports, resources, imageRepo, imageTag) },
+      helm: {
+        deployment: this.buildHelmValues(ports, resources, imageRepo, imageTag),
+      },
     }
   }
 
-  private buildHelmValues(ports: Port[], resources: ResourceRequirements, imageRepo: string, imageTag: string): HelmValues {
+  private buildHelmValues(
+    ports: Port[],
+    resources: ResourceRequirements,
+    imageRepo: string,
+    imageTag: string
+  ): HelmValues {
     return {
       enabled: true,
       name: this.name,
-      image: { repository: imageRepo, tag: imageTag, pullPolicy: "IfNotPresent" },
+      image: {
+        repository: imageRepo,
+        tag: imageTag,
+        pullPolicy: "IfNotPresent",
+      },
       replicaCount: this.replicas,
       resources: resources as HelmResources,
       env: this.env,
@@ -377,7 +498,13 @@ export class DeploymentBuilder {
     storageSizeGb?: number
     requiresPersistentStorage?: boolean
     isHpaSupported?: boolean
-    autoscaling?: { minReplicas: number; maxReplicas: number; cpuThreshold: number; memoryThreshold?: number; mode: string }
+    autoscaling?: {
+      minReplicas: number
+      maxReplicas: number
+      cpuThreshold: number
+      memoryThreshold?: number
+      mode: string
+    }
   }): ApplicationHelmValues {
     const imageParts = (opts.image ?? "").split(":")
     const imageRepo = imageParts[0] || opts.image
@@ -385,7 +512,11 @@ export class DeploymentBuilder {
 
     const containerConfig: ContainerHelmValues = {
       name: opts.containerName,
-      image: { repository: imageRepo, tag: imageTag, pullPolicy: "IfNotPresent" },
+      image: {
+        repository: imageRepo,
+        tag: imageTag,
+        pullPolicy: "IfNotPresent",
+      },
       type: "deployment",
       replicaCount: opts.replicas,
     }
@@ -407,19 +538,32 @@ export class DeploymentBuilder {
       }
     }
 
-    if (opts.cpuRequest || opts.memoryRequestMb || opts.cpuLimit || opts.memoryLimitMb) {
+    if (
+      opts.cpuRequest ||
+      opts.memoryRequestMb ||
+      opts.cpuLimit ||
+      opts.memoryLimitMb
+    ) {
       containerConfig.resources = {
-        requests: { cpu: opts.cpuRequest ?? "100m", memory: `${opts.memoryRequestMb ?? 128}Mi` },
-        limits: { cpu: opts.cpuLimit ?? "500m", memory: `${opts.memoryLimitMb ?? 512}Mi` },
+        requests: {
+          cpu: opts.cpuRequest ?? "100m",
+          memory: `${opts.memoryRequestMb ?? 128}Mi`,
+        },
+        limits: {
+          cpu: opts.cpuLimit ?? "500m",
+          memory: `${opts.memoryLimitMb ?? 512}Mi`,
+        },
       }
     }
 
     if (opts.startupProbe) containerConfig.startupProbe = opts.startupProbe
-    if (opts.readinessProbe) containerConfig.readinessProbe = opts.readinessProbe
+    if (opts.readinessProbe)
+      containerConfig.readinessProbe = opts.readinessProbe
     if (opts.nodeSelector) containerConfig.nodeSelector = opts.nodeSelector
     if (opts.tolerations) containerConfig.tolerations = opts.tolerations
     if (opts.affinity) containerConfig.affinity = opts.affinity
-    if (opts.serviceAccountName) containerConfig.serviceAccountName = opts.serviceAccountName
+    if (opts.serviceAccountName)
+      containerConfig.serviceAccountName = opts.serviceAccountName
 
     if (opts.autoscaling && opts.isHpaSupported) {
       containerConfig.autoscaling = {
@@ -427,7 +571,13 @@ export class DeploymentBuilder {
         minReplicas: opts.autoscaling.minReplicas,
         maxReplicas: opts.autoscaling.maxReplicas,
         targetCPUUtilizationPercentage: opts.autoscaling.cpuThreshold,
-        ...(opts.autoscaling.mode === "memory" || opts.autoscaling.mode === "all" ? { targetMemoryUtilizationPercentage: opts.autoscaling.memoryThreshold ?? 80 } : {}),
+        ...(opts.autoscaling.mode === "memory" ||
+        opts.autoscaling.mode === "all"
+          ? {
+              targetMemoryUtilizationPercentage:
+                opts.autoscaling.memoryThreshold ?? 80,
+            }
+          : {}),
       }
     }
 
@@ -449,9 +599,19 @@ export class DeploymentBuilder {
       helmValues.ingress = {
         enabled: true,
         className: "haproxy",
-        annotations: { "cert-manager.io/cluster-issuer": opts.certIssuer ?? "letsencrypt-prod" },
-        hosts: [{ host: opts.domainName, paths: [{ path: "/", pathType: "Prefix" }] }],
-        tls: [{ secretName: `${opts.namespace}-tls-secret`, hosts: [opts.domainName] }],
+        annotations: {
+          "cert-manager.io/cluster-issuer":
+            opts.certIssuer ?? "letsencrypt-prod",
+        },
+        hosts: [
+          { host: opts.domainName, paths: [{ path: "/", pathType: "Prefix" }] },
+        ],
+        tls: [
+          {
+            secretName: `${opts.namespace}-tls-secret`,
+            hosts: [opts.domainName],
+          },
+        ],
       }
     }
 
@@ -473,7 +633,11 @@ export class DeploymentBuilder {
 
 // ─── Helm Commands ───────────────────────────────────────────────────────────
 
-export function generateHelmInstallCommand(releaseName: string, chartName: string, values: ApplicationHelmValues): string {
+export function generateHelmInstallCommand(
+  releaseName: string,
+  chartName: string,
+  values: ApplicationHelmValues
+): string {
   const app = values.applications[0]
   if (!app) return `helm install ${releaseName} ${chartName}`
 
@@ -491,7 +655,11 @@ export function generateHelmInstallCommand(releaseName: string, chartName: strin
   return cmd
 }
 
-export function generateHelmUpgradeCommand(releaseName: string, chartName: string, values: ApplicationHelmValues): string {
+export function generateHelmUpgradeCommand(
+  releaseName: string,
+  chartName: string,
+  values: ApplicationHelmValues
+): string {
   const app = values.applications[0]
   if (!app) return `helm upgrade ${releaseName} ${chartName}`
 

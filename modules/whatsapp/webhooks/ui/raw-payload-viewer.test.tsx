@@ -20,9 +20,7 @@ const samplePayload = {
 describe("RawPayloadViewer", () => {
   describe("expand/collapse", () => {
     it("is collapsed by default", () => {
-      const { container } = render(
-        <RawPayloadViewer payload={samplePayload} />,
-      )
+      const { container } = render(<RawPayloadViewer payload={samplePayload} />)
 
       const details = container.querySelector("details")
       expect(details).toBeTruthy()
@@ -31,7 +29,7 @@ describe("RawPayloadViewer", () => {
 
     it("expands when defaultExpanded is true", () => {
       const { container } = render(
-        <RawPayloadViewer payload={samplePayload} defaultExpanded={true} />,
+        <RawPayloadViewer payload={samplePayload} defaultExpanded={true} />
       )
 
       const details = container.querySelector("details")
@@ -41,7 +39,7 @@ describe("RawPayloadViewer", () => {
 
     it("renders collapsed state when defaultExpanded is false", () => {
       const { container } = render(
-        <RawPayloadViewer payload={samplePayload} defaultExpanded={false} />,
+        <RawPayloadViewer payload={samplePayload} defaultExpanded={false} />
       )
 
       const details = container.querySelector("details")
@@ -52,9 +50,7 @@ describe("RawPayloadViewer", () => {
 
   describe("pretty-printed JSON", () => {
     it("renders preview text in the summary", () => {
-      const { container } = render(
-        <RawPayloadViewer payload={samplePayload} />,
-      )
+      const { container } = render(<RawPayloadViewer payload={samplePayload} />)
 
       const summary = container.querySelector("summary")
       expect(summary).toBeTruthy()
@@ -64,7 +60,7 @@ describe("RawPayloadViewer", () => {
 
     it("renders formatted JSON inside the details content when expanded", () => {
       const { container } = render(
-        <RawPayloadViewer payload={samplePayload} defaultExpanded={true} />,
+        <RawPayloadViewer payload={samplePayload} defaultExpanded={true} />
       )
 
       // The formatted JSON is inside a <pre><code> block
@@ -79,9 +75,7 @@ describe("RawPayloadViewer", () => {
 
   describe("copy button", () => {
     it("renders a copy button with aria-label", () => {
-      const { getByRole } = render(
-        <RawPayloadViewer payload={samplePayload} />,
-      )
+      const { getByRole } = render(<RawPayloadViewer payload={samplePayload} />)
 
       const copyBtn = getByRole("button", {
         name: /copy payload/i,
@@ -102,7 +96,7 @@ describe("RawPayloadViewer", () => {
 
       try {
         const { getByRole } = render(
-          <RawPayloadViewer payload={samplePayload} />,
+          <RawPayloadViewer payload={samplePayload} />
         )
 
         const copyBtn = getByRole("button", {
@@ -111,7 +105,7 @@ describe("RawPayloadViewer", () => {
         fireEvent.click(copyBtn)
 
         expect(writeTextMock).toHaveBeenCalledWith(
-          JSON.stringify(samplePayload, null, 2),
+          JSON.stringify(samplePayload, null, 2)
         )
       } finally {
         Object.defineProperty(navigator, "clipboard", {
@@ -134,7 +128,7 @@ describe("RawPayloadViewer", () => {
 
       try {
         const { container, getByRole } = render(
-          <RawPayloadViewer payload={samplePayload} />,
+          <RawPayloadViewer payload={samplePayload} />
         )
 
         const copyBtn = getByRole("button", {
@@ -160,9 +154,7 @@ describe("RawPayloadViewer", () => {
 
   describe("malformed data handling", () => {
     it("handles empty payload gracefully", () => {
-      const { container } = render(
-        <RawPayloadViewer payload={{}} />,
-      )
+      const { container } = render(<RawPayloadViewer payload={{}} />)
 
       const summary = container.querySelector("summary")
       expect(summary).toBeTruthy()
@@ -193,7 +185,7 @@ describe("RawPayloadViewer", () => {
       }
 
       const { container } = render(
-        <RawPayloadViewer payload={deepPayload} defaultExpanded={true} />,
+        <RawPayloadViewer payload={deepPayload} defaultExpanded={true} />
       )
 
       const code = container.querySelector("pre code")
@@ -210,7 +202,7 @@ describe("RawPayloadViewer", () => {
       }
 
       const { container } = render(
-        <RawPayloadViewer payload={specialPayload} defaultExpanded={true} />,
+        <RawPayloadViewer payload={specialPayload} defaultExpanded={true} />
       )
 
       const code = container.querySelector("pre code")
@@ -231,7 +223,7 @@ describe("RawPayloadViewer", () => {
       }
 
       const { container } = render(
-        <RawPayloadViewer payload={mixedPayload} defaultExpanded={true} />,
+        <RawPayloadViewer payload={mixedPayload} defaultExpanded={true} />
       )
 
       const code = container.querySelector("pre code")

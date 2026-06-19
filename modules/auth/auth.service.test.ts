@@ -204,9 +204,8 @@ describe("authService", () => {
         requestUrl: "http://localhost/auth/magic/verify",
       })
 
-      const calls = mockAuthenticateWithMagicAuth.mock.calls as unknown as Array<
-        Array<Record<string, unknown>>
-      >
+      const calls = mockAuthenticateWithMagicAuth.mock
+        .calls as unknown as Array<Array<Record<string, unknown>>>
       const call = calls.at(-1)?.[0]
       expect(call && "invitationToken" in call).toBe(false)
     })
@@ -278,9 +277,12 @@ describe("authService", () => {
     })
 
     it("throws when sealed session is null", async () => {
-      mockAuthenticateWithMagicAuth.mockImplementation(async () => ({
-        sealedSession: null,
-      }) as unknown as { sealedSession: string })
+      mockAuthenticateWithMagicAuth.mockImplementation(
+        async () =>
+          ({
+            sealedSession: null,
+          }) as unknown as { sealedSession: string }
+      )
 
       await expect(
         authService.verifyMagicCode({

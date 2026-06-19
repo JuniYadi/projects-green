@@ -42,7 +42,7 @@ export function DeployTimeline({ deployId, status }: DeployTimelineProps) {
       console.error("Failed to fetch events", err)
       setError("Failed to fetch events")
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deployId])
 
   useEffect(() => {
@@ -73,7 +73,9 @@ export function DeployTimeline({ deployId, status }: DeployTimelineProps) {
   }
 
   if (timeline.length === 0) {
-    return <div className="text-xs text-muted-foreground">Loading timeline...</div>
+    return (
+      <div className="text-xs text-muted-foreground">Loading timeline...</div>
+    )
   }
 
   return (

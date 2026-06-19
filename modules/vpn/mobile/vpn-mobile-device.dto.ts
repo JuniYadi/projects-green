@@ -39,9 +39,7 @@ type MobileDeviceRow = DevicePayload
 /**
  * Map a Prisma VpnMobileDevice row to its API-safe DTO.
  */
-export function toMobileDeviceDTO(
-  row: MobileDeviceRow
-): VpnMobileDeviceDTO {
+export function toMobileDeviceDTO(row: MobileDeviceRow): VpnMobileDeviceDTO {
   return {
     id: row.id,
     organizationId: row.organizationId,

@@ -39,7 +39,8 @@ export default async function PortalPage({
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Portal</h1>
         <p className="text-sm text-muted-foreground">
-          Choose a workspace entry point to manage documentation, billing, or support tickets.
+          Choose a workspace entry point to manage documentation, billing, or
+          support tickets.
         </p>
       </header>
 

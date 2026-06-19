@@ -78,7 +78,8 @@ export const idMessages: AppMessages = {
     },
     organization: {
       heading: "Pengaturan Organisasi",
-      description: "Kelola anggota, undangan, dan kepemilikan organisasi aktif.",
+      description:
+        "Kelola anggota, undangan, dan kepemilikan organisasi aktif.",
       members: "Anggota",
       invitations: "Undangan",
       ownership: "Kepemilikan",
@@ -102,10 +103,12 @@ export const idMessages: AppMessages = {
       viewAll: "Lihat semua",
       noActiveSubscriptions: "Tidak ada langganan aktif",
       noInvoices: "Belum ada invoice.",
-      lowBalanceWarning: "Saldo Anda menipis. Isi ulang untuk menghindari gangguan layanan.",
+      lowBalanceWarning:
+        "Saldo Anda menipis. Isi ulang untuk menghindari gangguan layanan.",
       failedToLoadBalance: "Gagal memuat saldo",
       topUpHeading: "Isi Saldo",
-      topUpDescription: "Tambahkan dana ke akun penagihan Anda. Pilih metode pembayaran yang diinginkan.",
+      topUpDescription:
+        "Tambahkan dana ke akun penagihan Anda. Pilih metode pembayaran yang diinginkan.",
       topUpDetails: "Detail Isi Ulang",
       paymentInstructions: "Petunjuk Pembayaran",
       manualBankTransfer: "Transfer Bank Manual",
@@ -130,9 +133,11 @@ export const idMessages: AppMessages = {
       total: "Total",
       subtotal: "Subtotal",
       paymentSuccessful: "Pembayaran Berhasil",
-      paymentSuccessDesc: "Pembayaran Anda telah diproses. Saldo akan diperbarui sebentar lagi.",
+      paymentSuccessDesc:
+        "Pembayaran Anda telah diproses. Saldo akan diperbarui sebentar lagi.",
       paymentPending: "Pembayaran Tertunda",
-      paymentPendingDesc: "Pembayaran Anda sedang diproses. Ini mungkin memakan waktu beberapa menit.",
+      paymentPendingDesc:
+        "Pembayaran Anda sedang diproses. Ini mungkin memakan waktu beberapa menit.",
       paymentFailed: "Pembayaran Gagal",
       paymentFailedDesc: "Pembayaran tidak dapat diproses. Silakan coba lagi.",
       retryPayment: "Coba Lagi",
@@ -141,26 +146,33 @@ export const idMessages: AppMessages = {
       processing: "Memproses...",
       yourBalance: "Saldo Anda saat ini: {balance}",
       completeTopUp: "Selesaikan Isi Ulang",
-      transferInstructions: "Transfer jumlah total {amount} ke rekening bank tujuan, lalu konfirmasi pembayaran Anda.",
+      transferInstructions:
+        "Transfer jumlah total {amount} ke rekening bank tujuan, lalu konfirmasi pembayaran Anda.",
       confirmPayment: "Konfirmasi Pembayaran",
-      autoUpdateDesc: "Selesaikan pembayaran melalui gerbang pembayaran. Saldo Anda akan diperbarui secara otomatis setelah pembayaran dikonfirmasi.",
+      autoUpdateDesc:
+        "Selesaikan pembayaran melalui gerbang pembayaran. Saldo Anda akan diperbarui secara otomatis setelah pembayaran dikonfirmasi.",
       paymentOptions: "Opsi Pembayaran",
       paymentSuccessLabel: "Pembayaran berhasil!",
       topUpRequired: "Isi Ulang Diperlukan",
-      topUpDialogDescription: "Anda memerlukan saldo tambahan untuk membayar invoice ini. Invoice isi ulang telah dibuat untuk jumlah kekurangan.",
+      topUpDialogDescription:
+        "Anda memerlukan saldo tambahan untuk membayar invoice ini. Invoice isi ulang telah dibuat untuk jumlah kekurangan.",
       gapAmount: "Jumlah Kekurangan",
       topUpInvoice: "Invoice Isi Ulang",
-      topUpInstructionDetail: "Harap selesaikan pembayaran isi ulang terlebih dahulu. Setelah pembayaran dikonfirmasi, invoice akan dibayar secara otomatis menggunakan saldo Anda.",
+      topUpInstructionDetail:
+        "Harap selesaikan pembayaran isi ulang terlebih dahulu. Setelah pembayaran dikonfirmasi, invoice akan dibayar secara otomatis menggunakan saldo Anda.",
       goToTopUp: "Ke Isi Ulang",
       minTopUp: "Jumlah minimum isi ulang adalah {amount}",
       maxTopUp: "Jumlah maksimum isi ulang adalah {amount}",
-      balanceUpdatedAfterVerification: "Saldo akan diperbarui setelah verifikasi pembayaran",
-      manualTransfer24h: "Untuk transfer manual, harap konfirmasi pembayaran dalam 24 jam",
+      balanceUpdatedAfterVerification:
+        "Saldo akan diperbarui setelah verifikasi pembayaran",
+      manualTransfer24h:
+        "Untuk transfer manual, harap konfirmasi pembayaran dalam 24 jam",
     },
     whatsapp: {
       dashboard: {
         heading: "Dasbor WhatsApp",
-        description: "Pantau perangkat, percakapan, dan aktivitas pesan WhatsApp Anda.",
+        description:
+          "Pantau perangkat, percakapan, dan aktivitas pesan WhatsApp Anda.",
         connected: "Terhubung",
         disconnected: "Terputus",
         totalContacts: "Total Kontak",
@@ -188,7 +200,8 @@ export const idMessages: AppMessages = {
         editDialogTitle: "Sunting Kontak",
         editDialogDescription: "Perbarui detail kontak.",
         deleteDialogTitle: "Hapus Kontak",
-        deleteDialogDescription: "Anda yakin ingin menghapus kontak ini? Tindakan ini tidak dapat dibatalkan.",
+        deleteDialogDescription:
+          "Anda yakin ingin menghapus kontak ini? Tindakan ini tidak dapat dibatalkan.",
         phoneNumber: "Nomor Telepon",
         phoneNumberRequired: "Nomor telepon wajib diisi.",
         name: "Nama",
@@ -214,7 +227,8 @@ export const idMessages: AppMessages = {
       },
       templates: {
         heading: "Template",
-        description: "Kelola template pesan WhatsApp untuk komunikasi yang telah disetujui.",
+        description:
+          "Kelola template pesan WhatsApp untuk komunikasi yang telah disetujui.",
         cardTitle: "Template Pesan",
         cardDescription: "Kelola template pesan WhatsApp Anda",
         syncTemplates: "Sinkronisasi Template",
@@ -250,7 +264,8 @@ export const idMessages: AppMessages = {
         updated: "Perangkat berhasil diperbarui.",
         unableToUpdate: "Gagal memperbarui perangkat.",
         noDevices: "Tidak ada perangkat ditemukan.",
-        noDevicesDescription: "Admin akan menyediakan perangkat WhatsApp untuk organisasi Anda. Setelah ditetapkan, perangkat akan muncul di sini.",
+        noDevicesDescription:
+          "Admin akan menyediakan perangkat WhatsApp untuk organisasi Anda. Setelah ditetapkan, perangkat akan muncul di sini.",
         unableToLoad: "Gagal memuat perangkat WhatsApp.",
         cancel: "Batal",
         saving: "Menyimpan...",
@@ -301,7 +316,8 @@ export const idMessages: AppMessages = {
       compliance: "Kepatuhan",
       noTickets: "Tidak ada tiket dukungan ditemukan.",
       newTicketHeading: "Buat Tiket Dukungan",
-      newTicketDescription: "Kirim permintaan dukungan baru. Tim kami akan merespons secepat mungkin.",
+      newTicketDescription:
+        "Kirim permintaan dukungan baru. Tim kami akan merespons secepat mungkin.",
       ticketDetailHeading: "Detail Tiket",
       ticketNotFound: "Tiket tidak ditemukan.",
       failedToLoad: "Gagal memuat tiket.",
@@ -313,11 +329,13 @@ export const idMessages: AppMessages = {
       filterAllStatus: "Semua status",
       filterAllDepartments: "Semua departemen",
       filterAllPriority: "Semua prioritas",
-      noTicketsMatch: "Tidak ada tiket dukungan yang sesuai dengan filter Anda.",
+      noTicketsMatch:
+        "Tidak ada tiket dukungan yang sesuai dengan filter Anda.",
       subjectRequired: "Subjek wajib diisi.",
       unableToCreate: "Gagal membuat tiket dukungan.",
       creatingTicket: "Membuat Tiket",
-      creatingDescription: "Harap tunggu sementara kami memproses permintaan Anda dan mengunggah lampiran. Jangan refresh, tutup, atau navigasikan halaman.",
+      creatingDescription:
+        "Harap tunggu sementara kami memproses permintaan Anda dan mengunggah lampiran. Jangan refresh, tutup, atau navigasikan halaman.",
       ticketDetails: "Detail Tiket",
       subjectPlaceholder: "Jelaskan masalah Anda",
       generalMessage: "Pesan Umum",
@@ -326,7 +344,8 @@ export const idMessages: AppMessages = {
       messagePlaceholder: "Tambahkan detail tentang permintaan Anda",
       encrypted: "Terenkripsi",
       endToEndSecure: "Saluran Aman End-to-End",
-      secureDescription: "Detail yang dimasukkan di sini dienkripsi end-to-end dan hanya dapat dilihat oleh teknisi yang ditugaskan ke tiket Anda. Gunakan bagian ini untuk kata sandi, token, kunci API, atau kredensial sensitif.",
+      secureDescription:
+        "Detail yang dimasukkan di sini dienkripsi end-to-end dan hanya dapat dilihat oleh teknisi yang ditugaskan ke tiket Anda. Gunakan bagian ini untuk kata sandi, token, kunci API, atau kredensial sensitif.",
       secureDetailsOptional: "Detail Aman (opsional)",
       securePlaceholder: "Kredensial sensitif, konfigurasi, atau rahasia saja",
       attachmentsOptional: "Lampiran (opsional)",
@@ -343,15 +362,18 @@ export const idMessages: AppMessages = {
     app: {
       deploy: {
         heading: "Deploy Aplikasi",
-        description: "Konfigurasi sumber, build, dan pengaturan rilis awal untuk aplikasi baru.",
+        description:
+          "Konfigurasi sumber, build, dan pengaturan rilis awal untuk aplikasi baru.",
       },
       manage: {
         heading: "Kelola Aplikasi",
-        description: "Pantau status deployment, event, dan log untuk aplikasi Anda.",
+        description:
+          "Pantau status deployment, event, dan log untuk aplikasi Anda.",
         loadingApps: "Memuat aplikasi Anda\u2026",
         loadingAppState: "Memuat status aplikasi\u2026",
         noApps: "Belum ada aplikasi",
-        noAppsDescription: "Deploy repositori privat dari halaman Deploy untuk mulai memantau status, event, dan log di sini.",
+        noAppsDescription:
+          "Deploy repositori privat dari halaman Deploy untuk mulai memantau status, event, dan log di sini.",
         retry: "Coba Lagi",
         deploymentStatus: "Status deployment",
         visitApp: "Kunjungi aplikasi",
@@ -360,9 +382,11 @@ export const idMessages: AppMessages = {
         heading: "Platform Aplikasi",
         description: "Deploy dan kelola aplikasi Anda.",
         deploy: "Deploy",
-        deployDescription: "Konfigurasi sumber, build, dan pengaturan rilis awal.",
+        deployDescription:
+          "Konfigurasi sumber, build, dan pengaturan rilis awal.",
         manage: "Kelola",
-        manageDescription: "Pantau status deployment, lihat event, dan periksa log untuk aplikasi Anda.",
+        manageDescription:
+          "Pantau status deployment, lihat event, dan periksa log untuk aplikasi Anda.",
       },
     },
     invoices: {

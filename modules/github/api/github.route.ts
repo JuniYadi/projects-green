@@ -205,7 +205,7 @@ export const createGithubRoutes = (
 
           console.error(
             `[github] GET /integrations/github/repositories —`,
-            error instanceof Error ? error.stack ?? error.message : error
+            error instanceof Error ? (error.stack ?? error.message) : error
           )
           return toServerError(
             set,

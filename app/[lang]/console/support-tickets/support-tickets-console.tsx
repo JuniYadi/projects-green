@@ -7,12 +7,7 @@ import Link from "next/link"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketTableSkeleton } from "@/modules/support-tickets/ui/ticket-table-skeleton"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -41,7 +36,10 @@ const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
     {
       accessorKey: "ticketNumber",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={messages.console.supportTickets.ticketId} />
+        <DataTableColumnHeader
+          column={column}
+          title={messages.console.supportTickets.ticketId}
+        />
       ),
       cell: ({ row }) => {
         const ticketPath = localizePathname({
@@ -62,20 +60,29 @@ const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
     {
       accessorKey: "subject",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={messages.console.supportTickets.subject} />
+        <DataTableColumnHeader
+          column={column}
+          title={messages.console.supportTickets.subject}
+        />
       ),
     },
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={messages.console.supportTickets.status} />
+        <DataTableColumnHeader
+          column={column}
+          title={messages.console.supportTickets.status}
+        />
       ),
       cell: ({ row }) => SUPPORT_TICKET_STATUS_LABELS[row.original.status],
     },
     {
       accessorKey: "department",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={messages.console.supportTickets.department} />
+        <DataTableColumnHeader
+          column={column}
+          title={messages.console.supportTickets.department}
+        />
       ),
       cell: ({ row }) =>
         SUPPORT_TICKET_DEPARTMENT_LABELS[row.original.department],
@@ -83,14 +90,20 @@ const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
     {
       accessorKey: "priority",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={messages.console.supportTickets.priority} />
+        <DataTableColumnHeader
+          column={column}
+          title={messages.console.supportTickets.priority}
+        />
       ),
       cell: ({ row }) => SUPPORT_TICKET_PRIORITY_LABELS[row.original.priority],
     },
     {
       accessorKey: "service",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={messages.console.supportTickets.service} />
+        <DataTableColumnHeader
+          column={column}
+          title={messages.console.supportTickets.service}
+        />
       ),
       cell: ({ row }) =>
         row.original.service
@@ -115,7 +128,9 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
       setTickets(items)
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Unable to load support tickets."
+        error instanceof Error
+          ? error.message
+          : "Unable to load support tickets."
       )
     } finally {
       setIsLoading(false)
@@ -168,29 +183,52 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
                   label: messages.console.supportTickets.status,
                   allLabel: "All status",
                   options: [
-                    { label: messages.console.supportTickets.open, value: "open" },
-                    { label: messages.console.supportTickets.inProgress, value: "in_progress" },
-                    { label: messages.console.supportTickets.resolved, value: "resolved" },
-                    { label: messages.console.supportTickets.closed, value: "closed" },
+                    {
+                      label: messages.console.supportTickets.open,
+                      value: "open",
+                    },
+                    {
+                      label: messages.console.supportTickets.inProgress,
+                      value: "in_progress",
+                    },
+                    {
+                      label: messages.console.supportTickets.resolved,
+                      value: "resolved",
+                    },
+                    {
+                      label: messages.console.supportTickets.closed,
+                      value: "closed",
+                    },
                   ],
                 },
                 {
                   columnId: "department",
                   label: messages.console.supportTickets.department,
                   allLabel: "All departments",
-                  options: SUPPORT_TICKET_DEPARTMENTS.map((departmentValue) => ({
-                    label: SUPPORT_TICKET_DEPARTMENT_LABELS[departmentValue],
-                    value: departmentValue,
-                  })),
+                  options: SUPPORT_TICKET_DEPARTMENTS.map(
+                    (departmentValue) => ({
+                      label: SUPPORT_TICKET_DEPARTMENT_LABELS[departmentValue],
+                      value: departmentValue,
+                    })
+                  ),
                 },
                 {
                   columnId: "priority",
                   label: messages.console.supportTickets.priority,
                   allLabel: "All priority",
                   options: [
-                    { label: messages.console.supportTickets.low, value: "low" },
-                    { label: messages.console.supportTickets.medium, value: "medium" },
-                    { label: messages.console.supportTickets.high, value: "high" },
+                    {
+                      label: messages.console.supportTickets.low,
+                      value: "low",
+                    },
+                    {
+                      label: messages.console.supportTickets.medium,
+                      value: "medium",
+                    },
+                    {
+                      label: messages.console.supportTickets.high,
+                      value: "high",
+                    },
                   ],
                 },
                 {
@@ -209,7 +247,6 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
           )}
         </CardContent>
       </Card>
-
     </section>
   )
 }

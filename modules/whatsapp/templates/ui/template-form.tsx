@@ -67,7 +67,7 @@ export function TemplateForm({
   const [name, setName] = React.useState(initialData?.name ?? "")
   const [slug, setSlug] = React.useState(initialData?.slug ?? "")
   const [description, setDescription] = React.useState(
-    initialData?.description ?? "",
+    initialData?.description ?? ""
   )
   const [variants, setVariants] = React.useState<LanguageVariant[]>(
     initialData?.languages?.length
@@ -76,7 +76,7 @@ export function TemplateForm({
           id: v.id ?? crypto.randomUUID(),
           headerUrl: v.headerUrl ?? "",
         }))
-      : [emptyVariant()],
+      : [emptyVariant()]
   )
   const [errors, setErrors] = React.useState<
     Record<string, string | undefined>
@@ -92,7 +92,8 @@ export function TemplateForm({
 
     for (let i = 0; i < variants.length; i++) {
       if (!variants[i].lang.trim())
-        newErrors[`variant_${variants[i].id}_lang`] = "Language code is required."
+        newErrors[`variant_${variants[i].id}_lang`] =
+          "Language code is required."
       if (!variants[i].body.trim())
         newErrors[`variant_${variants[i].id}_body`] = "Body is required."
     }
@@ -118,7 +119,9 @@ export function TemplateForm({
           lang: v.lang,
           headerType: v.headerType,
           headerText: v.headerType === "NONE" ? "" : v.headerText,
-          headerUrl: ["IMAGE", "VIDEO", "DOCUMENT"].includes(v.headerType) ? v.headerUrl : "",
+          headerUrl: ["IMAGE", "VIDEO", "DOCUMENT"].includes(v.headerType)
+            ? v.headerUrl
+            : "",
           body: v.body,
           footer: v.footer,
         }
@@ -138,14 +141,13 @@ export function TemplateForm({
   const updateVariant = (
     id: string,
     field: keyof LanguageVariant,
-    value: string,
+    value: string
   ) => {
     setVariants(
-      variants.map((v) => (v.id === id ? { ...v, [field]: value } : v)),
+      variants.map((v) => (v.id === id ? { ...v, [field]: value } : v))
     )
   }
 
-  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* ── Core fields ─────────────────────────────────────────────────── */}
@@ -217,9 +219,7 @@ export function TemplateForm({
           return (
             <div key={variant.id} className="space-y-3 rounded-lg border p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">
-                  Variant {idx}
-                </span>
+                <span className="text-sm font-medium">Variant {idx}</span>
                 {variants.length > 1 && (
                   <Button
                     type="button"
@@ -263,10 +263,14 @@ export function TemplateForm({
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor={`variant-${variant.id}-header`}>Header Type</Label>
+                  <Label htmlFor={`variant-${variant.id}-header`}>
+                    Header Type
+                  </Label>
                   <Select
                     value={variant.headerType}
-                    onValueChange={(v) => updateVariant(variant.id, "headerType", v)}
+                    onValueChange={(v) =>
+                      updateVariant(variant.id, "headerType", v)
+                    }
                   >
                     <SelectTrigger id={`variant-${variant.id}-header`}>
                       <SelectValue />
@@ -302,7 +306,10 @@ export function TemplateForm({
               {["IMAGE", "VIDEO", "DOCUMENT"].includes(variant.headerType) && (
                 <div className="grid gap-2">
                   <Label htmlFor={`variant-${variant.id}-header-url`}>
-                    Header {variant.headerType.charAt(0) + variant.headerType.slice(1).toLowerCase()} URL
+                    Header{" "}
+                    {variant.headerType.charAt(0) +
+                      variant.headerType.slice(1).toLowerCase()}{" "}
+                    URL
                   </Label>
                   <Input
                     id={`variant-${variant.id}-header-url`}
@@ -323,7 +330,9 @@ export function TemplateForm({
                 <Textarea
                   id={`variant-${variant.id}-body`}
                   value={variant.body}
-                  onChange={(e) => updateVariant(variant.id, "body", e.target.value)}
+                  onChange={(e) =>
+                    updateVariant(variant.id, "body", e.target.value)
+                  }
                   placeholder="Template body text (max 1024 chars)"
                   rows={3}
                   maxLength={1024}
@@ -340,7 +349,9 @@ export function TemplateForm({
                 <Input
                   id={`variant-${variant.id}-footer`}
                   value={variant.footer}
-                  onChange={(e) => updateVariant(variant.id, "footer", e.target.value)}
+                  onChange={(e) =>
+                    updateVariant(variant.id, "footer", e.target.value)
+                  }
                   placeholder="Footer text (max 60 chars)"
                   maxLength={60}
                 />

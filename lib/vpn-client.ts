@@ -77,7 +77,12 @@ export type VpnServerAccount = {
   serverName: string
   protocol: "OPENVPN" | "WIREGUARD" | "PROXY"
   username: string
-  provisioningStatus: "PENDING" | "PROVISIONING" | "ACTIVE" | "FAILED" | "REVOKED"
+  provisioningStatus:
+    | "PENDING"
+    | "PROVISIONING"
+    | "ACTIVE"
+    | "FAILED"
+    | "REVOKED"
   failureReason: string | null
   hasConfig: boolean
   hasCredentials: boolean
@@ -105,7 +110,7 @@ export type VpnProxyCredentials = {
 async function fetchVpn<T>(
   endpoint: string,
   options?: RequestInit,
-  timeoutMs = 15_000,
+  timeoutMs = 15_000
 ): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -123,7 +128,9 @@ async function fetchVpn<T>(
 
   if (!response.ok || (data as VpnApiErrorResponse).ok === false) {
     const errorData = data as VpnApiErrorResponse
-    const error = new Error(errorData.message || `VPN API error: ${response.status}`)
+    const error = new Error(
+      errorData.message || `VPN API error: ${response.status}`
+    )
     ;(error as Error & { error?: string; topupUrl?: string }).error =
       errorData.error
     ;(error as Error & { error?: string; topupUrl?: string }).topupUrl =
@@ -146,7 +153,7 @@ export async function getVpnStatus(): Promise<VpnStatusResponse> {
 }
 
 export async function revokeVpnClient(
-  clientId: string,
+  clientId: string
 ): Promise<VpnRevokeResponse> {
   return fetchVpn<VpnRevokeResponse>(`/api/vpn/clients/${clientId}/revoke`, {
     method: "POST",
@@ -173,9 +180,7 @@ export async function getVpnPackage(id: string): Promise<VpnPackageDetail> {
   return res.data
 }
 
-export async function purchaseVpnPackage(
-  id: string
-): Promise<VpnSubscription> {
+export async function purchaseVpnPackage(id: string): Promise<VpnSubscription> {
   const res = await fetchVpn<{ ok: true; data: VpnSubscription }>(
     `/api/vpn/packages/${id}/purchase`,
     { method: "POST", body: JSON.stringify({}) }

@@ -21,7 +21,22 @@ const mockPlatformRoleFindFirst = mock(async () => ({
   role: "super_admin",
 }))
 
-const mockFindMany = mock<() => Promise<Array<{ id: string; billingAccountId: string; adjustmentType: string; amount: unknown; currency: string; reason: string; createdByWorkosUserId: string; createdAt: Date; updatedAt: Date; billingAccount: { organizationId: string } }>>>(async () => [])
+const mockFindMany = mock<
+  () => Promise<
+    Array<{
+      id: string
+      billingAccountId: string
+      adjustmentType: string
+      amount: unknown
+      currency: string
+      reason: string
+      createdByWorkosUserId: string
+      createdAt: Date
+      updatedAt: Date
+      billingAccount: { organizationId: string }
+    }>
+  >
+>(async () => [])
 const mockCount = mock<() => Promise<number>>(async () => 0)
 
 mock.module("@/lib/prisma", () => ({
@@ -48,7 +63,7 @@ describe("admin adjustments default deps", () => {
     const app = new Elysia().use(createAdminAdjustmentsRoutes())
 
     const response = await app.handle(
-      new Request("http://localhost/admin/adjustments"),
+      new Request("http://localhost/admin/adjustments")
     )
 
     // With super_admin role, should pass isAdmin check
@@ -81,7 +96,7 @@ describe("admin adjustments default deps", () => {
     const app = new Elysia().use(createAdminAdjustmentsRoutes())
 
     const response = await app.handle(
-      new Request("http://localhost/admin/adjustments"),
+      new Request("http://localhost/admin/adjustments")
     )
 
     expect(response.status).toBe(200)

@@ -62,12 +62,16 @@ export default function NewWhatsAppBroadcastPage() {
         setTemplates(templateItems)
         setDevices(deviceItems)
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Unable to load form data")
+        toast.error(
+          error instanceof Error ? error.message : "Unable to load form data"
+        )
       }
     })()
   }, [])
 
-  const selectedTemplate = templates.find((template) => template.id === templateId)
+  const selectedTemplate = templates.find(
+    (template) => template.id === templateId
+  )
   const languages = React.useMemo(
     () => selectedTemplate?.languages ?? [],
     [selectedTemplate]
@@ -109,7 +113,9 @@ export default function NewWhatsAppBroadcastPage() {
       toast.success("Broadcast created")
       router.push(`${basePath}/${broadcast.id}`)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to create broadcast")
+      toast.error(
+        error instanceof Error ? error.message : "Unable to create broadcast"
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -128,11 +134,15 @@ export default function NewWhatsAppBroadcastPage() {
         <CardHeader>
           <CardTitle>Campaign details</CardTitle>
           <CardDescription>
-            Select an approved template, sending device, and recipient phone numbers.
+            Select an approved template, sending device, and recipient phone
+            numbers.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-5" onSubmit={(event) => void handleSubmit(event)}>
+          <form
+            className="space-y-5"
+            onSubmit={(event) => void handleSubmit(event)}
+          >
             <div className="grid gap-2">
               <Label htmlFor="template">Template</Label>
               <Select value={templateId} onValueChange={handleTemplateChange}>
@@ -151,7 +161,10 @@ export default function NewWhatsAppBroadcastPage() {
 
             <div className="grid gap-2">
               <Label htmlFor="language">Language</Label>
-              <Select value={templateLanguage} onValueChange={setTemplateLanguage}>
+              <Select
+                value={templateLanguage}
+                onValueChange={setTemplateLanguage}
+              >
                 <SelectTrigger id="language">
                   <SelectValue placeholder="Select language" />
                 </SelectTrigger>

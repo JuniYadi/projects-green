@@ -77,9 +77,7 @@ export const GET = async (request: NextRequest) => {
   const queryRaw = request.nextUrl.searchParams.get("query")
   const query = queryRaw?.trim() || null
 
-  let result: Awaited<
-    ReturnType<typeof githubService.listRepositoriesForActor>
-  >
+  let result: Awaited<ReturnType<typeof githubService.listRepositoriesForActor>>
 
   try {
     result = await githubService.listRepositoriesForActor(

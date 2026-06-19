@@ -87,7 +87,8 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
-const repoModule = await import("@/modules/support-tickets/support-ticket.repository")
+const repoModule =
+  await import("@/modules/support-tickets/support-ticket.repository")
 const repository = repoModule.supportTicketRepository
 
 describe("SupportTicketRepository", () => {
@@ -128,7 +129,9 @@ describe("SupportTicketRepository", () => {
   describe("listTicketsByOrganization", () => {
     it("returns mapped tickets for the organization", async () => {
       mockFindMany.mockResolvedValue([basePrismaTicket])
-      const result = await repository.listTicketsByOrganization({ organizationId: "org_1" })
+      const result = await repository.listTicketsByOrganization({
+        organizationId: "org_1",
+      })
       expect(result).toHaveLength(1)
       expect(result[0]!.id).toBe("ticket_1")
       expect(mockFindMany).toHaveBeenCalledWith({
@@ -140,15 +143,20 @@ describe("SupportTicketRepository", () => {
 
     it("applies custom limit", async () => {
       mockFindMany.mockResolvedValue([])
-      await repository.listTicketsByOrganization({ organizationId: "org_1", limit: 10 })
+      await repository.listTicketsByOrganization({
+        organizationId: "org_1",
+        limit: 10,
+      })
       expect(mockFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({ take: 10 }),
+        expect.objectContaining({ take: 10 })
       )
     })
 
     it("returns empty array when no tickets", async () => {
       mockFindMany.mockResolvedValue([])
-      const result = await repository.listTicketsByOrganization({ organizationId: "org_empty" })
+      const result = await repository.listTicketsByOrganization({
+        organizationId: "org_empty",
+      })
       expect(result).toEqual([])
     })
   })
@@ -168,7 +176,9 @@ describe("SupportTicketRepository", () => {
     it("applies custom limit", async () => {
       mockFindMany.mockResolvedValue([])
       await repository.listAllTickets({ limit: 5 })
-      expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ take: 5 }))
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 5 })
+      )
     })
   })
 
@@ -252,7 +262,9 @@ describe("SupportTicketRepository", () => {
       const result = await repository.getUploadSessionById("session_1")
       expect(result).not.toBeNull()
       expect(result!.id).toBe("session_1")
-      expect(mockFindUnique).toHaveBeenCalledWith({ where: { id: "session_1" } })
+      expect(mockFindUnique).toHaveBeenCalledWith({
+        where: { id: "session_1" },
+      })
     })
 
     it("returns null when session not found", async () => {
@@ -280,9 +292,9 @@ describe("SupportTicketRepository", () => {
 
     it("throws error when session does not exist", async () => {
       mockFindUnique.mockResolvedValue(null)
-      await expect(repository.markUploadSessionRegistered(regInput)).rejects.toThrow(
-        "Attachment upload session was not found.",
-      )
+      await expect(
+        repository.markUploadSessionRegistered(regInput)
+      ).rejects.toThrow("Attachment upload session was not found.")
     })
 
     it("throws error when session payload does not match", async () => {
@@ -306,9 +318,9 @@ describe("SupportTicketRepository", () => {
         createdAt: new Date("2026-06-01"),
         updatedAt: new Date("2026-06-01"),
       })
-      await expect(repository.markUploadSessionRegistered(regInput)).rejects.toThrow(
-        "Attachment upload session payload mismatch.",
-      )
+      await expect(
+        repository.markUploadSessionRegistered(regInput)
+      ).rejects.toThrow("Attachment upload session payload mismatch.")
     })
 
     it("updates registeredAt when payload matches", async () => {
@@ -467,26 +479,28 @@ describe("SupportTicketRepository", () => {
 
       // consumeUploadSessions: updateMany returns count 1, findMany returns sessions
       mockUpdateMany.mockResolvedValue({ count: 1 })
-      mockSessionFindMany.mockResolvedValue([{
-        id: "att_1",
-        organizationId: "org_1",
-        uploaderWorkosUserId: "user_r",
-        target: "CREATE",
-        ticketId: null,
-        fileName: "file.pdf",
-        mimeType: "application/pdf",
-        sizeBytes: 1024,
-        checksumSha256: null,
-        storageKey: "support/file.pdf",
-        storageBucket: "bucket",
-        expiresAt: new Date("2030-01-01"),
-        registeredAt: new Date("2026-06-01"),
-        consumedAt: new Date("2026-06-01"),
-        consumedTicketId: null,
-        consumedReplyId: null,
-        createdAt: new Date("2026-06-01"),
-        updatedAt: new Date("2026-06-01"),
-      }])
+      mockSessionFindMany.mockResolvedValue([
+        {
+          id: "att_1",
+          organizationId: "org_1",
+          uploaderWorkosUserId: "user_r",
+          target: "CREATE",
+          ticketId: null,
+          fileName: "file.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 1024,
+          checksumSha256: null,
+          storageKey: "support/file.pdf",
+          storageBucket: "bucket",
+          expiresAt: new Date("2030-01-01"),
+          registeredAt: new Date("2026-06-01"),
+          consumedAt: new Date("2026-06-01"),
+          consumedTicketId: null,
+          consumedReplyId: null,
+          createdAt: new Date("2026-06-01"),
+          updatedAt: new Date("2026-06-01"),
+        },
+      ])
 
       // The second update (for merging attachments)
       mockUpdate.mockResolvedValue({
@@ -547,7 +561,7 @@ describe("SupportTicketRepository", () => {
           ticketId: "nonexistent",
           authorWorkosUserId: "user_a",
           body: "Test reply",
-        }),
+        })
       ).rejects.toThrow("Support ticket nonexistent was not found.")
     })
   })

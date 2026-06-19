@@ -17,7 +17,9 @@ describe("billing core prisma models", () => {
     expect(schema).toContain("model BillingRatedUsage {")
 
     expect(schema).toContain("model BillingInvoice {")
-    expect(schema).toContain("@@unique([billingAccountId, periodStart, periodEnd])")
+    expect(schema).toContain(
+      "@@unique([billingAccountId, periodStart, periodEnd])"
+    )
     expect(schema).toContain("model BillingInvoiceLine {")
     expect(schema).toContain("model BillingInvoiceLineSource {")
     expect(schema).toContain("model BillingAdjustment {")

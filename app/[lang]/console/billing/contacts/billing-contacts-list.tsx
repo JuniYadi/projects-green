@@ -180,7 +180,7 @@ export function BillingContactsList() {
       setError(null)
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to load billing account",
+        err instanceof Error ? err.message : "Failed to load billing account"
       )
     } finally {
       setLoading(false)
@@ -188,19 +188,18 @@ export function BillingContactsList() {
   }, [])
 
   useEffect(() => {
-    const run = async () => { await fetchAccount() }
+    const run = async () => {
+      await fetchAccount()
+    }
     run()
   }, [fetchAccount])
 
-  const contacts = useMemo(
-    () => account?.contacts ?? [],
-    [account],
-  )
+  const contacts = useMemo(() => account?.contacts ?? [], [account])
 
   const handleToggleNotification = useCallback(
     async (
       contact: BillingContactDTO,
-      field: "notifyOnInvoice" | "notifyOnLowBalance" | "notifyOnSupport",
+      field: "notifyOnInvoice" | "notifyOnLowBalance" | "notifyOnSupport"
     ) => {
       const newValue = !contact[field]
       // Optimistic update
@@ -209,7 +208,7 @@ export function BillingContactsList() {
         return {
           ...prev,
           contacts: prev.contacts.map((c) =>
-            c.id === contact.id ? { ...c, [field]: newValue } : c,
+            c.id === contact.id ? { ...c, [field]: newValue } : c
           ),
         }
       })
@@ -223,13 +222,13 @@ export function BillingContactsList() {
           return {
             ...prev,
             contacts: prev.contacts.map((c) =>
-              c.id === contact.id ? { ...c, [field]: !newValue } : c,
+              c.id === contact.id ? { ...c, [field]: !newValue } : c
             ),
           }
         })
       }
     },
-    [],
+    []
   )
 
   const handleAddContact = useCallback(async () => {
@@ -255,9 +254,7 @@ export function BillingContactsList() {
         notifyOnSupport: true,
       })
     } catch (err) {
-      setAddError(
-        err instanceof Error ? err.message : "Failed to add contact",
-      )
+      setAddError(err instanceof Error ? err.message : "Failed to add contact")
     } finally {
       setAddSubmitting(false)
     }
@@ -273,14 +270,14 @@ export function BillingContactsList() {
         if (!prev) return prev
         return {
           ...prev,
-          contacts: prev.contacts.filter(
-            (c) => c.id !== deactivateTarget.id,
-          ),
+          contacts: prev.contacts.filter((c) => c.id !== deactivateTarget.id),
         }
       })
       setDeactivateTarget(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to deactivate contact")
+      setError(
+        err instanceof Error ? err.message : "Failed to deactivate contact"
+      )
     } finally {
       setDeactivating(false)
     }
@@ -299,7 +296,7 @@ export function BillingContactsList() {
         return {
           ...prev,
           contacts: prev.contacts.map((c) =>
-            c.id === editTarget.id ? { ...c, ...result } : c,
+            c.id === editTarget.id ? { ...c, ...result } : c
           ),
         }
       })
@@ -389,7 +386,7 @@ export function BillingContactsList() {
         ),
       },
     ],
-    [handleToggleNotification],
+    [handleToggleNotification]
   )
 
   if (loading) {
@@ -405,11 +402,16 @@ export function BillingContactsList() {
     return (
       <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        <Button variant="outline" size="sm" className="mt-2" onClick={() => {
-          setLoading(true)
-          setError(null)
-          void fetchAccount()
-        }}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() => {
+            setLoading(true)
+            setError(null)
+            void fetchAccount()
+          }}
+        >
           Retry
         </Button>
       </div>
@@ -440,19 +442,22 @@ export function BillingContactsList() {
       </div>
 
       {/* ─── Add Contact Dialog ───────────────────────────────────────────── */}
-      <Dialog open={addOpen} onOpenChange={(open) => {
-        if (!open) {
-          setAddError(null)
-          setAddForm({
-            email: "",
-            role: "GENERAL",
-            notifyOnInvoice: true,
-            notifyOnLowBalance: true,
-            notifyOnSupport: true,
-          })
-        }
-        setAddOpen(open)
-      }}>
+      <Dialog
+        open={addOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddError(null)
+            setAddForm({
+              email: "",
+              role: "GENERAL",
+              notifyOnInvoice: true,
+              notifyOnLowBalance: true,
+              notifyOnSupport: true,
+            })
+          }
+          setAddOpen(open)
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add Billing Contact</DialogTitle>
@@ -573,9 +578,7 @@ export function BillingContactsList() {
               </div>
             </div>
 
-            {addError && (
-              <p className="text-sm text-destructive">{addError}</p>
-            )}
+            {addError && <p className="text-sm text-destructive">{addError}</p>}
           </div>
 
           <DialogFooter>
@@ -604,9 +607,12 @@ export function BillingContactsList() {
       </Dialog>
 
       {/* ─── Edit Name Dialog ───────────────────────────────────────────────── */}
-      <Dialog open={editTarget !== null} onOpenChange={(open) => {
-        if (!open) setEditTarget(null)
-      }}>
+      <Dialog
+        open={editTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditTarget(null)
+        }}
+      >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Edit Contact</DialogTitle>

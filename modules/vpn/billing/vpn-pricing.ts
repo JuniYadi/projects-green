@@ -32,11 +32,9 @@ export type VpnResolvedPrice = {
 export class VpnPriceNotConfiguredError extends Error {
   constructor(
     public readonly regionCode: string,
-    public readonly planCode: string,
+    public readonly planCode: string
   ) {
-    super(
-      `VPN price not configured for region=${regionCode} plan=${planCode}`,
-    )
+    super(`VPN price not configured for region=${regionCode} plan=${planCode}`)
     this.name = "VpnPriceNotConfiguredError"
   }
 }
@@ -57,7 +55,7 @@ export type ResolveVpnMonthlyPriceInput = {
  * from the catalog so the route layer can surface a 422 to the UI.
  */
 export function resolveVpnMonthlyPrice(
-  input: ResolveVpnMonthlyPriceInput,
+  input: ResolveVpnMonthlyPriceInput
 ): VpnResolvedPrice {
   const region = CATALOG[input.regionCode as RegionCode]
   if (!region) {

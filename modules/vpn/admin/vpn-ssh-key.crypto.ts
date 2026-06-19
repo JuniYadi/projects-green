@@ -57,9 +57,10 @@ export function decryptSshPrivateKey(encryptedValue: string): string {
  *
  * Throws VpnSshKeyError for malformed, unsupported, or encrypted keys.
  */
-export function parseSshPrivateKey(
-  privateKey: string
-): { publicKeyDer: Buffer; algorithm: string } {
+export function parseSshPrivateKey(privateKey: string): {
+  publicKeyDer: Buffer
+  algorithm: string
+} {
   let parsed: sshpk.PrivateKey
   try {
     parsed = sshpk.parsePrivateKey(privateKey, "auto")

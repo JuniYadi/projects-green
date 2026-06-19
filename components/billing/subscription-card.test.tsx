@@ -48,7 +48,9 @@ describe("SubscriptionCard", () => {
   }
 
   it("renders WhatsApp subscription with WhatsApp icon", () => {
-    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    const view = render(
+      <SubscriptionCard subscription={whatsappSubscription} />
+    )
     expect(view.getByText("WhatsApp")).toBeInTheDocument()
     expect(view.getByText("WhatsApp Business messaging")).toBeInTheDocument()
     expect(view.getByText("WHATSAPP_STANDARD")).toBeInTheDocument()
@@ -61,18 +63,24 @@ describe("SubscriptionCard", () => {
   })
 
   it("renders App Hosting subscription with RocketLaunchIcon", () => {
-    const view = render(<SubscriptionCard subscription={appHostingSubscription} />)
+    const view = render(
+      <SubscriptionCard subscription={appHostingSubscription} />
+    )
     expect(view.getByText("App Hosting")).toBeInTheDocument()
     expect(view.getByText("APP_STARTER")).toBeInTheDocument()
   })
 
   it("displays ACTIVE status text", () => {
-    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    const view = render(
+      <SubscriptionCard subscription={whatsappSubscription} />
+    )
     expect(view.getByText("ACTIVE")).toBeInTheDocument()
   })
 
   it("displays SUSPENDED status text", () => {
-    const view = render(<SubscriptionCard subscription={appHostingSubscription} />)
+    const view = render(
+      <SubscriptionCard subscription={appHostingSubscription} />
+    )
     expect(view.getByText("SUSPENDED")).toBeInTheDocument()
   })
 
@@ -86,7 +94,9 @@ describe("SubscriptionCard", () => {
   })
 
   it("displays WhatsApp quota information", () => {
-    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    const view = render(
+      <SubscriptionCard subscription={whatsappSubscription} />
+    )
     expect(view.getByText("Quota In")).toBeInTheDocument()
     expect(view.getByText("1.000")).toBeInTheDocument()
     expect(view.getByText("Quota Out")).toBeInTheDocument()
@@ -94,20 +104,27 @@ describe("SubscriptionCard", () => {
   })
 
   it("displays monthly rate formatted as IDR", () => {
-    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    const view = render(
+      <SubscriptionCard subscription={whatsappSubscription} />
+    )
     expect(view.getByText("Monthly Rate")).toBeInTheDocument()
     expect(view.getByText(/Rp\s*299\.?000/)).toBeInTheDocument()
   })
 
   it("displays next billing date formatted", () => {
-    const view = render(<SubscriptionCard subscription={whatsappSubscription} />)
+    const view = render(
+      <SubscriptionCard subscription={whatsappSubscription} />
+    )
     expect(view.getByText("Next Billing")).toBeInTheDocument()
     expect(view.getByText("28 Jun 2026")).toBeInTheDocument()
   })
 
   it("applies custom className", () => {
     const { container } = render(
-      <SubscriptionCard subscription={whatsappSubscription} className="custom-class" />
+      <SubscriptionCard
+        subscription={whatsappSubscription}
+        className="custom-class"
+      />
     )
     expect(container.firstChild).toHaveClass("custom-class")
   })

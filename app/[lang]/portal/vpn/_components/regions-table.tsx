@@ -25,10 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { PlusIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react"
 
-import {
-  vpnApi,
-  type VpnRegionItem,
-} from "./vpn-admin-client"
+import { vpnApi, type VpnRegionItem } from "./vpn-admin-client"
 
 type FormState = { name: string; countryCode: string; isActive: boolean }
 
@@ -160,7 +157,9 @@ export function RegionsTable() {
             ) : (
               regions.map((region) => (
                 <TableRow key={region.id}>
-                  <TableCell className="font-mono text-sm uppercase">{region.countryCode}</TableCell>
+                  <TableCell className="font-mono text-sm uppercase">
+                    {region.countryCode}
+                  </TableCell>
                   <TableCell className="font-medium">{region.name}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {region.slug}

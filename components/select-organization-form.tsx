@@ -72,10 +72,12 @@ export function SelectOrganizationForm({
     setIsSubmitting(true)
 
     try {
-      const { data } = await eden.api.auth["organization-selection"].complete.post({
+      const { data } = (await eden.api.auth[
+        "organization-selection"
+      ].complete.post({
         organizationId,
         pendingAuthenticationToken,
-      }) as { data: { ok?: boolean; message?: string } | null }
+      })) as { data: { ok?: boolean; message?: string } | null }
 
       if (!data?.ok) {
         setSubmitError(
@@ -146,7 +148,7 @@ export function SelectOrganizationForm({
                   className={cn(
                     "flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-all",
                     "hover:border-primary hover:bg-accent/50",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                     isSelected
                       ? "border-primary bg-accent/50 ring-1 ring-primary"

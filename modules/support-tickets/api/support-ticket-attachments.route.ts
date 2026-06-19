@@ -250,7 +250,9 @@ export const createSupportTicketAttachmentRoutes = (
 
         if (s3Endpoint && s3Bucket) {
           const expectedPrefix = `${s3Endpoint}/${s3Bucket}`
-          if (!uploadUrl.toLowerCase().startsWith(expectedPrefix.toLowerCase())) {
+          if (
+            !uploadUrl.toLowerCase().startsWith(expectedPrefix.toLowerCase())
+          ) {
             set.status = 403
             return {
               ok: false as const,
@@ -286,7 +288,8 @@ export const createSupportTicketAttachmentRoutes = (
           return {
             ok: false as const,
             error: "UPLOAD_FAILED" as const,
-            message: error instanceof Error ? error.message : "Failed to upload to S3",
+            message:
+              error instanceof Error ? error.message : "Failed to upload to S3",
           }
         }
       },
@@ -306,7 +309,9 @@ export const createSupportTicketAttachmentRoutes = (
             actor,
             target: body.target as "create" | "reply",
             ticketId:
-              typeof body.ticketId === "string" ? String(body.ticketId) : undefined,
+              typeof body.ticketId === "string"
+                ? String(body.ticketId)
+                : undefined,
             fileName: String(body.fileName),
             mimeType: String(body.mimeType),
             sizeBytes: Number(body.sizeBytes),
@@ -332,7 +337,9 @@ export const createSupportTicketAttachmentRoutes = (
           actor,
           target: body.target as "create" | "reply",
           ticketId:
-            typeof body.ticketId === "string" ? String(body.ticketId) : undefined,
+            typeof body.ticketId === "string"
+              ? String(body.ticketId)
+              : undefined,
           id: String(body.id),
           fileName: String(body.fileName),
           mimeType: String(body.mimeType),

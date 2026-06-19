@@ -5,7 +5,10 @@ import { createAuthMock, createNavigationMock } from "@/test/layout-test-mocks"
 describe("layout test mocks", () => {
   it("builds navigation mock with router helpers", () => {
     const redirect = mock(() => {})
-    const navigation = createNavigationMock({ pathname: "/id/console", redirect })
+    const navigation = createNavigationMock({
+      pathname: "/id/console",
+      redirect,
+    })
 
     expect(navigation.usePathname()).toBe("/id/console")
     expect(navigation.useSearchParams()).toBeInstanceOf(URLSearchParams)
@@ -28,7 +31,11 @@ describe("layout test mocks", () => {
     const workos = auth.getWorkOS()
 
     expect(await auth.withAuth()).toEqual({ user: "ok" })
-    expect(await workos.userManagement.getUser("user_1")).toEqual({ id: "user_1" })
-    expect(await workos.organizations.getOrganization("org_1")).toEqual({ id: "org_1" })
+    expect(await workos.userManagement.getUser("user_1")).toEqual({
+      id: "user_1",
+    })
+    expect(await workos.organizations.getOrganization("org_1")).toEqual({
+      id: "org_1",
+    })
   })
 })

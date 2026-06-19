@@ -22,7 +22,8 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const { InvoiceExpirationService } = await import("./invoice-expiration.service")
+const { InvoiceExpirationService } =
+  await import("./invoice-expiration.service")
 
 describe("InvoiceExpirationService", () => {
   let service: InstanceType<typeof InvoiceExpirationService>

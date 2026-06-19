@@ -16,7 +16,7 @@ import { BillingTransactionService } from "@/modules/billing/billing-transaction
 import { AppHostingBillingService } from "@/modules/deploy/billing/app-hosting-billing.service"
 
 async function chargeActivePaygStacks(
-  billingService: AppHostingBillingService,
+  billingService: AppHostingBillingService
 ): Promise<{ charged: number; graceEntered: number; errors: number }> {
   // Find all stacks with billingMode PAYG and status RUNNING
   const stacks = await prisma.applicationStack.findMany({
@@ -46,19 +46,19 @@ async function chargeActivePaygStacks(
       if (result.graceEntered) {
         graceEntered++
         console.info(
-          `[app-hosting-billing] stack=${stack.id} name=${stack.name} entered PAYMENT_GRACE`,
+          `[app-hosting-billing] stack=${stack.id} name=${stack.name} entered PAYMENT_GRACE`
         )
       } else if (!result.alreadyProcessed) {
         charged++
         console.info(
-          `[app-hosting-billing] stack=${stack.id} name=${stack.name} charged ${hourlyCost.toString()}`,
+          `[app-hosting-billing] stack=${stack.id} name=${stack.name} charged ${hourlyCost.toString()}`
         )
       }
     } catch (error) {
       errors++
       console.error(
         `[app-hosting-billing] stack=${stack.id} name=${stack.name} error:`,
-        error,
+        error
       )
     }
   }
@@ -67,7 +67,7 @@ async function chargeActivePaygStacks(
 }
 
 async function checkGraceSuspension(
-  billingService: AppHostingBillingService,
+  billingService: AppHostingBillingService
 ): Promise<{ suspended: number }> {
   // Find stacks in PAYMENT_GRACE
   const stacks = await prisma.applicationStack.findMany({
@@ -90,13 +90,13 @@ async function checkGraceSuspension(
       if (result.suspended) {
         suspended++
         console.info(
-          `[app-hosting-billing] stack=${stack.id} name=${stack.name} SUSPENDED after grace period`,
+          `[app-hosting-billing] stack=${stack.id} name=${stack.name} SUSPENDED after grace period`
         )
       }
     } catch (error) {
       console.error(
         `[app-hosting-billing] grace check stack=${stack.id} error:`,
-        error,
+        error
       )
     }
   }
@@ -116,7 +116,9 @@ async function acquireLock(): Promise<boolean> {
       if (!isNaN(pid)) {
         try {
           process.kill(pid, 0) // Check if process is alive
-          console.info(`[app-hosting-billing] another worker is running (pid=${pid}), skipping`)
+          console.info(
+            `[app-hosting-billing] another worker is running (pid=${pid}), skipping`
+          )
           return false
         } catch {
           // Process doesn't exist — stale lock, safe to take over
@@ -152,13 +154,13 @@ async function main() {
   // Charge active PAYG stacks
   const chargeResult = await chargeActivePaygStacks(billingService)
   console.info(
-    `[app-hosting-billing] charges: charged=${chargeResult.charged} grace=${chargeResult.graceEntered} errors=${chargeResult.errors}`,
+    `[app-hosting-billing] charges: charged=${chargeResult.charged} grace=${chargeResult.graceEntered} errors=${chargeResult.errors}`
   )
 
   // Check grace suspension
   const graceResult = await checkGraceSuspension(billingService)
   console.info(
-    `[app-hosting-billing] grace: suspended=${graceResult.suspended}`,
+    `[app-hosting-billing] grace: suspended=${graceResult.suspended}`
   )
 
   console.info("[app-hosting-billing] worker completed")

@@ -41,7 +41,7 @@ describe("AdminInvoiceRoute", () => {
       const app = new Elysia()
         .use(
           createAdminInvoiceRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })

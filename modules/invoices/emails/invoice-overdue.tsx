@@ -32,17 +32,14 @@ export const InvoiceOverdueEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>
-        OVERDUE: Invoice {invoiceNumber} Payment Required
-      </Preview>
+      <Preview>OVERDUE: Invoice {invoiceNumber} Payment Required</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>
-            Invoice Overdue
-          </Heading>
+          <Heading style={styles.heading}>Invoice Overdue</Heading>
 
           <Text style={styles.intro}>
-            Invoice {invoiceNumber} is now overdue. Please make payment immediately to avoid service interruption or additional fees.
+            Invoice {invoiceNumber} is now overdue. Please make payment
+            immediately to avoid service interruption or additional fees.
           </Text>
 
           <Section style={styles.invoiceInfo}>
@@ -68,7 +65,8 @@ export const InvoiceOverdueEmail = ({
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you believe this is an error or need to discuss payment arrangements, please contact us immediately.
+            If you believe this is an error or need to discuss payment
+            arrangements, please contact us immediately.
           </Text>
         </Container>
       </Body>

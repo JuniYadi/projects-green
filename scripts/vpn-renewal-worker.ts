@@ -30,7 +30,7 @@ async function main() {
   const result = await renewalService.renewDueSubscriptions()
 
   console.info(
-    `[vpn-renewal] Complete: ${result.renewed} renewed, ${result.retried} retried, ${result.suspended} suspended, ${result.expired} expired, ${result.errors} errors`,
+    `[vpn-renewal] Complete: ${result.renewed} renewed, ${result.retried} retried, ${result.suspended} suspended, ${result.expired} expired, ${result.errors} errors`
   )
 
   if (result.errors > 0) {

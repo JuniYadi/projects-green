@@ -75,10 +75,7 @@ const resolveInitials = (name: string, email: string) => {
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase()
 }
 
-const resolveAuthMethodLabel = (
-  method: string | null,
-  fallback: string
-) => {
+const resolveAuthMethodLabel = (method: string | null, fallback: string) => {
   if (!method) {
     return fallback
   }
@@ -127,11 +124,7 @@ const formatSignInTime = (value: string | null, fallback: string) => {
   }).format(parsed)
 }
 
-export function NavUser({
-  user,
-}: {
-  user: AppSidebarUser
-}) {
+export function NavUser({ user }: { user: AppSidebarUser }) {
   const { isMobile } = useSidebar()
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -157,10 +150,8 @@ export function NavUser({
     [user.avatarUrl]
   )
   const showFallback = !hasAvatarUrl || avatarStatus === "error"
-  const {
-    locale: pathnameLocale,
-    pathnameWithoutLocale,
-  } = getLocaleFromPathname(pathname)
+  const { locale: pathnameLocale, pathnameWithoutLocale } =
+    getLocaleFromPathname(pathname)
   const activeLocale = (pathnameLocale ?? defaultLocale) as AppLocale
   const messages = getMessages(activeLocale)
 
@@ -341,15 +332,24 @@ export function NavUser({
                   value={theme ?? "system"}
                   onValueChange={(val) => setTheme(val)}
                 >
-                  <DropdownMenuRadioItem value="light" className="flex items-center gap-2">
+                  <DropdownMenuRadioItem
+                    value="light"
+                    className="flex items-center gap-2"
+                  >
                     <SunIcon className="mr-2 h-4 w-4" />
                     <span>{messages.navUser.themes.light}</span>
                   </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="dark" className="flex items-center gap-2">
+                  <DropdownMenuRadioItem
+                    value="dark"
+                    className="flex items-center gap-2"
+                  >
                     <MoonIcon className="mr-2 h-4 w-4" />
                     <span>{messages.navUser.themes.dark}</span>
                   </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="system" className="flex items-center gap-2">
+                  <DropdownMenuRadioItem
+                    value="system"
+                    className="flex items-center gap-2"
+                  >
                     <MonitorIcon className="mr-2 h-4 w-4" />
                     <span>{messages.navUser.themes.system}</span>
                   </DropdownMenuRadioItem>
@@ -360,7 +360,7 @@ export function NavUser({
               <DropdownMenuSubTrigger>
                 <GlobeIcon className="mr-2 h-4 w-4" />
                 <span>{messages.navUser.languageLabel}</span>
-                <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
+                <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
                   {activeLocale === "en" ? "🇺🇸 EN" : "🇮🇩 ID"}
                 </span>
               </DropdownMenuSubTrigger>
@@ -372,11 +372,17 @@ export function NavUser({
                   value={activeLocale}
                   onValueChange={handleLocaleChange}
                 >
-                  <DropdownMenuRadioItem value="en" className="flex items-center gap-2">
+                  <DropdownMenuRadioItem
+                    value="en"
+                    className="flex items-center gap-2"
+                  >
                     <span className="text-base select-none">🇺🇸</span>
                     <span>{messages.navUser.languages.en}</span>
                   </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="id" className="flex items-center gap-2">
+                  <DropdownMenuRadioItem
+                    value="id"
+                    className="flex items-center gap-2"
+                  >
                     <span className="text-base select-none">🇮🇩</span>
                     <span>{messages.navUser.languages.id}</span>
                   </DropdownMenuRadioItem>

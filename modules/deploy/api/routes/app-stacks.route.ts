@@ -53,7 +53,11 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
 
       if (!auth.organizationId) {
         set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Organization required" }
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
       }
 
       const stack = await prisma.applicationStack.findUnique({
@@ -73,7 +77,11 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
 
       if (!stack) {
         set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Application not found" }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application not found",
+        }
       }
 
       const latestDeployment = stack.deployments[0] ?? null

@@ -9,9 +9,7 @@ let mockAuthValue: { user: { id: string; email: string } | null } = {
 let mockPlatformRoleValue: "super_admin" | "none" = "none"
 
 const mockWithAuth = mock(async () => mockAuthValue)
-const mockGetPlatformRoleForUser = mock(
-  async () => mockPlatformRoleValue
-)
+const mockGetPlatformRoleForUser = mock(async () => mockPlatformRoleValue)
 
 mock.module("@workos-inc/authkit-nextjs", () => ({
   withAuth: mockWithAuth,

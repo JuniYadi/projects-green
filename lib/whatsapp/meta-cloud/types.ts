@@ -103,19 +103,20 @@ export type SendReactionPayload = {
   emoji: string
 }
 
-export type SendMessageInput = SendMessageInputBase & (
-  | { type: "text"; payload: SendTextPayload }
-  | { type: "template"; payload: SendTemplatePayload }
-  | { type: "image"; payload: SendImagePayload }
-  | { type: "audio"; payload: SendAudioPayload }
-  | { type: "video"; payload: SendVideoPayload }
-  | { type: "sticker"; payload: SendStickerPayload }
-  | { type: "document"; payload: SendDocumentPayload }
-  | { type: "location"; payload: SendLocationPayload }
-  | { type: "contacts"; payload: SendContactsPayload }
-  | { type: "interactive"; payload: SendInteractivePayload }
-  | { type: "reaction"; payload: SendReactionPayload }
-)
+export type SendMessageInput = SendMessageInputBase &
+  (
+    | { type: "text"; payload: SendTextPayload }
+    | { type: "template"; payload: SendTemplatePayload }
+    | { type: "image"; payload: SendImagePayload }
+    | { type: "audio"; payload: SendAudioPayload }
+    | { type: "video"; payload: SendVideoPayload }
+    | { type: "sticker"; payload: SendStickerPayload }
+    | { type: "document"; payload: SendDocumentPayload }
+    | { type: "location"; payload: SendLocationPayload }
+    | { type: "contacts"; payload: SendContactsPayload }
+    | { type: "interactive"; payload: SendInteractivePayload }
+    | { type: "reaction"; payload: SendReactionPayload }
+  )
 
 export type SendMessageResult = {
   providerMessageId: string
@@ -162,10 +163,11 @@ export type ReplyPayloadMedia = {
   filename?: string
 }
 
-export type SendReplyInput = SendMessageInputBase & (
-  | { type: "text"; payload: ReplyPayloadText }
-  | { type: "image" | "document"; payload: ReplyPayloadMedia }
-)
+export type SendReplyInput = SendMessageInputBase &
+  (
+    | { type: "text"; payload: ReplyPayloadText }
+    | { type: "image" | "document"; payload: ReplyPayloadMedia }
+  )
 
 export type UploadMediaInput = {
   fileName: string
@@ -211,16 +213,43 @@ export type MessageEvent = {
   from: string
   id: string
   timestamp: string
-  type: "text" | "image" | "video" | "audio" | "document" | "sticker" | "location" | "contacts" | "interactive" | "button" | "reaction" | "unsupported"
+  type:
+    | "text"
+    | "image"
+    | "video"
+    | "audio"
+    | "document"
+    | "sticker"
+    | "location"
+    | "contacts"
+    | "interactive"
+    | "button"
+    | "reaction"
+    | "unsupported"
   text?: { body: string }
   image?: { caption?: string; mime_type: string; sha256: string; id: string }
   video?: { caption?: string; mime_type: string; sha256: string; id: string }
   audio?: { mime_type: string; sha256: string; id: string; voice: boolean }
-  document?: { caption?: string; mime_type: string; sha256: string; id: string; filename?: string }
+  document?: {
+    caption?: string
+    mime_type: string
+    sha256: string
+    id: string
+    filename?: string
+  }
   sticker?: { mime_type: string; sha256: string; id: string; animated: boolean }
-  location?: { latitude: number; longitude: number; name?: string; address?: string }
+  location?: {
+    latitude: number
+    longitude: number
+    name?: string
+    address?: string
+  }
   contacts?: SendContactInput[]
-  interactive?: { type: string; button_reply?: { id: string; title: string }; list_reply?: { id: string; title: string; description?: string } }
+  interactive?: {
+    type: string
+    button_reply?: { id: string; title: string }
+    list_reply?: { id: string; title: string; description?: string }
+  }
   button?: { payload: string; text: string }
   reaction?: { message_id: string; emoji: string }
   context?: { from: string; id: string }
@@ -233,5 +262,10 @@ export type StatusUpdateEvent = {
   recipient_id: string
   conversation?: { id: string; origin: { type: string } }
   pricing?: { billable: boolean; pricing_model: string; category: string }
-  errors?: Array<{ code: number; title: string; message: string; error_data?: { details: string } }>
+  errors?: Array<{
+    code: number
+    title: string
+    message: string
+    error_data?: { details: string }
+  }>
 }

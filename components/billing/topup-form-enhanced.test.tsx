@@ -25,7 +25,9 @@ describe("TopupFormEnhanced", () => {
       replace: () => {},
       refresh: () => {},
     })
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console/billing/topup")
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(
+      "/en/console/billing/topup"
+    )
     pushMock.mockClear()
   })
 
@@ -208,9 +210,7 @@ describe("TopupFormEnhanced", () => {
 
     const view = render(<TopupFormEnhanced />)
 
-    await waitFor(() =>
-      expect(view.getByDisplayValue("VA")).toBeChecked()
-    )
+    await waitFor(() => expect(view.getByDisplayValue("VA")).toBeChecked())
     expect(view.queryByText("Manual Bank Transfer")).not.toBeInTheDocument()
     expect(
       view.queryByText("No bank accounts available. Please contact support.")

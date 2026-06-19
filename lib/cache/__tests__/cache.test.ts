@@ -75,10 +75,7 @@ const { getOrFetch, del } = await import("@/lib/cache/index")
 // Helpers
 // ---------------------------------------------------------------------------
 
-const dbStore = new Map<
-  string,
-  { value: string; expiresAt: Date | null }
->()
+const dbStore = new Map<string, { value: string; expiresAt: Date | null }>()
 
 function dbEntry(
   key: string,
@@ -132,9 +129,7 @@ function defaultPrismaFindUnique(
   return Promise.resolve(dbEntry(lookupKey, entry.value, entry.expiresAt))
 }
 
-function defaultPrismaUpsert(
-  args: unknown
-): Promise<Record<string, unknown>> {
+function defaultPrismaUpsert(args: unknown): Promise<Record<string, unknown>> {
   const create = (args as Record<string, unknown>).create as Record<
     string,
     unknown

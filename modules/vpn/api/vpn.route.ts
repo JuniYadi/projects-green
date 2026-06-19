@@ -29,8 +29,18 @@ type VpnAuthContext = {
 
 type VpnAuthResult =
   | (VpnAuthContext & { ok: true })
-  | { ok: false; error: "UNAUTHORIZED"; message: string; organizationId?: string | null }
-  | { ok: false; error: "FORBIDDEN"; message: string; organizationId?: string | null }
+  | {
+      ok: false
+      error: "UNAUTHORIZED"
+      message: string
+      organizationId?: string | null
+    }
+  | {
+      ok: false
+      error: "FORBIDDEN"
+      message: string
+      organizationId?: string | null
+    }
 
 type RouteSet = {
   status?: number | string
@@ -65,7 +75,8 @@ const defaultBilling = (): VpnBillingLike =>
 const defaultOpenVpn = (): OpenVpnLike =>
   new OpenVpnSshAdapter({ env: openVpnSshEnvFromProcessEnv() })
 
-const defaultVpnClients = (): VpnClientServiceLike => new VpnClientService(prisma)
+const defaultVpnClients = (): VpnClientServiceLike =>
+  new VpnClientService(prisma)
 
 const TOPUP_URL = "/console/billing/topup"
 
@@ -99,14 +110,13 @@ const toServerError = (set: RouteSet, message: string) => {
 const isAdminAuth = (auth: VpnAuthContext): boolean => {
   const roles = new Set([auth.role, ...(auth.roles ?? [])].filter(Boolean))
   return ["admin", "owner", "super_admin", "user_admin", "user_owner"].some(
-    (role) => roles.has(role),
+    (role) => roles.has(role)
   )
 }
 
 const isAuthSuccess = (
-  auth: VpnAuthResult,
-): auth is VpnAuthContext & { ok: true } =>
-  auth.ok === true
+  auth: VpnAuthResult
+): auth is VpnAuthContext & { ok: true } => auth.ok === true
 
 const requireOrg = (auth: VpnAuthContext & { ok: true }) => {
   if (!auth.organizationId) throw new Error("No active organization")
@@ -115,13 +125,16 @@ const requireOrg = (auth: VpnAuthContext & { ok: true }) => {
 
 const requireAuth = async (
   authenticate: () => Promise<VpnAuthContext>,
-  set: RouteSet,
+  set: RouteSet
 ): Promise<VpnAuthResult> => {
   const auth = await authenticate()
 
   if (!auth.user) return toUnauthorized(set)
   if (!auth.organizationId) {
-    return toForbidden(set, "No active organization found for VPN provisioning.")
+    return toForbidden(
+      set,
+      "No active organization found for VPN provisioning."
+    )
   }
 
   return { ...auth, ok: true as const }
@@ -135,7 +148,7 @@ const currentPeriod = (now: Date = new Date()): string => {
 
 const buildOpenVpnClientName = (
   organizationId: string,
-  subscriptionId: string,
+  subscriptionId: string
 ): string => {
   const safeOrgId = organizationId.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 24)
   const safeSubscriptionId = subscriptionId
@@ -181,9 +194,8 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
       }
       const organizationId = requireOrg(auth)
 
-      const clients = await vpnClients.getActiveClientsForOrganization(
-        organizationId,
-      )
+      const clients =
+        await vpnClients.getActiveClientsForOrganization(organizationId)
 
       return {
         ok: true as const,
@@ -264,7 +276,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         if (!auth.organizationId) {
           return toForbidden(
             set,
-            "No active organization found for VPN provisioning.",
+            "No active organization found for VPN provisioning."
           )
         }
 
@@ -277,7 +289,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         if (!account) {
           return toServerError(
             set,
-            "No billing account found for this organization. Please contact support.",
+            "No billing account found for this organization. Please contact support."
           )
         }
 
@@ -403,7 +415,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
 
           const clientName = buildOpenVpnClientName(
             auth.organizationId,
-            vpnSubscriptionId,
+            vpnSubscriptionId
           )
 
           try {
@@ -467,7 +479,10 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
                 },
               })
             } catch (cleanupError) {
-              console.error("[VpnRoute] Failed to suspend subscription after failed charge:", cleanupError)
+              console.error(
+                "[VpnRoute] Failed to suspend subscription after failed charge:",
+                cleanupError
+              )
             }
           }
 
@@ -490,7 +505,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           ) {
             return toServerError(
               set,
-              "No billing account for this organization. Please contact support.",
+              "No billing account for this organization. Please contact support."
             )
           }
           throw error
@@ -499,10 +514,13 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         // ── Success: return subscription DTO ────────────────────────
         // Issue 8 Fix: format monthlyPrice to consistent decimal places and
         // provide monthlyPriceMinor.
-        const formattedPrice = price.amount.toFixed(price.currency === "USD" ? 4 : 2)
-        const priceMinor = price.currency === "USD"
-          ? Math.round(Number(price.amount) * 100)
-          : Math.round(Number(price.amount))
+        const formattedPrice = price.amount.toFixed(
+          price.currency === "USD" ? 4 : 2
+        )
+        const priceMinor =
+          price.currency === "USD"
+            ? Math.round(Number(price.amount) * 100)
+            : Math.round(Number(price.amount))
 
         return {
           ok: true as const,
@@ -524,7 +542,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           regionCode: t.String({ minLength: 1 }),
           planCode: t.String({ minLength: 1 }),
         }),
-      },
+      }
     )
 }
 

@@ -59,7 +59,9 @@ function toWhatsappTemplateLanguageDTO(
 }
 
 export function toWhatsappTemplateDTO(
-  template: Prisma.WhatsappTemplateGetPayload<Prisma.WhatsappTemplateDefaultArgs> | TemplateWithLanguages
+  template:
+    | Prisma.WhatsappTemplateGetPayload<Prisma.WhatsappTemplateDefaultArgs>
+    | TemplateWithLanguages
 ): WhatsappTemplateDTO {
   return {
     id: template.id,
@@ -71,8 +73,9 @@ export function toWhatsappTemplateDTO(
     lastSyncedAt: template.lastSyncedAt,
     createdAt: template.createdAt,
     updatedAt: template.updatedAt,
-    languages: "languages" in template
-      ? template.languages.map(toWhatsappTemplateLanguageDTO)
-      : undefined,
+    languages:
+      "languages" in template
+        ? template.languages.map(toWhatsappTemplateLanguageDTO)
+        : undefined,
   }
 }

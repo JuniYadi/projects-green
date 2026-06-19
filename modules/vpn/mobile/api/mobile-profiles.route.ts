@@ -67,14 +67,13 @@ async function checkDeviceAccess(
 }
 
 export const createMobileProfilesRoutes = () => {
-  return new Elysia()
+  return (
+    new Elysia()
 
-    /**
-     * List available VPN profiles for the authenticated device.
-     */
-    .get(
-      "/vpn/mobile/profiles",
-      async ({ request, set }) => {
+      /**
+       * List available VPN profiles for the authenticated device.
+       */
+      .get("/vpn/mobile/profiles", async ({ request, set }) => {
         const auth = await requireMobileSession(request, set)
         if (!auth.ok) return auth.error
 
@@ -88,7 +87,8 @@ export const createMobileProfilesRoutes = () => {
             return {
               error: {
                 code: "DEVICE_REVOKED",
-                message: "This device has been revoked and cannot access VPN services.",
+                message:
+                  "This device has been revoked and cannot access VPN services.",
                 details: { deviceId: auth.mobileAuth.deviceId },
               },
             }
@@ -106,7 +106,12 @@ export const createMobileProfilesRoutes = () => {
           where: { subscriptionId: access.device.subscriptionId },
           include: {
             server: {
-              select: { id: true, name: true, hostname: true, region: { select: { name: true } } },
+              select: {
+                id: true,
+                name: true,
+                hostname: true,
+                region: { select: { name: true } },
+              },
             },
           },
           orderBy: { server: { name: "asc" } },
@@ -123,111 +128,128 @@ export const createMobileProfilesRoutes = () => {
             provisioningStatus: account.provisioningStatus,
           })),
         }
-      }
-    )
+      })
 
-    /**
-     * Download decrypted VPN config file.
-     */
-    .get(
-      "/vpn/mobile/profiles/:profileId/config",
-      async ({ request, params, set }) => {
-        const auth = await requireMobileSession(request, set)
-        if (!auth.ok) return auth.error
+      /**
+       * Download decrypted VPN config file.
+       */
+      .get(
+        "/vpn/mobile/profiles/:profileId/config",
+        async ({ request, params, set }) => {
+          const auth = await requireMobileSession(request, set)
+          if (!auth.ok) return auth.error
 
-        // Rate limit: 60/min per device
-        const rateResult = configRateLimiter(
-          auth.mobileAuth.deviceId
-        )
-        if (!rateResult.allowed) {
-          set.status = 429
-          set.headers = rateLimitHeaders(rateResult)
-          return buildRateLimitResponse(rateResult)
-        }
+          // Rate limit: 60/min per device
+          const rateResult = configRateLimiter(auth.mobileAuth.deviceId)
+          if (!rateResult.allowed) {
+            set.status = 429
+            set.headers = rateLimitHeaders(rateResult)
+            return buildRateLimitResponse(rateResult)
+          }
 
-        const access = await checkDeviceAccess(auth.mobileAuth, set)
-        if (!access) {
-          return {
-            error: {
-              code: "DEVICE_REVOKED",
-              message: "This device has been revoked and cannot access VPN services.",
-              details: { deviceId: auth.mobileAuth.deviceId },
+          const access = await checkDeviceAccess(auth.mobileAuth, set)
+          if (!access) {
+            return {
+              error: {
+                code: "DEVICE_REVOKED",
+                message:
+                  "This device has been revoked and cannot access VPN services.",
+                details: { deviceId: auth.mobileAuth.deviceId },
+              },
+            }
+          }
+
+          const account = await prisma.vpnServerAccount.findUnique({
+            where: { id: params.profileId },
+            select: {
+              id: true,
+              subscriptionId: true,
+              configEncrypted: true,
+              protocol: true,
             },
+          })
+
+          if (
+            !account ||
+            account.subscriptionId !== access.device.subscriptionId
+          ) {
+            set.status = 404
+            return {
+              error: {
+                code: "NOT_FOUND",
+                message: "Profile not found.",
+                details: {},
+              },
+            }
           }
-        }
 
-        const account = await prisma.vpnServerAccount.findUnique({
-          where: { id: params.profileId },
-          select: { id: true, subscriptionId: true, configEncrypted: true, protocol: true },
-        })
-
-        if (!account || account.subscriptionId !== access.device.subscriptionId) {
-          set.status = 404
-          return {
-            error: { code: "NOT_FOUND", message: "Profile not found.", details: {} },
+          if (!account.configEncrypted) {
+            set.status = 500
+            return {
+              error: {
+                code: "CONFIG_DECRYPT_FAILED",
+                message: "No configuration available for this profile.",
+                details: {},
+              },
+            }
           }
-        }
 
-        if (!account.configEncrypted) {
-          set.status = 500
-          return {
-            error: {
-              code: "CONFIG_DECRYPT_FAILED",
-              message: "No configuration available for this profile.",
-              details: {},
-            },
+          let config: string
+          try {
+            const { decryptVpnConfig } =
+              await import("@/modules/vpn/vpn-crypto")
+            config = decryptVpnConfig(account.configEncrypted)
+          } catch {
+            set.status = 500
+            return {
+              error: {
+                code: "CONFIG_DECRYPT_FAILED",
+                message: "Failed to decrypt VPN configuration.",
+                details: {},
+              },
+            }
           }
+
+          const format =
+            account.protocol === "WIREGUARD"
+              ? "wireguard"
+              : account.protocol === "OPENVPN"
+                ? "openvpn"
+                : "proxy"
+
+          // Audit: log config download
+          logAuditEvent({
+            deviceId: auth.mobileAuth.deviceId,
+            userId: auth.mobileAuth.userId,
+            action: "CONFIG_DOWNLOADED",
+            details: { profileId: account.id },
+            ip: getClientIp(request),
+            userAgent: request.headers.get("user-agent"),
+          }).catch(() => {})
+
+          return { config, format, profileId: account.id }
         }
+      )
 
-        let config: string
-        try {
-          const { decryptVpnConfig } = await import("@/modules/vpn/vpn-crypto")
-          config = decryptVpnConfig(account.configEncrypted)
-        } catch {
-          set.status = 500
-          return {
-            error: {
-              code: "CONFIG_DECRYPT_FAILED",
-              message: "Failed to decrypt VPN configuration.",
-              details: {},
-            },
-          }
-        }
+      /**
+       * Send periodic heartbeat from mobile app (updates lastSeenAt).
+       */
+      .post(
+        "/vpn/mobile/profiles/:profileId/heartbeat",
+        async ({ request, set }) => {
+          const auth = await requireMobileSession(request, set)
+          if (!auth.ok) return auth.error
 
-        const format = account.protocol === "WIREGUARD" ? "wireguard" : account.protocol === "OPENVPN" ? "openvpn" : "proxy"
+          await prisma.vpnMobileDevice.update({
+            where: { id: auth.mobileAuth.deviceId },
+            data: { lastSeenAt: new Date() },
+          })
 
-        // Audit: log config download
-        logAuditEvent({
-          deviceId: auth.mobileAuth.deviceId,
-          userId: auth.mobileAuth.userId,
-          action: "CONFIG_DOWNLOADED",
-          details: { profileId: account.id },
-          ip: getClientIp(request),
-          userAgent: request.headers.get("user-agent"),
-        }).catch(() => {})
-
-        return { config, format, profileId: account.id }
-      }
-    )
-
-    /**
-     * Send periodic heartbeat from mobile app (updates lastSeenAt).
-     */
-    .post(
-      "/vpn/mobile/profiles/:profileId/heartbeat",
-      async ({ request, set }) => {
-        const auth = await requireMobileSession(request, set)
-        if (!auth.ok) return auth.error
-
-        await prisma.vpnMobileDevice.update({
-          where: { id: auth.mobileAuth.deviceId },
-          data: { lastSeenAt: new Date() },
-        })
-
-        return { ok: true as const }
-      },
-      { body: t.Object({}) }
-    )
+          return { ok: true as const }
+        },
+        { body: t.Object({}) }
+      )
+  )
 }
 
 export const mobileProfilesRoutes = createMobileProfilesRoutes()

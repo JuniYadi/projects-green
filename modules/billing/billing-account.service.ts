@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma"
 
 export const ensureBillingAccountForOrg = async (params: {
   organizationId: string
-  getOrganizationAction: (orgId: string) => Promise<{ id: string; name: string }>
+  getOrganizationAction: (
+    orgId: string
+  ) => Promise<{ id: string; name: string }>
   currency?: "IDR" | "USD"
 }): Promise<Prisma.BillingAccountGetPayload<object>> => {
   const { organizationId, getOrganizationAction, currency } = params
@@ -15,7 +17,7 @@ export const ensureBillingAccountForOrg = async (params: {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     throw new Error(
-      `Failed to fetch organization ${organizationId} from WorkOS: ${message}`,
+      `Failed to fetch organization ${organizationId} from WorkOS: ${message}`
     )
   }
 
@@ -47,7 +49,7 @@ export const ensureBillingAccountForOrg = async (params: {
  */
 export async function isBillingAccountClean(
   prismaClient: PrismaClient,
-  billingAccountId: string,
+  billingAccountId: string
 ): Promise<boolean> {
   const account = await prismaClient.billingAccount.findUnique({
     where: { id: billingAccountId },
@@ -73,7 +75,7 @@ export async function isBillingAccountClean(
 export async function updateBillingCurrencyIfClean(
   prismaClient: PrismaClient,
   organizationId: string,
-  newCurrency: "IDR" | "USD",
+  newCurrency: "IDR" | "USD"
 ): Promise<Prisma.BillingAccountGetPayload<object>> {
   const account = await prismaClient.billingAccount.findUnique({
     where: { organizationId },
@@ -155,7 +157,7 @@ export async function getOrCreateAccountWithContacts(params: {
  * Fails if email already exists for this billing account.
  */
 export async function addBillingContact(
-  params: CreateContactParams,
+  params: CreateContactParams
 ): Promise<Prisma.BillingContactGetPayload<object>> {
   return prisma.billingContact.create({
     data: {
@@ -177,11 +179,14 @@ export async function addBillingContact(
 export async function updateBillingContact(
   billingAccountId: string,
   contactId: string,
-  input: UpdateContactParams,
+  input: UpdateContactParams
 ): Promise<Prisma.BillingContactGetPayload<object>> {
   // Verify ownership
   const contact = await prisma.billingContact.findFirst({
-    where: { id: contactId, billingAccount: { organizationId: billingAccountId } },
+    where: {
+      id: contactId,
+      billingAccount: { organizationId: billingAccountId },
+    },
   })
 
   if (!contact) {
@@ -219,10 +224,13 @@ export async function updateBillingContact(
  */
 export async function deactivateBillingContact(
   billingAccountId: string,
-  contactId: string,
+  contactId: string
 ): Promise<void> {
   const contact = await prisma.billingContact.findFirst({
-    where: { id: contactId, billingAccount: { organizationId: billingAccountId } },
+    where: {
+      id: contactId,
+      billingAccount: { organizationId: billingAccountId },
+    },
   })
 
   if (!contact) {
@@ -256,7 +264,7 @@ export async function hasInvoices(organizationId: string): Promise<boolean> {
  */
 export async function updatePreferredCurrency(
   organizationId: string,
-  currency: "USD" | "IDR",
+  currency: "USD" | "IDR"
 ): Promise<Prisma.BillingAccountGetPayload<object>> {
   const account = await prisma.billingAccount.findUnique({
     where: { organizationId },
@@ -285,7 +293,7 @@ export async function updatePreferredCurrency(
  */
 export async function updateAlertPreferences(
   organizationId: string,
-  prefs: Record<string, unknown>,
+  prefs: Record<string, unknown>
 ): Promise<Prisma.BillingAccountGetPayload<{ include: { contacts: true } }>> {
   const account = await prisma.billingAccount.findUnique({
     where: { organizationId },

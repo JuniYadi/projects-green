@@ -27,7 +27,8 @@ const asString = (value: unknown): string | null =>
 
 const asBigInt = (value: unknown): bigint | null => {
   if (typeof value === "bigint") return value
-  if (typeof value === "number" && Number.isSafeInteger(value)) return BigInt(value)
+  if (typeof value === "number" && Number.isSafeInteger(value))
+    return BigInt(value)
   if (typeof value === "string" && /^\d+$/.test(value)) return BigInt(value)
   return null
 }

@@ -1,7 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { Lightning, GithubLogo, TwitterLogo, DiscordLogo, ArrowRight } from "@phosphor-icons/react"
+import {
+  Lightning,
+  GithubLogo,
+  TwitterLogo,
+  DiscordLogo,
+  ArrowRight,
+} from "@phosphor-icons/react"
 
 const footerLinks = {
   Product: [
@@ -37,48 +43,51 @@ const footerLinks = {
 
 export function CTASection() {
   return (
-    <section className="relative py-28 bg-background overflow-hidden">
+    <section className="relative overflow-hidden bg-background py-28">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_50%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent)]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-3xl" />
 
-      <div className="relative max-w-4xl mx-auto px-6 text-center">
-        <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-8">
-          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-sm text-primary font-medium">Join 10,000+ developers</span>
+      <div className="relative mx-auto max-w-4xl px-6 text-center">
+        <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+          <span className="text-sm font-medium text-primary">
+            Join 10,000+ developers
+          </span>
         </div>
 
-        <h2 className="text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight leading-[1.1]">
+        <h2 className="mb-6 text-5xl leading-[1.1] font-bold tracking-tight text-foreground lg:text-6xl">
           Your idea deserves{" "}
           <span className="bg-gradient-to-r from-chart-4 via-chart-3 to-chart-2 bg-clip-text text-transparent">
             to be live
           </span>
         </h2>
 
-        <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
-          Deploy your first project for free in under 2 minutes. No credit card. No complex
-          setup. Just ship.
+        <p className="mx-auto mb-12 max-w-2xl text-xl leading-relaxed text-muted-foreground">
+          Deploy your first project for free in under 2 minutes. No credit card.
+          No complex setup. Just ship.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col justify-center gap-4 sm:flex-row">
           <Link
             href="/signup"
             id="cta-final-signup"
-            className="group inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-4 rounded-xl transition-all shadow-2xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 text-base"
+            className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-2xl shadow-primary/30 transition-all hover:scale-105 hover:bg-primary/90 hover:shadow-primary/50"
           >
             Start building for free
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Link>
           <Link
             href="#contact"
             id="cta-final-sales"
-            className="inline-flex items-center justify-center gap-2 bg-secondary hover:bg-accent border border-border text-foreground font-semibold px-8 py-4 rounded-xl transition-all text-base"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-8 py-4 text-base font-semibold text-foreground transition-all hover:bg-accent"
           >
             Talk to sales
           </Link>
         </div>
 
-        <p className="text-xs text-muted-foreground/50 mt-6">
-          Free plan includes 3 projects · No credit card required · Cancel anytime
+        <p className="mt-6 text-xs text-muted-foreground/50">
+          Free plan includes 3 projects · No credit card required · Cancel
+          anytime
         </p>
       </div>
     </section>
@@ -87,40 +96,44 @@ export function CTASection() {
 
 export function Footer() {
   return (
-    <footer className="bg-card border-t border-border">
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-8 mb-12">
+    <footer className="border-t border-border bg-card">
+      <div className="mx-auto max-w-7xl px-6 py-16">
+        <div className="mb-12 grid grid-cols-2 gap-8 md:grid-cols-6">
           {/* Brand */}
           <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-2.5 mb-4 group">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
-                <Lightning weight="fill" className="w-4 h-4 text-primary-foreground" />
+            <Link href="/" className="group mb-4 flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-lg shadow-primary/30">
+                <Lightning
+                  weight="fill"
+                  className="h-4 w-4 text-primary-foreground"
+                />
               </div>
-              <span className="font-bold text-foreground text-lg tracking-tight">
+              <span className="text-lg font-bold tracking-tight text-foreground">
                 PFN<span className="text-primary">App</span>
               </span>
             </Link>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-5 max-w-[220px]">
-              The full-stack cloud platform for modern developers. Ship faster, scale smarter.
+            <p className="mb-5 max-w-[220px] text-sm leading-relaxed text-muted-foreground">
+              The full-stack cloud platform for modern developers. Ship faster,
+              scale smarter.
             </p>
             <div className="flex items-center gap-3">
               <a
                 href="#github"
-                className="w-8 h-8 bg-secondary hover:bg-accent border border-border rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
               >
-                <GithubLogo className="w-4 h-4" />
+                <GithubLogo className="h-4 w-4" />
               </a>
               <a
                 href="#twitter"
-                className="w-8 h-8 bg-secondary hover:bg-accent border border-border rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
               >
-                <TwitterLogo className="w-4 h-4" />
+                <TwitterLogo className="h-4 w-4" />
               </a>
               <a
                 href="#discord"
-                className="w-8 h-8 bg-secondary hover:bg-accent border border-border rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
               >
-                <DiscordLogo className="w-4 h-4" />
+                <DiscordLogo className="h-4 w-4" />
               </a>
             </div>
           </div>
@@ -128,7 +141,7 @@ export function Footer() {
           {/* Links */}
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">
+              <h4 className="mb-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                 {category}
               </h4>
               <ul className="space-y-2.5">
@@ -136,7 +149,7 @@ export function Footer() {
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm text-muted-foreground/70 hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground/70 transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </a>
@@ -148,13 +161,15 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
           <p className="text-xs text-muted-foreground/50">
             © 2026 PFNApp. All rights reserved.
           </p>
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs text-muted-foreground/50">All systems operational</span>
+            <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+            <span className="text-xs text-muted-foreground/50">
+              All systems operational
+            </span>
           </div>
         </div>
       </div>

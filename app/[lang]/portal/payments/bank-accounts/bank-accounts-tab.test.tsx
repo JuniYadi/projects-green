@@ -30,7 +30,9 @@ describe("BankAccountsTab", () => {
     const view = render(<BankAccountsTab />)
 
     expect(await view.findByRole("table")).toBeInTheDocument()
-    expect(view.getByRole("columnheader", { name: /bank/i })).toBeInTheDocument()
+    expect(
+      view.getByRole("columnheader", { name: /bank/i })
+    ).toBeInTheDocument()
     expect(view.getByLabelText("Filter bank accounts...")).toBeInTheDocument()
   })
 
@@ -67,7 +69,8 @@ describe("BankAccountsTab", () => {
       expect(
         calls.some(
           (call) =>
-            new URL(call.url, "http://localhost").pathname === "/api/portal/payments/bank-accounts/ba-1/toggle" &&
+            new URL(call.url, "http://localhost").pathname ===
+              "/api/portal/payments/bank-accounts/ba-1/toggle" &&
             call.init?.method === "PATCH"
         )
       ).toBe(true)
@@ -114,7 +117,8 @@ describe("BankAccountsTab", () => {
       expect(
         calls.some(
           (call) =>
-            new URL(call.url, "http://localhost").pathname === "/api/portal/payments/bank-accounts/ba-1" &&
+            new URL(call.url, "http://localhost").pathname ===
+              "/api/portal/payments/bank-accounts/ba-1" &&
             call.init?.method === "PUT"
         )
       ).toBe(true)

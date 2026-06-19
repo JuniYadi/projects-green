@@ -27,6 +27,8 @@ describe("support ticket prisma models", () => {
     )
 
     expect(schema).toContain("model SupportTicketAttachmentUploadSession {")
-    expect(schema).toContain("target               SupportTicketAttachmentUploadTarget")
+    expect(schema).toContain(
+      "target               SupportTicketAttachmentUploadTarget"
+    )
   })
 })

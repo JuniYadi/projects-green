@@ -6,13 +6,19 @@
  */
 
 export type RateLimitConfig = { windowMs: number; max: number }
-export type RateLimitResult = { allowed: boolean; remaining: number; resetMs: number }
+export type RateLimitResult = {
+  allowed: boolean
+  remaining: number
+  resetMs: number
+}
 
 /**
  * Create a rate limiter with the given window and max count.
  * Returns a function that, given a key, returns the rate-limit result.
  */
-export function createRateLimiter(config: RateLimitConfig): (key: string) => RateLimitResult {
+export function createRateLimiter(
+  config: RateLimitConfig
+): (key: string) => RateLimitResult {
   const { windowMs, max } = config
   const store = new Map<string, number[]>()
   let cleanupCounter = 0
@@ -103,9 +109,7 @@ export function getClientIp(request: Request): string {
 export function buildRateLimitResponse(result: RateLimitResult): {
   error: { code: string; message: string; details: Record<string, unknown> }
 } {
-  const retryAfterSeconds = Math.ceil(
-    (result.resetMs - Date.now()) / 1000
-  )
+  const retryAfterSeconds = Math.ceil((result.resetMs - Date.now()) / 1000)
   return {
     error: {
       code: "RATE_LIMITED" as const,
@@ -123,9 +127,7 @@ export function buildRateLimitResponse(result: RateLimitResult): {
 export function rateLimitHeaders(
   result: RateLimitResult
 ): Record<string, string> {
-  const retryAfterSeconds = Math.ceil(
-    (result.resetMs - Date.now()) / 1000
-  )
+  const retryAfterSeconds = Math.ceil((result.resetMs - Date.now()) / 1000)
   return {
     "Retry-After": String(Math.max(1, retryAfterSeconds)),
     "X-RateLimit-Remaining": "0",

@@ -115,11 +115,11 @@ export function VpnDevicesTable() {
       if (filters.pairedVia) params.set("pairedVia", filters.pairedVia)
       if (filters.search) params.set("search", filters.search)
 
-      const res = await vpnApi<{
-        ok: true
-      } & AdminDeviceListResponse>(
-        `/vpn/mobile/admin/devices?${params.toString()}`
-      )
+      const res = await vpnApi<
+        {
+          ok: true
+        } & AdminDeviceListResponse
+      >(`/vpn/mobile/admin/devices?${params.toString()}`)
       startTransition(() => {
         setDevices(res.devices)
         setTotal(res.total)
@@ -132,7 +132,9 @@ export function VpnDevicesTable() {
   }, [page, limit, filters])
 
   useEffect(() => {
-    const run = async () => { await load() }
+    const run = async () => {
+      await load()
+    }
     run()
   }, [load])
 
@@ -141,15 +143,12 @@ export function VpnDevicesTable() {
     if (!deviceId) return
     setRevoking(deviceId)
     try {
-      await vpnApi<{ ok: true }>(
-        `/vpn/mobile/admin/devices/${deviceId}`,
-        {
-          method: "DELETE",
-          body: revokeReason
-            ? JSON.stringify({ reason: revokeReason })
-            : JSON.stringify({}),
-        }
-      )
+      await vpnApi<{ ok: true }>(`/vpn/mobile/admin/devices/${deviceId}`, {
+        method: "DELETE",
+        body: revokeReason
+          ? JSON.stringify({ reason: revokeReason })
+          : JSON.stringify({}),
+      })
       setShowRevokeDialog(null)
       setRevokeReason("")
       await load()
@@ -297,9 +296,7 @@ export function VpnDevicesTable() {
                         size="sm"
                         variant="ghost"
                         className="h-7 text-xs text-destructive"
-                        onClick={() =>
-                          setShowRevokeDialog(device.id)
-                        }
+                        onClick={() => setShowRevokeDialog(device.id)}
                         disabled={revoking === device.id}
                       >
                         {revoking === device.id ? "…" : "Revoke"}
@@ -317,7 +314,8 @@ export function VpnDevicesTable() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <p>
-            Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
+            Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of{" "}
+            {total}
           </p>
           <div className="flex gap-2">
             <Button
@@ -354,8 +352,8 @@ export function VpnDevicesTable() {
           <DialogHeader>
             <DialogTitle>Revoke device</DialogTitle>
             <DialogDescription>
-              This will disconnect VPN on this device immediately.
-              The action is logged for audit purposes.
+              This will disconnect VPN on this device immediately. The action is
+              logged for audit purposes.
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">

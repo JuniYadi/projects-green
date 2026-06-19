@@ -85,19 +85,25 @@ describe("TrafficFlowCanvas", () => {
 
   it("applies correct status configurations for different diagnostic modes", () => {
     // 502 error
-    let view = render(<TrafficFlowCanvas {...defaultProps} diagnosticMode="error_502" />)
+    let view = render(
+      <TrafficFlowCanvas {...defaultProps} diagnosticMode="error_502" />
+    )
     const errStatus = view.getAllByText("STATUS:")
     expect(errStatus.length).toBe(2) // two pods
     expect(view.getAllByText("ERR_CRASH").length).toBe(2)
     view.unmount()
 
     // SSL expired error
-    view = render(<TrafficFlowCanvas {...defaultProps} diagnosticMode="ssl_expired" />)
+    view = render(
+      <TrafficFlowCanvas {...defaultProps} diagnosticMode="ssl_expired" />
+    )
     expect(view.getByText("SSL HANDSHAKE FAIL")).toBeInTheDocument()
     view.unmount()
 
     // Redirect loop error
-    view = render(<TrafficFlowCanvas {...defaultProps} diagnosticMode="redirect_loop" />)
+    view = render(
+      <TrafficFlowCanvas {...defaultProps} diagnosticMode="redirect_loop" />
+    )
     expect(view.getByText("301 LOOP DETECTED")).toBeInTheDocument()
     view.unmount()
   })
@@ -114,8 +120,8 @@ describe("TrafficFlowCanvas", () => {
           tlsStatus: "expired" as const,
           dnsStatus: "verified" as const,
           expiresAt: "2026-05-18",
-        }
-      ]
+        },
+      ],
     }
     const view = render(<TrafficFlowCanvas {...expiredProps} />)
     expect(view.getByText("SSL HANDSHAKE FAIL")).toBeInTheDocument()

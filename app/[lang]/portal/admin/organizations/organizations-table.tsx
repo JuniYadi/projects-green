@@ -14,7 +14,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { MagnifyingGlassIcon, ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
+import {
+  MagnifyingGlassIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+} from "@phosphor-icons/react"
 
 type Organization = {
   id: string
@@ -53,19 +57,30 @@ export function OrganizationsTable() {
         if (search) searchParams.set("search", search)
 
         const { data } = await eden.api.admin.organizations.get({
-          $query: { limit: 10, ...(cursor.before && { before: cursor.before }), ...(cursor.after && { after: cursor.after }), ...(search && { search }) },
+          $query: {
+            limit: 10,
+            ...(cursor.before && { before: cursor.before }),
+            ...(cursor.after && { after: cursor.after }),
+            ...(search && { search }),
+          },
           $fetch: { signal: abortController.signal },
         })
 
         if (!data || !data.ok) {
-          setError(data && "message" in data ? data.message : "Failed to load organizations")
+          setError(
+            data && "message" in data
+              ? data.message
+              : "Failed to load organizations"
+          )
           return
         }
         setOrganizations(data.data.organizations)
         setListMetadata(data.data.listMetadata ?? {})
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
-        setError(err instanceof Error ? err.message : "An unexpected error occurred")
+        setError(
+          err instanceof Error ? err.message : "An unexpected error occurred"
+        )
       } finally {
         setIsLoading(false)
       }
@@ -83,7 +98,8 @@ export function OrganizationsTable() {
       await Promise.all(
         organizations.map(async (org) => {
           try {
-            const { data } = await eden.api.admin.organizations[org.id].members.get()
+            const { data } =
+              await eden.api.admin.organizations[org.id].members.get()
             if (data?.ok) {
               counts[org.id] = data.data.memberships.length
             }
@@ -133,8 +149,8 @@ export function OrganizationsTable() {
         </div>
       )}
       <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-sm">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative max-w-sm flex-1">
+          <MagnifyingGlassIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search organizations..."
             value={search}
@@ -157,7 +173,10 @@ export function OrganizationsTable() {
           <TableBody>
             {organizations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={5}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   No organizations found
                 </TableCell>
               </TableRow>
@@ -166,13 +185,21 @@ export function OrganizationsTable() {
                 <TableRow
                   key={org.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => router.push(`/portal/admin/organizations/${org.id}`)}
+                  onClick={() =>
+                    router.push(`/portal/admin/organizations/${org.id}`)
+                  }
                 >
-                  <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {index + 1}
+                  </TableCell>
                   <TableCell className="font-medium">{org.name}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{org.id}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {org.id}
+                  </TableCell>
                   <TableCell>{memberCounts[org.id] ?? "..."}</TableCell>
-                  <TableCell>{new Date(org.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {new Date(org.createdAt).toLocaleDateString()}
+                  </TableCell>
                 </TableRow>
               ))
             )}

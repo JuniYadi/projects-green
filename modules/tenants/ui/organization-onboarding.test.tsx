@@ -16,8 +16,9 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 
-let cachedOrganizationOnboarding: (typeof import("@/modules/tenants/ui/organization-onboarding"))["OrganizationOnboarding"] | null =
-  null
+let cachedOrganizationOnboarding:
+  | (typeof import("@/modules/tenants/ui/organization-onboarding"))["OrganizationOnboarding"]
+  | null = null
 
 const loadOrganizationOnboarding = async () => {
   if (!cachedOrganizationOnboarding) {
@@ -43,7 +44,11 @@ const createFetchMock = () => {
   const calls: Array<{ url: string; method: string; body: unknown }> = []
 
   const mock = (
-    handler: (url: string, method: string, body: unknown) => Response | Promise<Response>
+    handler: (
+      url: string,
+      method: string,
+      body: unknown
+    ) => Response | Promise<Response>
   ): void => {
     const fetchFn = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
@@ -90,7 +95,9 @@ describe("OrganizationOnboarding", () => {
     )
 
     await waitFor(() => {
-      const input = view.getByPlaceholderText("Organization name") as HTMLInputElement
+      const input = view.getByPlaceholderText(
+        "Organization name"
+      ) as HTMLInputElement
       expect(input.value).toBe("John Doe Org's")
     })
   })
@@ -110,7 +117,9 @@ describe("OrganizationOnboarding", () => {
     )
 
     await waitFor(() => {
-      const input = view.getByPlaceholderText("Organization name") as HTMLInputElement
+      const input = view.getByPlaceholderText(
+        "Organization name"
+      ) as HTMLInputElement
       expect(input.value).toBe("Alex Org's")
     })
   })
@@ -125,7 +134,9 @@ describe("OrganizationOnboarding", () => {
     const view = render(<OrganizationOnboarding nextPath="/console" />)
 
     await waitFor(() => {
-      const input = view.getByPlaceholderText("Organization name") as HTMLInputElement
+      const input = view.getByPlaceholderText(
+        "Organization name"
+      ) as HTMLInputElement
       expect(input.value).toBe("")
     })
   })
@@ -220,8 +231,14 @@ describe("OrganizationOnboarding", () => {
     const view = render(<OrganizationOnboarding nextPath="/console" />)
 
     await waitFor(() => {
-      expect(view.getByText("Create your first organization to get started.")).toBeTruthy()
-      expect(view.queryByText("Create your first organization or join one where you already have an active membership.")).toBeNull()
+      expect(
+        view.getByText("Create your first organization to get started.")
+      ).toBeTruthy()
+      expect(
+        view.queryByText(
+          "Create your first organization or join one where you already have an active membership."
+        )
+      ).toBeNull()
     })
   })
 
@@ -244,8 +261,14 @@ describe("OrganizationOnboarding", () => {
     const view = render(<OrganizationOnboarding nextPath="/console" />)
 
     await waitFor(() => {
-      expect(view.getByText("Create your first organization or join one where you already have an active membership.")).toBeTruthy()
-      expect(view.queryByText("Create your first organization to get started.")).toBeNull()
+      expect(
+        view.getByText(
+          "Create your first organization or join one where you already have an active membership."
+        )
+      ).toBeTruthy()
+      expect(
+        view.queryByText("Create your first organization to get started.")
+      ).toBeNull()
     })
   })
 
@@ -256,10 +279,14 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" showWarning={true} />)
+    const view = render(
+      <OrganizationOnboarding nextPath="/console" showWarning={true} />
+    )
 
     await waitFor(() => {
-      expect(view.getByText("Organization setup is required to access the console.")).toBeTruthy()
+      expect(
+        view.getByText("Organization setup is required to access the console.")
+      ).toBeTruthy()
     })
   })
 
@@ -270,10 +297,16 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" showWarning={false} />)
+    const view = render(
+      <OrganizationOnboarding nextPath="/console" showWarning={false} />
+    )
 
     await waitFor(() => {
-      expect(view.queryByText("Organization setup is required to access the console.")).toBeNull()
+      expect(
+        view.queryByText(
+          "Organization setup is required to access the console."
+        )
+      ).toBeNull()
     })
   })
 
@@ -282,7 +315,11 @@ describe("OrganizationOnboarding", () => {
 
     globalThis.fetch = mock(async () => {
       return jsonResponse(
-        { ok: false, error: "BOOTSTRAP_FAILED", message: "Bootstrap unavailable." },
+        {
+          ok: false,
+          error: "BOOTSTRAP_FAILED",
+          message: "Bootstrap unavailable.",
+        },
         500
       )
     }) as unknown as typeof fetch
@@ -365,9 +402,7 @@ describe("OrganizationOnboarding", () => {
   it("shows error when switchToOrganization throws", async () => {
     const OrganizationOnboarding = await loadOrganizationOnboarding()
 
-    mockSwitchToOrganization.mockRejectedValueOnce(
-      new Error("Switch failed")
-    )
+    mockSwitchToOrganization.mockRejectedValueOnce(new Error("Switch failed"))
 
     globalThis.fetch = mock(async () => {
       return jsonResponse({
@@ -434,10 +469,7 @@ describe("OrganizationOnboarding", () => {
     })
 
     const view = render(
-      <OrganizationOnboarding
-        nextPath="/console"
-        userEmail="create@test.com"
-      />
+      <OrganizationOnboarding nextPath="/console" userEmail="create@test.com" />
     )
 
     await waitFor(() => {
@@ -488,9 +520,7 @@ describe("OrganizationOnboarding", () => {
     fireEvent.click(view.getByRole("button", { name: "Create organization" }))
 
     await waitFor(() => {
-      expect(
-        view.getByText("Required WorkOS role is missing.")
-      ).toBeTruthy()
+      expect(view.getByText("Required WorkOS role is missing.")).toBeTruthy()
     })
   })
 

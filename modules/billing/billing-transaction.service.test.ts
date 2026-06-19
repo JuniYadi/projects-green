@@ -49,7 +49,9 @@ function billingAccount(overrides: Partial<Record<string, unknown>> = {}) {
   }
 }
 
-function baseInput(overrides: Partial<BalanceMutationInput> = {}): BalanceMutationInput {
+function baseInput(
+  overrides: Partial<BalanceMutationInput> = {}
+): BalanceMutationInput {
   return {
     organizationId: "org_1",
     amount: decimal("50.00"),
@@ -66,12 +68,16 @@ describe("BillingTransactionService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    service = new BillingTransactionService(mockPrisma as unknown as PrismaClient)
+    service = new BillingTransactionService(
+      mockPrisma as unknown as PrismaClient
+    )
 
     // Default mock: $transaction invokes the callback with mockPrisma
-    mockPrisma.$transaction.mockImplementation(async (fn: (...args: unknown[]) => unknown) => {
-      return fn(mockPrisma)
-    })
+    mockPrisma.$transaction.mockImplementation(
+      async (fn: (...args: unknown[]) => unknown) => {
+        return fn(mockPrisma)
+      }
+    )
   })
 
   describe("creditBalance", () => {
@@ -101,7 +107,9 @@ describe("BillingTransactionService", () => {
       const createCall = mockPrisma.billingAdjustment.create.mock.calls[0][0]
       expect(createCall.data.metadataJson.source).toBe("TOPUP")
       // idempotencyKey is stored under _internal to avoid leaking into user-facing API responses
-      expect(createCall.data.metadataJson._internal.idempotencyKey).toBe("topup:test:001")
+      expect(createCall.data.metadataJson._internal.idempotencyKey).toBe(
+        "topup:test:001"
+      )
       expect(createCall.data.metadataJson.balanceBefore).toBe("100")
       expect(createCall.data.metadataJson.balanceAfter).toBe("150")
     })
@@ -125,30 +133,30 @@ describe("BillingTransactionService", () => {
 
     it("rejects currency mismatch", async () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(
-        billingAccount({ currency: "USD" }),
+        billingAccount({ currency: "USD" })
       )
 
       await expect(
-        service.creditBalance(baseInput({ currency: "IDR" })),
+        service.creditBalance(baseInput({ currency: "IDR" }))
       ).rejects.toThrow("CURRENCY_MISMATCH")
     })
 
     it("throws BILLING_ACCOUNT_NOT_FOUND when account missing", async () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(null)
 
-      await expect(
-        service.creditBalance(baseInput()),
-      ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
+      await expect(service.creditBalance(baseInput())).rejects.toThrow(
+        "BILLING_ACCOUNT_NOT_FOUND"
+      )
     })
 
     it("rejects credit that exceeds max balance", async () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(
-        billingAccount({ balance: decimal("999999999.00") }),
+        billingAccount({ balance: decimal("999999999.00") })
       )
       mockPrisma.billingAdjustment.findFirst.mockResolvedValue(null)
 
       await expect(
-        service.creditBalance(baseInput({ amount: decimal("1.00") })),
+        service.creditBalance(baseInput({ amount: decimal("1.00") }))
       ).rejects.toThrow("BALANCE_LIMIT_EXCEEDED")
     })
   })
@@ -171,7 +179,11 @@ describe("BillingTransactionService", () => {
       })
 
       const result = await service.debitBalance(
-        baseInput({ amount: decimal("60.00"), source: "APP_HOSTING", reason: "PAYG hourly" }),
+        baseInput({
+          amount: decimal("60.00"),
+          source: "APP_HOSTING",
+          reason: "PAYG hourly",
+        })
       )
 
       expect(result.balanceBefore.toString()).toBe("100")
@@ -181,23 +193,23 @@ describe("BillingTransactionService", () => {
 
     it("rejects insufficient balance", async () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(
-        billingAccount({ balance: decimal("50.00") }),
+        billingAccount({ balance: decimal("50.00") })
       )
       mockPrisma.billingAdjustment.findFirst.mockResolvedValue(null)
 
       await expect(
-        service.debitBalance(baseInput({ amount: decimal("60.00") })),
+        service.debitBalance(baseInput({ amount: decimal("60.00") }))
       ).rejects.toThrow("INSUFFICIENT_BALANCE")
     })
 
     it("rejects debit that exceeds max balance (negative overflow guard)", async () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(
-        billingAccount({ balance: decimal("0.00") }),
+        billingAccount({ balance: decimal("0.00") })
       )
       mockPrisma.billingAdjustment.findFirst.mockResolvedValue(null)
 
       await expect(
-        service.debitBalance(baseInput({ amount: decimal("0.01") })),
+        service.debitBalance(baseInput({ amount: decimal("0.01") }))
       ).rejects.toThrow("INSUFFICIENT_BALANCE")
     })
   })
@@ -206,8 +218,20 @@ describe("BillingTransactionService", () => {
     it("creates or reuses current-month service invoice and appends line", async () => {
       const account = billingAccount()
       const now = new Date()
-      const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-      const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999))
+      const periodStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+      )
+      const periodEnd = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999
+        )
+      )
 
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
       mockPrisma.billingAdjustment.findFirst.mockResolvedValue(null)
@@ -254,7 +278,11 @@ describe("BillingTransactionService", () => {
       })
 
       const result = await service.debitServiceBalance({
-        ...baseInput({ amount: decimal("60.00"), source: "APP_HOSTING", reason: "PAYG hourly charge" }),
+        ...baseInput({
+          amount: decimal("60.00"),
+          source: "APP_HOSTING",
+          reason: "PAYG hourly charge",
+        }),
         line: {
           description: "App Hosting PAYG usage",
           quantity: decimal("1"),

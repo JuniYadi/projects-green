@@ -131,18 +131,25 @@ export function TabDomains({
   return (
     <div className="grid gap-6 md:grid-cols-3">
       {/* Custom Domains list */}
-      <Card size="sm" className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+      <Card
+        size="sm"
+        className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+      >
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-bold text-white">
             Custom Domain Settings
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Bind domain endpoints to your ingress router and issue automated SSL certificates
+            Bind domain endpoints to your ingress router and issue automated SSL
+            certificates
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Domain Input Form */}
-          <form onSubmit={handleAddDomain} className="flex flex-col sm:flex-row gap-3 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-3.5">
+          <form
+            onSubmit={handleAddDomain}
+            className="flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-3.5 sm:flex-row"
+          >
             <div className="relative flex-1">
               <Globe
                 size={16}
@@ -152,7 +159,7 @@ export function TabDomains({
                 placeholder="e.g. shop.acme.com"
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
-                className="pl-9 h-9 text-xs rounded-xl"
+                className="h-9 rounded-xl pl-9 text-xs"
               />
             </div>
             <Select
@@ -161,7 +168,7 @@ export function TabDomains({
                 setNewDomainTls(value as "active" | "expired" | "pending")
               }
             >
-              <SelectTrigger className="h-9 w-full sm:w-[180px] bg-black/50 text-xs rounded-xl border-white/[0.08]">
+              <SelectTrigger className="h-9 w-full rounded-xl border-white/[0.08] bg-black/50 text-xs sm:w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -172,7 +179,11 @@ export function TabDomains({
                 </SelectItem>
               </SelectContent>
             </Select>
-            <Button type="submit" size="sm" className="h-9 text-xs font-semibold rounded-xl px-4">
+            <Button
+              type="submit"
+              size="sm"
+              className="h-9 rounded-xl px-4 text-xs font-semibold"
+            >
               Add Domain
             </Button>
           </form>
@@ -182,7 +193,7 @@ export function TabDomains({
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-xs">
                 <thead>
-                  <tr className="border-b border-white/[0.08] bg-white/[0.02] font-semibold text-muted-foreground uppercase text-[10px] tracking-wider">
+                  <tr className="border-b border-white/[0.08] bg-white/[0.02] text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                     <th className="p-3.5 px-4">Domain</th>
                     <th className="p-3.5 px-4">DNS Status</th>
                     <th className="p-3.5 px-4">TLS Certificate</th>
@@ -199,7 +210,7 @@ export function TabDomains({
                         <div className="flex items-center gap-2">
                           {item.domain}
                           {item.isPrimary && (
-                            <span className="py-0.5 rounded-md border border-primary/30 bg-primary/10 px-2 text-[9px] font-bold text-primary uppercase tracking-wide">
+                            <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-bold tracking-wide text-primary uppercase">
                               Primary
                             </span>
                           )}
@@ -218,19 +229,29 @@ export function TabDomains({
                       </td>
                       <td className="p-3.5 px-4">
                         {item.tlsStatus === "active" && (
-                          <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
-                            <ShieldCheck size={14} className="text-emerald-400" /> Active (expires{" "}
-                            {item.expiresAt})
+                          <span className="inline-flex items-center gap-1.5 font-medium text-emerald-400">
+                            <ShieldCheck
+                              size={14}
+                              className="text-emerald-400"
+                            />{" "}
+                            Active (expires {item.expiresAt})
                           </span>
                         )}
                         {item.tlsStatus === "expired" && (
                           <span className="inline-flex items-center gap-1.5 font-bold text-rose-400">
-                            <ShieldWarning size={14} className="text-rose-400" /> EXPIRED ({item.expiresAt})
+                            <ShieldWarning
+                              size={14}
+                              className="text-rose-400"
+                            />{" "}
+                            EXPIRED ({item.expiresAt})
                           </span>
                         )}
                         {item.tlsStatus === "pending" && (
-                          <span className="inline-flex items-center gap-1.5 text-amber-400 font-medium">
-                            <ArrowClockwise size={14} className="animate-spin text-amber-400" />{" "}
+                          <span className="inline-flex items-center gap-1.5 font-medium text-amber-400">
+                            <ArrowClockwise
+                              size={14}
+                              className="animate-spin text-amber-400"
+                            />{" "}
                             Issuing certificate...
                           </span>
                         )}
@@ -242,7 +263,7 @@ export function TabDomains({
                             size="sm"
                             variant="outline"
                             onClick={() => handleForceSSL(item.id)}
-                            className="h-7 border-amber-500/30 px-3 text-[10px] text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/60 rounded-lg font-semibold"
+                            className="h-7 rounded-lg border-amber-500/30 px-3 text-[10px] font-semibold text-amber-400 hover:border-amber-500/60 hover:bg-amber-500/10"
                           >
                             Force Renew SSL
                           </Button>
@@ -254,7 +275,7 @@ export function TabDomains({
                           onClick={() => handleDeleteDomain(item.id)}
                           aria-label={`Delete domain ${item.domain}`}
                           title={`Delete domain ${item.domain}`}
-                          className="h-7 w-7 p-0 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 rounded-lg transition-all"
+                          className="h-7 w-7 rounded-lg p-0 text-rose-400 transition-all hover:bg-rose-500/10 hover:text-rose-300"
                         >
                           <Trash size={13} />
                         </Button>
@@ -281,23 +302,25 @@ export function TabDomains({
           <div className="space-y-3.5 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-4 text-xs">
             <div className="space-y-1">
               <span className="flex items-center gap-2 font-bold text-white">
-                <Wrench size={15} className="text-primary" /> DNS Configuration Requirements
+                <Wrench size={15} className="text-primary" /> DNS Configuration
+                Requirements
               </span>
-              <p className="text-muted-foreground text-[11px]">
-                Configure these DNS records in your domain registrar panel to map traffic to this application.
+              <p className="text-[11px] text-muted-foreground">
+                Configure these DNS records in your domain registrar panel to
+                map traffic to this application.
               </p>
             </div>
 
-            <div className="grid gap-2.5 font-mono text-[11px] mt-2">
-              <div className="grid grid-cols-4 items-center rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5 font-sans font-bold text-muted-foreground text-[10px] uppercase tracking-wider">
+            <div className="mt-2 grid gap-2.5 font-mono text-[11px]">
+              <div className="grid grid-cols-4 items-center rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5 font-sans text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 <span>Type</span>
                 <span>Host</span>
                 <span className="col-span-2">Value / Target</span>
               </div>
-              <div className="grid grid-cols-4 items-center rounded-xl border border-white/[0.06] p-2.5 bg-black/20">
+              <div className="grid grid-cols-4 items-center rounded-xl border border-white/[0.06] bg-black/20 p-2.5">
                 <span className="font-bold text-emerald-400">A</span>
                 <span className="text-white">@</span>
-                <span className="col-span-2 flex items-center justify-between text-white truncate">
+                <span className="col-span-2 flex items-center justify-between truncate text-white">
                   <span className="truncate pr-2">76.76.21.21</span>
                   <Button
                     type="button"
@@ -307,24 +330,39 @@ export function TabDomains({
                     aria-label="Copy"
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-white"
                   >
-                    {copiedKey === "a-record" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    {copiedKey === "a-record" ? (
+                      <Check size={12} className="text-emerald-400" />
+                    ) : (
+                      <Copy size={12} />
+                    )}
                   </Button>
                 </span>
               </div>
-              <div className="grid grid-cols-4 items-center rounded-xl border border-white/[0.06] p-2.5 bg-black/20">
+              <div className="grid grid-cols-4 items-center rounded-xl border border-white/[0.06] bg-black/20 p-2.5">
                 <span className="font-bold text-emerald-400">CNAME</span>
                 <span className="text-white">www</span>
-                <span className="col-span-2 flex items-center justify-between text-white truncate">
-                  <span className="truncate pr-2">laravel-shop.projects-green.dev</span>
+                <span className="col-span-2 flex items-center justify-between truncate text-white">
+                  <span className="truncate pr-2">
+                    laravel-shop.projects-green.dev
+                  </span>
                   <Button
                     type="button"
-                    onClick={() => handleCopy("laravel-shop.projects-green.dev", "cname-record")}
+                    onClick={() =>
+                      handleCopy(
+                        "laravel-shop.projects-green.dev",
+                        "cname-record"
+                      )
+                    }
                     variant="ghost"
                     size="xs"
                     aria-label="Copy"
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-white"
                   >
-                    {copiedKey === "cname-record" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    {copiedKey === "cname-record" ? (
+                      <Check size={12} className="text-emerald-400" />
+                    ) : (
+                      <Copy size={12} />
+                    )}
                   </Button>
                 </span>
               </div>
@@ -334,7 +372,10 @@ export function TabDomains({
       </Card>
 
       {/* Cloudflare Troubleshooting Guides */}
-      <Card size="sm" className="border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md h-fit">
+      <Card
+        size="sm"
+        className="h-fit border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+      >
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
             <Globe size={18} className="text-orange-500" /> Cloudflare Advisory
@@ -347,28 +388,24 @@ export function TabDomains({
           {/* Cloudflare config options simulator */}
           <div className="space-y-3 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-3.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">
-                Proxy Status
-              </span>
+              <span className="font-semibold text-white">Proxy Status</span>
               <Button
                 type="button"
                 onClick={() => setCloudflareProxied(!cloudflareProxied)}
                 variant="ghost"
                 size="xs"
-                className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                className={`rounded-lg px-3 py-1 text-[10px] font-bold transition-all ${
                   cloudflareProxied
                     ? "border border-orange-500/30 bg-orange-500/10 text-orange-400"
                     : "border border-white/10 bg-white/10 text-muted-foreground"
                 }`}
               >
-                {cloudflareProxied
-                  ? "Proxied"
-                  : "DNS Only"}
+                {cloudflareProxied ? "Proxied" : "DNS Only"}
               </Button>
             </div>
 
             <div className="space-y-1.5">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 SSL/TLS Mode
               </span>
               <div className="grid grid-cols-3 gap-1 rounded-lg border border-white/[0.06] bg-black/60 p-0.5">
@@ -395,23 +432,26 @@ export function TabDomains({
           {/* Questions explanation cards */}
           <div className="space-y-3">
             <div className="space-y-1.5 border-l-2 border-orange-500/40 pl-3">
-              <h4 className="font-bold text-white leading-tight">
+              <h4 className="leading-tight font-bold text-white">
                 SSL Failures Behind Proxy
               </h4>
               <p className="text-[11px] text-muted-foreground">
-                If Cloudflare proxy is active before SSL is verified, automated HTTP challenge challenges might fail.
+                If Cloudflare proxy is active before SSL is verified, automated
+                HTTP challenge challenges might fail.
               </p>
               <p className="text-[11px] font-semibold text-primary">
-                Tip: Switch to &quot;DNS Only&quot; until SSL is active, then re-enable proxy.
+                Tip: Switch to &quot;DNS Only&quot; until SSL is active, then
+                re-enable proxy.
               </p>
             </div>
 
             <div className="space-y-1.5 border-l-2 border-rose-500/40 pl-3">
-              <h4 className="font-bold text-white leading-tight">
+              <h4 className="leading-tight font-bold text-white">
                 Redirect Loops (ERR_TOO_MANY_REDIRECTS)
               </h4>
               <p className="text-[11px] text-muted-foreground">
-                Flexible SSL mode forces Cloudflare to access cluster over HTTP. Redirection from HTTP to HTTPS creates an infinite loop.
+                Flexible SSL mode forces Cloudflare to access cluster over HTTP.
+                Redirection from HTTP to HTTPS creates an infinite loop.
               </p>
               <p
                 className={`text-[11px] font-semibold ${cloudflareSslMode === "flexible" ? "text-amber-400 underline underline-offset-2" : "text-emerald-400"}`}

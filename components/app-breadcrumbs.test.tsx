@@ -5,7 +5,10 @@ import { buildAppBreadcrumbItems } from "@/components/app-breadcrumbs"
 describe("buildAppBreadcrumbItems", () => {
   it("renders only the root crumb for the localized console root", () => {
     expect(
-      buildAppBreadcrumbItems({ pathname: "/en/console", rootSegment: "console" })
+      buildAppBreadcrumbItems({
+        pathname: "/en/console",
+        rootSegment: "console",
+      })
     ).toEqual([{ label: "Console", href: undefined }])
   })
 

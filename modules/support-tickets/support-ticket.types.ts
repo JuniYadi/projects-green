@@ -68,16 +68,18 @@ export const SUPPORT_TICKET_PRIORITY_LABELS: Record<
   high: "High",
 }
 
-export const SUPPORT_TICKET_SERVICE_LABELS: Record<SupportTicketService, string> =
-  {
-    auth: "Auth",
-    billing: "Billing",
-    deploy: "Deploy",
-    domains: "Domains",
-    integrations: "Integrations",
-    data: "Data",
-    other: "Other",
-  }
+export const SUPPORT_TICKET_SERVICE_LABELS: Record<
+  SupportTicketService,
+  string
+> = {
+  auth: "Auth",
+  billing: "Billing",
+  deploy: "Deploy",
+  domains: "Domains",
+  integrations: "Integrations",
+  data: "Data",
+  other: "Other",
+}
 
 export type SupportTicketAttachmentMetadata = {
   checksumSha256?: string | null

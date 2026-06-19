@@ -96,8 +96,12 @@ export class PaymentSeeder extends BaseSeeder {
     const config = {
       merchantCode: process.env.DUITKU_MERCHANT_CODE ?? "DS00000",
       apiKey: process.env.DUITKU_API_KEY ?? "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      sandboxUrl: process.env.DUITKU_SANDBOX_URL ?? "https://sandbox.duitku.com/webapi/api/merchant",
-      productionUrl: process.env.DUITKU_PRODUCTION_URL ?? "https://passport.duitku.com/webapi/api/merchant",
+      sandboxUrl:
+        process.env.DUITKU_SANDBOX_URL ??
+        "https://sandbox.duitku.com/webapi/api/merchant",
+      productionUrl:
+        process.env.DUITKU_PRODUCTION_URL ??
+        "https://passport.duitku.com/webapi/api/merchant",
     }
 
     const existing = await this.prisma.paymentGateway.findFirst({
@@ -212,13 +216,11 @@ export class PaymentSeeder extends BaseSeeder {
     this.log("Removing seeded payment data...")
 
     await this.prisma.$transaction(async (tx) => {
-      const deletedBankAccounts = await tx.paymentBankAccount.deleteMany(
-        {
-          where: {
-            bankCode: { in: bankAccounts.map((a) => a.bankCode) },
-          },
+      const deletedBankAccounts = await tx.paymentBankAccount.deleteMany({
+        where: {
+          bankCode: { in: bankAccounts.map((a) => a.bankCode) },
         },
-      )
+      })
       this.trackDeleted(deletedBankAccounts.count)
 
       const manualGateway = await tx.paymentGateway.findFirst({
@@ -242,9 +244,7 @@ export class PaymentSeeder extends BaseSeeder {
       }
     })
 
-    this.log(
-      `Done: ${this.result.deleted} records removed`,
-    )
+    this.log(`Done: ${this.result.deleted} records removed`)
   }
 }
 

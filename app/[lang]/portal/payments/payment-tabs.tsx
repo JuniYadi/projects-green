@@ -9,7 +9,12 @@ import { BankAccountsTab } from "./bank-accounts/bank-accounts-tab"
 import { CurrenciesTab } from "./currencies/currencies-tab"
 import { ConfirmationsTab } from "./confirmations/confirmations-tab"
 
-type TabValue = "overview" | "gateways" | "bank-accounts" | "currencies" | "confirmations"
+type TabValue =
+  | "overview"
+  | "gateways"
+  | "bank-accounts"
+  | "currencies"
+  | "confirmations"
 
 const TABS: { value: TabValue; label: string }[] = [
   { value: "overview", label: "Overview" },

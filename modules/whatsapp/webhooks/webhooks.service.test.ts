@@ -18,11 +18,8 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const {
-  createWebhookEvent,
-  recordProcessingResult,
-  listWebhookEvents,
-} = await import("./webhooks.service")
+const { createWebhookEvent, recordProcessingResult, listWebhookEvents } =
+  await import("./webhooks.service")
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -88,7 +85,7 @@ describe("webhookEventService", () => {
         "org-1",
         "device-1",
         "inbound_message",
-        { test: "payload" },
+        { test: "payload" }
       )
 
       expect(eventId).toBe("event-created-1")
@@ -111,7 +108,7 @@ describe("webhookEventService", () => {
         "org-2",
         "device-2",
         "status_update",
-        {},
+        {}
       )
 
       expect(eventId).toBe("evt-abc-123")
@@ -126,7 +123,7 @@ describe("webhookEventService", () => {
         "org-1",
         "device-1",
         "unknown",
-        null as any,
+        null as any
       )
 
       expect(eventId).toBe("event-empty")
@@ -156,11 +153,7 @@ describe("webhookEventService", () => {
     })
 
     it("records error message when status is FAILED", async () => {
-      await recordProcessingResult(
-        "event-1",
-        "FAILED",
-        "Connection timeout",
-      )
+      await recordProcessingResult("event-1", "FAILED", "Connection timeout")
 
       expect(mockPrisma.whatsappWebhookEvent.update).toHaveBeenCalledWith({
         where: { id: "event-1" },
@@ -182,7 +175,7 @@ describe("webhookEventService", () => {
             processingStatus: "PENDING",
             errorMessage: null,
           }),
-        }),
+        })
       )
     })
 
@@ -195,7 +188,7 @@ describe("webhookEventService", () => {
           data: expect.objectContaining({
             processedAt: expect.any(Date),
           }),
-        }),
+        })
       )
     })
   })
@@ -225,7 +218,7 @@ describe("webhookEventService", () => {
       expect(mockPrisma.whatsappWebhookEvent.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ organizationId: "org-42" }),
-        }),
+        })
       )
     })
 
@@ -238,7 +231,7 @@ describe("webhookEventService", () => {
       expect(mockPrisma.whatsappWebhookEvent.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ whatsappDeviceId: "device-99" }),
-        }),
+        })
       )
     })
 
@@ -251,7 +244,7 @@ describe("webhookEventService", () => {
       expect(mockPrisma.whatsappWebhookEvent.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ eventType: "inbound_message" }),
-        }),
+        })
       )
     })
 
@@ -264,7 +257,7 @@ describe("webhookEventService", () => {
       expect(mockPrisma.whatsappWebhookEvent.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ processingStatus: "FAILED" }),
-        }),
+        })
       )
     })
 
@@ -286,7 +279,7 @@ describe("webhookEventService", () => {
               lte: new Date(toDate),
             },
           }),
-        }),
+        })
       )
     })
 
@@ -305,7 +298,7 @@ describe("webhookEventService", () => {
               gte: new Date(fromDate),
             }),
           }),
-        }),
+        })
       )
     })
 
@@ -324,7 +317,7 @@ describe("webhookEventService", () => {
               lte: new Date(toDate),
             }),
           }),
-        }),
+        })
       )
     })
 
@@ -341,7 +334,7 @@ describe("webhookEventService", () => {
         expect.objectContaining({
           skip: 20, // (3-1) * 10
           take: 10,
-        }),
+        })
       )
     })
 
@@ -351,7 +344,7 @@ describe("webhookEventService", () => {
       expect(mockPrisma.whatsappWebhookEvent.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { createdAt: "desc" },
-        }),
+        })
       )
     })
 
@@ -391,7 +384,7 @@ describe("webhookEventService", () => {
       expect(mockPrisma.whatsappWebhookEvent.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           skip: -10, // (0-1) * 10 — service passes through, route clamps
-        }),
+        })
       )
     })
 
@@ -411,7 +404,7 @@ describe("webhookEventService", () => {
             eventType: "inbound_message",
             processingStatus: "PENDING",
           },
-        }),
+        })
       )
     })
 

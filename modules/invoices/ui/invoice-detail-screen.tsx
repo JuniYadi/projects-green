@@ -76,7 +76,10 @@ const getErrorMessage = (payload: InvoiceErrorResponse | null) => {
   return "Unable to load invoice detail right now."
 }
 
-export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProps) {
+export function InvoiceDetailScreen({
+  invoiceId,
+  lang,
+}: InvoiceDetailScreenProps) {
   const locale = resolveLocaleOrDefault(lang)
   const router = useRouter()
   const [state, setState] = useState<InvoiceDetailRequestState>({
@@ -86,7 +89,9 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
   const [isCancelSheetOpen, setIsCancelSheetOpen] = useState(false)
   const [isMarkPaidOpen, setIsMarkPaidOpen] = useState(false)
   const [isCanceling, setIsCanceling] = useState(false)
-  const [cancelErrorMessage, setCancelErrorMessage] = useState<string | null>(null)
+  const [cancelErrorMessage, setCancelErrorMessage] = useState<string | null>(
+    null
+  )
 
   const fetchDetail = useCallback(
     async (signal?: AbortSignal) => {
@@ -165,7 +170,9 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
         | null
 
       if (!response.ok || !payload || payload.ok !== true) {
-        setCancelErrorMessage(getErrorMessage(payload as InvoiceErrorResponse | null))
+        setCancelErrorMessage(
+          getErrorMessage(payload as InvoiceErrorResponse | null)
+        )
         setIsCanceling(false)
         return
       }
@@ -198,7 +205,12 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
       <div className="grid gap-3 rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm">
         <p className="text-destructive">{state.message}</p>
         <div>
-          <Button type="button" size="sm" variant="outline" onClick={() => void loadDetail()}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void loadDetail()}
+          >
             Retry
           </Button>
         </div>
@@ -283,11 +295,15 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Issued Date</p>
-            <p className="font-medium">{formatInvoiceDate(invoice.issuedAt, locale)}</p>
+            <p className="font-medium">
+              {formatInvoiceDate(invoice.issuedAt, locale)}
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Due Date</p>
-            <p className="font-medium">{formatInvoiceDate(invoice.dueAt, locale)}</p>
+            <p className="font-medium">
+              {formatInvoiceDate(invoice.dueAt, locale)}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -301,18 +317,26 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           </CardHeader>
           <CardContent className="space-y-1.5 text-sm">
             <p className="font-semibold text-foreground">
-              {state.organization?.billingFullName || state.organization?.name || "—"}
+              {state.organization?.billingFullName ||
+                state.organization?.name ||
+                "—"}
             </p>
             <p className="text-muted-foreground">
               {state.organization?.billingAddress || "—"}
             </p>
             <p className="text-muted-foreground">
-              {[state.organization?.billingCity, state.organization?.billingState]
+              {[
+                state.organization?.billingCity,
+                state.organization?.billingState,
+              ]
                 .filter(Boolean)
                 .join(", ") || "—"}
             </p>
             <p className="text-muted-foreground">
-              {[state.organization?.billingCountry, state.organization?.billingPostCode]
+              {[
+                state.organization?.billingCountry,
+                state.organization?.billingPostCode,
+              ]
                 .filter(Boolean)
                 .join(" ") || "—"}
             </p>
@@ -326,8 +350,12 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5 text-sm">
-            <p className="font-semibold text-foreground">PFNApp Technologies Inc.</p>
-            <p className="text-muted-foreground">Sudirman Central Business District (SCBD)</p>
+            <p className="font-semibold text-foreground">
+              PFNApp Technologies Inc.
+            </p>
+            <p className="text-muted-foreground">
+              Sudirman Central Business District (SCBD)
+            </p>
             <p className="text-muted-foreground">Jakarta, DKI Jakarta</p>
             <p className="text-muted-foreground">Indonesia, 12190</p>
           </CardContent>
@@ -359,8 +387,12 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
             <TableBody>
               {invoice.lineItems.map((lineItem) => (
                 <TableRow key={lineItem.id}>
-                  <TableCell className="font-medium">{lineItem.description}</TableCell>
-                  <TableCell className="text-right">{lineItem.quantity}</TableCell>
+                  <TableCell className="font-medium">
+                    {lineItem.description}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {lineItem.quantity}
+                  </TableCell>
                   <TableCell className="text-right">
                     {formatInvoiceCurrency(
                       lineItem.unitPrice,
@@ -369,7 +401,11 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {formatInvoiceCurrency(lineItem.amount, lineItem.currency, locale)}
+                    {formatInvoiceCurrency(
+                      lineItem.amount,
+                      lineItem.currency,
+                      locale
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -386,25 +422,41 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           <div className="flex items-center justify-between gap-2">
             <p className="text-muted-foreground">Subtotal</p>
             <p className="font-medium">
-              {formatInvoiceCurrency(invoice.subtotalAmount, invoice.currency, locale)}
+              {formatInvoiceCurrency(
+                invoice.subtotalAmount,
+                invoice.currency,
+                locale
+              )}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
             <p className="text-muted-foreground">Tax</p>
             <p className="font-medium">
-              {formatInvoiceCurrency(invoice.taxAmount, invoice.currency, locale)}
+              {formatInvoiceCurrency(
+                invoice.taxAmount,
+                invoice.currency,
+                locale
+              )}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
             <p className="text-muted-foreground">Discount</p>
             <p className="font-medium">
-              {formatInvoiceCurrency(invoice.discountAmount, invoice.currency, locale)}
+              {formatInvoiceCurrency(
+                invoice.discountAmount,
+                invoice.currency,
+                locale
+              )}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2 border-t pt-2">
             <p className="font-semibold">Total</p>
             <p className="font-semibold">
-              {formatInvoiceCurrency(invoice.totalAmount, invoice.currency, locale)}
+              {formatInvoiceCurrency(
+                invoice.totalAmount,
+                invoice.currency,
+                locale
+              )}
             </p>
           </div>
         </CardContent>
@@ -415,14 +467,21 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           <SheetHeader>
             <SheetTitle>Pay Invoice</SheetTitle>
             <SheetDescription>
-              {invoice.invoiceNumber} · {formatInvoiceCurrency(invoice.totalAmount, invoice.currency, locale)}
+              {invoice.invoiceNumber} ·{" "}
+              {formatInvoiceCurrency(
+                invoice.totalAmount,
+                invoice.currency,
+                locale
+              )}
             </SheetDescription>
           </SheetHeader>
 
           <div className="grid gap-4 px-4 pt-4 text-sm">
             <div className="grid gap-2">
               <p className="text-xs text-muted-foreground">Invoice Status</p>
-              <p className="font-medium">{getInvoiceStatusLabel(invoice.status)}</p>
+              <p className="font-medium">
+                {getInvoiceStatusLabel(invoice.status)}
+              </p>
             </div>
             <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
               After transferring the amount above to the destination account,
@@ -460,14 +519,15 @@ export function InvoiceDetailScreen({ invoiceId, lang }: InvoiceDetailScreenProp
           <SheetHeader>
             <SheetTitle>Mark Invoice Canceled</SheetTitle>
             <SheetDescription>
-              This action sets invoice {invoice.invoiceNumber} to canceled status.
+              This action sets invoice {invoice.invoiceNumber} to canceled
+              status.
             </SheetDescription>
           </SheetHeader>
 
           <div className="grid gap-4 px-4 pt-4 text-sm">
             <p>
-              Are you sure you want to mark this invoice as canceled? This action
-              is intended for billing corrections.
+              Are you sure you want to mark this invoice as canceled? This
+              action is intended for billing corrections.
             </p>
             {cancelErrorMessage ? (
               <p className="text-xs text-destructive">{cancelErrorMessage}</p>

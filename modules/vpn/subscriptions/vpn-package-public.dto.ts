@@ -77,10 +77,11 @@ function buildServers(pkg: PublicPackagePayload): VpnPublicPackageServerDTO[] {
   return pkg.servers.map(toServerDTO)
 }
 
-function summaryFields(pkg: PublicPackagePayload, servers: VpnPublicPackageServerDTO[]) {
-  const regions = Array.from(
-    new Set(servers.map((s) => s.region.name))
-  )
+function summaryFields(
+  pkg: PublicPackagePayload,
+  servers: VpnPublicPackageServerDTO[]
+) {
+  const regions = Array.from(new Set(servers.map((s) => s.region.name)))
   const protocolCount = servers.reduce((sum, s) => sum + s.protocols.length, 0)
   return {
     id: pkg.id,

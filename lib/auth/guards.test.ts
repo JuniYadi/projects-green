@@ -1,9 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import type { AuthContext, PlatformScope, WorkOSScope } from "./types"
 
-const { guardOrgRead, guardOrgWrite, guardOrgFull, guardSuperAdmin } = await import(
-  "./guards"
-)
+const { guardOrgRead, guardOrgWrite, guardOrgFull, guardSuperAdmin } =
+  await import("./guards")
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,9 +24,7 @@ const platformKey = (scopes: string[]): PlatformScope => ({
   scopes,
 })
 
-const workosSession = (
-  overrides: Partial<WorkOSScope> = {}
-): WorkOSScope => ({
+const workosSession = (overrides: Partial<WorkOSScope> = {}): WorkOSScope => ({
   type: "workos",
   userId: "user_001",
   email: "user@example.com",
@@ -62,9 +59,7 @@ describe("guardOrgRead", () => {
   })
 
   it("returns 403 when workos user has no org membership", async () => {
-    const ctx = makeCtx(
-      workosSession({ organizationId: null, orgRole: null })
-    )
+    const ctx = makeCtx(workosSession({ organizationId: null, orgRole: null }))
     const guarded = guardOrgRead(mockRoute)
     const result = await guarded(ctx)
     expect(ctx.set.status).toBe(403)
@@ -142,9 +137,7 @@ describe("guardOrgWrite", () => {
   })
 
   it("returns 403 for workos user without org membership", async () => {
-    const ctx = makeCtx(
-      workosSession({ organizationId: null, orgRole: null })
-    )
+    const ctx = makeCtx(workosSession({ organizationId: null, orgRole: null }))
     const guarded = guardOrgWrite(mockRoute)
     const result = await guarded(ctx)
     expect(ctx.set.status).toBe(403)
@@ -237,9 +230,7 @@ describe("guardOrgFull", () => {
   })
 
   it("returns 403 for workos user without org membership", async () => {
-    const ctx = makeCtx(
-      workosSession({ organizationId: null, orgRole: null })
-    )
+    const ctx = makeCtx(workosSession({ organizationId: null, orgRole: null }))
     const guarded = guardOrgFull(mockRoute)
     const result = await guarded(ctx)
     expect(ctx.set.status).toBe(403)
@@ -332,9 +323,7 @@ describe("guardSuperAdmin", () => {
   })
 
   it("calls route for workos user with platformRole 'super_admin'", async () => {
-    const ctx = makeCtx(
-      workosSession({ platformRole: "super_admin" })
-    )
+    const ctx = makeCtx(workosSession({ platformRole: "super_admin" }))
     const guarded = guardSuperAdmin(mockRoute)
     const result = await guarded(ctx)
     expect(result).toEqual({ success: true })

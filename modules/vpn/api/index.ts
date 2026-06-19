@@ -12,6 +12,4 @@ import { Elysia } from "elysia"
 
 import { createVpnRoutes } from "./vpn.route"
 
-export const vpnRoutes = new Elysia({ prefix: "/vpn" }).use(
-  createVpnRoutes(),
-)
+export const vpnRoutes = new Elysia({ prefix: "/vpn" }).use(createVpnRoutes())

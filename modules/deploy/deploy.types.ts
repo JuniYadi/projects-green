@@ -48,7 +48,11 @@ export type Branch = {
   name: string
 }
 
-export type DetectionStatus = "success" | "low_confidence" | "failed" | "partial"
+export type DetectionStatus =
+  | "success"
+  | "low_confidence"
+  | "failed"
+  | "partial"
 
 export type DetectionResult = {
   language: string | null

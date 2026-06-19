@@ -5,7 +5,10 @@ import type {
   PaymentResult,
   ConfigFieldDef,
 } from "./provider.interface"
-import type { DuitkuInquiryRequest, DuitkuInquiryResponse } from "../types/payment.types"
+import type {
+  DuitkuInquiryRequest,
+  DuitkuInquiryResponse,
+} from "../types/payment.types"
 
 const CONFIG_FIELDS: ConfigFieldDef[] = [
   {
@@ -53,16 +56,25 @@ export const duitkuProvider: PaymentProvider = {
   ): Promise<PaymentResult> {
     const isSandbox = process.env.DUITKU_SANDBOX === "true"
     const baseUrl = config.sandboxUrl || "https://sandbox.duitku.com"
-    const effectiveBaseUrl = isSandbox ? baseUrl : config.productionUrl || "https://api.duitku.com"
+    const effectiveBaseUrl = isSandbox
+      ? baseUrl
+      : config.productionUrl || "https://api.duitku.com"
 
     const merchantCode = config.merchantCode || ""
     const apiKey = config.apiKey || ""
 
     if (!merchantCode || !apiKey) {
-      throw new Error("Duitku gateway not configured: missing merchantCode or apiKey")
+      throw new Error(
+        "Duitku gateway not configured: missing merchantCode or apiKey"
+      )
     }
 
-    const signature = generateSignature(merchantCode, request.invoiceId, request.amount, apiKey)
+    const signature = generateSignature(
+      merchantCode,
+      request.invoiceId,
+      request.amount,
+      apiKey
+    )
 
     const body: DuitkuInquiryRequest = {
       merchantCode,
@@ -132,8 +144,5 @@ function generateSignature(
   apiKey: string
 ): string {
   const stringToSign = merchantCode + merchantOrderId + paymentAmount
-  return crypto
-    .createHmac("sha256", apiKey)
-    .update(stringToSign)
-    .digest("hex")
+  return crypto.createHmac("sha256", apiKey).update(stringToSign).digest("hex")
 }

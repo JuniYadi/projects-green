@@ -102,8 +102,7 @@ export const jenkinsWebhookRoutes = new Elysia({ prefix: "/webhooks/jenkins" })
         return {
           ok: false,
           error: "SYNC_FAILED",
-          message:
-            error instanceof Error ? error.message : "Unknown error",
+          message: error instanceof Error ? error.message : "Unknown error",
         }
       }
     },

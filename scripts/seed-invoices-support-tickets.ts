@@ -392,7 +392,9 @@ const ticketStatusTimestamps = (
   }
 }
 
-const buildInvoiceTotals = (lines: Array<{ lineType: BillingInvoiceLineType; amount: number }>) => {
+const buildInvoiceTotals = (
+  lines: Array<{ lineType: BillingInvoiceLineType; amount: number }>
+) => {
   const subtotalAmount = sumNumbers(
     lines
       .filter((line) => line.lineType !== "TAX" && line.lineType !== "CREDIT")
@@ -423,7 +425,10 @@ const main = async () => {
   const summary = {
     mode: "upsert",
     organizationId: input.organizationId,
-    requesterWorkosUserIdHash: createHash("sha256").update(input.requesterWorkosUserId).digest("hex").slice(0, 16),
+    requesterWorkosUserIdHash: createHash("sha256")
+      .update(input.requesterWorkosUserId)
+      .digest("hex")
+      .slice(0, 16),
     seedTag: SEED_TAG,
     billingAccount: {
       created: 0,

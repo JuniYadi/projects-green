@@ -67,7 +67,10 @@ async function lookupDeviceByPhoneId(phoneNumberId: string) {
   })
 }
 
-export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Promise<void> {
+export async function dispatchWebhookEvents(
+  body: unknown,
+  rawBody?: string
+): Promise<void> {
   const result = await handleEventUseCase(body, { rawBody })
 
   // Handle duplicate events first (no code property)
@@ -79,7 +82,10 @@ export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Pr
 
   if (!result || !("code" in result)) {
     webhookMetrics.incrementProcessingErrors()
-    console.warn("[whatsapp-webhook] unexpected handleEventUseCase result", result)
+    console.warn(
+      "[whatsapp-webhook] unexpected handleEventUseCase result",
+      result
+    )
     return
   }
 
@@ -106,10 +112,7 @@ export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Pr
       try {
         await enqueueWhatsAppWebhook("message", message, phoneNumberId)
       } catch (err) {
-        console.error(
-          "[whatsapp-webhook] failed to enqueue message event",
-          err,
-        )
+        console.error("[whatsapp-webhook] failed to enqueue message event", err)
       }
 
       // Capture webhook event for this message
@@ -118,8 +121,13 @@ export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Pr
           device.organizationId,
           device.id,
           "inbound_message",
-          message as any,
-        ).catch((err) => console.error("[whatsapp-webhook] failed to create webhook event:", err))
+          message as any
+        ).catch((err) =>
+          console.error(
+            "[whatsapp-webhook] failed to create webhook event:",
+            err
+          )
+        )
       }
     }
 
@@ -128,10 +136,7 @@ export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Pr
       try {
         await enqueueWhatsAppWebhook("statuses", status, phoneNumberId)
       } catch (err) {
-        console.error(
-          "[whatsapp-webhook] failed to enqueue status event",
-          err,
-        )
+        console.error("[whatsapp-webhook] failed to enqueue status event", err)
       }
 
       // Capture webhook event for this status
@@ -140,8 +145,13 @@ export async function dispatchWebhookEvents(body: unknown, rawBody?: string): Pr
           device.organizationId,
           device.id,
           "status_update",
-          status as any,
-        ).catch((err) => console.error("[whatsapp-webhook] failed to create webhook event:", err))
+          status as any
+        ).catch((err) =>
+          console.error(
+            "[whatsapp-webhook] failed to create webhook event:",
+            err
+          )
+        )
       }
     }
   }

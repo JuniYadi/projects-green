@@ -28,7 +28,15 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test"
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "bun:test"
 
 // Dynamic import for the service
 const { quotaService, InsufficientQuotaError } = await import("./quota.service")
@@ -70,13 +78,25 @@ describe("quotaService", () => {
     // Explicitly set default resolved values to avoid undefined leakage
     mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
     mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
-    mockPrisma.whatsappMonthlyCount.create.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
-    mockPrisma.whatsappMonthlyCount.update.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
+    mockPrisma.whatsappMonthlyCount.create.mockResolvedValue({
+      id: "count-1",
+      messageOutboxCount: 1,
+    } as any)
+    mockPrisma.whatsappMonthlyCount.update.mockResolvedValue({
+      id: "count-1",
+      messageOutboxCount: 1,
+    } as any)
 
     mockTx.whatsappDevice.findFirst.mockResolvedValue(null)
     mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
-    mockTx.whatsappMonthlyCount.create.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
-    mockTx.whatsappMonthlyCount.update.mockResolvedValue({ id: "count-1", messageOutboxCount: 1 } as any)
+    mockTx.whatsappMonthlyCount.create.mockResolvedValue({
+      id: "count-1",
+      messageOutboxCount: 1,
+    } as any)
+    mockTx.whatsappMonthlyCount.update.mockResolvedValue({
+      id: "count-1",
+      messageOutboxCount: 1,
+    } as any)
   })
 
   describe("InsufficientQuotaError", () => {
@@ -319,4 +339,3 @@ describe("quotaService", () => {
     })
   })
 })
-

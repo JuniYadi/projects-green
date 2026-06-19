@@ -99,7 +99,7 @@ describe("emailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining(mockTicket.ticketNumber),
-        }),
+        })
       )
     })
 
@@ -115,30 +115,38 @@ describe("emailService", () => {
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           from: "Support <support@test.com>",
-        }),
+        })
       )
     })
   })
 
   describe("sendTicketReplied", () => {
     it("sends email with reply subject line", async () => {
-      await emailService.sendTicketReplied(mockTicket, mockReply, "user@example.com")
+      await emailService.sendTicketReplied(
+        mockTicket,
+        mockReply,
+        "user@example.com"
+      )
 
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining(mockTicket.ticketNumber),
-        }),
+        })
       )
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining(mockTicket.subject),
-        }),
+        })
       )
     })
 
     it("passes ticket and reply to template", async () => {
-      await emailService.sendTicketReplied(mockTicket, mockReply, "user@example.com")
+      await emailService.sendTicketReplied(
+        mockTicket,
+        mockReply,
+        "user@example.com"
+      )
 
       expect(mockRender).toHaveBeenCalled()
     })
@@ -158,7 +166,7 @@ describe("emailService", () => {
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("closed"),
-        }),
+        })
       )
     })
 
@@ -174,7 +182,7 @@ describe("emailService", () => {
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining("resolved"),
-        }),
+        })
       )
     })
   })
@@ -187,7 +195,7 @@ describe("emailService", () => {
       mockRender.mockImplementation(async () => "<html>Test</html>")
 
       await expect(
-        emailService.sendTicketCreated(mockTicket, "user@example.com"),
+        emailService.sendTicketCreated(mockTicket, "user@example.com")
       ).rejects.toThrow("Failed to send ticket created notification")
     })
 
@@ -198,7 +206,7 @@ describe("emailService", () => {
       })
 
       await expect(
-        emailService.sendTicketCreated(mockTicket, "user@example.com"),
+        emailService.sendTicketCreated(mockTicket, "user@example.com")
       ).rejects.toThrow("Failed to send ticket created notification")
     })
   })
@@ -220,14 +228,16 @@ describe("emailService", () => {
       delete process.env.EMAIL_FROM
 
       const module = await import("./email.service")
-      const service = module.createEmailService({ transporter: mockTransporter })
+      const service = module.createEmailService({
+        transporter: mockTransporter,
+      })
 
       await service.sendTicketCreated(mockTicket, "user@example.com")
 
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           from: "Support <support@yourapp.com>",
-        }),
+        })
       )
     })
   })

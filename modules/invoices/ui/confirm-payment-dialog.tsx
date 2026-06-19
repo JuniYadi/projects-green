@@ -50,9 +50,7 @@ export function ConfirmPaymentDialog({
         `/portal/payments/confirmations/${confirmation.id}/${action}`,
         {
           method: "POST",
-          headers: body
-            ? { "Content-Type": "application/json" }
-            : undefined,
+          headers: body ? { "Content-Type": "application/json" } : undefined,
           body,
         }
       )
@@ -200,9 +198,7 @@ export function ConfirmPaymentDialog({
             </div>
           ) : null}
 
-          {error ? (
-            <p className="text-xs text-destructive">{error}</p>
-          ) : null}
+          {error ? <p className="text-xs text-destructive">{error}</p> : null}
         </div>
 
         {action ? (
@@ -219,7 +215,9 @@ export function ConfirmPaymentDialog({
               type="button"
               variant={action === "reject" ? "destructive" : "default"}
               onClick={() => void handleAction()}
-              disabled={loading || (action === "reject" && !rejectReason.trim())}
+              disabled={
+                loading || (action === "reject" && !rejectReason.trim())
+              }
             >
               {loading
                 ? "Processing..."

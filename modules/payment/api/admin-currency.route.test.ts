@@ -65,13 +65,17 @@ describe("Admin Currency Route", () => {
     mockCurrency.create.mockClear()
     mockCurrency.update.mockClear()
 
-    app = (new Elysia().use(createAdminCurrencyRoutes()) as unknown as {
-      compile: () => ReturnType<typeof Elysia.prototype.compile>
-    }).compile()
+    app = (
+      new Elysia().use(createAdminCurrencyRoutes()) as unknown as {
+        compile: () => ReturnType<typeof Elysia.prototype.compile>
+      }
+    ).compile()
   })
 
   it("lists currencies for super admin", async () => {
-    const response = await app.handle(new Request("http://localhost/currencies"))
+    const response = await app.handle(
+      new Request("http://localhost/currencies")
+    )
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.ok).toBe(true)
@@ -81,7 +85,9 @@ describe("Admin Currency Route", () => {
 
   it("returns 403 for non super admin", async () => {
     mockGetPlatformRole.mockResolvedValueOnce("member")
-    const response = await app.handle(new Request("http://localhost/currencies"))
+    const response = await app.handle(
+      new Request("http://localhost/currencies")
+    )
     expect(response.status).toBe(403)
     const body = await response.json()
     expect(body.error).toBe("FORBIDDEN")

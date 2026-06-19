@@ -29,12 +29,16 @@ describe("generateVoucherCode", () => {
   })
 
   it("generates different codes on successive calls", () => {
-    const codes = new Set(Array.from({ length: 50 }, () => generateVoucherCode()))
+    const codes = new Set(
+      Array.from({ length: 50 }, () => generateVoucherCode())
+    )
     expect(codes.size).toBe(50)
   })
 
   it("throws when prefix contains non-alpha characters", () => {
-    expect(() => generateVoucherCode("ABC123")).toThrow("Prefix must contain only uppercase letters A-Z")
+    expect(() => generateVoucherCode("ABC123")).toThrow(
+      "Prefix must contain only uppercase letters A-Z"
+    )
   })
 
   it("strips whitespace from prefix", () => {

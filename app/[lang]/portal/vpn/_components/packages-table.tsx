@@ -145,7 +145,7 @@ export function PackagesTable() {
                     <div className="space-y-1">
                       {pkg.servers.map((entry) => (
                         <div key={entry.id} className="text-sm">
-                          <span className="font-mono uppercase text-muted-foreground">
+                          <span className="font-mono text-muted-foreground uppercase">
                             {entry.server.region.countryCode}
                           </span>{" "}
                           {entry.server.name}

@@ -318,7 +318,9 @@ export const createTopupRoutes = () =>
         typeof query.currency === "string" ? query.currency.toUpperCase() : null
       const accountCurrency = billingAccount?.currency ?? "IDR"
       const currency =
-        requestedCurrency === accountCurrency ? requestedCurrency : accountCurrency
+        requestedCurrency === accountCurrency
+          ? requestedCurrency
+          : accountCurrency
 
       const [accounts, gateway, paypalGateway, currencyRow, baseCurrency] =
         await Promise.all([

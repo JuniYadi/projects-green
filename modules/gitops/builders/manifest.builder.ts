@@ -68,17 +68,29 @@ export class AppManifestBuilder {
     return this
   }
 
-  addConfigMapVolume(name: string, mountPath: string, readOnly: boolean = false): this {
+  addConfigMapVolume(
+    name: string,
+    mountPath: string,
+    readOnly: boolean = false
+  ): this {
     this.volumes.push({ name, mountPath, type: "configMap", readOnly })
     return this
   }
 
-  addSecretVolume(name: string, mountPath: string, readOnly: boolean = true): this {
+  addSecretVolume(
+    name: string,
+    mountPath: string,
+    readOnly: boolean = true
+  ): this {
     this.volumes.push({ name, mountPath, type: "secret", readOnly })
     return this
   }
 
-  addPVCVolume(name: string, mountPath: string, readOnly: boolean = false): this {
+  addPVCVolume(
+    name: string,
+    mountPath: string,
+    readOnly: boolean = false
+  ): this {
     this.volumes.push({ name, mountPath, type: "pvc", readOnly })
     return this
   }
@@ -107,9 +119,10 @@ export class AppManifestBuilder {
     const resources: KubernetesResource[] = []
 
     if (Object.keys(this.configMapData).length > 0) {
-      const configMap = new ConfigMapBuilder(`${this.appName}-config`, this.namespace).withData(
-        this.configMapData
-      )
+      const configMap = new ConfigMapBuilder(
+        `${this.appName}-config`,
+        this.namespace
+      ).withData(this.configMapData)
       if (this.addReloader) {
         configMap.withAnnotations({ "reloader.stakater.com/auto": "true" })
       }
@@ -182,7 +195,11 @@ export class AppManifestBuilder {
 
     resources.push(deploymentBuilder.build() as unknown as KubernetesResource)
 
-    if (this.hpaMinReplicas === undefined && this.hpaTargetCPUUtilization === undefined && this.hpaTargetMemoryMi === undefined) {
+    if (
+      this.hpaMinReplicas === undefined &&
+      this.hpaTargetCPUUtilization === undefined &&
+      this.hpaTargetMemoryMi === undefined
+    ) {
       const service: KubernetesResource = {
         apiVersion: "v1",
         kind: "Service",
@@ -199,7 +216,11 @@ export class AppManifestBuilder {
       resources.push(service)
     }
 
-    if (this.hpaMinReplicas !== undefined || this.hpaTargetCPUUtilization !== undefined || this.hpaTargetMemoryMi !== undefined) {
+    if (
+      this.hpaMinReplicas !== undefined ||
+      this.hpaTargetCPUUtilization !== undefined ||
+      this.hpaTargetMemoryMi !== undefined
+    ) {
       const hpaBuilder = new HpaBuilder()
         .setName(`${this.appName}-hpa`)
         .setNamespace(this.namespace)

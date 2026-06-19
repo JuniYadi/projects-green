@@ -229,7 +229,12 @@ describe("detectFrameworkFromGithubApi", () => {
           reasoning: ["next dependency found in package.json"],
         },
         toolCalls: [
-          { toolCallId: "tc-1", toolName: "read_repo_file", input: { filePath: "package.json" }, output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" } },
+          {
+            toolCallId: "tc-1",
+            toolName: "read_repo_file",
+            input: { filePath: "package.json" },
+            output: { content: '{"dependencies":{"next":"14.0"}}' },
+          },
         ],
       }),
       prisma: mockPrisma,
@@ -303,7 +308,10 @@ describe("checkForBlockedFrameworks", () => {
       },
     ]
 
-    const result = checkForBlockedFrameworks(["artisan", "composer.json"], rules)
+    const result = checkForBlockedFrameworks(
+      ["artisan", "composer.json"],
+      rules
+    )
 
     expect(result.blocked).toBe(false)
   })
@@ -435,8 +443,18 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
           reasoning: ["next dependency found"],
         },
         toolCalls: [
-          { toolCallId: "tc-1", toolName: "list_repo_files", input: {}, output: { files: ["package.json", "next.config.mjs"] } },
-          { toolCallId: "tc-2", toolName: "read_repo_file", input: { filePath: "package.json" }, output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" } },
+          {
+            toolCallId: "tc-1",
+            toolName: "list_repo_files",
+            input: {},
+            output: { files: ["package.json", "next.config.mjs"] },
+          },
+          {
+            toolCallId: "tc-2",
+            toolName: "read_repo_file",
+            input: { filePath: "package.json" },
+            output: { content: '{"dependencies":{"next":"14.0"}}' },
+          },
         ],
       }),
       prisma: mockPrisma,
@@ -608,8 +626,18 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
           reasoning: ["next dependency found"],
         },
         toolCalls: [
-          { toolCallId: "tc-1", toolName: "list_repo_files", input: {}, output: { files: ["package.json", "next.config.mjs"] } },
-          { toolCallId: "tc-2", toolName: "read_repo_file", input: { filePath: "package.json" }, output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" } },
+          {
+            toolCallId: "tc-1",
+            toolName: "list_repo_files",
+            input: {},
+            output: { files: ["package.json", "next.config.mjs"] },
+          },
+          {
+            toolCallId: "tc-2",
+            toolName: "read_repo_file",
+            input: { filePath: "package.json" },
+            output: { content: '{"dependencies":{"next":"14.0"}}' },
+          },
         ],
       }),
       prisma: mockPrisma,
@@ -627,7 +655,8 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
     // Verify tool calls are captured in the audit log
     expect(mockPrisma.detectorInspectionLog.create).toHaveBeenCalledTimes(1)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const logCall = (mockPrisma.detectorInspectionLog.create as any).mock.calls[0]?.[0]
+    const logCall = (mockPrisma.detectorInspectionLog.create as any).mock
+      .calls[0]?.[0]
     expect(logCall.data.toolCalls).toHaveLength(2)
     expect(logCall.data.toolCalls[0]).toEqual({
       toolCallId: "tc-1",
@@ -639,7 +668,7 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
       toolCallId: "tc-2",
       toolName: "read_repo_file",
       input: { filePath: "package.json" },
-      output: { content: "{\"dependencies\":{\"next\":\"14.0\"}}" },
+      output: { content: '{"dependencies":{"next":"14.0"}}' },
     })
   })
 })
@@ -668,7 +697,9 @@ describe("enforceRuntimeMappings", () => {
       "nextjs",
       "14",
       suggestedRuntimes,
-      mockPrisma as unknown as { detectorRuntimeMapping: { findMany: () => Promise<unknown[]> } }
+      mockPrisma as unknown as {
+        detectorRuntimeMapping: { findMany: () => Promise<unknown[]> }
+      }
     )
 
     expect(result.enforced).toEqual(suggestedRuntimes)
@@ -709,7 +740,9 @@ describe("enforceRuntimeMappings", () => {
       "laravel",
       "10",
       suggestedRuntimes,
-      mockPrisma as unknown as { detectorRuntimeMapping: { findMany: () => Promise<unknown[]> } }
+      mockPrisma as unknown as {
+        detectorRuntimeMapping: { findMany: () => Promise<unknown[]> }
+      }
     )
 
     expect(result.enforced).toHaveLength(1)
@@ -753,7 +786,9 @@ describe("enforceRuntimeMappings", () => {
       "laravel",
       "10",
       suggestedRuntimes,
-      mockPrisma as unknown as { detectorRuntimeMapping: { findMany: () => Promise<unknown[]> } }
+      mockPrisma as unknown as {
+        detectorRuntimeMapping: { findMany: () => Promise<unknown[]> }
+      }
     )
 
     expect(result.enforced).toHaveLength(2)
@@ -796,7 +831,9 @@ describe("enforceRuntimeMappings", () => {
       "laravel",
       "11", // Different version than mapping
       suggestedRuntimes,
-      mockPrisma as unknown as { detectorRuntimeMapping: { findMany: () => Promise<unknown[]> } }
+      mockPrisma as unknown as {
+        detectorRuntimeMapping: { findMany: () => Promise<unknown[]> }
+      }
     )
 
     expect(result.enforced).toHaveLength(1)
@@ -898,7 +935,8 @@ describe("evaluateSupportDecision", () => {
           {
             type: "file",
             value: "blocked",
-            detail: 'Blocked by rule "Block WordPress": matched files wp-config.php',
+            detail:
+              'Blocked by rule "Block WordPress": matched files wp-config.php',
           },
         ],
       },

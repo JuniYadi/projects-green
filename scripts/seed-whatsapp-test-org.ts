@@ -1,5 +1,9 @@
 import { PrismaPg } from "@prisma/adapter-pg"
-import { PrismaClient, AuthPlatformRole, WhatsappDeviceStatus } from "@prisma/client"
+import {
+  PrismaClient,
+  AuthPlatformRole,
+  WhatsappDeviceStatus,
+} from "@prisma/client"
 import { getWorkOS } from "@workos-inc/authkit-nextjs"
 
 const DATABASE_URL = process.env.DATABASE_URL?.trim()
@@ -70,7 +74,9 @@ const createSuperAdmin = async () => {
 
   if (existing) {
     if (existing.role === AuthPlatformRole.SUPER_ADMIN) {
-      console.log(`Super admin ${DEFAULT_TEST_DATA.superAdminEmail} already exists`)
+      console.log(
+        `Super admin ${DEFAULT_TEST_DATA.superAdminEmail} already exists`
+      )
       return existing
     }
 
@@ -100,7 +106,9 @@ const createWhatsAppDevice = async () => {
   })
 
   if (existing) {
-    console.log(`WhatsApp device ${DEFAULT_TEST_DATA.devicePhone} already exists`)
+    console.log(
+      `WhatsApp device ${DEFAULT_TEST_DATA.devicePhone} already exists`
+    )
     return existing
   }
 
@@ -121,7 +129,9 @@ const createWhatsAppDevice = async () => {
     },
   })
 
-  console.log(`Created WhatsApp device: ${DEFAULT_TEST_DATA.deviceName} (${DEFAULT_TEST_DATA.devicePhone})`)
+  console.log(
+    `Created WhatsApp device: ${DEFAULT_TEST_DATA.deviceName} (${DEFAULT_TEST_DATA.devicePhone})`
+  )
   return created
 }
 
@@ -239,7 +249,9 @@ const createTestMessages = async () => {
   })
 
   if (existingMessages.length > 0) {
-    console.log(`${existingMessages.length} messages already exist, skipping...`)
+    console.log(
+      `${existingMessages.length} messages already exist, skipping...`
+    )
     return existingMessages
   }
 

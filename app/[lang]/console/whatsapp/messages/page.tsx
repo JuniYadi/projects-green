@@ -158,18 +158,16 @@ function MessageBubble({ message }: { message: Message }) {
             : "rounded-br-sm bg-primary text-primary-foreground"
         }`}
       >
-        <p className="whitespace-pre-wrap break-words">
+        <p className="break-words whitespace-pre-wrap">
           {message.body || (
-            <span className="italic text-muted-foreground/60">
+            <span className="text-muted-foreground/60 italic">
               (no content)
             </span>
           )}
         </p>
         <p
           className={`mt-1 text-right text-[10px] ${
-            isInbox
-              ? "text-muted-foreground"
-              : "text-primary-foreground/70"
+            isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
           }`}
         >
           {formatTime(message.createdAt)}
@@ -189,8 +187,9 @@ export default function WhatsAppMessagesPage() {
     ConversationListItem[]
   >([])
   const [conversationsLoading, setConversationsLoading] = React.useState(true)
-  const [conversationsError, setConversationsError] =
-    React.useState<string | null>(null)
+  const [conversationsError, setConversationsError] = React.useState<
+    string | null
+  >(null)
   const [refreshKey, setRefreshKey] = React.useState(0)
 
   // State - active conversation
@@ -228,9 +227,7 @@ export default function WhatsAppMessagesPage() {
 
     whatsappClient.conversations
       .list(
-        searchQuery.trim()
-          ? { contactPhone: searchQuery.trim() }
-          : undefined,
+        searchQuery.trim() ? { contactPhone: searchQuery.trim() } : undefined
       )
       .then((payload) => {
         if (cancelled) return
@@ -245,9 +242,7 @@ export default function WhatsAppMessagesPage() {
         if (cancelled) return
         React.startTransition(() => {
           setConversationsError(
-            err instanceof Error
-              ? err.message
-              : "Failed to load conversations",
+            err instanceof Error ? err.message : "Failed to load conversations"
           )
           setConversationsLoading(false)
         })
@@ -318,7 +313,7 @@ export default function WhatsAppMessagesPage() {
 
   const hasActiveDevice = React.useMemo(
     () => devices.some((d) => d.status === "ACTIVE"),
-    [devices],
+    [devices]
   )
 
   // ── Derived state ──────────────────────────────────────────────────────
@@ -328,15 +323,11 @@ export default function WhatsAppMessagesPage() {
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase()
-      result = result.filter((c) =>
-        c.contactPhone.toLowerCase().includes(q),
-      )
+      result = result.filter((c) => c.contactPhone.toLowerCase().includes(q))
     }
 
     if (directionFilter !== "all") {
-      result = result.filter(
-        (c) => c.lastDirection === directionFilter,
-      )
+      result = result.filter((c) => c.lastDirection === directionFilter)
     }
 
     return result
@@ -344,9 +335,8 @@ export default function WhatsAppMessagesPage() {
 
   // Reverse messages to show oldest first (they come desc from API)
   const orderedMessages = React.useMemo(
-    () =>
-      (activeConversation?.whatsappMessages ?? []).slice().reverse(),
-    [activeConversation?.whatsappMessages],
+    () => (activeConversation?.whatsappMessages ?? []).slice().reverse(),
+    [activeConversation?.whatsappMessages]
   )
 
   // ── Handlers ───────────────────────────────────────────────────────────
@@ -371,18 +361,19 @@ export default function WhatsAppMessagesPage() {
 
       toast.success("Message queued for delivery")
       // Refresh conversations list
-      whatsappClient.conversations.list().then((p) => {
-        if (p.ok) setConversations(p.conversations)
-      }).catch(() => {})
+      whatsappClient.conversations
+        .list()
+        .then((p) => {
+          if (p.ok) setConversations(p.conversations)
+        })
+        .catch(() => {})
 
       setSendDialogOpen(false)
       setSendPhone("")
       setSendText("")
       setSendDeviceId("")
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to send message",
-      )
+      toast.error(err instanceof Error ? err.message : "Failed to send message")
     } finally {
       setSending(false)
     }
@@ -427,7 +418,7 @@ export default function WhatsAppMessagesPage() {
                 <Label htmlFor="send-message">Message *</Label>
                 <textarea
                   id="send-message"
-                  className="min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50"
+                  className="min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none"
                   placeholder="Type your message..."
                   value={sendText}
                   onChange={(e) => setSendText(e.target.value)}
@@ -435,17 +426,12 @@ export default function WhatsAppMessagesPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="send-device">Device (optional)</Label>
-                <Select
-                  value={sendDeviceId}
-                  onValueChange={setSendDeviceId}
-                >
+                <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Auto-select device" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="auto">
-                      Auto-select device
-                    </SelectItem>
+                    <SelectItem value="auto">Auto-select device</SelectItem>
                     {devices.map((device) => (
                       <SelectItem
                         key={device.id}
@@ -482,7 +468,7 @@ export default function WhatsAppMessagesPage() {
             <h3 className="font-semibold">Conversations</h3>
             <div className="mt-3 flex flex-col gap-2">
               <div className="relative">
-                <MagnifyingGlass className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by phone..."
                   value={searchQuery}
@@ -511,10 +497,7 @@ export default function WhatsAppMessagesPage() {
             {conversationsLoading && (
               <div className="space-y-1 p-4">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 py-2"
-                  >
+                  <div key={i} className="flex items-center gap-3 py-2">
                     <Skeleton className="size-10 rounded-full" />
                     <div className="flex-1 space-y-1.5">
                       <Skeleton className="h-4 w-28" />
@@ -532,9 +515,7 @@ export default function WhatsAppMessagesPage() {
                   className="mb-3 size-10 text-destructive"
                   weight="fill"
                 />
-                <p className="text-sm text-destructive">
-                  {conversationsError}
-                </p>
+                <p className="text-sm text-destructive">{conversationsError}</p>
                 <Button
                   variant="outline"
                   className="mt-3"
@@ -577,12 +558,8 @@ export default function WhatsAppMessagesPage() {
                 <ConversationItem
                   key={conversation.id}
                   conversation={conversation}
-                  isActive={
-                    activeConversationId === conversation.id
-                  }
-                  onClick={() =>
-                    handleSelectConversation(conversation.id)
-                  }
+                  isActive={activeConversationId === conversation.id}
+                  onClick={() => handleSelectConversation(conversation.id)}
                 />
               ))}
           </div>
@@ -599,20 +576,15 @@ export default function WhatsAppMessagesPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold">
-                    {formatPhone(
-                      activeConversation.contactPhone,
-                    )}
+                    {formatPhone(activeConversation.contactPhone)}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    {activeConversation._count.whatsappMessages}{" "}
-                    messages
+                    {activeConversation._count.whatsappMessages} messages
                   </p>
                 </div>
               </div>
             ) : (
-              <h3 className="font-semibold">
-                Select a conversation
-              </h3>
+              <h3 className="font-semibold">Select a conversation</h3>
             )}
           </div>
 
@@ -630,9 +602,7 @@ export default function WhatsAppMessagesPage() {
                   >
                     <Skeleton
                       className={`h-12 rounded-2xl ${
-                        i % 2 === 0
-                          ? "rounded-bl-sm"
-                          : "rounded-br-sm"
+                        i % 2 === 0 ? "rounded-bl-sm" : "rounded-br-sm"
                       } ${i % 2 === 0 ? "w-3/5" : "w-2/5"}`}
                     />
                   </div>
@@ -672,10 +642,7 @@ export default function WhatsAppMessagesPage() {
             {!activeLoading && orderedMessages.length > 0 && (
               <div className="flex flex-1 flex-col justify-end gap-3">
                 {orderedMessages.map((message) => (
-                  <MessageBubble
-                    key={message.id}
-                    message={message}
-                  />
+                  <MessageBubble key={message.id} message={message} />
                 ))}
                 <div ref={messagesEndRef} />
               </div>

@@ -98,33 +98,33 @@ export function PricingSection() {
   const [yearly, setYearly] = useState(true)
 
   return (
-    <section id="pricing" className="relative py-28 bg-background">
+    <section id="pricing" className="relative bg-background py-28">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_50%,color-mix(in_oklch,var(--chart-3)_7%,transparent),transparent)]" />
 
-      <div className="relative max-w-7xl mx-auto px-6">
+      <div className="relative mx-auto max-w-7xl px-6">
         {/* Header */}
-        <div className="text-center mb-14">
-          <div className="inline-flex items-center gap-2 bg-secondary border border-border rounded-full px-4 py-1.5 mb-6">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+        <div className="mb-14 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-4 py-1.5">
+            <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
               Pricing
             </span>
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-5 tracking-tight">
+          <h2 className="mb-5 text-4xl font-bold tracking-tight text-foreground lg:text-5xl">
             Simple,{" "}
             <span className="bg-gradient-to-r from-chart-3 to-chart-2 bg-clip-text text-transparent">
               transparent pricing
             </span>
           </h2>
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
+          <p className="mx-auto mb-8 max-w-xl text-lg text-muted-foreground">
             Start for free. Scale as you grow. No hidden fees, no surprises.
           </p>
 
           {/* Toggle */}
-          <div className="inline-flex items-center gap-0 bg-secondary border border-border rounded-full p-1">
+          <div className="inline-flex items-center gap-0 rounded-full border border-border bg-secondary p-1">
             <button
               id="pricing-toggle-monthly"
               onClick={() => setYearly(false)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`rounded-full px-5 py-2 text-sm font-medium transition-all ${
                 !yearly
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
@@ -135,14 +135,14 @@ export function PricingSection() {
             <button
               id="pricing-toggle-yearly"
               onClick={() => setYearly(true)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+              className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-all ${
                 yearly
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Yearly
-              <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
                 -20%
               </span>
             </button>
@@ -150,26 +150,28 @@ export function PricingSection() {
         </div>
 
         {/* Plans */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => (
             <div
               key={plan.id}
               id={`pricing-plan-${plan.id}`}
-              className={`relative rounded-2xl border p-6 flex flex-col transition-all duration-300 ${
+              className={`relative flex flex-col rounded-2xl border p-6 transition-all duration-300 ${
                 plan.highlight
-                  ? "bg-primary/10 border-primary/30 shadow-xl shadow-primary/10 scale-[1.02]"
-                  : "bg-card border-border hover:border-primary/20"
+                  ? "scale-[1.02] border-primary/30 bg-primary/10 shadow-xl shadow-primary/10"
+                  : "border-border bg-card hover:border-primary/20"
               }`}
             >
               {plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap shadow-lg shadow-primary/30">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold whitespace-nowrap text-primary-foreground shadow-lg shadow-primary/30">
                   {plan.badge}
                 </div>
               )}
 
               <div className="mb-6">
-                <h3 className="text-base font-bold text-foreground mb-1">{plan.name}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <h3 className="mb-1 text-base font-bold text-foreground">
+                  {plan.name}
+                </h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">
                   {plan.description}
                 </p>
               </div>
@@ -180,39 +182,60 @@ export function PricingSection() {
                     <span className="text-4xl font-bold text-foreground">
                       ${yearly ? plan.yearlyPrice : plan.monthlyPrice}
                     </span>
-                    <span className="text-muted-foreground text-sm mb-1">/mo</span>
+                    <span className="mb-1 text-sm text-muted-foreground">
+                      /mo
+                    </span>
                   </div>
                 ) : (
-                  <div className="text-3xl font-bold text-foreground">Custom</div>
-                )}
-                {yearly && plan.monthlyPrice !== null && plan.monthlyPrice > 0 && (
-                  <div className="text-xs text-primary mt-1">
-                    Save ${(plan.monthlyPrice - plan.yearlyPrice!) * 12}/year
+                  <div className="text-3xl font-bold text-foreground">
+                    Custom
                   </div>
                 )}
+                {yearly &&
+                  plan.monthlyPrice !== null &&
+                  plan.monthlyPrice > 0 && (
+                    <div className="mt-1 text-xs text-primary">
+                      Save ${(plan.monthlyPrice - plan.yearlyPrice!) * 12}/year
+                    </div>
+                  )}
               </div>
 
               <a
                 href={plan.ctaHref}
                 id={`pricing-cta-${plan.id}`}
-                className={`w-full text-center py-2.5 rounded-xl text-sm font-semibold transition-all mb-6 ${
+                className={`mb-6 w-full rounded-xl py-2.5 text-center text-sm font-semibold transition-all ${
                   plan.ctaStyle === "primary"
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90"
                     : "border border-border text-foreground hover:bg-secondary"
                 }`}
               >
                 {plan.cta}
               </a>
 
-              <ul className="space-y-2.5 flex-1">
+              <ul className="flex-1 space-y-2.5">
                 {plan.features.map((f) => (
-                  <li key={f.label} className="flex items-center gap-2.5 text-sm">
+                  <li
+                    key={f.label}
+                    className="flex items-center gap-2.5 text-sm"
+                  >
                     {f.included ? (
-                      <Check className="w-4 h-4 text-primary flex-shrink-0" weight="bold" />
+                      <Check
+                        className="h-4 w-4 flex-shrink-0 text-primary"
+                        weight="bold"
+                      />
                     ) : (
-                      <X className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" weight="bold" />
+                      <X
+                        className="h-4 w-4 flex-shrink-0 text-muted-foreground/40"
+                        weight="bold"
+                      />
                     )}
-                    <span className={f.included ? "text-foreground/80" : "text-muted-foreground/40"}>
+                    <span
+                      className={
+                        f.included
+                          ? "text-foreground/80"
+                          : "text-muted-foreground/40"
+                      }
+                    >
                       {f.label}
                     </span>
                   </li>
@@ -222,8 +245,9 @@ export function PricingSection() {
           ))}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground/50 mt-10">
-          All prices in USD. Cancel anytime. No credit card required for free plan.
+        <p className="mt-10 text-center text-xs text-muted-foreground/50">
+          All prices in USD. Cancel anytime. No credit card required for free
+          plan.
         </p>
       </div>
     </section>

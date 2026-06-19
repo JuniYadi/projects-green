@@ -22,48 +22,37 @@ const toUnauthorized = (set: RouteSet) => {
 
 export const usageRoutes = new Elysia({ prefix: "/usage" })
   // GET /usage/overview — current month overview
-  .get(
-    "/overview",
-    async ({ request, set }: { request: any; set: any }) => {
-      const whatsappAuth = await resolveAuthContext(request)
-      if (!whatsappAuth) return toUnauthorized(set)
+  .get("/overview", async ({ request, set }: { request: any; set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) return toUnauthorized(set)
 
-      const raw = await whatsappUsageService.getUsageOverview(
-        whatsappAuth.organizationId!
-      )
+    const raw = await whatsappUsageService.getUsageOverview(
+      whatsappAuth.organizationId!
+    )
 
-      const overview: UsageOverviewDTO = {
-        month: raw.month.map((r) => ({
-          id: r.id,
-          organizationId: r.organizationId,
-          year: r.year,
-          month: r.month,
-          sessionCount: r.sessionCount,
-          messageInboxCount: r.messageInboxCount,
-          messageOutboxCount: r.messageOutboxCount,
-          messageFailedCount: r.messageFailedCount,
-          whatsappDeviceId: r.whatsappDeviceId,
-        })),
-        today: raw.today.map(toDailyCountDTO),
-        cost: raw.cost,
-        devices: raw.devices,
-      }
-
-      return { ok: true, ...overview }
+    const overview: UsageOverviewDTO = {
+      month: raw.month.map((r) => ({
+        id: r.id,
+        organizationId: r.organizationId,
+        year: r.year,
+        month: r.month,
+        sessionCount: r.sessionCount,
+        messageInboxCount: r.messageInboxCount,
+        messageOutboxCount: r.messageOutboxCount,
+        messageFailedCount: r.messageFailedCount,
+        whatsappDeviceId: r.whatsappDeviceId,
+      })),
+      today: raw.today.map(toDailyCountDTO),
+      cost: raw.cost,
+      devices: raw.devices,
     }
-  )
+
+    return { ok: true, ...overview }
+  })
   // GET /usage/daily — daily counts with date range + device filter
   .get(
     "/daily",
-    async ({
-      request,
-      set,
-      query,
-    }: {
-      request: any
-      set: any
-      query: any
-    }) => {
+    async ({ request, set, query }: { request: any; set: any; query: any }) => {
       const whatsappAuth = await resolveAuthContext(request)
       if (!whatsappAuth) return toUnauthorized(set)
 
@@ -84,15 +73,7 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
   // GET /usage/monthly — monthly counts with year/month + device filter
   .get(
     "/monthly",
-    async ({
-      request,
-      set,
-      query,
-    }: {
-      request: any
-      set: any
-      query: any
-    }) => {
+    async ({ request, set, query }: { request: any; set: any; query: any }) => {
       const whatsappAuth = await resolveAuthContext(request)
       if (!whatsappAuth) return toUnauthorized(set)
 
@@ -117,15 +98,7 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
   // GET /usage/cost — cost breakdown with period filter
   .get(
     "/cost",
-    async ({
-      request,
-      set,
-      query,
-    }: {
-      request: any
-      set: any
-      query: any
-    }) => {
+    async ({ request, set, query }: { request: any; set: any; query: any }) => {
       const whatsappAuth = await resolveAuthContext(request)
       if (!whatsappAuth) return toUnauthorized(set)
 

@@ -49,7 +49,6 @@ mock.module("@workos-inc/authkit-nextjs", () => {
   }
 })
 
-
 import { createSupportTicketRoutes } from "@/modules/support-tickets/api/support-tickets.route"
 import {
   SupportTicketAccessDeniedError,
@@ -62,7 +61,12 @@ type SupportTicketThreadResponse = {
   ok: true
   thread: {
     ticket: SupportTicket
-    replies: Array<{ id: string; authorWorkosUserId: string; isInternalNote: boolean; organizationName?: string | null }>
+    replies: Array<{
+      id: string
+      authorWorkosUserId: string
+      isInternalNote: boolean
+      organizationName?: string | null
+    }>
     users?: Record<string, { isStaff: boolean }>
   }
 }
@@ -398,7 +402,10 @@ describe("support ticket routes", () => {
     })
   })
 
-  const createAdminApp = (service: Partial<SupportTicketService>, platformRole: "none" | "super_admin") => {
+  const createAdminApp = (
+    service: Partial<SupportTicketService>,
+    platformRole: "none" | "super_admin"
+  ) => {
     return new Elysia().use(
       createSupportTicketRoutes({
         authenticate: async () => ({
@@ -412,14 +419,40 @@ describe("support ticket routes", () => {
         }),
         getPlatformRole: async () => platformRole,
         service: {
-          async listTickets() { return [] },
-          async createTicket() { return baseTicket },
-          async getTicketThread() { return { ticket: baseTicket, replies: [] } },
-          async addReply() { return { id: "reply_1", ticketId: "ticket_1", authorWorkosUserId: "user_1", body: "Ok", secureForm: null, isInternalNote: false, attachmentMetadata: [], createdAt: new Date(), updatedAt: new Date() } },
-          async transitionStatus() { return baseTicket },
-          async listAllTickets() { return [baseTicket] },
-          async updateTicket() { return baseTicket },
-          async deleteTicket() { return true },
+          async listTickets() {
+            return []
+          },
+          async createTicket() {
+            return baseTicket
+          },
+          async getTicketThread() {
+            return { ticket: baseTicket, replies: [] }
+          },
+          async addReply() {
+            return {
+              id: "reply_1",
+              ticketId: "ticket_1",
+              authorWorkosUserId: "user_1",
+              body: "Ok",
+              secureForm: null,
+              isInternalNote: false,
+              attachmentMetadata: [],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+          },
+          async transitionStatus() {
+            return baseTicket
+          },
+          async listAllTickets() {
+            return [baseTicket]
+          },
+          async updateTicket() {
+            return baseTicket
+          },
+          async deleteTicket() {
+            return true
+          },
           ...service,
         } as SupportTicketService,
         emailService: {
@@ -465,15 +498,18 @@ describe("support ticket routes", () => {
 
   it("creates ticket for custom organization as admin", async () => {
     let createdWithOrg = ""
-    const app = createAdminApp({
-      async createTicket(input) {
-        createdWithOrg = input.organizationId
-        return {
-          ...baseTicket,
-          organizationId: input.organizationId,
-        }
-      }
-    }, "super_admin")
+    const app = createAdminApp(
+      {
+        async createTicket(input) {
+          createdWithOrg = input.organizationId
+          return {
+            ...baseTicket,
+            organizationId: input.organizationId,
+          }
+        },
+      },
+      "super_admin"
+    )
 
     const response = await app.handle(
       new Request("http://localhost/support-tickets/admin", {
@@ -496,15 +532,18 @@ describe("support ticket routes", () => {
 
   it("updates ticket details as admin", async () => {
     let updatedFields = {}
-    const app = createAdminApp({
-      async updateTicket(input) {
-        updatedFields = input.data
-        return {
-          ...baseTicket,
-          ...input.data,
-        } as unknown as SupportTicket
-      }
-    }, "super_admin")
+    const app = createAdminApp(
+      {
+        async updateTicket(input) {
+          updatedFields = input.data
+          return {
+            ...baseTicket,
+            ...input.data,
+          } as unknown as SupportTicket
+        },
+      },
+      "super_admin"
+    )
 
     const response = await app.handle(
       new Request("http://localhost/support-tickets/admin/ticket_1", {
@@ -530,12 +569,15 @@ describe("support ticket routes", () => {
 
   it("deletes ticket as admin", async () => {
     let deletedId = ""
-    const app = createAdminApp({
-      async deleteTicket(input) {
-        deletedId = input.ticketId
-        return true
-      }
-    }, "super_admin")
+    const app = createAdminApp(
+      {
+        async deleteTicket(input) {
+          deletedId = input.ticketId
+          return true
+        },
+      },
+      "super_admin"
+    )
 
     const response = await app.handle(
       new Request("http://localhost/support-tickets/admin/ticket_1", {
@@ -640,14 +682,40 @@ describe("support ticket routes", () => {
         }),
         getPlatformRole: async () => "none",
         service: {
-          async listTickets() { return [baseTicket] },
-          async createTicket() { return baseTicket },
-          async getTicketThread() { return { ticket: baseTicket, replies: [] } },
-          async addReply() { return { id: "reply_1", ticketId: "ticket_1", authorWorkosUserId: "user_1", body: "Ok", secureForm: null, isInternalNote: false, attachmentMetadata: [], createdAt: new Date(), updatedAt: new Date() } },
-          async transitionStatus() { return baseTicket },
-          async listAllTickets() { return [baseTicket] },
-          async updateTicket() { return baseTicket },
-          async deleteTicket() { return true },
+          async listTickets() {
+            return [baseTicket]
+          },
+          async createTicket() {
+            return baseTicket
+          },
+          async getTicketThread() {
+            return { ticket: baseTicket, replies: [] }
+          },
+          async addReply() {
+            return {
+              id: "reply_1",
+              ticketId: "ticket_1",
+              authorWorkosUserId: "user_1",
+              body: "Ok",
+              secureForm: null,
+              isInternalNote: false,
+              attachmentMetadata: [],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+          },
+          async transitionStatus() {
+            return baseTicket
+          },
+          async listAllTickets() {
+            return [baseTicket]
+          },
+          async updateTicket() {
+            return baseTicket
+          },
+          async deleteTicket() {
+            return true
+          },
         } as SupportTicketService,
         emailService: {
           async sendTicketCreated() {},
@@ -690,14 +758,17 @@ describe("support ticket routes", () => {
       updatedAt: new Date(),
     }
 
-    const app = createAdminApp({
-      async getTicketThread() {
-        return {
-          ticket: baseTicket,
-          replies: [internalNoteReply, publicReply],
-        }
+    const app = createAdminApp(
+      {
+        async getTicketThread() {
+          return {
+            ticket: baseTicket,
+            replies: [internalNoteReply, publicReply],
+          }
+        },
       },
-    }, "super_admin")
+      "super_admin"
+    )
 
     const response = await app.handle(
       new Request("http://localhost/support-tickets/ticket_1", {
@@ -765,14 +836,17 @@ describe("support ticket routes", () => {
     // Tenant admin (platformRole "none") is not a super_admin, so the
     // service returns only public replies. The route test verifies the
     // response structure is correct.
-    const app = createAdminApp({
-      async getTicketThread() {
-        return {
-          ticket: baseTicket,
-          replies: [publicReply],
-        }
+    const app = createAdminApp(
+      {
+        async getTicketThread() {
+          return {
+            ticket: baseTicket,
+            replies: [publicReply],
+          }
+        },
       },
-    }, "none")
+      "none"
+    )
 
     const response = await app.handle(
       new Request("http://localhost/support-tickets/ticket_1", {
@@ -798,11 +872,21 @@ describe("support ticket routes", () => {
         }),
         getPlatformRole: async () => "none",
         service: {
-          async listTickets() { throw new Error("should not reach") },
-          async createTicket() { throw new Error("should not reach") },
-          async getTicketThread() { throw new Error("should not reach") },
-          async addReply() { throw new Error("should not reach") },
-          async transitionStatus() { throw new Error("should not reach") },
+          async listTickets() {
+            throw new Error("should not reach")
+          },
+          async createTicket() {
+            throw new Error("should not reach")
+          },
+          async getTicketThread() {
+            throw new Error("should not reach")
+          },
+          async addReply() {
+            throw new Error("should not reach")
+          },
+          async transitionStatus() {
+            throw new Error("should not reach")
+          },
         } as Partial<SupportTicketService> as SupportTicketService,
         emailService: {
           async sendTicketCreated() {},
@@ -839,11 +923,21 @@ describe("support ticket routes", () => {
         }),
         getPlatformRole: async () => "none",
         service: {
-          async listTickets() { throw new Error("should not reach") },
-          async createTicket() { throw new Error("should not reach") },
-          async getTicketThread() { throw new Error("should not reach") },
-          async addReply() { throw new Error("should not reach") },
-          async transitionStatus() { throw new Error("should not reach") },
+          async listTickets() {
+            throw new Error("should not reach")
+          },
+          async createTicket() {
+            throw new Error("should not reach")
+          },
+          async getTicketThread() {
+            throw new Error("should not reach")
+          },
+          async addReply() {
+            throw new Error("should not reach")
+          },
+          async transitionStatus() {
+            throw new Error("should not reach")
+          },
         } as Partial<SupportTicketService> as SupportTicketService,
         emailService: {
           async sendTicketCreated() {},
@@ -867,9 +961,8 @@ describe("support ticket routes", () => {
   })
 
   it("maps content unavailable error to 503", async () => {
-    const { SupportTicketContentUnavailableError: ContentUnavailableError } = await import(
-      "@/modules/support-tickets/support-ticket.service"
-    )
+    const { SupportTicketContentUnavailableError: ContentUnavailableError } =
+      await import("@/modules/support-tickets/support-ticket.service")
 
     const app = new Elysia().use(
       createSupportTicketRoutes({
@@ -941,7 +1034,7 @@ describe("support ticket routes", () => {
     )
 
     expect(response.status).toBe(200)
-    const json = await response.json() as Record<string, unknown>
+    const json = (await response.json()) as Record<string, unknown>
     expect(json.ok).toBe(true)
     expect(json.organizations).toBeDefined()
   })
@@ -1020,7 +1113,7 @@ describe("support ticket routes", () => {
     )
 
     expect(response.status).toBe(500)
-    const json = await response.json() as Record<string, unknown>
+    const json = (await response.json()) as Record<string, unknown>
     expect(json.error).toBe("INTERNAL_SERVER_ERROR")
   })
 
@@ -1038,11 +1131,31 @@ describe("support ticket routes", () => {
         }),
         getPlatformRole: async () => "none",
         service: {
-          async listTickets() { return [] },
-          async createTicket() { return baseTicket },
-          async getTicketThread() { return { ticket: baseTicket, replies: [] } },
-          async addReply() { return { id: "reply_1", ticketId: "ticket_1", authorWorkosUserId: "user_1", body: "Ok", secureForm: null, isInternalNote: false, attachmentMetadata: [], createdAt: new Date(), updatedAt: new Date() } },
-          async transitionStatus() { return baseTicket },
+          async listTickets() {
+            return []
+          },
+          async createTicket() {
+            return baseTicket
+          },
+          async getTicketThread() {
+            return { ticket: baseTicket, replies: [] }
+          },
+          async addReply() {
+            return {
+              id: "reply_1",
+              ticketId: "ticket_1",
+              authorWorkosUserId: "user_1",
+              body: "Ok",
+              secureForm: null,
+              isInternalNote: false,
+              attachmentMetadata: [],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+          },
+          async transitionStatus() {
+            return baseTicket
+          },
         } as Partial<SupportTicketService> as SupportTicketService,
         emailService: {
           async sendTicketCreated() {},

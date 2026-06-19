@@ -102,7 +102,10 @@ const createRepositoryStub = () => {
         ticket,
         replies: input.includeInternalNotes
           ? replies.filter((reply) => reply.ticketId === input.ticketId)
-          : replies.filter((reply) => reply.ticketId === input.ticketId && !reply.isInternalNote),
+          : replies.filter(
+              (reply) =>
+                reply.ticketId === input.ticketId && !reply.isInternalNote
+            ),
       }
     },
     async updateTicketStatus(input) {
@@ -507,7 +510,10 @@ describe("supportTicketService", () => {
           ticket,
           replies: input.includeInternalNotes
             ? replies.filter((reply) => reply.ticketId === input.ticketId)
-            : replies.filter((reply) => reply.ticketId === input.ticketId && !reply.isInternalNote),
+            : replies.filter(
+                (reply) =>
+                  reply.ticketId === input.ticketId && !reply.isInternalNote
+              ),
         }
       },
       async updateTicketStatus(input) {
@@ -625,9 +631,8 @@ describe("supportTicketService", () => {
   })
 
   it("throws ContentUnavailableError when content cannot be decrypted", async () => {
-    const { SupportTicketCiphertextFormatError } = await import(
-      "@/modules/support-tickets/support-ticket-content-cipher"
-    )
+    const { SupportTicketCiphertextFormatError } =
+      await import("@/modules/support-tickets/support-ticket-content-cipher")
     const brokenCipher: SupportTicketContentCipher = {
       encrypt(value) {
         return value
@@ -900,7 +905,7 @@ describe("supportTicketService", () => {
     await expect(
       service.listAllTickets({
         actor: { organizationId: "org_1", workosUserId: "user_normal" },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
   })
 
@@ -916,7 +921,7 @@ describe("supportTicketService", () => {
         actor: { organizationId: "org_1", workosUserId: "user_normal" },
         ticketId: "ticket_1",
         data: { department: "billing" },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
   })
 
@@ -931,7 +936,7 @@ describe("supportTicketService", () => {
       service.deleteTicket({
         actor: { organizationId: "org_1", workosUserId: "user_normal" },
         ticketId: "ticket_1",
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
   })
 
@@ -944,9 +949,13 @@ describe("supportTicketService", () => {
 
     await expect(
       service.deleteTicket({
-        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        actor: {
+          isSuperAdmin: true,
+          organizationId: "org_1",
+          workosUserId: "admin",
+        },
         ticketId: "nonexistent",
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
   })
 
@@ -957,7 +966,7 @@ describe("supportTicketService", () => {
       repository,
     })
 
-    const session = await service.getAttachmentSession!({  
+    const session = await service.getAttachmentSession!({
       actor: { organizationId: "org_1", workosUserId: "user_requester" },
       attachmentId: "nonexistent_attachment",
     })
@@ -980,21 +989,43 @@ describe("supportTicketService", () => {
     ])
 
     const encRepository: SupportTicketRepository = {
-      async createUploadSession() { throw new Error("n/a") },
-      async getUploadSessionById() { return null },
-      async markUploadSessionRegistered() { throw new Error("n/a") },
-      async createTicket() { return encryptedTicket },
-      async listTicketsByOrganization() { return [...encTickets.values()] },
-      async getTicketById(id) { return encTickets.get(id) ?? null },
+      async createUploadSession() {
+        throw new Error("n/a")
+      },
+      async getUploadSessionById() {
+        return null
+      },
+      async markUploadSessionRegistered() {
+        throw new Error("n/a")
+      },
+      async createTicket() {
+        return encryptedTicket
+      },
+      async listTicketsByOrganization() {
+        return [...encTickets.values()]
+      },
+      async getTicketById(id) {
+        return encTickets.get(id) ?? null
+      },
       async getTicketThread(input) {
         const t = encTickets.get(input.ticketId)
         return t ? { ticket: t, replies: [] } : null
       },
-      async updateTicketStatus() { throw new Error("n/a") },
-      async listAllTickets() { return [] },
-      async updateTicket() { throw new Error("n/a") },
-      async deleteTicket() { return true },
-      async createReply() { throw new Error("n/a") },
+      async updateTicketStatus() {
+        throw new Error("n/a")
+      },
+      async listAllTickets() {
+        return []
+      },
+      async updateTicket() {
+        throw new Error("n/a")
+      },
+      async deleteTicket() {
+        return true
+      },
+      async createReply() {
+        throw new Error("n/a")
+      },
     }
 
     const service = createSupportTicketService({
@@ -1037,7 +1068,7 @@ describe("supportTicketService", () => {
         department: "technical",
         priority: "medium",
         subject: "Will fail",
-      }),
+      })
     ).rejects.toThrow("repository failure")
   })
 
@@ -1058,23 +1089,47 @@ describe("supportTicketService", () => {
       updatedAt: new Date(),
     }
 
-    const tickets = new Map<string, SupportTicket>([[baseTicket.id, baseTicket]])
+    const tickets = new Map<string, SupportTicket>([
+      [baseTicket.id, baseTicket],
+    ])
     const encRepository: SupportTicketRepository = {
-      async createUploadSession() { throw new Error("n/a") },
-      async getUploadSessionById() { return null },
-      async markUploadSessionRegistered() { throw new Error("n/a") },
-      async createTicket() { return baseTicket },
-      async listTicketsByOrganization() { return [baseTicket] },
-      async getTicketById(id) { return tickets.get(id) ?? null },
+      async createUploadSession() {
+        throw new Error("n/a")
+      },
+      async getUploadSessionById() {
+        return null
+      },
+      async markUploadSessionRegistered() {
+        throw new Error("n/a")
+      },
+      async createTicket() {
+        return baseTicket
+      },
+      async listTicketsByOrganization() {
+        return [baseTicket]
+      },
+      async getTicketById(id) {
+        return tickets.get(id) ?? null
+      },
       async getTicketThread(input) {
         const t = tickets.get(input.ticketId)
         return t ? { ticket: t, replies: [encReply] } : null
       },
-      async updateTicketStatus() { return baseTicket },
-      async listAllTickets() { return [baseTicket] },
-      async updateTicket() { return baseTicket },
-      async deleteTicket() { return true },
-      async createReply() { return encReply },
+      async updateTicketStatus() {
+        return baseTicket
+      },
+      async listAllTickets() {
+        return [baseTicket]
+      },
+      async updateTicket() {
+        return baseTicket
+      },
+      async deleteTicket() {
+        return true
+      },
+      async createReply() {
+        return encReply
+      },
     }
 
     const service = createSupportTicketService({
@@ -1115,7 +1170,7 @@ describe("supportTicketService", () => {
           authorWorkosUserId: "user_other",
           body: "Unauthorized reply",
         },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
   })
 
@@ -1128,13 +1183,17 @@ describe("supportTicketService", () => {
 
     await expect(
       service.addReply({
-        actor: { organizationId: "org_1", workosUserId: "user_agent", canManageTickets: true },
+        actor: {
+          organizationId: "org_1",
+          workosUserId: "user_agent",
+          canManageTickets: true,
+        },
         reply: {
           ticketId: "nonexistent",
           authorWorkosUserId: "user_agent",
           body: "Reply to missing ticket",
         },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
   })
 
@@ -1145,7 +1204,7 @@ describe("supportTicketService", () => {
       repository,
     })
 
-    const session = await service.getAttachmentSession!({  
+    const session = await service.getAttachmentSession!({
       actor: { organizationId: "org_1", workosUserId: "user_requester" },
       attachmentId: "att_1",
     })
@@ -1165,7 +1224,7 @@ describe("supportTicketService", () => {
       service.getTicketThread({
         actor: { organizationId: "org_other", workosUserId: "user_stranger" },
         ticketId: "ticket_1",
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
   })
 
@@ -1181,7 +1240,7 @@ describe("supportTicketService", () => {
         ticketId: "ticket_1",
         nextStatus: "in_progress",
         actor: { organizationId: "org_other", workosUserId: "user_stranger" },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
   })
 
@@ -1200,7 +1259,7 @@ describe("supportTicketService", () => {
           authorWorkosUserId: "user_stranger",
           body: "I should not be able to reply",
         },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
   })
 
@@ -1216,7 +1275,11 @@ describe("supportTicketService", () => {
     })
 
     const updated = await service.updateTicket({
-      actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+      actor: {
+        isSuperAdmin: true,
+        organizationId: "org_1",
+        workosUserId: "admin",
+      },
       ticketId: "ticket_1",
       data: { status: "closed" },
     })
@@ -1235,7 +1298,11 @@ describe("supportTicketService", () => {
     })
 
     const result = await service.deleteTicket({
-      actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+      actor: {
+        isSuperAdmin: true,
+        organizationId: "org_1",
+        workosUserId: "admin",
+      },
       ticketId: "ticket_1",
     })
 
@@ -1274,7 +1341,7 @@ describe("supportTicketService", () => {
         ticketId: "nonexistent",
         nextStatus: "closed",
         actor: { organizationId: "org_1", workosUserId: "user_requester" },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
   })
 
@@ -1287,17 +1354,20 @@ describe("supportTicketService", () => {
 
     await expect(
       service.updateTicket({
-        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        actor: {
+          isSuperAdmin: true,
+          organizationId: "org_1",
+          workosUserId: "admin",
+        },
         ticketId: "nonexistent",
         data: { department: "billing" },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
   })
 
   it("throws ContentUnavailableError when listTickets decryption fails", async () => {
-    const { SupportTicketDecryptionError: DecryptionError } = await import(
-      "@/modules/support-tickets/support-ticket-content-cipher"
-    )
+    const { SupportTicketDecryptionError: DecryptionError } =
+      await import("@/modules/support-tickets/support-ticket-content-cipher")
     const brokenCipher: SupportTicketContentCipher = {
       encrypt(value) {
         return value
@@ -1338,14 +1408,13 @@ describe("supportTicketService", () => {
     await expect(
       service.listTickets({
         actor: { organizationId: "org_1", workosUserId: "user_requester" },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketContentUnavailableError)
   })
 
   it("throws ContentUnavailableError when addReply decryption fails", async () => {
-    const { SupportTicketCiphertextFormatError: CiphertextFormatError } = await import(
-      "@/modules/support-tickets/support-ticket-content-cipher"
-    )
+    const { SupportTicketCiphertextFormatError: CiphertextFormatError } =
+      await import("@/modules/support-tickets/support-ticket-content-cipher")
 
     const brokenCipher: SupportTicketContentCipher = {
       encrypt(_value: unknown) {
@@ -1378,14 +1447,13 @@ describe("supportTicketService", () => {
           body: "Test reply",
           secureForm: "sensitive data", // This triggers encryption then decryption
         },
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketContentUnavailableError)
   })
 
   it("throws ContentUnavailableError when listAllTickets decryption fails", async () => {
-    const { SupportTicketEncryptionConfigurationError: ConfigError } = await import(
-      "@/modules/support-tickets/support-ticket-content-cipher"
-    )
+    const { SupportTicketEncryptionConfigurationError: ConfigError } =
+      await import("@/modules/support-tickets/support-ticket-content-cipher")
     const brokenCipher: SupportTicketContentCipher = {
       encrypt(value) {
         return value
@@ -1420,8 +1488,12 @@ describe("supportTicketService", () => {
 
     await expect(
       service.listAllTickets({
-        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
-      }),
+        actor: {
+          isSuperAdmin: true,
+          organizationId: "org_1",
+          workosUserId: "admin",
+        },
+      })
     ).rejects.toBeInstanceOf(SupportTicketContentUnavailableError)
   })
 
@@ -1466,7 +1538,8 @@ describe("supportTicketService", () => {
 
   it("uses lazy default content cipher when not injected", async () => {
     const originalKey = process.env.SUPPORT_TICKET_CONTENT_ENCRYPTION_KEY
-    process.env.SUPPORT_TICKET_CONTENT_ENCRYPTION_KEY = "base64:bjY4kQV6Dj6MimVz5Zt2JYhjpQf8j2uZMQvNclTBIw4="
+    process.env.SUPPORT_TICKET_CONTENT_ENCRYPTION_KEY =
+      "base64:bjY4kQV6Dj6MimVz5Zt2JYhjpQf8j2uZMQvNclTBIw4="
 
     try {
       const { repository } = createRepositoryStub()

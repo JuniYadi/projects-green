@@ -73,56 +73,62 @@ const testimonials = [
 
 export function TestimonialsSection() {
   return (
-    <section className="relative py-28 bg-background overflow-hidden">
+    <section className="relative overflow-hidden bg-background py-28">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,color-mix(in_oklch,var(--chart-5)_6%,transparent),transparent)]" />
 
-      <div className="relative max-w-7xl mx-auto px-6">
+      <div className="relative mx-auto max-w-7xl px-6">
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-secondary border border-border rounded-full px-4 py-1.5 mb-6">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+        <div className="mb-16 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-4 py-1.5">
+            <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
               Testimonials
             </span>
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-5 tracking-tight">
+          <h2 className="mb-5 text-4xl font-bold tracking-tight text-foreground lg:text-5xl">
             Loved by{" "}
             <span className="bg-gradient-to-r from-chart-5 to-chart-3 bg-clip-text text-transparent">
               developers worldwide
             </span>
           </h2>
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+          <p className="mx-auto max-w-xl text-lg text-muted-foreground">
             Join 10,000+ developers who ship faster with PFNApp.
           </p>
         </div>
 
         {/* Masonry grid */}
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">
+        <div className="columns-1 gap-5 space-y-5 sm:columns-2 lg:columns-3">
           {testimonials.map((t) => (
             <div
               key={t.id}
-              className="break-inside-avoid bg-card border border-border hover:border-primary/20 rounded-2xl p-6 transition-all duration-300 group"
+              className="group break-inside-avoid rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary/20"
             >
-              <Quotes weight="fill" className="w-6 h-6 text-border mb-4" />
+              <Quotes weight="fill" className="mb-4 h-6 w-6 text-border" />
 
               {/* Stars */}
-              <div className="flex gap-1 mb-3">
+              <div className="mb-3 flex gap-1">
                 {Array.from({ length: t.rating }).map((_, i) => (
-                  <Star key={i} weight="fill" className="w-3.5 h-3.5 text-chart-1" />
+                  <Star
+                    key={i}
+                    weight="fill"
+                    className="h-3.5 w-3.5 text-chart-1"
+                  />
                 ))}
               </div>
 
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6 group-hover:text-foreground/75 transition-colors">
+              <p className="mb-6 text-sm leading-relaxed text-muted-foreground transition-colors group-hover:text-foreground/75">
                 &ldquo;{t.quote}&rdquo;
               </p>
 
               <div className="flex items-center gap-3">
                 <div
-                  className={`w-9 h-9 rounded-full ${t.avatarBg} flex items-center justify-center text-xs font-bold text-primary-foreground flex-shrink-0`}
+                  className={`h-9 w-9 rounded-full ${t.avatarBg} flex flex-shrink-0 items-center justify-center text-xs font-bold text-primary-foreground`}
                 >
                   {t.avatar}
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-foreground">{t.name}</div>
+                  <div className="text-sm font-semibold text-foreground">
+                    {t.name}
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {t.role} · {t.company}
                   </div>

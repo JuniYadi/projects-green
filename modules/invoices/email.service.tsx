@@ -23,24 +23,24 @@ export class InvoiceEmailServiceError extends Error {
 export type InvoiceEmailService = {
   sendInvoiceCreated(
     invoice: InvoiceListItem | InvoiceDetail,
-    recipientEmail: string,
+    recipientEmail: string
   ): Promise<void>
   sendPaymentReminder(
     invoice: InvoiceListItem | InvoiceDetail,
-    recipientEmail: string,
+    recipientEmail: string
   ): Promise<void>
   sendInvoicePaid(
     invoice: InvoiceListItem | InvoiceDetail,
-    recipientEmail: string,
+    recipientEmail: string
   ): Promise<void>
   sendInvoiceOverdue(
     invoice: InvoiceListItem | InvoiceDetail,
-    recipientEmail: string,
+    recipientEmail: string
   ): Promise<void>
   sendInvoiceCancelled(
     invoice: InvoiceListItem | InvoiceDetail,
     recipientEmail: string,
-    reason?: string,
+    reason?: string
   ): Promise<void>
 }
 
@@ -73,7 +73,9 @@ const formatDate = (dateStr: string | null): string => {
   })
 }
 
-export const getInvoiceEmailData = (invoice: InvoiceListItem | InvoiceDetail) => {
+export const getInvoiceEmailData = (
+  invoice: InvoiceListItem | InvoiceDetail
+) => {
   const amount = "totalAmount" in invoice ? invoice.totalAmount : 0
   const currency = invoice.currency
   const periodStart = "periodStart" in invoice ? invoice.periodStart : null
@@ -104,7 +106,7 @@ const createLazyDefaultTransporter = (): Transporter => {
 }
 
 export const createInvoiceEmailService = (
-  options: InvoiceEmailServiceOptions = {},
+  options: InvoiceEmailServiceOptions = {}
 ): InvoiceEmailService => {
   const transporter = options.transporter ?? createLazyDefaultTransporter()
   const fromAddress = process.env.EMAIL_FROM || "Billing <billing@yourapp.com>"
@@ -113,7 +115,7 @@ export const createInvoiceEmailService = (
     async sendInvoiceCreated(invoice, recipientEmail) {
       try {
         const html = await render(
-          <InvoiceCreatedEmail {...getInvoiceEmailData(invoice)} />,
+          <InvoiceCreatedEmail {...getInvoiceEmailData(invoice)} />
         )
 
         await transporter.sendMail({
@@ -125,7 +127,7 @@ export const createInvoiceEmailService = (
       } catch (error) {
         console.error("Failed to send invoice created email:", error)
         throw new InvoiceEmailServiceError(
-          `Failed to send invoice created notification: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to send invoice created notification: ${error instanceof Error ? error.message : String(error)}`
         )
       }
     },
@@ -133,7 +135,7 @@ export const createInvoiceEmailService = (
     async sendPaymentReminder(invoice, recipientEmail) {
       try {
         const html = await render(
-          <PaymentReminderEmail {...getInvoiceEmailData(invoice)} />,
+          <PaymentReminderEmail {...getInvoiceEmailData(invoice)} />
         )
 
         await transporter.sendMail({
@@ -145,7 +147,7 @@ export const createInvoiceEmailService = (
       } catch (error) {
         console.error("Failed to send payment reminder email:", error)
         throw new InvoiceEmailServiceError(
-          `Failed to send payment reminder notification: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to send payment reminder notification: ${error instanceof Error ? error.message : String(error)}`
         )
       }
     },
@@ -153,7 +155,7 @@ export const createInvoiceEmailService = (
     async sendInvoicePaid(invoice, recipientEmail) {
       try {
         const html = await render(
-          <InvoicePaidEmail {...getInvoiceEmailData(invoice)} />,
+          <InvoicePaidEmail {...getInvoiceEmailData(invoice)} />
         )
 
         await transporter.sendMail({
@@ -165,7 +167,7 @@ export const createInvoiceEmailService = (
       } catch (error) {
         console.error("Failed to send invoice paid email:", error)
         throw new InvoiceEmailServiceError(
-          `Failed to send invoice paid notification: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to send invoice paid notification: ${error instanceof Error ? error.message : String(error)}`
         )
       }
     },
@@ -173,7 +175,7 @@ export const createInvoiceEmailService = (
     async sendInvoiceOverdue(invoice, recipientEmail) {
       try {
         const html = await render(
-          <InvoiceOverdueEmail {...getInvoiceEmailData(invoice)} />,
+          <InvoiceOverdueEmail {...getInvoiceEmailData(invoice)} />
         )
 
         await transporter.sendMail({
@@ -185,7 +187,7 @@ export const createInvoiceEmailService = (
       } catch (error) {
         console.error("Failed to send invoice overdue email:", error)
         throw new InvoiceEmailServiceError(
-          `Failed to send invoice overdue notification: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to send invoice overdue notification: ${error instanceof Error ? error.message : String(error)}`
         )
       }
     },
@@ -193,7 +195,10 @@ export const createInvoiceEmailService = (
     async sendInvoiceCancelled(invoice, recipientEmail, reason) {
       try {
         const html = await render(
-          <InvoiceCancelledEmail {...getInvoiceEmailData(invoice)} reason={reason} />,
+          <InvoiceCancelledEmail
+            {...getInvoiceEmailData(invoice)}
+            reason={reason}
+          />
         )
 
         await transporter.sendMail({
@@ -205,7 +210,7 @@ export const createInvoiceEmailService = (
       } catch (error) {
         console.error("Failed to send invoice cancelled email:", error)
         throw new InvoiceEmailServiceError(
-          `Failed to send invoice cancelled notification: ${error instanceof Error ? error.message : String(error)}`,
+          `Failed to send invoice cancelled notification: ${error instanceof Error ? error.message : String(error)}`
         )
       }
     },

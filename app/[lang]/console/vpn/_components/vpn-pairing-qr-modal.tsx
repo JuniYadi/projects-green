@@ -1,6 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, startTransition } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  startTransition,
+} from "react"
 
 import {
   Dialog,
@@ -11,10 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  generatePairingToken,
-  getPairingStatus,
-} from "@/lib/vpn-mobile-client"
+import { generatePairingToken, getPairingStatus } from "@/lib/vpn-mobile-client"
 
 type PairingPhase =
   | { phase: "idle" }
@@ -192,11 +195,11 @@ export function VpnPairingQrModal({
               <div className="flex items-center justify-center rounded-lg border bg-white p-4">
                 {state.phase === "ready" ? (
                   <div className="flex flex-col items-center gap-2">
-                    <div className="h-48 w-48 rounded-md bg-muted flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground text-center px-2">
+                    <div className="flex h-48 w-48 items-center justify-center rounded-md bg-muted">
+                      <span className="px-2 text-center text-xs text-muted-foreground">
                         QR Code
                         <br />
-                        <span className="font-mono text-[10px] break-all mt-1 block">
+                        <span className="mt-1 block font-mono text-[10px] break-all">
                           {state.qrPayload.slice(0, 32)}…
                         </span>
                       </span>
@@ -249,9 +252,7 @@ export function VpnPairingQrModal({
 
         {(state.phase === "expired" || state.phase === "error") && (
           <div className="flex justify-center">
-            <Button onClick={generate}>
-              Regenerate
-            </Button>
+            <Button onClick={generate}>Regenerate</Button>
           </div>
         )}
       </DialogContent>

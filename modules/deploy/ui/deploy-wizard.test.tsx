@@ -60,7 +60,6 @@ const githubRepositories = [
   },
 ]
 
-
 mock.module("react-icons/si", () => {
   return {
     SiWordpress: () => <div data-testid="si-wordpress">WordPress Icon</div>,
@@ -83,8 +82,9 @@ const createPersistedState = (state: DeployWizardState) => {
   })
 }
 
-let cachedWizardModule: typeof import("@/modules/deploy/ui/deploy-wizard") | null =
-  null
+let cachedWizardModule:
+  | typeof import("@/modules/deploy/ui/deploy-wizard")
+  | null = null
 let cachedStoreModule: typeof import("@/modules/deploy/deploy.store") | null =
   null
 
@@ -94,7 +94,9 @@ const renderWizard = async (
 ) => {
   currentQuery = query
   replaceCalls.splice(0)
-  ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(new URLSearchParams(query))
+  ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
+    new URLSearchParams(query)
+  )
   window.sessionStorage.clear()
   if (persistedState) {
     window.sessionStorage.setItem(
@@ -345,7 +347,11 @@ describe("DeployWizard", () => {
     const view = await renderWizard("step=invalid")
 
     await waitFor(() => {
-      expect(view.getByText("Choose a pre-configured template to deploy instantly, or connect your GitHub account.")).toBeTruthy()
+      expect(
+        view.getByText(
+          "Choose a pre-configured template to deploy instantly, or connect your GitHub account."
+        )
+      ).toBeTruthy()
     })
   })
 
@@ -574,42 +580,64 @@ describe("DeployWizard", () => {
     fireEvent.click(view.getByRole("button", { name: "Next Step" }))
 
     // High confidence goes to Environment first
-    await waitFor(() => {
-      expect(view.getByText("Environment Settings")).toBeTruthy()
-    }, { timeout: 15_000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Environment Settings")).toBeTruthy()
+      },
+      { timeout: 15_000 }
+    )
 
     // Click back goes to Build step (allowing editing auto-detected settings)
     fireEvent.click(view.getByRole("button", { name: "Back" }))
 
-    await waitFor(() => {
-      expect(view.getByText("Manual override")).toBeTruthy()
-    }, { timeout: 15_000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Manual override")).toBeTruthy()
+      },
+      { timeout: 15_000 }
+    )
 
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
-    await waitFor(() => {
-      expect(view.getByText(/Attached Resources/i)).toBeTruthy()
-    }, { timeout: 15_000 })
+    await waitFor(
+      () => {
+        expect(view.getByText(/Attached Resources/i)).toBeTruthy()
+      },
+      { timeout: 15_000 }
+    )
 
     fireEvent.click(view.getByRole("radio", { name: /Pro/i }))
 
-    await waitFor(() => {
-      const proRadio = view.getByRole("radio", { name: /Pro/i }) as HTMLInputElement
-      expect(proRadio.checked).toBe(true)
-    }, { timeout: 15_000 })
+    await waitFor(
+      () => {
+        const proRadio = view.getByRole("radio", {
+          name: /Pro/i,
+        }) as HTMLInputElement
+        expect(proRadio.checked).toBe(true)
+      },
+      { timeout: 15_000 }
+    )
 
     fireEvent.click(view.getByRole("button", { name: "Back" }))
 
-    await waitFor(() => {
-      expect(view.getByText("Manual override")).toBeTruthy()
-    }, { timeout: 15_000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Manual override")).toBeTruthy()
+      },
+      { timeout: 15_000 }
+    )
 
     fireEvent.click(view.getByRole("button", { name: "Next" }))
 
-    await waitFor(() => {
-      const proRadio = view.getByRole("radio", { name: /Pro/i }) as HTMLInputElement
-      expect(proRadio.checked).toBe(true)
-    }, { timeout: 15_000 })
+    await waitFor(
+      () => {
+        const proRadio = view.getByRole("radio", {
+          name: /Pro/i,
+        }) as HTMLInputElement
+        expect(proRadio.checked).toBe(true)
+      },
+      { timeout: 15_000 }
+    )
   }, 30_000)
 
   it("validates custom domain mode before deploy", async () => {
@@ -618,26 +646,39 @@ describe("DeployWizard", () => {
     await selectSourceRepository(view)
     fireEvent.click(view.getByRole("button", { name: "Next Step" }))
 
-    await waitFor(() => {
-      expect(view.getByText("Environment Settings")).toBeTruthy()
-    }, { timeout: 15_000 })
+    await waitFor(
+      () => {
+        expect(view.getByText("Environment Settings")).toBeTruthy()
+      },
+      { timeout: 15_000 }
+    )
 
     fireEvent.click(view.getByRole("radio", { name: /Custom domain/i }))
 
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: "Deploy Application" })).toBeDisabled()
-      expect(
-        view.getAllByText(
-          "Custom domain is required when generated subdomain is off."
-        ).length
-      ).toBeGreaterThan(0)
-    }, { timeout: 15_000 })
+    await waitFor(
+      () => {
+        expect(
+          view.getByRole("button", { name: "Deploy Application" })
+        ).toBeDisabled()
+        expect(
+          view.getAllByText(
+            "Custom domain is required when generated subdomain is off."
+          ).length
+        ).toBeGreaterThan(0)
+      },
+      { timeout: 15_000 }
+    )
 
     fireEvent.click(view.getByRole("radio", { name: /Managed subdomain/i }))
 
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: "Deploy Application" })).toBeEnabled()
-    }, { timeout: 15_000 })
+    await waitFor(
+      () => {
+        expect(
+          view.getByRole("button", { name: "Deploy Application" })
+        ).toBeEnabled()
+      },
+      { timeout: 15_000 }
+    )
   }, 20_000)
 
   it("shows duplicate env var key warning", async () => {

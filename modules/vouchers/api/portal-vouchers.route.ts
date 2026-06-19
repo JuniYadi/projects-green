@@ -12,7 +12,11 @@ import {
   listVouchersQuerySchema,
   voucherIdParamSchema,
 } from "./vouchers.schemas"
-import { toVoucherDTO, toVoucherDetailDTO, toVoucherClaimDTO } from "../vouchers.dto"
+import {
+  toVoucherDTO,
+  toVoucherDetailDTO,
+  toVoucherClaimDTO,
+} from "../vouchers.dto"
 import {
   VoucherNotFoundError,
   VoucherCollisionRetryExhaustedError,
@@ -102,7 +106,10 @@ const toErrorResponse = (set: RouteSet, error: unknown) => {
     }
   }
 
-  if (error instanceof Error && error.message.startsWith("Cannot reduce maxClaims")) {
+  if (
+    error instanceof Error &&
+    error.message.startsWith("Cannot reduce maxClaims")
+  ) {
     set.status = 400
     return {
       ok: false as const,
@@ -114,13 +121,13 @@ const toErrorResponse = (set: RouteSet, error: unknown) => {
   console.error("[Portal Vouchers] Error:", error)
   return toServerError(
     set,
-    error instanceof Error ? error.message : "An unexpected error occurred.",
+    error instanceof Error ? error.message : "An unexpected error occurred."
   )
 }
 
 async function resolveActor(
   auth: VoucherAuthContext,
-  getPlatformRole: PortalVoucherRouteDeps["getPlatformRole"],
+  getPlatformRole: PortalVoucherRouteDeps["getPlatformRole"]
 ) {
   const platformRole = await getPlatformRole({
     id: auth.user?.id,
@@ -134,245 +141,253 @@ async function resolveActor(
 }
 
 export const createPortalVoucherRoutes = (
-  deps: Partial<PortalVoucherRouteDeps> = {},
+  deps: Partial<PortalVoucherRouteDeps> = {}
 ) => {
   const { authenticate, getPlatformRole, service } = {
     ...defaultDeps,
     ...deps,
   }
 
-  return new Elysia({ prefix: "/vouchers/portal" })
-    // GET /vouchers/portal — list vouchers
-    .get("/", async ({ query, set }) => {
-      const auth = await authenticate()
+  return (
+    new Elysia({ prefix: "/vouchers/portal" })
+      // GET /vouchers/portal — list vouchers
+      .get("/", async ({ query, set }) => {
+        const auth = await authenticate()
 
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(set, "Only administrators can manage vouchers.")
-      }
-
-      const parsed = listVouchersQuerySchema.safeParse(query)
-      if (!parsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+        if (!auth.user) {
+          return toUnauthorized(set)
         }
-      }
 
-      try {
-        const { vouchers, total } = await service.listVouchers(parsed.data)
-
-        return {
-          ok: true as const,
-          data: vouchers.map(toVoucherDTO),
-          total,
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(set, "Only administrators can manage vouchers.")
         }
-      } catch (error) {
-        return toErrorResponse(set, error)
-      }
-    })
 
-    // POST /vouchers/portal — create voucher
-    .post("/", async ({ body, set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(set, "Only administrators can create vouchers.")
-      }
-
-      const parsed = createVoucherSchema.safeParse(body)
-      if (!parsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+        const parsed = listVouchersQuerySchema.safeParse(query)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          }
         }
-      }
 
-      try {
-        const voucher = await service.createVoucher({
-          ...parsed.data,
-          createdByWorkosUserId: auth.user.id,
-        })
+        try {
+          const { vouchers, total } = await service.listVouchers(parsed.data)
 
-        set.status = 201
-        return {
-          ok: true as const,
-          data: toVoucherDTO(voucher),
+          return {
+            ok: true as const,
+            data: vouchers.map(toVoucherDTO),
+            total,
+          }
+        } catch (error) {
+          return toErrorResponse(set, error)
         }
-      } catch (error) {
-        return toErrorResponse(set, error)
-      }
-    })
+      })
 
-    // GET /vouchers/portal/:id — voucher detail with claims
-    .get("/:id", async ({ params, set }) => {
-      const auth = await authenticate()
+      // POST /vouchers/portal — create voucher
+      .post("/", async ({ body, set }) => {
+        const auth = await authenticate()
 
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(set, "Only administrators can view voucher details.")
-      }
-
-      const parsed = voucherIdParamSchema.safeParse(params)
-      if (!parsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+        if (!auth.user) {
+          return toUnauthorized(set)
         }
-      }
 
-      try {
-        const voucher = await service.getVoucherById(parsed.data.id)
-
-        return {
-          ok: true as const,
-          data: toVoucherDetailDTO(voucher),
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(set, "Only administrators can create vouchers.")
         }
-      } catch (error) {
-        return toErrorResponse(set, error)
-      }
-    })
 
-    // PATCH /vouchers/portal/:id — update voucher
-    .patch("/:id", async ({ params, body, set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(set, "Only administrators can update vouchers.")
-      }
-
-      const idParsed = voucherIdParamSchema.safeParse(params)
-      if (!idParsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(idParsed.error.issues),
+        const parsed = createVoucherSchema.safeParse(body)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          }
         }
-      }
 
-      const bodyParsed = updateVoucherSchema.safeParse(body)
-      if (!bodyParsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(bodyParsed.error.issues),
+        try {
+          const voucher = await service.createVoucher({
+            ...parsed.data,
+            createdByWorkosUserId: auth.user.id,
+          })
+
+          set.status = 201
+          return {
+            ok: true as const,
+            data: toVoucherDTO(voucher),
+          }
+        } catch (error) {
+          return toErrorResponse(set, error)
         }
-      }
+      })
 
-      try {
-        const voucher = await service.updateVoucher(idParsed.data.id, bodyParsed.data)
+      // GET /vouchers/portal/:id — voucher detail with claims
+      .get("/:id", async ({ params, set }) => {
+        const auth = await authenticate()
 
-        return {
-          ok: true as const,
-          data: toVoucherDTO(voucher),
+        if (!auth.user) {
+          return toUnauthorized(set)
         }
-      } catch (error) {
-        return toErrorResponse(set, error)
-      }
-    })
 
-    // POST /vouchers/portal/:id/disable — disable voucher
-    .post("/:id/disable", async ({ params, set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(set, "Only administrators can disable vouchers.")
-      }
-
-      const parsed = voucherIdParamSchema.safeParse(params)
-      if (!parsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(
+            set,
+            "Only administrators can view voucher details."
+          )
         }
-      }
 
-      try {
-        const voucher = await service.disableVoucher(parsed.data.id)
-
-        return {
-          ok: true as const,
-          data: toVoucherDTO(voucher),
+        const parsed = voucherIdParamSchema.safeParse(params)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          }
         }
-      } catch (error) {
-        return toErrorResponse(set, error)
-      }
-    })
 
-    // GET /vouchers/portal/:id/claims — claim history for a voucher
-    .get("/:id/claims", async ({ params, set }) => {
-      const auth = await authenticate()
+        try {
+          const voucher = await service.getVoucherById(parsed.data.id)
 
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(set, "Only administrators can view claim history.")
-      }
-
-      const parsed = voucherIdParamSchema.safeParse(params)
-      if (!parsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Please fix the highlighted fields and try again.",
-          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          return {
+            ok: true as const,
+            data: toVoucherDetailDTO(voucher),
+          }
+        } catch (error) {
+          return toErrorResponse(set, error)
         }
-      }
+      })
 
-      try {
-        const claims = await service.getVoucherClaims(parsed.data.id)
+      // PATCH /vouchers/portal/:id — update voucher
+      .patch("/:id", async ({ params, body, set }) => {
+        const auth = await authenticate()
 
-        return {
-          ok: true as const,
-          data: claims.map(toVoucherClaimDTO),
+        if (!auth.user) {
+          return toUnauthorized(set)
         }
-      } catch (error) {
-        return toErrorResponse(set, error)
-      }
-    })
+
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(set, "Only administrators can update vouchers.")
+        }
+
+        const idParsed = voucherIdParamSchema.safeParse(params)
+        if (!idParsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(idParsed.error.issues),
+          }
+        }
+
+        const bodyParsed = updateVoucherSchema.safeParse(body)
+        if (!bodyParsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(bodyParsed.error.issues),
+          }
+        }
+
+        try {
+          const voucher = await service.updateVoucher(
+            idParsed.data.id,
+            bodyParsed.data
+          )
+
+          return {
+            ok: true as const,
+            data: toVoucherDTO(voucher),
+          }
+        } catch (error) {
+          return toErrorResponse(set, error)
+        }
+      })
+
+      // POST /vouchers/portal/:id/disable — disable voucher
+      .post("/:id/disable", async ({ params, set }) => {
+        const auth = await authenticate()
+
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(set, "Only administrators can disable vouchers.")
+        }
+
+        const parsed = voucherIdParamSchema.safeParse(params)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          }
+        }
+
+        try {
+          const voucher = await service.disableVoucher(parsed.data.id)
+
+          return {
+            ok: true as const,
+            data: toVoucherDTO(voucher),
+          }
+        } catch (error) {
+          return toErrorResponse(set, error)
+        }
+      })
+
+      // GET /vouchers/portal/:id/claims — claim history for a voucher
+      .get("/:id/claims", async ({ params, set }) => {
+        const auth = await authenticate()
+
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(set, "Only administrators can view claim history.")
+        }
+
+        const parsed = voucherIdParamSchema.safeParse(params)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          }
+        }
+
+        try {
+          const claims = await service.getVoucherClaims(parsed.data.id)
+
+          return {
+            ok: true as const,
+            data: claims.map(toVoucherClaimDTO),
+          }
+        } catch (error) {
+          return toErrorResponse(set, error)
+        }
+      })
+  )
 }
 
 export const portalVoucherRoutes = createPortalVoucherRoutes()

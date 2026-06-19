@@ -12,16 +12,16 @@
 
 import { Elysia } from "elysia"
 
-import { getWorkOSSession, resolveApiKey, extractBearerToken } from "@/lib/auth/session"
+import {
+  getWorkOSSession,
+  resolveApiKey,
+  extractBearerToken,
+} from "@/lib/auth/session"
 import { resolveOrgRole } from "@/lib/auth/org-role"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 
 // Re-export everything from lib/auth for backward compatibility
-export type {
-  AuthContext,
-  WorkOSScope,
-  PlatformScope,
-} from "@/lib/auth/types"
+export type { AuthContext, WorkOSScope, PlatformScope } from "@/lib/auth/types"
 export { isPlatformScope, isWorkOSScope } from "@/lib/auth/types"
 export { resolveOrgRole } from "@/lib/auth/org-role"
 export { ORG_ROLES } from "@/lib/auth/org-role"
@@ -51,9 +51,8 @@ import type { AuthContext, WorkOSScope } from "@/lib/auth/types"
 const isSuperAdmin = (ctx: WorkOSScope) => ctx.platformRole === "super_admin"
 const hasOrgMembership = (ctx: WorkOSScope) => ctx.organizationId !== null
 
-export const requireWorkOSSession = (
-  ctx: AuthContext
-): ctx is WorkOSScope => ctx.type === "workos"
+export const requireWorkOSSession = (ctx: AuthContext): ctx is WorkOSScope =>
+  ctx.type === "workos"
 
 export const requireApiKey = (
   ctx: AuthContext

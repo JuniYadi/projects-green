@@ -74,7 +74,10 @@ export class DeploymentBuilder {
     this.envFromSources.push({
       configMapRef: {
         name: configMapName,
-        items: items.map((item) => ({ key: item.key, optional: item.optional })),
+        items: items.map((item) => ({
+          key: item.key,
+          optional: item.optional,
+        })),
       },
     })
     return this
@@ -87,13 +90,20 @@ export class DeploymentBuilder {
     this.envFromSources.push({
       secretRef: {
         name: secretName,
-        items: items.map((item) => ({ key: item.key, optional: item.optional })),
+        items: items.map((item) => ({
+          key: item.key,
+          optional: item.optional,
+        })),
       },
     })
     return this
   }
 
-  addVolumeMount(name: string, mountPath: string, readOnly: boolean = false): this {
+  addVolumeMount(
+    name: string,
+    mountPath: string,
+    readOnly: boolean = false
+  ): this {
     this.volumeMounts.push({ name, mountPath, readOnly })
     return this
   }
@@ -174,7 +184,10 @@ export class DeploymentBuilder {
         name: this.name,
         namespace: this.namespace,
         labels: { app: this.name },
-        annotations: Object.keys(this.annotations).length > 0 ? this.annotations : undefined,
+        annotations:
+          Object.keys(this.annotations).length > 0
+            ? this.annotations
+            : undefined,
       },
       spec: {
         replicas: this.replicas ?? 1,
@@ -190,7 +203,10 @@ export class DeploymentBuilder {
   }
 
   buildHPA(): KubernetesHPA | null {
-    if (this.hpaMinReplicas === undefined && this.hpaTargetCPUUtilization === undefined) {
+    if (
+      this.hpaMinReplicas === undefined &&
+      this.hpaTargetCPUUtilization === undefined
+    ) {
       return null
     }
 
@@ -211,7 +227,10 @@ export class DeploymentBuilder {
         type: "Resource",
         resource: {
           name: "cpu",
-          target: { type: "Utilization", averageUtilization: this.hpaTargetCPUUtilization },
+          target: {
+            type: "Utilization",
+            averageUtilization: this.hpaTargetCPUUtilization,
+          },
         },
       })
     }

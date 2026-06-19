@@ -11,10 +11,36 @@ const MOCK_PROVIDERS_RESPONSE = {
       label: "Duitku",
       supportedCurrencies: ["IDR"],
       configFields: [
-        { key: "merchantCode", label: "Merchant Code", type: "string", placeholder: "M12345", required: true },
-        { key: "apiKey", label: "API Key", type: "password", placeholder: "Your Duitku API key", required: true },
-        { key: "sandboxUrl", label: "Sandbox URL", type: "url", placeholder: "https://sandbox.duitku.com", required: false, defaultValue: "https://sandbox.duitku.com" },
-        { key: "productionUrl", label: "Production URL", type: "url", placeholder: "https://api.duitku.com", required: false, defaultValue: "https://api.duitku.com" },
+        {
+          key: "merchantCode",
+          label: "Merchant Code",
+          type: "string",
+          placeholder: "M12345",
+          required: true,
+        },
+        {
+          key: "apiKey",
+          label: "API Key",
+          type: "password",
+          placeholder: "Your Duitku API key",
+          required: true,
+        },
+        {
+          key: "sandboxUrl",
+          label: "Sandbox URL",
+          type: "url",
+          placeholder: "https://sandbox.duitku.com",
+          required: false,
+          defaultValue: "https://sandbox.duitku.com",
+        },
+        {
+          key: "productionUrl",
+          label: "Production URL",
+          type: "url",
+          placeholder: "https://api.duitku.com",
+          required: false,
+          defaultValue: "https://api.duitku.com",
+        },
       ],
     },
     {
@@ -22,10 +48,38 @@ const MOCK_PROVIDERS_RESPONSE = {
       label: "PayPal",
       supportedCurrencies: ["USD"],
       configFields: [
-        { key: "clientId", label: "Client ID", type: "string", placeholder: "Your PayPal REST app Client ID", required: true },
-        { key: "clientSecret", label: "Client Secret", type: "password", placeholder: "Your PayPal REST app Secret", required: true },
-        { key: "environment", label: "Environment", type: "select", placeholder: "", required: false, options: [{ label: "Sandbox", value: "sandbox" }, { label: "Production", value: "production" }] },
-        { key: "webhookId", label: "Webhook ID", type: "string", placeholder: "Webhook verification ID from PayPal dashboard", required: false },
+        {
+          key: "clientId",
+          label: "Client ID",
+          type: "string",
+          placeholder: "Your PayPal REST app Client ID",
+          required: true,
+        },
+        {
+          key: "clientSecret",
+          label: "Client Secret",
+          type: "password",
+          placeholder: "Your PayPal REST app Secret",
+          required: true,
+        },
+        {
+          key: "environment",
+          label: "Environment",
+          type: "select",
+          placeholder: "",
+          required: false,
+          options: [
+            { label: "Sandbox", value: "sandbox" },
+            { label: "Production", value: "production" },
+          ],
+        },
+        {
+          key: "webhookId",
+          label: "Webhook ID",
+          type: "string",
+          placeholder: "Webhook verification ID from PayPal dashboard",
+          required: false,
+        },
       ],
     },
   ],
@@ -53,9 +107,9 @@ const MOCK_GATEWAYS_RESPONSE_EMPTY = { ok: true, data: [] }
  * providers data for the providers endpoint. Handles POST/PUT/PATCH calls
  * that have an init argument (the gateways list fetch has no init).
  */
-function mockFetch(
-  gatewaysResponse: object = MOCK_GATEWAYS_RESPONSE_ONE,
-): { calls: Array<{ url: string; init?: RequestInit }> } {
+function mockFetch(gatewaysResponse: object = MOCK_GATEWAYS_RESPONSE_ONE): {
+  calls: Array<{ url: string; init?: RequestInit }>
+} {
   const calls: Array<{ url: string; init?: RequestInit }> = []
 
   globalThis.fetch = Object.assign(
@@ -66,21 +120,23 @@ function mockFetch(
 
       // Providers endpoint
       if (pathname === "/api/portal/payments/gateways/providers") {
-        return new Response(JSON.stringify(MOCK_PROVIDERS_RESPONSE), { status: 200 })
+        return new Response(JSON.stringify(MOCK_PROVIDERS_RESPONSE), {
+          status: 200,
+        })
       }
 
       // Mutations (POST, PUT, PATCH) — return success
       if (init) {
         return new Response(
           JSON.stringify({ ok: true, gateway: { id: "gw-1" } }),
-          { status: 200 },
+          { status: 200 }
         )
       }
 
       // Gateways list
       return new Response(JSON.stringify(gatewaysResponse), { status: 200 })
     },
-    { preconnect: () => {} },
+    { preconnect: () => {} }
   ) as typeof fetch
 
   return { calls }
@@ -93,7 +149,9 @@ describe("GatewaysTab", () => {
     const view = render(<GatewaysTab />)
 
     expect(await view.findByRole("table")).toBeInTheDocument()
-    expect(view.getByRole("columnheader", { name: /gateway/i })).toBeInTheDocument()
+    expect(
+      view.getByRole("columnheader", { name: /gateway/i })
+    ).toBeInTheDocument()
     expect(view.getByLabelText("Filter gateways...")).toBeInTheDocument()
   })
 
@@ -127,8 +185,8 @@ describe("GatewaysTab", () => {
     expect(
       calls.some(
         (call) =>
-          new URL(call.url, "http://localhost").pathname === "/api/portal/payments/gateways/gw-1" &&
-          call.init?.method === "PUT",
+          new URL(call.url, "http://localhost").pathname ===
+            "/api/portal/payments/gateways/gw-1" && call.init?.method === "PUT"
       )
     ).toBe(true)
   })

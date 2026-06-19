@@ -41,7 +41,7 @@ describe("AdminInvoicesListRoute", () => {
       const app = new Elysia()
         .use(
           createAdminInvoicesListRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })
@@ -173,7 +173,9 @@ describe("AdminInvoicesListRoute", () => {
     })
 
     it("returns 500 on database error", async () => {
-      mockFindMany.mockRejectedValueOnce(new Error("Database connection failed"))
+      mockFindMany.mockRejectedValueOnce(
+        new Error("Database connection failed")
+      )
 
       const app = new Elysia()
         .use(

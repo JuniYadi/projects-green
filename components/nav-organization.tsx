@@ -177,10 +177,11 @@ export function NavOrganization({
     setIsCreating(true)
 
     try {
-      const { data: payload } = await eden.api.tenants.organizations.create.post({
-        name: candidateName,
-        currency: input.currency,
-      })
+      const { data: payload } =
+        await eden.api.tenants.organizations.create.post({
+          name: candidateName,
+          currency: input.currency,
+        })
 
       if (!payload || isTenantApiError(payload)) {
         setCreateError(

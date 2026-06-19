@@ -38,13 +38,18 @@ type HandleEventOptions = {
   rawBody?: string
 }
 
-function isWhatsappWebhookEnvelope(payload: unknown): payload is WhatsappWebhookEnvelope {
+function isWhatsappWebhookEnvelope(
+  payload: unknown
+): payload is WhatsappWebhookEnvelope {
   if (typeof payload !== "object" || payload === null) {
     return false
   }
 
   const candidate = payload as Record<string, unknown>
-  return candidate.object === "whatsapp_business_account" && Array.isArray(candidate.entry)
+  return (
+    candidate.object === "whatsapp_business_account" &&
+    Array.isArray(candidate.entry)
+  )
 }
 
 export async function handleEventUseCase(

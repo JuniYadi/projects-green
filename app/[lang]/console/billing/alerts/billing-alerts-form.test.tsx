@@ -43,11 +43,13 @@ describe("BillingAlertsForm", () => {
 
   it("shows loading state initially", () => {
     mockGetBillingAccount.mockImplementationOnce(
-      () => new Promise(() => {}), // never resolves
+      () => new Promise(() => {}) // never resolves
     )
     const view = render(<BillingAlertsForm />)
     // Loading skeletons should be visible
-    const skeletons = view.container.querySelectorAll('[class*="animate-pulse"]')
+    const skeletons = view.container.querySelectorAll(
+      '[class*="animate-pulse"]'
+    )
     expect(skeletons.length).toBeGreaterThan(0)
   })
 
@@ -55,7 +57,9 @@ describe("BillingAlertsForm", () => {
     const view = render(<BillingAlertsForm />)
 
     await waitFor(() => {
-      const checkbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
+      const checkbox = view.getByRole("checkbox", {
+        name: "Enable low balance alert",
+      })
       expect(checkbox.getAttribute("aria-checked")).toBe("false")
     })
   })
@@ -74,7 +78,9 @@ describe("BillingAlertsForm", () => {
     const view = render(<BillingAlertsForm />)
 
     await waitFor(() => {
-      const balanceCheckbox = view.getByRole("checkbox", { name: "Enable low balance alert" })
+      const balanceCheckbox = view.getByRole("checkbox", {
+        name: "Enable low balance alert",
+      })
       expect(balanceCheckbox.getAttribute("aria-checked")).toBe("true")
     })
 

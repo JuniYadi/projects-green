@@ -14,30 +14,32 @@ const mockUpdate = mock<(...args: any[]) => any>(async () => ({}))
 const mockCreate = mock<(...args: any[]) => any>(async () => ({}))
 const mockDelete = mock<(...args: any[]) => any>(async () => ({}))
 const mockBillingFindUnique = mock<(...args: any[]) => any>(async () => null)
-const mockBillingCreate = mock<(...args: any[]) => any>(
-  async () => ({ id: "ba-1", balance: 0 })
-)
-const mockAdjustmentCreate = mock<(...args: any[]) => any>(
-  async () => ({ id: "adj-1" })
-)
-const mockTransaction = mock<(...args: any[]) => any>(async (fn: (tx: any) => any) =>
-  fn({
-    whatsappDevice: {
-      findMany: mockFindMany,
-      count: mockCount,
-      findUnique: mockFindUnique,
-      update: mockUpdate,
-      create: mockCreate,
-      delete: mockDelete,
-    },
-    billingAccount: {
-      findUnique: mockBillingFindUnique,
-      create: mockBillingCreate,
-    },
-    billingAdjustment: {
-      create: mockAdjustmentCreate,
-    },
-  })
+const mockBillingCreate = mock<(...args: any[]) => any>(async () => ({
+  id: "ba-1",
+  balance: 0,
+}))
+const mockAdjustmentCreate = mock<(...args: any[]) => any>(async () => ({
+  id: "adj-1",
+}))
+const mockTransaction = mock<(...args: any[]) => any>(
+  async (fn: (tx: any) => any) =>
+    fn({
+      whatsappDevice: {
+        findMany: mockFindMany,
+        count: mockCount,
+        findUnique: mockFindUnique,
+        update: mockUpdate,
+        create: mockCreate,
+        delete: mockDelete,
+      },
+      billingAccount: {
+        findUnique: mockBillingFindUnique,
+        create: mockBillingCreate,
+      },
+      billingAdjustment: {
+        create: mockAdjustmentCreate,
+      },
+    })
 )
 
 mock.module("@/lib/prisma", () => ({
@@ -72,7 +74,9 @@ const { createAdminDevicesRoutes } = await import("./admin-devices.route")
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function createTestApp(guard = mockRequireSuperAdmin) {
-  return new Elysia().use(createAdminDevicesRoutes({ requireSuperAdmin: guard }))
+  return new Elysia().use(
+    createAdminDevicesRoutes({ requireSuperAdmin: guard })
+  )
 }
 
 const BASE = "http://localhost/admin/devices"

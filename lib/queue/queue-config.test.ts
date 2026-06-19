@@ -110,9 +110,7 @@ describe("getQueueRuntimeConfig", () => {
       REDIS_URL: "redis://localhost:6379/abc",
     })
 
-    expect(() => getQueueRuntimeConfig()).toThrow(
-      /non-negative database index/
-    )
+    expect(() => getQueueRuntimeConfig()).toThrow(/non-negative database index/)
   })
 
   test("throws on invalid Redis URL format", () => {

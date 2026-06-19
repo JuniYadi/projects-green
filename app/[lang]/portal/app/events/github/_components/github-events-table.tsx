@@ -98,8 +98,9 @@ export function GithubEventsTable() {
   const [processStatus, setProcessStatus] = useState<string>("")
   const [deletedState, setDeletedState] = useState<string>("")
 
-  const [selectedEvent, setSelectedEvent] =
-    useState<GithubEventDetail | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<GithubEventDetail | null>(
+    null
+  )
   const [jsonModalOpen, setJsonModalOpen] = useState(false)
   const [isLoadingDetail, setIsLoadingDetail] = useState(false)
 
@@ -107,7 +108,10 @@ export function GithubEventsTable() {
     setIsLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      })
       if (search) params.set("search", search)
       if (eventName) params.set("eventName", eventName)
       if (processStatus) params.set("processStatus", processStatus)
@@ -123,9 +127,7 @@ export function GithubEventsTable() {
       setEvents(res.data!.items as never)
       setTotal(res.data!.total as never)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An error occurred"
-      )
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setIsLoading(false)
     }
@@ -140,16 +142,15 @@ export function GithubEventsTable() {
     setIsLoadingDetail(true)
     setJsonModalOpen(true)
     try {
-      const { data: res } = await eden.api.admin.app.events.github[event.id].get()
+      const { data: res } =
+        await eden.api.admin.app.events.github[event.id].get()
       if (res?.ok && res.data) {
         setSelectedEvent(res.data as unknown as GithubEventDetail)
       } else {
         setError("Failed to load event detail")
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An error occurred"
-      )
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setIsLoadingDetail(false)
     }
@@ -343,12 +344,15 @@ export function GithubEventsTable() {
           </DialogHeader>
           {isLoadingDetail ? (
             <Skeleton className="h-64 w-full" />
-          ) : selectedEvent?.payloadJson && typeof selectedEvent.payloadJson === 'object' ? (
-            <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs max-h-[60vh] overflow-auto">
+          ) : selectedEvent?.payloadJson &&
+            typeof selectedEvent.payloadJson === "object" ? (
+            <pre className="max-h-[60vh] overflow-auto overflow-x-auto rounded-md bg-muted p-4 text-xs">
               {JSON.stringify(selectedEvent.payloadJson, null, 2)}
             </pre>
           ) : (
-            <p className="text-sm text-muted-foreground">No payload available.</p>
+            <p className="text-sm text-muted-foreground">
+              No payload available.
+            </p>
           )}
         </DialogContent>
       </Dialog>

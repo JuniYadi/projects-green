@@ -29,9 +29,9 @@ type RuleRecommendation = {
 }
 
 export function Recommendations() {
-  const [recommendations, setRecommendations] = useState<
-    RuleRecommendation[]
-  >([])
+  const [recommendations, setRecommendations] = useState<RuleRecommendation[]>(
+    []
+  )
   const [isGenerating, setIsGenerating] = useState(false)
   const [hasGenerated, setHasGenerated] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
@@ -65,7 +65,10 @@ export function Recommendations() {
         name: rec.suggestedName,
         description: rec.suggestedDescription,
         patternJson: rec.suggestedPatternJson as Record<string, unknown>,
-        implicationsJson: rec.suggestedImplicationsJson as Record<string, unknown>,
+        implicationsJson: rec.suggestedImplicationsJson as Record<
+          string,
+          unknown
+        >,
         confidenceWeight: rec.suggestedConfidenceWeight,
         priority: rec.suggestedPriority,
       })
@@ -88,11 +91,7 @@ export function Recommendations() {
         <p className="text-sm text-muted-foreground">
           AI analyzes recent inspection logs to suggest new detection rules.
         </p>
-        <Button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          size="sm"
-        >
+        <Button onClick={handleGenerate} disabled={isGenerating} size="sm">
           <LightningIcon className="mr-2 h-4 w-4" />
           {isGenerating
             ? "Analyzing..."
@@ -127,12 +126,8 @@ export function Recommendations() {
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
-                <CardTitle className="text-base">
-                  {rec.suggestedName}
-                </CardTitle>
-                <CardDescription>
-                  {rec.suggestedDescription}
-                </CardDescription>
+                <CardTitle className="text-base">{rec.suggestedName}</CardTitle>
+                <CardDescription>{rec.suggestedDescription}</CardDescription>
               </div>
               <Button
                 size="sm"
@@ -148,14 +143,12 @@ export function Recommendations() {
             <div className="space-y-3">
               <div>
                 <p className="text-sm font-medium">AI Reasoning</p>
-                <p className="text-sm text-muted-foreground">
-                  {rec.reasoning}
-                </p>
+                <p className="text-sm text-muted-foreground">{rec.reasoning}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">
-                  Confidence:{" "}
-                  {(rec.suggestedConfidenceWeight * 100).toFixed(0)}%
+                  Confidence: {(rec.suggestedConfidenceWeight * 100).toFixed(0)}
+                  %
                 </Badge>
                 <Badge variant="outline">
                   Priority: {rec.suggestedPriority}
@@ -167,13 +160,13 @@ export function Recommendations() {
               </div>
               <div>
                 <p className="text-sm font-medium">Suggested Pattern</p>
-                <pre className="mt-1 rounded-md bg-muted p-2 text-xs overflow-x-auto">
+                <pre className="mt-1 overflow-x-auto rounded-md bg-muted p-2 text-xs">
                   {JSON.stringify(rec.suggestedPatternJson, null, 2)}
                 </pre>
               </div>
               <div>
                 <p className="text-sm font-medium">Suggested Implications</p>
-                <pre className="mt-1 rounded-md bg-muted p-2 text-xs overflow-x-auto">
+                <pre className="mt-1 overflow-x-auto rounded-md bg-muted p-2 text-xs">
                   {JSON.stringify(rec.suggestedImplicationsJson, null, 2)}
                 </pre>
               </div>

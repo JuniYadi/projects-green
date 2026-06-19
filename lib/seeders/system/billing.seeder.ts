@@ -5,10 +5,7 @@
  * the billing/payments system. Migrated from scripts/seed-billing.ts.
  */
 
-import {
-  BaseSeeder,
-  registerSeeder,
-} from "@/lib/seeders"
+import { BaseSeeder, registerSeeder } from "@/lib/seeders"
 import { ServiceType, SubscriptionType, BillingMode } from "@prisma/client"
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -438,10 +435,10 @@ export class BillingSeeder extends BaseSeeder {
 
       if (!pkg) {
         this.warn(
-          `ServicePackage ${plan.packageCode} not found, skipping plan ${plan.code}`,
+          `ServicePackage ${plan.packageCode} not found, skipping plan ${plan.code}`
         )
         this.trackError(
-          `ServicePackage ${plan.packageCode} not found for plan ${plan.code}`,
+          `ServicePackage ${plan.packageCode} not found for plan ${plan.code}`
         )
         continue
       }
@@ -496,7 +493,7 @@ export class BillingSeeder extends BaseSeeder {
 
       if (!foundPlan) {
         this.warn(
-          `Plan ${plCode} in servicePackage ${pkgCode} not found, skipping pricing`,
+          `Plan ${plCode} in servicePackage ${pkgCode} not found, skipping pricing`
         )
         this.trackSkipped()
         continue
@@ -555,7 +552,7 @@ export class BillingSeeder extends BaseSeeder {
     })
 
     const existingOrgIds = new Set(
-      existingAccounts.map((a) => a.organizationId),
+      existingAccounts.map((a) => a.organizationId)
     )
 
     for (const orgId of existingOrgIds) {

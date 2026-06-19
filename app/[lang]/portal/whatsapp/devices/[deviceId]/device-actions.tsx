@@ -31,10 +31,7 @@ type DeviceActionsProps = {
 
 type ActionState = "idle" | "verifying" | "reconnecting"
 
-export function DeviceActions({
-  deviceId,
-  deviceStatus,
-}: DeviceActionsProps) {
+export function DeviceActions({ deviceId, deviceStatus }: DeviceActionsProps) {
   const router = useRouter()
   const [actionState, setActionState] = useState<ActionState>("idle")
   const [editOpen, setEditOpen] = useState(false)
@@ -55,7 +52,9 @@ export function DeviceActions({
       const { data } = await eden.api.whatsapp.devices[deviceId].verify.post()
 
       if (!data?.ok) {
-        throw new Error((data as { message?: string })?.message || "Failed to verify device")
+        throw new Error(
+          (data as { message?: string })?.message || "Failed to verify device"
+        )
       }
 
       toast.success("Device verified successfully")
@@ -73,19 +72,21 @@ export function DeviceActions({
     setActionState("reconnecting")
 
     try {
-      const { data } = await eden.api.whatsapp.devices[deviceId].reconnect.post()
+      const { data } =
+        await eden.api.whatsapp.devices[deviceId].reconnect.post()
 
       if (!data?.ok) {
-        throw new Error((data as { message?: string })?.message || "Failed to reconnect device")
+        throw new Error(
+          (data as { message?: string })?.message ||
+            "Failed to reconnect device"
+        )
       }
 
       toast.success("Device reconnected successfully")
       router.refresh()
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to reconnect device"
+        error instanceof Error ? error.message : "Failed to reconnect device"
       toast.error(message)
     } finally {
       setActionState("idle")
@@ -105,14 +106,23 @@ export function DeviceActions({
         return
       }
 
-      const { data } = await eden.api.admin.devices[deviceId].patch(payload as never)
+      const { data } = await eden.api.admin.devices[deviceId].patch(
+        payload as never
+      )
 
       if (!data?.ok) {
-        const errData = data as { error?: string; message?: string; fieldErrors?: Record<string, string[]> }
+        const errData = data as {
+          error?: string
+          message?: string
+          fieldErrors?: Record<string, string[]>
+        }
         if (errData.error === "VALIDATION_ERROR") {
           const fieldMessages = errData.fieldErrors
             ? Object.entries(errData.fieldErrors)
-                .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(", ")}`)
+                .map(
+                  ([field, msgs]) =>
+                    `${field}: ${(msgs as string[]).join(", ")}`
+                )
                 .join("\n")
             : ""
           toast.error(errData.message || "Validation failed", {
@@ -140,10 +150,15 @@ export function DeviceActions({
   async function handleDeactivate() {
     setIsDeactivating(true)
     try {
-      const { data } = await eden.api.admin.devices[deviceId].patch({ status: "NON_ACTIVE" } as never)
+      const { data } = await eden.api.admin.devices[deviceId].patch({
+        status: "NON_ACTIVE",
+      } as never)
 
       if (!data?.ok) {
-        throw new Error((data as { message?: string })?.message || "Failed to deactivate device")
+        throw new Error(
+          (data as { message?: string })?.message ||
+            "Failed to deactivate device"
+        )
       }
 
       toast.success("Device deactivated successfully")
@@ -151,9 +166,7 @@ export function DeviceActions({
       router.refresh()
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to deactivate device"
+        error instanceof Error ? error.message : "Failed to deactivate device"
       toast.error(message)
     } finally {
       setIsDeactivating(false)
@@ -166,7 +179,9 @@ export function DeviceActions({
       const { data } = await eden.api.admin.devices[deviceId].delete()
 
       if (!data?.ok) {
-        throw new Error((data as { message?: string })?.message || "Failed to delete device")
+        throw new Error(
+          (data as { message?: string })?.message || "Failed to delete device"
+        )
       }
 
       toast.success("Device deleted successfully")
@@ -204,11 +219,7 @@ export function DeviceActions({
           <ArrowsClockwise weight="bold" className="mr-1.5 size-4" />
           {actionState === "reconnecting" ? "Reconnecting..." : "Reconnect"}
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setEditOpen(true)}
-        >
+        <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
           <PencilSimple weight="bold" className="mr-1.5 size-4" />
           Edit
         </Button>
@@ -291,10 +302,7 @@ export function DeviceActions({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeactivateOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setDeactivateOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -320,10 +328,7 @@ export function DeviceActions({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
             <Button

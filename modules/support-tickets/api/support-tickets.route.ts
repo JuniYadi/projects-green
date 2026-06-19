@@ -52,7 +52,7 @@ type SupportTicketRouteDependencies = {
 }
 
 async function resolveRequesterEmail(
-  requesterWorkosUserId: string,
+  requesterWorkosUserId: string
 ): Promise<string | null> {
   try {
     const workos = getWorkOS()
@@ -213,7 +213,10 @@ const createRouteHandler = (
         return toUnauthorized(set)
       }
 
-      if (error instanceof Error && error.message === "TENANT_CONTEXT_REQUIRED") {
+      if (
+        error instanceof Error &&
+        error.message === "TENANT_CONTEXT_REQUIRED"
+      ) {
         return toMissingTenantContext(set)
       }
 
@@ -283,35 +286,46 @@ export const createSupportTicketRoutes = (
     )
     .post(
       "/",
-      createRouteHandler(dependencies, async ({ actor, body, requesterEmail, set }) => {
-        const payload = supportTicketCreateBodySchema.parse(body)
-        const ticket = await dependencies.service.createTicket({
-          organizationId: actor.organizationId,
-          requesterWorkosUserId: actor.workosUserId,
-          department: payload.department,
-          priority: payload.priority,
-          service: payload.service,
-          subject: payload.subject,
-          description: payload.description,
-          secureForm: payload.secureForm,
-          uploadSessionIds: payload.uploadSessionIds,
-        })
-
-        set.status = 201
-
-        if (requesterEmail) {
-          dependencies.emailService.sendTicketCreated(ticket, requesterEmail).catch((err) => {
-            console.error("[Support Ticket] Failed to send ticket created email:", err)
+      createRouteHandler(
+        dependencies,
+        async ({ actor, body, requesterEmail, set }) => {
+          const payload = supportTicketCreateBodySchema.parse(body)
+          const ticket = await dependencies.service.createTicket({
+            organizationId: actor.organizationId,
+            requesterWorkosUserId: actor.workosUserId,
+            department: payload.department,
+            priority: payload.priority,
+            service: payload.service,
+            subject: payload.subject,
+            description: payload.description,
+            secureForm: payload.secureForm,
+            uploadSessionIds: payload.uploadSessionIds,
           })
-        } else {
-          console.warn("[Support Ticket] No requester email available for ticket created notification:", ticket.id)
-        }
 
-        return {
-          ok: true as const,
-          ticket,
+          set.status = 201
+
+          if (requesterEmail) {
+            dependencies.emailService
+              .sendTicketCreated(ticket, requesterEmail)
+              .catch((err) => {
+                console.error(
+                  "[Support Ticket] Failed to send ticket created email:",
+                  err
+                )
+              })
+          } else {
+            console.warn(
+              "[Support Ticket] No requester email available for ticket created notification:",
+              ticket.id
+            )
+          }
+
+          return {
+            ok: true as const,
+            ticket,
+          }
         }
-      }),
+      ),
       {
         body: supportTicketCreateBodySchema,
       }
@@ -320,7 +334,10 @@ export const createSupportTicketRoutes = (
       "/preview",
       createRouteHandler(dependencies, async ({ body }) => {
         const payload = z.object({ markdown: z.string() }).parse(body)
-        const html = typeof Bun !== "undefined" ? Bun.markdown.html(payload.markdown, { tagFilter: true }) : payload.markdown
+        const html =
+          typeof Bun !== "undefined"
+            ? Bun.markdown.html(payload.markdown, { tagFilter: true })
+            : payload.markdown
         return {
           ok: true as const,
           html,
@@ -350,7 +367,10 @@ export const createSupportTicketRoutes = (
           }
         }
 
-        const users: Record<string, { name: string; avatarUrl: string | null; isStaff: boolean }> = {}
+        const users: Record<
+          string,
+          { name: string; avatarUrl: string | null; isStaff: boolean }
+        > = {}
         const fetchPromises = Array.from(uniqueUserIds).map(async (userId) => {
           try {
             let email: string | null = null
@@ -369,14 +389,18 @@ export const createSupportTicketRoutes = (
               // Gracefully handle WorkOS client / configuration errors in development/testing
             }
 
-            const platformRole = await dependencies.getPlatformRole({ id: userId, email: email })
+            const platformRole = await dependencies.getPlatformRole({
+              id: userId,
+              email: email,
+            })
             let isStaff = platformRole === "super_admin"
             if (!isStaff) {
               try {
                 const workos = getWorkOS()
-                const memberships = await workos.userManagement.listOrganizationMemberships({
-                  userId,
-                })
+                const memberships =
+                  await workos.userManagement.listOrganizationMemberships({
+                    userId,
+                  })
                 isStaff = memberships.data.some((membership) =>
                   hasScopedSuperAdminClaim(
                     membership.role?.slug,
@@ -387,9 +411,13 @@ export const createSupportTicketRoutes = (
                 // Gracefully handle WorkOS client / configuration errors in development/testing
               }
             }
-            const fullName = [firstName, lastName].filter(Boolean).join(" ").trim()
+            const fullName = [firstName, lastName]
+              .filter(Boolean)
+              .join(" ")
+              .trim()
             const emailLocalPart = email?.split("@")[0]?.trim() ?? ""
-            const name = fullName || emailLocalPart || `User (${userId.slice(-4)})`
+            const name =
+              fullName || emailLocalPart || `User (${userId.slice(-4)})`
 
             users[userId] = {
               name,
@@ -410,9 +438,12 @@ export const createSupportTicketRoutes = (
         const fetchOrgPromise = (async () => {
           try {
             const workos = getWorkOS()
-            const org = await workos.organizations.getOrganization(thread.ticket.organizationId)
+            const org = await workos.organizations.getOrganization(
+              thread.ticket.organizationId
+            )
             organizationName = org.name ?? null
-            organizationMetadata = (org.metadata as Record<string, string>) ?? null
+            organizationMetadata =
+              (org.metadata as Record<string, string>) ?? null
           } catch {
             // Gracefully handle WorkOS organization lookup failure in dev/testing
           }
@@ -422,12 +453,19 @@ export const createSupportTicketRoutes = (
 
         const compiledReplies = thread.replies.map((reply) => ({
           ...reply,
-          bodyHtml: typeof Bun !== "undefined" ? Bun.markdown.html(reply.body, { tagFilter: true }) : reply.body,
+          bodyHtml:
+            typeof Bun !== "undefined"
+              ? Bun.markdown.html(reply.body, { tagFilter: true })
+              : reply.body,
         }))
         const compiledTicket = {
           ...thread.ticket,
           descriptionHtml: thread.ticket.description
-            ? (typeof Bun !== "undefined" ? Bun.markdown.html(thread.ticket.description, { tagFilter: true }) : thread.ticket.description)
+            ? typeof Bun !== "undefined"
+              ? Bun.markdown.html(thread.ticket.description, {
+                  tagFilter: true,
+                })
+              : thread.ticket.description
             : null,
           organizationName,
           organizationMetadata,
@@ -472,19 +510,33 @@ export const createSupportTicketRoutes = (
         set.status = 201
 
         // Send email notification to ticket requester (if not internal note and not self-reply)
-        if (!payload.isInternalNote && thread.ticket.requesterWorkosUserId !== actor.workosUserId) {
+        if (
+          !payload.isInternalNote &&
+          thread.ticket.requesterWorkosUserId !== actor.workosUserId
+        ) {
           resolveRequesterEmail(thread.ticket.requesterWorkosUserId)
             .then((requesterEmail) => {
               if (requesterEmail) {
-                dependencies.emailService.sendTicketReplied(thread.ticket, reply, requesterEmail).catch((err) => {
-                  console.error("[Support Ticket] Failed to send ticket replied email:", err)
-                })
+                dependencies.emailService
+                  .sendTicketReplied(thread.ticket, reply, requesterEmail)
+                  .catch((err) => {
+                    console.error(
+                      "[Support Ticket] Failed to send ticket replied email:",
+                      err
+                    )
+                  })
               } else {
-                console.warn("[Support Ticket] Could not resolve requester email for reply notification:", thread.ticket.id)
+                console.warn(
+                  "[Support Ticket] Could not resolve requester email for reply notification:",
+                  thread.ticket.id
+                )
               }
             })
             .catch((err) => {
-              console.error("[Support Ticket] Failed to resolve requester email for reply notification:", err)
+              console.error(
+                "[Support Ticket] Failed to resolve requester email for reply notification:",
+                err
+              )
             })
         }
 
@@ -512,15 +564,26 @@ export const createSupportTicketRoutes = (
         resolveRequesterEmail(ticket.requesterWorkosUserId)
           .then((requesterEmail) => {
             if (requesterEmail) {
-              dependencies.emailService.sendTicketClosed(ticket, requesterEmail).catch((err) => {
-                console.error("[Support Ticket] Failed to send ticket closed email:", err)
-              })
+              dependencies.emailService
+                .sendTicketClosed(ticket, requesterEmail)
+                .catch((err) => {
+                  console.error(
+                    "[Support Ticket] Failed to send ticket closed email:",
+                    err
+                  )
+                })
             } else {
-              console.warn("[Support Ticket] Could not resolve requester email for close notification:", ticket.id)
+              console.warn(
+                "[Support Ticket] Could not resolve requester email for close notification:",
+                ticket.id
+              )
             }
           })
           .catch((err) => {
-            console.error("[Support Ticket] Failed to resolve requester email for close notification:", err)
+            console.error(
+              "[Support Ticket] Failed to resolve requester email for close notification:",
+              err
+            )
           })
 
         return {
@@ -559,7 +622,10 @@ export const createSupportTicketRoutes = (
           }
         }
 
-        if (!actor.isSuperAdmin && actor.organizationId !== session.organizationId) {
+        if (
+          !actor.isSuperAdmin &&
+          actor.organizationId !== session.organizationId
+        ) {
           set.status = 403
           return {
             ok: false as const,
@@ -640,7 +706,9 @@ export const createSupportTicketRoutes = (
 
         try {
           const workos = getWorkOS()
-          const response = await workos.organizations.listOrganizations({ limit: 100 })
+          const response = await workos.organizations.listOrganizations({
+            limit: 100,
+          })
           const organizations = response.data.map((org) => ({
             id: org.id,
             name: org.name,
@@ -651,7 +719,10 @@ export const createSupportTicketRoutes = (
             organizations,
           }
         } catch (error) {
-          console.error("[Support Ticket Admin API] Failed to list organizations:", error)
+          console.error(
+            "[Support Ticket Admin API] Failed to list organizations:",
+            error
+          )
           set.status = 500
           return {
             ok: false as const,

@@ -203,9 +203,7 @@ export default function WhatsAppUsagePage() {
       } catch (err) {
         if (cancelled) return
         const message =
-          err instanceof Error
-            ? err.message
-            : "Failed to load usage data."
+          err instanceof Error ? err.message : "Failed to load usage data."
         setError(message)
         setState("error")
       }
@@ -344,9 +342,7 @@ export default function WhatsAppUsagePage() {
                 <div className="text-2xl font-bold">
                   {totalOutbound.toLocaleString()}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Messages sent
-                </p>
+                <p className="text-xs text-muted-foreground">Messages sent</p>
               </CardContent>
             </Card>
 

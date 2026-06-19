@@ -40,11 +40,12 @@ export function OverviewTab() {
   const fetchStats = useCallback(async () => {
     try {
       // Fetch stats in parallel
-      const [gatewaysRes, bankAccountsRes, confirmationsRes] = await Promise.all([
-        eden.api.portal.payments.gateways.get(),
-        eden.api.portal.payments["bank-accounts"].get(),
-        eden.api.portal.payments.confirmations.get(),
-      ])
+      const [gatewaysRes, bankAccountsRes, confirmationsRes] =
+        await Promise.all([
+          eden.api.portal.payments.gateways.get(),
+          eden.api.portal.payments["bank-accounts"].get(),
+          eden.api.portal.payments.confirmations.get(),
+        ])
 
       const gateways = gatewaysRes.data ?? { ok: false }
       const bankAccounts = bankAccountsRes.data ?? { ok: false }
@@ -52,13 +53,21 @@ export function OverviewTab() {
 
       setState({
         status: "success",
-        pendingItems: confirmations.ok ? confirmations.data ?? [] : [],
+        pendingItems: confirmations.ok ? (confirmations.data ?? []) : [],
         data: {
           totalGateways: gateways.ok ? (gateways.data?.length ?? 0) : 0,
-          activeGateways: gateways.ok ? (gateways.data?.filter((g) => g.isActive).length ?? 0) : 0,
-          totalBankAccounts: bankAccounts.ok ? (bankAccounts.data?.length ?? 0) : 0,
-          verifiedBankAccounts: bankAccounts.ok ? (bankAccounts.data?.filter((b) => b.isDefault).length ?? 0) : 0,
-          pendingConfirmations: confirmations.ok ? confirmations.data?.length ?? 0 : 0,
+          activeGateways: gateways.ok
+            ? (gateways.data?.filter((g) => g.isActive).length ?? 0)
+            : 0,
+          totalBankAccounts: bankAccounts.ok
+            ? (bankAccounts.data?.length ?? 0)
+            : 0,
+          verifiedBankAccounts: bankAccounts.ok
+            ? (bankAccounts.data?.filter((b) => b.isDefault).length ?? 0)
+            : 0,
+          pendingConfirmations: confirmations.ok
+            ? (confirmations.data?.length ?? 0)
+            : 0,
           totalProcessed: 0, // Would need separate API for this
         },
       })
@@ -137,10 +146,10 @@ export function OverviewTab() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.pendingConfirmations}</div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting review
-            </p>
+            <div className="text-2xl font-bold">
+              {data.pendingConfirmations}
+            </div>
+            <p className="text-xs text-muted-foreground">Awaiting review</p>
           </CardContent>
         </Card>
       </div>
@@ -151,7 +160,8 @@ export function OverviewTab() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p className="text-muted-foreground">
-            Use the tabs above to manage payment gateways, bank accounts, and manual payment confirmations.
+            Use the tabs above to manage payment gateways, bank accounts, and
+            manual payment confirmations.
           </p>
         </CardContent>
       </Card>
@@ -181,9 +191,7 @@ export function OverviewTab() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">
                       {item.bankName || "Unknown Bank"}
-                      {item.accountName
-                        ? ` — ${item.accountName}`
-                        : ""}
+                      {item.accountName ? ` — ${item.accountName}` : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {item.submittedAt

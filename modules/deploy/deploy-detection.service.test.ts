@@ -79,10 +79,12 @@ const DOCKERFILE_DTO: DetectionResultDTO = {
 
 const LARAVEL_DTO: DetectionResultDTO = {
   ...SUCCESS_DTO,
-  primaryFramework: { ...SUCCESS_DTO.primaryFramework!, name: "Laravel", ecosystem: "php" },
-  evidence: [
-    { type: "file", value: "artisan", detail: "root" },
-  ],
+  primaryFramework: {
+    ...SUCCESS_DTO.primaryFramework!,
+    name: "Laravel",
+    ecosystem: "php",
+  },
+  evidence: [{ type: "file", value: "artisan", detail: "root" }],
 }
 
 // ─── mapDetectionResultDTO ───
@@ -101,7 +103,10 @@ describe("mapDetectionResultDTO", () => {
   it("maps language for unknown ecosystem as-is", () => {
     const dto: DetectionResultDTO = {
       ...SUCCESS_DTO,
-      primaryFramework: { ...SUCCESS_DTO.primaryFramework!, ecosystem: "elixir" },
+      primaryFramework: {
+        ...SUCCESS_DTO.primaryFramework!,
+        ecosystem: "elixir",
+      },
     }
     const result = mapDetectionResultDTO(dto)
     expect(result.language).toBe("elixir")
@@ -274,7 +279,10 @@ describe("fetchFrameworkDetection", () => {
   })
 
   it("re-throws AbortError on abort", async () => {
-    const abortError = new DOMException("The operation was aborted", "AbortError")
+    const abortError = new DOMException(
+      "The operation was aborted",
+      "AbortError"
+    )
     mockFetch.mockRejectedValue(abortError)
 
     try {
@@ -320,7 +328,11 @@ describe("fetchFrameworkDetection", () => {
       json: async () => ({
         ok: true,
         ...SUCCESS_DTO,
-        decision: { status: "blocked", message: "Repository is private.", isLaunchable: false },
+        decision: {
+          status: "blocked",
+          message: "Repository is private.",
+          isLaunchable: false,
+        },
       }),
     })
 
@@ -340,7 +352,11 @@ describe("fetchFrameworkDetection", () => {
       json: async () => ({
         ok: true,
         ...SUCCESS_DTO,
-        decision: { status: "unsupported", message: "No known framework.", isLaunchable: false },
+        decision: {
+          status: "unsupported",
+          message: "No known framework.",
+          isLaunchable: false,
+        },
       }),
     })
 

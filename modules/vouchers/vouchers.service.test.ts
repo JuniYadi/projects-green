@@ -43,9 +43,11 @@ function createMockTx() {
 
 function createMockPrisma(): MockPrisma {
   return {
-    $transaction: mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) => {
-      return fn(createMockTx())
-    }) as never,
+    $transaction: mock(
+      (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => {
+        return fn(createMockTx())
+      }
+    ) as never,
     voucher: {
       findUnique: mock(() => null),
       findMany: mock(() => []),
@@ -132,7 +134,7 @@ describe("VoucherService", () => {
 
       const service = new VoucherService(prisma as PrismaClient)
       await expect(service.getVoucherById("nonexistent")).rejects.toThrow(
-        VoucherNotFoundError,
+        VoucherNotFoundError
       )
     })
   })
@@ -261,7 +263,7 @@ describe("VoucherService", () => {
 
       const service = new VoucherService(prisma as PrismaClient)
       await expect(service.disableVoucher("nonexistent")).rejects.toThrow(
-        VoucherNotFoundError,
+        VoucherNotFoundError
       )
     })
   })
@@ -300,13 +302,20 @@ describe("VoucherService", () => {
       tx.voucherClaim.create = mock(() => ({ id: "claim_1" })) as never
       tx.billingAccount.findUnique = mock(() => ({
         id: "ba_1",
-        balance: { toString: () => "0", plus: () => ({ toString: () => "50000", gt: () => false, toFixed: () => "50000" }) },
+        balance: {
+          toString: () => "0",
+          plus: () => ({
+            toString: () => "50000",
+            gt: () => false,
+            toFixed: () => "50000",
+          }),
+        },
         currency: "IDR",
       })) as never
 
       const prisma = createMockPrisma()
-      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
-        fn(tx),
+      prisma.$transaction = mock(
+        (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
       const service = new VoucherService(prisma as PrismaClient)
@@ -336,8 +345,8 @@ describe("VoucherService", () => {
       })) as never
 
       const prisma = createMockPrisma()
-      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
-        fn(tx),
+      prisma.$transaction = mock(
+        (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
       const service = new VoucherService(prisma as PrismaClient)
@@ -346,7 +355,7 @@ describe("VoucherService", () => {
           code: "EXPIRED",
           workosUserId: "user_1",
           organizationId: "org_1",
-        }),
+        })
       ).rejects.toThrow(VoucherExpiredError)
     })
 
@@ -366,8 +375,8 @@ describe("VoucherService", () => {
       })) as never
 
       const prisma = createMockPrisma()
-      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
-        fn(tx),
+      prisma.$transaction = mock(
+        (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
       const service = new VoucherService(prisma as PrismaClient)
@@ -376,7 +385,7 @@ describe("VoucherService", () => {
           code: "DEPLETED",
           workosUserId: "user_1",
           organizationId: "org_1",
-        }),
+        })
       ).rejects.toThrow(VoucherDepletedError)
     })
 
@@ -396,8 +405,8 @@ describe("VoucherService", () => {
       })) as never
 
       const prisma = createMockPrisma()
-      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
-        fn(tx),
+      prisma.$transaction = mock(
+        (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
       const service = new VoucherService(prisma as PrismaClient)
@@ -406,7 +415,7 @@ describe("VoucherService", () => {
           code: "DISABLED1",
           workosUserId: "user_1",
           organizationId: "org_1",
-        }),
+        })
       ).rejects.toThrow(VoucherDisabledError)
     })
 
@@ -426,8 +435,8 @@ describe("VoucherService", () => {
       })) as never
 
       const prisma = createMockPrisma()
-      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
-        fn(tx),
+      prisma.$transaction = mock(
+        (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
       const service = new VoucherService(prisma as PrismaClient)
@@ -436,7 +445,7 @@ describe("VoucherService", () => {
           code: "TARGETED1",
           workosUserId: "other_user",
           organizationId: "org_1",
-        }),
+        })
       ).rejects.toThrow(VoucherTargetUserMismatchError)
     })
 
@@ -456,8 +465,8 @@ describe("VoucherService", () => {
       })) as never
 
       const prisma = createMockPrisma()
-      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
-        fn(tx),
+      prisma.$transaction = mock(
+        (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
       const service = new VoucherService(prisma as PrismaClient)
@@ -466,7 +475,7 @@ describe("VoucherService", () => {
           code: "TARGETED2",
           workosUserId: "user_1",
           organizationId: "other_org",
-        }),
+        })
       ).rejects.toThrow(VoucherTargetOrgMismatchError)
     })
 
@@ -491,8 +500,8 @@ describe("VoucherService", () => {
       })) as never
 
       const prisma = createMockPrisma()
-      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
-        fn(tx),
+      prisma.$transaction = mock(
+        (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
       const service = new VoucherService(prisma as PrismaClient)
@@ -501,7 +510,7 @@ describe("VoucherService", () => {
           code: "DUPLICATE1",
           workosUserId: "user_1",
           organizationId: "org_1",
-        }),
+        })
       ).rejects.toThrow(VoucherAlreadyClaimedError)
     })
 
@@ -522,8 +531,8 @@ describe("VoucherService", () => {
       tx.voucher.updateMany = mock(() => ({ count: 0 })) as never
 
       const prisma = createMockPrisma()
-      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
-        fn(tx),
+      prisma.$transaction = mock(
+        (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
       const service = new VoucherService(prisma as PrismaClient)
@@ -532,7 +541,7 @@ describe("VoucherService", () => {
           code: "RACE",
           workosUserId: "user_1",
           organizationId: "org_1",
-        }),
+        })
       ).rejects.toThrow(VoucherDepletedError)
     })
 
@@ -541,8 +550,8 @@ describe("VoucherService", () => {
       tx.voucher.findUnique = mock(() => null)
 
       const prisma = createMockPrisma()
-      prisma.$transaction = mock((fn: (tx: ReturnType<typeof createMockTx>) => unknown) =>
-        fn(tx),
+      prisma.$transaction = mock(
+        (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
       const service = new VoucherService(prisma as PrismaClient)
@@ -551,7 +560,7 @@ describe("VoucherService", () => {
           code: "NONEXIST",
           workosUserId: "user_1",
           organizationId: "org_1",
-        }),
+        })
       ).rejects.toThrow(VoucherNotFoundError)
     })
   })

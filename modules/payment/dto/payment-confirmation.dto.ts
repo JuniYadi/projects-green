@@ -41,7 +41,8 @@ export function toPaymentConfirmationDTO(
     bankName: confirmation.bankAccount.bankName,
     accountName: decryptPaymentField(confirmation.bankAccount.accountName),
     accountNumber: decryptPaymentField(confirmation.bankAccount.accountNumber),
-    status: confirmation.status.toLowerCase() as PaymentConfirmationDTO["status"],
+    status:
+      confirmation.status.toLowerCase() as PaymentConfirmationDTO["status"],
     submittedAt: confirmation.createdAt.toISOString(),
     notes: confirmation.notes,
   }

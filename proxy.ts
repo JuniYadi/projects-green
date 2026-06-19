@@ -5,15 +5,9 @@ import {
 } from "@workos-inc/authkit-nextjs"
 import { NextRequest, NextResponse } from "next/server"
 
-import {
-  localeCookieName,
-  type AppLocale,
-} from "@/lib/i18n/config"
+import { localeCookieName, type AppLocale } from "@/lib/i18n/config"
 import { resolveRequestLocale } from "@/lib/i18n/request-locale"
-import {
-  getLocaleFromPathname,
-  localizePathname,
-} from "@/lib/i18n/pathname"
+import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import {
   hasScopedSuperAdminClaim,
@@ -144,10 +138,8 @@ export default async function proxy(request: NextRequest) {
 
   const { session, headers } = await authkit(request)
 
-  const {
-    locale: localeFromPathname,
-    pathnameWithoutLocale,
-  } = getLocaleFromPathname(pathname)
+  const { locale: localeFromPathname, pathnameWithoutLocale } =
+    getLocaleFromPathname(pathname)
   const locale = localeFromPathname ?? getPreferredLocale(request)
   const normalizedPathname = pathnameWithoutLocale
 

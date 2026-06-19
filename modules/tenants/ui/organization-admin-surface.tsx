@@ -301,12 +301,24 @@ export function OrganizationAdminSurface({
         setInvitations(invitationsPayload?.invitations ?? [])
         setOrganization(orgPayload?.organization ?? null)
         setOrganizationNameDraft(orgPayload?.organization.name ?? "")
-        setBillingFullNameDraft(orgPayload?.organization.metadata?.billing_full_name ?? "")
-        setBillingAddressDraft(orgPayload?.organization.metadata?.billing_address ?? "")
-        setBillingCityDraft(orgPayload?.organization.metadata?.billing_city ?? "")
-        setBillingStateDraft(orgPayload?.organization.metadata?.billing_state ?? "")
-        setBillingCountryDraft(orgPayload?.organization.metadata?.billing_country ?? "")
-        setBillingPostCodeDraft(orgPayload?.organization.metadata?.billing_post_code ?? "")
+        setBillingFullNameDraft(
+          orgPayload?.organization.metadata?.billing_full_name ?? ""
+        )
+        setBillingAddressDraft(
+          orgPayload?.organization.metadata?.billing_address ?? ""
+        )
+        setBillingCityDraft(
+          orgPayload?.organization.metadata?.billing_city ?? ""
+        )
+        setBillingStateDraft(
+          orgPayload?.organization.metadata?.billing_state ?? ""
+        )
+        setBillingCountryDraft(
+          orgPayload?.organization.metadata?.billing_country ?? ""
+        )
+        setBillingPostCodeDraft(
+          orgPayload?.organization.metadata?.billing_post_code ?? ""
+        )
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -973,7 +985,12 @@ export function OrganizationAdminSurface({
                 }}
               >
                 <div className="space-y-2">
-                  <label htmlFor="org-name" className="text-xs font-semibold text-muted-foreground">Organization Name</label>
+                  <label
+                    htmlFor="org-name"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    Organization Name
+                  </label>
                   <Input
                     id="org-name"
                     value={organizationNameDraft}
@@ -986,7 +1003,12 @@ export function OrganizationAdminSurface({
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="billing-full-name" className="text-xs font-semibold text-muted-foreground">Full Organization Name (for Billing/Support)</label>
+                  <label
+                    htmlFor="billing-full-name"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    Full Organization Name (for Billing/Support)
+                  </label>
                   <Input
                     id="billing-full-name"
                     value={billingFullNameDraft}
@@ -999,7 +1021,12 @@ export function OrganizationAdminSurface({
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="billing-address" className="text-xs font-semibold text-muted-foreground">Address</label>
+                  <label
+                    htmlFor="billing-address"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    Address
+                  </label>
                   <Input
                     id="billing-address"
                     value={billingAddressDraft}
@@ -1013,7 +1040,12 @@ export function OrganizationAdminSurface({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label htmlFor="billing-city" className="text-xs font-semibold text-muted-foreground">City</label>
+                    <label
+                      htmlFor="billing-city"
+                      className="text-xs font-semibold text-muted-foreground"
+                    >
+                      City
+                    </label>
                     <Input
                       id="billing-city"
                       value={billingCityDraft}
@@ -1025,7 +1057,12 @@ export function OrganizationAdminSurface({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="billing-state" className="text-xs font-semibold text-muted-foreground">State / Province</label>
+                    <label
+                      htmlFor="billing-state"
+                      className="text-xs font-semibold text-muted-foreground"
+                    >
+                      State / Province
+                    </label>
                     <Input
                       id="billing-state"
                       value={billingStateDraft}
@@ -1040,7 +1077,12 @@ export function OrganizationAdminSurface({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label htmlFor="billing-country" className="text-xs font-semibold text-muted-foreground">Country</label>
+                    <label
+                      htmlFor="billing-country"
+                      className="text-xs font-semibold text-muted-foreground"
+                    >
+                      Country
+                    </label>
                     <Input
                       id="billing-country"
                       value={billingCountryDraft}
@@ -1052,7 +1094,12 @@ export function OrganizationAdminSurface({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="billing-post-code" className="text-xs font-semibold text-muted-foreground">Post Code</label>
+                    <label
+                      htmlFor="billing-post-code"
+                      className="text-xs font-semibold text-muted-foreground"
+                    >
+                      Post Code
+                    </label>
                     <Input
                       id="billing-post-code"
                       value={billingPostCodeDraft}

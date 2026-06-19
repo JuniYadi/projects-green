@@ -39,7 +39,7 @@ describe("environment vars helpers", () => {
       [
         "# app config",
         "APP_ENV=staging",
-        "export APP_URL=\"https://example.test\"",
+        'export APP_URL="https://example.test"',
         "INVALID_LINE",
       ].join("\n")
     )

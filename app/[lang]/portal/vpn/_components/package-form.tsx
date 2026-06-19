@@ -124,9 +124,7 @@ export function PackageForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            {editing ? "Edit Package" : "Add Package"}
-          </DialogTitle>
+          <DialogTitle>{editing ? "Edit Package" : "Add Package"}</DialogTitle>
           <DialogDescription>
             Pick servers. The user gets ALL protocols enabled on each server.
           </DialogDescription>
@@ -216,7 +214,7 @@ export function PackageForm({
                           {server.name}
                         </TableCell>
                         <TableCell>
-                          <span className="font-mono uppercase text-muted-foreground">
+                          <span className="font-mono text-muted-foreground uppercase">
                             {server.region.countryCode}
                           </span>{" "}
                           {server.region.name}

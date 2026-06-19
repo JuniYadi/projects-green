@@ -53,11 +53,7 @@ function mockPaymentFetch(overrides?: {
           JSON.stringify(
             overrides?.confirmations ?? {
               ok: true,
-              data: [
-                { id: "conf-1" },
-                { id: "conf-2" },
-                { id: "conf-3" },
-              ],
+              data: [{ id: "conf-1" }, { id: "conf-2" }, { id: "conf-3" }],
             }
           ),
           { status: 200 }
@@ -92,8 +88,7 @@ describe("OverviewTab", () => {
         .getByText("Payment Gateways")
         .closest(".group\\/card")
       expect(gatewayCard).not.toBeNull()
-      const boldNumbers =
-        gatewayCard!.querySelectorAll(".text-2xl.font-bold")
+      const boldNumbers = gatewayCard!.querySelectorAll(".text-2xl.font-bold")
       expect(boldNumbers.length).toBe(1)
       expect(boldNumbers[0].textContent).toBe("3")
     })
@@ -119,9 +114,7 @@ describe("OverviewTab", () => {
 
       expect(view!.getByText("Bank Accounts")).toBeInTheDocument()
 
-      const bankCard = view!
-        .getByText("Bank Accounts")
-        .closest(".group\\/card")
+      const bankCard = view!.getByText("Bank Accounts").closest(".group\\/card")
       const boldNumbers = bankCard!.querySelectorAll(".text-2xl.font-bold")
       expect(boldNumbers.length).toBe(1)
       expect(boldNumbers[0].textContent).toBe("3")
@@ -147,18 +140,16 @@ describe("OverviewTab", () => {
       })
 
       // Two elements match: stat card title + list card title
-      const confirmElements =
-        view!.getAllByText("Pending Confirmations")
+      const confirmElements = view!.getAllByText("Pending Confirmations")
       expect(confirmElements.length).toBeGreaterThanOrEqual(1)
 
       // The stat card title uses text-sm class (the list card uses text-base)
-      const statTitle = confirmElements.find(
-        (el) => el.classList.contains("text-sm")
+      const statTitle = confirmElements.find((el) =>
+        el.classList.contains("text-sm")
       )
       expect(statTitle).toBeDefined()
       const confirmCard = statTitle!.closest(".group\\/card")
-      const boldNumbers =
-        confirmCard!.querySelectorAll(".text-2xl.font-bold")
+      const boldNumbers = confirmCard!.querySelectorAll(".text-2xl.font-bold")
       expect(boldNumbers.length).toBe(1)
       expect(boldNumbers[0].textContent).toBe("3")
     })

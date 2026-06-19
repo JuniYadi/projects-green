@@ -320,9 +320,7 @@ export const whatsappClient = {
         cost: {
           totalAmount: number
           totalEntries: number
-          byCategory: { category: string
-            count: number
-            totalCost: number }[]
+          byCategory: { category: string; count: number; totalCost: number }[]
         }
         devices: {
           deviceId: string | null
@@ -334,21 +332,12 @@ export const whatsappClient = {
         }[]
       }>("/api/whatsapp/usage/overview"),
 
-    daily: (params?: {
-      from?: string
-      to?: string
-      deviceId?: string
-    }) =>
-      serverFetch<{ ok: boolean; counts: any[] }>(
-        "/api/whatsapp/usage/daily",
-        { params }
-      ),
+    daily: (params?: { from?: string; to?: string; deviceId?: string }) =>
+      serverFetch<{ ok: boolean; counts: any[] }>("/api/whatsapp/usage/daily", {
+        params,
+      }),
 
-    monthly: (params?: {
-      year?: number
-      month?: number
-      deviceId?: string
-    }) =>
+    monthly: (params?: { year?: number; month?: number; deviceId?: string }) =>
       serverFetch<{ ok: boolean; counts: any[] }>(
         "/api/whatsapp/usage/monthly",
         { params }

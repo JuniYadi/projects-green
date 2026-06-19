@@ -12,7 +12,12 @@ mock.module("@/modules/deploy/deploy.constants", () => {
         description: "The world's most popular website builder.",
         defaultCpu: 500,
         defaultMemory: 512,
-        build: { language: "PHP", framework: "WordPress", buildCommand: "", useDockerfile: true }
+        build: {
+          language: "PHP",
+          framework: "WordPress",
+          buildCommand: "",
+          useDockerfile: true,
+        },
       },
       ...Array.from({ length: 9 }).map((_, i) => ({
         id: `template-${i}`,
@@ -20,9 +25,14 @@ mock.module("@/modules/deploy/deploy.constants", () => {
         description: `Description ${i}`,
         defaultCpu: 500,
         defaultMemory: 512,
-        build: { language: "Node.js", framework: "Express", buildCommand: "", useDockerfile: false }
-      }))
-    ]
+        build: {
+          language: "Node.js",
+          framework: "Express",
+          buildCommand: "",
+          useDockerfile: false,
+        },
+      })),
+    ],
   }
 })
 
@@ -34,7 +44,8 @@ const createProps = () => {
   return {
     sourceType: "github" as StepSourceProps["sourceType"],
     templateId: undefined as StepSourceProps["templateId"],
-    githubConnectionStatus: "connected" as StepSourceProps["githubConnectionStatus"],
+    githubConnectionStatus:
+      "connected" as StepSourceProps["githubConnectionStatus"],
     isConnectingGithub: false,
     ownerOptionsLoading: false,
     ownerOptionsError: null as StepSourceProps["ownerOptionsError"],
@@ -88,7 +99,6 @@ const createProps = () => {
 }
 
 describe("StepSource", () => {
-
   it("renders source fields and organization choices", () => {
     const props = createProps()
 
@@ -120,14 +130,16 @@ describe("StepSource", () => {
 
     const view = render(<StepSource {...props} />)
     expect(
-      view.getByText("No accounts found. Please make sure the GitHub App is installed.")
+      view.getByText(
+        "No accounts found. Please make sure the GitHub App is installed."
+      )
     ).toBeTruthy()
 
     // Select owner to show repos
     const propsWithOwner = createProps()
     propsWithOwner.selectedOwnerId = "owner-pfn"
     propsWithOwner.repositories = []
-    
+
     const viewWithRepos = render(<StepSource {...propsWithOwner} />)
     expect(
       viewWithRepos.getByText("No repositories found for this account.")
@@ -168,12 +180,8 @@ describe("StepSource", () => {
 
     const view = render(<StepSource {...props} />)
 
-    expect(
-      view.getByText("Unable to load owners.")
-    ).toBeTruthy()
-    expect(
-      view.getByText("Unable to load repositories.")
-    ).toBeTruthy()
+    expect(view.getByText("Unable to load owners.")).toBeTruthy()
+    expect(view.getByText("Unable to load repositories.")).toBeTruthy()
   })
 
   it("shows loading indicators while owners and repositories are loading", () => {
@@ -184,12 +192,8 @@ describe("StepSource", () => {
 
     const view = render(<StepSource {...props} />)
 
-    expect(
-      view.getByText("Loading installations...")
-    ).toBeTruthy()
-    expect(
-      view.getByText("Loading repositories...")
-    ).toBeTruthy()
+    expect(view.getByText("Loading installations...")).toBeTruthy()
+    expect(view.getByText("Loading repositories...")).toBeTruthy()
   })
 
   it("supports template tab selection, searching, and filtering", async () => {
@@ -201,10 +205,14 @@ describe("StepSource", () => {
 
     // Verify WordPress template card is visible
     expect(view.getByText("WordPress")).toBeTruthy()
-    expect(view.getByText("The world's most popular website builder.")).toBeTruthy()
+    expect(
+      view.getByText("The world's most popular website builder.")
+    ).toBeTruthy()
     // Filter templates for something non-existent
     const searchInput = view.getByPlaceholderText("Search templates...")
-    const reactPropsKey = Object.keys(searchInput).find((key) => key.startsWith("__reactProps"))
+    const reactPropsKey = Object.keys(searchInput).find((key) =>
+      key.startsWith("__reactProps")
+    )
     if (reactPropsKey) {
       const inputWithProps = searchInput as unknown as Record<
         string,
@@ -212,12 +220,14 @@ describe("StepSource", () => {
       >
       act(() => {
         inputWithProps[reactPropsKey].onChange({
-          target: { value: "non-existent-template" }
+          target: { value: "non-existent-template" },
         })
       })
     } else {
       act(() => {
-        fireEvent.change(searchInput, { target: { value: "non-existent-template" } })
+        fireEvent.change(searchInput, {
+          target: { value: "non-existent-template" },
+        })
       })
     }
 

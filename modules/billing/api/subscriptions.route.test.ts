@@ -30,7 +30,7 @@ describe("SubscriptionsRoute", () => {
       const app = new Elysia()
         .use(
           createBillingSubscriptionsRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
           })
         )
         .compile()
@@ -51,10 +51,11 @@ describe("SubscriptionsRoute", () => {
       const app = new Elysia()
         .use(
           createBillingSubscriptionsRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: null,
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: null,
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -78,10 +79,11 @@ describe("SubscriptionsRoute", () => {
       const app = new Elysia()
         .use(
           createBillingSubscriptionsRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -111,7 +113,15 @@ describe("SubscriptionsRoute", () => {
           status: "ACTIVE",
           allocatedConfig: { devices: 5 },
           currentPeriodEnd: new Date("2026-06-30"),
-          plan: { code: "WHATSAPP_STANDARD", resources: { quotaIn: 1000, quotaOut: 500, dailyPerDevice: 100, devices: 5 } },
+          plan: {
+            code: "WHATSAPP_STANDARD",
+            resources: {
+              quotaIn: 1000,
+              quotaOut: 500,
+              dailyPerDevice: 100,
+              devices: 5,
+            },
+          },
           pricing: {
             billingMode: "SUBSCRIPTION",
             type: "STANDARD",
@@ -126,10 +136,11 @@ describe("SubscriptionsRoute", () => {
       const app = new Elysia()
         .use(
           createBillingSubscriptionsRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -182,10 +193,11 @@ describe("SubscriptionsRoute", () => {
       const app = new Elysia()
         .use(
           createBillingSubscriptionsRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -219,10 +231,11 @@ describe("SubscriptionsRoute", () => {
       const app = new Elysia()
         .use(
           createBillingSubscriptionsRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -249,10 +262,11 @@ describe("SubscriptionsRoute", () => {
       const app = new Elysia()
         .use(
           createBillingSubscriptionsRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()

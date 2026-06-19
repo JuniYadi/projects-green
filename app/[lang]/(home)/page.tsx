@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <div className="bg-background min-h-screen">
+    <div className="min-h-screen bg-background">
       <HomeNav />
       <main>
         <HeroSection />

@@ -91,7 +91,10 @@ export function createUserBankAccountRoutes() {
       // Bank account modification is restricted to platform super admins
       const platformRole = await getPlatformRoleForUser(auth.user)
       if (platformRole !== "super_admin") {
-        return toForbidden(set, "Admin access required to modify payment methods.")
+        return toForbidden(
+          set,
+          "Admin access required to modify payment methods."
+        )
       }
 
       if (!auth.organizationId) {
@@ -122,7 +125,10 @@ export function createUserBankAccountRoutes() {
       // Bank account modification is restricted to platform super admins
       const platformRole = await getPlatformRoleForUser(auth.user)
       if (platformRole !== "super_admin") {
-        return toForbidden(set, "Admin access required to modify payment methods.")
+        return toForbidden(
+          set,
+          "Admin access required to modify payment methods."
+        )
       }
 
       if (!auth.organizationId) {

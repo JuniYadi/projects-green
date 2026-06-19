@@ -106,7 +106,7 @@ export abstract class BaseJob {
    * Enqueue multiple jobs in bulk.
    */
   static async enqueueBulk<T>(
-    items: Array<{ data: T; opts?: JobsOptions }>,
+    items: Array<{ data: T; opts?: JobsOptions }>
   ): Promise<void> {
     const queue = new Queue(this.queue, {
       connection: getQueueRuntimeConfig().connection,
@@ -123,7 +123,7 @@ export abstract class BaseJob {
           removeOnFail: this.removeOnFail,
           ...item.opts,
         },
-      })),
+      }))
     )
     await queue.close()
   }
@@ -136,7 +136,8 @@ export abstract class BaseJob {
    * This is the function passed directly to BullMQ Worker.
    * It receives the raw BullMQ Job — access data via `job.data`.
    */
-  static async handle(_job: Job): Promise<void> { // eslint-disable-line @typescript-eslint/no-unused-vars
+  static async handle(_job: Job): Promise<void> {
+    // eslint-disable-line @typescript-eslint/no-unused-vars
     throw new Error(`${this.name}.handle() not implemented`)
   }
 
@@ -184,7 +185,7 @@ export abstract class BaseJob {
   static async registerRepeatable(
     repeat: { pattern: string } | { every: number },
     data?: unknown,
-    opts?: JobsOptions,
+    opts?: JobsOptions
   ): Promise<void> {
     const queue = new Queue(this.queue, {
       connection: getQueueRuntimeConfig().connection,

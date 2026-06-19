@@ -1,6 +1,8 @@
 import type { VerifyWebhookInput, VerifyWebhookResult } from "./contracts"
 
-export function verifyWebhookUseCase(input: VerifyWebhookInput): VerifyWebhookResult {
+export function verifyWebhookUseCase(
+  input: VerifyWebhookInput
+): VerifyWebhookResult {
   const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN
   const isValid =
     input.mode === "subscribe" &&

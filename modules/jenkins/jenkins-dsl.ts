@@ -156,7 +156,10 @@ export function generateDockerDsl(options: JenkinsDslOptions): string {
   } = options
 
   const envVarsString = Object.entries(environmentVariables)
-    .map(([key, value]) => `        '${escapeGroovy(key)}': '${escapeGroovy(value)}'`)
+    .map(
+      ([key, value]) =>
+        `        '${escapeGroovy(key)}': '${escapeGroovy(value)}'`
+    )
     .join(",\n")
 
   return `// Docker Image Pipeline Job DSL
@@ -199,7 +202,10 @@ ${envVarsString}
 }`
 }
 
-export function generateJenkinsDsl(config: JenkinsJobConfig, options: Partial<JenkinsDslOptions> = {}): string {
+export function generateJenkinsDsl(
+  config: JenkinsJobConfig,
+  options: Partial<JenkinsDslOptions> = {}
+): string {
   const dslOptions: JenkinsDslOptions = {
     appStackSlug: config.name,
     gitRepoUrl: config.repositoryUrl || "",

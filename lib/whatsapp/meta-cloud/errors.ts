@@ -25,12 +25,15 @@ export class MetaCloudError extends Error {
   readonly fbtrace_id: string | undefined
   readonly httpStatus: number | undefined
 
-  constructor(message: string, options: { 
-    code?: number; 
-    type?: string; 
-    fbtrace_id?: string;
-    httpStatus?: number;
-  } = {}) {
+  constructor(
+    message: string,
+    options: {
+      code?: number
+      type?: string
+      fbtrace_id?: string
+      httpStatus?: number
+    } = {}
+  ) {
     super(message)
     this.name = "MetaCloudError"
     this.code = options.code
@@ -41,7 +44,7 @@ export class MetaCloudError extends Error {
 }
 
 export const normalizeMetaError = (
-  candidate: MetaErrorCandidate,
+  candidate: MetaErrorCandidate
 ): NormalizedMetaError => {
   const code = candidate?.error?.code
 

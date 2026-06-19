@@ -31,8 +31,16 @@ interface MockedPrisma {
 const createMockPrisma = (): MockedPrisma => ({
   serviceSubscription: { findFirst: vi.fn() },
   whatsappDevice: { findFirst: vi.fn(), findMany: vi.fn() },
-  whatsappDailyCount: { findUnique: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
-  whatsappMonthlyCount: { findUnique: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
+  whatsappDailyCount: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+  },
+  whatsappMonthlyCount: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+  },
   $transaction: vi.fn(),
 })
 
@@ -44,7 +52,12 @@ const mockSubscription = {
   planId: "plan-whatsapp",
   plan: {
     code: "WHATSAPP_STANDARD",
-    resources: { quotaIn: 1000, quotaOut: 500, dailyPerDevice: 100, devices: 5 },
+    resources: {
+      quotaIn: 1000,
+      quotaOut: 500,
+      dailyPerDevice: 100,
+      devices: 5,
+    },
   },
 }
 
@@ -55,7 +68,12 @@ const mockUnlimitedSubscription = {
   planId: "plan-enterprise",
   plan: {
     code: "WHATSAPP_ENTERPRISE",
-    resources: { quotaIn: null, quotaOut: null, dailyPerDevice: null, devices: null },
+    resources: {
+      quotaIn: null,
+      quotaOut: null,
+      dailyPerDevice: null,
+      devices: null,
+    },
   },
 }
 
@@ -75,23 +93,27 @@ describe("QuotaGateService", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async (callback: (tx: MockedPrisma) => Promise<any>) => {
         return callback(mockPrisma)
-      },
+      }
     )
   })
 
   describe("checkMessageQuota", () => {
     it("allows when under monthly limit", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 50,
         messageOutboxCount: 30,
       })
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 500,
         messageOutboxCount: 200,
       })
@@ -106,17 +128,21 @@ describe("QuotaGateService", () => {
     })
 
     it("blocks when monthly limit exceeded", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 0,
         messageOutboxCount: 0,
       })
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 0,
         messageOutboxCount: 500,
       })
@@ -127,14 +153,18 @@ describe("QuotaGateService", () => {
     })
 
     it("allows with unlimited plan (null quotas)", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockUnlimitedSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockUnlimitedSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
 
       const result = await service.checkMessageQuota("org-1", "device-1", "OUT")
 
@@ -157,9 +187,9 @@ describe("QuotaGateService", () => {
           },
         },
       }
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        unlimitedSub,
-      )
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(unlimitedSub)
 
       const result = await service.checkMessageQuota("org-1", "device-1", "OUT")
 
@@ -182,17 +212,21 @@ describe("QuotaGateService", () => {
           },
         },
       }
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        subWithCanonical,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(subWithCanonical)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 0,
         messageOutboxCount: 50,
       })
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
 
       const result = await service.checkMessageQuota("org-1", "device-1", "OUT")
 
@@ -215,14 +249,18 @@ describe("QuotaGateService", () => {
           },
         },
       }
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        subWithCanonical,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(subWithCanonical)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 0,
         messageOutboxCount: 200,
       })
@@ -235,36 +273,44 @@ describe("QuotaGateService", () => {
     })
 
     it("throws SubscriptionNotFoundError when no active WhatsApp subscription", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
 
       await expect(
-        service.checkMessageQuota("org-1", "device-1", "OUT"),
+        service.checkMessageQuota("org-1", "device-1", "OUT")
       ).rejects.toThrow(SubscriptionNotFoundError)
     })
 
     it("throws DeviceNotFoundError when device not found", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
 
       await expect(
-        service.checkMessageQuota("org-1", "unknown-device", "OUT"),
+        service.checkMessageQuota("org-1", "unknown-device", "OUT")
       ).rejects.toThrow(DeviceNotFoundError)
     })
 
     it("respects dailyPerDevice limit", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 0,
         messageOutboxCount: 100,
       })
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
 
       const result = await service.checkMessageQuota("org-1", "device-1", "OUT")
 
@@ -272,17 +318,21 @@ describe("QuotaGateService", () => {
     })
 
     it("handles IN direction with messageInboxCount", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 20,
         messageOutboxCount: 0,
       })
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 200,
         messageOutboxCount: 0,
       })
@@ -298,22 +348,34 @@ describe("QuotaGateService", () => {
 
   describe("deductMessageQuota", () => {
     it("creates new daily/monthly counts when none exist", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
-      ;(mockPrisma.whatsappDailyCount.upsert as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.whatsappDailyCount.upsert as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         id: "daily-1",
       })
-      ;(mockPrisma.whatsappMonthlyCount.upsert as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.whatsappMonthlyCount.upsert as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         id: "monthly-1",
       })
 
-      const result = await service.deductMessageQuota("org-1", "device-1", "OUT")
+      const result = await service.deductMessageQuota(
+        "org-1",
+        "device-1",
+        "OUT"
+      )
 
       expect(result.allowed).toBe(true)
       expect(mockPrisma.whatsappDailyCount.upsert).toHaveBeenCalled()
@@ -321,64 +383,84 @@ describe("QuotaGateService", () => {
     })
 
     it("throws QuotaExceededError when monthly limit would be exceeded", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 0,
         messageOutboxCount: 500,
       })
 
       await expect(
-        service.deductMessageQuota("org-1", "device-1", "OUT"),
+        service.deductMessageQuota("org-1", "device-1", "OUT")
       ).rejects.toThrow(QuotaExceededError)
     })
 
     it("throws DailyLimitExceededError when daily limit would be exceeded", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 0,
         messageOutboxCount: 100,
       })
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
 
       await expect(
-        service.deductMessageQuota("org-1", "device-1", "OUT"),
+        service.deductMessageQuota("org-1", "device-1", "OUT")
       ).rejects.toThrow(DailyLimitExceededError)
     })
 
     it("increments existing counts atomically", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockDevice,
-      )
-      ;(mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockDevice)
+      ;(
+        mockPrisma.whatsappDailyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 10,
         messageOutboxCount: 20,
       })
-      ;(mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.whatsappMonthlyCount.findUnique as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         messageInboxCount: 100,
         messageOutboxCount: 200,
       })
-      ;(mockPrisma.whatsappDailyCount.upsert as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.whatsappDailyCount.upsert as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         id: "daily-1",
       })
-      ;(mockPrisma.whatsappMonthlyCount.upsert as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ;(
+        mockPrisma.whatsappMonthlyCount.upsert as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
         id: "monthly-1",
       })
 
-      const result = await service.deductMessageQuota("org-1", "device-1", "OUT")
+      const result = await service.deductMessageQuota(
+        "org-1",
+        "device-1",
+        "OUT"
+      )
 
       expect(result.allowed).toBe(true)
       expect(result.dailyUsed).toBe(21)
@@ -401,11 +483,15 @@ describe("QuotaGateService", () => {
           },
         },
       }
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        unlimitedSub,
-      )
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(unlimitedSub)
 
-      const result = await service.deductMessageQuota("org-1", "device-1", "OUT")
+      const result = await service.deductMessageQuota(
+        "org-1",
+        "device-1",
+        "OUT"
+      )
 
       expect(result.allowed).toBe(true)
       expect(result.monthlyLimit).toBe(null)
@@ -417,15 +503,21 @@ describe("QuotaGateService", () => {
 
   describe("getQuotaStatus", () => {
     it("returns results for all devices in org", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findMany as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce([
         mockDevice,
         { id: "device-2", organizationId: "org-1" },
       ])
-      ;(mockPrisma.whatsappDailyCount.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
-      ;(mockPrisma.whatsappMonthlyCount.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+      ;(
+        mockPrisma.whatsappDailyCount.findMany as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce([])
+      ;(
+        mockPrisma.whatsappMonthlyCount.findMany as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce([])
 
       const results = await service.getQuotaStatus("org-1")
 
@@ -433,14 +525,16 @@ describe("QuotaGateService", () => {
     })
 
     it("throws DeviceNotFoundError when deviceId provided but not found", async () => {
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        mockSubscription,
-      )
-      ;(mockPrisma.whatsappDevice.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(mockSubscription)
+      ;(
+        mockPrisma.whatsappDevice.findMany as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce([])
 
-      await expect(service.getQuotaStatus("org-1", "unknown-device")).rejects.toThrow(
-        DeviceNotFoundError,
-      )
+      await expect(
+        service.getQuotaStatus("org-1", "unknown-device")
+      ).rejects.toThrow(DeviceNotFoundError)
     })
 
     it("marks all quotas as allowed when unlimited flag is true (PGREEN-050)", async () => {
@@ -457,14 +551,18 @@ describe("QuotaGateService", () => {
           },
         },
       }
-      ;(mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(
-        unlimitedSub,
-      )
-      ;(mockPrisma.whatsappDevice.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
-        mockDevice,
-      ])
-      ;(mockPrisma.whatsappDailyCount.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
-      ;(mockPrisma.whatsappMonthlyCount.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(unlimitedSub)
+      ;(
+        mockPrisma.whatsappDevice.findMany as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce([mockDevice])
+      ;(
+        mockPrisma.whatsappDailyCount.findMany as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce([])
+      ;(
+        mockPrisma.whatsappMonthlyCount.findMany as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce([])
 
       const results = await service.getQuotaStatus("org-1")
 

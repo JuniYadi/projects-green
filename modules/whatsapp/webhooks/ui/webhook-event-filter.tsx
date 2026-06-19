@@ -71,7 +71,7 @@ export function WebhookEventFilter({
     (key: keyof WebhookEventFilterState, value: string) => {
       onFilterChange({ ...initialFilters, [key]: value })
     },
-    [initialFilters, onFilterChange],
+    [initialFilters, onFilterChange]
   )
 
   const handleReset = useCallback(() => {
@@ -167,15 +167,13 @@ export function WebhookEventFilter({
             setLocalDateFrom(e.target.value)
             updateFilter("dateFrom", e.target.value)
           }}
-          className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
 
       {/* Date To */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-muted-foreground">
-          To
-        </label>
+        <label className="text-xs font-medium text-muted-foreground">To</label>
         <input
           type="date"
           value={localDateTo}
@@ -183,7 +181,7 @@ export function WebhookEventFilter({
             setLocalDateTo(e.target.value)
             updateFilter("dateTo", e.target.value)
           }}
-          className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
 

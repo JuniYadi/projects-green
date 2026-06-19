@@ -78,10 +78,9 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
     })
     this.trackDeleted(deletedContacts.count)
 
-    const deletedGroups =
-      await this.prisma.whatsappContactGroup.deleteMany({
-        where: { organizationId: DEFAULT_TEST_DATA.organizationId },
-      })
+    const deletedGroups = await this.prisma.whatsappContactGroup.deleteMany({
+      where: { organizationId: DEFAULT_TEST_DATA.organizationId },
+    })
     this.trackDeleted(deletedGroups.count)
 
     const deletedDevices = await this.prisma.whatsappDevice.deleteMany({
@@ -107,7 +106,7 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
     if (existing) {
       if (existing.role === AuthPlatformRole.SUPER_ADMIN) {
         this.log(
-          `Super admin ${DEFAULT_TEST_DATA.superAdminEmail} already exists`,
+          `Super admin ${DEFAULT_TEST_DATA.superAdminEmail} already exists`
         )
         this.trackSkipped()
         return
@@ -117,9 +116,7 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
         where: { id: existing.id },
         data: { role: AuthPlatformRole.SUPER_ADMIN },
       })
-      this.log(
-        `Promoted to super admin: ${DEFAULT_TEST_DATA.superAdminEmail}`,
-      )
+      this.log(`Promoted to super admin: ${DEFAULT_TEST_DATA.superAdminEmail}`)
       this.trackUpdated()
       return
     }
@@ -142,7 +139,7 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
 
     if (existing) {
       this.log(
-        `WhatsApp device ${DEFAULT_TEST_DATA.devicePhone} already exists`,
+        `WhatsApp device ${DEFAULT_TEST_DATA.devicePhone} already exists`
       )
       this.trackSkipped()
       return
@@ -165,7 +162,7 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
       },
     })
     this.log(
-      `Created WhatsApp device: ${DEFAULT_TEST_DATA.deviceName} (${DEFAULT_TEST_DATA.devicePhone})`,
+      `Created WhatsApp device: ${DEFAULT_TEST_DATA.deviceName} (${DEFAULT_TEST_DATA.devicePhone})`
     )
     this.trackCreated()
   }
@@ -283,9 +280,7 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
     })
 
     if (existingMessages.length > 0) {
-      this.log(
-        `${existingMessages.length} messages already exist, skipping...`,
-      )
+      this.log(`${existingMessages.length} messages already exist, skipping...`)
       this.trackSkipped(existingMessages.length)
       return
     }
@@ -331,7 +326,7 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
     const workosApiKey = process.env.WORKOS_API_KEY?.trim()
     if (!workosApiKey) {
       this.warn(
-        "WORKOS_API_KEY not set — skipping WorkOS org/membership creation",
+        "WORKOS_API_KEY not set — skipping WorkOS org/membership creation"
       )
       return
     }
@@ -349,21 +344,17 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
           .then((r) => r.autoPagination())
         const existing = orgsList.find(
           (org: { name?: string | null }) =>
-            org.name === DEFAULT_TEST_DATA.organizationName,
+            org.name === DEFAULT_TEST_DATA.organizationName
         )
         if (existing) {
           organizationId = existing.id
-          this.log(
-            `WorkOS organization ${organizationId} already exists.`,
-          )
+          this.log(`WorkOS organization ${organizationId} already exists.`)
         }
       } catch (lookupErr) {
         this.warn(
           `WorkOS listOrganizations failed; will attempt create: ${
-            lookupErr instanceof Error
-              ? lookupErr.message
-              : String(lookupErr)
-          }`,
+            lookupErr instanceof Error ? lookupErr.message : String(lookupErr)
+          }`
         )
       }
 
@@ -373,7 +364,7 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
         })
         organizationId = created.id
         this.log(
-          `Created WorkOS organization: ${organizationId} (${DEFAULT_TEST_DATA.organizationName})`,
+          `Created WorkOS organization: ${organizationId} (${DEFAULT_TEST_DATA.organizationName})`
         )
         this.trackCreated()
       }
@@ -394,11 +385,9 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
         if (existingMembership.role?.slug !== "user_admin") {
           await workos.userManagement.updateOrganizationMembership(
             existingMembership.id,
-            { roleSlug: "user_admin" },
+            { roleSlug: "user_admin" }
           )
-          this.log(
-            `Updated WorkOS membership to roleSlug=user_admin.`,
-          )
+          this.log(`Updated WorkOS membership to roleSlug=user_admin.`)
           this.trackUpdated()
         } else {
           this.log("WorkOS membership already user_admin.")
@@ -411,14 +400,12 @@ class WhatsappTestOrgSeeder extends BaseSeeder {
           roleSlug: "user_admin",
         })
         this.log(
-          `Created WorkOS membership: user=${DEFAULT_TEST_DATA.superAdminUserId}`,
+          `Created WorkOS membership: user=${DEFAULT_TEST_DATA.superAdminUserId}`
         )
         this.trackCreated()
       }
     } catch (error) {
-      this.warn(
-        "WorkOS not reachable — skipping org/membership creation",
-      )
+      this.warn("WorkOS not reachable — skipping org/membership creation")
       if (error instanceof Error) {
         this.warn(`WorkOS error: ${error.message}`)
       }

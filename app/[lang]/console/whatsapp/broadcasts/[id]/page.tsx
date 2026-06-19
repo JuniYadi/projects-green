@@ -42,7 +42,11 @@ const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString() : "—"
 
 const recipientBadgeVariant = (status: BroadcastRecipientStatus) =>
-  status === "SENT" ? "default" : status === "FAILED" ? "destructive" : "secondary"
+  status === "SENT"
+    ? "default"
+    : status === "FAILED"
+      ? "destructive"
+      : "secondary"
 
 export default function WhatsAppBroadcastDetailPage() {
   const router = useRouter()
@@ -57,7 +61,9 @@ export default function WhatsAppBroadcastDetailPage() {
     try {
       setBroadcast(await whatsappClient.getBroadcast(params.id))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to load broadcast")
+      toast.error(
+        error instanceof Error ? error.message : "Unable to load broadcast"
+      )
     } finally {
       setLoading(false)
     }
@@ -112,14 +118,17 @@ export default function WhatsAppBroadcastDetailPage() {
             <CardHeader>
               <CardTitle>Campaign progress</CardTitle>
               <CardDescription>
-                {broadcast.templateLanguage} • created {formatDate(broadcast.createdAt)}
+                {broadcast.templateLanguage} • created{" "}
+                {formatDate(broadcast.createdAt)}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge className="mt-2">{broadcast.status.replaceAll("_", " ")}</Badge>
+                  <Badge className="mt-2">
+                    {broadcast.status.replaceAll("_", " ")}
+                  </Badge>
                 </div>
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Sent</p>
@@ -141,7 +150,8 @@ export default function WhatsAppBroadcastDetailPage() {
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                {progress}% complete • started {formatDate(broadcast.startedAt)} • ended {formatDate(broadcast.endedAt)}
+                {progress}% complete • started {formatDate(broadcast.startedAt)}{" "}
+                • ended {formatDate(broadcast.endedAt)}
               </p>
             </CardContent>
           </Card>
@@ -192,7 +202,9 @@ export default function WhatsAppBroadcastDetailPage() {
                         <TableCell>{recipient.phoneNumber}</TableCell>
                         <TableCell>{recipient.name ?? "—"}</TableCell>
                         <TableCell>
-                          <Badge variant={recipientBadgeVariant(recipient.status)}>
+                          <Badge
+                            variant={recipientBadgeVariant(recipient.status)}
+                          >
                             {recipient.status}
                           </Badge>
                         </TableCell>

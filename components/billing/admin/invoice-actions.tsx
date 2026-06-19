@@ -61,11 +61,14 @@ export function InvoiceActions({
 
     try {
       const { data } = await eden.api.billing.admin.invoices[invoiceId].patch({
-        status: "ISSUED"
+        status: "ISSUED",
       } as never)
 
       if (!data?.ok) {
-        throw new Error((data as { message?: string })?.message || "Failed to finalize invoice")
+        throw new Error(
+          (data as { message?: string })?.message ||
+            "Failed to finalize invoice"
+        )
       }
 
       toast.success("Invoice finalized successfully")
@@ -85,11 +88,13 @@ export function InvoiceActions({
 
     try {
       const { data } = await eden.api.billing.admin.invoices[invoiceId].patch({
-        status: "CANCELLED"
+        status: "CANCELLED",
       } as never)
 
       if (!data?.ok) {
-        throw new Error((data as { message?: string })?.message || "Failed to void invoice")
+        throw new Error(
+          (data as { message?: string })?.message || "Failed to void invoice"
+        )
       }
 
       toast.success("Invoice voided successfully")
@@ -127,9 +132,9 @@ export function InvoiceActions({
             <DialogHeader>
               <DialogTitle>Void Invoice</DialogTitle>
               <DialogDescription>
-                Are you sure you want to void this invoice? This action cannot be
-                undone. The invoice will be marked as void and no longer valid for
-                payment.
+                Are you sure you want to void this invoice? This action cannot
+                be undone. The invoice will be marked as void and no longer
+                valid for payment.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

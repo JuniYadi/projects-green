@@ -21,7 +21,25 @@ const mockPlatformRoleFindFirst = mock(async () => ({
   role: "super_admin",
 }))
 
-const mockFindMany = mock<() => Promise<Array<{ id: string; invoiceNumber: string; status: string; subtotalAmount: unknown; taxAmount: unknown; discountAmount: unknown; totalAmount: unknown; currency: string; issuedAt: Date | null; dueAt: Date; paidAt: null; createdAt: Date; billingAccount: { organizationId: string } }>>>(async () => [])
+const mockFindMany = mock<
+  () => Promise<
+    Array<{
+      id: string
+      invoiceNumber: string
+      status: string
+      subtotalAmount: unknown
+      taxAmount: unknown
+      discountAmount: unknown
+      totalAmount: unknown
+      currency: string
+      issuedAt: Date | null
+      dueAt: Date
+      paidAt: null
+      createdAt: Date
+      billingAccount: { organizationId: string }
+    }>
+  >
+>(async () => [])
 const mockCount = mock<() => Promise<number>>(async () => 0)
 
 mock.module("@/lib/prisma", () => ({
@@ -48,7 +66,7 @@ describe("admin invoices list default deps", () => {
     const app = new Elysia().use(createAdminInvoicesListRoutes())
 
     const response = await app.handle(
-      new Request("http://localhost/admin/invoices"),
+      new Request("http://localhost/admin/invoices")
     )
 
     // With super_admin role, should pass isAdmin check
@@ -82,7 +100,7 @@ describe("admin invoices list default deps", () => {
     const app = new Elysia().use(createAdminInvoicesListRoutes())
 
     const response = await app.handle(
-      new Request("http://localhost/admin/invoices"),
+      new Request("http://localhost/admin/invoices")
     )
 
     expect(response.status).toBe(200)

@@ -23,7 +23,10 @@ export type SshTarget = {
   encryptedPrivateKey: string
 }
 
-function defaultRun(command: string, args: string[]): Promise<SshCommandResult> {
+function defaultRun(
+  command: string,
+  args: string[]
+): Promise<SshCommandResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] })
     const stdout: Buffer[] = []
@@ -57,8 +60,12 @@ export class VpnServerSshExecutor {
     this.run = options.run ?? defaultRun
   }
 
-  async exec(target: SshTarget, remoteArgs: string[]): Promise<SshCommandResult> {
-    if (!target.host.trim()) throw new Error("Server hostname is not configured.")
+  async exec(
+    target: SshTarget,
+    remoteArgs: string[]
+  ): Promise<SshCommandResult> {
+    if (!target.host.trim())
+      throw new Error("Server hostname is not configured.")
 
     const privateKey = decryptSshPrivateKey(target.encryptedPrivateKey)
     const dir = await mkdtemp(join(tmpdir(), "vpn-ssh-"))

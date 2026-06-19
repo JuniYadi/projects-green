@@ -9,8 +9,12 @@ const originalRevokeObjectURL = URL.revokeObjectURL
 
 describe("InvoiceDownloadPdfAction", () => {
   beforeEach(() => {
-    URL.createObjectURL = mock(() => "blob:mock") as unknown as typeof URL.createObjectURL
-    URL.revokeObjectURL = mock(() => undefined) as unknown as typeof URL.revokeObjectURL
+    URL.createObjectURL = mock(
+      () => "blob:mock"
+    ) as unknown as typeof URL.createObjectURL
+    URL.revokeObjectURL = mock(
+      () => undefined
+    ) as unknown as typeof URL.revokeObjectURL
   })
 
   afterEach(() => {
@@ -47,7 +51,8 @@ describe("InvoiceDownloadPdfAction", () => {
       return originalCreateElement(tagName)
     })
 
-    document.createElement = createElementSpy as unknown as typeof document.createElement
+    document.createElement =
+      createElementSpy as unknown as typeof document.createElement
 
     const originalAppend = document.body.append.bind(document.body)
     document.body.append = appendMock as unknown as typeof document.body.append
@@ -103,13 +108,12 @@ describe("InvoiceDownloadPdfAction", () => {
 
   it("shows downloading state while fetch is in progress", async () => {
     // Don't resolve fetch yet — keep it pending
-    globalThis.fetch = mock(() => new Promise(() => {})) as unknown as typeof fetch
+    globalThis.fetch = mock(
+      () => new Promise(() => {})
+    ) as unknown as typeof fetch
 
     const view = render(
-      <InvoiceDownloadPdfAction
-        invoiceId="inv_1"
-        invoiceNumber="INV-001"
-      />
+      <InvoiceDownloadPdfAction invoiceId="inv_1" invoiceNumber="INV-001" />
     )
 
     fireEvent.click(view.getByRole("button", { name: /download pdf/i }))

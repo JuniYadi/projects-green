@@ -51,7 +51,10 @@ export function parseAdminRoleArgs(args: string[]): ParsedAdminRoleArgs {
   const emailIndex = args.indexOf("--email")
   const workosUserIdIndex = args.indexOf("--workos-user-id")
   const email = emailIndex >= 0 ? normalizeEmail(args[emailIndex + 1]) : null
-  const workosUserId = workosUserIdIndex >= 0 ? normalizeWorkosUserId(args[workosUserIdIndex + 1]) : null
+  const workosUserId =
+    workosUserIdIndex >= 0
+      ? normalizeWorkosUserId(args[workosUserIdIndex + 1])
+      : null
 
   if (hasList) {
     if (email || workosUserId) {
@@ -89,7 +92,11 @@ function toLookupWhere(identifier: AdminIdentifier) {
     return { OR: [{ email: normalizeEmail(identifier.email) ?? "" }] }
   }
 
-  return { OR: [{ workosUserId: normalizeWorkosUserId(identifier.workosUserId) ?? "" }] }
+  return {
+    OR: [
+      { workosUserId: normalizeWorkosUserId(identifier.workosUserId) ?? "" },
+    ],
+  }
 }
 
 export async function listSuperAdmins(): Promise<AuthPlatformUserRole[]> {
@@ -118,11 +125,12 @@ export async function addSuperAdmin(identifier: AdminIdentifier) {
   }
 
   const email = "email" in identifier ? normalizeEmail(identifier.email) : null
-  const workosUserId = "workosUserId" in identifier
-    ? normalizeWorkosUserId(identifier.workosUserId)
-    : email
-      ? createBootstrapWorkosUserId(email)
-      : null
+  const workosUserId =
+    "workosUserId" in identifier
+      ? normalizeWorkosUserId(identifier.workosUserId)
+      : email
+        ? createBootstrapWorkosUserId(email)
+        : null
 
   if (!workosUserId) {
     throw new Error("Could not determine workos user id")
@@ -182,18 +190,24 @@ export async function runAdminRoleCli(args: string[]) {
 
   if (parsed.action === "add") {
     const result = await addSuperAdmin(parsed)
-    console.log(`${result.status}: ${result.record.email ?? result.record.workosUserId}`)
+    console.log(
+      `${result.status}: ${result.record.email ?? result.record.workosUserId}`
+    )
     return
   }
 
   const result = await deleteSuperAdmin(parsed)
-  console.log(`${result.status}: ${result.record.email ?? result.record.workosUserId}`)
+  console.log(
+    `${result.status}: ${result.record.email ?? result.record.workosUserId}`
+  )
 }
 
 if (import.meta.main) {
   runAdminRoleCli(process.argv.slice(2))
     .catch((error) => {
-      console.error(error instanceof Error ? error.message : "Admin role command failed")
+      console.error(
+        error instanceof Error ? error.message : "Admin role command failed"
+      )
       console.error(usage())
       process.exit(1)
     })

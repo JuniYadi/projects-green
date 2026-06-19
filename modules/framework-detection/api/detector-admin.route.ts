@@ -82,49 +82,64 @@ export type DetectorAdminDependencies = {
 
 // --- Routes ---
 
-export const createDetectorAdminRoutes = (deps: DetectorAdminDependencies = {}) => {
+export const createDetectorAdminRoutes = (
+  deps: DetectorAdminDependencies = {}
+) => {
   const guard = deps.requireSuperAdmin ?? requireSuperAdmin
-  const listRules = deps.listDetectorRules ?? detectorAdminService.listDetectorRules
-  const getRuleById = deps.getDetectorRuleById ?? detectorAdminService.getDetectorRuleById
-  const createRule = deps.createDetectorRule ?? detectorAdminService.createDetectorRule
-  const updateRule = deps.updateDetectorRule ?? detectorAdminService.updateDetectorRule
-  const deleteRule = deps.deleteDetectorRule ?? detectorAdminService.deleteDetectorRule
-  const listMappings = deps.listRuntimeMappings ?? detectorAdminService.listRuntimeMappings
-  const getMappingById = deps.getRuntimeMappingById ?? detectorAdminService.getRuntimeMappingById
-  const createMapping = deps.createRuntimeMapping ?? detectorAdminService.createRuntimeMapping
-  const updateMapping = deps.updateRuntimeMapping ?? detectorAdminService.updateRuntimeMapping
-  const deleteMapping = deps.deleteRuntimeMapping ?? detectorAdminService.deleteRuntimeMapping
-  const listLogs = deps.listInspectionLogs ?? detectorAdminService.listInspectionLogs
-  const getLogById = deps.getInspectionLogById ?? detectorAdminService.getInspectionLogById
-  const recommend = deps.generateRuleRecommendations ?? detectorAdminService.generateRuleRecommendations
+  const listRules =
+    deps.listDetectorRules ?? detectorAdminService.listDetectorRules
+  const getRuleById =
+    deps.getDetectorRuleById ?? detectorAdminService.getDetectorRuleById
+  const createRule =
+    deps.createDetectorRule ?? detectorAdminService.createDetectorRule
+  const updateRule =
+    deps.updateDetectorRule ?? detectorAdminService.updateDetectorRule
+  const deleteRule =
+    deps.deleteDetectorRule ?? detectorAdminService.deleteDetectorRule
+  const listMappings =
+    deps.listRuntimeMappings ?? detectorAdminService.listRuntimeMappings
+  const getMappingById =
+    deps.getRuntimeMappingById ?? detectorAdminService.getRuntimeMappingById
+  const createMapping =
+    deps.createRuntimeMapping ?? detectorAdminService.createRuntimeMapping
+  const updateMapping =
+    deps.updateRuntimeMapping ?? detectorAdminService.updateRuntimeMapping
+  const deleteMapping =
+    deps.deleteRuntimeMapping ?? detectorAdminService.deleteRuntimeMapping
+  const listLogs =
+    deps.listInspectionLogs ?? detectorAdminService.listInspectionLogs
+  const getLogById =
+    deps.getInspectionLogById ?? detectorAdminService.getInspectionLogById
+  const recommend =
+    deps.generateRuleRecommendations ??
+    detectorAdminService.generateRuleRecommendations
 
-  return new Elysia()
-    // === DetectorRule CRUD ===
-    .get(
-      "/admin/detector/rules",
-      async ({ query, set }) => {
-        const actor = await guard(set)
-        if ("ok" in actor && !actor.ok) {
-          return actor as AdminApiError
+  return (
+    new Elysia()
+      // === DetectorRule CRUD ===
+      .get(
+        "/admin/detector/rules",
+        async ({ query, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
+
+          const includeInactive = query.includeInactive === "true"
+          const rules = await listRules({ includeInactive })
+
+          return {
+            ok: true as const,
+            data: rules.map(toDetectorRuleDTO),
+          }
+        },
+        {
+          query: z.object({
+            includeInactive: z.string().optional(),
+          }),
         }
-
-        const includeInactive = query.includeInactive === "true"
-        const rules = await listRules({ includeInactive })
-
-        return {
-          ok: true as const,
-          data: rules.map(toDetectorRuleDTO),
-        }
-      },
-      {
-        query: z.object({
-          includeInactive: z.string().optional(),
-        }),
-      }
-    )
-    .get(
-      "/admin/detector/rules/:id",
-      async ({ params, set }) => {
+      )
+      .get("/admin/detector/rules/:id", async ({ params, set }) => {
         const actor = await guard(set)
         if ("ok" in actor && !actor.ok) {
           return actor as AdminApiError
@@ -142,75 +157,72 @@ export const createDetectorAdminRoutes = (deps: DetectorAdminDependencies = {}) 
         }
 
         return { ok: true as const, data: toDetectorRuleDTO(rule) }
-      }
-    )
-    .post(
-      "/admin/detector/rules",
-      async ({ body, set }) => {
-        const actor = await guard(set)
-        if ("ok" in actor && !actor.ok) {
-          return actor as AdminApiError
-        }
-
-        const parsed = createDetectorRuleSchema.safeParse(body)
-
-        if (!parsed.success) {
-          set.status = 400
-          return {
-            ok: false as const,
-            error: "INVALID_PAYLOAD" as const,
-            message: "Invalid detector rule payload.",
-            fieldErrors: z.flattenError(parsed.error).fieldErrors,
+      })
+      .post(
+        "/admin/detector/rules",
+        async ({ body, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
           }
-        }
 
-        const rule = await createRule(parsed.data)
+          const parsed = createDetectorRuleSchema.safeParse(body)
 
-        set.status = 201
-        return { ok: true as const, data: toDetectorRuleDTO(rule) }
-      },
-      { body: createDetectorRuleSchema }
-    )
-    .patch(
-      "/admin/detector/rules/:id",
-      async ({ params, body, set }) => {
-        const actor = await guard(set)
-        if ("ok" in actor && !actor.ok) {
-          return actor as AdminApiError
-        }
-
-        const parsed = updateDetectorRuleSchema.safeParse(body)
-
-        if (!parsed.success) {
-          set.status = 400
-          return {
-            ok: false as const,
-            error: "INVALID_PAYLOAD" as const,
-            message: "Invalid update payload.",
-            fieldErrors: z.flattenError(parsed.error).fieldErrors,
+          if (!parsed.success) {
+            set.status = 400
+            return {
+              ok: false as const,
+              error: "INVALID_PAYLOAD" as const,
+              message: "Invalid detector rule payload.",
+              fieldErrors: z.flattenError(parsed.error).fieldErrors,
+            }
           }
-        }
 
-        const existing = await getRuleById(params.id)
+          const rule = await createRule(parsed.data)
 
-        if (!existing) {
-          set.status = 404
-          return {
-            ok: false as const,
-            error: "NOT_FOUND" as const,
-            message: "Detector rule not found.",
+          set.status = 201
+          return { ok: true as const, data: toDetectorRuleDTO(rule) }
+        },
+        { body: createDetectorRuleSchema }
+      )
+      .patch(
+        "/admin/detector/rules/:id",
+        async ({ params, body, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
           }
-        }
 
-        const rule = await updateRule(params.id, parsed.data)
+          const parsed = updateDetectorRuleSchema.safeParse(body)
 
-        return { ok: true as const, data: toDetectorRuleDTO(rule) }
-      },
-      { body: updateDetectorRuleSchema }
-    )
-    .delete(
-      "/admin/detector/rules/:id",
-      async ({ params, set }) => {
+          if (!parsed.success) {
+            set.status = 400
+            return {
+              ok: false as const,
+              error: "INVALID_PAYLOAD" as const,
+              message: "Invalid update payload.",
+              fieldErrors: z.flattenError(parsed.error).fieldErrors,
+            }
+          }
+
+          const existing = await getRuleById(params.id)
+
+          if (!existing) {
+            set.status = 404
+            return {
+              ok: false as const,
+              error: "NOT_FOUND" as const,
+              message: "Detector rule not found.",
+            }
+          }
+
+          const rule = await updateRule(params.id, parsed.data)
+
+          return { ok: true as const, data: toDetectorRuleDTO(rule) }
+        },
+        { body: updateDetectorRuleSchema }
+      )
+      .delete("/admin/detector/rules/:id", async ({ params, set }) => {
         const actor = await guard(set)
         if ("ok" in actor && !actor.ok) {
           return actor as AdminApiError
@@ -230,34 +242,31 @@ export const createDetectorAdminRoutes = (deps: DetectorAdminDependencies = {}) 
         await deleteRule(params.id)
 
         return { ok: true as const, data: toDetectorRuleDTO(existing) }
-      }
-    )
-    // === RuntimeMapping CRUD ===
-    .get(
-      "/admin/detector/mappings",
-      async ({ query, set }) => {
-        const actor = await guard(set)
-        if ("ok" in actor && !actor.ok) {
-          return actor as AdminApiError
-        }
+      })
+      // === RuntimeMapping CRUD ===
+      .get(
+        "/admin/detector/mappings",
+        async ({ query, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
 
-        const includeInactive = query.includeInactive === "true"
-        const mappings = await listMappings({ includeInactive })
+          const includeInactive = query.includeInactive === "true"
+          const mappings = await listMappings({ includeInactive })
 
-        return {
-          ok: true as const,
-          data: mappings.map(toRuntimeMappingDTO),
+          return {
+            ok: true as const,
+            data: mappings.map(toRuntimeMappingDTO),
+          }
+        },
+        {
+          query: z.object({
+            includeInactive: z.string().optional(),
+          }),
         }
-      },
-      {
-        query: z.object({
-          includeInactive: z.string().optional(),
-        }),
-      }
-    )
-    .get(
-      "/admin/detector/mappings/:id",
-      async ({ params, set }) => {
+      )
+      .get("/admin/detector/mappings/:id", async ({ params, set }) => {
         const actor = await guard(set)
         if ("ok" in actor && !actor.ok) {
           return actor as AdminApiError
@@ -275,92 +284,89 @@ export const createDetectorAdminRoutes = (deps: DetectorAdminDependencies = {}) 
         }
 
         return { ok: true as const, data: toRuntimeMappingDTO(mapping) }
-      }
-    )
-    .post(
-      "/admin/detector/mappings",
-      async ({ body, set }) => {
-        const actor = await guard(set)
-        if ("ok" in actor && !actor.ok) {
-          return actor as AdminApiError
-        }
-
-        const parsed = createRuntimeMappingSchema.safeParse(body)
-
-        if (!parsed.success) {
-          set.status = 400
-          return {
-            ok: false as const,
-            error: "INVALID_PAYLOAD" as const,
-            message: "Invalid runtime mapping payload.",
-            fieldErrors: z.flattenError(parsed.error).fieldErrors,
+      })
+      .post(
+        "/admin/detector/mappings",
+        async ({ body, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
           }
-        }
 
-        try {
-          const mapping = await createMapping(parsed.data)
+          const parsed = createRuntimeMappingSchema.safeParse(body)
 
-          set.status = 201
-          return { ok: true as const, data: toRuntimeMappingDTO(mapping) }
-        } catch (error) {
-          // Handle unique constraint violation
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2002"
-          ) {
-            set.status = 409
+          if (!parsed.success) {
+            set.status = 400
             return {
               ok: false as const,
-              error: "DUPLICATE" as const,
-              message:
-                "A mapping for this framework version and runtime already exists.",
+              error: "INVALID_PAYLOAD" as const,
+              message: "Invalid runtime mapping payload.",
+              fieldErrors: z.flattenError(parsed.error).fieldErrors,
             }
           }
-          throw error
-        }
-      },
-      { body: createRuntimeMappingSchema }
-    )
-    .patch(
-      "/admin/detector/mappings/:id",
-      async ({ params, body, set }) => {
-        const actor = await guard(set)
-        if ("ok" in actor && !actor.ok) {
-          return actor as AdminApiError
-        }
 
-        const parsed = updateRuntimeMappingSchema.safeParse(body)
+          try {
+            const mapping = await createMapping(parsed.data)
 
-        if (!parsed.success) {
-          set.status = 400
-          return {
-            ok: false as const,
-            error: "INVALID_PAYLOAD" as const,
-            message: "Invalid update payload.",
-            fieldErrors: z.flattenError(parsed.error).fieldErrors,
+            set.status = 201
+            return { ok: true as const, data: toRuntimeMappingDTO(mapping) }
+          } catch (error) {
+            // Handle unique constraint violation
+            if (
+              error instanceof Prisma.PrismaClientKnownRequestError &&
+              error.code === "P2002"
+            ) {
+              set.status = 409
+              return {
+                ok: false as const,
+                error: "DUPLICATE" as const,
+                message:
+                  "A mapping for this framework version and runtime already exists.",
+              }
+            }
+            throw error
           }
-        }
-
-        const existing = await getMappingById(params.id)
-
-        if (!existing) {
-          set.status = 404
-          return {
-            ok: false as const,
-            error: "NOT_FOUND" as const,
-            message: "Runtime mapping not found.",
+        },
+        { body: createRuntimeMappingSchema }
+      )
+      .patch(
+        "/admin/detector/mappings/:id",
+        async ({ params, body, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
           }
-        }
 
-        const mapping = await updateMapping(params.id, parsed.data)
+          const parsed = updateRuntimeMappingSchema.safeParse(body)
 
-        return { ok: true as const, data: toRuntimeMappingDTO(mapping) }
-      },
-      { body: updateRuntimeMappingSchema }
-    )
-    .delete(
-      "/admin/detector/mappings/:id",
-      async ({ params, set }) => {
+          if (!parsed.success) {
+            set.status = 400
+            return {
+              ok: false as const,
+              error: "INVALID_PAYLOAD" as const,
+              message: "Invalid update payload.",
+              fieldErrors: z.flattenError(parsed.error).fieldErrors,
+            }
+          }
+
+          const existing = await getMappingById(params.id)
+
+          if (!existing) {
+            set.status = 404
+            return {
+              ok: false as const,
+              error: "NOT_FOUND" as const,
+              message: "Runtime mapping not found.",
+            }
+          }
+
+          const mapping = await updateMapping(params.id, parsed.data)
+
+          return { ok: true as const, data: toRuntimeMappingDTO(mapping) }
+        },
+        { body: updateRuntimeMappingSchema }
+      )
+      .delete("/admin/detector/mappings/:id", async ({ params, set }) => {
         const actor = await guard(set)
         if ("ok" in actor && !actor.ok) {
           return actor as AdminApiError
@@ -380,38 +386,35 @@ export const createDetectorAdminRoutes = (deps: DetectorAdminDependencies = {}) 
         await deleteMapping(params.id)
 
         return { ok: true as const, data: toRuntimeMappingDTO(existing) }
-      }
-    )
-    // === Inspection Logs ===
-    .get(
-      "/admin/detector/logs",
-      async ({ query, set }) => {
-        const actor = await guard(set)
-        if ("ok" in actor && !actor.ok) {
-          return actor as AdminApiError
-        }
+      })
+      // === Inspection Logs ===
+      .get(
+        "/admin/detector/logs",
+        async ({ query, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
 
-        const result = await listLogs({
-          limit: query.limit,
-          offset: query.offset,
-          status: query.status,
-          repoUrl: query.repoUrl,
-          framework: query.framework,
-        })
+          const result = await listLogs({
+            limit: query.limit,
+            offset: query.offset,
+            status: query.status,
+            repoUrl: query.repoUrl,
+            framework: query.framework,
+          })
 
-        return {
-          ok: true as const,
-          data: {
-            logs: result.logs.map(toInspectionLogDTO),
-            total: result.total,
-          },
-        }
-      },
-      { query: listLogsQuerySchema }
-    )
-    .get(
-      "/admin/detector/logs/:id",
-      async ({ params, set }) => {
+          return {
+            ok: true as const,
+            data: {
+              logs: result.logs.map(toInspectionLogDTO),
+              total: result.total,
+            },
+          }
+        },
+        { query: listLogsQuerySchema }
+      )
+      .get("/admin/detector/logs/:id", async ({ params, set }) => {
         const actor = await guard(set)
         if ("ok" in actor && !actor.ok) {
           return actor as AdminApiError
@@ -429,12 +432,9 @@ export const createDetectorAdminRoutes = (deps: DetectorAdminDependencies = {}) 
         }
 
         return { ok: true as const, data: toInspectionLogDTO(log) }
-      }
-    )
-    // === AI Recommendations ===
-    .post(
-      "/admin/detector/recommend",
-      async ({ set }) => {
+      })
+      // === AI Recommendations ===
+      .post("/admin/detector/recommend", async ({ set }) => {
         const actor = await guard(set)
         if ("ok" in actor && !actor.ok) {
           return actor as AdminApiError
@@ -443,8 +443,8 @@ export const createDetectorAdminRoutes = (deps: DetectorAdminDependencies = {}) 
         const recommendations = await recommend()
 
         return { ok: true as const, data: recommendations }
-      }
-    )
+      })
+  )
 }
 
 export const detectorAdminRoutes = createDetectorAdminRoutes()

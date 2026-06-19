@@ -1,11 +1,4 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  mock,
-} from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { generateKeyPairSync } from "node:crypto"
 
 const mockRedisGet = mock(async () => null as string | null)
@@ -30,10 +23,8 @@ const originalGithubAppPrivateKeyBase64 =
   process.env.GITHUB_APP_PRIVATE_KEY_BASE64
 const originalAppSecret = process.env.APP_SECRET
 
-const {
-  listRepoFiles,
-  readRepoFile,
-} = await import("@/modules/github/github.service")
+const { listRepoFiles, readRepoFile } =
+  await import("@/modules/github/github.service")
 
 describe("GitHub Inspection Tools", () => {
   beforeEach(() => {

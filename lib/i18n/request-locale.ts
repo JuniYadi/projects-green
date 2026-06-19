@@ -1,11 +1,7 @@
 import { match as matchLocale } from "@formatjs/intl-localematcher"
 import Negotiator from "negotiator"
 
-import {
-  defaultLocale,
-  locales,
-  type AppLocale,
-} from "@/lib/i18n/config"
+import { defaultLocale, locales, type AppLocale } from "@/lib/i18n/config"
 import { isLocale } from "@/lib/i18n/pathname"
 
 const resolveFromHeader = (acceptLanguageHeader: string | undefined) => {

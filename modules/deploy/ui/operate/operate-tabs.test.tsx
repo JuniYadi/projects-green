@@ -2,10 +2,7 @@ import { describe, expect, it, mock } from "bun:test"
 import { fireEvent, render } from "@testing-library/react"
 import { useState } from "react"
 
-import {
-  INITIAL_DOMAINS,
-  INITIAL_LOGS,
-} from "@/modules/deploy/operate.mock"
+import { INITIAL_DOMAINS, INITIAL_LOGS } from "@/modules/deploy/operate.mock"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
 import { TabOverview } from "@/modules/deploy/ui/operate/tab-overview"
@@ -14,11 +11,7 @@ function DomainsHarness() {
   const [domains, setDomains] = useState(INITIAL_DOMAINS)
 
   return (
-    <TabDomains
-      selectedEnv="prod"
-      domains={domains}
-      setDomains={setDomains}
-    />
+    <TabDomains selectedEnv="prod" domains={domains} setDomains={setDomains} />
   )
 }
 
@@ -26,11 +19,7 @@ function LogsHarness({ diagnosticMode }: { diagnosticMode: string }) {
   const [logs, setLogs] = useState(INITIAL_LOGS)
 
   return (
-    <TabLogs
-      logs={logs}
-      setLogs={setLogs}
-      diagnosticMode={diagnosticMode}
-    />
+    <TabLogs logs={logs} setLogs={setLogs} diagnosticMode={diagnosticMode} />
   )
 }
 
@@ -99,9 +88,7 @@ describe("Operate tabs coverage", () => {
       expect(view.getByText("HTTP 301 Redirection Loop")).toBeTruthy()
       expect(view.getByText("3 active")).toBeTruthy()
 
-      fireEvent.click(
-        view.getByRole("button", { name: "Rebuild & Deploy" })
-      )
+      fireEvent.click(view.getByRole("button", { name: "Rebuild & Deploy" }))
       expect(
         view.getByRole("button", { name: "Rebuild & Deploy" })
       ).toBeTruthy()
@@ -164,14 +151,12 @@ describe("Operate tabs coverage", () => {
     const originalClearInterval = globalThis.clearInterval
     const originalScrollIntoView = Element.prototype.scrollIntoView
 
-    const immediateInterval: typeof setInterval = (
-      (handler: TimerHandler) => {
-        if (typeof handler === "function") {
-          handler()
-        }
-        return 0 as unknown as ReturnType<typeof setInterval>
+    const immediateInterval: typeof setInterval = ((handler: TimerHandler) => {
+      if (typeof handler === "function") {
+        handler()
       }
-    ) as unknown as typeof setInterval
+      return 0 as unknown as ReturnType<typeof setInterval>
+    }) as unknown as typeof setInterval
 
     globalThis.setInterval = immediateInterval
     globalThis.clearInterval = (() => undefined) as typeof clearInterval

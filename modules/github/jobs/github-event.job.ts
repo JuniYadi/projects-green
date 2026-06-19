@@ -25,7 +25,7 @@ export class GithubEventJob extends BaseJob {
   static async dispatch(eventId: string): Promise<void> {
     await this.enqueue<GithubEventData>(
       { eventId },
-      { jobId: `github-event_${eventId}` },
+      { jobId: `github-event_${eventId}` }
     )
   }
 

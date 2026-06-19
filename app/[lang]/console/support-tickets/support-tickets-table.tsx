@@ -53,11 +53,16 @@ const supportTicketRows: SupportTicket[] = [
   },
 ]
 
-const supportTicketColumns = (messages: ReturnType<typeof getMessages>): ColumnDef<SupportTicket>[] => [
+const supportTicketColumns = (
+  messages: ReturnType<typeof getMessages>
+): ColumnDef<SupportTicket>[] => [
   {
     accessorKey: "ticketId",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={messages.console.supportTickets.ticketId} />
+      <DataTableColumnHeader
+        column={column}
+        title={messages.console.supportTickets.ticketId}
+      />
     ),
     cell: ({ row }) => (
       <span className="font-medium text-foreground">
@@ -68,20 +73,29 @@ const supportTicketColumns = (messages: ReturnType<typeof getMessages>): ColumnD
   {
     accessorKey: "title",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={messages.console.supportTickets.titleColumn} />
+      <DataTableColumnHeader
+        column={column}
+        title={messages.console.supportTickets.titleColumn}
+      />
     ),
   },
   {
     accessorKey: "status",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={messages.console.supportTickets.status} />
+      <DataTableColumnHeader
+        column={column}
+        title={messages.console.supportTickets.status}
+      />
     ),
     cell: ({ row }) => SUPPORT_TICKET_STATUS_LABELS[row.original.status],
   },
   {
     accessorKey: "department",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={messages.console.supportTickets.department} />
+      <DataTableColumnHeader
+        column={column}
+        title={messages.console.supportTickets.department}
+      />
     ),
     cell: ({ row }) =>
       SUPPORT_TICKET_DEPARTMENT_LABELS[row.original.department],
@@ -89,7 +103,10 @@ const supportTicketColumns = (messages: ReturnType<typeof getMessages>): ColumnD
   {
     accessorKey: "priority",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={messages.console.supportTickets.priority} />
+      <DataTableColumnHeader
+        column={column}
+        title={messages.console.supportTickets.priority}
+      />
     ),
   },
 ]
@@ -111,8 +128,14 @@ export function SupportTicketsTable() {
           allLabel: messages.console.supportTickets.filterAllStatus,
           options: [
             { label: messages.console.supportTickets.open, value: "open" },
-            { label: messages.console.supportTickets.inProgress, value: "in_progress" },
-            { label: messages.console.supportTickets.resolved, value: "resolved" },
+            {
+              label: messages.console.supportTickets.inProgress,
+              value: "in_progress",
+            },
+            {
+              label: messages.console.supportTickets.resolved,
+              value: "resolved",
+            },
             { label: messages.console.supportTickets.closed, value: "closed" },
           ],
         },
@@ -121,10 +144,22 @@ export function SupportTicketsTable() {
           label: messages.console.supportTickets.department,
           allLabel: messages.console.supportTickets.filterAllDepartments,
           options: [
-            { label: messages.console.supportTickets.billing, value: "billing" },
-            { label: messages.console.supportTickets.technical, value: "technical" },
-            { label: messages.console.supportTickets.account, value: "account" },
-            { label: messages.console.supportTickets.compliance, value: "compliance" },
+            {
+              label: messages.console.supportTickets.billing,
+              value: "billing",
+            },
+            {
+              label: messages.console.supportTickets.technical,
+              value: "technical",
+            },
+            {
+              label: messages.console.supportTickets.account,
+              value: "account",
+            },
+            {
+              label: messages.console.supportTickets.compliance,
+              value: "compliance",
+            },
           ],
         },
         {

@@ -81,7 +81,7 @@ export function createUsageRoutes(services: {
         const entries = await services.usageLedgerService.getUsageByDateRange(
           auth.organizationId,
           from,
-          to,
+          to
         )
 
         return {
@@ -96,12 +96,12 @@ export function createUsageRoutes(services: {
 
       const breakdown = await services.usageLedgerService.getSpendByCategory(
         auth.organizationId,
-        currentPeriod,
+        currentPeriod
       )
 
       const totalSpend = await services.usageLedgerService.getTotalSpend(
         auth.organizationId,
-        currentPeriod,
+        currentPeriod
       )
 
       return {
@@ -129,7 +129,7 @@ export function createUsageRoutes(services: {
 
       const breakdown = await services.costingService.getUsageBreakdown(
         auth.organizationId,
-        currentPeriod,
+        currentPeriod
       )
 
       return {
@@ -155,12 +155,15 @@ export function createUsageRoutes(services: {
       const daysNum = days ? parseInt(days, 10) : 30
 
       if (isNaN(daysNum) || daysNum < 1 || daysNum > 365) {
-        return toValidationError(set, "Invalid 'days' parameter. Must be between 1 and 365.")
+        return toValidationError(
+          set,
+          "Invalid 'days' parameter. Must be between 1 and 365."
+        )
       }
 
       const trend = await services.usageLedgerService.getDailyUsageTrend(
         auth.organizationId,
-        daysNum,
+        daysNum
       )
 
       return {

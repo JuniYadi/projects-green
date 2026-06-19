@@ -312,7 +312,9 @@ describe("support ticket attachment routes", () => {
   it("maps storage configuration error", async () => {
     const app = createApp({
       async createPresignedAttachmentUpload() {
-        throw new SupportTicketAttachmentStorageConfigurationError("storage misconfigured")
+        throw new SupportTicketAttachmentStorageConfigurationError(
+          "storage misconfigured"
+        )
       },
     })
 
@@ -341,7 +343,9 @@ describe("support ticket attachment routes", () => {
   it("maps upload validation error", async () => {
     const app = createApp({
       async registerAttachment() {
-        throw new SupportTicketAttachmentUploadValidationError("checksum mismatch")
+        throw new SupportTicketAttachmentUploadValidationError(
+          "checksum mismatch"
+        )
       },
     })
 
@@ -449,18 +453,27 @@ describe("support ticket attachment routes", () => {
 
     it("uploads a file to S3 successfully", async () => {
       const originalFetch = globalThis.fetch
-      globalThis.fetch = ((async (input: RequestInfo | URL, init?: RequestInit) => {
+      globalThis.fetch = (async (
+        input: RequestInfo | URL,
+        init?: RequestInit
+      ) => {
         const url = String(input)
-        if (url === "https://my-s3.example.com/my-bucket/key" && init?.method === "PUT") {
+        if (
+          url === "https://my-s3.example.com/my-bucket/key" &&
+          init?.method === "PUT"
+        ) {
           return new Response(null, { status: 200 })
         }
         return new Response(null, { status: 500 })
-      }) as unknown) as typeof fetch
+      }) as unknown as typeof fetch
 
       const app = createApp({})
 
       const formData = new FormData()
-      formData.append("file", new File(["test content"], "test.txt", { type: "text/plain" }))
+      formData.append(
+        "file",
+        new File(["test content"], "test.txt", { type: "text/plain" })
+      )
       formData.append("uploadUrl", "https://my-s3.example.com/my-bucket/key")
       formData.append("mimeType", "text/plain")
 
@@ -499,7 +512,10 @@ describe("support ticket attachment routes", () => {
       )
 
       const formData = new FormData()
-      formData.append("file", new File(["test"], "test.txt", { type: "text/plain" }))
+      formData.append(
+        "file",
+        new File(["test"], "test.txt", { type: "text/plain" })
+      )
       formData.append("uploadUrl", "https://my-s3.example.com/my-bucket/key")
       formData.append("mimeType", "text/plain")
 
@@ -519,14 +535,17 @@ describe("support ticket attachment routes", () => {
 
     it("returns 502 when S3 upload fails", async () => {
       const originalFetch = globalThis.fetch
-      globalThis.fetch = ((async () => {
+      globalThis.fetch = (async () => {
         return new Response(null, { status: 403 })
-      }) as unknown) as typeof fetch
+      }) as unknown as typeof fetch
 
       const app = createApp({})
 
       const formData = new FormData()
-      formData.append("file", new File(["test"], "test.txt", { type: "text/plain" }))
+      formData.append(
+        "file",
+        new File(["test"], "test.txt", { type: "text/plain" })
+      )
       formData.append("uploadUrl", "https://my-s3.example.com/my-bucket/key")
       formData.append("mimeType", "text/plain")
 
@@ -548,14 +567,17 @@ describe("support ticket attachment routes", () => {
 
     it("returns 502 on network error", async () => {
       const originalFetch = globalThis.fetch
-      globalThis.fetch = ((async () => {
+      globalThis.fetch = (async () => {
         throw new Error("Connection refused")
-      }) as unknown) as typeof fetch
+      }) as unknown as typeof fetch
 
       const app = createApp({})
 
       const formData = new FormData()
-      formData.append("file", new File(["test"], "test.txt", { type: "text/plain" }))
+      formData.append(
+        "file",
+        new File(["test"], "test.txt", { type: "text/plain" })
+      )
       formData.append("uploadUrl", "https://my-s3.example.com/my-bucket/key")
       formData.append("mimeType", "text/plain")
 
@@ -600,7 +622,10 @@ describe("support ticket attachment routes", () => {
       process.env.S3_BUCKET = "my-bucket"
 
       const formData = new FormData()
-      formData.append("file", new File(["test"], "test.txt", { type: "text/plain" }))
+      formData.append(
+        "file",
+        new File(["test"], "test.txt", { type: "text/plain" })
+      )
       formData.append("uploadUrl", "https://evil.com/malicious-key")
       formData.append("mimeType", "text/plain")
 

@@ -26,9 +26,9 @@ export function InvoiceDownloadPdfAction({
       const response = await fetch(`/api/invoices/${invoiceId}/pdf`)
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as
-          | { message?: string }
-          | null
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string
+        } | null
 
         setErrorMessage(payload?.message ?? DEFAULT_ERROR_MESSAGE)
         setIsDownloading(false)

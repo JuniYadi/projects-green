@@ -1,6 +1,9 @@
 import { PrismaClient } from "@prisma/client"
 import type { InvoiceEmailService } from "@/modules/invoices/email.service"
-import type { InvoiceListItem, InvoiceStatus } from "@/modules/invoices/invoices.types"
+import type {
+  InvoiceListItem,
+  InvoiceStatus,
+} from "@/modules/invoices/invoices.types"
 
 const ISSUE_THRESHOLD_DAYS = 5
 const OVERDUE_GRACE_DAYS = 14
@@ -45,7 +48,7 @@ export class InvoiceStatusManager {
 
   constructor(
     private prisma: PrismaClient,
-    private emailService?: InvoiceEmailService,
+    private emailService?: InvoiceEmailService
   ) {}
 
   async runDailyTransitions(): Promise<{
@@ -56,7 +59,7 @@ export class InvoiceStatusManager {
     const overdue = await this.markOverdueInvoices()
 
     console.info(
-      `[InvoiceStatusManager] Daily transitions: ${issued.issued} issued, ${overdue.overdue} overdue`,
+      `[InvoiceStatusManager] Daily transitions: ${issued.issued} issued, ${overdue.overdue} overdue`
     )
 
     return { issued: issued.issued, overdue: overdue.overdue }
@@ -92,7 +95,10 @@ export class InvoiceStatusManager {
 
       // Fire-and-forget: email delivery is best-effort, invoice status already updated
       if (this.emailService && invoice.billingAccount?.organizationId) {
-        void this.sendInvoiceCreatedEmail(invoice, invoice.billingAccount.organizationId)
+        void this.sendInvoiceCreatedEmail(
+          invoice,
+          invoice.billingAccount.organizationId
+        )
       }
     }
 
@@ -123,7 +129,10 @@ export class InvoiceStatusManager {
 
       // Fire-and-forget: email delivery is best-effort, invoice status already updated
       if (this.emailService && invoice.billingAccount?.organizationId) {
-        void this.sendInvoiceOverdueEmail(invoice, invoice.billingAccount.organizationId)
+        void this.sendInvoiceOverdueEmail(
+          invoice,
+          invoice.billingAccount.organizationId
+        )
       }
     }
 
@@ -173,7 +182,10 @@ export class InvoiceStatusManager {
           },
         })
 
-        await this.sendPaymentReminderEmail(invoice, invoice.billingAccount.organizationId)
+        await this.sendPaymentReminderEmail(
+          invoice,
+          invoice.billingAccount.organizationId
+        )
         sent++
       }
     }
@@ -182,8 +194,18 @@ export class InvoiceStatusManager {
   }
 
   private async sendInvoiceCreatedEmail(
-    invoice: { id: string; invoiceNumber: string; totalAmount: { toNumber: () => number }; currency: string; status: string; periodStart: Date; periodEnd: Date; issuedAt: Date | null; dueAt: Date | null },
-    organizationId: string,
+    invoice: {
+      id: string
+      invoiceNumber: string
+      totalAmount: { toNumber: () => number }
+      currency: string
+      status: string
+      periodStart: Date
+      periodEnd: Date
+      issuedAt: Date | null
+      dueAt: Date | null
+    },
+    organizationId: string
   ): Promise<void> {
     try {
       const recipients = await this.resolveInvoiceRecipients(organizationId)
@@ -191,20 +213,33 @@ export class InvoiceStatusManager {
 
       await Promise.allSettled(
         recipients.map((r) =>
-          this.emailService!.sendInvoiceCreated(toInvoiceListItem(invoice), r.email),
-        ),
+          this.emailService!.sendInvoiceCreated(
+            toInvoiceListItem(invoice),
+            r.email
+          )
+        )
       )
     } catch (error) {
       console.error(
         `[InvoiceStatusManager] Failed to send invoice-created email for ${invoice.invoiceNumber}:`,
-        error,
+        error
       )
     }
   }
 
   private async sendInvoiceOverdueEmail(
-    invoice: { id: string; invoiceNumber: string; totalAmount: { toNumber: () => number }; currency: string; status: string; periodStart: Date; periodEnd: Date; issuedAt: Date | null; dueAt: Date | null },
-    organizationId: string,
+    invoice: {
+      id: string
+      invoiceNumber: string
+      totalAmount: { toNumber: () => number }
+      currency: string
+      status: string
+      periodStart: Date
+      periodEnd: Date
+      issuedAt: Date | null
+      dueAt: Date | null
+    },
+    organizationId: string
   ): Promise<void> {
     try {
       const recipients = await this.resolveInvoiceRecipients(organizationId)
@@ -212,20 +247,33 @@ export class InvoiceStatusManager {
 
       await Promise.allSettled(
         recipients.map((r) =>
-          this.emailService!.sendInvoiceOverdue(toInvoiceListItem(invoice), r.email),
-        ),
+          this.emailService!.sendInvoiceOverdue(
+            toInvoiceListItem(invoice),
+            r.email
+          )
+        )
       )
     } catch (error) {
       console.error(
         `[InvoiceStatusManager] Failed to send invoice-overdue email for ${invoice.invoiceNumber}:`,
-        error,
+        error
       )
     }
   }
 
   private async sendPaymentReminderEmail(
-    invoice: { id: string; invoiceNumber: string; totalAmount: { toNumber: () => number }; currency: string; status: string; periodStart: Date; periodEnd: Date; issuedAt: Date | null; dueAt: Date | null },
-    organizationId: string,
+    invoice: {
+      id: string
+      invoiceNumber: string
+      totalAmount: { toNumber: () => number }
+      currency: string
+      status: string
+      periodStart: Date
+      periodEnd: Date
+      issuedAt: Date | null
+      dueAt: Date | null
+    },
+    organizationId: string
   ): Promise<void> {
     try {
       const recipients = await this.resolveInvoiceRecipients(organizationId)
@@ -233,13 +281,16 @@ export class InvoiceStatusManager {
 
       await Promise.allSettled(
         recipients.map((r) =>
-          this.emailService!.sendPaymentReminder(toInvoiceListItem(invoice), r.email),
-        ),
+          this.emailService!.sendPaymentReminder(
+            toInvoiceListItem(invoice),
+            r.email
+          )
+        )
       )
     } catch (error) {
       console.error(
         `[InvoiceStatusManager] Failed to send payment-reminder email for ${invoice.invoiceNumber}:`,
-        error,
+        error
       )
     }
   }
@@ -254,7 +305,7 @@ export class InvoiceStatusManager {
    * Recipients are deduplicated by email address.
    */
   private async resolveInvoiceRecipients(
-    organizationId: string,
+    organizationId: string
   ): Promise<Array<{ email: string }>> {
     const recipients: Array<{ email: string }> = []
 
@@ -283,7 +334,9 @@ export class InvoiceStatusManager {
     return recipients
   }
 
-  private async resolveOrgAdminEmail(organizationId: string): Promise<string | null> {
+  private async resolveOrgAdminEmail(
+    organizationId: string
+  ): Promise<string | null> {
     // Check cache first to avoid N+1 WorkOS API calls
     if (this.orgEmailCache.has(organizationId)) {
       return this.orgEmailCache.get(organizationId) ?? null
@@ -317,7 +370,7 @@ export class InvoiceStatusManager {
     } catch (error) {
       console.error(
         `[InvoiceStatusManager] Failed to resolve admin email for org ${organizationId}:`,
-        error,
+        error
       )
       // Cache null to avoid repeated failed lookups for same org
       this.orgEmailCache.set(organizationId, null)

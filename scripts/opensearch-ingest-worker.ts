@@ -13,7 +13,9 @@ const worker = new Worker<LogEntry>(
   async (job: Job<LogEntry>) => {
     const success = await ingestLog(job.data)
     if (!success) {
-      throw new Error(`Failed to ingest log entry for tenant ${job.data.tenantSlug}`)
+      throw new Error(
+        `Failed to ingest log entry for tenant ${job.data.tenantSlug}`
+      )
     }
     return { ingested: true }
   },
@@ -24,7 +26,9 @@ const worker = new Worker<LogEntry>(
 )
 
 worker.on("active", (job) => {
-  console.log(`[opensearch-ingest] Processing job ${job.id} for tenant ${job.data.tenantSlug}`)
+  console.log(
+    `[opensearch-ingest] Processing job ${job.id} for tenant ${job.data.tenantSlug}`
+  )
 })
 
 worker.on("completed", (job) => {

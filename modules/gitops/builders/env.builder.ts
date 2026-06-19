@@ -8,8 +8,14 @@ export interface EnvVar {
 }
 
 export interface EnvFromSource {
-  configMapRef?: { name: string; items?: Array<{ key: string; optional?: boolean }> }
-  secretRef?: { name: string; items?: Array<{ key: string; optional?: boolean }> }
+  configMapRef?: {
+    name: string
+    items?: Array<{ key: string; optional?: boolean }>
+  }
+  secretRef?: {
+    name: string
+    items?: Array<{ key: string; optional?: boolean }>
+  }
 }
 
 export class EnvBuilder {
@@ -28,7 +34,10 @@ export class EnvBuilder {
     this.envFromSources.push({
       configMapRef: {
         name: configMapName,
-        items: items.map((item) => ({ key: item.key, optional: item.optional })),
+        items: items.map((item) => ({
+          key: item.key,
+          optional: item.optional,
+        })),
       },
     })
     return this
@@ -41,7 +50,10 @@ export class EnvBuilder {
     this.envFromSources.push({
       secretRef: {
         name: secretName,
-        items: items.map((item) => ({ key: item.key, optional: item.optional })),
+        items: items.map((item) => ({
+          key: item.key,
+          optional: item.optional,
+        })),
       },
     })
     return this

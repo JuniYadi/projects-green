@@ -3,11 +3,7 @@ import type { JobsOptions } from "bullmq"
 import type { WhatsAppWebhookJobData } from "@/lib/queue/whatsapp-webhook"
 
 const queueAddMock = mock(
-  async (
-    _name: string,
-    _data: WhatsAppWebhookJobData,
-    _opts?: JobsOptions
-  ) => {
+  async (_name: string, _data: WhatsAppWebhookJobData, _opts?: JobsOptions) => {
     void _name
     void _data
     void _opts
@@ -162,8 +158,14 @@ describe("createWhatsAppWebhookQueue", () => {
 
     expect(add).toHaveBeenCalledWith(
       "custom-job",
-      { eventType: "message", payload: { message: "hello" }, deviceId: "device_1" },
-      expect.objectContaining({ jobId: expect.stringContaining("wa-webhook:message:") })
+      {
+        eventType: "message",
+        payload: { message: "hello" },
+        deviceId: "device_1",
+      },
+      expect.objectContaining({
+        jobId: expect.stringContaining("wa-webhook:message:"),
+      })
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(0)
   })
@@ -192,8 +194,14 @@ describe("createWhatsAppWebhookQueue", () => {
     )
     expect(queueAddMock).toHaveBeenCalledWith(
       WHATSAPP_WEBHOOK_JOB_NAME,
-      { eventType: "statuses", payload: { status: "sent" }, deviceId: "device_owned" },
-      expect.objectContaining({ jobId: expect.stringContaining("wa-webhook:statuses:") })
+      {
+        eventType: "statuses",
+        payload: { status: "sent" },
+        deviceId: "device_owned",
+      },
+      expect.objectContaining({
+        jobId: expect.stringContaining("wa-webhook:statuses:"),
+      })
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(1)
   })
@@ -212,7 +220,10 @@ describe("createWhatsAppWebhookQueue", () => {
     expect(add).toHaveBeenCalledWith(
       WHATSAPP_WEBHOOK_JOB_NAME,
       { eventType: "error", payload: { error: "test" }, deviceId: "device_2" },
-      expect.objectContaining({ jobId: expect.stringContaining("wa-webhook:error:"), attempts: 5 })
+      expect.objectContaining({
+        jobId: expect.stringContaining("wa-webhook:error:"),
+        attempts: 5,
+      })
     )
   })
 
@@ -241,11 +252,7 @@ describe("enqueueWhatsAppWebhook", () => {
       "device_b",
       "org_1"
     )
-    await enqueueWhatsAppWebhook(
-      "error",
-      { error: "timeout" },
-      "device_c"
-    )
+    await enqueueWhatsAppWebhook("error", { error: "timeout" }, "device_c")
 
     expect(queueConstructorMock).toHaveBeenCalledTimes(1)
     expect(queueAddMock).toHaveBeenCalledTimes(3)
@@ -289,7 +296,9 @@ describe("enqueueWhatsAppWebhook", () => {
     expect(queueAddMock).toHaveBeenCalledWith(
       WHATSAPP_WEBHOOK_JOB_NAME,
       { eventType: "message", payload: { text: "hi" }, deviceId: "dev" },
-      expect.objectContaining({ jobId: expect.stringContaining("wa-webhook:message:dev:") })
+      expect.objectContaining({
+        jobId: expect.stringContaining("wa-webhook:message:dev:"),
+      })
     )
   })
 })

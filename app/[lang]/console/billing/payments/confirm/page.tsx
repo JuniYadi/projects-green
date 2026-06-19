@@ -3,7 +3,14 @@
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from "react"
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  Suspense,
+  useMemo,
+} from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
@@ -13,7 +20,13 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeftIcon, CheckCircleIcon, UploadIcon, SpinnerGap, TrashSimple } from "@phosphor-icons/react"
+import {
+  ArrowLeftIcon,
+  CheckCircleIcon,
+  UploadIcon,
+  SpinnerGap,
+  TrashSimple,
+} from "@phosphor-icons/react"
 
 interface BankAccount {
   id: string
@@ -59,12 +72,18 @@ function ConfirmationPageContent() {
 
   // Invoice amount — prefer URL param, fallback to API fetch
   const [invoiceAmount, setInvoiceAmount] = useState(urlAmount)
-  const [invoiceCurrency, setInvoiceCurrency] = useState<string>(urlCurrency || "IDR")
-  const [isLoadingInvoice, setIsLoadingInvoice] = useState(!urlAmount && !!invoiceId)
+  const [invoiceCurrency, setInvoiceCurrency] = useState<string>(
+    urlCurrency || "IDR"
+  )
+  const [isLoadingInvoice, setIsLoadingInvoice] = useState(
+    !urlAmount && !!invoiceId
+  )
 
   // Screenshot upload
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(
+    null
+  )
   const [isUploadingScreenshot, setIsUploadingScreenshot] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -134,9 +153,7 @@ function ConfirmationPageContent() {
           ) {
             setBankAccountId(preselected)
           } else {
-            const defaultAccount = bankAccountsData.find(
-              (b) => b.isDefault,
-            )
+            const defaultAccount = bankAccountsData.find((b) => b.isDefault)
             setBankAccountId(defaultAccount?.id || bankAccountsData[0].id)
           }
         }
@@ -179,16 +196,21 @@ function ConfirmationPageContent() {
       const formData = new FormData()
       formData.append("file", file)
 
-      const { data: result } = await eden.api.payments["upload-screenshot"].post({
-        $fetch: { method: "POST", body: formData } as RequestInit
+      const { data: result } = await eden.api.payments[
+        "upload-screenshot"
+      ].post({
+        $fetch: { method: "POST", body: formData } as RequestInit,
       } as never)
-      if (!result?.ok) throw new Error((result as { message?: string })?.message || "Upload failed")
+      if (!result?.ok)
+        throw new Error(
+          (result as { message?: string })?.message || "Upload failed"
+        )
 
       setScreenshotUrl((result as { url: string }).url)
       setScreenshotPreview(URL.createObjectURL(file))
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "Failed to upload screenshot",
+        err instanceof Error ? err.message : "Failed to upload screenshot"
       )
     } finally {
       setIsUploadingScreenshot(false)
@@ -208,7 +230,7 @@ function ConfirmationPageContent() {
       // Reset so re-selecting the same file triggers onChange
       e.target.value = ""
     },
-    [uploadScreenshot],
+    [uploadScreenshot]
   )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -231,7 +253,7 @@ function ConfirmationPageContent() {
       const file = e.dataTransfer.files?.[0]
       if (file) void uploadScreenshot(file)
     },
-    [uploadScreenshot],
+    [uploadScreenshot]
   )
 
   async function handleSubmit(e: React.FormEvent) {
@@ -242,12 +264,12 @@ function ConfirmationPageContent() {
     setErrorMessage(null)
 
     try {
-      const { data: result } = await eden.api.payments.topup.confirm[invoiceId].post({
+      const { data: result } = await eden.api.payments.topup.confirm[
+        invoiceId
+      ].post({
         bankAccountId,
         amount: displayAmount,
-        paymentDateTime: new Date(
-          initialPaymentDateTime,
-        ).toISOString(),
+        paymentDateTime: new Date(initialPaymentDateTime).toISOString(),
         senderBankName: senderBankName || undefined,
         senderName: senderName || undefined,
         senderAccount: senderAccount || undefined,
@@ -257,7 +279,8 @@ function ConfirmationPageContent() {
 
       if (!result?.ok) {
         throw new Error(
-          (result as { message?: string })?.message || "Confirmation failed. Please try again.",
+          (result as { message?: string })?.message ||
+            "Confirmation failed. Please try again."
         )
       }
 
@@ -266,7 +289,7 @@ function ConfirmationPageContent() {
       setErrorMessage(
         err instanceof Error
           ? err.message
-          : "Confirmation failed. Please try again.",
+          : "Confirmation failed. Please try again."
       )
       setFormState("error")
     }
@@ -274,7 +297,7 @@ function ConfirmationPageContent() {
 
   const selectedBank = useMemo(
     () => bankAccounts.find((b) => b.id === bankAccountId),
-    [bankAccounts, bankAccountId],
+    [bankAccounts, bankAccountId]
   )
 
   // ── Success state ──
@@ -316,9 +339,7 @@ function ConfirmationPageContent() {
                 {selectedBank && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Destination</span>
-                    <span className="font-medium">
-                      {selectedBank.bankName}
-                    </span>
+                    <span className="font-medium">{selectedBank.bankName}</span>
                   </div>
                 )}
               </div>
@@ -420,7 +441,9 @@ function ConfirmationPageContent() {
                                 : "border-border hover:border-muted-foreground/50"
                             }`}
                           >
-                            <div className="font-medium">{account.bankName}</div>
+                            <div className="font-medium">
+                              {account.bankName}
+                            </div>
                             <div className="mt-0.5 text-muted-foreground">
                               {account.accountNumber}
                             </div>
@@ -432,7 +455,11 @@ function ConfirmationPageContent() {
                       })}
                     </div>
                   ) : (
-                    <Input type="text" value="No bank accounts available" disabled />
+                    <Input
+                      type="text"
+                      value="No bank accounts available"
+                      disabled
+                    />
                   )}
                 </Field>
 
@@ -496,7 +523,7 @@ function ConfirmationPageContent() {
                       <img
                         src={screenshotPreview}
                         alt="Payment proof preview"
-                        className="max-h-48 w-full object-contain bg-muted/20"
+                        className="max-h-48 w-full bg-muted/20 object-contain"
                       />
                       <div className="flex items-center justify-between border-t bg-muted/30 px-3 py-2">
                         <span className="text-xs text-muted-foreground">
@@ -602,9 +629,7 @@ function ConfirmationPageContent() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">
-                Verification Process
-              </CardTitle>
+              <CardTitle className="text-base">Verification Process</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex gap-3">
@@ -619,9 +644,7 @@ function ConfirmationPageContent() {
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
                   2
                 </div>
-                <p className="text-muted-foreground">
-                  We verify your payment
-                </p>
+                <p className="text-muted-foreground">We verify your payment</p>
               </div>
               <div className="flex gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">

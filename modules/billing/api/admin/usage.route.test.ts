@@ -42,7 +42,7 @@ describe("AdminUsageRoute", () => {
       const app = new Elysia()
         .use(
           createAdminUsageRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
             isAdmin: mockIsAdmin,
           })
@@ -189,7 +189,7 @@ describe("AdminUsageRoute", () => {
                 user: { id: "admin-1" },
                 organizationId: "org-1",
                 role: "admin",
-              } as unknown as MockAuthContext),
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
             isAdmin: () => true,
           })
@@ -264,7 +264,7 @@ describe("AdminUsageRoute", () => {
                 user: { id: "admin-1" },
                 organizationId: "org-1",
                 role: "admin",
-              } as unknown as MockAuthContext),
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "super_admin" as PlatformAccessRole,
           })
         )
@@ -286,7 +286,7 @@ describe("AdminUsageRoute", () => {
                 user: { id: "member-1" },
                 organizationId: "org-1",
                 role: "member",
-              } as unknown as MockAuthContext),
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
           })
         )
@@ -311,9 +311,8 @@ describe("AdminUsageRoute", () => {
                 user: { id: "admin-1" },
                 organizationId: "org-1",
                 role: "admin",
-              } as unknown as MockAuthContext),
-            getPlatformRole: async () =>
-              "super_admin" as PlatformAccessRole,
+              }) as unknown as MockAuthContext,
+            getPlatformRole: async () => "super_admin" as PlatformAccessRole,
           })
         )
         .compile()
@@ -343,7 +342,7 @@ describe("AdminUsageRoute", () => {
                 user: { id: "admin-1" },
                 organizationId: "org-1",
                 role: "admin",
-              } as unknown as MockAuthContext),
+              }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
             isAdmin: () => true,
           })

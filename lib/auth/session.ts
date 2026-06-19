@@ -59,8 +59,7 @@ export const getWorkOSSession = async (
     sessionData = bearerToken
   } else {
     // Sealed session from cookie
-    const cookieName =
-      process.env.WORKOS_COOKIE_NAME?.trim() || "wos-session"
+    const cookieName = process.env.WORKOS_COOKIE_NAME?.trim() || "wos-session"
     const rawCookies = request.headers.get("Cookie") ?? ""
     const cookies = Object.fromEntries(
       rawCookies.split(";").map((c) => {

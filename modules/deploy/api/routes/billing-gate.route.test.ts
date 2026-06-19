@@ -47,7 +47,11 @@ describe("billingGateRoutes /quote", () => {
   })
 
   it("returns sufficient when balance covers the 24h buffer (happy path)", async () => {
-    const res = await post({ billingMode: "PAYG", hourlyCost: 1, paygBufferHours: 24 })
+    const res = await post({
+      billingMode: "PAYG",
+      hourlyCost: 1,
+      paygBufferHours: 24,
+    })
     expect(res.status).toBe(200)
     const body = (await res.json()) as {
       ok: boolean
@@ -68,7 +72,11 @@ describe("billingGateRoutes /quote", () => {
   })
 
   it("reports insufficient with shortfall + topup url (unhappy path)", async () => {
-    const res = await post({ billingMode: "PAYG", hourlyCost: 10, paygBufferHours: 24 })
+    const res = await post({
+      billingMode: "PAYG",
+      hourlyCost: 10,
+      paygBufferHours: 24,
+    })
     expect(res.status).toBe(200)
     const body = (await res.json()) as {
       data: { sufficient: boolean; shortfall: string; topupUrl: string | null }
@@ -79,8 +87,14 @@ describe("billingGateRoutes /quote", () => {
   })
 
   it("enforces the 24h minimum buffer even when a smaller value is requested", async () => {
-    const res = await post({ billingMode: "PAYG", hourlyCost: 1, paygBufferHours: 1 })
-    const body = (await res.json()) as { data: { bufferHours: number; requiredBalance: string } }
+    const res = await post({
+      billingMode: "PAYG",
+      hourlyCost: 1,
+      paygBufferHours: 1,
+    })
+    const body = (await res.json()) as {
+      data: { bufferHours: number; requiredBalance: string }
+    }
     expect(body.data.bufferHours).toBe(24)
     expect(body.data.requiredBalance).toBe("24")
   })
@@ -104,7 +118,9 @@ describe("billingGateRoutes /quote", () => {
   it("marks gate as not applicable for PACKAGE mode", async () => {
     const res = await post({ billingMode: "PACKAGE", hourlyCost: 5 })
     expect(res.status).toBe(200)
-    const body = (await res.json()) as { data: { gateApplies: boolean; sufficient: boolean } }
+    const body = (await res.json()) as {
+      data: { gateApplies: boolean; sufficient: boolean }
+    }
     expect(body.data.gateApplies).toBe(false)
     expect(body.data.sufficient).toBe(true)
   })

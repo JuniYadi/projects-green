@@ -334,7 +334,7 @@ describe("support ticket attachment service", () => {
         fileName: "file.pdf",
         mimeType: "application/pdf",
         sizeBytes: 512,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentNotFoundError)
   })
 
@@ -349,7 +349,7 @@ describe("support ticket attachment service", () => {
         fileName: "file.pdf",
         mimeType: "application/pdf",
         sizeBytes: 512,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadMismatchError)
   })
 
@@ -364,7 +364,7 @@ describe("support ticket attachment service", () => {
         fileName: "file.pdf",
         mimeType: "application/pdf",
         sizeBytes: 512,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentAccessDeniedError)
   })
 
@@ -391,13 +391,14 @@ describe("support ticket attachment service", () => {
         sizeBytes: 512,
         storageBucket: upload.storageBucket,
         storageKey: upload.storageKey,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadMismatchError)
   })
 
   it("rejects register with expired session", async () => {
     const deps = createDeps()
-    const storageKey = "support-ticket-attachments/org_1/create/pending/user_requester/file.pdf"
+    const storageKey =
+      "support-ticket-attachments/org_1/create/pending/user_requester/file.pdf"
     // Override getUploadSessionById to always return expired session with matching prefix
     deps.repository.getUploadSessionById = async () => ({
       id: "att_expired",
@@ -424,7 +425,7 @@ describe("support ticket attachment service", () => {
         sizeBytes: 512,
         storageBucket: "bucket",
         storageKey,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadExpiredError)
   })
 
@@ -435,7 +436,9 @@ describe("support ticket attachment service", () => {
       storage: {
         ...deps.storage,
         async verifyUploadedObject() {
-          throw new SupportTicketAttachmentUploadValidationError("Size mismatch")
+          throw new SupportTicketAttachmentUploadValidationError(
+            "Size mismatch"
+          )
         },
       },
     })
@@ -458,7 +461,7 @@ describe("support ticket attachment service", () => {
         sizeBytes: 512,
         storageBucket: upload.storageBucket,
         storageKey: upload.storageKey,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadValidationError)
   })
 
@@ -492,7 +495,7 @@ describe("support ticket attachment service", () => {
         sizeBytes: 512,
         storageBucket: upload.storageBucket,
         storageKey: upload.storageKey,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadMismatchError)
   })
 
@@ -505,7 +508,7 @@ describe("support ticket attachment service", () => {
         async verifyUploadedObject() {
           throw new SupportTicketAttachmentValidationError(
             "MIME_EXTENSION_MISMATCH",
-            "MIME type does not match extension",
+            "MIME type does not match extension"
           )
         },
       },
@@ -529,7 +532,7 @@ describe("support ticket attachment service", () => {
         sizeBytes: 512,
         storageBucket: upload.storageBucket,
         storageKey: upload.storageKey,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentValidationError)
   })
 
@@ -555,7 +558,7 @@ describe("support ticket attachment service", () => {
         sizeBytes: 512,
         storageBucket: upload.storageBucket,
         storageKey: upload.storageKey,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadExpiredError)
   })
 
@@ -588,7 +591,7 @@ describe("support ticket attachment service", () => {
         sizeBytes: 512,
         storageBucket: upload.storageBucket,
         storageKey: upload.storageKey,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadExpiredError)
   })
 
@@ -621,7 +624,7 @@ describe("support ticket attachment service", () => {
         sizeBytes: 512,
         storageBucket: upload.storageBucket,
         storageKey: upload.storageKey,
-      }),
+      })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadMismatchError)
   })
 

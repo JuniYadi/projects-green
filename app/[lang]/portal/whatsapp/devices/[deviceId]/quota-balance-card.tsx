@@ -79,7 +79,10 @@ export function QuotaBalanceCard({
       } as never)
 
       if (!res?.ok) {
-        throw new Error((res as { message?: string })?.message || "Failed to update device limits.")
+        throw new Error(
+          (res as { message?: string })?.message ||
+            "Failed to update device limits."
+        )
       }
 
       toast.success("Device limits updated successfully.")
@@ -170,7 +173,10 @@ export function QuotaBalanceCard({
           {editing ? (
             <>
               <div className="space-y-2 border-b pb-3">
-                <Label htmlFor="quotaBase" className="text-sm text-muted-foreground">
+                <Label
+                  htmlFor="quotaBase"
+                  className="text-sm text-muted-foreground"
+                >
                   Quota Base (messages)
                 </Label>
                 <Input
@@ -206,11 +212,7 @@ export function QuotaBalanceCard({
                   <X className="mr-1 size-3" />
                   Cancel
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={saving}
-                >
+                <Button size="sm" onClick={handleSave} disabled={saving}>
                   <Check className="mr-1 size-3" />
                   {saving ? "Saving..." : "Save"}
                 </Button>
@@ -224,7 +226,9 @@ export function QuotaBalanceCard({
               />
               {initialQuotaBaseOut === 0 && initialQuotaBase > 0 && (
                 <div className="flex items-center gap-2 rounded-md bg-amber-50 p-2 text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                  <span className="font-medium">Monthly allowance exhausted — overage charges apply</span>
+                  <span className="font-medium">
+                    Monthly allowance exhausted — overage charges apply
+                  </span>
                 </div>
               )}
               <InfoRow

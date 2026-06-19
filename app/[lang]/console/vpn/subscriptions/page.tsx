@@ -59,10 +59,7 @@ export default function ConsoleVpnSubscriptionsPage() {
 
       {hasSubscriptions ? (
         <section className="space-y-4">
-          <VpnMyServices
-            subscriptions={state.subscriptions}
-            onChanged={load}
-          />
+          <VpnMyServices subscriptions={state.subscriptions} onChanged={load} />
         </section>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">

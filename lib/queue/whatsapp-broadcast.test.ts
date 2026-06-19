@@ -192,7 +192,11 @@ describe("createWhatsAppBroadcastQueue", () => {
     )
     expect(queueAddMock).toHaveBeenCalledWith(
       WHATSAPP_BROADCAST_JOB_NAME,
-      { campaignId: "camp_owned", recipientId: "rec_owned", method: "throttle" },
+      {
+        campaignId: "camp_owned",
+        recipientId: "rec_owned",
+        method: "throttle",
+      },
       { jobId: "wa-broadcast:camp_owned:rec_owned" }
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(1)
@@ -233,35 +237,39 @@ describe("enqueueWhatsAppBroadcast", () => {
     process.env.REDIS_URL = "redis://localhost:6379/0"
 
     await enqueueWhatsAppBroadcast("campaign_a", "recipient_a")
-    await enqueueWhatsAppBroadcast(
-      "campaign_b",
-      "recipient_b",
-      "throttle"
-    )
-    await enqueueWhatsAppBroadcast(
-      "campaign_c",
-      "recipient_c",
-      "status-update"
-    )
+    await enqueueWhatsAppBroadcast("campaign_b", "recipient_b", "throttle")
+    await enqueueWhatsAppBroadcast("campaign_c", "recipient_c", "status-update")
 
     expect(queueConstructorMock).toHaveBeenCalledTimes(1)
     expect(queueAddMock).toHaveBeenCalledTimes(3)
     expect(queueAddMock).toHaveBeenNthCalledWith(
       1,
       WHATSAPP_BROADCAST_JOB_NAME,
-      { campaignId: "campaign_a", recipientId: "recipient_a", method: "dispatch" },
+      {
+        campaignId: "campaign_a",
+        recipientId: "recipient_a",
+        method: "dispatch",
+      },
       { jobId: "wa-broadcast:campaign_a:recipient_a" }
     )
     expect(queueAddMock).toHaveBeenNthCalledWith(
       2,
       WHATSAPP_BROADCAST_JOB_NAME,
-      { campaignId: "campaign_b", recipientId: "recipient_b", method: "throttle" },
+      {
+        campaignId: "campaign_b",
+        recipientId: "recipient_b",
+        method: "throttle",
+      },
       { jobId: "wa-broadcast:campaign_b:recipient_b" }
     )
     expect(queueAddMock).toHaveBeenNthCalledWith(
       3,
       WHATSAPP_BROADCAST_JOB_NAME,
-      { campaignId: "campaign_c", recipientId: "recipient_c", method: "status-update" },
+      {
+        campaignId: "campaign_c",
+        recipientId: "recipient_c",
+        method: "status-update",
+      },
       { jobId: "wa-broadcast:campaign_c:recipient_c" }
     )
   })

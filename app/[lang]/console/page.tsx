@@ -4,18 +4,10 @@ import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getMessages } from "@/lib/i18n/messages"
-import {
-  localizePathname,
-  resolveLocaleOrDefault,
-} from "@/lib/i18n/pathname"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   WalletIcon,
   CurrencyCircleDollarIcon,
@@ -83,9 +75,13 @@ export default function ConsolePage() {
       eden.api.billing.account.get().then((r) => r.data),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (eden.api as any).usage.get().then((r: any) => r.data),
-      eden.api.billing.invoices.get({ $query: { limit: "1" } }).then((r) => r.data!),
+      eden.api.billing.invoices
+        .get({ $query: { limit: "1" } })
+        .then((r) => r.data!),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (eden.api as any).support.tickets.get({ $query: { status: "open" } }).then((r: any) => r.data),
+      (eden.api as any).support.tickets
+        .get({ $query: { status: "open" } })
+        .then((r: any) => r.data),
     ])
 
     setCards([
@@ -116,8 +112,7 @@ export default function ConsolePage() {
             ? `Period: ${results[1].value.data.period}`
             : null,
         loading: false,
-        error:
-          results[1].status !== "fulfilled" || !results[1].value?.success,
+        error: results[1].status !== "fulfilled" || !results[1].value?.success,
         href: null,
       },
       {
@@ -165,8 +160,7 @@ export default function ConsolePage() {
             ? messages.console.overview.awaitingResponse
             : null,
         loading: false,
-        error:
-          results[3].status !== "fulfilled" || !results[3].value?.ok,
+        error: results[3].status !== "fulfilled" || !results[3].value?.ok,
         href: localizePathname({
           pathname: "/console/support-tickets?status=open",
           locale,
@@ -183,8 +177,12 @@ export default function ConsolePage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">{messages.console.overview.heading}</h1>
-        <p className="text-sm text-muted-foreground">{messages.console.overview.description}</p>
+        <h1 className="text-2xl font-semibold">
+          {messages.console.overview.heading}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {messages.console.overview.description}
+        </p>
       </header>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -210,7 +208,9 @@ export default function ConsolePage() {
                     <Skeleton className="h-4 w-20" />
                   </div>
                 ) : card.error ? (
-                  <p className="text-sm text-muted-foreground">{messages.console.overview.unavailable}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {messages.console.overview.unavailable}
+                  </p>
                 ) : (
                   <>
                     <p className="text-2xl font-bold">{card.value}</p>
@@ -231,7 +231,7 @@ export default function ConsolePage() {
                 key={card.title}
                 href={card.href}
                 aria-label={card.title}
-                className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 {cardInner}
               </Link>

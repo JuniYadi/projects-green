@@ -17,7 +17,9 @@ import type {
  * Build OpenSearch config for a specific region.
  * Resolution order: env vars → database config (stubbed) → defaults
  */
-export function buildOpenSearchConfig(regionCode: string): OpenSearchRegionConfig {
+export function buildOpenSearchConfig(
+  regionCode: string
+): OpenSearchRegionConfig {
   const prefix = `OPENSEARCH_${regionCode.toUpperCase().replace(/-/g, "_")}`
 
   const envConfig = getEnvironmentConfig(prefix)
@@ -35,10 +37,20 @@ export function buildOpenSearchConfig(regionCode: string): OpenSearchRegionConfi
 
 function getEnvironmentConfig(prefix: string): OpenSearchConfig {
   return {
-    host: process.env[`${prefix}_ENDPOINT`] ?? process.env["OPENSEARCH_HOST"] ?? "localhost:9200",
-    username: process.env[`${prefix}_USERNAME`] ?? process.env["OPENSEARCH_USERNAME"] ?? "admin",
-    password: process.env[`${prefix}_PASSWORD`] ?? process.env["OPENSEARCH_PASSWORD"] ?? "admin",
-    apiKey: process.env[`${prefix}_API_KEY`] ?? process.env["OPENSEARCH_API_KEY"],
+    host:
+      process.env[`${prefix}_ENDPOINT`] ??
+      process.env["OPENSEARCH_HOST"] ??
+      "localhost:9200",
+    username:
+      process.env[`${prefix}_USERNAME`] ??
+      process.env["OPENSEARCH_USERNAME"] ??
+      "admin",
+    password:
+      process.env[`${prefix}_PASSWORD`] ??
+      process.env["OPENSEARCH_PASSWORD"] ??
+      "admin",
+    apiKey:
+      process.env[`${prefix}_API_KEY`] ?? process.env["OPENSEARCH_API_KEY"],
     sslVerify: process.env[`${prefix}_VERIFY_SSL`] !== "false",
     timeout: parseInt(process.env[`${prefix}_TIMEOUT`] ?? "30", 10),
   }
@@ -63,7 +75,9 @@ function getAuthHeaders(config: OpenSearchConfig): Record<string, string> {
   if (config.apiKey) {
     headers["Authorization"] = `ApiKey ${config.apiKey}`
   } else if (config.username && config.password) {
-    const creds = Buffer.from(`${config.username}:${config.password}`).toString("base64")
+    const creds = Buffer.from(`${config.username}:${config.password}`).toString(
+      "base64"
+    )
     headers["Authorization"] = `Basic ${creds}`
   }
 
@@ -74,7 +88,9 @@ function buildUrl(host: string): string {
   if (host.startsWith("http://") || host.startsWith("https://")) {
     return host
   }
-  return host.startsWith(":9200") ? `http://localhost${host}` : `https://${host}`
+  return host.startsWith(":9200")
+    ? `http://localhost${host}`
+    : `https://${host}`
 }
 
 // ─── OpenSearch Client Class ──────────────────────────────────────────────────
@@ -113,7 +129,9 @@ export class OpenSearchClient {
 
     if (!response.ok) {
       const text = await response.text()
-      throw new Error(`OpenSearch ${method} ${path} failed: ${response.status} - ${text}`)
+      throw new Error(
+        `OpenSearch ${method} ${path} failed: ${response.status} - ${text}`
+      )
     }
 
     return response.json() as Promise<T>
@@ -168,7 +186,13 @@ export class OpenSearchClient {
     query: Record<string, unknown> = {},
     size = 100,
     from = 0
-  ): Promise<{ hits: { total: { value: number }; hits: Array<{ _id: string; _source: Record<string, unknown> }> }; took: number }> {
+  ): Promise<{
+    hits: {
+      total: { value: number }
+      hits: Array<{ _id: string; _source: Record<string, unknown> }>
+    }
+    took: number
+  }> {
     const body = {
       size,
       from,
@@ -184,16 +208,23 @@ export class OpenSearchClient {
     query: Record<string, unknown> = {},
     size = 100,
     from = 0
-  ): Promise<{ hits: { total: { value: number }; hits: Array<{ _id: string; _source: Record<string, unknown> }> }; took: number }> {
+  ): Promise<{
+    hits: {
+      total: { value: number }
+      hits: Array<{ _id: string; _source: Record<string, unknown> }>
+    }
+    took: number
+  }> {
     const indexList = indices.join(",")
     return this.search(indexList, query, size, from)
   }
 
   async getIndices(): Promise<string[]> {
     try {
-      const result = await this.request<
-        Array<{ index: string }>
-      >("GET", "/_cat/indices?format=json")
+      const result = await this.request<Array<{ index: string }>>(
+        "GET",
+        "/_cat/indices?format=json"
+      )
       return result.map((r) => r.index)
     } catch {
       return []

@@ -33,7 +33,7 @@ const SOURCE_LABELS: Record<string, string> = {
  * Never exposes raw CREDIT/DEBIT or internal metadata to customers.
  */
 export function formatBalanceTransaction(
-  entry: BalanceTransactionEntry,
+  entry: BalanceTransactionEntry
 ): FormattedBalanceTransaction {
   const source =
     entry.metadataJson &&
@@ -48,7 +48,9 @@ export function formatBalanceTransaction(
   return {
     sign: isCredit ? "+" : "−",
     tone: isCredit ? "success" : "danger",
-    label: SOURCE_LABELS[source] ?? (isCredit ? "Balance adjustment added" : "Balance adjustment deducted"),
+    label:
+      SOURCE_LABELS[source] ??
+      (isCredit ? "Balance adjustment added" : "Balance adjustment deducted"),
   }
 }
 

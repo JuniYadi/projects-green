@@ -56,7 +56,9 @@ describe("slugifyRegionName", () => {
 
 describe("VpnRegionService.create", () => {
   it("creates a region with generated slug", async () => {
-    create.mockResolvedValue(makeRegion({ name: "Singapore", slug: "singapore" }))
+    create.mockResolvedValue(
+      makeRegion({ name: "Singapore", slug: "singapore" })
+    )
     const region = await service.create({
       name: "Singapore",
       countryCode: "sg",

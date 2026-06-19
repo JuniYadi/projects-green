@@ -131,14 +131,18 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
     <>
       <div className="grid gap-6 md:grid-cols-3">
         {/* Env List & CRUD */}
-        <Card size="sm" className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+        <Card
+          size="sm"
+          className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="space-y-1">
               <CardTitle className="text-base font-bold text-white">
                 Environment Variables
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Manage environment parameters injected into container pods at runtime
+                Manage environment parameters injected into container pods at
+                runtime
               </CardDescription>
             </div>
             <div>
@@ -147,7 +151,7 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsBulkOpen(true)}
-                className="h-8 border-white/[0.08] text-xs px-3 hover:bg-white/[0.04]"
+                className="h-8 border-white/[0.08] px-3 text-xs hover:bg-white/[0.04]"
               >
                 Bulk Import .env
               </Button>
@@ -159,24 +163,30 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
               onSubmit={handleAddEnv}
               className="space-y-4 rounded-xl border border-white/[0.06] bg-neutral-900/30 p-4 transition-all hover:border-white/[0.1] hover:bg-neutral-900/50"
             >
-              <div className="text-xs font-semibold text-white/80">Add Environment Variable</div>
+              <div className="text-xs font-semibold text-white/80">
+                Add Environment Variable
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-muted-foreground">Key / Name</label>
+                  <label className="text-[11px] font-medium text-muted-foreground">
+                    Key / Name
+                  </label>
                   <Input
                     placeholder="KEY (e.g. CACHE_DRIVER)"
                     value={newEnvKey}
                     onChange={(e) => setNewEnvKey(e.target.value)}
-                    className="h-9 bg-black/40 border-white/[0.08] text-xs uppercase focus:border-primary/50 font-mono"
+                    className="h-9 border-white/[0.08] bg-black/40 font-mono text-xs uppercase focus:border-primary/50"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-muted-foreground">Value</label>
+                  <label className="text-[11px] font-medium text-muted-foreground">
+                    Value
+                  </label>
                   <Input
                     placeholder="Value"
                     value={newEnvVal}
                     onChange={(e) => setNewEnvVal(e.target.value)}
-                    className="h-9 bg-black/40 border-white/[0.08] text-xs focus:border-primary/50 font-mono"
+                    className="h-9 border-white/[0.08] bg-black/40 font-mono text-xs focus:border-primary/50"
                   />
                 </div>
               </div>
@@ -205,13 +215,17 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                     />
                   </button>
                   <span
-                    className="text-xs text-muted-foreground select-none cursor-pointer"
+                    className="cursor-pointer text-xs text-muted-foreground select-none"
                     onClick={() => setNewEnvSecret(!newEnvSecret)}
                   >
                     Encrypt as Secret (values masked in dashboard/logs)
                   </span>
                 </div>
-                <Button type="submit" size="sm" className="h-8 gap-1.5 text-xs px-4 bg-primary hover:bg-primary/95 text-white font-medium">
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-8 gap-1.5 bg-primary px-4 text-xs font-medium text-white hover:bg-primary/95"
+                >
                   <Plus size={14} className="font-bold" /> Add Var
                 </Button>
               </div>
@@ -219,7 +233,7 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
 
             {/* Env List */}
             <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/20 text-xs">
-              <div className="grid grid-cols-12 border-b border-white/[0.08] bg-white/[0.02] p-3 font-semibold text-muted-foreground uppercase text-[10px] tracking-wider">
+              <div className="grid grid-cols-12 border-b border-white/[0.08] bg-white/[0.02] p-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 <span className="col-span-5">Name / Key</span>
                 <span className="col-span-5">Value</span>
                 <span className="col-span-2 text-right">Actions</span>
@@ -229,24 +243,28 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                 {envVars[selectedEnv].map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-12 items-center p-3 hover:bg-white/[0.02] transition-colors"
+                    className="grid grid-cols-12 items-center p-3 transition-colors hover:bg-white/[0.02]"
                   >
-                    <div className="col-span-5 pr-2 font-mono font-bold break-all text-white flex flex-wrap items-center gap-1.5">
-                      <span className="tracking-tight text-white/95">{item.key}</span>
+                    <div className="col-span-5 flex flex-wrap items-center gap-1.5 pr-2 font-mono font-bold break-all text-white">
+                      <span className="tracking-tight text-white/95">
+                        {item.key}
+                      </span>
                       {item.isSecret && (
-                        <span className="py-0.5 rounded border border-red-500/20 bg-red-500/10 px-1.5 font-mono text-[8px] font-bold text-red-400">
+                        <span className="rounded border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 font-mono text-[8px] font-bold text-red-400">
                           SECRET
                         </span>
                       )}
                     </div>
-                    <div className="col-span-5 font-mono break-all text-muted-foreground text-xs">
+                    <div className="col-span-5 font-mono text-xs break-all text-muted-foreground">
                       {item.isSecret && !visibleSecrets[item.id] ? (
-                        <span className="tracking-widest text-[8px] opacity-40">••••••••••••••••</span>
+                        <span className="text-[8px] tracking-widest opacity-40">
+                          ••••••••••••••••
+                        </span>
                       ) : (
                         <span className="text-white/80">{item.value}</span>
                       )}
                     </div>
-                    <div className="col-span-2 space-x-1 text-right flex justify-end items-center">
+                    <div className="col-span-2 flex items-center justify-end space-x-1 text-right">
                       {item.isSecret && (
                         <Button
                           type="button"
@@ -281,7 +299,7 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                   </div>
                 ))}
                 {envVars[selectedEnv].length === 0 && (
-                  <div className="p-6 text-center text-muted-foreground font-medium">
+                  <div className="p-6 text-center font-medium text-muted-foreground">
                     No environment variables defined for {selectedEnv}.
                   </div>
                 )}
@@ -291,10 +309,14 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
         </Card>
 
         {/* Reverse Proxy / Trust Proxy Configuration */}
-        <Card size="sm" className="col-span-1 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md">
+        <Card
+          size="sm"
+          className="col-span-1 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        >
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
-              <ArrowsLeftRight size={18} className="text-primary" /> Reverse Proxy Ingress
+              <ArrowsLeftRight size={18} className="text-primary" /> Reverse
+              Proxy Ingress
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
               Trust proxy headers to capture authentic client metadata
@@ -309,43 +331,55 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                 <button
                   type="button"
                   onClick={() => setTrustProxy(!trustProxy)}
-                  className={`relative inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold transition-all duration-200 focus:outline-none ${
-                    trustProxy 
-                      ? "bg-primary text-white" 
-                      : "bg-neutral-800 text-muted-foreground border border-white/5"
+                  className={`relative inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold transition-all duration-200 focus:outline-none ${
+                    trustProxy
+                      ? "bg-primary text-white"
+                      : "border border-white/5 bg-neutral-800 text-muted-foreground"
                   }`}
                 >
                   <span
                     className={`inline-block h-1.5 w-1.5 rounded-full ${
-                      trustProxy ? "bg-white animate-pulse" : "bg-neutral-500"
+                      trustProxy ? "animate-pulse bg-white" : "bg-neutral-500"
                     }`}
                   />
                   {trustProxy ? "TRUST ACTIVE" : "DISABLED"}
                 </button>
               </div>
-              <p className="text-[11px] text-muted-foreground leading-normal">
+              <p className="text-[11px] leading-normal text-muted-foreground">
                 Configures nginx and application environment variable:{" "}
-                <code className="text-white font-mono bg-white/5 px-1 py-0.5 rounded text-[10px]">TRUST_PROXIES=*</code>.
+                <code className="rounded bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white">
+                  TRUST_PROXIES=*
+                </code>
+                .
               </p>
             </div>
 
             <div className="space-y-2 border-l-2 border-blue-500/40 pl-3">
-              <h4 className="text-xs font-bold text-white leading-tight">
+              <h4 className="text-xs leading-tight font-bold text-white">
                 User IP Resolution
               </h4>
-              <p className="text-[11px] text-muted-foreground leading-normal">
-                When deployed behind proxy loads (like Cloudflare, ALB, or local nginx Ingress), client requests show internal local cluster IPs (e.g. <code className="font-mono text-white/90">10.0.12.33</code>) in application logging.
+              <p className="text-[11px] leading-normal text-muted-foreground">
+                When deployed behind proxy loads (like Cloudflare, ALB, or local
+                nginx Ingress), client requests show internal local cluster IPs
+                (e.g.{" "}
+                <code className="font-mono text-white/90">10.0.12.33</code>) in
+                application logging.
               </p>
-              <p className="text-[11px] text-muted-foreground leading-normal font-medium">
-                Enabling &quot;Trust Forwarded Headers&quot; commands the application server to read client parameters from the <code className="font-mono text-white/90">X-Forwarded-For</code> header sent by proxies.
+              <p className="text-[11px] leading-normal font-medium text-muted-foreground">
+                Enabling &quot;Trust Forwarded Headers&quot; commands the
+                application server to read client parameters from the{" "}
+                <code className="font-mono text-white/90">X-Forwarded-For</code>{" "}
+                header sent by proxies.
               </p>
               {trustProxy ? (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
-                  ✓ Trust proxies is active. Real client IPs will show in application code (request()-&gt;ip()).
+                  ✓ Trust proxies is active. Real client IPs will show in
+                  application code (request()-&gt;ip()).
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400">
-                  ⚠️ Currently disabled. Client IP will register as internal cluster IP.
+                  ⚠️ Currently disabled. Client IP will register as internal
+                  cluster IP.
                 </span>
               )}
             </div>
@@ -355,22 +389,25 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
 
       {/* BULK IMPORT .ENV MODAL */}
       {isBulkOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg space-y-4 rounded-xl border border-white/[0.1] bg-[#0E0E12] shadow-2xl p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg space-y-4 rounded-xl border border-white/[0.1] bg-[#0E0E12] p-6 shadow-2xl">
             <h3 className="text-base font-bold text-white">
               Bulk Import .env Variables
             </h3>
-            <p className="text-xs text-muted-foreground leading-normal">
-              Paste plain text .env definitions (KEY=VALUE). Lines starting with # will be skipped.
+            <p className="text-xs leading-normal text-muted-foreground">
+              Paste plain text .env definitions (KEY=VALUE). Lines starting with
+              # will be skipped.
             </p>
             <Textarea
               value={bulkEnvText}
               onChange={(e) => setBulkEnvText(e.target.value)}
-              placeholder={"APP_KEY=base64:...\nDB_DATABASE=shop\nCACHE_DRIVER=redis"}
+              placeholder={
+                "APP_KEY=base64:...\nDB_DATABASE=shop\nCACHE_DRIVER=redis"
+              }
               rows={8}
-              className="w-full bg-black/50 p-3 font-mono text-xs border-white/[0.08] focus:border-primary/50 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/50"
+              className="w-full rounded-lg border-white/[0.08] bg-black/50 p-3 font-mono text-xs text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none"
             />
-            <div className="flex justify-end gap-2 text-xs pt-2">
+            <div className="flex justify-end gap-2 pt-2 text-xs">
               <Button
                 type="button"
                 variant="outline"
@@ -384,7 +421,7 @@ export function TabEnv({ selectedEnv, envVars, setEnvVars }: TabEnvProps) {
                 type="button"
                 size="sm"
                 onClick={handleBulkEnvImport}
-                className="h-8 bg-primary hover:bg-primary/90 text-white"
+                className="h-8 bg-primary text-white hover:bg-primary/90"
               >
                 Import Variables
               </Button>

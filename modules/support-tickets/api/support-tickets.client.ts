@@ -183,10 +183,7 @@ export const createSupportTicketsClient = () => {
 
       return payload.attachment
     },
-    async uploadAttachmentObject(input: {
-      file: File
-      uploadUrl: string
-    }) {
+    async uploadAttachmentObject(input: { file: File; uploadUrl: string }) {
       const formData = new FormData()
       formData.append("file", input.file)
       formData.append("uploadUrl", input.uploadUrl)
@@ -199,7 +196,13 @@ export const createSupportTicketsClient = () => {
 
       const payload = await parseJsonSafely(response)
 
-      if (!response.ok || !payload || typeof payload !== "object" || !("ok" in payload) || !payload.ok) {
+      if (
+        !response.ok ||
+        !payload ||
+        typeof payload !== "object" ||
+        !("ok" in payload) ||
+        !payload.ok
+      ) {
         throw new Error("Attachment upload failed.")
       }
     },
@@ -235,7 +238,11 @@ export const createSupportTicketsClient = () => {
       const payload = await requestJson<{
         ok: true
         tickets: SupportTicket[]
-      }>("/api/support-tickets/admin", undefined, "Unable to load support tickets.")
+      }>(
+        "/api/support-tickets/admin",
+        undefined,
+        "Unable to load support tickets."
+      )
 
       return payload.tickets
     },
@@ -312,7 +319,11 @@ export const createSupportTicketsClient = () => {
       const payload = await requestJson<{
         ok: true
         organizations: Array<{ id: string; name: string }>
-      }>("/api/support-tickets/admin/organizations", undefined, "Unable to load organizations.")
+      }>(
+        "/api/support-tickets/admin/organizations",
+        undefined,
+        "Unable to load organizations."
+      )
 
       return payload.organizations
     },

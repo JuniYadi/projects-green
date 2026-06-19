@@ -1,7 +1,10 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
-import { queryLogs, getDeployAggregation } from "../../opensearch/opensearch-log.service"
+import {
+  queryLogs,
+  getDeployAggregation,
+} from "../../opensearch/opensearch-log.service"
 import type { LogLevel } from "../../opensearch/opensearch.types"
 
 const MAX_PAGE_SIZE = 1000
@@ -38,7 +41,9 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
       })
 
       if (platformRole !== "super_admin") {
-        const userMeta = (auth.user as unknown as { metadata?: Record<string, string> })?.metadata
+        const userMeta = (
+          auth.user as unknown as { metadata?: Record<string, string> }
+        )?.metadata
         if (!userMeta?.orgSlug || userMeta.orgSlug !== tenantSlug) {
           set.status = 403
           return { ok: false, error: "FORBIDDEN", message: "Access denied" }
@@ -53,7 +58,9 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
         container: query.container as string | undefined,
         from: isValidISODate(query.from as string | undefined),
         to: isValidISODate(query.to as string | undefined),
-        fromOffset: query.fromOffset ? parseInt(query.fromOffset as string, 10) : undefined,
+        fromOffset: query.fromOffset
+          ? parseInt(query.fromOffset as string, 10)
+          : undefined,
         size: parseSize(query.size as string | undefined, 100),
       })
 
@@ -92,7 +99,9 @@ export const opensearchLogsRoutes = new Elysia({ prefix: "/deploy" })
       })
 
       if (platformRole !== "super_admin") {
-        const userMeta = (auth.user as unknown as { metadata?: Record<string, string> })?.metadata
+        const userMeta = (
+          auth.user as unknown as { metadata?: Record<string, string> }
+        )?.metadata
         if (!userMeta?.orgSlug || userMeta.orgSlug !== tenantSlug) {
           set.status = 403
           return { ok: false, error: "FORBIDDEN", message: "Access denied" }

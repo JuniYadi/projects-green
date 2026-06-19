@@ -8,7 +8,10 @@
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 
-export type AuditAction = "DEVICE_REGISTERED" | "DEVICE_REVOKED" | "CONFIG_DOWNLOADED"
+export type AuditAction =
+  | "DEVICE_REGISTERED"
+  | "DEVICE_REVOKED"
+  | "CONFIG_DOWNLOADED"
 
 /**
  * Log a VPN audit event to the database.

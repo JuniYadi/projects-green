@@ -96,7 +96,9 @@ describe("getOrCreateAccountWithContacts", () => {
     }
 
     mockTx.billingAccount.upsert.mockResolvedValue(accountWithoutContacts)
-    mockTx.billingAccount.findUniqueOrThrow.mockResolvedValue(accountWithOwnerContact)
+    mockTx.billingAccount.findUniqueOrThrow.mockResolvedValue(
+      accountWithOwnerContact
+    )
     mockTx.billingContact.create.mockResolvedValue({
       id: "bc_1",
       billingAccountId: "ba_1",
@@ -231,7 +233,9 @@ describe("updateBillingContact", () => {
     mockTx.billingContact.findFirst.mockResolvedValue(existingContact)
     mockTx.billingContact.update.mockResolvedValue(updatedContact)
 
-    const result = await updateBillingContact("ba_1", "bc_2", { name: "Finance Team Updated" })
+    const result = await updateBillingContact("ba_1", "bc_2", {
+      name: "Finance Team Updated",
+    })
 
     expect(result.name).toBe("Finance Team Updated")
     expect(mockTx.billingContact.update).toHaveBeenCalledWith({
@@ -261,7 +265,9 @@ describe("updateBillingContact", () => {
     mockTx.billingContact.update.mockResolvedValue(updatedContact)
 
     // Should not throw - notification toggles are allowed for OWNER
-    const result = await updateBillingContact("ba_1", "bc_1", { notifyOnInvoice: false })
+    const result = await updateBillingContact("ba_1", "bc_1", {
+      notifyOnInvoice: false,
+    })
 
     expect(result.notifyOnInvoice).toBe(false)
     expect(mockTx.billingContact.update).toHaveBeenCalledWith({
@@ -274,7 +280,7 @@ describe("updateBillingContact", () => {
     mockTx.billingContact.findFirst.mockResolvedValue(null)
 
     await expect(
-      updateBillingContact("ba_1", "bc_unknown", { name: "New Name" }),
+      updateBillingContact("ba_1", "bc_unknown", { name: "New Name" })
     ).rejects.toThrow("CONTACT_NOT_FOUND")
   })
 })
@@ -295,7 +301,10 @@ describe("deactivateBillingContact", () => {
     }
 
     mockTx.billingContact.findFirst.mockResolvedValue(financeContact)
-    mockTx.billingContact.update.mockResolvedValue({ ...financeContact, isActive: false })
+    mockTx.billingContact.update.mockResolvedValue({
+      ...financeContact,
+      isActive: false,
+    })
 
     await deactivateBillingContact("ba_1", "bc_2")
 
@@ -317,16 +326,16 @@ describe("deactivateBillingContact", () => {
     mockTx.billingContact.findFirst.mockResolvedValue(ownerContact)
 
     await expect(deactivateBillingContact("ba_1", "bc_1")).rejects.toThrow(
-      "OWNER_PROTECTED",
+      "OWNER_PROTECTED"
     )
   })
 
   it("throws CONTACT_NOT_FOUND for unknown contact", async () => {
     mockTx.billingContact.findFirst.mockResolvedValue(null)
 
-    await expect(deactivateBillingContact("ba_1", "bc_unknown")).rejects.toThrow(
-      "CONTACT_NOT_FOUND",
-    )
+    await expect(
+      deactivateBillingContact("ba_1", "bc_unknown")
+    ).rejects.toThrow("CONTACT_NOT_FOUND")
   })
 })
 
@@ -369,7 +378,7 @@ describe("updatePreferredCurrency", () => {
     mockTx.billingInvoice.count.mockResolvedValue(3)
 
     await expect(updatePreferredCurrency("org_123", "USD")).rejects.toThrow(
-      "BILLING_CURRENCY_LOCKED",
+      "BILLING_CURRENCY_LOCKED"
     )
   })
 })

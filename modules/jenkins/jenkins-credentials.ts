@@ -75,19 +75,27 @@ export class JenkinsClient {
     return this.config.url.replace(/\/$/, "")
   }
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(
+    path: string,
+    options: RequestInit = {}
+  ): Promise<T> {
     const url = `${this.baseUrl()}${path}`
     const response = await fetch(url, {
       ...options,
       headers: {
-        Authorization: getBasicAuthHeader(this.config.username, this.config.apiToken),
+        Authorization: getBasicAuthHeader(
+          this.config.username,
+          this.config.apiToken
+        ),
         ...options.headers,
       },
     })
 
     if (!response.ok) {
       const text = await response.text()
-      throw new Error(`Jenkins ${options.method ?? "GET"} ${path} failed: ${response.status} - ${text}`)
+      throw new Error(
+        `Jenkins ${options.method ?? "GET"} ${path} failed: ${response.status} - ${text}`
+      )
     }
 
     return response.json() as Promise<T>
@@ -104,7 +112,9 @@ export class JenkinsClient {
 
   async jobExists(jobName: string): Promise<boolean> {
     try {
-      const res = await this.request<Record<string, unknown>>(`/job/${jobName}/api/json`)
+      const res = await this.request<Record<string, unknown>>(
+        `/job/${jobName}/api/json`
+      )
       return !!res
     } catch (e) {
       if (e instanceof Error && e.message.includes("404")) return false
@@ -116,7 +126,10 @@ export class JenkinsClient {
     const res = await fetch(`${this.baseUrl()}/createItem`, {
       method: "POST",
       headers: {
-        Authorization: getBasicAuthHeader(this.config.username, this.config.apiToken),
+        Authorization: getBasicAuthHeader(
+          this.config.username,
+          this.config.apiToken
+        ),
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({ name: jobName }),
@@ -128,21 +141,31 @@ export class JenkinsClient {
     return true
   }
 
-  async triggerJob(jobName: string, parameters: Record<string, string> = {}): Promise<boolean> {
+  async triggerJob(
+    jobName: string,
+    parameters: Record<string, string> = {}
+  ): Promise<boolean> {
     // Get CSRF crumb
-    const crumbRes = await this.request<{ crumbRequestField: string; crumb: string }>("/crumbIssuer/api/json")
+    const crumbRes = await this.request<{
+      crumbRequestField: string
+      crumb: string
+    }>("/crumbIssuer/api/json")
     const headers: Record<string, string> = {}
     if (crumbRes.crumb) {
       headers[crumbRes.crumbRequestField] = crumbRes.crumb
     }
 
-    const params = Object.keys(parameters).length > 0 ? parameters : { trigger: "manual" }
+    const params =
+      Object.keys(parameters).length > 0 ? parameters : { trigger: "manual" }
     const endpoint = `/job/${jobName}/buildWithParameters`
 
     const res = await fetch(`${this.baseUrl()}${endpoint}`, {
       method: "POST",
       headers: {
-        Authorization: getBasicAuthHeader(this.config.username, this.config.apiToken),
+        Authorization: getBasicAuthHeader(
+          this.config.username,
+          this.config.apiToken
+        ),
         "Content-Type": "application/x-www-form-urlencoded",
         ...headers,
       },
@@ -156,7 +179,10 @@ export class JenkinsClient {
     return true
   }
 
-  async getBuildStatus(jobName: string, buildNumber?: number): Promise<JenkinsBuildInfo | null> {
+  async getBuildStatus(
+    jobName: string,
+    buildNumber?: number
+  ): Promise<JenkinsBuildInfo | null> {
     const path = buildNumber
       ? `/job/${jobName}/${buildNumber}/api/json`
       : `/job/${jobName}/lastBuild/api/json`
@@ -182,44 +208,71 @@ export class JenkinsClient {
     }
   }
 
-  async getBuildStages(jobName: string, buildNumber?: number): Promise<JenkinsStage[] | null> {
+  async getBuildStages(
+    jobName: string,
+    buildNumber?: number
+  ): Promise<JenkinsStage[] | null> {
     const path = buildNumber
       ? `/job/${jobName}/${buildNumber}/wfapi/describe`
       : `/job/${jobName}/lastBuild/wfapi/describe`
 
     try {
-      const info = await this.request<{ stages: Array<{ id: string; name: string; status: string; durationMillis: number; startTimeMillis: number }> }>(path)
+      const info = await this.request<{
+        stages: Array<{
+          id: string
+          name: string
+          status: string
+          durationMillis: number
+          startTimeMillis: number
+        }>
+      }>(path)
 
       return info.stages.map((s) => ({
         id: s.id,
         name: s.name,
         status: this.mapStageStatus(s.status),
         duration: this.formatDuration(s.durationMillis),
-        startTime: s.startTimeMillis ? new Date(s.startTimeMillis).toISOString() : null,
+        startTime: s.startTimeMillis
+          ? new Date(s.startTimeMillis).toISOString()
+          : null,
       }))
     } catch {
       // Fallback: basic build info
       const build = await this.getBuildStatus(jobName, buildNumber)
       if (!build) return null
 
-      return [{
-        id: "build",
-        name: "Build",
-        status: this.mapBuildResult(build.result),
-        duration: build.duration ? this.formatDuration(build.duration) : "N/A",
-        startTime: build.timestamp ? new Date(build.timestamp).toISOString() : null,
-      }]
+      return [
+        {
+          id: "build",
+          name: "Build",
+          status: this.mapBuildResult(build.result),
+          duration: build.duration
+            ? this.formatDuration(build.duration)
+            : "N/A",
+          startTime: build.timestamp
+            ? new Date(build.timestamp).toISOString()
+            : null,
+        },
+      ]
     }
   }
 
-  async getConsoleLog(jobName: string, buildNumber?: number): Promise<string | null> {
+  async getConsoleLog(
+    jobName: string,
+    buildNumber?: number
+  ): Promise<string | null> {
     const path = buildNumber
       ? `/job/${jobName}/${buildNumber}/consoleText`
       : `/job/${jobName}/lastBuild/consoleText`
 
     try {
       const res = await fetch(`${this.baseUrl()}${path}`, {
-        headers: { Authorization: getBasicAuthHeader(this.config.username, this.config.apiToken) },
+        headers: {
+          Authorization: getBasicAuthHeader(
+            this.config.username,
+            this.config.apiToken
+          ),
+        },
       })
       if (!res.ok) return null
       return res.text()
@@ -230,7 +283,10 @@ export class JenkinsClient {
 
   async deleteJob(jobName: string): Promise<boolean> {
     // Get CSRF crumb first
-    const crumbRes = await this.request<{ crumbRequestField: string; crumb: string }>("/crumbIssuer/api/json")
+    const crumbRes = await this.request<{
+      crumbRequestField: string
+      crumb: string
+    }>("/crumbIssuer/api/json")
     const headers: Record<string, string> = {}
     if (crumbRes.crumb) {
       headers[crumbRes.crumbRequestField] = crumbRes.crumb
@@ -239,7 +295,10 @@ export class JenkinsClient {
     const res = await fetch(`${this.baseUrl()}/job/${jobName}`, {
       method: "DELETE",
       headers: {
-        Authorization: getBasicAuthHeader(this.config.username, this.config.apiToken),
+        Authorization: getBasicAuthHeader(
+          this.config.username,
+          this.config.apiToken
+        ),
         ...headers,
       },
     })
@@ -250,9 +309,17 @@ export class JenkinsClient {
 
   async credentialExists(credentialId: string): Promise<boolean> {
     try {
-      const res = await fetch(`${this.baseUrl()}/credentials/store/system/domain/_/credential/${credentialId}/config.xml`, {
-        headers: { Authorization: getBasicAuthHeader(this.config.username, this.config.apiToken) },
-      })
+      const res = await fetch(
+        `${this.baseUrl()}/credentials/store/system/domain/_/credential/${credentialId}/config.xml`,
+        {
+          headers: {
+            Authorization: getBasicAuthHeader(
+              this.config.username,
+              this.config.apiToken
+            ),
+          },
+        }
+      )
       return res.ok
     } catch {
       return false
@@ -261,19 +328,28 @@ export class JenkinsClient {
 
   async deleteCredential(credentialId: string): Promise<boolean> {
     // Get CSRF crumb
-    const crumbRes = await this.request<{ crumbRequestField: string; crumb: string }>("/crumbIssuer/api/json")
+    const crumbRes = await this.request<{
+      crumbRequestField: string
+      crumb: string
+    }>("/crumbIssuer/api/json")
     const headers: Record<string, string> = {}
     if (crumbRes.crumb) {
       headers[crumbRes.crumbRequestField] = crumbRes.crumb
     }
 
-    const res = await fetch(`${this.baseUrl()}/credentials/store/system/domain/_/credential/${credentialId}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: getBasicAuthHeader(this.config.username, this.config.apiToken),
-        ...headers,
-      },
-    })
+    const res = await fetch(
+      `${this.baseUrl()}/credentials/store/system/domain/_/credential/${credentialId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: getBasicAuthHeader(
+            this.config.username,
+            this.config.apiToken
+          ),
+          ...headers,
+        },
+      }
+    )
     return res.ok || res.status === 404
   }
 
@@ -281,25 +357,38 @@ export class JenkinsClient {
 
   private mapStageStatus(status: string): string {
     switch (status.toUpperCase()) {
-      case "SUCCESS": return "success"
-      case "FAILED": return "failed"
-      case "IN_PROGRESS": return "running"
-      case "ABORTED": return "failed"
-      case "UNSTABLE": return "warning"
-      case "NOT_EXECUTED": return "pending"
-      default: return "unknown"
+      case "SUCCESS":
+        return "success"
+      case "FAILED":
+        return "failed"
+      case "IN_PROGRESS":
+        return "running"
+      case "ABORTED":
+        return "failed"
+      case "UNSTABLE":
+        return "warning"
+      case "NOT_EXECUTED":
+        return "pending"
+      default:
+        return "unknown"
     }
   }
 
   private mapBuildResult(result: string | null): string {
     if (!result) return "running"
     switch (result.toUpperCase()) {
-      case "SUCCESS": return "success"
-      case "FAILURE": return "failed"
-      case "ABORTED": return "failed"
-      case "UNSTABLE": return "warning"
-      case "NOT_BUILT": return "pending"
-      default: return "unknown"
+      case "SUCCESS":
+        return "success"
+      case "FAILURE":
+        return "failed"
+      case "ABORTED":
+        return "failed"
+      case "UNSTABLE":
+        return "warning"
+      case "NOT_BUILT":
+        return "pending"
+      default:
+        return "unknown"
     }
   }
 
@@ -331,35 +420,69 @@ export async function syncGitHubCredentialToJenkins(
   try {
     const exists = await jenkinsClient.credentialExists(credentialId)
     if (exists) {
-      return { success: true, credentialId, message: "Credential already exists in Jenkins" }
+      return {
+        success: true,
+        credentialId,
+        message: "Credential already exists in Jenkins",
+      }
     }
 
     // Create GitHub token credential in Jenkins system store
-    const configXml = buildGitHubCredentialXml(credentialId, githubToken, githubUsername)
-    const createRes = await fetch(`${jenkinsClient["baseUrl"]()}/credentials/store/system/domain/_/credential/${credentialId}/config.xml`, {
-      method: "POST",
-      headers: {
-        Authorization: getBasicAuthHeader(jenkinsClient["config"].username, jenkinsClient["config"].apiToken),
-        "Content-Type": "application/xml",
-      },
-      body: configXml,
-    })
+    const configXml = buildGitHubCredentialXml(
+      credentialId,
+      githubToken,
+      githubUsername
+    )
+    const createRes = await fetch(
+      `${jenkinsClient["baseUrl"]()}/credentials/store/system/domain/_/credential/${credentialId}/config.xml`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: getBasicAuthHeader(
+            jenkinsClient["config"].username,
+            jenkinsClient["config"].apiToken
+          ),
+          "Content-Type": "application/xml",
+        },
+        body: configXml,
+      }
+    )
 
     if (!createRes.ok) {
-      return { success: false, message: "Failed to create credential in Jenkins", error: await createRes.text() }
+      return {
+        success: false,
+        message: "Failed to create credential in Jenkins",
+        error: await createRes.text(),
+      }
     }
 
-    return { success: true, credentialId, message: "GitHub credential synced to Jenkins" }
+    return {
+      success: true,
+      credentialId,
+      message: "GitHub credential synced to Jenkins",
+    }
   } catch (error) {
-    return { success: false, message: "Credential sync failed", error: error instanceof Error ? error.message : "Unknown" }
+    return {
+      success: false,
+      message: "Credential sync failed",
+      error: error instanceof Error ? error.message : "Unknown",
+    }
   }
 }
 
 function escapeXml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
 }
 
-function buildGitHubCredentialXml(id: string, token: string, username: string): string {
+function buildGitHubCredentialXml(
+  id: string,
+  token: string,
+  username: string
+): string {
   return `<com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl>
  <id>${escapeXml(id)}</id>
   <username>${escapeXml(username)}</username>
@@ -379,9 +502,15 @@ export async function removeCredentialFromJenkins(
     const deleted = await jenkinsClient.deleteCredential(credentialId)
     return {
       success: deleted,
-      message: deleted ? "Credential removed from Jenkins" : "Failed to remove credential",
+      message: deleted
+        ? "Credential removed from Jenkins"
+        : "Failed to remove credential",
     }
   } catch (error) {
-    return { success: false, message: "Credential removal failed", error: error instanceof Error ? error.message : "Unknown" }
+    return {
+      success: false,
+      message: "Credential removal failed",
+      error: error instanceof Error ? error.message : "Unknown",
+    }
   }
 }

@@ -27,5 +27,6 @@ export const userPaymentRoutes = new Elysia({ prefix: "/payments" })
   .use(createUserBankAccountRoutes())
   .use(createUploadScreenshotRoutes())
 
-export const webhookRoutes = new Elysia({ prefix: "/webhooks" })
-  .use(createWebhookRoutes())
+export const webhookRoutes = new Elysia({ prefix: "/webhooks" }).use(
+  createWebhookRoutes()
+)

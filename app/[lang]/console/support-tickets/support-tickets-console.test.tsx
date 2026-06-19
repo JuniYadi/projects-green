@@ -44,7 +44,10 @@ const fetchMock = mock<
     return new Response(null, { status: 200 })
   }
 
-  if (url === "/api/support-tickets/attachments/register" && method === "POST") {
+  if (
+    url === "/api/support-tickets/attachments/register" &&
+    method === "POST"
+  ) {
     return jsonResponse({
       ok: true,
       attachment: {
@@ -90,14 +93,17 @@ const fetchMock = mock<
 describe("SupportTicketsConsole", () => {
   beforeEach(() => {
     fetchMock.mockClear()
-    ;(globalThis as { fetch?: typeof fetch }).fetch = fetchMock as unknown as typeof fetch
+    ;(globalThis as { fetch?: typeof fetch }).fetch =
+      fetchMock as unknown as typeof fetch
   })
 
   it("loads ticket queue and renders empty state", async () => {
     const view = render(<SupportTicketsConsole lang="en" />)
 
     expect(view.getByText("Ticket Queue")).toBeInTheDocument()
-    expect(view.container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument()
+    expect(
+      view.container.querySelector('[data-slot="skeleton"]')
+    ).toBeInTheDocument()
 
     await waitFor(() =>
       expect(
@@ -127,6 +133,9 @@ describe("SupportTicketsConsole", () => {
 
     const openTicketLink = view.getByRole("link", { name: "Open Ticket" })
     expect(openTicketLink).toBeInTheDocument()
-    expect(openTicketLink).toHaveAttribute("href", "/en/console/support-tickets/new")
+    expect(openTicketLink).toHaveAttribute(
+      "href",
+      "/en/console/support-tickets/new"
+    )
   })
 })

@@ -14,12 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { eden } from "@/lib/eden"
 import {
   WebhookEventTable,
@@ -82,9 +77,8 @@ function WebhookLogTabContent({ deviceId }: { deviceId: string }) {
   }>({ total: 0, page: 1, totalPages: 0 })
   const [pageState, setPageState] = React.useState<PageState>("loading")
   const [errorMessage, setErrorMessage] = React.useState("")
-  const [filters, setFilters] = React.useState<WebhookEventFilterState>(
-    DEFAULT_FILTER_STATE,
-  )
+  const [filters, setFilters] =
+    React.useState<WebhookEventFilterState>(DEFAULT_FILTER_STATE)
   const [page, setPage] = React.useState(1)
 
   const loadEvents = React.useCallback(async () => {

@@ -19,7 +19,7 @@ export type BillingContactDTO = Pick<
 >
 
 export const toBillingContactDTO = (
-  contact: Prisma.BillingContactGetPayload<object>,
+  contact: Prisma.BillingContactGetPayload<object>
 ): BillingContactDTO => ({
   id: contact.id,
   billingAccountId: contact.billingAccountId,
@@ -43,7 +43,9 @@ export const createBillingContactSchema = z.object({
   notifyOnSupport: z.boolean().default(true),
 })
 
-export type CreateBillingContactInput = z.infer<typeof createBillingContactSchema>
+export type CreateBillingContactInput = z.infer<
+  typeof createBillingContactSchema
+>
 
 export const updateBillingContactSchema = z.object({
   name: z.string().max(255).optional().nullable(),
@@ -53,7 +55,9 @@ export const updateBillingContactSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
-export type UpdateBillingContactInput = z.infer<typeof updateBillingContactSchema>
+export type UpdateBillingContactInput = z.infer<
+  typeof updateBillingContactSchema
+>
 
 // ─── Billing Account Preferences ──────────────────────────────────────────────
 
@@ -72,7 +76,7 @@ export type BillingAccountDTO = {
 }
 
 export const toBillingAccountDTO = (
-  account: Prisma.BillingAccountGetPayload<{ include: { contacts: true } }>,
+  account: Prisma.BillingAccountGetPayload<{ include: { contacts: true } }>
 ): BillingAccountDTO => ({
   id: account.id,
   organizationId: account.organizationId,
@@ -137,7 +141,9 @@ export const updateAlertPreferencesSchema = z.object({
   usageThresholdAmount: z.number().int().min(0).optional(),
 })
 
-export type UpdateAlertPreferencesInput = z.infer<typeof updateAlertPreferencesSchema>
+export type UpdateAlertPreferencesInput = z.infer<
+  typeof updateAlertPreferencesSchema
+>
 
 // ─── Organization Currency ────────────────────────────────────────────────────
 

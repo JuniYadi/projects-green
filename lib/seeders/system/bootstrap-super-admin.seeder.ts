@@ -32,19 +32,21 @@ export class BootstrapSuperAdminSeeder extends BaseSeeder {
 
     if (emails.length === 0) {
       this.warn(
-        `No initial super admin emails configured. Set ${INITIAL_EMAIL_ENV_VAR} env var.`,
+        `No initial super admin emails configured. Set ${INITIAL_EMAIL_ENV_VAR} env var.`
       )
       this.trackSkipped()
       return
     }
 
-    const existingSuperAdmins = await this.prisma.authPlatformUserRole.findMany({
-      where: { role: AuthPlatformRole.SUPER_ADMIN },
-    })
+    const existingSuperAdmins = await this.prisma.authPlatformUserRole.findMany(
+      {
+        where: { role: AuthPlatformRole.SUPER_ADMIN },
+      }
+    )
 
     if (existingSuperAdmins.length > 0) {
       this.log(
-        `Found ${existingSuperAdmins.length} existing super admin(s). Skipping bootstrap.`,
+        `Found ${existingSuperAdmins.length} existing super admin(s). Skipping bootstrap.`
       )
       this.trackSkipped()
       return
@@ -52,11 +54,12 @@ export class BootstrapSuperAdminSeeder extends BaseSeeder {
 
     this.log("No super admins found. Bootstrapping from env var...")
 
-    const entries: Array<{ email: string; workosUserId: string }> =
-      emails.map((email) => ({
+    const entries: Array<{ email: string; workosUserId: string }> = emails.map(
+      (email) => ({
         email,
         workosUserId: createWorkosUserId(email),
-      }))
+      })
+    )
 
     for (const entry of entries) {
       const platformUserRole = await this.prisma.authPlatformUserRole.upsert({
@@ -75,7 +78,7 @@ export class BootstrapSuperAdminSeeder extends BaseSeeder {
 
       this.trackCreated()
       this.log(
-        `Created super admin: ${platformUserRole.email || platformUserRole.workosUserId}`,
+        `Created super admin: ${platformUserRole.email || platformUserRole.workosUserId}`
       )
     }
   }

@@ -63,10 +63,7 @@ const buildPaymentReference = (
   metadata: unknown
 ): PaymentReferenceInfo | null => {
   const vaNumber = readMetadataString(metadata, ["vaNumber", "va_number"])
-  const paymentUrl = readMetadataString(metadata, [
-    "paymentUrl",
-    "payment_url",
-  ])
+  const paymentUrl = readMetadataString(metadata, ["paymentUrl", "payment_url"])
   const gatewayReference = readMetadataString(metadata, [
     "duitkuReference",
     "gatewayReference",

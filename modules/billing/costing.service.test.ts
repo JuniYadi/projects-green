@@ -85,7 +85,7 @@ describe("CostingService", () => {
         id: "sub-1",
         pricingId: "pricing-1",
         pricing: {
-          unitRateCpu: 0.10,
+          unitRateCpu: 0.1,
           unitRateMem: 0.05,
         },
       } as never)

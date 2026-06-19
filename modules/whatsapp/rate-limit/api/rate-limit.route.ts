@@ -5,15 +5,7 @@ import { prisma } from "@/lib/prisma"
 
 export const rateLimitRoutes = new Elysia({ prefix: "/rate-limit" }).get(
   "/status",
-  async ({
-    request,
-    set,
-    query,
-  }: {
-    request: any
-    set: any
-    query: any
-  }) => {
+  async ({ request, set, query }: { request: any; set: any; query: any }) => {
     const auth = await resolveAuthContext(request)
     if (!auth) {
       set.status = 401
@@ -24,10 +16,10 @@ export const rateLimitRoutes = new Elysia({ prefix: "/rate-limit" }).get(
       return { ok: false, error: "NO_ORGANIZATION" }
     }
 
-    const { deviceId } = query as { deviceId?: string | null };
+    const { deviceId } = query as { deviceId?: string | null }
     if (!deviceId) {
-      set.status = 400;
-      return { ok: false, error: "DEVICE_ID_REQUIRED" };
+      set.status = 400
+      return { ok: false, error: "DEVICE_ID_REQUIRED" }
     }
 
     // Verify device ownership
@@ -36,21 +28,21 @@ export const rateLimitRoutes = new Elysia({ prefix: "/rate-limit" }).get(
         id: deviceId,
         organizationId: auth.organizationId,
       },
-    });
+    })
 
     if (!device) {
-      set.status = 404;
-      return { ok: false, error: "DEVICE_NOT_FOUND_OR_UNAUTHORIZED" };
+      set.status = 404
+      return { ok: false, error: "DEVICE_NOT_FOUND_OR_UNAUTHORIZED" }
     }
 
     const callsLastMinute = await apiCallTracker.getCallCount(
       device.id, // Use device.id which is definitely a string
       1
-    );
+    )
     const errorsLast5Min = await apiCallTracker.getRecentErrors(
       device.id, // Use device.id which is definitely a string
       5
-    );
+    )
 
     return { ok: true, callsLastMinute, errorsLast5Min }
   }

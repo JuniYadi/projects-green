@@ -53,10 +53,7 @@ const emailVerificationCompleteSchema = z.object({
 })
 
 const organizationSelectionCompleteSchema = z.object({
-  organizationId: z
-    .string()
-    .trim()
-    .min(1, "Please select an organization."),
+  organizationId: z.string().trim().min(1, "Please select an organization."),
   pendingAuthenticationToken: z
     .string()
     .trim()
@@ -89,7 +86,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
 
           console.error(
             `[auth] /auth/magic/request —`,
-            error instanceof Error ? error.stack ?? error.message : error
+            error instanceof Error ? (error.stack ?? error.message) : error
           )
 
           set.status = 500
@@ -144,7 +141,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
 
           console.error(
             `[auth] /auth/magic/verify —`,
-            error instanceof Error ? error.stack ?? error.message : error
+            error instanceof Error ? (error.stack ?? error.message) : error
           )
 
           set.status = 500
@@ -198,7 +195,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
 
           console.error(
             `[auth] /auth/email-verification/complete —`,
-            error instanceof Error ? error.stack ?? error.message : error
+            error instanceof Error ? (error.stack ?? error.message) : error
           )
 
           set.status = 500
@@ -252,7 +249,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
 
           console.error(
             `[auth] /auth/organization-selection/complete —`,
-            error instanceof Error ? error.stack ?? error.message : error
+            error instanceof Error ? (error.stack ?? error.message) : error
           )
 
           set.status = 500
@@ -311,7 +308,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
 
           console.error(
             `[auth] /auth/signup —`,
-            error instanceof Error ? error.stack ?? error.message : error
+            error instanceof Error ? (error.stack ?? error.message) : error
           )
 
           set.status = 500
@@ -357,7 +354,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
 
           console.error(
             `[auth] /auth/login —`,
-            error instanceof Error ? error.stack ?? error.message : error
+            error instanceof Error ? (error.stack ?? error.message) : error
           )
 
           set.status = 500

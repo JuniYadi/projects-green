@@ -21,7 +21,10 @@ mock.module("@/lib/prisma", () => ({
     billingInvoice: {
       findMany: async () => [],
       findFirst: async () => null,
-      create: async (data: unknown) => ({ id: "inv-mock", ...(data as Record<string, unknown>) }),
+      create: async (data: unknown) => ({
+        id: "inv-mock",
+        ...(data as Record<string, unknown>),
+      }),
       update: async (data: unknown) => data,
     },
     billingAccount: {
@@ -34,9 +37,10 @@ mock.module("@/lib/prisma", () => ({
 
 // ─── WorkOS mock for getWorkOSSession ────────────────────────────────────────
 
-const mockAuthenticateWithSessionCookie = mock<
-  () => Promise<{ authenticated: boolean; user?: Record<string, unknown> }>
->()
+const mockAuthenticateWithSessionCookie =
+  mock<
+    () => Promise<{ authenticated: boolean; user?: Record<string, unknown> }>
+  >()
 
 mock.module("@workos-inc/node", () => ({
   createWorkOS: () => ({
@@ -360,21 +364,16 @@ describe("getWorkOSSession", () => {
     }
   )
 
-  itWorkOSSessionWithSdk(
-    "returns null when WorkOS SDK throws",
-    async () => {
-      process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"
+  itWorkOSSessionWithSdk("returns null when WorkOS SDK throws", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"
 
-      mockAuthenticateWithSessionCookie.mockRejectedValue(
-        new Error("SDK error")
-      )
+    mockAuthenticateWithSessionCookie.mockRejectedValue(new Error("SDK error"))
 
-      const request = withCookie("wos-session=bad_data")
+    const request = withCookie("wos-session=bad_data")
 
-      const result = await getWorkOSSession(request)
-      expect(result).toBeNull()
-    }
-  )
+    const result = await getWorkOSSession(request)
+    expect(result).toBeNull()
+  })
 
   it("returns null when no session data in cookie or bearer", async () => {
     process.env.WORKOS_COOKIE_PASSWORD = "super-secret-password"

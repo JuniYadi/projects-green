@@ -16,7 +16,7 @@ const mockAuthenticate = mock(() =>
   Promise.resolve({
     user: { id: "user-1", email: "test@example.com" },
     organizationId: "org-1",
-  }),
+  })
 )
 
 describe("Usage Routes", () => {
@@ -24,8 +24,12 @@ describe("Usage Routes", () => {
 
   beforeEach(() => {
     routes = createUsageRoutes({
-      usageLedgerService: mockUsageLedgerService as unknown as Parameters<typeof createUsageRoutes>[0]["usageLedgerService"],
-      costingService: mockCostingService as unknown as Parameters<typeof createUsageRoutes>[0]["costingService"],
+      usageLedgerService: mockUsageLedgerService as unknown as Parameters<
+        typeof createUsageRoutes
+      >[0]["usageLedgerService"],
+      costingService: mockCostingService as unknown as Parameters<
+        typeof createUsageRoutes
+      >[0]["costingService"],
       authenticate: mockAuthenticate,
     })
     mockUsageLedgerService.getUsageByDateRange.mockClear()
@@ -42,9 +46,7 @@ describe("Usage Routes", () => {
     ] as never[])
     mockUsageLedgerService.getTotalSpend.mockResolvedValue(5000)
 
-    const response = await routes.handle(
-      new Request("http://localhost/usage")
-    )
+    const response = await routes.handle(new Request("http://localhost/usage"))
 
     expect(response.status).toBe(200)
     const data = await response.json()
@@ -121,9 +123,7 @@ describe("Usage Routes", () => {
       organizationId: null,
     } as unknown as Awaited<ReturnType<typeof mockAuthenticate>>)
 
-    const response = await routes.handle(
-      new Request("http://localhost/usage")
-    )
+    const response = await routes.handle(new Request("http://localhost/usage"))
 
     expect(response.status).toBe(401)
     const data = await response.json()
@@ -137,9 +137,7 @@ describe("Usage Routes", () => {
       organizationId: null,
     } as unknown as Awaited<ReturnType<typeof mockAuthenticate>>)
 
-    const response = await routes.handle(
-      new Request("http://localhost/usage")
-    )
+    const response = await routes.handle(new Request("http://localhost/usage"))
 
     expect(response.status).toBe(403)
     const data = await response.json()

@@ -50,7 +50,7 @@ export function ResourceSlider({
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">{label}</span>
-        <span className="text-sm font-mono">
+        <span className="font-mono text-sm">
           {value} {config.unit}
         </span>
       </div>
@@ -60,7 +60,7 @@ export function ResourceSlider({
         max={config.max}
         step={config.step}
         onValueChange={handleValueChange}
- />
+      />
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>
           {config.min} {config.unit}

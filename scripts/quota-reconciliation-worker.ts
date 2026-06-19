@@ -13,7 +13,10 @@
  */
 
 import { Worker } from "bullmq"
-import { getQuotaReconciliationRedisConnection, QUOTA_RECONCILIATION_QUEUE } from "@/lib/queue/quota-reconciliation"
+import {
+  getQuotaReconciliationRedisConnection,
+  QUOTA_RECONCILIATION_QUEUE,
+} from "@/lib/queue/quota-reconciliation"
 import type { QuotaReconciliationJobData } from "@/lib/queue/quota-reconciliation"
 import { prisma } from "@/lib/prisma"
 
@@ -66,14 +69,8 @@ async function processQuotaReconciliation(job: {
         messageOutboxCount: direction === "OUT" ? 1 : 0,
       },
       update: {
-        messageInboxCount:
-          direction === "IN"
-            ? { increment: 1 }
-            : undefined,
-        messageOutboxCount:
-          direction === "OUT"
-            ? { increment: 1 }
-            : undefined,
+        messageInboxCount: direction === "IN" ? { increment: 1 } : undefined,
+        messageOutboxCount: direction === "OUT" ? { increment: 1 } : undefined,
       },
     })
 
@@ -96,14 +93,8 @@ async function processQuotaReconciliation(job: {
         messageOutboxCount: direction === "OUT" ? 1 : 0,
       },
       update: {
-        messageInboxCount:
-          direction === "IN"
-            ? { increment: 1 }
-            : undefined,
-        messageOutboxCount:
-          direction === "OUT"
-            ? { increment: 1 }
-            : undefined,
+        messageInboxCount: direction === "IN" ? { increment: 1 } : undefined,
+        messageOutboxCount: direction === "OUT" ? { increment: 1 } : undefined,
       },
     })
 
@@ -150,7 +141,9 @@ async function main() {
   const worker = new Worker<QuotaReconciliationJobData>(
     QUOTA_RECONCILIATION_QUEUE,
     async (job) => {
-      await processQuotaReconciliation(job as unknown as { id?: string; data: QuotaReconciliationJobData })
+      await processQuotaReconciliation(
+        job as unknown as { id?: string; data: QuotaReconciliationJobData }
+      )
     },
     {
       connection,
@@ -166,7 +159,10 @@ async function main() {
 
   worker.on("failed", (job, error) => {
     if (job?.id) {
-      console.error(`[QuotaReconciliation] Job ${job.id} failed:`, error.message)
+      console.error(
+        `[QuotaReconciliation] Job ${job.id} failed:`,
+        error.message
+      )
     }
   })
 
@@ -184,7 +180,9 @@ async function main() {
   process.on("SIGINT", shutdown)
   process.on("SIGTERM", shutdown)
 
-  console.log(`[QuotaReconciliation] Worker running with concurrency=${CONCURRENCY}`)
+  console.log(
+    `[QuotaReconciliation] Worker running with concurrency=${CONCURRENCY}`
+  )
 }
 
 main().catch((error) => {

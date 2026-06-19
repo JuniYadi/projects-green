@@ -13,7 +13,6 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 // See AGENTS.md: test-guidelines > mock.module — Module Cache Rules
 // ---------------------------------------------------------------------------
 
-
 const mockTx = {
   whatsappDevice: {
     findFirst: mock(async () => null),
@@ -239,11 +238,15 @@ describe("messageService", () => {
       balance: { toString: () => "100000" },
     } as any)
     mockPrisma.serviceSubscription.findFirst.mockResolvedValue(null) // No subscription = no quota gate enforcement
-    mockPrisma.billingUsageLedger.create.mockResolvedValue({ id: "ledger-1" } as any)
+    mockPrisma.billingUsageLedger.create.mockResolvedValue({
+      id: "ledger-1",
+    } as any)
 
     // $transaction passthrough — flatten the async callback so callers
     // don't receive a Promise<Promise<Result>>.
-    mockPrisma.$transaction.mockImplementation(async (fn: any) => await fn(mockTx))
+    mockPrisma.$transaction.mockImplementation(
+      async (fn: any) => await fn(mockTx)
+    )
 
     // tx defaults: device found, no existing count → creates new count
     mockTx.whatsappDevice.findFirst.mockResolvedValue(mockDevice as any)
@@ -348,18 +351,25 @@ describe("messageService", () => {
         },
       } as any)
 
-      await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
+      await expect(sendMessageTestHelper()).rejects.toThrow(
+        "Insufficient balance"
+      )
     })
 
     it("throws when no device found", async () => {
       // New flow: device check happens first, throws "WhatsApp device not found"
       mockPrisma.whatsappDevice.findFirst.mockResolvedValue(null)
 
-      await expect(sendMessageTestHelper()).rejects.toThrow("WhatsApp device not found")
+      await expect(sendMessageTestHelper()).rejects.toThrow(
+        "WhatsApp device not found"
+      )
     })
 
     it("deducts quota after sending", async () => {
-      await sendMessageTestHelper({ organizationId: "org-1", deviceId: "device-1" })
+      await sendMessageTestHelper({
+        organizationId: "org-1",
+        deviceId: "device-1",
+      })
 
       // Deduct quota goes through $transaction
       expect(mockPrisma.$transaction).toHaveBeenCalled()
@@ -369,7 +379,10 @@ describe("messageService", () => {
       // Verify the real WhatsappBillingService.consumeAllowanceOrChargeOverage
       // was called. Default setup: updateMany returns { count: 1 } (ALLOWANCE path).
       // Spy on the prisma call that Phase 1 makes.
-      await sendMessageTestHelper({ organizationId: "org-1", deviceId: "device-1" })
+      await sendMessageTestHelper({
+        organizationId: "org-1",
+        deviceId: "device-1",
+      })
 
       // updateMany with allowance check params was called via the real service
       expect(mockPrisma.whatsappDevice.updateMany).toHaveBeenCalledWith(
@@ -448,7 +461,9 @@ describe("messageService", () => {
       await sendMessageTestHelper()
 
       expect(mockPrisma.whatsappBroadcastCampaign.create).not.toHaveBeenCalled()
-      expect(mockPrisma.whatsappBroadcastRecipient.create).not.toHaveBeenCalled()
+      expect(
+        mockPrisma.whatsappBroadcastRecipient.create
+      ).not.toHaveBeenCalled()
       expect(mockEnqueue).not.toHaveBeenCalled()
     })
 
@@ -517,7 +532,9 @@ describe("messageService", () => {
         messageOutboxCount: 2, // > limit of 1 → throws
       } as any)
 
-      await expect(sendMessageTestHelper()).rejects.toThrow(InsufficientQuotaError)
+      await expect(sendMessageTestHelper()).rejects.toThrow(
+        InsufficientQuotaError
+      )
     })
 
     // ── WhatsApp Billing Integration Tests ────────────────────────────────
@@ -569,7 +586,9 @@ describe("messageService", () => {
         },
       } as any)
 
-      await expect(sendMessageTestHelper()).rejects.toThrow("Insufficient balance")
+      await expect(sendMessageTestHelper()).rejects.toThrow(
+        "Insufficient balance"
+      )
 
       // Meta API should NOT be called — billing rejection happens before external call
       expect(mockDeviceClient.sendMessage).not.toHaveBeenCalled()

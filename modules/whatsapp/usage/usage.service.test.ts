@@ -91,9 +91,7 @@ describe("WhatsappUsageService", () => {
 
   describe("getDailyCounts", () => {
     it("queries with organizationId only when no opts", async () => {
-      mockFindMany.mockImplementation(async () => [
-        makeDailyCount(),
-      ])
+      mockFindMany.mockImplementation(async () => [makeDailyCount()])
 
       const result = await service.getDailyCounts("org-1")
 
@@ -136,9 +134,7 @@ describe("WhatsappUsageService", () => {
 
   describe("getMonthlyCounts", () => {
     it("queries with organizationId only when no opts", async () => {
-      mockFindMany.mockImplementation(async () => [
-        makeMonthlyCount(),
-      ])
+      mockFindMany.mockImplementation(async () => [makeMonthlyCount()])
 
       const result = await service.getMonthlyCounts("org-1")
 
@@ -236,31 +232,21 @@ describe("WhatsappUsageService", () => {
         }),
       ])
 
-      const result = await service.getCategoryBreakdown(
-        "org-1",
-        "2026-06"
-      )
+      const result = await service.getCategoryBreakdown("org-1", "2026-06")
 
       expect(result).toHaveLength(2)
 
-      const outCat = result.find(
-        (c) => c.category === "WHATSAPP_MESSAGE_OUT"
-      )
+      const outCat = result.find((c) => c.category === "WHATSAPP_MESSAGE_OUT")
       expect(outCat!.count).toBe(2)
       expect(outCat!.totalCost).toBe(250)
 
-      const inCat = result.find(
-        (c) => c.category === "WHATSAPP_MESSAGE_IN"
-      )
+      const inCat = result.find((c) => c.category === "WHATSAPP_MESSAGE_IN")
       expect(inCat!.count).toBe(1)
       expect(inCat!.totalCost).toBe(200)
     })
 
     it("returns empty array when no records", async () => {
-      const result = await service.getCategoryBreakdown(
-        "org-1",
-        "2026-06"
-      )
+      const result = await service.getCategoryBreakdown("org-1", "2026-06")
       expect(result).toEqual([])
     })
   })

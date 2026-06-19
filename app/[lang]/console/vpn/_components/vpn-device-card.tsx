@@ -51,11 +51,7 @@ function formatDate(value: string | null): string {
 
 function PlatformBadge({ platform }: { platform: string }) {
   const label =
-    platform === "ios"
-      ? "iOS"
-      : platform === "android"
-        ? "Android"
-        : platform
+    platform === "ios" ? "iOS" : platform === "android" ? "Android" : platform
   return (
     <Badge variant="outline" className="font-mono text-xs">
       {label}

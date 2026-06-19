@@ -40,7 +40,7 @@ describe("AdminAdjustmentsRoute", () => {
     const app = new Elysia()
       .use(
         createAdminAdjustmentsRoutes({
-          authenticate: async () => ({ user: null } as MockAuthContext),
+          authenticate: async () => ({ user: null }) as MockAuthContext,
           getPlatformRole: mockPlatformRole,
           isAdmin: mockIsAdmin,
         })
@@ -108,7 +108,7 @@ describe("AdminAdjustmentsRoute", () => {
           getPlatformRole: mockPlatformRole,
           isAdmin: mockIsAdmin,
         })
- )
+      )
       .compile()
 
     const response = await app.handle(
@@ -158,7 +158,7 @@ describe("AdminAdjustmentsRoute", () => {
           getPlatformRole: mockPlatformRole,
           isAdmin: mockIsAdmin,
         })
- )
+      )
       .compile()
 
     const response = await app.handle(
@@ -323,12 +323,13 @@ describe("AdminAdjustmentsRoute", () => {
     const app = new Elysia()
       .use(
         createAdminAdjustmentsRoutes({
-          authenticate: async () => ({
-            user: { id: "admin-1" },
-            organizationId: "org-1",
-            role: "admin",
-            roles: ["admin"],
-          } as unknown as MockAuthContext),
+          authenticate: async () =>
+            ({
+              user: { id: "admin-1" },
+              organizationId: "org-1",
+              role: "admin",
+              roles: ["admin"],
+            }) as unknown as MockAuthContext,
           getPlatformRole: async () => "super_admin" as PlatformAccessRole,
           // No isAdmin override — uses the default which returns true for super_admin
         })
@@ -351,12 +352,13 @@ describe("AdminAdjustmentsRoute", () => {
     const app = new Elysia()
       .use(
         createAdminAdjustmentsRoutes({
-          authenticate: async () => ({
-            user: { id: "owner-1" },
-            organizationId: "org-1",
-            role: "owner",
-            roles: ["owner"],
-          } as unknown as MockAuthContext),
+          authenticate: async () =>
+            ({
+              user: { id: "owner-1" },
+              organizationId: "org-1",
+              role: "owner",
+              roles: ["owner"],
+            }) as unknown as MockAuthContext,
           getPlatformRole: async () => "none" as PlatformAccessRole,
           // No isAdmin override — uses the default which checks orgRole for non-super_admin
         })
@@ -376,12 +378,13 @@ describe("AdminAdjustmentsRoute", () => {
     const app = new Elysia()
       .use(
         createAdminAdjustmentsRoutes({
-          authenticate: async () => ({
-            user: { id: "member-1" },
-            organizationId: "org-1",
-            role: "member",
-            roles: ["member"],
-          } as unknown as MockAuthContext),
+          authenticate: async () =>
+            ({
+              user: { id: "member-1" },
+              organizationId: "org-1",
+              role: "member",
+              roles: ["member"],
+            }) as unknown as MockAuthContext,
           getPlatformRole: async () => "none" as PlatformAccessRole,
           // No isAdmin override — uses the default which returns false for "member"
         })
@@ -404,13 +407,13 @@ describe("AdminAdjustmentsRoute", () => {
     const app = new Elysia()
       .use(
         createAdminAdjustmentsRoutes({
-          authenticate: async () => ({
-            user: { id: "admin-1" },
-            organizationId: "org-1",
-            role: "admin",
-          } as unknown as MockAuthContext),
-          getPlatformRole: async () =>
-            "super_admin" as PlatformAccessRole,
+          authenticate: async () =>
+            ({
+              user: { id: "admin-1" },
+              organizationId: "org-1",
+              role: "admin",
+            }) as unknown as MockAuthContext,
+          getPlatformRole: async () => "super_admin" as PlatformAccessRole,
         })
       )
       .compile()
@@ -438,11 +441,12 @@ describe("AdminAdjustmentsRoute", () => {
     const app = new Elysia()
       .use(
         createAdminAdjustmentsRoutes({
-          authenticate: async () => ({
-            user: { id: "admin-1" },
-            organizationId: "org-1",
-            role: "admin",
-          } as unknown as MockAuthContext),
+          authenticate: async () =>
+            ({
+              user: { id: "admin-1" },
+              organizationId: "org-1",
+              role: "admin",
+            }) as unknown as MockAuthContext,
           getPlatformRole: async () => "none" as PlatformAccessRole,
           isAdmin: () => true,
         })
@@ -473,7 +477,7 @@ describe("AdminAdjustmentsRoute", () => {
               user: { id: "admin-1" },
               organizationId: "org-1",
               role: "admin",
-            } as unknown as MockAuthContext),
+            }) as unknown as MockAuthContext,
           getPlatformRole: async () => "none" as PlatformAccessRole,
           isAdmin: () => true,
         })

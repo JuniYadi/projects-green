@@ -58,7 +58,8 @@ const packageConfig: Record<string, PackageInfo> = {
 }
 
 const statusStyles: Record<string, string> = {
-  ACTIVE: "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400",
+  ACTIVE:
+    "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400",
   SUSPENDED:
     "border-yellow-500/20 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   CANCELLED:
@@ -84,14 +85,18 @@ function formatDate(dateStr: string | null): string {
   }).format(new Date(dateStr))
 }
 
-export function SubscriptionCard({ subscription, className }: SubscriptionCardProps) {
+export function SubscriptionCard({
+  subscription,
+  className,
+}: SubscriptionCardProps) {
   const packageInfo = packageConfig[subscription.packageCode] ?? {
     label: subscription.packageCode,
     icon: <RocketLaunchIcon className="h-5 w-5" />,
     description: subscription.packageCode,
   }
 
-  const statusStyle = statusStyles[subscription.status] ?? statusStyles.CANCELLED
+  const statusStyle =
+    statusStyles[subscription.status] ?? statusStyles.CANCELLED
 
   return (
     <Card className={cn("", className)}>
@@ -112,7 +117,9 @@ export function SubscriptionCard({ subscription, className }: SubscriptionCardPr
         </span>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">{packageInfo.description}</p>
+        <p className="text-sm text-muted-foreground">
+          {packageInfo.description}
+        </p>
 
         <div className="space-y-1">
           <div className="flex justify-between text-sm">

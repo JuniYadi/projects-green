@@ -21,8 +21,6 @@ import {
   GRACE_PERIOD_DAYS,
 } from "./billing-cycle.types"
 
-
-
 const IDR_CURRENCY = "IDR"
 const ZERO = new Decimal(0)
 
@@ -30,7 +28,7 @@ export class BillingCycleService {
   constructor(
     private prisma: PrismaClient,
     private usageLedger: UsageLedgerService,
-    private emailService?: InvoiceEmailService,
+    private emailService?: InvoiceEmailService
   ) {}
 
   /**
@@ -57,7 +55,7 @@ export class BillingCycleService {
 
     if (existingRun) {
       console.info(
-        `[BillingCycle] BillingRun ${existingRun.id} already exists for period ${period}. Skipping.`,
+        `[BillingCycle] BillingRun ${existingRun.id} already exists for period ${period}. Skipping.`
       )
       return {
         billingRunId: existingRun.id,
@@ -106,13 +104,13 @@ export class BillingCycleService {
         const result = await this.processSubscription(
           subscription,
           period,
-          billingRun.id,
+          billingRun.id
         )
         results.push(result)
       } catch (error) {
         console.error(
           `[BillingCycle] Error processing subscription ${subscription.id}:`,
-          error,
+          error
         )
         results.push({
           subscriptionId: subscription.id,
@@ -148,7 +146,7 @@ export class BillingCycleService {
     })
 
     console.info(
-      `[BillingCycle] Completed: ${processed} processed, ${skipped} skipped.`,
+      `[BillingCycle] Completed: ${processed} processed, ${skipped} skipped.`
     )
 
     return {
@@ -162,7 +160,9 @@ export class BillingCycleService {
           subscriptionId: r.subscriptionId,
           totalAmount: r.totalAmount ?? 0,
           status:
-            r.status === "INSUFFICIENT_BALANCE" ? "DRAFT" as const : "PAID" as const,
+            r.status === "INSUFFICIENT_BALANCE"
+              ? ("DRAFT" as const)
+              : ("PAID" as const),
         })),
     }
   }
@@ -174,16 +174,20 @@ export class BillingCycleService {
     subscription: {
       id: string
       billingAccountId: string
-      billingAccount: { organizationId: string | null; balance: Decimal; id: string }
+      billingAccount: {
+        organizationId: string | null
+        balance: Decimal
+        id: string
+      }
     },
     period: string,
-    billingRunId: string,
+    billingRunId: string
   ): Promise<SubscriptionBillingResult> {
     const organizationId = subscription.billingAccount.organizationId
 
     if (!organizationId) {
       console.info(
-        `[BillingCycle] Subscription ${subscription.id}: no organizationId, skipping.`,
+        `[BillingCycle] Subscription ${subscription.id}: no organizationId, skipping.`
       )
       return { subscriptionId: subscription.id, status: "SKIPPED" }
     }
@@ -191,18 +195,18 @@ export class BillingCycleService {
     // ── Generate rated usage ──────────────────────────────────────────────
     const ratedUsage = await this.usageLedger.generateRatedUsage(
       organizationId,
-      period,
+      period
     )
 
     // ── Skip if no usage (configurable: could create $0 invoice) ──────────
     const totalAmount = ratedUsage.reduce(
       (sum, u) => sum.plus(u.cappedAmountIdr),
-      ZERO,
+      ZERO
     )
 
     if (totalAmount.isZero()) {
       console.info(
-        `[BillingCycle] Subscription ${subscription.id}: zero usage, skipping.`,
+        `[BillingCycle] Subscription ${subscription.id}: zero usage, skipping.`
       )
       return {
         subscriptionId: subscription.id,
@@ -255,7 +259,7 @@ export class BillingCycleService {
       // Include previous unpaid invoices' amounts
       const previousUnpaidTotal = existingOpenInvoices.reduce(
         (sum, inv) => sum.plus(inv.totalAmount),
-        ZERO,
+        ZERO
       )
 
       const totalDue = totalAmount.plus(previousUnpaidTotal)
@@ -331,7 +335,10 @@ export class BillingCycleService {
       this.resolveOrgAdminEmail(organizationId)
         .then(async (adminEmail) => {
           if (!adminEmail) {
-            console.warn("[BillingCycle] No admin email found for org", organizationId)
+            console.warn(
+              "[BillingCycle] No admin email found for org",
+              organizationId
+            )
             return
           }
           try {
@@ -341,11 +348,19 @@ export class BillingCycleService {
               invoiceNumber: `INV-${period}-${subscription.id.slice(0, 8)}-${billingRunId.slice(0, 8)}`,
               totalAmount: result.totalAmount,
               currency: IDR_CURRENCY,
-              status: result.status.toLowerCase() as "draft" | "open" | "paid" | "canceled" | "uncollectible",
+              status: result.status.toLowerCase() as
+                | "draft"
+                | "open"
+                | "paid"
+                | "canceled"
+                | "uncollectible",
               periodStart: this.getPeriodStart(new Date()).toISOString(),
               periodEnd: this.getPeriodEnd(new Date()).toISOString(),
-              issuedAt: result.status === "PAID" ? new Date().toISOString() : null,
-              dueAt: new Date(Date.now() + GRACE_PERIOD_DAYS * 86400000).toISOString(),
+              issuedAt:
+                result.status === "PAID" ? new Date().toISOString() : null,
+              dueAt: new Date(
+                Date.now() + GRACE_PERIOD_DAYS * 86400000
+              ).toISOString(),
             }
 
             await this.emailService!.sendInvoiceCreated(invoiceData, adminEmail)
@@ -360,10 +375,7 @@ export class BillingCycleService {
 
     return {
       subscriptionId: subscription.id,
-      status:
-        result.status === "PAID"
-          ? "BILLED"
-          : "INSUFFICIENT_BALANCE",
+      status: result.status === "PAID" ? "BILLED" : "INSUFFICIENT_BALANCE",
       invoiceId: result.invoiceId,
       totalAmount: result.totalAmount,
     }
@@ -371,20 +383,26 @@ export class BillingCycleService {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
-  private async resolveOrgAdminEmail(organizationId: string): Promise<string | null> {
+  private async resolveOrgAdminEmail(
+    organizationId: string
+  ): Promise<string | null> {
     try {
       const { getWorkOS } = await import("@workos-inc/authkit-nextjs")
       const workos = getWorkOS()
-      const memberships = await workos.userManagement.listOrganizationMemberships({
-        organizationId,
-        statuses: ["active"],
-      })
+      const memberships =
+        await workos.userManagement.listOrganizationMemberships({
+          organizationId,
+          statuses: ["active"],
+        })
       // Only send billing emails to actual admin/owner roles — never fallback to random members
       const admin = memberships.data.find(
         (m) => m.role?.slug === "user_owner" || m.role?.slug === "user_admin"
       )
       if (!admin) {
-        console.warn("[BillingCycle] No admin/owner found for org", organizationId)
+        console.warn(
+          "[BillingCycle] No admin/owner found for org",
+          organizationId
+        )
         return null
       }
       const user = await workos.userManagement.getUser(admin.userId)
@@ -432,7 +450,7 @@ export class BillingCycleService {
     })
 
     console.info(
-      `[BillingCycle] Finalized ${result.count} service invoice(s) for period ${periodStart.toISOString().slice(0, 7)}`,
+      `[BillingCycle] Finalized ${result.count} service invoice(s) for period ${periodStart.toISOString().slice(0, 7)}`
     )
 
     // Send email notifications for finalized invoices
@@ -447,7 +465,9 @@ export class BillingCycleService {
           })
           if (!account?.organizationId) continue
 
-          const adminEmail = await this.resolveOrgAdminEmail(account.organizationId)
+          const adminEmail = await this.resolveOrgAdminEmail(
+            account.organizationId
+          )
           if (!adminEmail) continue
 
           await this.emailService.sendInvoiceCreated(
@@ -462,10 +482,13 @@ export class BillingCycleService {
               issuedAt: nowDate.toISOString(),
               dueAt: null,
             },
-            adminEmail,
+            adminEmail
           )
         } catch (err) {
-          console.error("[BillingCycle] Failed to send finalization email:", err)
+          console.error(
+            "[BillingCycle] Failed to send finalization email:",
+            err
+          )
         }
       }
     }

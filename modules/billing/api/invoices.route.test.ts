@@ -33,7 +33,7 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
           })
         )
         .compile()
@@ -54,10 +54,11 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: null,
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: null,
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -80,10 +81,11 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -101,7 +103,10 @@ describe("InvoicesRoute", () => {
     })
 
     it("returns 200 with formatted invoices", async () => {
-      mockFindUnique.mockResolvedValueOnce({ id: "acc-1", organizationId: "org-1" })
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+      })
       mockFindMany.mockResolvedValueOnce([
         {
           id: "inv-1",
@@ -132,10 +137,11 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -165,10 +171,11 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -191,7 +198,7 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
           })
         )
         .compile()
@@ -209,10 +216,11 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: null,
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: null,
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -232,10 +240,11 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -252,16 +261,20 @@ describe("InvoicesRoute", () => {
     })
 
     it("returns 404 when invoice not found", async () => {
-      mockFindUnique.mockResolvedValueOnce({ id: "acc-1", organizationId: "org-1" })
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+      })
       mockFindFirst.mockResolvedValueOnce(null)
 
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -278,7 +291,10 @@ describe("InvoicesRoute", () => {
     })
 
     it("returns 200 with invoice detail", async () => {
-      mockFindUnique.mockResolvedValueOnce({ id: "acc-1", organizationId: "org-1" })
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+      })
       mockFindFirst.mockResolvedValueOnce({
         id: "inv-1",
         invoiceNumber: "INV-2026-001",
@@ -307,10 +323,11 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -338,10 +355,11 @@ describe("InvoicesRoute", () => {
       const app = new Elysia()
         .use(
           createBillingInvoicesRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()

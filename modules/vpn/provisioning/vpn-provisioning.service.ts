@@ -1,7 +1,10 @@
 import { Prisma, type PrismaClient, type VpnProtocol } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
-import { encryptVpnConfig, encryptProxyPassword } from "@/modules/vpn/vpn-crypto"
+import {
+  encryptVpnConfig,
+  encryptProxyPassword,
+} from "@/modules/vpn/vpn-crypto"
 import {
   OpenVpnSshAdapter,
   openVpnSshEnvFromProcessEnv,

@@ -7,12 +7,7 @@ export const adminCreateOrganizationSchema = z.object({
     .min(2, "Organization name must be at least 2 characters.")
     .max(80, "Organization name must be at most 80 characters."),
   domains: z
-    .array(
-      z
-        .string()
-        .trim()
-        .min(1, "Domain cannot be empty.")
-    )
+    .array(z.string().trim().min(1, "Domain cannot be empty."))
     .max(10, "Maximum 10 domains allowed.")
     .optional(),
   externalId: z
@@ -40,7 +35,11 @@ export const listOrganizationsQuerySchema = z.object({
   search: z.string().optional(),
 })
 
-export type ListOrganizationsQuery = z.infer<typeof listOrganizationsQuerySchema>
+export type ListOrganizationsQuery = z.infer<
+  typeof listOrganizationsQuerySchema
+>
 
-export type AdminCreateOrganizationInput = z.infer<typeof adminCreateOrganizationSchema>
+export type AdminCreateOrganizationInput = z.infer<
+  typeof adminCreateOrganizationSchema
+>
 export type AdminSendInvitationInput = z.infer<typeof adminSendInvitationSchema>

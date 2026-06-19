@@ -67,9 +67,7 @@ describe("PortalDocumentationsPage", () => {
     fireEvent.click(view.getByText("Test Doc"))
 
     await waitFor(() => {
-      expect(
-        view.getByRole("heading", { name: "Edit: Test Doc" })
-      ).toBeTruthy()
+      expect(view.getByRole("heading", { name: "Edit: Test Doc" })).toBeTruthy()
     })
   })
 

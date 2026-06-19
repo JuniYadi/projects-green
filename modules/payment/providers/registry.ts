@@ -60,13 +60,16 @@ export function findProvider(
  * Get config field definitions for a provider.
  * Convenience wrapper used by the UI form builder.
  */
-export function getProviderConfigFields(
-  providerId: string
-): ConfigFieldDef[] {
+export function getProviderConfigFields(providerId: string): ConfigFieldDef[] {
   const provider = providers.get(providerId)
   if (!provider) return []
   return provider.configFields
 }
 
 // Re-export for convenience
-export type { PaymentProvider, ConfigFieldDef, PaymentResult, PaymentRequest } from "./provider.interface"
+export type {
+  PaymentProvider,
+  ConfigFieldDef,
+  PaymentResult,
+  PaymentRequest,
+} from "./provider.interface"

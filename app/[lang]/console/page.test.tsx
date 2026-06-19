@@ -83,12 +83,12 @@ describe("ConsolePage", () => {
 
     await waitFor(() => {
       expect(
-        container.querySelector('a[href="/en/console/billing/invoices/inv_1"]'),
+        container.querySelector('a[href="/en/console/billing/invoices/inv_1"]')
       ).not.toBeNull()
       expect(
         container.querySelector(
-          'a[href="/en/console/support-tickets?status=open"]',
-        ),
+          'a[href="/en/console/support-tickets?status=open"]'
+        )
       ).not.toBeNull()
     })
   })
@@ -101,7 +101,7 @@ describe("ConsolePage", () => {
     await waitFor(() => {
       expect(container.textContent).toContain("No invoices yet")
       expect(
-        container.querySelector('a[href="/en/console/billing/invoices"]'),
+        container.querySelector('a[href="/en/console/billing/invoices"]')
       ).not.toBeNull()
     })
   })

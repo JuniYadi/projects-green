@@ -25,7 +25,9 @@ const orgId = ORG_ARG ? ORG_ARG.split("=")[1] : undefined
 
 async function main() {
   console.log("=== Knowledge Document Embedding Seed ===")
-  console.log(`Mode: ${DRY_RUN ? "DRY RUN (no changes)" : "LIVE (will update DB)"}`)
+  console.log(
+    `Mode: ${DRY_RUN ? "DRY RUN (no changes)" : "LIVE (will update DB)"}`
+  )
   if (limit) console.log(`Limit: ${limit} documents`)
   if (orgId) console.log(`Organization: ${orgId}`)
 

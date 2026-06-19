@@ -74,7 +74,6 @@ declare module "react-icons/si" {
   export const SiPlausibleanalytics: ComponentType<any>
 }
 
-
 declare module "sshpk" {
   export class PrivateKey {
     static parse(data: string | Buffer, format?: string): PrivateKey

@@ -139,10 +139,7 @@ export class VpnMobileDeviceService {
    *
    * search → deviceName contains (case-insensitive).
    */
-  listByOrganization(
-    organizationId: string,
-    filter?: ListMobileDeviceFilter
-  ) {
+  listByOrganization(organizationId: string, filter?: ListMobileDeviceFilter) {
     const where: Prisma.VpnMobileDeviceWhereInput = { organizationId }
     if (filter?.status) where.status = filter.status
     if (filter?.platform) where.platform = filter.platform

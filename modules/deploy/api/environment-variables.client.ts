@@ -51,14 +51,17 @@ const fetchList = async (
   }
 
   try {
-    const response = await fetch(`/api/deploy/environments/${environmentId}/variables`)
+    const response = await fetch(
+      `/api/deploy/environments/${environmentId}/variables`
+    )
     if (!response.ok) {
       return null
     }
 
-    const payload = (await parseJsonSafely(response)) as
-      | { ok?: boolean; items?: EnvVariableRecord[] }
-      | null
+    const payload = (await parseJsonSafely(response)) as {
+      ok?: boolean
+      items?: EnvVariableRecord[]
+    } | null
 
     if (!payload?.ok || !Array.isArray(payload.items)) {
       return null
@@ -88,9 +91,9 @@ const fetchMutation = async (
       body: body ? JSON.stringify(body) : undefined,
     })
 
-    const payload = (await parseJsonSafely(response)) as
-      | EnvVariablesMutationResponse
-      | null
+    const payload = (await parseJsonSafely(
+      response
+    )) as EnvVariablesMutationResponse | null
 
     if (!payload || typeof payload !== "object" || !("ok" in payload)) {
       return null
@@ -112,7 +115,9 @@ export const createEnvironmentVariablesClient = () => {
 
       return listEnvironmentVariables(environmentId)
     },
-    async create(input: MutateCreateInput): Promise<EnvVariablesMutationResponse> {
+    async create(
+      input: MutateCreateInput
+    ): Promise<EnvVariablesMutationResponse> {
       const fromApi = await fetchMutation(
         `/api/deploy/environments/${input.environmentId}/variables`,
         "POST",
@@ -125,7 +130,9 @@ export const createEnvironmentVariablesClient = () => {
 
       return createEnvironmentVariable(input)
     },
-    async update(input: MutateUpdateInput): Promise<EnvVariablesMutationResponse> {
+    async update(
+      input: MutateUpdateInput
+    ): Promise<EnvVariablesMutationResponse> {
       const fromApi = await fetchMutation(
         `/api/deploy/environments/${input.environmentId}/variables/${input.variableId}`,
         "PATCH",

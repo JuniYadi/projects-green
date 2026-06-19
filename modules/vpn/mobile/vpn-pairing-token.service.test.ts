@@ -138,10 +138,7 @@ describe("VpnPairingTokenService", () => {
 
       // Verify JWT claims passed to signJwt.
       expect(signJwt).toHaveBeenCalledTimes(1)
-      const [claimsArg, nowArg] = signJwt.mock.calls[0] as [
-        PairingClaims,
-        Date,
-      ]
+      const [claimsArg, nowArg] = signJwt.mock.calls[0] as [PairingClaims, Date]
       expect(claimsArg.sub).toBe(SUB)
       expect(claimsArg.org).toBe(ORG)
       expect(claimsArg.iat).toBe(IAT)
@@ -179,9 +176,7 @@ describe("VpnPairingTokenService", () => {
       verifyJwt.mockImplementation(() => {
         throw new VpnPairingTokenInvalidError("bad sig")
       })
-      expect(() => service.validate("bad")).toThrow(
-        VpnPairingTokenInvalidError
-      )
+      expect(() => service.validate("bad")).toThrow(VpnPairingTokenInvalidError)
     })
 
     it("throws VpnPairingTokenInvalidError on wrong typ", () => {
@@ -249,9 +244,7 @@ describe("VpnPairingTokenService", () => {
         deviceFingerprint: "fp",
         platform: "ios",
       })
-      expect(
-        prismaMock.vpnPairingToken.updateMany
-      ).toHaveBeenCalledWith(
+      expect(prismaMock.vpnPairingToken.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ id: JTI, claimedAt: null }),
         })

@@ -51,7 +51,9 @@ export default function SubscriptionPage() {
   const subscriptions = data?.subscriptions ?? []
   const whatsappSubs = subscriptions.filter((s) => s.packageCode === "WHATSAPP")
   const vpnSubs = subscriptions.filter((s) => s.packageCode === "VPN")
-  const appHostingSubs = subscriptions.filter((s) => s.packageCode === "APP_HOSTING")
+  const appHostingSubs = subscriptions.filter(
+    (s) => s.packageCode === "APP_HOSTING"
+  )
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -96,7 +98,9 @@ export default function SubscriptionPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No App Hosting subscription</p>
+              <p className="text-sm text-muted-foreground">
+                No App Hosting subscription
+              </p>
             )}
           </CardContent>
         </Card>
@@ -121,7 +125,9 @@ export default function SubscriptionPage() {
                       <span className="font-medium">{sub.status}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Monthly Rate</span>
+                      <span className="text-muted-foreground">
+                        Monthly Rate
+                      </span>
                       <span className="font-medium">
                         {new Intl.NumberFormat("id-ID", {
                           style: "currency",
@@ -134,7 +140,9 @@ export default function SubscriptionPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No VPN subscription</p>
+              <p className="text-sm text-muted-foreground">
+                No VPN subscription
+              </p>
             )}
           </CardContent>
         </Card>
@@ -168,20 +176,26 @@ export default function SubscriptionPage() {
                     {sub.quotaIn != null && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Quota In</span>
-                        <span className="font-medium">{sub.quotaIn.toLocaleString("id-ID")}</span>
+                        <span className="font-medium">
+                          {sub.quotaIn.toLocaleString("id-ID")}
+                        </span>
                       </div>
                     )}
                     {sub.quotaOut != null && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Quota Out</span>
-                        <span className="font-medium">{sub.quotaOut.toLocaleString("id-ID")}</span>
+                        <span className="font-medium">
+                          {sub.quotaOut.toLocaleString("id-ID")}
+                        </span>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No WhatsApp subscription</p>
+              <p className="text-sm text-muted-foreground">
+                No WhatsApp subscription
+              </p>
             )}
           </CardContent>
         </Card>
@@ -189,8 +203,8 @@ export default function SubscriptionPage() {
 
       <div className="rounded-lg border border-muted bg-muted/50 p-4">
         <p className="text-sm text-muted-foreground">
-          <strong>Note:</strong> Contact your administrator to upgrade, downgrade, or cancel
-          subscriptions.
+          <strong>Note:</strong> Contact your administrator to upgrade,
+          downgrade, or cancel subscriptions.
         </p>
       </div>
     </main>

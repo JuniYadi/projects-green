@@ -21,7 +21,11 @@ export const deployPipelineRoutes = new Elysia({ prefix: "/deploy" })
 
       if (!deployment) {
         set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Deployment not found" }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Deployment not found",
+        }
       }
 
       if (deployment.organizationId !== auth.organizationId) {
@@ -68,7 +72,11 @@ export const deployPipelineRoutes = new Elysia({ prefix: "/deploy" })
 
       if (!deployment) {
         set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Deployment not found" }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Deployment not found",
+        }
       }
 
       if (deployment.organizationId !== auth.organizationId) {
@@ -100,7 +108,11 @@ export const deployPipelineRoutes = new Elysia({ prefix: "/deploy" })
 
       if (!deployment) {
         set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Deployment not found" }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Deployment not found",
+        }
       }
 
       if (deployment.organizationId !== auth.organizationId) {
@@ -117,16 +129,13 @@ export const deployPipelineRoutes = new Elysia({ prefix: "/deploy" })
       }),
     }
   )
-  .get(
-    "/pipeline/monitor-stats",
-    async ({ set }) => {
-      const auth = await withAuth()
-      if (!auth.user) {
-        set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
-      }
-
-      const stats = await getMonitorStats()
-      return { ok: true, data: stats }
+  .get("/pipeline/monitor-stats", async ({ set }) => {
+    const auth = await withAuth()
+    if (!auth.user) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
     }
-  )
+
+    const stats = await getMonitorStats()
+    return { ok: true, data: stats }
+  })

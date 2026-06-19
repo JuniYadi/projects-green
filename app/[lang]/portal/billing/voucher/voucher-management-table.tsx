@@ -75,9 +75,12 @@ type CreateResponse = {
 }
 
 const STATUS_COLORS: Record<VoucherStatus, string> = {
-  ACTIVE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  EXPIRED: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  DEPLETED: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+  ACTIVE:
+    "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  EXPIRED:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  DEPLETED:
+    "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
   DISABLED: "bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-400",
 }
 
@@ -235,8 +238,8 @@ export function VoucherManagementTable() {
       )}
 
       <div className="flex items-center justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative max-w-sm flex-1">
+          <MagnifyingGlassIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search vouchers by prefix..."
             value={search}
@@ -403,9 +406,7 @@ export function VoucherManagementTable() {
               <Button
                 onClick={() => void handleCreate()}
                 disabled={
-                  isCreating ||
-                  !createForm.amount ||
-                  !createForm.expiresAt
+                  isCreating || !createForm.amount || !createForm.expiresAt
                 }
               >
                 {isCreating ? "Creating..." : "Create"}
@@ -468,8 +469,7 @@ export function VoucherManagementTable() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {voucher.currency}{" "}
-                    {Number(voucher.amount).toLocaleString()}
+                    {voucher.currency} {Number(voucher.amount).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     {voucher.claimedCount}/{voucher.maxClaims}

@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react"
 
 interface Currency {
   id: string
@@ -31,7 +37,9 @@ type CurrenciesRequestState =
   | { status: "error"; message: string }
 
 export function CurrenciesTab() {
-  const [state, setState] = useState<CurrenciesRequestState>({ status: "loading" })
+  const [state, setState] = useState<CurrenciesRequestState>({
+    status: "loading",
+  })
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editing, setEditing] = useState<Currency | null>(null)
@@ -129,7 +137,10 @@ export function CurrenciesTab() {
     try {
       const { data: payload } = await eden.api.portal.payments.currencies.get()
       if (!payload?.ok) {
-        setState({ status: "error", message: payload?.message || "Failed to load currencies" })
+        setState({
+          status: "error",
+          message: payload?.message || "Failed to load currencies",
+        })
         return
       }
       setState({ status: "success", data: payload.data || [] })
@@ -152,7 +163,9 @@ export function CurrenciesTab() {
     setIsSubmitting(true)
     try {
       const body = {
-        ...(method === "POST" ? { code: String(formData.get("code") || "").toUpperCase() } : {}),
+        ...(method === "POST"
+          ? { code: String(formData.get("code") || "").toUpperCase() }
+          : {}),
         name: String(formData.get("name") || ""),
         symbol: String(formData.get("symbol") || ""),
         isBase: isBaseRow,
@@ -162,13 +175,24 @@ export function CurrenciesTab() {
       }
       let rawPayload: unknown
       if (method === "POST") {
-        rawPayload = await eden.api.portal.payments.currencies.post(body as never)
+        rawPayload = await eden.api.portal.payments.currencies.post(
+          body as never
+        )
       } else {
-        rawPayload = await (eden.api.portal.payments.currencies.put as unknown as (...args: never[]) => Promise<unknown>)(body as never)
+        rawPayload = await (
+          eden.api.portal.payments.currencies.put as unknown as (
+            ...args: never[]
+          ) => Promise<unknown>
+        )(body as never)
       }
-      const payload = (rawPayload as { data: { ok: boolean; message?: string } }).data
+      const payload = (
+        rawPayload as { data: { ok: boolean; message?: string } }
+      ).data
       if (!payload?.ok) {
-        setState({ status: "error", message: payload?.message || "Failed to save currency" })
+        setState({
+          status: "error",
+          message: payload?.message || "Failed to save currency",
+        })
         return false
       }
       await fetchCurrencies()
@@ -185,7 +209,12 @@ export function CurrenciesTab() {
     event.preventDefault()
     const formData = new FormData(event.currentTarget)
     const isBaseRow = formData.get("isBase") === "on"
-    const ok = await submitCurrency("/api/portal/payments/currencies", "POST", formData, isBaseRow)
+    const ok = await submitCurrency(
+      "/api/portal/payments/currencies",
+      "POST",
+      formData,
+      isBaseRow
+    )
     if (ok) setIsCreating(false)
   }
 
@@ -206,9 +235,13 @@ export function CurrenciesTab() {
   async function handleToggle(id: string) {
     setIsSubmitting(true)
     try {
-      const { data: payload } = await eden.api.portal.payments.currencies[id].toggle.patch()
+      const { data: payload } =
+        await eden.api.portal.payments.currencies[id].toggle.patch()
       if (!payload?.ok) {
-        setState({ status: "error", message: payload?.message || "Failed to toggle currency" })
+        setState({
+          status: "error",
+          message: payload?.message || "Failed to toggle currency",
+        })
         return
       }
       await fetchCurrencies()
@@ -239,7 +272,12 @@ export function CurrenciesTab() {
       <div className="rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
         {state.message}
         <div className="mt-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => void fetchCurrencies()}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void fetchCurrencies()}
+          >
             Retry
           </Button>
         </div>
@@ -258,7 +296,8 @@ export function CurrenciesTab() {
             <CardTitle className="text-base">Currencies</CardTitle>
             <p className="text-xs text-muted-foreground">
               Prices are authored in the base currency
-              {base ? ` (${base.code})` : ""}. Rate = units of this currency per 1 base unit.
+              {base ? ` (${base.code})` : ""}. Rate = units of this currency per
+              1 base unit.
             </p>
           </div>
           {!editing && !isCreating && (
@@ -341,11 +380,21 @@ function CurrencyForm({
         )}
         <label className="space-y-2 text-sm font-medium">
           <span>Name</span>
-          <Input name="name" defaultValue={current?.name} placeholder="US Dollar" required />
+          <Input
+            name="name"
+            defaultValue={current?.name}
+            placeholder="US Dollar"
+            required
+          />
         </label>
         <label className="space-y-2 text-sm font-medium">
           <span>Symbol</span>
-          <Input name="symbol" defaultValue={current?.symbol} placeholder="$" required />
+          <Input
+            name="symbol"
+            defaultValue={current?.symbol}
+            placeholder="$"
+            required
+          />
         </label>
         <label className="space-y-2 text-sm font-medium">
           <span>Rate per base unit</span>
@@ -360,14 +409,32 @@ function CurrencyForm({
         </label>
         <label className="space-y-2 text-sm font-medium">
           <span>Min top-up</span>
-          <Input name="minTopup" type="number" step="0.01" min="0" defaultValue={current?.minTopup} required />
+          <Input
+            name="minTopup"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={current?.minTopup}
+            required
+          />
         </label>
         <label className="space-y-2 text-sm font-medium">
           <span>Max top-up</span>
-          <Input name="maxTopup" type="number" step="0.01" min="0" defaultValue={current?.maxTopup} required />
+          <Input
+            name="maxTopup"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={current?.maxTopup}
+            required
+          />
         </label>
         <label className="flex items-center gap-2 text-sm font-medium md:col-span-2">
-          <input type="checkbox" name="isBase" defaultChecked={current?.isBase} />
+          <input
+            type="checkbox"
+            name="isBase"
+            defaultChecked={current?.isBase}
+          />
           <span>Base currency (rate pinned to 1)</span>
         </label>
       </div>

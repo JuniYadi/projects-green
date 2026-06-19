@@ -17,7 +17,13 @@ export interface JenkinsBuild {
   id: string
   jobName: string
   buildNumber: number
-  status: "SUCCESS" | "FAILURE" | "UNSTABLE" | "ABORTED" | "BUILDING" | "PENDING"
+  status:
+    | "SUCCESS"
+    | "FAILURE"
+    | "UNSTABLE"
+    | "ABORTED"
+    | "BUILDING"
+    | "PENDING"
   url: string
   timestamp: number
 }

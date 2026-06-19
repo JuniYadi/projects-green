@@ -9,12 +9,7 @@ import { useParams } from "next/navigation"
 import { SubscriptionCard } from "@/components/billing/subscription-card"
 import { InvoiceTable } from "@/components/billing/invoice-table"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   WalletIcon,
@@ -87,8 +82,14 @@ function calculateCostProjection(
 const createSecondaryLinks = (messages: ReturnType<typeof getMessages>) => [
   { href: "/console/billing/usage", label: messages.console.billing.usage },
   { href: "/console/billing/alerts", label: messages.console.billing.alerts },
-  { href: "/console/billing/transactions", label: messages.console.billing.transactions },
-  { href: "/console/billing/subscription", label: messages.console.billing.subscriptions },
+  {
+    href: "/console/billing/transactions",
+    label: messages.console.billing.transactions,
+  },
+  {
+    href: "/console/billing/subscription",
+    label: messages.console.billing.subscriptions,
+  },
   { href: "/console/billing/vouchers", label: "Vouchers" },
   { href: "/console/billing/contacts", label: "Contacts" },
   { href: "/console/billing/settings", label: "Settings" },
@@ -176,31 +177,44 @@ export function BillingDashboard() {
         <div className="grid gap-6 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">{messages.console.billing.balance}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {messages.console.billing.balance}
+              </CardTitle>
               <WalletIcon className="text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{account.formattedBalance}</p>
-              <p className="text-xs text-muted-foreground">{messages.console.billing.accountAge.replace("{age}", account.accountAge)}</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.console.billing.accountAge.replace(
+                  "{age}",
+                  account.accountAge
+                )}
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">{messages.console.billing.nextInvoice}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {messages.console.billing.nextInvoice}
+              </CardTitle>
               <Calendar className="text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
                 {formatDate(nextBillingDate)}
               </p>
-              <p className="text-xs text-muted-foreground">{messages.console.billing.basedOnActiveSubscriptions}</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.console.billing.basedOnActiveSubscriptions}
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">{messages.console.billing.estMonthly}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {messages.console.billing.estMonthly}
+              </CardTitle>
               <ChartLineUp className="text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -209,7 +223,9 @@ export function BillingDashboard() {
                   ? formatCurrency(costProjection)
                   : "N/A"}
               </p>
-              <p className="text-xs text-muted-foreground">{messages.console.billing.estimatedMonthlyAverage}</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.console.billing.estimatedMonthlyAverage}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -236,9 +252,13 @@ export function BillingDashboard() {
       {/* Active Subscriptions */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-heading text-lg font-semibold">{messages.console.billing.activeSubscriptions}</h2>
+          <h2 className="font-heading text-lg font-semibold">
+            {messages.console.billing.activeSubscriptions}
+          </h2>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/console/billing/subscription">{messages.console.billing.viewAll}</Link>
+            <Link href="/console/billing/subscription">
+              {messages.console.billing.viewAll}
+            </Link>
           </Button>
         </div>
 
@@ -260,9 +280,13 @@ export function BillingDashboard() {
       {/* Recent Invoices */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-heading text-lg font-semibold">{messages.console.billing.recentInvoices}</h2>
+          <h2 className="font-heading text-lg font-semibold">
+            {messages.console.billing.recentInvoices}
+          </h2>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/console/billing/invoices">{messages.console.billing.viewAll}</Link>
+            <Link href="/console/billing/invoices">
+              {messages.console.billing.viewAll}
+            </Link>
           </Button>
         </div>
 

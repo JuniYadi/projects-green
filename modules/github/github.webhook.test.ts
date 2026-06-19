@@ -351,29 +351,53 @@ describe("createGithubWebhookHandler", () => {
       },
       normalizePayload: (payload: unknown) => {
         const root = payload as Record<string, unknown>
-        const installation = root.installation as Record<string, unknown> | undefined
-        const repository = root.repository as Record<string, unknown> | undefined
+        const installation = root.installation as
+          | Record<string, unknown>
+          | undefined
+        const repository = root.repository as
+          | Record<string, unknown>
+          | undefined
         const owner = repository?.owner as Record<string, unknown> | undefined
-        const headCommit = root.head_commit as Record<string, unknown> | undefined
-        const commitAuthor = headCommit?.author as Record<string, unknown> | undefined
+        const headCommit = root.head_commit as
+          | Record<string, unknown>
+          | undefined
+        const commitAuthor = headCommit?.author as
+          | Record<string, unknown>
+          | undefined
         const sender = root.sender as Record<string, unknown> | undefined
         const ref = typeof root.ref === "string" ? root.ref : null
 
         return {
-          githubInstallationId: typeof installation?.id === "number" ? BigInt(installation.id) : null,
-          githubRepositoryId: typeof repository?.id === "number" ? BigInt(repository.id) : null,
-          repositoryFullName: typeof repository?.full_name === "string" ? repository.full_name : null,
-          repositoryOwner: typeof owner?.login === "string" ? owner.login : null,
-          repositoryName: typeof repository?.name === "string" ? repository.name : null,
+          githubInstallationId:
+            typeof installation?.id === "number"
+              ? BigInt(installation.id)
+              : null,
+          githubRepositoryId:
+            typeof repository?.id === "number" ? BigInt(repository.id) : null,
+          repositoryFullName:
+            typeof repository?.full_name === "string"
+              ? repository.full_name
+              : null,
+          repositoryOwner:
+            typeof owner?.login === "string" ? owner.login : null,
+          repositoryName:
+            typeof repository?.name === "string" ? repository.name : null,
           ref,
-          branch: ref?.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : null,
+          branch: ref?.startsWith("refs/heads/")
+            ? ref.slice("refs/heads/".length)
+            : null,
           commitSha: typeof headCommit?.id === "string" ? headCommit.id : null,
-          commitMessage: typeof headCommit?.message === "string" ? headCommit.message : null,
-          commitAuthorName: typeof commitAuthor?.name === "string" ? commitAuthor.name : null,
-          commitAuthorEmail: typeof commitAuthor?.email === "string" ? commitAuthor.email : null,
-          commitUrl: typeof headCommit?.url === "string" ? headCommit.url : null,
+          commitMessage:
+            typeof headCommit?.message === "string" ? headCommit.message : null,
+          commitAuthorName:
+            typeof commitAuthor?.name === "string" ? commitAuthor.name : null,
+          commitAuthorEmail:
+            typeof commitAuthor?.email === "string" ? commitAuthor.email : null,
+          commitUrl:
+            typeof headCommit?.url === "string" ? headCommit.url : null,
           senderLogin: typeof sender?.login === "string" ? sender.login : null,
-          senderAvatarUrl: typeof sender?.avatar_url === "string" ? sender.avatar_url : null,
+          senderAvatarUrl:
+            typeof sender?.avatar_url === "string" ? sender.avatar_url : null,
         }
       },
     })

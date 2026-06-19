@@ -79,11 +79,11 @@ export function toWhatsappBroadcastCampaignDTO(
     endedAt: campaign.endedAt,
     createdAt: campaign.createdAt,
     updatedAt: campaign.updatedAt,
-    recipients: "recipients" in campaign
-      ? campaign.recipients.map(toWhatsappBroadcastRecipientDTO)
-      : undefined,
-    recipientCount: "_count" in campaign
-      ? campaign._count.recipients
-      : undefined,
+    recipients:
+      "recipients" in campaign
+        ? campaign.recipients.map(toWhatsappBroadcastRecipientDTO)
+        : undefined,
+    recipientCount:
+      "_count" in campaign ? campaign._count.recipients : undefined,
   }
 }

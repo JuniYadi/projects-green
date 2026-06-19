@@ -60,6 +60,8 @@ describe("supportTicketContentCipher", () => {
     })
     const encrypted = cipherA.encrypt("Sensitive text")
 
-    expect(() => cipherB.decrypt(encrypted)).toThrow(SupportTicketDecryptionError)
+    expect(() => cipherB.decrypt(encrypted)).toThrow(
+      SupportTicketDecryptionError
+    )
   })
 })

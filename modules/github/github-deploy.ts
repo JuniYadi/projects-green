@@ -5,7 +5,6 @@
 
 import * as jsYaml from "js-yaml"
 
-
 // ─── Config ─────────────────────────────────────────────────────────────────
 
 export interface GitHubDeployConfig {
@@ -22,12 +21,16 @@ export interface GitHubDeployConfig {
 export function getGitHubDeployConfig(): GitHubDeployConfig {
   return {
     enabled: process.env["GITHUB_DEPLOYMENT_ENABLED"] !== "false",
-    repository: process.env["GITHUB_DEPLOYMENT_REPOSITORY"] ?? "pfnapp/sgp-argocd-prod",
+    repository:
+      process.env["GITHUB_DEPLOYMENT_REPOSITORY"] ?? "pfnapp/sgp-argocd-prod",
     branch: process.env["GITHUB_DEPLOYMENT_BRANCH"] ?? "main",
     basePath: process.env["GITHUB_DEPLOYMENT_BASE_PATH"] ?? "services-yaml",
-    chartRepository: process.env["GITHUB_DEPLOYMENT_HELM_CHART_REPO_URL"] ?? "https://pfnapp.github.io/charts",
+    chartRepository:
+      process.env["GITHUB_DEPLOYMENT_HELM_CHART_REPO_URL"] ??
+      "https://pfnapp.github.io/charts",
     chartName: process.env["GITHUB_DEPLOYMENT_HELM_CHART_NAME"] ?? "deploy",
-    chartVersion: process.env["GITHUB_DEPLOYMENT_HELM_CHART_VERSION"] ?? "2.5.0",
+    chartVersion:
+      process.env["GITHUB_DEPLOYMENT_HELM_CHART_VERSION"] ?? "2.5.0",
     token: process.env["GITHUB_TOKEN"] ?? "",
   }
 }
@@ -100,21 +103,47 @@ export class GitHubDeploymentService {
     yamlFiles: YamlFile[]
   ): Promise<DeploymentResult> {
     if (!this.config.enabled) {
-      return { success: false, application: applicationName, repository: "", branch: "", files: [], message: "GitHub deployment disabled" }
+      return {
+        success: false,
+        application: applicationName,
+        repository: "",
+        branch: "",
+        files: [],
+        message: "GitHub deployment disabled",
+      }
     }
 
     if (!this.config.token) {
-      return { success: false, application: applicationName, repository: "", branch: "", files: [], message: "GitHub token not configured" }
+      return {
+        success: false,
+        application: applicationName,
+        repository: "",
+        branch: "",
+        files: [],
+        message: "GitHub token not configured",
+      }
     }
 
     try {
       const flattened = this.flattenYamlFiles(yamlFiles)
       const files = flattened.map((f) => ({
         file: f.filePath,
-        content: typeof f.contents === "string" ? f.contents : jsYaml.dump(f.contents, { indent: 2, lineWidth: -1, noRefs: true }),
+        content:
+          typeof f.contents === "string"
+            ? f.contents
+            : jsYaml.dump(f.contents, {
+                indent: 2,
+                lineWidth: -1,
+                noRefs: true,
+              }),
       }))
 
-      const result = await this.pushBulkBlob(this.config.repository, this.config.branch, files, `Deploy ${applicationName}`)
+      const result = await this.pushBulkBlob(
+        this.config.repository,
+        this.config.branch,
+        files,
+        `Deploy ${applicationName}`
+      )
 
       return {
         success: true,
@@ -147,7 +176,14 @@ export class GitHubDeploymentService {
     scriptName?: string
   ): Promise<DeploymentResult> {
     if (!this.config.token) {
-      return { success: false, application: stackSlug, repository: "", branch: "", files: [], message: "GitHub token not configured" }
+      return {
+        success: false,
+        application: stackSlug,
+        repository: "",
+        branch: "",
+        files: [],
+        message: "GitHub token not configured",
+      }
     }
 
     const repository = "pfnapp/Jenkins"
@@ -163,11 +199,21 @@ export class GitHubDeploymentService {
       // Try single file upload first
       let result: { sha?: string; commit?: { sha?: string } }
       try {
-        result = await this.uploadFile(repository, filePath, message, jobDslContent)
+        result = await this.uploadFile(
+          repository,
+          filePath,
+          message,
+          jobDslContent
+        )
       } catch (e) {
         if (e instanceof Error && e.message.includes("404")) {
           // File doesn't exist — create via Contents API
-          result = await this.createFileDirectly(repository, filePath, message, jobDslContent)
+          result = await this.createFileDirectly(
+            repository,
+            filePath,
+            message,
+            jobDslContent
+          )
         } else {
           throw e
         }
@@ -206,13 +252,17 @@ export class GitHubDeploymentService {
   ): Promise<{ sha: string }> {
     // 1. Get current branch SHA
     const ref = await githubRequest<{ object: { sha: string } }>(
-      "GET", `/repos/${repository}/git/refs/heads/${branch}`, this.config.token
+      "GET",
+      `/repos/${repository}/git/refs/heads/${branch}`,
+      this.config.token
     )
     const currentCommitSha = ref.object.sha
 
     // 2. Get current tree SHA
     const commit = await githubRequest<{ tree: { sha: string } }>(
-      "GET", `/repos/${repository}/git/commits/${currentCommitSha}`, this.config.token
+      "GET",
+      `/repos/${repository}/git/commits/${currentCommitSha}`,
+      this.config.token
     )
     const baseTreeSha = commit.tree.sha
 
@@ -220,28 +270,41 @@ export class GitHubDeploymentService {
     const blobs: Array<{ path: string; sha: string }> = []
     for (const f of files) {
       const blob = await githubRequest<{ sha: string }>(
-        "POST", `/repos/${repository}/git/blobs`, this.config.token,
+        "POST",
+        `/repos/${repository}/git/blobs`,
+        this.config.token,
         { content: f.content, encoding: "utf-8" }
       )
       blobs.push({ path: f.file, sha: blob.sha })
     }
 
     // 4. Create tree
-    const tree = blobs.map((b) => ({ path: b.path, mode: "100644", type: "blob", sha: b.sha }))
+    const tree = blobs.map((b) => ({
+      path: b.path,
+      mode: "100644",
+      type: "blob",
+      sha: b.sha,
+    }))
     const newTree = await githubRequest<{ sha: string }>(
-      "POST", `/repos/${repository}/git/trees`, this.config.token,
+      "POST",
+      `/repos/${repository}/git/trees`,
+      this.config.token,
       { base_tree: baseTreeSha, tree }
     )
 
     // 5. Create commit
     const newCommit = await githubRequest<{ sha: string }>(
-      "POST", `/repos/${repository}/git/commits`, this.config.token,
+      "POST",
+      `/repos/${repository}/git/commits`,
+      this.config.token,
       { message, tree: newTree.sha, parents: [currentCommitSha] }
     )
 
     // 6. Update branch ref
     await githubRequest(
-      "PATCH", `/repos/${repository}/git/refs/heads/${branch}`, this.config.token,
+      "PATCH",
+      `/repos/${repository}/git/refs/heads/${branch}`,
+      this.config.token,
       { sha: newCommit.sha }
     )
 
@@ -260,14 +323,21 @@ export class GitHubDeploymentService {
     // Try to get existing file SHA
     try {
       const existing = await githubRequest<{ sha: string }>(
-        "GET", `/repos/${repository}/contents/${filePath}`, this.config.token
+        "GET",
+        `/repos/${repository}/contents/${filePath}`,
+        this.config.token
       )
       // Update existing file
-      return githubRequest("PUT", `/repos/${repository}/contents/${filePath}`, this.config.token, {
-        message,
-        content: Buffer.from(content).toString("base64"),
-        sha: existing.sha,
-      })
+      return githubRequest(
+        "PUT",
+        `/repos/${repository}/contents/${filePath}`,
+        this.config.token,
+        {
+          message,
+          content: Buffer.from(content).toString("base64"),
+          sha: existing.sha,
+        }
+      )
     } catch {
       // File doesn't exist
       return this.createFileDirectly(repository, filePath, message, content)
@@ -283,10 +353,15 @@ export class GitHubDeploymentService {
     message: string,
     content: string
   ): Promise<{ sha?: string; commit?: { sha?: string } }> {
-    return githubRequest("PUT", `/repos/${repository}/contents/${filePath}`, this.config.token, {
-      message,
-      content: Buffer.from(content).toString("base64"),
-    })
+    return githubRequest(
+      "PUT",
+      `/repos/${repository}/contents/${filePath}`,
+      this.config.token,
+      {
+        message,
+        content: Buffer.from(content).toString("base64"),
+      }
+    )
   }
 
   /**
@@ -302,7 +377,10 @@ export class GitHubDeploymentService {
       } else if (typeof value === "object") {
         const obj = value as Record<string, unknown>
         if (obj["file_path"] && obj["contents"]) {
-          flattened.push({ filePath: obj["file_path"] as string, contents: obj["contents"] })
+          flattened.push({
+            filePath: obj["file_path"] as string,
+            contents: obj["contents"],
+          })
         } else {
           for (const v of Object.values(obj)) process(v)
         }
@@ -320,11 +398,12 @@ export class GitHubDeploymentService {
 // ─── Slug Helper ─────────────────────────────────────────────────────────────
 
 function toJenkinsScriptName(slug: string): string {
-  return slug
-    .replace(/[^a-zA-Z0-9-_]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    + ".groovy"
+  return (
+    slug
+      .replace(/[^a-zA-Z0-9-_]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") + ".groovy"
+  )
 }
 
 // ─── GitHub App Token Refresh ────────────────────────────────────────────────
@@ -340,33 +419,40 @@ export async function refreshGitHubAppToken(
 ): Promise<{ token: string; expiresAt: string }> {
   const jwt = generateAppJWT(config.appId, config.privateKey)
 
-  const res = await fetch(`https://api.github.com/app/installations/${config.installationId}/access_tokens`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${jwt}`,
-      Accept: "application/vnd.github.v3+json",
-      "User-Agent": "projects-green",
-    },
-  })
+  const res = await fetch(
+    `https://api.github.com/app/installations/${config.installationId}/access_tokens`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "projects-green",
+      },
+    }
+  )
 
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`GitHub App token refresh failed: ${res.status} - ${text}`)
   }
 
-  const data = await res.json() as { token: string; expires_at: string }
+  const data = (await res.json()) as { token: string; expires_at: string }
   return { token: data.token, expiresAt: data.expires_at }
 }
 
 function generateAppJWT(appId: string, _privateKey: string): string {
   // Minimal JWT generation without external deps
   // In production, use a proper JWT library (jose, jsonwebtoken)
-  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")
-  const payload = Buffer.from(JSON.stringify({
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes
-    iss: appId,
-  })).toString("base64url")
+  const header = Buffer.from(
+    JSON.stringify({ alg: "RS256", typ: "JWT" })
+  ).toString("base64url")
+  const payload = Buffer.from(
+    JSON.stringify({
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+      iss: appId,
+    })
+  ).toString("base64url")
 
   // For actual signing, use Node.js crypto or a JWT library
   // This placeholder returns an unsigned token — caller should replace with real JWT

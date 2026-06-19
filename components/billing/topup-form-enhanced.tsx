@@ -141,9 +141,8 @@ export function TopupFormEnhanced({
             setPaymentMethod((current) => {
               if (nextMethods[current]) return current
               return (
-                ALL_PAYMENT_METHODS.find(
-                  (method) => nextMethods[method.value]
-                )?.value ?? current
+                ALL_PAYMENT_METHODS.find((method) => nextMethods[method.value])
+                  ?.value ?? current
               )
             })
           }
@@ -241,7 +240,17 @@ export function TopupFormEnhanced({
     setErrorMessage(null)
 
     try {
-      const { data: result } = await eden.api.payments.topup.post({ amount, paymentMethod } as never) as { data: { ok?: boolean; message?: string; invoice?: { id: string }; paymentUrl?: string } | null }
+      const { data: result } = (await eden.api.payments.topup.post({
+        amount,
+        paymentMethod,
+      } as never)) as {
+        data: {
+          ok?: boolean
+          message?: string
+          invoice?: { id: string }
+          paymentUrl?: string
+        } | null
+      }
 
       if (!result || !result.ok) {
         throw new Error(result?.message || "Topup failed. Please try again.")
@@ -365,32 +374,32 @@ export function TopupFormEnhanced({
           <div className="grid gap-3">
             {hasPaymentMethods ? (
               PAYMENT_METHODS.map((method) => (
-              <label
-                key={method.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                  paymentMethod === method.value
-                    ? "border-primary bg-primary/5"
-                    : "border-input hover:bg-muted/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={method.value}
-                  checked={paymentMethod === method.value}
-                  onChange={() => setPaymentMethod(method.value)}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <method.icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{method.label}</span>
+                <label
+                  key={method.value}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                    paymentMethod === method.value
+                      ? "border-primary bg-primary/5"
+                      : "border-input hover:bg-muted/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={method.value}
+                    checked={paymentMethod === method.value}
+                    onChange={() => setPaymentMethod(method.value)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <method.icon className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{method.label}</span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {method.description}
+                    </p>
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {method.description}
-                  </p>
-                </div>
-              </label>
+                </label>
               ))
             ) : (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">

@@ -32,7 +32,10 @@ export async function monitorActiveDeployments() {
       const result = batchResults[i]
       if (result.status === "rejected") {
         const deployment = batch[i]
-        const reason = result.reason instanceof Error ? result.reason.message : "Monitor error"
+        const reason =
+          result.reason instanceof Error
+            ? result.reason.message
+            : "Monitor error"
         console.error(
           `[deploy-monitor] failed to check deployment ${deployment.id}:`,
           reason
@@ -40,7 +43,11 @@ export async function monitorActiveDeployments() {
 
         await prisma.applicationDeployment.update({
           where: { id: deployment.id },
-          data: { status: "FAILED", failureReason: reason, completedAt: new Date() },
+          data: {
+            status: "FAILED",
+            failureReason: reason,
+            completedAt: new Date(),
+          },
         })
 
         await recordDeployEvent({

@@ -61,6 +61,8 @@ describe("EnvBuilder", () => {
     builder.addFromConfigMap("app-config", [{ key: "DATABASE_URL" }])
 
     expect(builder.build()).toEqual([{ name: "LOG_LEVEL", value: "info" }])
-    expect(builder.buildEnvFrom()).toContainEqual({ configMapRef: { name: "app-config", items: [{ key: "DATABASE_URL" }] } })
+    expect(builder.buildEnvFrom()).toContainEqual({
+      configMapRef: { name: "app-config", items: [{ key: "DATABASE_URL" }] },
+    })
   })
 })

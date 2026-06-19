@@ -78,30 +78,36 @@ const addDays = (date: Date, days: number) => {
 }
 
 const buildInvoiceTotals = (
-  lines: Array<{ lineType: BillingInvoiceLineType; amount: number }>,
+  lines: Array<{ lineType: BillingInvoiceLineType; amount: number }>
 ) => {
   const subtotalAmount = sumNumbers(
     lines
       .filter((l) => l.lineType !== "TAX" && l.lineType !== "CREDIT")
-      .map((l) => l.amount),
+      .map((l) => l.amount)
   )
   const taxAmount = sumNumbers(
-    lines.filter((l) => l.lineType === "TAX").map((l) => l.amount),
+    lines.filter((l) => l.lineType === "TAX").map((l) => l.amount)
   )
   const creditTotal = sumNumbers(
-    lines.filter((l) => l.lineType === "CREDIT").map((l) => Math.abs(l.amount)),
+    lines.filter((l) => l.lineType === "CREDIT").map((l) => Math.abs(l.amount))
   )
   const totalAmount = subtotalAmount + taxAmount - creditTotal
 
   return { subtotalAmount, taxAmount, discountAmount: creditTotal, totalAmount }
 }
 
-const ticketStatusTimestamps = (status: SupportTicketStatus, createdAt: Date) => {
+const ticketStatusTimestamps = (
+  status: SupportTicketStatus,
+  createdAt: Date
+) => {
   if (status === "RESOLVED") {
     return { resolvedAt: addDays(createdAt, 2), closedAt: null }
   }
   if (status === "CLOSED") {
-    return { resolvedAt: addDays(createdAt, 2), closedAt: addDays(createdAt, 3) }
+    return {
+      resolvedAt: addDays(createdAt, 2),
+      closedAt: addDays(createdAt, 3),
+    }
   }
   return { resolvedAt: null, closedAt: null }
 }
@@ -375,8 +381,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
   private scopeCode!: string
 
   private parseArgs(): void {
-    const orgId =
-      this.cliArgs.get("--organization-id")?.trim() ?? null
+    const orgId = this.cliArgs.get("--organization-id")?.trim() ?? null
     const userId =
       this.cliArgs.get("--requester-workos-user-id")?.trim() ?? null
 
@@ -385,7 +390,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
     }
     if (!userId) {
       throw new Error(
-        "Missing required argument: --requester-workos-user-id=<id>",
+        "Missing required argument: --requester-workos-user-id=<id>"
       )
     }
 
@@ -398,14 +403,13 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
     this.parseArgs()
 
     this.log(
-      `Seeding invoices & tickets for org=${this.organizationId} scope=${this.scopeCode}`,
+      `Seeding invoices & tickets for org=${this.organizationId} scope=${this.scopeCode}`
     )
 
     // ── Billing Account ──────────────────────────────────────────────
-    const existingBillingAccount =
-      await this.prisma.billingAccount.findUnique({
-        where: { organizationId: this.organizationId },
-      })
+    const existingBillingAccount = await this.prisma.billingAccount.findUnique({
+      where: { organizationId: this.organizationId },
+    })
 
     const billingAccount = await this.prisma.billingAccount.upsert({
       where: { organizationId: this.organizationId },
@@ -462,7 +466,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
         seed.lines.map((line) => ({
           lineType: line.lineType,
           amount: line.quantity * line.unitPrice,
-        })),
+        }))
       )
 
       const invoiceData = {
@@ -555,7 +559,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
     this.parseArgs()
 
     this.log(
-      `Removing seeded invoices & tickets for org=${this.organizationId} scope=${this.scopeCode}`,
+      `Removing seeded invoices & tickets for org=${this.organizationId} scope=${this.scopeCode}`
     )
 
     // Delete invoices (lines cascade via FK)
@@ -590,7 +594,7 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
       this.trackDeleted(deletedAccounts.count)
     } else {
       this.warn(
-        `Skipped billing account deletion — ${remainingInvoices} non-seed invoices remain`,
+        `Skipped billing account deletion — ${remainingInvoices} non-seed invoices remain`
       )
     }
 

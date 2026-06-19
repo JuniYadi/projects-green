@@ -17,7 +17,8 @@ export const LARAVEL_ENV_PRESETS = [
   "QUEUE_CONNECTION",
 ] as const
 
-const SECRET_KEY_HINT_PATTERN = /(SECRET|TOKEN|PASSWORD|PRIVATE|APP_KEY|DB_PASSWORD)/i
+const SECRET_KEY_HINT_PATTERN =
+  /(SECRET|TOKEN|PASSWORD|PRIVATE|APP_KEY|DB_PASSWORD)/i
 
 const stripQuotedValue = (value: string) => {
   const trimmed = value.trim()

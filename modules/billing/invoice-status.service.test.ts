@@ -43,7 +43,7 @@ describe("InvoiceStatusManager", () => {
 
     manager = new InvoiceStatusManager(
       mockPrismaClient as unknown as PrismaClient,
-      mockEmailService as InvoiceEmailService,
+      mockEmailService as InvoiceEmailService
     )
   })
 
@@ -184,9 +184,7 @@ describe("InvoiceStatusManager", () => {
 
   describe("runDailyTransitions", () => {
     it("runs both issue and overdue transitions", async () => {
-      mockFindMany
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([])
+      mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([])
 
       const result = await manager.runDailyTransitions()
 
@@ -313,7 +311,9 @@ describe("InvoiceStatusManager", () => {
       // Verify reminderCount was incremented from 3 to 4
       const updateCall = mockUpdate.mock.calls[0][0]
       expect(updateCall.data.metadataJson.reminderCount).toBe(4)
-      expect(updateCall.data.metadataJson.lastReminderAt).toBe(now.toISOString())
+      expect(updateCall.data.metadataJson.lastReminderAt).toBe(
+        now.toISOString()
+      )
     })
 
     it("returns 0 when no invoices are due within reminder window", async () => {

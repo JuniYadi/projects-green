@@ -171,15 +171,10 @@ export async function getInvoice(
   id: string,
   options?: RequestInit
 ): Promise<InvoiceDetail> {
-  return fetchBilling<InvoiceDetail>(
-    `/api/billing/invoices/${id}`,
-    options
-  )
+  return fetchBilling<InvoiceDetail>(`/api/billing/invoices/${id}`, options)
 }
 
-export async function topup(
-  input: TopupInput
-): Promise<TopupSuccessResponse> {
+export async function topup(input: TopupInput): Promise<TopupSuccessResponse> {
   return fetchBilling<TopupSuccessResponse>("/api/billing/topup", {
     method: "POST",
     body: JSON.stringify(input),
@@ -309,9 +304,7 @@ export async function getAdminMembers(params?: {
 export async function getAdminMember(
   userId: string
 ): Promise<AdminMemberDetail> {
-  return fetchBilling<AdminMemberDetail>(
-    `/api/billing/admin/members/${userId}`
-  )
+  return fetchBilling<AdminMemberDetail>(`/api/billing/admin/members/${userId}`)
 }
 
 export async function getAdminAdjustments(params?: {
@@ -535,9 +528,7 @@ export async function getAdminOrgs(params?: {
 export async function getAdminOrgDetail(
   orgId: string
 ): Promise<AdminOrgDetail> {
-  return fetchBilling<AdminOrgDetail>(
-    `/api/billing/admin/orgs/${orgId}`
-  )
+  return fetchBilling<AdminOrgDetail>(`/api/billing/admin/orgs/${orgId}`)
 }
 
 // ─── Admin Topup ────────────────────────────────────────────────────────
@@ -573,9 +564,10 @@ export type AdminUsageResponse = {
   }
 }
 
-export async function getAdminUsage(
-  params?: { days?: number; orgId?: string }
-): Promise<AdminUsageResponse> {
+export async function getAdminUsage(params?: {
+  days?: number
+  orgId?: string
+}): Promise<AdminUsageResponse> {
   const searchParams = new URLSearchParams()
   if (params?.days) searchParams.set("days", String(params.days))
   if (params?.orgId) searchParams.set("orgId", params.orgId)
@@ -647,52 +639,54 @@ export async function getBillingAccount(): Promise<BillingAccountDetail> {
 }
 
 export async function addBillingContact(
-  input: CreateContactInput,
+  input: CreateContactInput
 ): Promise<{ ok: true } & BillingContactDTO> {
-  return fetchBilling<{ ok: true } & BillingContactDTO>("/api/billing/contacts", {
-    method: "POST",
-    body: JSON.stringify(input),
-  })
+  return fetchBilling<{ ok: true } & BillingContactDTO>(
+    "/api/billing/contacts",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  )
 }
 
 export async function updateBillingContact(
   contactId: string,
-  input: UpdateContactInput,
+  input: UpdateContactInput
 ): Promise<{ ok: true } & BillingContactDTO> {
   return fetchBilling<{ ok: true } & BillingContactDTO>(
     `/api/billing/contacts/${contactId}`,
     {
       method: "PATCH",
       body: JSON.stringify(input),
-    },
+    }
   )
 }
 
 export async function deactivateBillingContact(
-  contactId: string,
+  contactId: string
 ): Promise<{ ok: true }> {
-  return fetchBilling<{ ok: true }>(
-    `/api/billing/contacts/${contactId}`,
-    { method: "DELETE" },
-  )
+  return fetchBilling<{ ok: true }>(`/api/billing/contacts/${contactId}`, {
+    method: "DELETE",
+  })
 }
 
 export async function updateBillingCurrency(
-  preferredCurrency: "USD" | "IDR",
+  preferredCurrency: "USD" | "IDR"
 ): Promise<{ ok: true; preferredCurrency: "USD" | "IDR" }> {
   return fetchBilling<{ ok: true; preferredCurrency: "USD" | "IDR" }>(
     "/api/billing/currency",
     {
       method: "PATCH",
       body: JSON.stringify({ preferredCurrency }),
-    },
+    }
   )
 }
 
 export type AlertPreferencesInput = Partial<AlertPreferences>
 
 export async function updateBillingAlerts(
-  input: AlertPreferencesInput,
+  input: AlertPreferencesInput
 ): Promise<BillingAccountDetail> {
   return fetchBilling<BillingAccountDetail>("/api/billing/alerts", {
     method: "PATCH",

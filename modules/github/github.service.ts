@@ -683,8 +683,9 @@ export const createGithubRepositoryService = (
       })
     )
 
-    const repositories = dedupeRepositories(repositoriesByInstallation.flat())
-      .sort(comparePushedAtDesc)
+    const repositories = dedupeRepositories(
+      repositoriesByInstallation.flat()
+    ).sort(comparePushedAtDesc)
 
     const filtered = filterRepositories(repositories, query)
 
@@ -954,7 +955,10 @@ export const listRepoFiles = async (
   }
 
   // Get the recursive tree
-  const treeData = await githubRequest<{ tree?: GithubRepoTreeItem[]; truncated?: boolean }>({
+  const treeData = await githubRequest<{
+    tree?: GithubRepoTreeItem[]
+    truncated?: boolean
+  }>({
     path: `/repos/${input.owner}/${input.repo}/git/trees/${treeSha}?recursive=1`,
     token,
   })

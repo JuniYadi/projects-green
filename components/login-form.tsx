@@ -17,10 +17,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Alert,
-  AlertDescription,
-} from "@/components/ui/alert"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type ApiErrorPayload = {
   ok?: false
@@ -95,7 +92,9 @@ export function LoginForm({
     setIsRequestingCode(true)
 
     try {
-      const { data: payload } = await eden.api.auth.magic.request.post({ email: emailResult.data })
+      const { data: payload } = await eden.api.auth.magic.request.post({
+        email: emailResult.data,
+      })
 
       if (!payload) {
         setServerFieldErrors(
@@ -158,9 +157,13 @@ export function LoginForm({
       })
 
       if (!payload || !payload.ok) {
-        setServerFieldErrors((payload as { fieldErrors?: Record<string, string[]> })?.fieldErrors ?? {})
+        setServerFieldErrors(
+          (payload as { fieldErrors?: Record<string, string[]> })
+            ?.fieldErrors ?? {}
+        )
         setSubmitError(
-          (payload as { message?: string })?.message ?? "Invalid or expired code. Please try again."
+          (payload as { message?: string })?.message ??
+            "Invalid or expired code. Please try again."
         )
         return
       }

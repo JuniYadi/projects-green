@@ -29,9 +29,6 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
   }
 })
 
-
-
-
 describe("NavOrganization", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch
@@ -45,7 +42,9 @@ describe("NavOrganization", () => {
     mockPathname = "/en/console/organization"
     mockSearchParams = new URLSearchParams("tab=members")
     ;(usePathname as ReturnType<typeof mock>).mockReturnValue(mockPathname)
-    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(mockSearchParams)
+    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
+      mockSearchParams
+    )
     ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
       replace: mockReplace,
       refresh: mockRefresh,

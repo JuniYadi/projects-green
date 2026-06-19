@@ -10,7 +10,9 @@ class MockException extends Error {
 export const workosNodeMock = {
   getWorkOS: () => ({
     userManagement: {
-      listOrganizationMemberships: mock(async () => ({ autoPagination: async () => [] })),
+      listOrganizationMemberships: mock(async () => ({
+        autoPagination: async () => [],
+      })),
       getOrganizationMembership: mock(async () => null),
       listInvitations: mock(async () => ({ autoPagination: async () => [] })),
       sendInvitation: mock(async () => ({})),
@@ -33,16 +35,30 @@ export const workosNodeMock = {
       updateOrganization: mock(async () => ({})),
     },
     authorization: {
-      listOrganizationRoles: mock(async () => ({ autoPagination: async () => [] })),
+      listOrganizationRoles: mock(async () => ({
+        autoPagination: async () => [],
+      })),
     },
   }),
   createWorkOS: () => workosNodeMock.getWorkOS(),
   WorkOS: class WorkOS {},
   WorkOSNode: class WorkOSNode {},
-  BadRequestException: class BadRequestException extends MockException { name = "BadRequestException" },
-  ConflictException: class ConflictException extends MockException { name = "ConflictException" },
-  NotFoundException: class NotFoundException extends MockException { name = "NotFoundException" },
-  UnauthorizedException: class UnauthorizedException extends MockException { name = "UnauthorizedException" },
-  UnprocessableEntityException: class UnprocessableEntityException extends MockException { name = "UnprocessableEntityException" },
-  AuthenticationException: class AuthenticationException extends MockException { name = "AuthenticationException" },
+  BadRequestException: class BadRequestException extends MockException {
+    name = "BadRequestException"
+  },
+  ConflictException: class ConflictException extends MockException {
+    name = "ConflictException"
+  },
+  NotFoundException: class NotFoundException extends MockException {
+    name = "NotFoundException"
+  },
+  UnauthorizedException: class UnauthorizedException extends MockException {
+    name = "UnauthorizedException"
+  },
+  UnprocessableEntityException: class UnprocessableEntityException extends MockException {
+    name = "UnprocessableEntityException"
+  },
+  AuthenticationException: class AuthenticationException extends MockException {
+    name = "AuthenticationException"
+  },
 }

@@ -33,17 +33,14 @@ export const InvoiceCancelledEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>
-        Invoice {invoiceNumber} Has Been Cancelled
-      </Preview>
+      <Preview>Invoice {invoiceNumber} Has Been Cancelled</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>
-            Invoice Cancelled
-          </Heading>
+          <Heading style={styles.heading}>Invoice Cancelled</Heading>
 
           <Text style={styles.intro}>
-            Invoice {invoiceNumber} has been cancelled. No payment is required for this invoice.
+            Invoice {invoiceNumber} has been cancelled. No payment is required
+            for this invoice.
           </Text>
 
           <Section style={styles.invoiceInfo}>
@@ -53,9 +50,7 @@ export const InvoiceCancelledEmail = ({
 
             <Text style={styles.amount}>{amount}</Text>
 
-            <Text style={styles.statusBadge}>
-              CANCELLED
-            </Text>
+            <Text style={styles.statusBadge}>CANCELLED</Text>
 
             {reason && (
               <Text style={styles.reason}>
@@ -75,7 +70,8 @@ export const InvoiceCancelledEmail = ({
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have any questions about this cancellation, please contact our billing team.
+            If you have any questions about this cancellation, please contact
+            our billing team.
           </Text>
         </Container>
       </Body>

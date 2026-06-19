@@ -21,7 +21,8 @@ export function AccessRestricted({
         <p className="text-sm font-bold text-destructive">Access restricted</p>
         <div className="mt-2 text-sm text-muted-foreground">
           <p>
-            Current role: <span className="font-medium">{current ?? "none"}</span>
+            Current role:{" "}
+            <span className="font-medium">{current ?? "none"}</span>
           </p>
           <p>
             Required role: <span className="font-medium">{required}</span>

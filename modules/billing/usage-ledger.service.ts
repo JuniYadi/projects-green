@@ -51,7 +51,7 @@ export class UsageLedgerService {
 
   async getSpendByCategory(
     organizationId: string,
-    period: string,
+    period: string
   ): Promise<{ category: string | null; totalIdr: Decimal }[]> {
     const result = await this.prisma.billingUsageLedger.groupBy({
       by: ["category"],
@@ -78,7 +78,7 @@ export class UsageLedgerService {
   async getLedgerEntries(
     organizationId: string,
     period: string,
-    category?: string,
+    category?: string
   ): Promise<
     {
       id: string
@@ -106,7 +106,10 @@ export class UsageLedgerService {
     })
   }
 
-  async getTotalSpend(organizationId: string, period: string): Promise<Decimal> {
+  async getTotalSpend(
+    organizationId: string,
+    period: string
+  ): Promise<Decimal> {
     const result = await this.prisma.billingUsageLedger.aggregate({
       where: {
         organizationId,
@@ -122,7 +125,7 @@ export class UsageLedgerService {
 
   async generateRatedUsage(
     organizationId: string,
-    period: string,
+    period: string
   ): Promise<RatedUsage[]> {
     const entries = await this.prisma.billingUsageLedger.findMany({
       where: {
@@ -146,7 +149,15 @@ export class UsageLedgerService {
     })
 
     // Group by subscriptionId + category
-    const groups = new Map<string, { rawAmountIdr: Decimal; subscriptionId: string; category: string | null; monthlyCapIdr: Decimal | null | undefined }>()
+    const groups = new Map<
+      string,
+      {
+        rawAmountIdr: Decimal
+        subscriptionId: string
+        category: string | null
+        monthlyCapIdr: Decimal | null | undefined
+      }
+    >()
 
     for (const entry of entries) {
       const key = `${entry.subscriptionId}::${entry.category ?? ""}`
@@ -174,7 +185,11 @@ export class UsageLedgerService {
       let cappedAmountIdr = rawAmountIdr
 
       // Apply monthly cap if set
-      if (group.monthlyCapIdr !== null && group.monthlyCapIdr !== undefined && rawAmountIdr.gt(group.monthlyCapIdr)) {
+      if (
+        group.monthlyCapIdr !== null &&
+        group.monthlyCapIdr !== undefined &&
+        rawAmountIdr.gt(group.monthlyCapIdr)
+      ) {
         cappedAmountIdr = group.monthlyCapIdr
       }
 
@@ -198,7 +213,7 @@ export class UsageLedgerService {
     organizationId: string,
     from: string,
     to: string,
-    category?: string,
+    category?: string
   ): Promise<
     {
       id: string
@@ -231,7 +246,7 @@ export class UsageLedgerService {
 
   async getDailyUsageTrend(
     organizationId: string,
-    days: number = 30,
+    days: number = 30
   ): Promise<{ date: string; amount: Decimal }[]> {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)

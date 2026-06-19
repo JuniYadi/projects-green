@@ -108,7 +108,8 @@ export function OrganizationOnboarding({
         return
       }
       event.preventDefault()
-      event.returnValue = "Organization setup is required. Are you sure you want to leave?"
+      event.returnValue =
+        "Organization setup is required. Are you sure you want to leave?"
       return event.returnValue
     }
 
@@ -236,7 +237,7 @@ export function OrganizationOnboarding({
             }
             disabled={isCreating || Boolean(switchingOrgId)}
             aria-label="Billing currency"
-            className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="IDR">IDR</option>
             <option value="USD">USD</option>
@@ -250,7 +251,8 @@ export function OrganizationOnboarding({
         </form>
       </section>
 
-      {!isLoading && (activeMemberships.length > 0 || pendingMemberships.length > 0) ? (
+      {!isLoading &&
+      (activeMemberships.length > 0 || pendingMemberships.length > 0) ? (
         <section className="space-y-3 rounded-lg border border-border p-4 md:p-6">
           <h2 className="text-lg font-semibold">Join existing organization</h2>
           <p className="text-sm text-muted-foreground">
@@ -293,8 +295,8 @@ export function OrganizationOnboarding({
 
           {activeMemberships.length === 0 && pendingMemberships.length > 0 ? (
             <p className="text-sm text-muted-foreground">
-              You have pending invitations. Accept an invitation first, then come
-              back here to join.
+              You have pending invitations. Accept an invitation first, then
+              come back here to join.
             </p>
           ) : null}
         </section>

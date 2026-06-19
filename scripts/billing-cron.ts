@@ -67,13 +67,20 @@ async function processMonthlyReset(): Promise<number> {
 /**
  * Monthly billing: run billing cycle orchestrator for all active subscriptions.
  */
-async function processMonthlyBilling(): Promise<{ processed: number; skipped: number }> {
+async function processMonthlyBilling(): Promise<{
+  processed: number
+  skipped: number
+}> {
   const usageLedger = new UsageLedgerService(prisma)
-  const billingCycle = new BillingCycleService(prisma, usageLedger, invoiceEmailService)
+  const billingCycle = new BillingCycleService(
+    prisma,
+    usageLedger,
+    invoiceEmailService
+  )
   const result = await billingCycle.processMonthlyBilling()
 
   console.info(
-    `[billing-cron] monthly billing: processed=${result.processed} skipped=${result.skipped} invoices=${result.invoices.length}`,
+    `[billing-cron] monthly billing: processed=${result.processed} skipped=${result.skipped} invoices=${result.invoices.length}`
   )
 
   return { processed: result.processed, skipped: result.skipped }
@@ -90,7 +97,7 @@ async function processInvoiceStatusManager(): Promise<{
   const result = await statusManager.runDailyTransitions()
 
   console.info(
-    `[billing-cron] invoice status manager: issued=${result.issued} overdue=${result.overdue}`,
+    `[billing-cron] invoice status manager: issued=${result.issued} overdue=${result.overdue}`
   )
 
   return result
@@ -103,9 +110,7 @@ async function processPaymentReminder(): Promise<{ sent: number }> {
   const statusManager = new InvoiceStatusManager(prisma, invoiceEmailService)
   const result = await statusManager.sendPaymentReminders()
 
-  console.info(
-    `[billing-cron] payment reminder: sent=${result.sent}`,
-  )
+  console.info(`[billing-cron] payment reminder: sent=${result.sent}`)
 
   return result
 }
@@ -143,7 +148,7 @@ const monthlyWorker = new Worker<BillingCronJobData>(
     } else if (job.name === BILLING_MONTHLY_BILLING_JOB) {
       const result = await processMonthlyBilling()
       console.info(
-        `[billing-cron] monthly billing: ${result.processed} processed`,
+        `[billing-cron] monthly billing: ${result.processed} processed`
       )
     }
   },
@@ -160,7 +165,7 @@ const statusWorker = new Worker<BillingCronJobData>(
     if (job.name === BILLING_INVOICE_STATUS_JOB) {
       const result = await processInvoiceStatusManager()
       console.info(
-        `[billing-cron] invoice status: ${result.issued} issued, ${result.overdue} overdue`,
+        `[billing-cron] invoice status: ${result.issued} issued, ${result.overdue} overdue`
       )
     }
   },
@@ -176,9 +181,7 @@ const reminderWorker = new Worker<BillingCronJobData>(
   async (job: Job<BillingCronJobData>) => {
     if (job.name === BILLING_PAYMENT_REMINDER_JOB) {
       const result = await processPaymentReminder()
-      console.info(
-        `[billing-cron] payment reminder: sent=${result.sent}`,
-      )
+      console.info(`[billing-cron] payment reminder: sent=${result.sent}`)
     }
   },
   {
@@ -188,15 +191,11 @@ const reminderWorker = new Worker<BillingCronJobData>(
 )
 
 worker.on("active", (job) => {
-  console.info(
-    `[billing-cron] processing ${job.name} id=${job.id}`
-  )
+  console.info(`[billing-cron] processing ${job.name} id=${job.id}`)
 })
 
 worker.on("completed", (job) => {
-  console.info(
-    `[billing-cron] completed ${job.name} id=${job.id}`
-  )
+  console.info(`[billing-cron] completed ${job.name} id=${job.id}`)
 })
 
 worker.on("failed", (job, error) => {
@@ -212,15 +211,11 @@ worker.on("failed", (job, error) => {
 })
 
 monthlyWorker.on("active", (job) => {
-  console.info(
-    `[billing-cron] processing ${job.name} id=${job.id}`
-  )
+  console.info(`[billing-cron] processing ${job.name} id=${job.id}`)
 })
 
 monthlyWorker.on("completed", (job) => {
-  console.info(
-    `[billing-cron] completed ${job.name} id=${job.id}`
-  )
+  console.info(`[billing-cron] completed ${job.name} id=${job.id}`)
 })
 
 monthlyWorker.on("failed", (job, error) => {
@@ -236,20 +231,19 @@ monthlyWorker.on("failed", (job, error) => {
 })
 
 statusWorker.on("active", (job) => {
-  console.info(
-    `[billing-cron] processing ${job.name} id=${job.id}`
-  )
+  console.info(`[billing-cron] processing ${job.name} id=${job.id}`)
 })
 
 statusWorker.on("completed", (job) => {
-  console.info(
-    `[billing-cron] completed ${job.name} id=${job.id}`
-  )
+  console.info(`[billing-cron] completed ${job.name} id=${job.id}`)
 })
 
 statusWorker.on("failed", (job, error) => {
   if (!job) {
-    console.error("[billing-cron] status worker failed job missing payload", error)
+    console.error(
+      "[billing-cron] status worker failed job missing payload",
+      error
+    )
     return
   }
 
@@ -260,20 +254,19 @@ statusWorker.on("failed", (job, error) => {
 })
 
 reminderWorker.on("active", (job) => {
-  console.info(
-    `[billing-cron] processing ${job.name} id=${job.id}`
-  )
+  console.info(`[billing-cron] processing ${job.name} id=${job.id}`)
 })
 
 reminderWorker.on("completed", (job) => {
-  console.info(
-    `[billing-cron] completed ${job.name} id=${job.id}`
-  )
+  console.info(`[billing-cron] completed ${job.name} id=${job.id}`)
 })
 
 reminderWorker.on("failed", (job, error) => {
   if (!job) {
-    console.error("[billing-cron] reminder worker failed job missing payload", error)
+    console.error(
+      "[billing-cron] reminder worker failed job missing payload",
+      error
+    )
     return
   }
 
@@ -291,43 +284,63 @@ export async function registerRepeatableJobs() {
   const dailyQueue = new Queue(BILLING_DAILY_RESET_QUEUE, {
     connection: redisConnection,
   })
-  await dailyQueue.add(BILLING_DAILY_RESET_JOB, {}, {
-    repeat: { pattern: "0 0 * * *" },
-    jobId: "billing-daily-reset",
-  })
+  await dailyQueue.add(
+    BILLING_DAILY_RESET_JOB,
+    {},
+    {
+      repeat: { pattern: "0 0 * * *" },
+      jobId: "billing-daily-reset",
+    }
+  )
 
   // Monthly: 1st of each month at 02:00 UTC (after reset cleanup)
   const monthlyQueue = new Queue(BILLING_MONTHLY_RESET_QUEUE, {
     connection: redisConnection,
   })
-  await monthlyQueue.add(BILLING_MONTHLY_RESET_JOB, {}, {
-    repeat: { pattern: "0 0 1 * *" },
-    jobId: "billing-monthly-reset",
-  })
+  await monthlyQueue.add(
+    BILLING_MONTHLY_RESET_JOB,
+    {},
+    {
+      repeat: { pattern: "0 0 1 * *" },
+      jobId: "billing-monthly-reset",
+    }
+  )
 
   // Monthly billing: 1st of each month at 03:00 UTC
-  await monthlyQueue.add(BILLING_MONTHLY_BILLING_JOB, {}, {
-    repeat: { pattern: "0 3 1 * *" },
-    jobId: "billing-monthly-billing",
-  })
+  await monthlyQueue.add(
+    BILLING_MONTHLY_BILLING_JOB,
+    {},
+    {
+      repeat: { pattern: "0 3 1 * *" },
+      jobId: "billing-monthly-billing",
+    }
+  )
 
   // Invoice status manager: daily at 02:00 UTC
   const statusQueue = new Queue(BILLING_INVOICE_STATUS_QUEUE, {
     connection: redisConnection,
   })
-  await statusQueue.add(BILLING_INVOICE_STATUS_JOB, {}, {
-    repeat: { pattern: "0 2 * * *" },
-    jobId: "billing-invoice-status",
-  })
+  await statusQueue.add(
+    BILLING_INVOICE_STATUS_JOB,
+    {},
+    {
+      repeat: { pattern: "0 2 * * *" },
+      jobId: "billing-invoice-status",
+    }
+  )
 
   // Payment reminder: daily at 09:00 UTC
   const reminderQueue = new Queue(BILLING_PAYMENT_REMINDER_QUEUE, {
     connection: redisConnection,
   })
-  await reminderQueue.add(BILLING_PAYMENT_REMINDER_JOB, {}, {
-    repeat: { pattern: "0 9 * * *" },
-    jobId: "billing-payment-reminder",
-  })
+  await reminderQueue.add(
+    BILLING_PAYMENT_REMINDER_JOB,
+    {},
+    {
+      repeat: { pattern: "0 9 * * *" },
+      jobId: "billing-payment-reminder",
+    }
+  )
 
   await dailyQueue.close()
   await monthlyQueue.close()

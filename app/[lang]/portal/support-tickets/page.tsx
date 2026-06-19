@@ -16,7 +16,8 @@ export default async function SupportTicketsPage({
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Support Tickets (Admin)</h1>
         <p className="text-sm text-muted-foreground">
-          Manage, prioritize, and reply to all support tickets across organizations.
+          Manage, prioritize, and reply to all support tickets across
+          organizations.
         </p>
       </header>
 

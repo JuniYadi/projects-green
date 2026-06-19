@@ -62,7 +62,9 @@ const formatExpiresAt = (date: string) => {
 
 export function MembersTable({ organizationId }: MembersTableProps) {
   const [memberships, setMemberships] = useState<Membership[]>([])
-  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
+  const [pendingInvitations, setPendingInvitations] = useState<
+    PendingInvitation[]
+  >([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -70,16 +72,21 @@ export function MembersTable({ organizationId }: MembersTableProps) {
     setIsLoading(true)
     setError(null)
     try {
-      const { data } = await eden.api.admin.organizations[organizationId].members.get()
+      const { data } =
+        await eden.api.admin.organizations[organizationId].members.get()
 
       if (!data || !data.ok) {
-        setError(data && "message" in data ? data.message : "Failed to load members")
+        setError(
+          data && "message" in data ? data.message : "Failed to load members"
+        )
         return
       }
       setMemberships(data.data.memberships)
       setPendingInvitations(data.data.pendingInvitations)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      )
     } finally {
       setIsLoading(false)
     }
@@ -131,14 +138,19 @@ export function MembersTable({ organizationId }: MembersTableProps) {
               <TableBody>
                 {memberships.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={5}
+                      className="h-24 text-center text-muted-foreground"
+                    >
                       No active members
                     </TableCell>
                   </TableRow>
                 ) : (
                   memberships.map((member, index) => (
                     <TableRow key={member.id}>
-                      <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {index + 1}
+                      </TableCell>
                       <TableCell className="font-medium">
                         {member.firstName} {member.lastName}
                       </TableCell>
@@ -146,7 +158,9 @@ export function MembersTable({ organizationId }: MembersTableProps) {
                       <TableCell>
                         <Badge variant="secondary">{member.roleSlug}</Badge>
                       </TableCell>
-                      <TableCell>{new Date(member.joinedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {new Date(member.joinedAt).toLocaleDateString()}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -169,20 +183,29 @@ export function MembersTable({ organizationId }: MembersTableProps) {
               <TableBody>
                 {pendingInvitations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={5}
+                      className="h-24 text-center text-muted-foreground"
+                    >
                       No pending invitations
                     </TableCell>
                   </TableRow>
                 ) : (
                   pendingInvitations.map((invitation, index) => (
                     <TableRow key={invitation.id}>
-                      <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {index + 1}
+                      </TableCell>
                       <TableCell>{invitation.email}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{invitation.roleSlug}</Badge>
                       </TableCell>
-                      <TableCell>{formatRelativeTime(invitation.createdAt)}</TableCell>
-                      <TableCell>{formatExpiresAt(invitation.expiresAt)}</TableCell>
+                      <TableCell>
+                        {formatRelativeTime(invitation.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        {formatExpiresAt(invitation.expiresAt)}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

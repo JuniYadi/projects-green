@@ -125,7 +125,7 @@ async function enforceThrottle(data: WhatsAppBroadcastJobData) {
   const windowExpired = now.getTime() - windowStartAt.getTime() >= windowMs
   const messagesSentInWindow = windowExpired
     ? 0
-    : state?.messagesSentInWindow ?? 0
+    : (state?.messagesSentInWindow ?? 0)
 
   if (messagesSentInWindow >= maxMessages) {
     const delay = Math.max(
@@ -151,9 +151,7 @@ async function enforceThrottle(data: WhatsAppBroadcastJobData) {
       whatsappDeviceId: campaign.whatsappDeviceId,
       windowStartAt: windowExpired ? now : windowStartAt,
       lastMessageSentAt: now,
-      messagesSentInWindow: windowExpired
-        ? 1
-        : { increment: 1 },
+      messagesSentInWindow: windowExpired ? 1 : { increment: 1 },
     },
   })
 
@@ -181,8 +179,14 @@ async function dispatchBroadcast(
   const device = campaign.whatsappDevice
 
   try {
-    if (!device?.tokenEncrypted || !device.whatsappPhoneId || !device.whatsappBusinessAccountId) {
-      throw new Error(`Broadcast campaign is missing a configured WhatsApp device: ${campaign.id}`)
+    if (
+      !device?.tokenEncrypted ||
+      !device.whatsappPhoneId ||
+      !device.whatsappBusinessAccountId
+    ) {
+      throw new Error(
+        `Broadcast campaign is missing a configured WhatsApp device: ${campaign.id}`
+      )
     }
 
     if (!skipThrottle) {
@@ -255,7 +259,10 @@ async function dispatchBroadcast(
     let templateCategory: string | null = null
     try {
       const tpl = await prisma.whatsappTemplate.findFirst({
-        where: { name: campaign.templateName, organizationId: campaign.organizationId },
+        where: {
+          name: campaign.templateName,
+          organizationId: campaign.organizationId,
+        },
         select: { category: true },
       })
       templateCategory = tpl?.category ?? null
@@ -264,11 +271,14 @@ async function dispatchBroadcast(
     }
 
     const _now = new Date()
-    const today = new Date(Date.UTC(_now.getUTCFullYear(), _now.getUTCMonth(), _now.getUTCDate()))
+    const today = new Date(
+      Date.UTC(_now.getUTCFullYear(), _now.getUTCMonth(), _now.getUTCDate())
+    )
     const _year = _now.getUTCFullYear()
     const _month = _now.getUTCMonth() + 1
 
-    const deviceIdStr = campaign.whatsappDeviceId ?? `org-${campaign.organizationId}`
+    const deviceIdStr =
+      campaign.whatsappDeviceId ?? `org-${campaign.organizationId}`
     await Promise.all([
       prisma.whatsappDailyCount.upsert({
         where: {
@@ -309,7 +319,9 @@ async function dispatchBroadcast(
           organizationId: campaign.organizationId,
           waMessageId: result.providerMessageId,
           phoneNumber: recipient.phoneNumber,
-          category: (templateCategory as WhatsappBillingCategory) ?? WhatsappBillingCategory.SERVICE,
+          category:
+            (templateCategory as WhatsappBillingCategory) ??
+            WhatsappBillingCategory.SERVICE,
           quotaKey: device.id,
           quotaValue: new Prisma.Decimal(0),
           whatsappDeviceId: device.id,
@@ -380,9 +392,7 @@ worker.on("active", (job) => {
 })
 
 worker.on("completed", (job) => {
-  console.info(
-    `[whatsapp-broadcast-worker] completed ${job.name} id=${job.id}`
-  )
+  console.info(`[whatsapp-broadcast-worker] completed ${job.name} id=${job.id}`)
 })
 
 worker.on("failed", (job, error) => {

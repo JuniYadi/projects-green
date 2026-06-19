@@ -5,11 +5,14 @@ mock.module("@/lib/prisma", () => ({
   prisma: {
     whatsappConversation: { findFirst: mockFn, create: mockFn, update: mockFn },
     whatsappMessage: { create: mockFn },
-    whatsappDevice: { findUnique: mock(() => ({ id: "d1", organizationId: "o1" })) },
+    whatsappDevice: {
+      findUnique: mock(() => ({ id: "d1", organizationId: "o1" })),
+    },
   },
 }))
 
-const { processInboundMessage } = await import("@/modules/whatsapp/webhooks/webhooks.service")
+const { processInboundMessage } =
+  await import("@/modules/whatsapp/webhooks/webhooks.service")
 
 describe("simple", () => {
   it("exists", () => {

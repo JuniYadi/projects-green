@@ -78,7 +78,8 @@ export const enMessages: AppMessages = {
     },
     organization: {
       heading: "Organization Settings",
-      description: "Manage members, invitations, and ownership for the active organization.",
+      description:
+        "Manage members, invitations, and ownership for the active organization.",
       members: "Members",
       invitations: "Invitations",
       ownership: "Ownership",
@@ -102,10 +103,12 @@ export const enMessages: AppMessages = {
       viewAll: "View all",
       noActiveSubscriptions: "No active subscriptions",
       noInvoices: "No invoices yet.",
-      lowBalanceWarning: "Your balance is running low. Top up to avoid service interruption.",
+      lowBalanceWarning:
+        "Your balance is running low. Top up to avoid service interruption.",
       failedToLoadBalance: "Failed to load balance",
       topUpHeading: "Top Up Balance",
-      topUpDescription: "Add funds to your billing account. Choose your preferred payment method.",
+      topUpDescription:
+        "Add funds to your billing account. Choose your preferred payment method.",
       topUpDetails: "Top Up Details",
       paymentInstructions: "Payment Instructions",
       manualBankTransfer: "Manual Bank Transfer",
@@ -130,37 +133,47 @@ export const enMessages: AppMessages = {
       total: "Total",
       subtotal: "Subtotal",
       paymentSuccessful: "Payment Successful",
-      paymentSuccessDesc: "Your payment has been processed. The balance will be updated shortly.",
+      paymentSuccessDesc:
+        "Your payment has been processed. The balance will be updated shortly.",
       paymentPending: "Payment Pending",
-      paymentPendingDesc: "Your payment is being processed. This may take a few minutes.",
+      paymentPendingDesc:
+        "Your payment is being processed. This may take a few minutes.",
       paymentFailed: "Payment Failed",
-      paymentFailedDesc: "The payment could not be processed. Please try again.",
+      paymentFailedDesc:
+        "The payment could not be processed. Please try again.",
       retryPayment: "Retry Payment",
       payWithBalance: "Pay with Balance",
       topUpPlusPay: "Top Up + Pay",
       processing: "Processing...",
       yourBalance: "Your current balance: {balance}",
       completeTopUp: "Complete Your Top-Up",
-      transferInstructions: "Transfer the exact total amount {amount} to the destination bank account, then confirm your payment.",
+      transferInstructions:
+        "Transfer the exact total amount {amount} to the destination bank account, then confirm your payment.",
       confirmPayment: "Confirm Payment",
-      autoUpdateDesc: "Complete your payment through the payment gateway. Your balance will be updated automatically once the payment is confirmed.",
+      autoUpdateDesc:
+        "Complete your payment through the payment gateway. Your balance will be updated automatically once the payment is confirmed.",
       paymentOptions: "Payment Options",
       paymentSuccessLabel: "Payment successful!",
       topUpRequired: "Top-Up Required",
-      topUpDialogDescription: "You need additional balance to pay this invoice. A top-up invoice has been created for the gap amount.",
+      topUpDialogDescription:
+        "You need additional balance to pay this invoice. A top-up invoice has been created for the gap amount.",
       gapAmount: "Gap Amount",
       topUpInvoice: "Top-up Invoice",
-      topUpInstructionDetail: "Please complete the top-up payment first. After the payment is confirmed, the invoice will be automatically paid using your balance.",
+      topUpInstructionDetail:
+        "Please complete the top-up payment first. After the payment is confirmed, the invoice will be automatically paid using your balance.",
       goToTopUp: "Go to Top-Up",
       minTopUp: "Minimum topup amount is {amount}",
       maxTopUp: "Maximum topup amount is {amount}",
-      balanceUpdatedAfterVerification: "Balance will be updated after payment verification",
-      manualTransfer24h: "For manual transfer, please confirm payment within 24 hours",
+      balanceUpdatedAfterVerification:
+        "Balance will be updated after payment verification",
+      manualTransfer24h:
+        "For manual transfer, please confirm payment within 24 hours",
     },
     whatsapp: {
       dashboard: {
         heading: "WhatsApp Dashboard",
-        description: "Monitor your WhatsApp devices, conversations, and message activity.",
+        description:
+          "Monitor your WhatsApp devices, conversations, and message activity.",
         connected: "Connected",
         disconnected: "Disconnected",
         totalContacts: "Total Contacts",
@@ -188,7 +201,8 @@ export const enMessages: AppMessages = {
         editDialogTitle: "Edit Contact",
         editDialogDescription: "Update contact details.",
         deleteDialogTitle: "Delete Contact",
-        deleteDialogDescription: "Are you sure you want to delete {name}? This action cannot be undone.",
+        deleteDialogDescription:
+          "Are you sure you want to delete {name}? This action cannot be undone.",
         phoneNumber: "Phone Number",
         phoneNumberRequired: "Phone number is required.",
         name: "Name",
@@ -214,7 +228,8 @@ export const enMessages: AppMessages = {
       },
       templates: {
         heading: "Templates",
-        description: "Manage your WhatsApp message templates for pre-approved communications.",
+        description:
+          "Manage your WhatsApp message templates for pre-approved communications.",
         cardTitle: "Message Templates",
         cardDescription: "Manage your WhatsApp message templates",
         syncTemplates: "Sync Templates",
@@ -250,7 +265,8 @@ export const enMessages: AppMessages = {
         updated: "Device updated successfully.",
         unableToUpdate: "Unable to update device.",
         noDevices: "No devices found.",
-        noDevicesDescription: "Your admin will provision a WhatsApp device for your organization. Once assigned, it will appear here.",
+        noDevicesDescription:
+          "Your admin will provision a WhatsApp device for your organization. Once assigned, it will appear here.",
         unableToLoad: "Unable to load WhatsApp devices.",
         cancel: "Cancel",
         saving: "Saving...",
@@ -301,7 +317,8 @@ export const enMessages: AppMessages = {
       compliance: "Compliance",
       noTickets: "No support tickets found.",
       newTicketHeading: "Create Support Ticket",
-      newTicketDescription: "Submit a new support request. Our team will respond as soon as possible.",
+      newTicketDescription:
+        "Submit a new support request. Our team will respond as soon as possible.",
       ticketDetailHeading: "Ticket Detail",
       ticketNotFound: "Ticket not found.",
       failedToLoad: "Failed to load tickets.",
@@ -317,7 +334,8 @@ export const enMessages: AppMessages = {
       subjectRequired: "Subject is required.",
       unableToCreate: "Unable to create support ticket.",
       creatingTicket: "Creating Ticket",
-      creatingDescription: "Please wait while we process your request and upload any attachments. Do not refresh, close, or navigate away.",
+      creatingDescription:
+        "Please wait while we process your request and upload any attachments. Do not refresh, close, or navigate away.",
       ticketDetails: "Ticket Details",
       subjectPlaceholder: "Describe your issue",
       generalMessage: "General Message",
@@ -326,9 +344,11 @@ export const enMessages: AppMessages = {
       messagePlaceholder: "Add any details about your request",
       encrypted: "Encrypted",
       endToEndSecure: "End-to-End Secure Channel",
-      secureDescription: "Details entered here are encrypted end-to-end and only visible to engineers assigned to your ticket. Use this section for passwords, tokens, API keys, or sensitive credentials.",
+      secureDescription:
+        "Details entered here are encrypted end-to-end and only visible to engineers assigned to your ticket. Use this section for passwords, tokens, API keys, or sensitive credentials.",
       secureDetailsOptional: "Secure Details (optional)",
-      securePlaceholder: "Sensitive credentials, configurations, or secrets only",
+      securePlaceholder:
+        "Sensitive credentials, configurations, or secrets only",
       attachmentsOptional: "Attachments (optional)",
       categorization: "Categorization",
       serviceOptional: "Service (optional)",
@@ -343,15 +363,18 @@ export const enMessages: AppMessages = {
     app: {
       deploy: {
         heading: "Deploy Application",
-        description: "Configure source, build, and initial release settings for a new application.",
+        description:
+          "Configure source, build, and initial release settings for a new application.",
       },
       manage: {
         heading: "Manage Application",
-        description: "Monitor real deployment status, events, and logs for your apps.",
+        description:
+          "Monitor real deployment status, events, and logs for your apps.",
         loadingApps: "Loading your applications\u2026",
         loadingAppState: "Loading application state\u2026",
         noApps: "No applications yet",
-        noAppsDescription: "Deploy a private repository from the Deploy page to start monitoring real status, events, and logs here.",
+        noAppsDescription:
+          "Deploy a private repository from the Deploy page to start monitoring real status, events, and logs here.",
         retry: "Retry",
         deploymentStatus: "Deployment status",
         visitApp: "Visit app",
@@ -360,9 +383,11 @@ export const enMessages: AppMessages = {
         heading: "App Platform",
         description: "Deploy and manage your applications.",
         deploy: "Deploy",
-        deployDescription: "Configure source, build, and initial release settings.",
+        deployDescription:
+          "Configure source, build, and initial release settings.",
         manage: "Manage",
-        manageDescription: "Monitor deployment status, view events, and inspect logs for your apps.",
+        manageDescription:
+          "Monitor deployment status, view events, and inspect logs for your apps.",
       },
     },
     invoices: {

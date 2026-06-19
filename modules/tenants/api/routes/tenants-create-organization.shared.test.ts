@@ -32,7 +32,11 @@ const mockCreateTenantOrganization = mock(async () => ({
 }))
 const mockHasBootstrapCreatorRole = mock(async () => true)
 const mockCreateTenantMembership = mock(
-  async (params: { organizationId: string; userId: string; roleSlug: string }) => ({
+  async (params: {
+    organizationId: string
+    userId: string
+    roleSlug: string
+  }) => ({
     id: "mem_new",
     object: "organization_membership",
     organizationId: params.organizationId,
@@ -48,16 +52,26 @@ const mockDeleteTenantOrganization = mock(async () => undefined)
 const mockGetBootstrapCreatorRoleSlug = mock(() => "user_owner")
 const mockListTenantBootstrapMembershipsForUser = mock(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async (userId: string): Promise<TenantBootstrapMembership[]> => [makeMembership()]
+  async (userId: string): Promise<TenantBootstrapMembership[]> => [
+    makeMembership(),
+  ]
 )
 
-const makeDeps = (overrides: Partial<TenantCreateOrganizationDeps> = {}): TenantCreateOrganizationDeps => ({
-  createTenantOrganization: mockCreateTenantOrganization as unknown as TenantCreateOrganizationDeps["createTenantOrganization"],
-  hasBootstrapCreatorRole: mockHasBootstrapCreatorRole as TenantCreateOrganizationDeps["hasBootstrapCreatorRole"],
-  createTenantMembership: mockCreateTenantMembership as unknown as TenantCreateOrganizationDeps["createTenantMembership"],
-  deleteTenantOrganization: mockDeleteTenantOrganization as TenantCreateOrganizationDeps["deleteTenantOrganization"],
-  getBootstrapCreatorRoleSlug: mockGetBootstrapCreatorRoleSlug as TenantCreateOrganizationDeps["getBootstrapCreatorRoleSlug"],
-  listTenantBootstrapMembershipsForUser: mockListTenantBootstrapMembershipsForUser as TenantCreateOrganizationDeps["listTenantBootstrapMembershipsForUser"],
+const makeDeps = (
+  overrides: Partial<TenantCreateOrganizationDeps> = {}
+): TenantCreateOrganizationDeps => ({
+  createTenantOrganization:
+    mockCreateTenantOrganization as unknown as TenantCreateOrganizationDeps["createTenantOrganization"],
+  hasBootstrapCreatorRole:
+    mockHasBootstrapCreatorRole as TenantCreateOrganizationDeps["hasBootstrapCreatorRole"],
+  createTenantMembership:
+    mockCreateTenantMembership as unknown as TenantCreateOrganizationDeps["createTenantMembership"],
+  deleteTenantOrganization:
+    mockDeleteTenantOrganization as TenantCreateOrganizationDeps["deleteTenantOrganization"],
+  getBootstrapCreatorRoleSlug:
+    mockGetBootstrapCreatorRoleSlug as TenantCreateOrganizationDeps["getBootstrapCreatorRoleSlug"],
+  listTenantBootstrapMembershipsForUser:
+    mockListTenantBootstrapMembershipsForUser as TenantCreateOrganizationDeps["listTenantBootstrapMembershipsForUser"],
   ...overrides,
 })
 
@@ -84,7 +98,11 @@ beforeEach(() => {
   }))
   mockHasBootstrapCreatorRole.mockImplementation(async () => true)
   mockCreateTenantMembership.mockImplementation(
-    async (params: { organizationId: string; userId: string; roleSlug: string }) => ({
+    async (params: {
+      organizationId: string
+      userId: string
+      roleSlug: string
+    }) => ({
       id: "mem_new",
       object: "organization_membership",
       organizationId: params.organizationId,
@@ -99,7 +117,9 @@ beforeEach(() => {
   mockDeleteTenantOrganization.mockImplementation(async () => undefined)
   mockGetBootstrapCreatorRoleSlug.mockImplementation(() => "user_owner")
   mockListTenantBootstrapMembershipsForUser.mockImplementation(
-    async (userId: string): Promise<TenantBootstrapMembership[]> => [makeMembership()]
+    async (userId: string): Promise<TenantBootstrapMembership[]> => [
+      makeMembership(),
+    ]
   )
 })
 
@@ -148,7 +168,9 @@ describe("createTenantOrganizationWithCreator", () => {
   it("returns ROLLBACK_FAILED when delete fails after CREATOR_ROLE_MISSING", async () => {
     const set = makeSet()
     mockHasBootstrapCreatorRole.mockResolvedValueOnce(false)
-    mockDeleteTenantOrganization.mockRejectedValueOnce(new Error("Delete failed"))
+    mockDeleteTenantOrganization.mockRejectedValueOnce(
+      new Error("Delete failed")
+    )
 
     const result = await createTenantOrganizationWithCreator({
       set,
@@ -170,7 +192,7 @@ describe("createTenantOrganizationWithCreator", () => {
     // Return a membership that IS active but has a non-owner role
     mockListTenantBootstrapMembershipsForUser.mockImplementation(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async (userId: string): Promise<TenantBootstrapMembership[]> => [
+      async (userId: string): Promise<TenantBootstrapMembership[]> => [
         makeMembership({ roleSlug: "user_admin" }),
       ]
     )
@@ -200,7 +222,9 @@ describe("createTenantOrganizationWithCreator", () => {
         makeMembership({ roleSlug: "user_admin" }),
       ]
     )
-    mockDeleteTenantOrganization.mockRejectedValueOnce(new Error("Delete failed"))
+    mockDeleteTenantOrganization.mockRejectedValueOnce(
+      new Error("Delete failed")
+    )
 
     const result = await createTenantOrganizationWithCreator({
       set,
@@ -220,7 +244,10 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles ConflictException during membership creation", async () => {
     const set = makeSet()
     mockCreateTenantMembership.mockRejectedValueOnce(
-      new ConflictException({ message: "Organization already exists", requestID: "req_1" })
+      new ConflictException({
+        message: "Organization already exists",
+        requestID: "req_1",
+      })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -241,7 +268,10 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles UnprocessableEntityException during membership creation", async () => {
     const set = makeSet()
     mockCreateTenantMembership.mockRejectedValueOnce(
-      new UnprocessableEntityException({ message: "Invalid role assignment", requestID: "req_1" })
+      new UnprocessableEntityException({
+        message: "Invalid role assignment",
+        requestID: "req_1",
+      })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -262,7 +292,11 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles NotFoundException during membership creation", async () => {
     const set = makeSet()
     mockCreateTenantMembership.mockRejectedValueOnce(
-      new NotFoundException({ message: "User or organization not found", path: "/members", requestID: "req_1" })
+      new NotFoundException({
+        message: "User or organization not found",
+        path: "/members",
+        requestID: "req_1",
+      })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -304,7 +338,10 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles ConflictException from createTenantOrganization (top-level)", async () => {
     const set = makeSet()
     mockCreateTenantOrganization.mockRejectedValueOnce(
-      new ConflictException({ message: "Organization name taken", requestID: "req_1" })
+      new ConflictException({
+        message: "Organization name taken",
+        requestID: "req_1",
+      })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -325,7 +362,10 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles UnprocessableEntityException from createTenantOrganization (top-level)", async () => {
     const set = makeSet()
     mockCreateTenantOrganization.mockRejectedValueOnce(
-      new UnprocessableEntityException({ message: "Invalid org name", requestID: "req_1" })
+      new UnprocessableEntityException({
+        message: "Invalid org name",
+        requestID: "req_1",
+      })
     )
 
     const result = await createTenantOrganizationWithCreator({
@@ -346,7 +386,11 @@ describe("createTenantOrganizationWithCreator", () => {
   it("handles NotFoundException from createTenantOrganization (top-level)", async () => {
     const set = makeSet()
     mockCreateTenantOrganization.mockRejectedValueOnce(
-      new NotFoundException({ message: "WorkOS resource missing", path: "/organizations", requestID: "req_1" })
+      new NotFoundException({
+        message: "WorkOS resource missing",
+        path: "/organizations",
+        requestID: "req_1",
+      })
     )
 
     const result = await createTenantOrganizationWithCreator({

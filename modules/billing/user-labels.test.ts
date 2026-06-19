@@ -71,10 +71,14 @@ describe("formatBalanceTransaction", () => {
 })
 
 describe("formatPaymentMethod", () => {
-  it("formats VA", () => expect(formatPaymentMethod("VA")).toBe("Virtual Account"))
+  it("formats VA", () =>
+    expect(formatPaymentMethod("VA")).toBe("Virtual Account"))
   it("formats QRIS", () => expect(formatPaymentMethod("QRIS")).toBe("QRIS"))
-  it("formats MANUAL_BANK", () => expect(formatPaymentMethod("MANUAL_BANK")).toBe("Manual Bank"))
+  it("formats MANUAL_BANK", () =>
+    expect(formatPaymentMethod("MANUAL_BANK")).toBe("Manual Bank"))
   it("returns dash for null", () => expect(formatPaymentMethod(null)).toBe("-"))
-  it("returns dash for undefined", () => expect(formatPaymentMethod(undefined)).toBe("-"))
-  it("passes through unknown value", () => expect(formatPaymentMethod("CRYPTO")).toBe("CRYPTO"))
+  it("returns dash for undefined", () =>
+    expect(formatPaymentMethod(undefined)).toBe("-"))
+  it("passes through unknown value", () =>
+    expect(formatPaymentMethod("CRYPTO")).toBe("CRYPTO"))
 })

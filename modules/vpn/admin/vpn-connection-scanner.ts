@@ -106,9 +106,7 @@ export type VpnServerScannerDeps = {
 }
 
 const defaultResolveKey =
-  (
-    prisma: Pick<PrismaClient, "vpnSshKey"> = defaultPrisma
-  ): KeyResolver =>
+  (prisma: Pick<PrismaClient, "vpnSshKey"> = defaultPrisma): KeyResolver =>
   async (sshKeyId) => {
     const key = await prisma.vpnSshKey.findUnique({
       where: { id: sshKeyId },
@@ -409,7 +407,11 @@ async function runExternalPortCheck(
   }
 
   // UDP external probe — inconclusive, never reported as a hard pass.
-  const outcome = await deps.udpProbe(hosts[0], spec.port, PORT_CHECK_TIMEOUT_MS)
+  const outcome = await deps.udpProbe(
+    hosts[0],
+    spec.port,
+    PORT_CHECK_TIMEOUT_MS
+  )
   if (outcome.ok) {
     return {
       ...base,

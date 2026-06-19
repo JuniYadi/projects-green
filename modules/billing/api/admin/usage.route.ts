@@ -171,9 +171,7 @@ export const createAdminUsageRoutes = (
           category: row.category ?? "unknown",
           quantity: row._count,
           totalCost: categoryTotal,
-          percentage: totalSpend > 0
-            ? (categoryTotal / totalSpend) * 100
-            : 0,
+          percentage: totalSpend > 0 ? (categoryTotal / totalSpend) * 100 : 0,
         }
       })
 

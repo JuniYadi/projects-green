@@ -487,31 +487,35 @@ export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
       )
     }
 
-    const normalizePayload = deps.normalizePayload ?? ((_p: unknown) => ({
-      githubInstallationId: null as bigint | null,
-      githubRepositoryId: null as bigint | null,
-      repositoryFullName: null as string | null,
-      repositoryOwner: null as string | null,
-      repositoryName: null as string | null,
-      ref: null as string | null,
-      branch: null as string | null,
-      commitSha: null as string | null,
-      commitMessage: null as string | null,
-      commitAuthorName: null as string | null,
-      commitAuthorEmail: null as string | null,
-      commitUrl: null as string | null,
-      senderLogin: null as string | null,
-      senderAvatarUrl: null as string | null,
-    }))
+    const normalizePayload =
+      deps.normalizePayload ??
+      ((_p: unknown) => ({
+        githubInstallationId: null as bigint | null,
+        githubRepositoryId: null as bigint | null,
+        repositoryFullName: null as string | null,
+        repositoryOwner: null as string | null,
+        repositoryName: null as string | null,
+        ref: null as string | null,
+        branch: null as string | null,
+        commitSha: null as string | null,
+        commitMessage: null as string | null,
+        commitAuthorName: null as string | null,
+        commitAuthorEmail: null as string | null,
+        commitUrl: null as string | null,
+        senderLogin: null as string | null,
+        senderAvatarUrl: null as string | null,
+      }))
 
     const normalized = normalizePayload(payload)
 
-    const classifyEvent = deps.classifyEvent ?? (async () => ({
-      eventDisposition: "tracked",
-      ignoreReason: null,
-      repositoryConnectionId: null,
-      applicationStackId: null,
-    }))
+    const classifyEvent =
+      deps.classifyEvent ??
+      (async () => ({
+        eventDisposition: "tracked",
+        ignoreReason: null,
+        repositoryConnectionId: null,
+        applicationStackId: null,
+      }))
 
     const classification = await classifyEvent({
       eventName,
@@ -520,16 +524,20 @@ export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
       branch: normalized.branch,
     })
 
-    const handlerDurationMs = Math.max(0, (deps.now?.() ?? Date.now()) - startedAt)
+    const handlerDurationMs = Math.max(
+      0,
+      (deps.now?.() ?? Date.now()) - startedAt
+    )
 
     let event!: GithubWebhookRecord
     try {
       event = await deps.store.create({
         deliveryId,
         eventName,
-        action: typeof payload.action === "string" && payload.action.trim().length > 0
-          ? payload.action
-          : null,
+        action:
+          typeof payload.action === "string" && payload.action.trim().length > 0
+            ? payload.action
+            : null,
         githubInstallationId: normalized.githubInstallationId,
         githubRepositoryId: normalized.githubRepositoryId,
         payloadJson: payload,
@@ -576,7 +584,7 @@ export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
     } catch (error) {
       console.error(
         `[github-webhook] Failed to enqueue event ${event.id} (delivery: ${deliveryId}):`,
-        error instanceof Error ? error.stack ?? error.message : error,
+        error instanceof Error ? (error.stack ?? error.message) : error
       )
 
       await deps.store.markEnqueueFailed(event.id, toErrorMessage(error))
@@ -727,7 +735,7 @@ export const enqueueGithubWebhookEvent = async ({
   } catch (error) {
     console.error(
       `[github-webhook] Failed to enqueue event ${created.id} (delivery: ${deliveryId}):`,
-      error instanceof Error ? error.stack ?? error.message : error,
+      error instanceof Error ? (error.stack ?? error.message) : error
     )
 
     await dbClient.githubWebhookEvent.update({
@@ -760,9 +768,8 @@ const getIdempotencyKey = ({
 }
 
 export const dispatchInternalBuildJob: BuildDispatcher = async (payload) => {
-  const { createJenkinsPushDispatcher } = await import(
-    "@/modules/github/github-push-dispatcher"
-  )
+  const { createJenkinsPushDispatcher } =
+    await import("@/modules/github/github-push-dispatcher")
 
   return createJenkinsPushDispatcher()(payload)
 }

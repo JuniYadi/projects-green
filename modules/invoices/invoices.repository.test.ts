@@ -14,9 +14,8 @@ const mockPrisma = {
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
-const { createPrismaInvoiceRepository } = await import(
-  "@/modules/invoices/invoices.repository"
-)
+const { createPrismaInvoiceRepository } =
+  await import("@/modules/invoices/invoices.repository")
 
 const baseInvoice = {
   id: "inv_1",
@@ -81,7 +80,7 @@ describe("createPrismaInvoiceRepository", () => {
         expect.objectContaining({
           orderBy: [{ issuedAt: "desc" }, { createdAt: "desc" }],
           take: 200,
-        }),
+        })
       )
     })
 
@@ -101,7 +100,7 @@ describe("createPrismaInvoiceRepository", () => {
               mode: "insensitive",
             },
           }),
-        }),
+        })
       )
     })
 
@@ -118,7 +117,7 @@ describe("createPrismaInvoiceRepository", () => {
           where: expect.objectContaining({
             status: "OPEN",
           }),
-        }),
+        })
       )
     })
 
@@ -137,7 +136,7 @@ describe("createPrismaInvoiceRepository", () => {
               organizationId: "org_1",
             },
           }),
-        }),
+        })
       )
     })
 
@@ -155,7 +154,7 @@ describe("createPrismaInvoiceRepository", () => {
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: [{ totalAmount: "asc" }, { createdAt: "desc" }],
-        }),
+        })
       )
     })
 
@@ -172,7 +171,7 @@ describe("createPrismaInvoiceRepository", () => {
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: [{ invoiceNumber: "desc" }, { createdAt: "desc" }],
-        }),
+        })
       )
     })
 
@@ -198,7 +197,7 @@ describe("createPrismaInvoiceRepository", () => {
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {},
-        }),
+        })
       )
     })
 
@@ -216,7 +215,7 @@ describe("createPrismaInvoiceRepository", () => {
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-        }),
+        })
       )
     })
   })
@@ -252,7 +251,7 @@ describe("createPrismaInvoiceRepository", () => {
               ]),
             }),
           }),
-        }),
+        })
       )
     })
 
@@ -270,7 +269,7 @@ describe("createPrismaInvoiceRepository", () => {
               expect.objectContaining({ invoiceNumber: "INV-2026-0001" }),
             ]),
           }),
-        }),
+        })
       )
     })
 
@@ -301,7 +300,7 @@ describe("createPrismaInvoiceRepository", () => {
           where: expect.not.objectContaining({
             billingAccount: expect.anything(),
           }),
-        }),
+        })
       )
     })
   })
@@ -327,7 +326,7 @@ describe("createPrismaInvoiceRepository", () => {
             },
           }),
           data: { status: "VOID" },
-        }),
+        })
       )
     })
 
@@ -348,7 +347,7 @@ describe("createPrismaInvoiceRepository", () => {
             ]),
           }),
           data: { status: "PAID" },
-        }),
+        })
       )
     })
 
@@ -367,7 +366,7 @@ describe("createPrismaInvoiceRepository", () => {
             billingAccount: expect.anything(),
           }),
           data: { status: "UNCOLLECTIBLE" },
-        }),
+        })
       )
     })
   })

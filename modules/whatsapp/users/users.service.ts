@@ -100,8 +100,8 @@ export const getWhatsAppUser = async (
   membershipId: string
 ): Promise<WhatsAppUser | null> => {
   try {
-    const membership = await getWorkOS()
-      .userManagement.getOrganizationMembership(membershipId)
+    const membership =
+      await getWorkOS().userManagement.getOrganizationMembership(membershipId)
 
     return toWhatsAppUser(membership as WorkOSMembership)
   } catch (error) {
@@ -155,6 +155,8 @@ export const updateWhatsAppUserRole = async (
 /**
  * Remove a user from the WhatsApp organization (revoke membership).
  */
-export const removeWhatsAppUser = async (membershipId: string): Promise<void> => {
+export const removeWhatsAppUser = async (
+  membershipId: string
+): Promise<void> => {
   await getWorkOS().userManagement.deleteOrganizationMembership(membershipId)
 }

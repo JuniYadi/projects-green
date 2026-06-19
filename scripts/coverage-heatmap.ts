@@ -77,7 +77,9 @@ function main() {
   const lcovPath = resolve(coverageDir, "lcov.info")
 
   if (!existsSync(lcovPath)) {
-    console.error("No coverage/lcov.info found. Run 'bun run test:coverage' first.")
+    console.error(
+      "No coverage/lcov.info found. Run 'bun run test:coverage' first."
+    )
     process.exit(1)
   }
 

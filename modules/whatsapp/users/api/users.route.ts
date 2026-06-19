@@ -53,27 +53,28 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    * GET /api/whatsapp/users
    * List all WhatsApp users (organization members).
    */
-  .get(
-    "/",
-    async ({ request, set }: any) => {
-      const auth = await resolveAuthContext(request)
-      if (!auth) {
-        set.status = 401
-        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+  .get("/", async ({ request, set }: any) => {
+    const auth = await resolveAuthContext(request)
+    if (!auth) {
+      set.status = 401
+      return {
+        ok: false as const,
+        error: "UNAUTHORIZED" as const,
+        message: "Auth required.",
       }
-      if (!auth.organizationId) {
-        set.status = 400
-        return {
-          ok: false as const,
-          error: "BAD_REQUEST" as const,
-          message: "Organization ID required.",
-        }
-      }
-
-      const users = await listWhatsAppUsers(auth.organizationId)
-      return { ok: true as const, users } satisfies ListUsersResponse
     }
-  )
+    if (!auth.organizationId) {
+      set.status = 400
+      return {
+        ok: false as const,
+        error: "BAD_REQUEST" as const,
+        message: "Organization ID required.",
+      }
+    }
+
+    const users = await listWhatsAppUsers(auth.organizationId)
+    return { ok: true as const, users } satisfies ListUsersResponse
+  })
 
   /**
    * POST /api/whatsapp/users
@@ -85,7 +86,11 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
       const auth = await resolveAuthContext(request)
       if (!auth) {
         set.status = 401
-        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+        return {
+          ok: false as const,
+          error: "UNAUTHORIZED" as const,
+          message: "Auth required.",
+        }
       }
       if (!auth.organizationId) {
         set.status = 400
@@ -115,33 +120,41 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    * GET /api/whatsapp/users/:id
    * Get a single WhatsApp user by membership ID.
    */
-  .get(
-    "/:id",
-    async ({ request, params: { id }, set }: any) => {
-      const auth = await resolveAuthContext(request)
-      if (!auth) {
-        set.status = 401
-        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+  .get("/:id", async ({ request, params: { id }, set }: any) => {
+    const auth = await resolveAuthContext(request)
+    if (!auth) {
+      set.status = 401
+      return {
+        ok: false as const,
+        error: "UNAUTHORIZED" as const,
+        message: "Auth required.",
       }
-      const user = await getWhatsAppUser(id)
-
-      if (!user) {
-        set.status = 404
-        return {
-          ok: false as const,
-          error: "NOT_FOUND" as const,
-          message: "User not found.",
-        }
-      }
-
-      if ((auth as any).platformRole !== "super_admin" && user.organizationId !== auth.organizationId) {
-        set.status = 403
-        return { ok: false as const, error: "FORBIDDEN" as const, message: "Access denied." }
-      }
-
-      return { ok: true as const, user } satisfies GetUserResponse
     }
-  )
+    const user = await getWhatsAppUser(id)
+
+    if (!user) {
+      set.status = 404
+      return {
+        ok: false as const,
+        error: "NOT_FOUND" as const,
+        message: "User not found.",
+      }
+    }
+
+    if (
+      (auth as any).platformRole !== "super_admin" &&
+      user.organizationId !== auth.organizationId
+    ) {
+      set.status = 403
+      return {
+        ok: false as const,
+        error: "FORBIDDEN" as const,
+        message: "Access denied.",
+      }
+    }
+
+    return { ok: true as const, user } satisfies GetUserResponse
+  })
 
   /**
    * PATCH /api/whatsapp/users/:id
@@ -153,7 +166,11 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
       const auth = await resolveAuthContext(request)
       if (!auth) {
         set.status = 401
-        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+        return {
+          ok: false as const,
+          error: "UNAUTHORIZED" as const,
+          message: "Auth required.",
+        }
       }
       const user = await getWhatsAppUser(id)
 
@@ -166,9 +183,16 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         }
       }
 
-      if ((auth as any).platformRole !== "super_admin" && user.organizationId !== auth.organizationId) {
+      if (
+        (auth as any).platformRole !== "super_admin" &&
+        user.organizationId !== auth.organizationId
+      ) {
         set.status = 403
-        return { ok: false as const, error: "FORBIDDEN" as const, message: "Access denied." }
+        return {
+          ok: false as const,
+          error: "FORBIDDEN" as const,
+          message: "Access denied.",
+        }
       }
 
       const updated = await updateWhatsAppUserRole(id, (body as any).role)
@@ -182,32 +206,40 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
    * DELETE /api/whatsapp/users/:id
    * Remove a user from the WhatsApp organization.
    */
-  .delete(
-    "/:id",
-    async ({ request, params: { id }, set }: any) => {
-      const auth = await resolveAuthContext(request)
-      if (!auth) {
-        set.status = 401
-        return { ok: false as const, error: "UNAUTHORIZED" as const, message: "Auth required." }
+  .delete("/:id", async ({ request, params: { id }, set }: any) => {
+    const auth = await resolveAuthContext(request)
+    if (!auth) {
+      set.status = 401
+      return {
+        ok: false as const,
+        error: "UNAUTHORIZED" as const,
+        message: "Auth required.",
       }
-      const user = await getWhatsAppUser(id)
-
-      if (!user) {
-        set.status = 404
-        return {
-          ok: false as const,
-          error: "NOT_FOUND" as const,
-          message: "User not found.",
-        }
-      }
-
-      if ((auth as any).platformRole !== "super_admin" && user.organizationId !== auth.organizationId) {
-        set.status = 403
-        return { ok: false as const, error: "FORBIDDEN" as const, message: "Access denied." }
-      }
-
-      await removeWhatsAppUser(id)
-
-      return { ok: true as const, message: "User removed." }
     }
-  )
+    const user = await getWhatsAppUser(id)
+
+    if (!user) {
+      set.status = 404
+      return {
+        ok: false as const,
+        error: "NOT_FOUND" as const,
+        message: "User not found.",
+      }
+    }
+
+    if (
+      (auth as any).platformRole !== "super_admin" &&
+      user.organizationId !== auth.organizationId
+    ) {
+      set.status = 403
+      return {
+        ok: false as const,
+        error: "FORBIDDEN" as const,
+        message: "Access denied.",
+      }
+    }
+
+    await removeWhatsAppUser(id)
+
+    return { ok: true as const, message: "User removed." }
+  })

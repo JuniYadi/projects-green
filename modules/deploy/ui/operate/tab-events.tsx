@@ -1,7 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, CheckCircle, Warning, ClockCounterClockwise } from "@phosphor-icons/react"
+import {
+  Calendar,
+  CheckCircle,
+  Warning,
+  ClockCounterClockwise,
+} from "@phosphor-icons/react"
 import {
   Card,
   CardContent,
@@ -91,7 +96,7 @@ export function TabEvents() {
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
             Filter:
           </span>
           <Select
@@ -130,7 +135,10 @@ export function TabEvents() {
                     <Warning size={20} className="text-rose-400" />
                   )}
                   {item.status === "rolled_back" && (
-                    <ClockCounterClockwise size={20} className="text-amber-400" />
+                    <ClockCounterClockwise
+                      size={20}
+                      className="text-amber-400"
+                    />
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-1">
@@ -151,7 +159,7 @@ export function TabEvents() {
                   </p>
                   <div className="mt-2 flex items-center gap-2">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${
                         item.status === "succeeded"
                           ? "bg-emerald-500/10 text-emerald-400"
                           : item.status === "failed"
@@ -168,7 +176,10 @@ export function TabEvents() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.04]">
-                <ClockCounterClockwise size={24} className="text-muted-foreground" />
+                <ClockCounterClockwise
+                  size={24}
+                  className="text-muted-foreground"
+                />
               </div>
               <p className="text-sm font-medium text-white">No events found</p>
               <p className="text-xs text-muted-foreground">

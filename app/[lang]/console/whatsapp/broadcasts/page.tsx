@@ -55,7 +55,9 @@ export default function WhatsAppBroadcastsPage() {
     try {
       setBroadcasts(await whatsappClient.listBroadcasts())
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to load broadcasts")
+      toast.error(
+        error instanceof Error ? error.message : "Unable to load broadcasts"
+      )
     } finally {
       setLoading(false)
     }
@@ -73,7 +75,9 @@ export default function WhatsAppBroadcastsPage() {
       toast.success(message)
       await loadBroadcasts()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to send broadcast")
+      toast.error(
+        error instanceof Error ? error.message : "Unable to send broadcast"
+      )
     }
   }
 
@@ -87,7 +91,9 @@ export default function WhatsAppBroadcastsPage() {
       toast.success("Broadcast deleted")
       await loadBroadcasts()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to delete broadcast")
+      toast.error(
+        error instanceof Error ? error.message : "Unable to delete broadcast"
+      )
     }
   }
 
@@ -137,7 +143,9 @@ export default function WhatsAppBroadcastsPage() {
                 broadcasts.map((broadcast) => (
                   <TableRow key={broadcast.id}>
                     <TableCell>
-                      <div className="font-medium">{broadcast.templateName}</div>
+                      <div className="font-medium">
+                        {broadcast.templateName}
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         {broadcast.templateLanguage}
                       </div>
@@ -148,14 +156,17 @@ export default function WhatsAppBroadcastsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {broadcast.sent} sent / {broadcast.failed} failed / {broadcast.total} total
+                      {broadcast.sent} sent / {broadcast.failed} failed /{" "}
+                      {broadcast.total} total
                     </TableCell>
                     <TableCell>{formatDate(broadcast.createdAt)}</TableCell>
                     <TableCell className="space-x-2 text-right">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => router.push(`${basePath}/${broadcast.id}`)}
+                        onClick={() =>
+                          router.push(`${basePath}/${broadcast.id}`)
+                        }
                       >
                         <Eye className="mr-1 size-4" />
                         View

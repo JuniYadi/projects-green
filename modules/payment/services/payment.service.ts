@@ -10,7 +10,8 @@ export class PaymentService {
 
   constructor(billingTransactions?: BillingTransactionService) {
     this.billingTransactions =
-      billingTransactions ?? new BillingTransactionService(prisma as unknown as PrismaClient)
+      billingTransactions ??
+      new BillingTransactionService(prisma as unknown as PrismaClient)
   }
 
   /**
@@ -26,8 +27,10 @@ export class PaymentService {
     })
 
     return {
-      minTopup: currencyRow?.minTopup?.toNumber() ?? PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT,
-      maxTopup: currencyRow?.maxTopup?.toNumber() ?? PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT,
+      minTopup:
+        currencyRow?.minTopup?.toNumber() ?? PAYMENT_CONSTANTS.MIN_TOPUP_AMOUNT,
+      maxTopup:
+        currencyRow?.maxTopup?.toNumber() ?? PAYMENT_CONSTANTS.MAX_TOPUP_AMOUNT,
     }
   }
 
@@ -61,10 +64,14 @@ export class PaymentService {
     const { minTopup, maxTopup } = await this.getTopupBounds(account.currency)
 
     if (amount < minTopup) {
-      throw new Error(`Minimum top-up amount is ${minTopup} ${account.currency}`)
+      throw new Error(
+        `Minimum top-up amount is ${minTopup} ${account.currency}`
+      )
     }
     if (amount > maxTopup) {
-      throw new Error(`Maximum top-up amount is ${maxTopup} ${account.currency}`)
+      throw new Error(
+        `Maximum top-up amount is ${maxTopup} ${account.currency}`
+      )
     }
 
     const now = new Date()
@@ -146,7 +153,11 @@ export class PaymentService {
    * Credit balance via BillingTransactionService with idempotency guard.
    * Uses invoiceId as the idempotency key to prevent double-crediting.
    */
-  async creditBalance(organizationId: string, amount: number, invoiceId: string) {
+  async creditBalance(
+    organizationId: string,
+    amount: number,
+    invoiceId: string
+  ) {
     const account = await prisma.billingAccount.findUnique({
       where: { organizationId },
     })
@@ -172,7 +183,11 @@ export class PaymentService {
    */
   async payWithBalance(invoiceId: string, organizationId: string) {
     const invoice = await prisma.billingInvoice.findFirst({
-      where: { id: invoiceId, status: "OPEN", billingAccount: { organizationId } },
+      where: {
+        id: invoiceId,
+        status: "OPEN",
+        billingAccount: { organizationId },
+      },
     })
 
     if (!invoice) {

@@ -32,7 +32,9 @@ export function TrafficFlowCanvas({
   domains,
 }: TrafficFlowCanvasProps) {
   // Hydration safety
-  const [isMounted, setIsMounted] = useState(() => typeof window !== "undefined" && process.env.NODE_ENV === "test")
+  const [isMounted, setIsMounted] = useState(
+    () => typeof window !== "undefined" && process.env.NODE_ENV === "test"
+  )
 
   // Zoom & Pan states
   const containerRef = useRef<HTMLDivElement>(null)
@@ -59,9 +61,8 @@ export function TrafficFlowCanvas({
     if (containerRef.current) {
       setOffset(computeCenterOffset())
     }
-   
   }, [isMounted])
-  
+
   // Simulation speed & flow toggle
   const [isAnimPaused, setIsAnimPaused] = useState(false)
 
@@ -74,14 +75,18 @@ export function TrafficFlowCanvas({
   // Selected domain state
   const [selectedDomain, setSelectedDomain] = useState<string>(() => {
     const primary = domains?.find((d) => d.isPrimary)
-    return primary ? primary.domain : domains?.[0]?.domain || "laravel-shop.local"
+    return primary
+      ? primary.domain
+      : domains?.[0]?.domain || "laravel-shop.local"
   })
 
   // Sync selectedDomain during render when domains list changes (e.g. env switches)
   if (domains !== prevDomains) {
     setPrevDomains(domains)
     const primary = domains?.find((d) => d.isPrimary)
-    setSelectedDomain(primary ? primary.domain : domains?.[0]?.domain || "laravel-shop.local")
+    setSelectedDomain(
+      primary ? primary.domain : domains?.[0]?.domain || "laravel-shop.local"
+    )
   }
 
   useEffect(() => {
@@ -124,7 +129,10 @@ export function TrafficFlowCanvas({
   const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
     const zoomIntensity = 0.03
     const delta = -e.deltaY
-    const newScale = Math.max(0.5, Math.min(2.0, scale + (delta > 0 ? zoomIntensity : -zoomIntensity)))
+    const newScale = Math.max(
+      0.5,
+      Math.min(2.0, scale + (delta > 0 ? zoomIntensity : -zoomIntensity))
+    )
     setScale(newScale)
   }
 
@@ -204,20 +212,20 @@ export function TrafficFlowCanvas({
 
   if (!isMounted) {
     return (
-      <div 
-        className="relative rounded-2xl border border-border bg-card/50 dark:bg-[#0A0A0C]/50 shadow-2xl backdrop-blur-md overflow-hidden select-none animate-pulse"
+      <div
+        className="relative animate-pulse overflow-hidden rounded-2xl border border-border bg-card/50 shadow-2xl backdrop-blur-md select-none dark:bg-[#0A0A0C]/50"
         style={{ height: "414px" }}
       >
         {/* Canvas Header Control Bar */}
-        <div className="flex flex-row items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3 h-[54px]">
+        <div className="flex h-[54px] flex-row items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3">
           <div className="space-y-0.5">
-            <span className="text-sm font-bold text-foreground flex items-center gap-2">
+            <span className="flex items-center gap-2 text-sm font-bold text-foreground">
               <span className="relative flex h-2 w-2">
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-neutral-700"></span>
               </span>
               Cluster Traffic Routing Canvas
             </span>
-            <span className="text-[10px] text-muted-foreground block">
+            <span className="block text-[10px] text-muted-foreground">
               Loading simulation canvas...
             </span>
           </div>
@@ -231,68 +239,85 @@ export function TrafficFlowCanvas({
   }
 
   return (
-    <div className="relative rounded-2xl border border-border bg-card/50 dark:bg-[#0A0A0C]/50 shadow-2xl backdrop-blur-md overflow-hidden select-none">
-
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card/50 shadow-2xl backdrop-blur-md select-none dark:bg-[#0A0A0C]/50">
       {/* Canvas Header Control Bar */}
       <div className="flex flex-row items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3">
         <div className="space-y-0.5">
-          <span className="text-sm font-bold text-foreground flex items-center gap-2">
+          <span className="flex items-center gap-2 text-sm font-bold text-foreground">
             <span className="relative flex h-2 w-2">
-              <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${isHealthy ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
-              <span className={`relative inline-flex h-2 w-2 rounded-full ${isHealthy ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+              <span
+                className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${isHealthy ? "bg-emerald-400" : "bg-rose-400"}`}
+              ></span>
+              <span
+                className={`relative inline-flex h-2 w-2 rounded-full ${isHealthy ? "bg-emerald-500" : "bg-rose-500"}`}
+              ></span>
             </span>
             Cluster Traffic Routing Canvas
           </span>
-          <span className="text-[10px] text-muted-foreground block">
-            Drag to pan, scroll to zoom. Live request paths from edge to database.
+          <span className="block text-[10px] text-muted-foreground">
+            Drag to pan, scroll to zoom. Live request paths from edge to
+            database.
           </span>
         </div>
 
         {/* Action Toggles & Dropdowns */}
-        <div className="flex flex-wrap items-center gap-3 text-xs z-10">
+        <div className="z-10 flex flex-wrap items-center gap-3 text-xs">
           {/* Domain Dropdown Selection */}
-          <div className="flex items-center gap-2 bg-muted/60 border border-border/60 px-3 py-1 rounded-xl">
-            <span className="text-muted-foreground font-semibold">Active Domain:</span>
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/60 px-3 py-1">
+            <span className="font-semibold text-muted-foreground">
+              Active Domain:
+            </span>
             <select
               value={selectedDomain}
               onChange={(e) => setSelectedDomain(e.target.value)}
-              className="bg-transparent text-foreground border-none font-bold focus:outline-none cursor-pointer text-[10px] hover:text-primary transition-all pr-1"
+              className="cursor-pointer border-none bg-transparent pr-1 text-[10px] font-bold text-foreground transition-all hover:text-primary focus:outline-none"
             >
               {domains?.map((d) => (
-                <option key={d.id} value={d.domain} className="bg-card text-foreground text-xs">
+                <option
+                  key={d.id}
+                  value={d.domain}
+                  className="bg-card text-xs text-foreground"
+                >
                   {d.domain} {d.isPrimary ? "(Primary)" : ""}
                 </option>
               ))}
               {(!domains || domains.length === 0) && (
-                <option value="laravel-shop.local" className="bg-card text-foreground text-xs">
+                <option
+                  value="laravel-shop.local"
+                  className="bg-card text-xs text-foreground"
+                >
                   laravel-shop.local
                 </option>
               )}
             </select>
           </div>
 
-          <div className="flex items-center gap-2 bg-muted/60 border border-border/60 px-3 py-1 rounded-xl">
-            <span className="text-muted-foreground font-semibold">Cloudflare:</span>
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/60 px-3 py-1">
+            <span className="font-semibold text-muted-foreground">
+              Cloudflare:
+            </span>
             <button
               onClick={() => setCloudflareEnabled(!cloudflareEnabled)}
-              className={`rounded-lg px-2 py-0.5 font-bold transition-all text-[10px] uppercase cursor-pointer ${
+              className={`cursor-pointer rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase transition-all ${
                 cloudflareEnabled
-                  ? "bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/30"
-                  : "bg-muted text-muted-foreground border border-border/40"
+                  ? "border border-orange-500/30 bg-orange-500/20 text-orange-600 dark:text-orange-400"
+                  : "border border-border/40 bg-muted text-muted-foreground"
               }`}
             >
               {cloudflareEnabled ? "Proxied" : "Bypass"}
             </button>
           </div>
 
-          <div className="flex items-center gap-2 bg-muted/60 border border-border/60 px-3 py-1 rounded-xl">
-            <span className="text-muted-foreground font-semibold">Database:</span>
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/60 px-3 py-1">
+            <span className="font-semibold text-muted-foreground">
+              Database:
+            </span>
             <button
               onClick={() => setDbConnected(!dbConnected)}
-              className={`rounded-lg px-2 py-0.5 font-bold transition-all text-[10px] uppercase cursor-pointer ${
+              className={`cursor-pointer rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase transition-all ${
                 dbConnected
-                  ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                  : "bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30"
+                  ? "border border-emerald-500/30 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                  : "border border-rose-500/30 bg-rose-500/20 text-rose-600 dark:text-rose-400"
               }`}
             >
               {dbConnected ? "Connected" : "Offline"}
@@ -302,7 +327,7 @@ export function TrafficFlowCanvas({
           {/* Pause Animation button */}
           <button
             onClick={() => setIsAnimPaused(!isAnimPaused)}
-            className="text-[10px] font-bold text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border/40 hover:bg-muted/40 cursor-pointer"
+            className="cursor-pointer rounded border border-border/40 px-2 py-1 text-[10px] font-bold text-muted-foreground hover:bg-muted/40 hover:text-foreground"
           >
             {isAnimPaused ? "Resume Flow" : "Pause Flow"}
           </button>
@@ -312,7 +337,7 @@ export function TrafficFlowCanvas({
       {/* Interactive Drag & Scroll Area */}
       <div
         ref={containerRef}
-        className="w-full cursor-grab active:cursor-grabbing overflow-hidden relative"
+        className="relative w-full cursor-grab overflow-hidden active:cursor-grabbing"
         style={{ height: "360px", backgroundColor: "var(--canvas-bg)" }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -323,14 +348,13 @@ export function TrafficFlowCanvas({
       >
         {/* Scalable & Pannable Viewport Group */}
         <div
-          className="absolute origin-top-left pointer-events-none"
+          className="pointer-events-none absolute origin-top-left"
           style={{
             width: "1000px",
             height: "400px",
             transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
           }}
         >
-          
           {/* SVG LAYER FOR PATHS AND GRID */}
           <svg
             width="1000"
@@ -353,7 +377,14 @@ export function TrafficFlowCanvas({
                   to { stroke-dashoffset: -35px; }
                 }
               `}</style>
-              <filter id="glow" x="0" y="0" width="1000" height="400" filterUnits="userSpaceOnUse">
+              <filter
+                id="glow"
+                x="0"
+                y="0"
+                width="1000"
+                height="400"
+                filterUnits="userSpaceOnUse"
+              >
                 <feGaussianBlur stdDeviation="3" result="blur" />
                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
               </filter>
@@ -417,7 +448,9 @@ export function TrafficFlowCanvas({
                     stroke={clientFlowColor}
                     strokeWidth="4"
                     strokeDasharray="6, 12"
-                    style={{ animation: "flow-ingress-global 1.0s linear infinite" }}
+                    style={{
+                      animation: "flow-ingress-global 1.0s linear infinite",
+                    }}
                     filter="url(#glow)"
                   />
                 )}
@@ -472,7 +505,11 @@ export function TrafficFlowCanvas({
                     d={pathStr}
                     fill="none"
                     stroke={showFlow ? "currentColor" : "currentColor"}
-                    className={showFlow ? "text-neutral-500/15 dark:text-white/10" : "text-neutral-500/5 dark:text-white/5"}
+                    className={
+                      showFlow
+                        ? "text-neutral-500/15 dark:text-white/10"
+                        : "text-neutral-500/5 dark:text-white/5"
+                    }
                     strokeWidth="2"
                   />
                   {showFlow && (
@@ -493,15 +530,26 @@ export function TrafficFlowCanvas({
             {/* 5. Paths from Pods to Database */}
             {pods.map((pod, idx) => {
               const pathStr = `M ${pod.x + 75} ${pod.y} C ${pod.x + 120} ${pod.y}, ${pod.x + 120} ${dbY}, ${dbX - 55} ${dbY}`
-              const showFlow = dbConnected && !is502Error && !isSslError && !isRedirectLoop && !isAnimPaused
+              const showFlow =
+                dbConnected &&
+                !is502Error &&
+                !isSslError &&
+                !isRedirectLoop &&
+                !isAnimPaused
 
               return (
                 <g key={`db-path-${idx}`}>
                   <path
                     d={pathStr}
                     fill="none"
-                    stroke={dbConnected ? "currentColor" : "rgba(239, 68, 68, 0.15)"}
-                    className={dbConnected ? "text-neutral-500/15 dark:text-white/10" : ""}
+                    stroke={
+                      dbConnected ? "currentColor" : "rgba(239, 68, 68, 0.15)"
+                    }
+                    className={
+                      dbConnected
+                        ? "text-neutral-500/15 dark:text-white/10"
+                        : ""
+                    }
                     strokeWidth="2"
                     strokeDasharray={dbConnected ? undefined : "3,3"}
                   />
@@ -531,17 +579,28 @@ export function TrafficFlowCanvas({
               width: "120px",
               height: "70px",
             }}
-            className="absolute rounded-2xl border border-border bg-card p-3 flex flex-col justify-between text-left pointer-events-auto ring-1 ring-blue-500/10 shadow-lg"
+            className="pointer-events-auto absolute flex flex-col justify-between rounded-2xl border border-border bg-card p-3 text-left shadow-lg ring-1 ring-blue-500/10"
           >
             <div className="flex items-center gap-2">
-              <Globe size={18} className="text-blue-500 dark:text-blue-400 shrink-0" />
-              <span className="text-[11px] font-bold text-foreground tracking-wide">Internet</span>
+              <Globe
+                size={18}
+                className="shrink-0 text-blue-500 dark:text-blue-400"
+              />
+              <span className="text-[11px] font-bold tracking-wide text-foreground">
+                Internet
+              </span>
             </div>
-            <div className="text-[9px] font-semibold text-neutral-600 dark:text-neutral-400 select-none leading-tight">
+            <div className="text-[9px] leading-tight font-semibold text-neutral-600 select-none dark:text-neutral-400">
               User Traffic
             </div>
-            <div className="text-[9px] font-mono leading-none">
-              <span className={isSslError ? "text-rose-600 dark:text-rose-500 font-bold" : "text-emerald-600 dark:text-emerald-400 font-bold"}>
+            <div className="font-mono text-[9px] leading-none">
+              <span
+                className={
+                  isSslError
+                    ? "font-bold text-rose-600 dark:text-rose-500"
+                    : "font-bold text-emerald-600 dark:text-emerald-400"
+                }
+              >
                 {isSslError ? "BLOCKED" : "124 RPS"}
               </span>
             </div>
@@ -555,25 +614,40 @@ export function TrafficFlowCanvas({
               width: "140px",
               height: "75px",
             }}
-            className={`absolute rounded-2xl border p-3 flex flex-col justify-between text-left pointer-events-auto shadow-lg transition-all duration-300 ${
+            className={`pointer-events-auto absolute flex flex-col justify-between rounded-2xl border p-3 text-left shadow-lg transition-all duration-300 ${
               cloudflareEnabled
                 ? "border-orange-500/25 bg-card"
                 : "border-border/40 bg-card/30 opacity-50"
             }`}
           >
             <div className="flex items-center gap-2">
-              <Cloud size={18} className={cloudflareEnabled ? "text-orange-500 dark:text-orange-400 shrink-0" : "text-neutral-500 shrink-0"} />
-              <span className={`text-[11px] font-bold tracking-wide ${cloudflareEnabled ? 'text-foreground' : 'text-muted-foreground'}`}>
+              <Cloud
+                size={18}
+                className={
+                  cloudflareEnabled
+                    ? "shrink-0 text-orange-500 dark:text-orange-400"
+                    : "shrink-0 text-neutral-500"
+                }
+              />
+              <span
+                className={`text-[11px] font-bold tracking-wide ${cloudflareEnabled ? "text-foreground" : "text-muted-foreground"}`}
+              >
                 Cloudflare
               </span>
             </div>
-            <div className="text-[8px] font-bold font-mono">
-              <span className={cloudflareEnabled ? "text-orange-600 dark:text-orange-400" : "text-neutral-500 dark:text-neutral-400"}>
+            <div className="font-mono text-[8px] font-bold">
+              <span
+                className={
+                  cloudflareEnabled
+                    ? "text-orange-600 dark:text-orange-400"
+                    : "text-neutral-500 dark:text-neutral-400"
+                }
+              >
                 {cloudflareEnabled ? "WAF / PROXY ON" : "BYPASSED"}
               </span>
             </div>
             {cloudflareEnabled && (
-              <div className="text-[8px] font-mono text-neutral-600 dark:text-neutral-400 font-medium">
+              <div className="font-mono text-[8px] font-medium text-neutral-600 dark:text-neutral-400">
                 SSL: Full Strict
               </div>
             )}
@@ -587,26 +661,35 @@ export function TrafficFlowCanvas({
               width: "170px",
               height: "70px",
             }}
-            className={`absolute rounded-2xl border p-3 flex flex-col justify-between text-left pointer-events-auto shadow-lg ${
+            className={`pointer-events-auto absolute flex flex-col justify-between rounded-2xl border p-3 text-left shadow-lg ${
               isSslError
                 ? "border-rose-500/30 bg-card ring-1 ring-rose-500/10"
                 : "border-border bg-card"
             }`}
             title={selectedDomain}
           >
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Cpu size={16} className={`shrink-0 ${isSslError ? "text-rose-500 animate-pulse" : "text-emerald-500 dark:text-emerald-400"}`} />
-              <span className="text-[10px] font-bold text-foreground tracking-tight truncate block">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Cpu
+                size={16}
+                className={`shrink-0 ${isSslError ? "animate-pulse text-rose-500" : "text-emerald-500 dark:text-emerald-400"}`}
+              />
+              <span className="block truncate text-[10px] font-bold tracking-tight text-foreground">
                 {selectedDomain}
               </span>
             </div>
-            <div className="text-[8px] font-mono mt-1 select-none">
+            <div className="mt-1 font-mono text-[8px] select-none">
               {isSslError ? (
-                <span className="text-rose-600 dark:text-rose-500 font-bold">SSL HANDSHAKE FAIL</span>
+                <span className="font-bold text-rose-600 dark:text-rose-500">
+                  SSL HANDSHAKE FAIL
+                </span>
               ) : isRedirectLoop ? (
-                <span className="text-amber-600 dark:text-amber-500 font-bold">301 LOOP DETECTED</span>
+                <span className="font-bold text-amber-600 dark:text-amber-500">
+                  301 LOOP DETECTED
+                </span>
               ) : (
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">SSL ACTIVE (ACM)</span>
+                <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                  SSL ACTIVE (ACM)
+                </span>
               )}
             </div>
           </div>
@@ -619,49 +702,81 @@ export function TrafficFlowCanvas({
               width: "180px",
               height: "300px",
             }}
-            className="absolute rounded-3xl border border-dashed border-border bg-muted/[0.05] dark:bg-white/[0.005] p-3 text-left pointer-events-auto flex flex-col"
+            className="pointer-events-auto absolute flex flex-col rounded-3xl border border-dashed border-border bg-muted/[0.05] p-3 text-left dark:bg-white/[0.005]"
           >
-            <span className="text-[8px] font-bold text-neutral-500 dark:text-muted-foreground/80 tracking-wider block mb-2 uppercase select-none">
+            <span className="mb-2 block text-[8px] font-bold tracking-wider text-neutral-500 uppercase select-none dark:text-muted-foreground/80">
               K8s Namespace
             </span>
 
             {/* Container mapping active Pods */}
-            <div className="flex flex-col gap-2.5 h-full justify-center -mt-3.5">
+            <div className="-mt-3.5 flex h-full flex-col justify-center gap-2.5">
               {pods.map((pod, idx) => {
-                const cpu = Math.floor(((Math.sin(tick * 0.7 + idx) + 1) / 2) * 15) + 5
-                const mem = Math.floor(((Math.cos(tick * 0.4 + idx) + 1) / 2) * 35) + 124
+                const cpu =
+                  Math.floor(((Math.sin(tick * 0.7 + idx) + 1) / 2) * 15) + 5
+                const mem =
+                  Math.floor(((Math.cos(tick * 0.4 + idx) + 1) / 2) * 35) + 124
                 const ip = `10.244.1.${12 + idx}`
                 const isPodError = is502Error
 
                 return (
                   <div
                     key={`pod-${idx}`}
-                    className={`rounded-xl border p-2 bg-card text-left transition-all duration-300 ${
+                    className={`rounded-xl border bg-card p-2 text-left transition-all duration-300 ${
                       isPodError
-                        ? "border-rose-500/20 shadow-lg shadow-rose-500/5 ring-1 ring-rose-500/10"
+                        ? "border-rose-500/20 shadow-lg ring-1 shadow-rose-500/5 ring-rose-500/10"
                         : "border-border"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1.5 min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className={`w-1.5 h-1.5 rounded-full ${isPodError ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'} shrink-0`} />
-                        <span 
-                          style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70px" }}
-                          className="text-[9px] font-bold text-foreground leading-none"
+                    <div className="flex min-w-0 items-center justify-between gap-1.5">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${isPodError ? "animate-pulse bg-rose-500" : "bg-emerald-500"} shrink-0`}
+                        />
+                        <span
+                          style={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "70px",
+                          }}
+                          className="text-[9px] leading-none font-bold text-foreground"
                           title={pod.label}
                         >
                           {pod.label}
                         </span>
                       </div>
-                      <span className="text-[7.5px] font-mono text-neutral-600 dark:text-neutral-400 font-medium shrink-0">{ip}</span>
+                      <span className="shrink-0 font-mono text-[7.5px] font-medium text-neutral-600 dark:text-neutral-400">
+                        {ip}
+                      </span>
                     </div>
 
-                    <div className="flex justify-between text-[8px] font-mono text-neutral-600 dark:text-neutral-400 font-medium mt-1.5 pt-1.5 border-t border-border/40">
-                      <span>CPU: <span className="text-foreground font-bold">{cpu}%</span></span>
-                      <span>RAM: <span className="text-foreground font-bold">{mem}MB</span></span>
+                    <div className="mt-1.5 flex justify-between border-t border-border/40 pt-1.5 font-mono text-[8px] font-medium text-neutral-600 dark:text-neutral-400">
+                      <span>
+                        CPU:{" "}
+                        <span className="font-bold text-foreground">
+                          {cpu}%
+                        </span>
+                      </span>
+                      <span>
+                        RAM:{" "}
+                        <span className="font-bold text-foreground">
+                          {mem}MB
+                        </span>
+                      </span>
                     </div>
-                    <div className="text-[8px] font-mono text-neutral-600 dark:text-neutral-400 font-medium mt-1">
-                      <span>STATUS: <span className={isPodError ? "text-rose-500 font-bold" : "text-emerald-600 dark:text-emerald-400 font-bold"}>{isPodError ? "ERR_CRASH" : "RUNNING"}</span></span>
+                    <div className="mt-1 font-mono text-[8px] font-medium text-neutral-600 dark:text-neutral-400">
+                      <span>
+                        STATUS:{" "}
+                        <span
+                          className={
+                            isPodError
+                              ? "font-bold text-rose-500"
+                              : "font-bold text-emerald-600 dark:text-emerald-400"
+                          }
+                        >
+                          {isPodError ? "ERR_CRASH" : "RUNNING"}
+                        </span>
+                      </span>
                     </div>
                   </div>
                 )
@@ -677,46 +792,52 @@ export function TrafficFlowCanvas({
               width: "110px",
               height: "70px",
             }}
-            className={`absolute rounded-2xl border p-3 flex flex-col justify-between text-left pointer-events-auto shadow-lg transition-all duration-300 ${
+            className={`pointer-events-auto absolute flex flex-col justify-between rounded-2xl border p-3 text-left shadow-lg transition-all duration-300 ${
               dbConnected
                 ? "border-emerald-500/20 bg-card"
                 : "border-rose-500/30 bg-card ring-1 ring-rose-500/10"
             }`}
           >
             <div className="flex items-center gap-2">
-              <Database size={18} className={`shrink-0 ${dbConnected ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500"}`} />
-              <span className="text-[11px] font-bold text-foreground tracking-wide">MySQL DB</span>
+              <Database
+                size={18}
+                className={`shrink-0 ${dbConnected ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500"}`}
+              />
+              <span className="text-[11px] font-bold tracking-wide text-foreground">
+                MySQL DB
+              </span>
             </div>
-            <div className="text-[8px] font-mono mt-1 font-bold">
+            <div className="mt-1 font-mono text-[8px] font-bold">
               {dbConnected ? (
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">12 Active Conns</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  12 Active Conns
+                </span>
               ) : (
                 <span className="text-rose-500">CONN_TIMEOUT</span>
               )}
             </div>
           </div>
-
         </div>
 
         {/* Floating Zoom / Pan Controls (Bottom Left) */}
-        <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 bg-card border border-border p-1.5 rounded-xl shadow-md backdrop-blur-md z-10">
+        <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1.5 rounded-xl border border-border bg-card p-1.5 shadow-md backdrop-blur-md">
           <button
             onClick={zoomIn}
-            className="w-7 h-7 flex items-center justify-center text-foreground/80 hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg active:scale-95 transition-all cursor-pointer"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-muted text-foreground/80 transition-all hover:bg-muted/80 hover:text-foreground active:scale-95"
             title="Zoom In"
           >
             <MagnifyingGlassPlus size={16} />
           </button>
           <button
             onClick={zoomOut}
-            className="w-7 h-7 flex items-center justify-center text-foreground/80 hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg active:scale-95 transition-all cursor-pointer"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-muted text-foreground/80 transition-all hover:bg-muted/80 hover:text-foreground active:scale-95"
             title="Zoom Out"
           >
             <MagnifyingGlassMinus size={16} />
           </button>
           <button
             onClick={resetZoom}
-            className="w-7 h-7 flex items-center justify-center text-foreground/80 hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg active:scale-95 transition-all cursor-pointer"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-muted text-foreground/80 transition-all hover:bg-muted/80 hover:text-foreground active:scale-95"
             title="Reset Zoom"
           >
             <ArrowsOutSimple size={16} />
@@ -724,17 +845,17 @@ export function TrafficFlowCanvas({
         </div>
 
         {/* Floating Canvas Overlay Legend (Bottom Right) */}
-        <div className="absolute bottom-4 right-4 bg-card border border-border px-3 py-2 rounded-xl shadow-md backdrop-blur-md text-[10px] text-neutral-600 dark:text-neutral-400 font-medium flex flex-col gap-1 z-10">
+        <div className="absolute right-4 bottom-4 z-10 flex flex-col gap-1 rounded-xl border border-border bg-card px-3 py-2 text-[10px] font-medium text-neutral-600 shadow-md backdrop-blur-md dark:text-neutral-400">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-1 bg-emerald-500 rounded-full inline-block" />
+            <span className="inline-block h-1 w-2.5 rounded-full bg-emerald-500" />
             <span>Healthy / Active traffic</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-1 bg-rose-500 rounded-full inline-block" />
+            <span className="inline-block h-1 w-2.5 rounded-full bg-rose-500" />
             <span>Blocked / Error traffic</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-1 bg-orange-400 rounded-full inline-block" />
+            <span className="inline-block h-1 w-2.5 rounded-full bg-orange-400" />
             <span>Cloudflare Proxied path</span>
           </div>
         </div>

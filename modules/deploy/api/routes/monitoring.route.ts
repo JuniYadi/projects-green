@@ -36,7 +36,11 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
 
       if (!deployment) {
         set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Deployment not found" }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Deployment not found",
+        }
       }
 
       if (deployment.organizationId !== auth.organizationId) {
@@ -68,7 +72,11 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
 
       if (!deployment) {
         set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Deployment not found" }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Deployment not found",
+        }
       }
 
       if (deployment.organizationId !== auth.organizationId) {
@@ -107,7 +115,11 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
 
       if (!deployment) {
         set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Deployment not found" }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Deployment not found",
+        }
       }
 
       if (deployment.organizationId !== auth.organizationId) {

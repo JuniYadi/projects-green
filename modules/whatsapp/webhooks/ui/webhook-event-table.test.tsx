@@ -39,7 +39,7 @@ describe("WebhookEventTable", () => {
   describe("loading state", () => {
     it("renders skeleton rows when isLoading is true", () => {
       const { container } = render(
-        <WebhookEventTable events={[]} isLoading={true} />,
+        <WebhookEventTable events={[]} isLoading={true} />
       )
 
       const skeletons = container.querySelectorAll('[data-slot="skeleton"]')
@@ -54,7 +54,7 @@ describe("WebhookEventTable", () => {
           events={[]}
           isLoading={false}
           error="Something went wrong"
-        />,
+        />
       )
 
       expect(getByText("Something went wrong")).toBeTruthy()
@@ -69,7 +69,7 @@ describe("WebhookEventTable", () => {
           isLoading={false}
           error="Failed to load"
           onRetry={onRetry}
-        />,
+        />
       )
 
       const retryBtn = getByRole("button", { name: /retry/i })
@@ -83,7 +83,7 @@ describe("WebhookEventTable", () => {
   describe("empty state", () => {
     it('shows "No webhook events yet" when events array is empty', () => {
       const { getByText } = render(
-        <WebhookEventTable events={[]} isLoading={false} />,
+        <WebhookEventTable events={[]} isLoading={false} />
       )
 
       expect(getByText("No webhook events yet")).toBeTruthy()
@@ -96,7 +96,7 @@ describe("WebhookEventTable", () => {
           isLoading={false}
           emptyActionLabel="Go to Settings"
           emptyActionHref="/settings"
-        />,
+        />
       )
 
       const link = getByRole("link", { name: "Go to Settings" })
@@ -108,7 +108,7 @@ describe("WebhookEventTable", () => {
   describe("data table", () => {
     it("renders all event rows with correct type badges", () => {
       const { getByText } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />,
+        <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
 
       expect(getByText("Inbound Message")).toBeTruthy()
@@ -118,7 +118,7 @@ describe("WebhookEventTable", () => {
 
     it("renders all events with correct status badges", () => {
       const { getByText } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />,
+        <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
 
       expect(getByText("SUCCESS")).toBeTruthy()
@@ -128,7 +128,7 @@ describe("WebhookEventTable", () => {
 
     it("displays WA message IDs and placeholder for missing ones", () => {
       const { container } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />,
+        <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
 
       expect(container.textContent).toContain("wamid_abc123")
@@ -139,7 +139,7 @@ describe("WebhookEventTable", () => {
 
     it("maps processingStatus to correct Badge variant classes", () => {
       const { container } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />,
+        <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
 
       // Find all Badge elements (they have the "group/badge" class from CVA)
@@ -158,7 +158,7 @@ describe("WebhookEventTable", () => {
 
     it("renders formatted timestamps", () => {
       const { container } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />,
+        <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
 
       // toLocaleString() output is environment-dependent but should produce
@@ -170,7 +170,7 @@ describe("WebhookEventTable", () => {
   describe("expandable row", () => {
     it("toggles raw payload viewer when a row with metaPayload is clicked", () => {
       const { container } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />,
+        <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
 
       // No viewer initially
@@ -196,7 +196,7 @@ describe("WebhookEventTable", () => {
 
     it("does not show viewer when expanded row has no metaPayload", () => {
       const { container } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />,
+        <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
 
       // Click the third row (evt_3 — no metaPayload)
@@ -217,7 +217,7 @@ describe("WebhookEventTable", () => {
           events={sampleEvents}
           isLoading={false}
           pagination={{ page: 2, totalPages: 5, onPageChange }}
-        />,
+        />
       )
 
       expect(getByText("Page 2 of 5")).toBeTruthy()
@@ -232,7 +232,7 @@ describe("WebhookEventTable", () => {
           events={sampleEvents}
           isLoading={false}
           pagination={{ page: 2, totalPages: 5, onPageChange }}
-        />,
+        />
       )
 
       fireEvent.click(getByRole("button", { name: /previous/i }))
@@ -246,7 +246,7 @@ describe("WebhookEventTable", () => {
           events={sampleEvents}
           isLoading={false}
           pagination={{ page: 2, totalPages: 5, onPageChange }}
-        />,
+        />
       )
 
       fireEvent.click(getByRole("button", { name: /next/i }))
@@ -260,7 +260,7 @@ describe("WebhookEventTable", () => {
           events={sampleEvents}
           isLoading={false}
           pagination={{ page: 1, totalPages: 5, onPageChange }}
-        />,
+        />
       )
 
       const prevBtn = getByRole("button", { name: /previous/i })
@@ -274,7 +274,7 @@ describe("WebhookEventTable", () => {
           events={sampleEvents}
           isLoading={false}
           pagination={{ page: 5, totalPages: 5, onPageChange }}
-        />,
+        />
       )
 
       const nextBtn = getByRole("button", { name: /next/i })
@@ -288,7 +288,7 @@ describe("WebhookEventTable", () => {
           events={sampleEvents}
           isLoading={false}
           pagination={{ page: 1, totalPages: 1, onPageChange }}
-        />,
+        />
       )
 
       expect(queryByRole("button", { name: /previous/i })).toBeNull()

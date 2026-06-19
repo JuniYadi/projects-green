@@ -58,7 +58,9 @@ export default function PortalVpnPage() {
   }, [])
 
   useEffect(() => {
-    const run = async () => { await loadClients() }
+    const run = async () => {
+      await loadClients()
+    }
     run()
   }, [loadClients])
 
@@ -109,7 +111,9 @@ export default function PortalVpnPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {loading ? "-" : clients.filter((c) => c.status === "ACTIVE").length}
+              {loading
+                ? "-"
+                : clients.filter((c) => c.status === "ACTIVE").length}
             </p>
           </CardContent>
         </Card>
@@ -117,9 +121,7 @@ export default function PortalVpnPage() {
         <Card>
           <CardHeader className="flex flex-row items-center gap-2 pb-2">
             <ShieldCheckIcon className="h-4 w-4" />
-            <CardTitle className="text-sm font-medium">
-              Total Clients
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
@@ -220,13 +222,13 @@ export default function PortalVpnPage() {
                     <TableCell>
                       {new Date(client.currentPeriodStart).toLocaleDateString(
                         "id-ID",
-                        { day: "numeric", month: "short", year: "numeric" },
+                        { day: "numeric", month: "short", year: "numeric" }
                       )}
                     </TableCell>
                     <TableCell>
                       {new Date(client.currentPeriodEnd).toLocaleDateString(
                         "id-ID",
-                        { day: "numeric", month: "short", year: "numeric" },
+                        { day: "numeric", month: "short", year: "numeric" }
                       )}
                     </TableCell>
                     <TableCell className="text-right">

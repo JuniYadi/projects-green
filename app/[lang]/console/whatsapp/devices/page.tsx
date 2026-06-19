@@ -138,7 +138,9 @@ export default function WhatsAppDevicesPage() {
       void loadDevices()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : messages.console.whatsapp.devices.unableToUpdate
+        error instanceof Error
+          ? error.message
+          : messages.console.whatsapp.devices.unableToUpdate
       )
     } finally {
       setIsSubmitting(false)
@@ -161,7 +163,9 @@ export default function WhatsAppDevicesPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.devices.heading}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {messages.console.whatsapp.devices.heading}
+          </h1>
           <p className="text-muted-foreground">
             {messages.console.whatsapp.devices.description}
           </p>
@@ -207,7 +211,9 @@ export default function WhatsAppDevicesPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.devices.heading}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {messages.console.whatsapp.devices.heading}
+          </h1>
           <p className="text-muted-foreground">
             {messages.console.whatsapp.devices.description}
           </p>
@@ -216,7 +222,9 @@ export default function WhatsAppDevicesPage() {
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>{messages.console.whatsapp.devices.cardTitle}</CardTitle>
+              <CardTitle>
+                {messages.console.whatsapp.devices.cardTitle}
+              </CardTitle>
               <CardDescription>
                 {messages.console.whatsapp.devices.cardDescription}
               </CardDescription>
@@ -242,7 +250,9 @@ export default function WhatsAppDevicesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.devices.heading}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {messages.console.whatsapp.devices.heading}
+        </h1>
         <p className="text-muted-foreground">
           {messages.console.whatsapp.devices.description} Quota and limits are
           managed by your admin.
@@ -291,12 +301,17 @@ export default function WhatsAppDevicesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <DeviceStatusBadge status={device.status} messages={messages} />
+                    <DeviceStatusBadge
+                      status={device.status}
+                      messages={messages}
+                    />
                     {device.status === "ACTIVE" && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
-                            <span className="sr-only">{messages.console.whatsapp.devices.srOpenMenu}</span>
+                            <span className="sr-only">
+                              {messages.console.whatsapp.devices.srOpenMenu}
+                            </span>
                             <DotsThreeVertical
                               weight="bold"
                               className="size-4"
@@ -331,14 +346,18 @@ export default function WhatsAppDevicesPage() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{messages.console.whatsapp.devices.editDialogTitle}</DialogTitle>
+            <DialogTitle>
+              {messages.console.whatsapp.devices.editDialogTitle}
+            </DialogTitle>
             <DialogDescription>
               {messages.console.whatsapp.devices.editDialogDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="edit-phone">{messages.console.whatsapp.devices.phoneNumber}</Label>
+              <Label htmlFor="edit-phone">
+                {messages.console.whatsapp.devices.phoneNumber}
+              </Label>
               <Input
                 id="edit-phone"
                 value={editForm.phoneNumber}
@@ -415,7 +434,9 @@ export default function WhatsAppDevicesPage() {
               onClick={() => void handleEditDevice()}
               disabled={isSubmitting}
             >
-              {isSubmitting ? messages.console.whatsapp.devices.saving : messages.console.whatsapp.devices.saveChanges}
+              {isSubmitting
+                ? messages.console.whatsapp.devices.saving
+                : messages.console.whatsapp.devices.saveChanges}
             </Button>
           </DialogFooter>
         </DialogContent>

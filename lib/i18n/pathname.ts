@@ -1,8 +1,4 @@
-import {
-  defaultLocale,
-  locales,
-  type AppLocale,
-} from "@/lib/i18n/config"
+import { defaultLocale, locales, type AppLocale } from "@/lib/i18n/config"
 
 export const isLocale = (value: string): value is AppLocale => {
   return locales.includes(value as AppLocale)

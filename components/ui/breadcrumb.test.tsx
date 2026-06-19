@@ -133,7 +133,9 @@ describe("BreadcrumbPage", () => {
   })
 
   it("applies custom className", () => {
-    const view = render(<BreadcrumbPage className="custom-page">Current</BreadcrumbPage>)
+    const view = render(
+      <BreadcrumbPage className="custom-page">Current</BreadcrumbPage>
+    )
     expect(view.getByText("Current")).toHaveClass("custom-page")
   })
 })
@@ -141,7 +143,9 @@ describe("BreadcrumbPage", () => {
 describe("BreadcrumbSeparator", () => {
   it("renders as li with role presentation and aria-hidden", () => {
     const view = render(<BreadcrumbSeparator />)
-    const li = view.container.querySelector('[data-slot="breadcrumb-separator"]')
+    const li = view.container.querySelector(
+      '[data-slot="breadcrumb-separator"]'
+    )
     expect(li).toBeTruthy()
     expect(li?.tagName).toBe("LI")
     expect(li).toHaveAttribute("role", "presentation")
@@ -150,7 +154,9 @@ describe("BreadcrumbSeparator", () => {
 
   it("renders default CaretRightIcon when no children provided", () => {
     const view = render(<BreadcrumbSeparator />)
-    const li = view.container.querySelector('[data-slot="breadcrumb-separator"]')
+    const li = view.container.querySelector(
+      '[data-slot="breadcrumb-separator"]'
+    )
     // Should contain an SVG icon by default
     expect(li?.querySelector("svg")).toBeTruthy()
   })
@@ -171,7 +177,9 @@ describe("BreadcrumbSeparator", () => {
 
   it("applies custom className", () => {
     const view = render(<BreadcrumbSeparator className="custom-sep" />)
-    const li = view.container.querySelector('[data-slot="breadcrumb-separator"]')
+    const li = view.container.querySelector(
+      '[data-slot="breadcrumb-separator"]'
+    )
     expect(li).toHaveClass("custom-sep")
   })
 })
@@ -199,9 +207,7 @@ describe("BreadcrumbEllipsis", () => {
   })
 
   it("applies custom className", () => {
-    const view = render(
-      <BreadcrumbEllipsis className="custom-ellipsis" />
-    )
+    const view = render(<BreadcrumbEllipsis className="custom-ellipsis" />)
     const el = view.container.querySelector('[data-slot="breadcrumb-ellipsis"]')
     expect(el).toHaveClass("custom-ellipsis")
   })

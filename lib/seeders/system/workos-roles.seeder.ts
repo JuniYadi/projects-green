@@ -64,7 +64,7 @@ export class WorkosRolesSeeder extends BaseSeeder {
 
     const existing = await workos.authorization.listEnvironmentRoles()
     const existingBySlug = new Map(
-      existing.data.map((role) => [normalizeSlug(role.slug), role]),
+      existing.data.map((role) => [normalizeSlug(role.slug), role])
     )
 
     for (const roleSpec of DEFAULT_ROLES) {

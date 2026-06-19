@@ -23,185 +23,273 @@ const templateBodySchema = t.Object({
   languages: t.Array(templateLanguageSchema),
 })
 
-const templateUpdateSchema = t.Partial(t.Omit(templateBodySchema, ["languages"]))
+const templateUpdateSchema = t.Partial(
+  t.Omit(templateBodySchema, ["languages"])
+)
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
 
 function getPagination(query: Record<string, unknown>) {
   const page = Math.max(Number(query.page) || 1, 1)
-  const limit = Math.min(Math.max(Number(query.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)
+  const limit = Math.min(
+    Math.max(Number(query.limit) || DEFAULT_LIMIT, 1),
+    MAX_LIMIT
+  )
   return { page, limit, skip: (page - 1) * limit }
 }
 
 export const templatesRoutes = new Elysia({ prefix: "/templates" })
-  .get("/", async ({ request, set, query }: { request: any, set: any, query: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+  .get(
+    "/",
+    async ({ request, set, query }: { request: any; set: any; query: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const { page, limit, skip } = getPagination(query)
+      const where =
+        whatsappAuth.type === "workos" &&
+        whatsappAuth.platformRole !== "super_admin"
+          ? { organizationId: whatsappAuth.organizationId! }
+          : {}
+      const [total, templates] = await Promise.all([
+        prisma.whatsappTemplate.count({ where }),
+        prisma.whatsappTemplate.findMany({
+          where,
+          include: {
+            languages: true,
+          },
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+      ])
+      const data = templates.map(toWhatsappTemplateDTO)
+      return {
+        ok: true,
+        templates: data,
+        data,
+        meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      }
     }
-    const { page, limit, skip } = getPagination(query)
-    const where = whatsappAuth.type === "workos" && whatsappAuth.platformRole !== "super_admin"
-      ? { organizationId: whatsappAuth.organizationId! }
-      : {}
-    const [total, templates] = await Promise.all([
-      prisma.whatsappTemplate.count({ where }),
-      prisma.whatsappTemplate.findMany({
-        where,
+  )
+  .get(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const template = await prisma.whatsappTemplate.findUnique({
+        where: { id },
         include: {
           languages: true,
         },
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-      }),
-    ])
-    const data = templates.map(toWhatsappTemplateDTO)
-    return {
-      ok: true,
-      templates: data,
-      data,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-    }
-  })
-  .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const template = await prisma.whatsappTemplate.findUnique({
-      where: { id },
-      include: {
-        languages: true,
-      },
-    })
+      })
 
-    if (!template) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Template not found." }
-    }
+      if (!template) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+      }
 
-    if ((whatsappAuth as any).platformRole !== "super_admin" && template.organizationId !== whatsappAuth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        template.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
 
-    return { ok: true, template: toWhatsappTemplateDTO(template) }
-  })
-  .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      return { ok: true, template: toWhatsappTemplateDTO(template) }
     }
-    if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
-      set.status = 400
-      return { ok: false, error: "BAD_REQUEST", message: "Organization ID required." }
-    }
+  )
+  .post(
+    "/",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: "Organization ID required.",
+        }
+      }
 
-    const { languages, ...templateData } = body
+      const { languages, ...templateData } = body
 
-    const template = await prisma.whatsappTemplate.create({
-      data: {
-        ...templateData,
-        organizationId: whatsappAuth.type === "workos" ? whatsappAuth.organizationId! : (body as any).organizationId,
-        languages: {
-          create: languages,
+      const template = await prisma.whatsappTemplate.create({
+        data: {
+          ...templateData,
+          organizationId:
+            whatsappAuth.type === "workos"
+              ? whatsappAuth.organizationId!
+              : (body as any).organizationId,
+          languages: {
+            create: languages,
+          },
         },
-      },
-      include: {
-        languages: true,
-      },
-    })
+        include: {
+          languages: true,
+        },
+      })
 
-    return { ok: true, template: toWhatsappTemplateDTO(template) }
-  }, {
-    body: templateBodySchema
-  })
-  .patch("/:id", async ({ request, params: { id }, body, set }: { request: any, params: { id: string }, body: any, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      return { ok: true, template: toWhatsappTemplateDTO(template) }
+    },
+    {
+      body: templateBodySchema,
     }
-    const template = await prisma.whatsappTemplate.findUnique({
-      where: { id },
-    })
+  )
+  .patch(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      body,
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      body: any
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const template = await prisma.whatsappTemplate.findUnique({
+        where: { id },
+      })
 
-    if (!template) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+      if (!template) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+      }
+
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        template.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      const updated = await prisma.whatsappTemplate.update({
+        where: { id },
+        data: body,
+        include: {
+          languages: true,
+        },
+      })
+
+      return { ok: true, template: toWhatsappTemplateDTO(updated) }
+    },
+    {
+      body: templateUpdateSchema,
     }
+  )
+  .delete(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const template = await prisma.whatsappTemplate.findUnique({
+        where: { id },
+      })
 
-    if ((whatsappAuth as any).platformRole !== "super_admin" && template.organizationId !== whatsappAuth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      if (!template) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+      }
+
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        template.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      await prisma.whatsappTemplate.delete({
+        where: { id },
+      })
+      return { ok: true, message: "Template deleted." }
     }
+  )
+  .post(
+    "/:id/sync",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const template = await prisma.whatsappTemplate.findUnique({
+        where: { id },
+      })
 
-    const updated = await prisma.whatsappTemplate.update({
-      where: { id },
-      data: body,
-      include: {
-        languages: true,
-      },
-    })
+      if (!template) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+      }
 
-    return { ok: true, template: toWhatsappTemplateDTO(updated) }
-  }, {
-    body: templateUpdateSchema
-  })
-  .delete("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        template.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      if (!template.whatsappDeviceId) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: "Device ID required for sync.",
+        }
+      }
+
+      await enqueueWhatsAppTemplateSync(
+        template.organizationId,
+        template.whatsappDeviceId,
+        "sync-templates"
+      )
+
+      return { ok: true, message: "Sync job enqueued." }
     }
-    const template = await prisma.whatsappTemplate.findUnique({
-      where: { id },
-    })
-
-    if (!template) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Template not found." }
-    }
-
-    if ((whatsappAuth as any).platformRole !== "super_admin" && template.organizationId !== whatsappAuth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
-
-    await prisma.whatsappTemplate.delete({
-      where: { id },
-    })
-    return { ok: true, message: "Template deleted." }
-  })
-  .post("/:id/sync", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const template = await prisma.whatsappTemplate.findUnique({
-      where: { id },
-    })
-
-    if (!template) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Template not found." }
-    }
-
-    if ((whatsappAuth as any).platformRole !== "super_admin" && template.organizationId !== whatsappAuth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
-
-    if (!template.whatsappDeviceId) {
-      set.status = 400
-      return { ok: false, error: "BAD_REQUEST", message: "Device ID required for sync." }
-    }
-
-    await enqueueWhatsAppTemplateSync(template.organizationId, template.whatsappDeviceId, "sync-templates")
-
-    return { ok: true, message: "Sync job enqueued." }
-  })
+  )

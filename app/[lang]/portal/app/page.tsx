@@ -60,8 +60,8 @@ export default async function ApplicationsPage({
       <section className="rounded-xl border border-dashed border-border bg-muted/10 p-4 text-xs text-muted-foreground">
         <p className="font-medium text-foreground">Out of portal scope</p>
         <p className="mt-1">
-          Deploying apps and runtime operations (status, scaling, domains,
-          logs) are customer-facing console workflows and are intentionally not
+          Deploying apps and runtime operations (status, scaling, domains, logs)
+          are customer-facing console workflows and are intentionally not
           exposed here.
         </p>
       </section>

@@ -118,14 +118,16 @@ export function StepBuild({
           </p>
 
           {isDetecting ? (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-              <div className="w-3.5 h-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               Analyzing repository structure...
             </div>
           ) : (
             <dl className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
               <div className="space-y-1">
-                <dt className="font-medium text-foreground">Detected language</dt>
+                <dt className="font-medium text-foreground">
+                  Detected language
+                </dt>
                 <dd>{detectionResult?.language ?? "Not detected"}</dd>
               </div>
               <div className="space-y-1">

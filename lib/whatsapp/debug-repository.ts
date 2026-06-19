@@ -4,7 +4,11 @@ export type DebugSnapshotInput = {
   payload: unknown
 }
 
-export function saveDebugSnapshot({ deviceId, reason, payload }: DebugSnapshotInput): void {
+export function saveDebugSnapshot({
+  deviceId,
+  reason,
+  payload,
+}: DebugSnapshotInput): void {
   console.log(`[WhatsApp Debug] Device: ${deviceId}, Reason: ${reason}`, {
     payload,
     timestamp: new Date().toISOString(),

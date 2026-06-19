@@ -86,17 +86,17 @@ function getPaymentUrl(metadata: Prisma.JsonValue | null): string | null {
     : null
 }
 
-function formatInvoiceLine(
-  line: {
-    quantity: Decimal
-    unitPrice: Decimal
-    amount: Decimal
-    description: string
-    metadataJson?: Prisma.JsonValue
-  }
-): InvoiceLineResponse {
+function formatInvoiceLine(line: {
+  quantity: Decimal
+  unitPrice: Decimal
+  amount: Decimal
+  description: string
+  metadataJson?: Prisma.JsonValue
+}): InvoiceLineResponse {
   const metadata =
-    line.metadataJson && typeof line.metadataJson === "object" && !Array.isArray(line.metadataJson)
+    line.metadataJson &&
+    typeof line.metadataJson === "object" &&
+    !Array.isArray(line.metadataJson)
       ? (line.metadataJson as Record<string, unknown>)
       : {}
 
@@ -115,147 +115,147 @@ export const createBillingInvoicesRoutes = (
 ) => {
   const { authenticate } = { ...defaultDeps, ...deps }
 
-  return new Elysia()
-    // GET /billing/invoices — List all invoices for the tenant
-    .get("/invoices", async ({ set }) => {
-      const auth = await authenticate()
+  return (
+    new Elysia()
+      // GET /billing/invoices — List all invoices for the tenant
+      .get("/invoices", async ({ set }) => {
+        const auth = await authenticate()
 
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
 
-      if (!auth.organizationId) {
-        return toForbidden(set, "No active organization found for billing.")
-      }
+        if (!auth.organizationId) {
+          return toForbidden(set, "No active organization found for billing.")
+        }
 
-      try {
-        // Get billing account for organization
-        const account = await prisma.billingAccount.findUnique({
-          where: { organizationId: auth.organizationId },
-          select: { id: true },
-        })
+        try {
+          // Get billing account for organization
+          const account = await prisma.billingAccount.findUnique({
+            where: { organizationId: auth.organizationId },
+            select: { id: true },
+          })
 
-        if (!account) {
+          if (!account) {
+            return {
+              ok: true as const,
+              invoices: [],
+            }
+          }
+
+          // Fetch invoices for this billing account
+          const invoices = await prisma.billingInvoice.findMany({
+            where: { billingAccountId: account.id },
+            include: {
+              lines: true,
+            },
+            orderBy: { issuedAt: "desc" },
+          })
+
+          const formattedInvoices = invoices.map((inv) => ({
+            id: inv.id,
+            invoiceNumber: inv.invoiceNumber,
+            status: inv.status,
+            type: inv.type,
+            paymentMethod: inv.paymentMethod,
+            paymentUrl: getPaymentUrl(inv.metadata),
+            issuedAt: inv.issuedAt?.toISOString() ?? null,
+            dueAt: inv.dueAt?.toISOString() ?? null,
+            createdAt: inv.createdAt?.toISOString() ?? null,
+            dueDate: inv.dueDate?.toISOString() ?? null,
+            periodStart: inv.periodStart.toISOString(),
+            periodEnd: inv.periodEnd.toISOString(),
+            totalAmountIdr: inv.totalAmount.toFixed(2),
+            currency: inv.currency,
+            lines: inv.lines.map((line) => formatInvoiceLine(line)),
+          }))
+
           return {
             ok: true as const,
-            invoices: [],
+            invoices: formattedInvoices,
+          }
+        } catch (error) {
+          console.error("[BillingInvoices] Error:", error)
+          return toServerError(set, "Unable to load invoices right now.")
+        }
+      })
+      // GET /billing/invoices/:id — Get invoice detail
+      .get("/invoices/:id", async ({ params, set }) => {
+        const auth = await authenticate()
+
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        if (!auth.organizationId) {
+          return toForbidden(set, "No active organization found for billing.")
+        }
+
+        const parsed = invoiceParamsSchema.safeParse(params)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Invalid invoice ID.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
           }
         }
 
-        // Fetch invoices for this billing account
-        const invoices = await prisma.billingInvoice.findMany({
-          where: { billingAccountId: account.id },
-          include: {
-            lines: true,
-          },
-          orderBy: { issuedAt: "desc" },
-        })
+        const { id } = parsed.data
 
-        const formattedInvoices = invoices.map((inv) => ({
-          id: inv.id,
-          invoiceNumber: inv.invoiceNumber,
-          status: inv.status,
-          type: inv.type,
-          paymentMethod: inv.paymentMethod,
-          paymentUrl: getPaymentUrl(inv.metadata),
-          issuedAt: inv.issuedAt?.toISOString() ?? null,
-          dueAt: inv.dueAt?.toISOString() ?? null,
-          createdAt: inv.createdAt?.toISOString() ?? null,
-          dueDate: inv.dueDate?.toISOString() ?? null,
-          periodStart: inv.periodStart.toISOString(),
-          periodEnd: inv.periodEnd.toISOString(),
-          totalAmountIdr: inv.totalAmount.toFixed(2),
-          currency: inv.currency,
-          lines: inv.lines.map((line) => formatInvoiceLine(line)),
-        }))
+        try {
+          // Get billing account for organization
+          const account = await prisma.billingAccount.findUnique({
+            where: { organizationId: auth.organizationId },
+            select: { id: true },
+          })
 
-        return {
-          ok: true as const,
-          invoices: formattedInvoices,
+          if (!account) {
+            return toNotFound(set, "Billing account not found.")
+          }
+
+          // Fetch invoice
+          const invoice = await prisma.billingInvoice.findFirst({
+            where: {
+              id,
+              billingAccountId: account.id,
+            },
+            include: {
+              lines: true,
+            },
+          })
+
+          if (!invoice) {
+            return toNotFound(set, "Invoice not found.")
+          }
+
+          return {
+            ok: true as const,
+            invoice: {
+              id: invoice.id,
+              invoiceNumber: invoice.invoiceNumber,
+              status: invoice.status,
+              type: invoice.type,
+              paymentMethod: invoice.paymentMethod,
+              paymentUrl: getPaymentUrl(invoice.metadata),
+              issuedAt: invoice.issuedAt?.toISOString() ?? null,
+              dueAt: invoice.dueAt?.toISOString() ?? null,
+              createdAt: invoice.createdAt?.toISOString() ?? null,
+              dueDate: invoice.dueDate?.toISOString() ?? null,
+              periodStart: invoice.periodStart.toISOString(),
+              periodEnd: invoice.periodEnd.toISOString(),
+              totalAmountIdr: invoice.totalAmount.toFixed(2),
+              currency: invoice.currency,
+              lines: invoice.lines.map((line) => formatInvoiceLine(line)),
+            },
+          }
+        } catch (error) {
+          console.error("[BillingInvoices] Error:", error)
+          return toServerError(set, "Unable to load invoice detail right now.")
         }
-      } catch (error) {
-        console.error("[BillingInvoices] Error:", error)
-        return toServerError(set, "Unable to load invoices right now.")
-      }
-    })
-    // GET /billing/invoices/:id — Get invoice detail
-    .get("/invoices/:id", async ({ params, set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      if (!auth.organizationId) {
-        return toForbidden(set, "No active organization found for billing.")
-      }
-
-      const parsed = invoiceParamsSchema.safeParse(params)
-      if (!parsed.success) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Invalid invoice ID.",
-          fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
-        }
-      }
-
-      const { id } = parsed.data
-
-      try {
-        // Get billing account for organization
-        const account = await prisma.billingAccount.findUnique({
-          where: { organizationId: auth.organizationId },
-          select: { id: true },
-        })
-
-        if (!account) {
-          return toNotFound(set, "Billing account not found.")
-        }
-
-        // Fetch invoice
-        const invoice = await prisma.billingInvoice.findFirst({
-          where: {
-            id,
-            billingAccountId: account.id,
-          },
-          include: {
-            lines: true,
-          },
-        })
-
-        if (!invoice) {
-          return toNotFound(set, "Invoice not found.")
-        }
-
-        return {
-          ok: true as const,
-          invoice: {
-            id: invoice.id,
-            invoiceNumber: invoice.invoiceNumber,
-            status: invoice.status,
-            type: invoice.type,
-            paymentMethod: invoice.paymentMethod,
-            paymentUrl: getPaymentUrl(invoice.metadata),
-            issuedAt: invoice.issuedAt?.toISOString() ?? null,
-            dueAt: invoice.dueAt?.toISOString() ?? null,
-            createdAt: invoice.createdAt?.toISOString() ?? null,
-            dueDate: invoice.dueDate?.toISOString() ?? null,
-            periodStart: invoice.periodStart.toISOString(),
-            periodEnd: invoice.periodEnd.toISOString(),
-            totalAmountIdr: invoice.totalAmount.toFixed(2),
-            currency: invoice.currency,
-            lines: invoice.lines.map((line) =>
-              formatInvoiceLine(line)
-            ),
-          },
-        }
-      } catch (error) {
-        console.error("[BillingInvoices] Error:", error)
-        return toServerError(set, "Unable to load invoice detail right now.")
-      }
-    })
+      })
+  )
 }
 
 export const billingInvoicesRoutes = createBillingInvoicesRoutes()

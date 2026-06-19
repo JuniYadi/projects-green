@@ -38,10 +38,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -50,7 +51,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 50000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -58,7 +62,6 @@ describe("TopupRoute", () => {
       const body = await response.json()
       expect(body.ok).toBe(false)
       expect(body.error).toBe("REAL_TOPUP_REQUIRED")
-
       ;(process.env as Record<string, string>).NODE_ENV = origEnv
     })
 
@@ -66,7 +69,7 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
           })
         )
         .compile()
@@ -75,7 +78,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 50000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -89,10 +95,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: null,
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: null,
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -101,7 +108,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 50000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -115,10 +125,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -127,7 +138,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 0, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 0,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -142,10 +156,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -154,7 +169,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: -1000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: -1000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -168,10 +186,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -180,7 +199,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 1_500_000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 1_500_000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -194,10 +216,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -217,15 +240,18 @@ describe("TopupRoute", () => {
     })
 
     it("returns 404 when billing account not found", async () => {
-      mockTransaction.mockResolvedValueOnce(Promise.reject(new Error("NOT_FOUND")))
+      mockTransaction.mockResolvedValueOnce(
+        Promise.reject(new Error("NOT_FOUND"))
+      )
 
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -234,7 +260,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 50000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -245,15 +274,18 @@ describe("TopupRoute", () => {
     })
 
     it("returns 400 when balance would exceed MAX_BALANCE", async () => {
-      mockTransaction.mockResolvedValueOnce(Promise.reject(new Error("BALANCE_LIMIT_EXCEEDED")))
+      mockTransaction.mockResolvedValueOnce(
+        Promise.reject(new Error("BALANCE_LIMIT_EXCEEDED"))
+      )
 
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -262,7 +294,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 50000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -280,10 +315,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -322,7 +358,11 @@ describe("TopupRoute", () => {
         amount: new Decimal("50000"),
         currency: "IDR",
         reason: "Topup via manual_bank_transfer (ref: TRF-12345)",
-        metadataJson: { paymentMethod: "manual_bank_transfer", referenceId: "TRF-12345", phase: "simulated" },
+        metadataJson: {
+          paymentMethod: "manual_bank_transfer",
+          referenceId: "TRF-12345",
+          phase: "simulated",
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -335,10 +375,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -367,18 +408,20 @@ describe("TopupRoute", () => {
 
   describe("POST /topup — transaction callback coverage", () => {
     function makeMockTransactionWithCallback() {
-      mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) => {
-        const tx = {
-          billingAccount: {
-            findUnique: mockFindUnique,
-            update: mockUpdate,
-          },
-          billingAdjustment: {
-            create: mockCreate,
-          },
+      mockTransaction.mockImplementation(
+        async (cb: (tx: unknown) => unknown) => {
+          const tx = {
+            billingAccount: {
+              findUnique: mockFindUnique,
+              update: mockUpdate,
+            },
+            billingAdjustment: {
+              create: mockCreate,
+            },
+          }
+          return cb(tx)
         }
-        return cb(tx)
-      })
+      )
     }
 
     it("executes transaction callback body on successful topup", async () => {
@@ -408,10 +451,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -420,7 +464,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 50000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -442,10 +489,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -454,7 +502,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 50000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 
@@ -476,10 +527,11 @@ describe("TopupRoute", () => {
       const app = new Elysia()
         .use(
           createBillingTopupRoutes({
-            authenticate: async () => ({
-              user: { id: "user-1" },
-              organizationId: "org-1",
-            } as MockAuthContext),
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
           })
         )
         .compile()
@@ -488,7 +540,10 @@ describe("TopupRoute", () => {
         new Request("http://localhost/topup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50000, paymentMethod: "manual_bank_transfer" }),
+          body: JSON.stringify({
+            amount: 50000,
+            paymentMethod: "manual_bank_transfer",
+          }),
         })
       )
 

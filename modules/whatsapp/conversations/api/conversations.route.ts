@@ -14,133 +14,192 @@ const conversationUpdateSchema = t.Partial(
 )
 
 export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
-  .get("/", async ({ request, set, query }: { request: any, set: any, query: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const { contactPhone } = query as any
-    
-    const where: any = {
-      organizationId: whatsappAuth.organizationId!,
-    }
+  .get(
+    "/",
+    async ({ request, set, query }: { request: any; set: any; query: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const { contactPhone } = query as any
 
-    if (contactPhone) {
-      where.contactPhone = { contains: contactPhone }
-    }
+      const where: any = {
+        organizationId: whatsappAuth.organizationId!,
+      }
 
-    const conversations = await prisma.whatsappConversation.findMany({
-      where,
-      orderBy: { lastMessageAt: "desc" },
-      include: {
-        _count: {
-          select: { whatsappMessages: true }
+      if (contactPhone) {
+        where.contactPhone = { contains: contactPhone }
+      }
+
+      const conversations = await prisma.whatsappConversation.findMany({
+        where,
+        orderBy: { lastMessageAt: "desc" },
+        include: {
+          _count: {
+            select: { whatsappMessages: true },
+          },
+        },
+      })
+
+      return { ok: true, conversations }
+    }
+  )
+  .get(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const conversation = await prisma.whatsappConversation.findFirst({
+        where: {
+          id,
+          organizationId: whatsappAuth.organizationId!,
+        },
+        include: {
+          whatsappMessages: {
+            orderBy: { createdAt: "desc" },
+            take: 50,
+          },
+        },
+      })
+
+      if (!conversation) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Conversation not found.",
         }
       }
-    })
-    
-    return { ok: true, conversations }
-  })
-  .get("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+
+      return { ok: true, conversation }
     }
-    const conversation = await prisma.whatsappConversation.findFirst({
-      where: { 
-        id,
-        organizationId: whatsappAuth.organizationId!
-      },
-      include: {
-        whatsappMessages: {
-          orderBy: { createdAt: "desc" },
-          take: 50,
-        }
+  )
+  .post(
+    "/",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-    })
+      try {
+        const conversation = await prisma.whatsappConversation.create({
+          data: {
+            ...body,
+            organizationId: whatsappAuth.organizationId!,
+          },
+        })
 
-    if (!conversation) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Conversation not found." }
+        return { ok: true, conversation }
+      } catch (error: any) {
+        if (error.code === "P2002") {
+          set.status = 400
+          return {
+            ok: false,
+            error: "ALREADY_EXISTS",
+            message: "Conversation with this phone already exists.",
+          }
+        }
+        throw error
+      }
+    },
+    {
+      body: conversationBodySchema,
     }
-
-    return { ok: true, conversation }
-  })
-  .post("/", async ({ request, body, set }: { request: any, body: any, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    try {
-      const conversation = await prisma.whatsappConversation.create({
-        data: {
-          ...body,
+  )
+  .patch(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      body,
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      body: any
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const conversation = await prisma.whatsappConversation.findFirst({
+        where: {
+          id,
           organizationId: whatsappAuth.organizationId!,
         },
       })
 
-      return { ok: true, conversation }
-    } catch (error: any) {
-      if (error.code === "P2002") {
-        set.status = 400
-        return { ok: false, error: "ALREADY_EXISTS", message: "Conversation with this phone already exists." }
+      if (!conversation) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Conversation not found.",
+        }
       }
-      throw error
-    }
-  }, {
-    body: conversationBodySchema
-  })
-  .patch("/:id", async ({ request, params: { id }, body, set }: { request: any, params: { id: string }, body: any, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const conversation = await prisma.whatsappConversation.findFirst({
-      where: { 
-        id,
-        organizationId: whatsappAuth.organizationId!
-      },
-    })
 
-    if (!conversation) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Conversation not found." }
+      const updated = await prisma.whatsappConversation.update({
+        where: { id },
+        data: body,
+      })
+
+      return { ok: true, conversation: updated }
+    },
+    {
+      body: conversationUpdateSchema,
     }
+  )
+  .delete(
+    "/:id",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const conversation = await prisma.whatsappConversation.findFirst({
+        where: {
+          id,
+          organizationId: whatsappAuth.organizationId!,
+        },
+      })
 
-    const updated = await prisma.whatsappConversation.update({
-      where: { id },
-      data: body,
-    })
+      if (!conversation) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Conversation not found.",
+        }
+      }
 
-    return { ok: true, conversation: updated }
-  }, {
-    body: conversationUpdateSchema
-  })
-  .delete("/:id", async ({ request, params: { id }, set }: { request: any, params: { id: string }, set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      await prisma.whatsappConversation.delete({
+        where: { id },
+      })
+
+      return { ok: true, message: "Conversation deleted." }
     }
-    const conversation = await prisma.whatsappConversation.findFirst({
-      where: { 
-        id,
-        organizationId: whatsappAuth.organizationId!
-      },
-    })
-
-    if (!conversation) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Conversation not found." }
-    }
-
-    await prisma.whatsappConversation.delete({
-      where: { id },
-    })
-    
-    return { ok: true, message: "Conversation deleted." }
-  })
+  )

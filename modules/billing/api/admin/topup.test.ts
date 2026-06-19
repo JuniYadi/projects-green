@@ -41,7 +41,7 @@ describe("AdminTopupRoute", () => {
       const app = new Elysia()
         .use(
           createAdminTopupRoutes({
-            authenticate: async () => ({ user: null } as MockAuthContext),
+            authenticate: async () => ({ user: null }) as MockAuthContext,
             getPlatformRole: mockPlatformRole,
           })
         )
@@ -174,9 +174,7 @@ describe("AdminTopupRoute", () => {
     })
 
     it("returns 400 when balance would exceed limit", async () => {
-      mockTransaction.mockRejectedValueOnce(
-        new Error("BALANCE_LIMIT_EXCEEDED")
-      )
+      mockTransaction.mockRejectedValueOnce(new Error("BALANCE_LIMIT_EXCEEDED"))
 
       const app = new Elysia()
         .use(
@@ -253,9 +251,7 @@ describe("AdminTopupRoute", () => {
     })
 
     it("returns 500 for generic database error", async () => {
-      mockTransaction.mockRejectedValueOnce(
-        new Error("CONNECTION_TIMEOUT")
-      )
+      mockTransaction.mockRejectedValueOnce(new Error("CONNECTION_TIMEOUT"))
 
       const app = new Elysia()
         .use(

@@ -188,7 +188,9 @@ async function seedCurrencies() {
     }
   }
 
-  console.log(`  ✅ Currencies: ${created} created, ${updated} updated, ${skipped} unchanged`)
+  console.log(
+    `  ✅ Currencies: ${created} created, ${updated} updated, ${skipped} unchanged`
+  )
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────

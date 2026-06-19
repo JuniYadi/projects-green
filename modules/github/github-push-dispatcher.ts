@@ -54,12 +54,16 @@ export class GithubPushEventHandler {
     const branch = this.extractBranch(payload.ref)
 
     if (!branch) {
-      console.log(`[GitHubPushEventHandler] Skipped stack ${stack.id}: Invalid ref ${payload.ref}`)
+      console.log(
+        `[GitHubPushEventHandler] Skipped stack ${stack.id}: Invalid ref ${payload.ref}`
+      )
       return
     }
 
     if (!this.shouldTriggerDeploy(stack, branch)) {
-      console.log(`[GitHubPushEventHandler] Skipped stack ${stack.id}: Auto-deploy disabled or branch mismatch`)
+      console.log(
+        `[GitHubPushEventHandler] Skipped stack ${stack.id}: Auto-deploy disabled or branch mismatch`
+      )
       return
     }
 
@@ -80,11 +84,11 @@ export class GithubPushEventHandler {
   }
 
   extractCommits(payload: GithubPushPayload, limit = 10) {
-    return (payload.commits || []).slice(0, limit).map(commit => ({
+    return (payload.commits || []).slice(0, limit).map((commit) => ({
       id: commit.id,
       message: commit.message,
       author: commit.author.name || commit.author.username || "Unknown",
-      url: commit.url
+      url: commit.url,
     }))
   }
 
@@ -104,43 +108,68 @@ export class GithubPushEventHandler {
     return true
   }
 
-  async syncPushMetadata(stack: Stack, branch: string, commits: Array<{ id: string; message: string; author: string; url: string }>, pusher: string): Promise<void> {
+  async syncPushMetadata(
+    stack: Stack,
+    branch: string,
+    commits: Array<{
+      id: string
+      message: string
+      author: string
+      url: string
+    }>,
+    pusher: string
+  ): Promise<void> {
     stack.metadata = {
       ...stack.metadata,
       lastPush: {
         ref: branch,
         commitCount: commits.length,
         author: pusher,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     }
 
-    console.log(`[GitHubPushEventHandler] Updated metadata for stack ${stack.id}`)
+    console.log(
+      `[GitHubPushEventHandler] Updated metadata for stack ${stack.id}`
+    )
   }
 }
 
 export class GithubPushDispatcher {
-  async dispatchDeployment(stack: Stack, branch: string, pushPayload: GithubPushPayload): Promise<void> {
-    console.log(`[GitHubPushDispatcher] Dispatching deployment for stack ${stack.id} on branch ${branch}`)
+  async dispatchDeployment(
+    stack: Stack,
+    branch: string,
+    pushPayload: GithubPushPayload
+  ): Promise<void> {
+    console.log(
+      `[GitHubPushDispatcher] Dispatching deployment for stack ${stack.id} on branch ${branch}`
+    )
 
     const params = {
       GIT_REF: branch,
       GIT_COMMIT: pushPayload.after,
       PUSHER: pushPayload.pusher.name,
-      STACK_ID: stack.id
+      STACK_ID: stack.id,
     }
 
     try {
       await triggerJenkinsJob(stack.jenkinsJobName, params)
-      console.log(`[GitHubPushDispatcher] Successfully triggered Jenkins job ${stack.jenkinsJobName} for stack ${stack.id}`)
+      console.log(
+        `[GitHubPushDispatcher] Successfully triggered Jenkins job ${stack.jenkinsJobName} for stack ${stack.id}`
+      )
     } catch (error) {
-      console.error(`[GitHubPushDispatcher] Failed to trigger Jenkins job for stack ${stack.id}:`, error)
+      console.error(
+        `[GitHubPushDispatcher] Failed to trigger Jenkins job for stack ${stack.id}:`,
+        error
+      )
       throw error
     }
   }
 }
 
-export function parsePushPayload(raw: Record<string, unknown>): GithubPushPayload {
+export function parsePushPayload(
+  raw: Record<string, unknown>
+): GithubPushPayload {
   const pusher = raw.pusher as Record<string, unknown> | undefined
   const repository = raw.repository as Record<string, unknown> | undefined
   const owner = repository?.owner as Record<string, unknown> | undefined
@@ -155,7 +184,9 @@ export function parsePushPayload(raw: Record<string, unknown>): GithubPushPayloa
       author: {
         name: ((c.author as Record<string, unknown>)?.name as string) ?? "",
         email: ((c.author as Record<string, unknown>)?.email as string) ?? "",
-        username: (c.author as Record<string, unknown>)?.username as string | undefined,
+        username: (c.author as Record<string, unknown>)?.username as
+          | string
+          | undefined,
       },
       url: (c.url as string) ?? "",
       timestamp: (c.timestamp as string) ?? "",
@@ -205,7 +236,9 @@ export function createJenkinsPushDispatcher() {
     branch: string
     payload: Record<string, unknown>
   }) => {
-    const repo = payload.payload.repository as Record<string, unknown> | undefined
+    const repo = payload.payload.repository as
+      | Record<string, unknown>
+      | undefined
     const repoName = (repo?.name as string) || "unknown"
     const commitSha = (payload.payload.after as string) || ""
     const shortSha = commitSha.length >= 7 ? commitSha.slice(0, 7) : commitSha

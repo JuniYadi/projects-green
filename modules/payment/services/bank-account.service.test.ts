@@ -7,15 +7,15 @@ const mockBankAccountFindMany = mock<
 const mockBankAccountFindUnique = mock<
   () => Promise<Record<string, unknown> | null>
 >(() => Promise.resolve(null))
-const mockBankAccountCreate = mock<
-  () => Promise<Record<string, unknown>>
->(() => Promise.resolve({}))
-const mockBankAccountUpdate = mock<
-  () => Promise<Record<string, unknown>>
->(() => Promise.resolve({}))
-const mockBankAccountUpdateMany = mock<
-  () => Promise<{ count: number }>
->(() => Promise.resolve({ count: 0 }))
+const mockBankAccountCreate = mock<() => Promise<Record<string, unknown>>>(() =>
+  Promise.resolve({})
+)
+const mockBankAccountUpdate = mock<() => Promise<Record<string, unknown>>>(() =>
+  Promise.resolve({})
+)
+const mockBankAccountUpdateMany = mock<() => Promise<{ count: number }>>(() =>
+  Promise.resolve({ count: 0 })
+)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -272,13 +272,11 @@ describe("BankAccountService", () => {
     })
 
     it("throws error when account not found", async () => {
-      mockBankAccountFindUnique.mockImplementation(() =>
-        Promise.resolve(null)
-      )
+      mockBankAccountFindUnique.mockImplementation(() => Promise.resolve(null))
 
-      expect(service.update("nonexistent", { bankName: "New" })).rejects.toThrow(
-        "Bank account not found"
-      )
+      expect(
+        service.update("nonexistent", { bankName: "New" })
+      ).rejects.toThrow("Bank account not found")
     })
 
     it("clears existing default when setting as default", async () => {
@@ -421,9 +419,7 @@ describe("BankAccountService", () => {
     })
 
     it("throws error when account not found", async () => {
-      mockBankAccountFindUnique.mockImplementation(() =>
-        Promise.resolve(null)
-      )
+      mockBankAccountFindUnique.mockImplementation(() => Promise.resolve(null))
 
       expect(service.toggle("nonexistent")).rejects.toThrow(
         "Bank account not found"
@@ -456,8 +452,18 @@ describe("BankAccountService", () => {
 
     it("filters active accounts by supported currency with legacy fallback", async () => {
       const accounts = [
-        { ...mockAccount, id: "ba_usd", currency: "IDR", supportedCurrencies: ["USD", "IDR"] },
-        { ...mockAccount, id: "ba_legacy_usd", currency: "USD", supportedCurrencies: [] },
+        {
+          ...mockAccount,
+          id: "ba_usd",
+          currency: "IDR",
+          supportedCurrencies: ["USD", "IDR"],
+        },
+        {
+          ...mockAccount,
+          id: "ba_legacy_usd",
+          currency: "USD",
+          supportedCurrencies: [],
+        },
       ]
       mockBankAccountFindMany.mockImplementation(() =>
         Promise.resolve(accounts)

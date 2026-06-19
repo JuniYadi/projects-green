@@ -90,7 +90,7 @@ export function fakerDateRange(maxDaysBack = 90): {
 export function fakerBillingAccount(
   overrides: Partial<Prisma.BillingAccountCreateInput> & {
     organizationId: string
-  },
+  }
 ): Prisma.BillingAccountCreateInput {
   return {
     id: overrides.id ?? fakerId(),
@@ -107,12 +107,11 @@ export function fakerBillingAccount(
  * Requires `billingAccount` relation connect.
  */
 export function fakerBillingSubscription(
-  overrides: Partial<Prisma.BillingSubscriptionCreateInput>,
+  overrides: Partial<Prisma.BillingSubscriptionCreateInput>
 ): Prisma.BillingSubscriptionCreateInput {
   return {
     id: overrides.id ?? fakerId(),
-    billingAccount:
-      overrides.billingAccount ?? { connect: { id: fakerId() } },
+    billingAccount: overrides.billingAccount ?? { connect: { id: fakerId() } },
     status:
       overrides.status ?? faker.helpers.enumValue(BillingSubscriptionStatus),
     startedAt: overrides.startedAt ?? fakerRecentDate(60),
@@ -137,7 +136,7 @@ export function fakerInvoiceNumber(): string {
  * Requires `billingAccount` relation connect.
  */
 export function fakerInvoice(
-  overrides: Partial<Prisma.BillingInvoiceCreateInput>,
+  overrides: Partial<Prisma.BillingInvoiceCreateInput>
 ): Prisma.BillingInvoiceCreateInput {
   const range = fakerDateRange()
   return {
@@ -163,12 +162,13 @@ export function fakerInvoice(
  * Requires `invoice` relation connect.
  */
 export function fakerInvoiceLine(
-  overrides: Partial<Prisma.BillingInvoiceLineCreateInput>,
+  overrides: Partial<Prisma.BillingInvoiceLineCreateInput>
 ): Prisma.BillingInvoiceLineCreateInput {
   return {
     id: overrides.id ?? fakerId(),
     invoice: overrides.invoice ?? { connect: { id: fakerId() } },
-    lineType: overrides.lineType ?? faker.helpers.enumValue(BillingInvoiceLineType),
+    lineType:
+      overrides.lineType ?? faker.helpers.enumValue(BillingInvoiceLineType),
     description: overrides.description ?? faker.commerce.productName(),
     quantity:
       overrides.quantity ??
@@ -198,7 +198,7 @@ export function fakerSupportTicket(
   overrides: Partial<Prisma.SupportTicketCreateInput> & {
     organizationId: string
     requesterWorkosUserId: string
-  },
+  }
 ): Prisma.SupportTicketCreateInput {
   return {
     id: overrides.id ?? fakerId(),
@@ -225,7 +225,7 @@ export function fakerSupportTicket(
 export function fakerSupportTicketReply(
   overrides: Partial<Prisma.SupportTicketReplyCreateInput> & {
     authorWorkosUserId: string
-  },
+  }
 ): Prisma.SupportTicketReplyCreateInput {
   return {
     id: overrides.id ?? fakerId(),
@@ -246,7 +246,7 @@ export function fakerSupportTicketReply(
 export function fakerVpnClient(
   overrides: Partial<Prisma.VpnClientCreateInput> & {
     organizationId: string
-  },
+  }
 ): Prisma.VpnClientCreateInput {
   const range = fakerDateRange(30)
   return {
@@ -256,7 +256,8 @@ export function fakerVpnClient(
     provider: overrides.provider ?? VpnProvider.OPENVPN,
     regionCode: overrides.regionCode ?? VpnRegionCode.INDONESIA,
     clientName:
-      overrides.clientName ?? `vpn-${faker.internet.username()}-${faker.string.alphanumeric(4)}`,
+      overrides.clientName ??
+      `vpn-${faker.internet.username()}-${faker.string.alphanumeric(4)}`,
     status: overrides.status ?? faker.helpers.enumValue(VpnClientStatus),
     currentPeriodStart: overrides.currentPeriodStart ?? range.start,
     currentPeriodEnd: overrides.currentPeriodEnd ?? range.end,
@@ -282,14 +283,13 @@ export function fakerWhatsappDevice(
   overrides: Partial<Prisma.WhatsappDeviceCreateInput> & {
     organizationId: string
     phoneNumber: string
-  },
+  }
 ): Prisma.WhatsappDeviceCreateInput {
   return {
     id: overrides.id ?? fakerId(),
     organizationId: overrides.organizationId,
     phoneNumber: overrides.phoneNumber,
-    status:
-      overrides.status ?? faker.helpers.enumValue(WhatsappDeviceStatus),
+    status: overrides.status ?? faker.helpers.enumValue(WhatsappDeviceStatus),
     createdAt: overrides.createdAt ?? fakerRecentDate(),
     updatedAt: overrides.updatedAt ?? new Date(),
   }
@@ -302,7 +302,7 @@ export function fakerWhatsappDevice(
 export function fakerWhatsappContactGroup(
   overrides: Partial<Prisma.WhatsappContactGroupCreateInput> & {
     organizationId: string
-  },
+  }
 ): Prisma.WhatsappContactGroupCreateInput {
   return {
     id: overrides.id ?? fakerId(),
@@ -324,7 +324,7 @@ export function fakerWhatsappContact(
   overrides: Partial<Prisma.WhatsappContactCreateInput> & {
     organizationId: string
     phoneNumber: string
-  },
+  }
 ): Prisma.WhatsappContactCreateInput {
   return {
     id: overrides.id ?? fakerId(),
@@ -332,8 +332,7 @@ export function fakerWhatsappContact(
     phoneNumber: overrides.phoneNumber,
     name: overrides.name ?? faker.person.fullName(),
     email: overrides.email ?? faker.internet.email(),
-    status:
-      overrides.status ?? faker.helpers.enumValue(WhatsappContactStatus),
+    status: overrides.status ?? faker.helpers.enumValue(WhatsappContactStatus),
     contactGroup: overrides.contactGroup ?? { connect: { id: fakerId() } },
     createdAt: overrides.createdAt ?? fakerRecentDate(),
     updatedAt: overrides.updatedAt ?? new Date(),
@@ -345,7 +344,7 @@ export function fakerWhatsappContact(
  * Requires `conversation` relation connect and `direction`.
  */
 export function fakerWhatsappMessage(
-  overrides: Partial<Prisma.WhatsappMessageCreateInput>,
+  overrides: Partial<Prisma.WhatsappMessageCreateInput>
 ): Prisma.WhatsappMessageCreateInput {
   return {
     id: overrides.id ?? fakerId(),
@@ -368,7 +367,7 @@ export function fakerWhatsappMessage(
 export function fakerKnowledgeDocument(
   overrides: Partial<Prisma.DocsKnowledgeDocumentCreateInput> & {
     updatedByWorkosUserId: string
-  },
+  }
 ): Prisma.DocsKnowledgeDocumentCreateInput {
   return {
     id: overrides.id ?? fakerId(),
@@ -403,7 +402,7 @@ export function fakerKnowledgeDocument(
  */
 export function fakerArray<T>(
   count: number,
-  factory: (index: number) => T,
+  factory: (index: number) => T
 ): T[] {
   return Array.from({ length: count }, (_, i) => factory(i))
 }

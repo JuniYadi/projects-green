@@ -86,13 +86,19 @@ export default function VouchersPage() {
         })
         if (!data?.ok) return
         setClaims(
-          data.data.map((item: { id: string; voucher: { code: string; amount: string; currency: string }; claimedAt: string }) => ({
-            id: item.id,
-            voucherCode: item.voucher.code,
-            amount: item.voucher.amount,
-            currency: item.voucher.currency,
-            claimedAt: item.claimedAt,
-          }))
+          data.data.map(
+            (item: {
+              id: string
+              voucher: { code: string; amount: string; currency: string }
+              claimedAt: string
+            }) => ({
+              id: item.id,
+              voucherCode: item.voucher.code,
+              amount: item.voucher.amount,
+              currency: item.voucher.currency,
+              claimedAt: item.claimedAt,
+            })
+          )
         )
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
@@ -115,7 +121,9 @@ export default function VouchersPage() {
 
     try {
       const redeemParams: Record<string, unknown> = { code: trimmedCode }
-      const { data } = await eden.api.vouchers.redeem.post(redeemParams as never)
+      const { data } = await eden.api.vouchers.redeem.post(
+        redeemParams as never
+      )
 
       if (!data?.ok) {
         setRedeemResult({
@@ -134,13 +142,19 @@ export default function VouchersPage() {
       const { data: claimsData } = await eden.api.vouchers.claims.get()
       if (claimsData?.ok) {
         setClaims(
-          claimsData.data.map((item: { id: string; voucher: { code: string; amount: string; currency: string }; claimedAt: string }) => ({
-            id: item.id,
-            voucherCode: item.voucher.code,
-            amount: item.voucher.amount,
-            currency: item.voucher.currency,
-            claimedAt: item.claimedAt,
-          }))
+          claimsData.data.map(
+            (item: {
+              id: string
+              voucher: { code: string; amount: string; currency: string }
+              claimedAt: string
+            }) => ({
+              id: item.id,
+              voucherCode: item.voucher.code,
+              amount: item.voucher.amount,
+              currency: item.voucher.currency,
+              claimedAt: item.claimedAt,
+            })
+          )
         )
       }
     } catch {

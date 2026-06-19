@@ -59,13 +59,15 @@ const createService = (): InvoiceService => {
     ]),
     getInvoiceDetail: mock(async () => invoiceDetail),
     getPaymentInfo: mock(async () => null),
-    cancelInvoice: mock(
-      async () => ({ ...invoiceDetail, status: "canceled" as const })
-    ),
+    cancelInvoice: mock(async () => ({
+      ...invoiceDetail,
+      status: "canceled" as const,
+    })),
     getPaymentMethodOptions: () => [],
-    markInvoiceAsPaid: mock(
-      async () => ({ ...invoiceDetail, status: "paid" as const })
-    ),
+    markInvoiceAsPaid: mock(async () => ({
+      ...invoiceDetail,
+      status: "paid" as const,
+    })),
   }
 }
 
@@ -79,7 +81,9 @@ const createApp = (input: {
     roles?: string[] | null
   }>
   platformRole?: "none" | "super_admin"
-  getOrganizationIdByBillingAccount?: (billingAccountId: string) => Promise<string | null>
+  getOrganizationIdByBillingAccount?: (
+    billingAccountId: string
+  ) => Promise<string | null>
 }) => {
   const service = input.service ?? createService()
 
@@ -103,7 +107,8 @@ const createApp = (input: {
       getPlatformRole: async () => input.platformRole ?? "none",
       service,
       emailService: mockEmailService,
-      getOrganizationIdByBillingAccount: input.getOrganizationIdByBillingAccount ?? (async () => "org_1"),
+      getOrganizationIdByBillingAccount:
+        input.getOrganizationIdByBillingAccount ?? (async () => "org_1"),
     })
   )
 }
@@ -454,7 +459,10 @@ describe("invoices routes", () => {
           body: JSON.stringify({ recipientEmail: "test@example.com" }),
         })
       )
-      const payload = (await response.json()) as { ok: boolean; message: string }
+      const payload = (await response.json()) as {
+        ok: boolean
+        message: string
+      }
 
       expect(response.status).toBe(200)
       expect(payload.ok).toBe(true)
@@ -482,7 +490,10 @@ describe("invoices routes", () => {
           body: JSON.stringify({ recipientEmail: "test@example.com" }),
         })
       )
-      const payload = (await response.json()) as { ok: boolean; message: string }
+      const payload = (await response.json()) as {
+        ok: boolean
+        message: string
+      }
 
       expect(response.status).toBe(200)
       expect(payload.ok).toBe(true)
@@ -506,7 +517,10 @@ describe("invoices routes", () => {
           body: JSON.stringify({ recipientEmail: "test@example.com" }),
         })
       )
-      const payload = (await response.json()) as { ok: boolean; message: string }
+      const payload = (await response.json()) as {
+        ok: boolean
+        message: string
+      }
 
       expect(response.status).toBe(200)
       expect(payload.ok).toBe(true)
@@ -530,7 +544,10 @@ describe("invoices routes", () => {
           body: JSON.stringify({ recipientEmail: "test@example.com" }),
         })
       )
-      const payload = (await response.json()) as { ok: boolean; message: string }
+      const payload = (await response.json()) as {
+        ok: boolean
+        message: string
+      }
 
       expect(response.status).toBe(200)
       expect(payload.ok).toBe(true)
@@ -557,7 +574,10 @@ describe("invoices routes", () => {
           }),
         })
       )
-      const payload = (await response.json()) as { ok: boolean; message: string }
+      const payload = (await response.json()) as {
+        ok: boolean
+        message: string
+      }
 
       expect(response.status).toBe(200)
       expect(payload.ok).toBe(true)
@@ -765,7 +785,7 @@ describe("invoices routes", () => {
       const res = await app.handle(
         new Request("http://localhost/invoices/inv_1/notify/created", {
           method: "POST",
-        }),
+        })
       )
 
       expect(res.status).toBe(403)
@@ -792,7 +812,7 @@ describe("invoices routes", () => {
     const response = await app.handle(
       new Request("http://localhost/invoices/inv_1/cancel", {
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -806,7 +826,7 @@ describe("invoices routes", () => {
     })
 
     const response = await app.handle(
-      new Request("http://localhost/invoices/inv_1"),
+      new Request("http://localhost/invoices/inv_1")
     )
     const payload = (await response.json()) as {
       ok: boolean
@@ -847,7 +867,7 @@ describe("invoices routes", () => {
     const response = await app.handle(
       new Request("http://localhost/invoices/inv_1/cancel", {
         method: "POST",
-      }),
+      })
     )
 
     // Cancel should succeed even if the email send fails
@@ -869,7 +889,7 @@ describe("invoices routes", () => {
     const response = await app.handle(
       new Request("http://localhost/invoices/inv_1/notify/created", {
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -890,7 +910,7 @@ describe("invoices routes", () => {
     const response = await app.handle(
       new Request("http://localhost/invoices/inv_1/notify/paid", {
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -911,7 +931,7 @@ describe("invoices routes", () => {
     const response = await app.handle(
       new Request("http://localhost/invoices/inv_1/notify/reminder", {
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -932,7 +952,7 @@ describe("invoices routes", () => {
     const response = await app.handle(
       new Request("http://localhost/invoices/inv_1/notify/overdue", {
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -955,7 +975,7 @@ describe("invoices routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ reason: "Test reason" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(200)
@@ -970,7 +990,7 @@ describe("invoices routes", () => {
     const app = createApp({ service })
 
     const response = await app.handle(
-      new Request("http://localhost/invoices/inv_1"),
+      new Request("http://localhost/invoices/inv_1")
     )
     const payload = (await response.json()) as {
       ok: boolean
@@ -990,7 +1010,7 @@ describe("invoices routes", () => {
     const app = createApp({ service })
 
     const response = await app.handle(
-      new Request("http://localhost/invoices/inv_1"),
+      new Request("http://localhost/invoices/inv_1")
     )
     const payload = (await response.json()) as {
       ok: boolean
@@ -1009,7 +1029,7 @@ describe("invoices routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ recipientEmail: "not-an-email" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(422)
@@ -1023,7 +1043,7 @@ describe("invoices routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ recipientEmail: "not-an-email" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(422)
@@ -1037,7 +1057,7 @@ describe("invoices routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ recipientEmail: "not-an-email" }),
-      }),
+      })
     )
 
     expect(response.status).toBe(422)

@@ -30,10 +30,46 @@ const mockDeleteMany = mock()
 const mockCount = mock()
 
 const mockPrisma = {
-  vpnMobileDevice: { findUnique: mockFindUnique, findMany: mockFindMany, findFirst: mockFindFirst, create: mockCreate, update: mockUpdate, updateMany: mockUpdateMany, deleteMany: mockDeleteMany, count: mockCount },
-  vpnPairingToken: { findUnique: mockFindUnique, findMany: mockFindMany, findFirst: mockFindFirst, create: mockCreate, update: mockUpdate, updateMany: mockUpdateMany, deleteMany: mockDeleteMany, count: mockCount },
-  vpnSubscription: { findUnique: mockFindUnique, findMany: mockFindMany, findFirst: mockFindFirst, create: mockCreate, update: mockUpdate, updateMany: mockUpdateMany, deleteMany: mockDeleteMany, count: mockCount },
-  vpnServerAccount: { findUnique: mockFindUnique, findMany: mockFindMany, findFirst: mockFindFirst, create: mockCreate, update: mockUpdate, updateMany: mockUpdateMany, deleteMany: mockDeleteMany, count: mockCount },
+  vpnMobileDevice: {
+    findUnique: mockFindUnique,
+    findMany: mockFindMany,
+    findFirst: mockFindFirst,
+    create: mockCreate,
+    update: mockUpdate,
+    updateMany: mockUpdateMany,
+    deleteMany: mockDeleteMany,
+    count: mockCount,
+  },
+  vpnPairingToken: {
+    findUnique: mockFindUnique,
+    findMany: mockFindMany,
+    findFirst: mockFindFirst,
+    create: mockCreate,
+    update: mockUpdate,
+    updateMany: mockUpdateMany,
+    deleteMany: mockDeleteMany,
+    count: mockCount,
+  },
+  vpnSubscription: {
+    findUnique: mockFindUnique,
+    findMany: mockFindMany,
+    findFirst: mockFindFirst,
+    create: mockCreate,
+    update: mockUpdate,
+    updateMany: mockUpdateMany,
+    deleteMany: mockDeleteMany,
+    count: mockCount,
+  },
+  vpnServerAccount: {
+    findUnique: mockFindUnique,
+    findMany: mockFindMany,
+    findFirst: mockFindFirst,
+    create: mockCreate,
+    update: mockUpdate,
+    updateMany: mockUpdateMany,
+    deleteMany: mockDeleteMany,
+    count: mockCount,
+  },
   vpnAuditLog: { create: mock() },
 }
 

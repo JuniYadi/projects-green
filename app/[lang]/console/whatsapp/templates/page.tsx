@@ -12,7 +12,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useTemplates, useSyncTemplate } from "@/modules/whatsapp/templates/api/templates.hooks"
+import {
+  useTemplates,
+  useSyncTemplate,
+} from "@/modules/whatsapp/templates/api/templates.hooks"
 import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -30,9 +33,7 @@ export default function ConsoleTemplatesPage() {
   const { sync, syncing } = useSyncTemplate()
 
   const handleSyncAll = async () => {
-    const unsynced = templates.filter(
-      (t) => t.syncStatus === "NOT_SYNCED",
-    )
+    const unsynced = templates.filter((t) => t.syncStatus === "NOT_SYNCED")
 
     if (unsynced.length === 0) {
       toast.info(messages.console.whatsapp.templates.allSynced)
@@ -51,28 +52,36 @@ export default function ConsoleTemplatesPage() {
     }
 
     if (synced > 0) {
-      toast.success(messages.console.whatsapp.templates.syncedCount.replace("{count}", String(synced)))
+      toast.success(
+        messages.console.whatsapp.templates.syncedCount.replace(
+          "{count}",
+          String(synced)
+        )
+      )
       void reload()
     }
 
     if (failed > 0) {
       toast.error(
-        messages.console.whatsapp.templates.syncFailed.replace("{count}", String(failed)),
+        messages.console.whatsapp.templates.syncFailed.replace(
+          "{count}",
+          String(failed)
+        )
       )
     }
   }
 
-  const syncedCount = templates.filter(
-    (t) => t.syncStatus === "SYNCED",
-  ).length
+  const syncedCount = templates.filter((t) => t.syncStatus === "SYNCED").length
   const notSyncedCount = templates.filter(
-    (t) => t.syncStatus === "NOT_SYNCED",
+    (t) => t.syncStatus === "NOT_SYNCED"
   ).length
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{messages.console.whatsapp.templates.heading}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {messages.console.whatsapp.templates.heading}
+        </h1>
         <p className="text-muted-foreground">
           {messages.console.whatsapp.templates.description}
         </p>
@@ -81,8 +90,12 @@ export default function ConsoleTemplatesPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>{messages.console.whatsapp.templates.cardTitle}</CardTitle>
-            <CardDescription>{messages.console.whatsapp.templates.cardDescription}</CardDescription>
+            <CardTitle>
+              {messages.console.whatsapp.templates.cardTitle}
+            </CardTitle>
+            <CardDescription>
+              {messages.console.whatsapp.templates.cardDescription}
+            </CardDescription>
           </div>
           <div className="flex gap-2">
             <Button
@@ -93,7 +106,9 @@ export default function ConsoleTemplatesPage() {
               <ArrowsClockwise
                 className={`mr-2 size-4 ${syncing ? "animate-spin" : ""}`}
               />
-              {syncing ? messages.console.whatsapp.templates.syncing : messages.console.whatsapp.templates.syncTemplates}
+              {syncing
+                ? messages.console.whatsapp.templates.syncing
+                : messages.console.whatsapp.templates.syncTemplates}
             </Button>
             <Button onClick={() => router.push(`${templatesBasePath}/new`)}>
               <Plus weight="bold" className="mr-2 size-4" />
@@ -105,19 +120,23 @@ export default function ConsoleTemplatesPage() {
           <div className="mb-6 grid grid-cols-3 gap-4">
             <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold">{templates.length}</p>
-              <p className="text-xs text-muted-foreground">{messages.console.whatsapp.templates.totalTemplates}</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.console.whatsapp.templates.totalTemplates}
+              </p>
             </div>
             <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold text-green-600">
-                {syncedCount}
+              <p className="text-2xl font-bold text-green-600">{syncedCount}</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.console.whatsapp.templates.synced}
               </p>
-              <p className="text-xs text-muted-foreground">{messages.console.whatsapp.templates.synced}</p>
             </div>
             <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold text-yellow-600">
                 {notSyncedCount}
               </p>
-              <p className="text-xs text-muted-foreground">{messages.console.whatsapp.templates.pendingSync}</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.console.whatsapp.templates.pendingSync}
+              </p>
             </div>
           </div>
 

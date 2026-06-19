@@ -6,7 +6,11 @@
 
 "use client"
 
-import { Lightning, WarningCircle, ArrowsClockwise } from "@phosphor-icons/react"
+import {
+  Lightning,
+  WarningCircle,
+  ArrowsClockwise,
+} from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -15,29 +19,22 @@ import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 type SyncStatus = "NOT_SYNCED" | "SYNCING" | "SYNCED" | "FAILED"
 
 function TemplateStatusBadge({ status }: { status: string }) {
-  const config: Record<
-    string,
-    { label: string; className: string }
-  > = {
+  const config: Record<string, { label: string; className: string }> = {
     NOT_SYNCED: {
       label: "Not Synced",
-      className:
-        "text-gray-500 bg-gray-50 dark:bg-gray-900/20",
+      className: "text-gray-500 bg-gray-50 dark:bg-gray-900/20",
     },
     SYNCING: {
       label: "Syncing",
-      className:
-        "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
+      className: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
     },
     SYNCED: {
       label: "Synced",
-      className:
-        "text-green-600 bg-green-50 dark:bg-green-900/20",
+      className: "text-green-600 bg-green-50 dark:bg-green-900/20",
     },
     FAILED: {
       label: "Failed",
-      className:
-        "text-red-600 bg-red-50 dark:bg-red-900/20",
+      className: "text-red-600 bg-red-50 dark:bg-red-900/20",
     },
   }
 
@@ -119,7 +116,10 @@ export function TemplateList({
   if (templates.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <Lightning className="mb-3 size-10 text-muted-foreground" weight="fill" />
+        <Lightning
+          className="mb-3 size-10 text-muted-foreground"
+          weight="fill"
+        />
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         {onCreate && (
           <Button variant="outline" className="mt-3" onClick={onCreate}>
@@ -141,10 +141,7 @@ export function TemplateList({
         >
           <div className="flex items-center gap-4">
             <div className="flex size-10 items-center justify-center rounded-full bg-yellow-50 dark:bg-yellow-900/20">
-              <Lightning
-                className="size-5 text-yellow-600"
-                weight="fill"
-              />
+              <Lightning className="size-5 text-yellow-600" weight="fill" />
             </div>
             <div>
               <button
@@ -154,14 +151,10 @@ export function TemplateList({
               >
                 {template.name}
               </button>
-              <p className="text-sm text-muted-foreground">
-                {template.slug}
-              </p>
+              <p className="text-sm text-muted-foreground">{template.slug}</p>
             </div>
           </div>
-          <TemplateStatusBadge
-            status={template.syncStatus ?? "NOT_SYNCED"}
-          />
+          <TemplateStatusBadge status={template.syncStatus ?? "NOT_SYNCED"} />
         </div>
       ))}
     </div>
