@@ -20,8 +20,14 @@ type RouteSet = {
 
 type AdminMembersRouteDeps = {
   authenticate: () => Promise<BillingAuthContext>
-  getPlatformRole: (input: { id?: string | null; email?: string | null }) => Promise<PlatformAccessRole>
-  isAdmin: (actor: { platformRole: PlatformAccessRole; orgRole: string | null | undefined }) => boolean
+  getPlatformRole: (input: {
+    id?: string | null
+    email?: string | null
+  }) => Promise<PlatformAccessRole>
+  isAdmin: (actor: {
+    platformRole: PlatformAccessRole
+    orgRole: string | null | undefined
+  }) => boolean
 }
 
 const defaultDeps: AdminMembersRouteDeps = {
@@ -125,11 +131,10 @@ export const createAdminMembersRoutes = (
     ...deps,
   }
 
-  return new Elysia()
-    // GET /billing/admin/members — List all tenant members with billing data
-    .get(
-      "/admin/members",
-      async ({ query, set }) => {
+  return (
+    new Elysia()
+      // GET /billing/admin/members — List all tenant members with billing data
+      .get("/admin/members", async ({ query, set }) => {
         const auth = await authenticate()
 
         if (!auth.user) {
@@ -170,207 +175,216 @@ export const createAdminMembersRoutes = (
               ? { organizationId: auth.organizationId }
               : undefined
 
-        const billingAccountsWithOrg = await prisma.billingAccount.findMany({
-          where: billingAccountWhere,
-        })
+          const billingAccountsWithOrg = await prisma.billingAccount.findMany({
+            where: billingAccountWhere,
+          })
 
-        // Get organization IDs
-        const organizationIds = billingAccountsWithOrg.map((ba) => ba.organizationId)
+          // Get organization IDs
+          const organizationIds = billingAccountsWithOrg.map(
+            (ba) => ba.organizationId
+          )
 
-        // Get all subscriptions for these organizations
-        const subscriptions = await prisma.serviceSubscription.findMany({
-          where: {
-            organizationId: { in: organizationIds },
-          },
-          include: {
-            package: {
-              select: { code: true },
+          // Get all subscriptions for these organizations
+          const subscriptions = await prisma.serviceSubscription.findMany({
+            where: {
+              organizationId: { in: organizationIds },
             },
-            plan: {
-              select: { code: true },
+            include: {
+              package: {
+                select: { code: true },
+              },
+              plan: {
+                select: { code: true },
+              },
             },
-          },
-        })
+          })
 
-        // Get current month usage ledger
-        const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM format
-        const usageLedger = await prisma.billingUsageLedger.findMany({
-          where: {
-            organizationId: { in: organizationIds },
-            period: currentMonth,
-          },
-        })
+          // Get current month usage ledger
+          const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM format
+          const usageLedger = await prisma.billingUsageLedger.findMany({
+            where: {
+              organizationId: { in: organizationIds },
+              period: currentMonth,
+            },
+          })
 
-        // Aggregate data by organization
-        const membersMap = new Map<string, MemberBillingSummary>()
+          // Aggregate data by organization
+          const membersMap = new Map<string, MemberBillingSummary>()
 
-        for (const billingAccount of billingAccountsWithOrg) {
+          for (const billingAccount of billingAccountsWithOrg) {
+            const orgId = billingAccount.organizationId
+            const orgSubscriptions = subscriptions.filter(
+              (s) => s.organizationId === orgId
+            )
+            const orgUsage = usageLedger.filter(
+              (u) => u.organizationId === orgId
+            )
+
+            // Calculate monthly spend
+            const monthlySpend = orgUsage.reduce(
+              (sum, u) => sum + (u.amountIdr?.toNumber() ?? 0),
+              0
+            )
+
+            // Calculate active subscription count
+            const activeSubscriptionCount = orgSubscriptions.filter(
+              (s) => s.status === "ACTIVE"
+            ).length
+
+            // Build member summary
+            const memberEntry: MemberBillingSummary = {
+              userId: orgId,
+              email: null,
+              name: orgId,
+              organizationId: orgId,
+              organizationName: orgId,
+              subscriptionCount: orgSubscriptions.length,
+              activeSubscriptionCount,
+              monthlySpendIdr: monthlySpend.toFixed(2),
+              balanceIdr: billingAccount.balance.toFixed(2),
+            }
+
+            // Aggregate by user if needed (for multi-org users)
+            const existing = membersMap.get(memberEntry.userId)
+            if (existing) {
+              existing.subscriptionCount += memberEntry.subscriptionCount
+              existing.activeSubscriptionCount +=
+                memberEntry.activeSubscriptionCount
+              existing.monthlySpendIdr = (
+                parseFloat(existing.monthlySpendIdr) +
+                parseFloat(memberEntry.monthlySpendIdr)
+              ).toFixed(2)
+              existing.balanceIdr = (
+                parseFloat(existing.balanceIdr) +
+                parseFloat(memberEntry.balanceIdr)
+              ).toFixed(2)
+            } else {
+              membersMap.set(memberEntry.userId, memberEntry)
+            }
+          }
+
+          const members = Array.from(membersMap.values())
+
+          return {
+            ok: true as const,
+            members,
+          }
+        } catch (error) {
+          console.error("[AdminMembers] Error:", error)
+          return toServerError(set, "Unable to load billing members.")
+        }
+      })
+      // GET /billing/admin/members/:userId — Individual member billing detail
+      // NOTE: :userId actually maps to organizationId (BillingAccount is per-org, not per-user).
+      // This endpoint returns billing data scoped to an organization.
+      // TODO: rename route to /admin/members/org/:orgId once API consumers are updated.
+      .get("/admin/members/:userId", async ({ params, set }) => {
+        const auth = await authenticate()
+
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        // Check admin access
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(
+            set,
+            "Only administrators can view member billing details."
+          )
+        }
+
+        const { userId } = params as { userId: string }
+        if (!userId) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "User ID is required.",
+          }
+        }
+
+        try {
+          // Find billing account by organization ID, scoped to caller's org for non-super_admin
+          const billingAccountWhere: Prisma.BillingAccountWhereInput =
+            actor.platformRole !== "super_admin" && auth.organizationId
+              ? { organizationId: auth.organizationId }
+              : { organizationId: userId }
+          const billingAccount = await prisma.billingAccount.findFirst({
+            where: billingAccountWhere,
+          })
+
+          if (!billingAccount) {
+            return toNotFound(set, "Member not found.")
+          }
+
           const orgId = billingAccount.organizationId
-          const orgSubscriptions = subscriptions.filter(
-            (s) => s.organizationId === orgId
-          )
-          const orgUsage = usageLedger.filter(
-            (u) => u.organizationId === orgId
-          )
 
-          // Calculate monthly spend
-          const monthlySpend = orgUsage.reduce(
+          // Get subscriptions
+          const subscriptions = await prisma.serviceSubscription.findMany({
+            where: { organizationId: orgId },
+            include: {
+              package: { select: { code: true } },
+              plan: { select: { code: true } },
+            },
+          })
+
+          // Get current month usage
+          const currentMonth = new Date().toISOString().slice(0, 7)
+          const usageLedger = await prisma.billingUsageLedger.findMany({
+            where: {
+              organizationId: orgId,
+              period: currentMonth,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 20,
+          })
+
+          // Calculate totals
+          const monthlySpend = usageLedger.reduce(
             (sum, u) => sum + (u.amountIdr?.toNumber() ?? 0),
             0
           )
 
           // Calculate active subscription count
-          const activeSubscriptionCount = orgSubscriptions.filter(
+          const activeSubscriptionCount = subscriptions.filter(
             (s) => s.status === "ACTIVE"
           ).length
 
-          // Build member summary
-          const memberEntry: MemberBillingSummary = {
+          const memberDetail: MemberBillingDetail = {
             userId: orgId,
             email: null,
             name: orgId,
             organizationId: orgId,
             organizationName: orgId,
-            subscriptionCount: orgSubscriptions.length,
+            subscriptionCount: subscriptions.length,
             activeSubscriptionCount,
             monthlySpendIdr: monthlySpend.toFixed(2),
             balanceIdr: billingAccount.balance.toFixed(2),
+            subscriptions: subscriptions.map((s) => ({
+              id: s.id,
+              status: s.status,
+              packageCode: s.package.code,
+              planCode: s.plan.code,
+              currentPeriodEnd: s.currentPeriodEnd?.toISOString() ?? null,
+            })),
+            recentUsage: usageLedger.map((u) => ({
+              period: u.period,
+              category: u.category,
+              amountIdr: u.amountIdr?.toFixed(2) ?? "0.00",
+            })),
           }
 
-          // Aggregate by user if needed (for multi-org users)
-          const existing = membersMap.get(memberEntry.userId)
-          if (existing) {
-            existing.subscriptionCount += memberEntry.subscriptionCount
-            existing.activeSubscriptionCount += memberEntry.activeSubscriptionCount
-            existing.monthlySpendIdr = (
-              parseFloat(existing.monthlySpendIdr) + parseFloat(memberEntry.monthlySpendIdr)
-            ).toFixed(2)
-            existing.balanceIdr = (
-              parseFloat(existing.balanceIdr) + parseFloat(memberEntry.balanceIdr)
-            ).toFixed(2)
-          } else {
-            membersMap.set(memberEntry.userId, memberEntry)
+          return {
+            ok: true as const,
+            member: memberDetail,
           }
+        } catch (error) {
+          console.error("[AdminMembers] Detail Error:", error)
+          return toServerError(set, "Unable to load member billing details.")
         }
-
-        const members = Array.from(membersMap.values())
-
-        return {
-          ok: true as const,
-          members,
-        }
-      } catch (error) {
-        console.error("[AdminMembers] Error:", error)
-        return toServerError(set, "Unable to load billing members.")
-      }
-    })
-    // GET /billing/admin/members/:userId — Individual member billing detail
-    .get("/admin/members/:userId", async ({ params, set }) => {
-      const auth = await authenticate()
-
-      if (!auth.user) {
-        return toUnauthorized(set)
-      }
-
-      // Check admin access
-      const actor = await resolveActor(auth, getPlatformRole)
-      if (!isAdmin(actor)) {
-        return toForbidden(
-          set,
-          "Only administrators can view member billing details."
-        )
-      }
-
-      const { userId } = params as { userId: string }
-      if (!userId) {
-        set.status = 422
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "User ID is required.",
-        }
-      }
-
-      try {
-        // Find billing account by organization ID, scoped to caller's org for non-super_admin
-        const billingAccountWhere: Prisma.BillingAccountWhereInput =
-          actor.platformRole !== "super_admin" && auth.organizationId
-            ? { organizationId: auth.organizationId }
-            : { organizationId: userId }
-        const billingAccount = await prisma.billingAccount.findFirst({
-          where: billingAccountWhere,
-        })
-
-        if (!billingAccount) {
-          return toNotFound(set, "Member not found.")
-        }
-
-        const orgId = billingAccount.organizationId
-
-        // Get subscriptions
-        const subscriptions = await prisma.serviceSubscription.findMany({
-          where: { organizationId: orgId },
-          include: {
-            package: { select: { code: true } },
-            plan: { select: { code: true } },
-          },
-        })
-
-        // Get current month usage
-        const currentMonth = new Date().toISOString().slice(0, 7)
-        const usageLedger = await prisma.billingUsageLedger.findMany({
-          where: {
-            organizationId: orgId,
-            period: currentMonth,
-          },
-          orderBy: { createdAt: "desc" },
-          take: 20,
-        })
-
-        // Calculate totals
-        const monthlySpend = usageLedger.reduce(
-          (sum, u) => sum + (u.amountIdr?.toNumber() ?? 0),
-          0
-        )
-
-        // Calculate active subscription count
-        const activeSubscriptionCount = subscriptions.filter(
-          (s) => s.status === "ACTIVE"
-        ).length
-
-        const memberDetail: MemberBillingDetail = {
-          userId: orgId,
-          email: null,
-          name: orgId,
-          organizationId: orgId,
-          organizationName: orgId,
-          subscriptionCount: subscriptions.length,
-          activeSubscriptionCount,
-          monthlySpendIdr: monthlySpend.toFixed(2),
-          balanceIdr: billingAccount.balance.toFixed(2),
-          subscriptions: subscriptions.map((s) => ({
-            id: s.id,
-            status: s.status,
-            packageCode: s.package.code,
-            planCode: s.plan.code,
-            currentPeriodEnd: s.currentPeriodEnd?.toISOString() ?? null,
-          })),
-          recentUsage: usageLedger.map((u) => ({
-            period: u.period,
-            category: u.category,
-            amountIdr: u.amountIdr?.toFixed(2) ?? "0.00",
-          })),
-        }
-
-        return {
-          ok: true as const,
-          member: memberDetail,
-        }
-      } catch (error) {
-        console.error("[AdminMembers] Detail Error:", error)
-        return toServerError(set, "Unable to load member billing details.")
-      }
-    })
+      })
+  )
 }
 
 export const adminMembersRoutes = createAdminMembersRoutes()
