@@ -116,9 +116,10 @@ function mockFetch(gatewaysResponse: object = MOCK_GATEWAYS_RESPONSE_ONE): {
     async (url: string | URL | Request, init?: RequestInit) => {
       const urlStr = String(url)
       const pathname = new URL(urlStr, "http://localhost").pathname
+      const method = (init?.method ?? "GET").toUpperCase()
       calls.push({ url: urlStr, init })
 
-      // Providers endpoint
+      // Providers endpoint — always return providers list
       if (pathname === "/api/portal/payments/gateways/providers") {
         return new Response(JSON.stringify(MOCK_PROVIDERS_RESPONSE), {
           status: 200,
@@ -126,14 +127,14 @@ function mockFetch(gatewaysResponse: object = MOCK_GATEWAYS_RESPONSE_ONE): {
       }
 
       // Mutations (POST, PUT, PATCH) — return success
-      if (init) {
+      if (method !== "GET") {
         return new Response(
           JSON.stringify({ ok: true, gateway: { id: "gw-1" } }),
           { status: 200 }
         )
       }
 
-      // Gateways list
+      // Gateways list (GET)
       return new Response(JSON.stringify(gatewaysResponse), { status: 200 })
     },
     { preconnect: () => {} }
