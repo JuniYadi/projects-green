@@ -241,28 +241,38 @@ jobs:
             1. Read the current file if modifying
             2. Make the change
             3. Run tests: `cd projects-green && bun test`
-
             TDD when applicable — write test first, then implementation.
 
-            STEP 3 — 3 PILLARS (HARD REQUIREMENT):
-            ALL three must pass before pushing:
-
-            1. `cd projects-green && bun run lint` — 0 errors
-            2. `cd projects-green && bun run typecheck` — 0 errors
-            3. `cd projects-green && bun run test` — all pass
-
-            If any fails, FIX it and re-run until all pass.
-
-            STEP 4 — PUSH CODE:
+            STEP 3 — PUSH CODE FIRST (do NOT wait for pillars):
             ```bash
             cd projects-green
             git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
             git add -A
-            git status
-            git commit -m "feat: implement ${{ inputs.task_id }}"
+            git commit -m "feat: implement ${{ inputs.task_id }}" --allow-empty
             git push
             ```
+            Code is now safe. Even if you run out of turns later, the work is saved.
+
+            STEP 4 — 3 PILLARS (IN DIVIDUAL — one at a time):
+            Run each separately. Fix, amend the last commit, and push before moving to the next.
+
+            4a. `cd projects-green && bun run lint` — 0 errors
+            If it fails, fix the lint errors, then:
+            `git add -A && git commit --amend --no-edit && git push --force-with-lease`
+            Only move to 4b when lint passes.
+
+            4b. `cd projects-green && bun run typecheck` — 0 errors
+            If it fails, fix the type errors, then:
+            `git add -A && git commit --amend --no-edit && git push --force-with-lease`
+            Only move to 4c when typecheck passes.
+
+            4c. `cd projects-green && bun run test` — all pass
+            If it fails, fix the test failures, then:
+            `git add -A && git commit --amend --no-edit && git push --force-with-lease`
+
+            If you run out of turns before finishing all 3 pillars, that's OK — the
+            code is already pushed on the branch. A follow-up run can fix the rest.
 
             STEP 5 — MARK PR READY:
             ```bash
@@ -278,22 +288,13 @@ jobs:
             STEP 6 — UPDATE TASK STATUS IN IDE-PROJECTS:
             ```bash
             cd ide-projects
-
-            # Get the branch name
             BRANCH_NAME="${{ inputs.branch }}"
-
-            # Get PR number from projects-green checkout
             PR_URL=$(cd projects-green && gh pr list --repo JuniYadi/projects-green --head "$BRANCH_NAME" --json number,url --jq '.[0]' 2>/dev/null || echo "{}")
             PR_NUMBER=$(echo "$PR_URL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('number',''))" 2>/dev/null || echo "")
-
-            # Update status line
             sed -i 's/^## Current Status:.*/## Current Status: `implementation`/' "${{ steps.task.outputs.task_file }}"
-
-            # Append PR details to Implementation section using sed insertion
-            sed -i '/^### PR Details$/a\\' "${{ steps.task.outputs.task_file }}"
+            sed -i '/^### PR Details$/a\\\\' "${{ steps.task.outputs.task_file }}"
             sed -i '/^### PR Details$/a- **PR URL:** https://github.com/JuniYadi/projects-green/pull/'"$PR_NUMBER" "${{ steps.task.outputs.task_file }}"
             sed -i '/^### PR Details$/a- **Branch:** `'"$BRANCH_NAME"'`' "${{ steps.task.outputs.task_file }}"
-
             git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
             git add -A
