@@ -67,7 +67,7 @@ jobs:
             --model ${{ secrets.ANTHROPIC_MODEL }}
             --max-turns 30
             --dangerously-skip-permissions
-            --allowedTools ""
+            --allowedTools "Bash(cat*),Bash(git*),Bash(head*),Bash(date*),Bash(sed*),Bash(echo*),Bash(tee*),Bash(ls*),Bash(find*)"
           prompt: |
             REPO: JuniYadi/projects-green (Next.js 16 + TypeScript + strict + Bun)
             IDE PROJECTS: JuniYadi/ide-projects (private — planning docs)
