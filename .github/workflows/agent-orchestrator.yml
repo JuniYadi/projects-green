@@ -1,0 +1,289 @@
+name: Agent Orchestrator
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: 'Task ID (e.g., PGREEN-097)'
+        required: true
+        type: string
+      branch:
+        description: 'Branch on projects-green (e.g., feature/PGREEN-097)'
+        required: true
+        type: string
+      mode:
+        description: 'plan | execute'
+        required: true
+        type: choice
+        options: [plan, execute]
+
+env:
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+  API_TIMEOUT_MS: "3000000"
+  IDE_PROJECTS_REPO: JuniYadi/ide-projects
+  GIT_EMAIL: juniyadi94@gmail.com
+
+jobs:
+  plan:
+    if: inputs.mode == 'plan'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout ide-projects (private)
+        uses: actions/checkout@v4
+        with:
+          repository: JuniYadi/ide-projects
+          token: ${{ secrets.PAT_IDE_PROJECTS }}
+          path: ide-projects
+          fetch-depth: 0
+
+      - name: Locate task file
+        id: task
+        run: |
+          TASK_FILE=$(find ide-projects -path "*/projects-green/_tasks/active/${{ inputs.task_id }}-*.md" | head -1)
+          if [ -z "$TASK_FILE" ]; then
+            echo "::error::Task file not found for ${{ inputs.task_id }} in ide-projects/projects-green/_tasks/active/"
+            find ide-projects -path "*/_tasks/active/*" -maxdepth 4 | head -10
+            exit 1
+          fi
+          echo "task_file=$TASK_FILE" >> "$GITHUB_OUTPUT"
+          echo "task_filename=$(basename "$TASK_FILE")" >> "$GITHUB_OUTPUT"
+          echo "task_dir=$(dirname "$TASK_FILE")" >> "$GITHUB_OUTPUT"
+
+      - name: Claude Code — Write Plan
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          track_progress: true
+          show_full_output: true
+          claude_args: >-
+            --model ${{ secrets.ANTHROPIC_MODEL }}
+            --max-turns 30
+            --allowedTools "Bash(cat*),Bash(echo*),Bash(git*),Bash(gh*),Bash(find*),Bash(grep*),Bash(head*),Bash(wc*),Bash(mkdir*),Bash(ls*)"
+          prompt: |
+            REPO: JuniYadi/projects-green (Next.js 16 + TypeScript + strict + Bun)
+            IDE PROJECTS: JuniYadi/ide-projects (private — planning docs)
+            TASK FILE: ${{ steps.task.outputs.task_file }}
+
+            YOUR ROLE:
+            You are a senior software engineer writing an implementation plan. You work in TWO repos:
+            - ide-projects/ — read task spec, write plan, push back
+            - You DON'T touch the source code — this is plan-only
+
+            STEP 1 — READ CONTEXT:
+            Read the task file:
+            `cat "${{ steps.task.outputs.task_file }}"`
+
+            Read the project AGENTS.md (architecture, conventions, module layout):
+            `cat ide-projects/projects-green/AGENTS.md`
+
+            Read the FEATURES.md if the task references a feature area:
+            `head -200 ide-projects/projects-green/FEATURES.md`
+
+            Read the RULES.md for git/task conventions:
+            `cat ide-projects/RULES.md`
+
+            STEP 2 — UNDERSTAND THE TASK:
+            - What is the goal?
+            - What files need to change (check projects-green/ directory structure)?
+            - What is the technical approach?
+            - What are the acceptance criteria?
+            - Are there existing tests for the affected area?
+
+            STEP 3 — WRITE THE PLAN:
+            Fill the `## Plan` section in the task file. The template expects:
+
+            1. ### Approach — self-contained technical description
+            2. ### Files to Create / Modify — table with Action, File, Description
+            3. ### Key Implementation Details — specific code notes, edge cases
+            4. ### Questions / Blockers — or ✅ None
+
+            Use this EXACT format for the plan heading:
+            ```
+            ## Plan
+
+            > **Status:** ✅ Done
+            > **Generated:** $(date +%Y-%m-%d\ %H:%M)
+
+            ### Approach
+            ...
+            ```
+
+            Update `## Current Status:` line to `plan` (it should already be `plan` or `draft`).
+
+            STEP 4 — COMMIT & PUSH:
+            ```bash
+            cd ide-projects
+            git config user.name "hermes"
+            git config user.email "$GIT_EMAIL"
+            git add -A
+            git commit -m "task: ${{ inputs.task_id }} plan generated"
+            git push
+            ```
+
+            DONE — the plan is now in the private ide-projects repo.
+
+  execute:
+    if: inputs.mode == 'execute'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout ide-projects (private)
+        uses: actions/checkout@v4
+        with:
+          repository: JuniYadi/ide-projects
+          token: ${{ secrets.PAT_IDE_PROJECTS }}
+          path: ide-projects
+          fetch-depth: 0
+
+      - name: Locate task file
+        id: task
+        run: |
+          TASK_FILE=$(find ide-projects -path "*/projects-green/_tasks/active/${{ inputs.task_id }}-*.md" | head -1)
+          if [ -z "$TASK_FILE" ]; then
+            echo "::error::Task file not found for ${{ inputs.task_id }}"
+            exit 1
+          fi
+          echo "task_file=$TASK_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout projects-green @ branch
+        uses: actions/checkout@v4
+        with:
+          repository: JuniYadi/projects-green
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.branch }}
+          path: projects-green
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Show versions
+        run: |
+          bun --version
+          node --version
+          uname -a
+          date
+
+      - name: Prepare env + install deps
+        working-directory: projects-green
+        run: |
+          cp .env.example .env
+          for line in $(grep -v '^#' .env | grep '='); do
+            key=$(echo "$line" | cut -d'=' -f1)
+            value=$(echo "$line" | cut -d'=' -f2- | sed 's/^"*//;s/"*$//')
+            echo "${key}=${value}" >> "$GITHUB_ENV"
+          done
+          bun install --frozen-lockfile
+          bun run db:generate
+
+      - name: Claude Code — Implement
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          track_progress: true
+          show_full_output: true
+          claude_args: >-
+            --model ${{ secrets.ANTHROPIC_MODEL }}
+            --max-turns 120
+            --allowedTools "Bash(cat*),Bash(echo*),Bash(git*),Bash(gh*),Bash(find*),Bash(grep*),Bash(head*),Bash(wc*),Bash(mkdir*),Bash(ls*),Bash(cp*),Bash(rm*),Bash(mv*),Bash(sed*),Bash(bun*),Bash(node*),Bash(npx*),Bash(touch*),Bash(tee*),Bash(which*),Bash(date*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
+          prompt: |
+            REPO: JuniYadi/projects-green
+            WORKING DIRECTORY: projects-green/
+            TASK FILE: ${{ steps.task.outputs.task_file }}
+            BRANCH: ${{ inputs.branch }}
+
+            YOUR ROLE:
+            You are a senior software engineer implementing a task. You work across TWO repos:
+            - ide-projects/ — read the task spec + plan (private, planning docs)
+            - projects-green/ — THIS is where you write code
+
+            IMPORTANT: All git operations for projects-green happen INSIDE `projects-green/`.
+            The task file is at `${{ steps.task.outputs.task_file }}`.
+
+            STEP 1 — READ CONTEXT:
+            `cat "${{ steps.task.outputs.task_file }}"` — read the full task + plan
+
+            `cat ide-projects/projects-green/AGENTS.md` — project AGENTS.md
+
+            `cat projects-green/AGENTS.md` — repo rules (Prisma types, DTO layer, etc.)
+
+            `ls projects-green/modules/` — see all feature modules
+
+            STEP 2 — IMPLEMENT:
+            Follow the plan exactly. For each file to create/modify:
+
+            1. Read the current file if modifying
+            2. Make the change
+            3. Run the relevant test if one exists: `cd projects-green && bun test --related <file>`
+
+            TDD when applicable — write test first, then implementation.
+
+            STEP 3 — 3 PILLARS (HARD REQUIREMENT):
+            ALL three must pass before pushing:
+
+            1. `cd projects-green && bun run lint` — 0 errors
+            2. `cd projects-green && bun run typecheck` — 0 errors
+            3. `cd projects-green && bun run test` — all pass
+
+            If any fails, FIX it and re-run until all pass.
+
+            STEP 4 — PUSH CODE:
+            ```bash
+            cd projects-green
+            git config user.name "hermes"
+            git config user.email "$GIT_EMAIL"
+            git add -A
+            git status
+            git commit -m "feat: implement ${{ inputs.task_id }}"
+            git push
+            ```
+
+            STEP 5 — MARK PR READY:
+            ```bash
+            PR_NUMBER=$(gh pr list --head "${{ inputs.branch }}" --json number --jq '.[0].number' 2>/dev/null)
+            if [ -n "$PR_NUMBER" ]; then
+              gh pr ready "$PR_NUMBER"
+              echo "PR #$PR_NUMBER marked as ready for review"
+            else
+              echo "No open PR found for branch ${{ inputs.branch }}"
+            fi
+            ```
+
+            STEP 6 — UPDATE TASK STATUS IN IDE-PROJECTS:
+            ```bash
+            cd ide-projects
+
+            # Get the branch name
+            BRANCH_NAME="${{ inputs.branch }}"
+
+            # Get PR number from projects-green checkout
+            PR_URL=$(cd /home/runner/work/_temp && gh pr list --repo JuniYadi/projects-green --head "$BRANCH_NAME" --json number,url --jq '.[0]' 2>/dev/null || echo "{}")
+            PR_NUMBER=$(echo "$PR_URL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('number',''))" 2>/dev/null || echo "")
+
+            # Update status line
+            sed -i 's/^## Current Status:.*/## Current Status: `implementation`/' "${{ steps.task.outputs.task_file }}"
+
+            # Append PR details to Implementation section using sed insertion
+            sed -i '/^### PR Details$/a\\' "${{ steps.task.outputs.task_file }}"
+            sed -i '/^### PR Details$/a- **PR URL:** https://github.com/JuniYadi/projects-green/pull/'"$PR_NUMBER" "${{ steps.task.outputs.task_file }}"
+            sed -i '/^### PR Details$/a- **Branch:** `'"$BRANCH_NAME"'`' "${{ steps.task.outputs.task_file }}"
+
+            git config user.name "hermes"
+            git config user.email "$GIT_EMAIL"
+            git add -A
+            git commit -m "task: ${{ inputs.task_id }} implementation done"
+            git push
+            ```
