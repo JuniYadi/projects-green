@@ -49,18 +49,11 @@ const installFetch = () => {
         : input instanceof URL
           ? input.toString()
           : input.url
-    const url = new URL(requestUrl, "http://localhost")
 
-    if (url.pathname === "/api/deploy/apps") {
-      return Promise.resolve(
-        new Response(JSON.stringify(appsResponse), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        })
-      )
-    }
-
-    if (url.pathname.startsWith("/api/deploy/apps/")) {
+    // Match on raw URL string to avoid pathname normalization issues
+    // (happy-dom sets window.location.origin to "null", causing eden to
+    // produce URLs like "null//api/..." whose parsed pathname differs)
+    if (requestUrl.includes("/api/deploy/apps/")) {
       return Promise.resolve(
         new Response(
           JSON.stringify({
@@ -72,7 +65,16 @@ const installFetch = () => {
       )
     }
 
-    if (url.pathname.startsWith("/api/deploy/events/")) {
+    if (requestUrl.includes("/api/deploy/apps")) {
+      return Promise.resolve(
+        new Response(JSON.stringify(appsResponse), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
+      )
+    }
+
+    if (requestUrl.includes("/api/deploy/events/")) {
       return Promise.resolve(
         new Response(JSON.stringify({ ok: true, data: [], events: [] }), {
           status: 200,
@@ -81,7 +83,7 @@ const installFetch = () => {
       )
     }
 
-    if (url.pathname.startsWith("/api/deploy/logs/")) {
+    if (requestUrl.includes("/api/deploy/logs/")) {
       return Promise.resolve(
         new Response(JSON.stringify({ ok: true, data: [] }), {
           status: 200,
@@ -91,7 +93,7 @@ const installFetch = () => {
     }
 
     if (
-      url.pathname === "/api/framework-detection/github" &&
+      requestUrl.includes("/api/framework-detection/github") &&
       requestInit?.method === "POST"
     ) {
       return Promise.resolve(
