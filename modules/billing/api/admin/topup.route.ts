@@ -114,6 +114,7 @@ export const createAdminTopupRoutes = (
     }
 
     const { orgId, amount, reason } = parsed.data
+    const actingUserId = auth.user.id
 
     try {
       const result = await prisma.$transaction(async (tx) => {
@@ -131,7 +132,7 @@ export const createAdminTopupRoutes = (
           throw new Error("BALANCE_LIMIT_EXCEEDED")
         }
 
-        const userId = auth.user!.id
+        const userId = actingUserId
 
         const [updatedAccount, adjustment] = await Promise.all([
           tx.billingAccount.update({
