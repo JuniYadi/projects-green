@@ -209,7 +209,7 @@ jobs:
           plugins: 'ponytail@ponytail'
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
-            --max-turns 120
+            --max-turns 200
             --dangerously-skip-permissions
             --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
           prompt: |
