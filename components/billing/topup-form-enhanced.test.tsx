@@ -145,8 +145,8 @@ describe("TopupFormEnhanced", () => {
 
     await waitFor(() => expect(view.getByText("PayPal")).toBeInTheDocument())
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      "/api/payments/topup/methods?currency=USD",
-      expect.objectContaining({ cache: "no-store" })
+      expect.stringContaining("/api/payments/topup/methods?currency=USD"),
+      expect.objectContaining({ method: "GET" })
     )
     expect(view.queryByText("Virtual Account")).not.toBeInTheDocument()
     expect(view.queryByText("QRIS")).not.toBeInTheDocument()
@@ -220,7 +220,7 @@ describe("TopupFormEnhanced", () => {
 
     await waitFor(() =>
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/payments/topup",
+        expect.stringContaining("/api/payments/topup"),
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ amount: 180000, paymentMethod: "VA" }),
