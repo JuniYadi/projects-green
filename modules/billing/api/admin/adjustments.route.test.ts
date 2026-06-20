@@ -244,10 +244,7 @@ describe("AdminAdjustmentsRoute", () => {
     expect(body.error).toBe("INTERNAL_SERVER_ERROR")
   })
 
-  it("clamps limit to maximum of 100", async () => {
-    mockFindMany.mockResolvedValueOnce([])
-    mockCount.mockResolvedValueOnce(0)
-
+  it("rejects limit above maximum of 100 with validation error", async () => {
     const app = new Elysia()
       .use(
         createAdminAdjustmentsRoutes({
@@ -264,9 +261,7 @@ describe("AdminAdjustmentsRoute", () => {
       })
     )
 
-    expect(response.status).toBe(200)
-    const body = await response.json()
-    expect(body.pagination.limit).toBe(100)
+    expect(response.status).toBe(422)
   })
 
   it("filters by startDate and endDate", async () => {

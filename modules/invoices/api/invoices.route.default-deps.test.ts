@@ -126,6 +126,8 @@ describe("invoices default deps", () => {
           updatedAt: new Date("2026-05-02T00:00:00.000Z"),
         },
       ],
+      gateway: null,
+      paymentConfirmations: [],
     }
 
     mockPrisma.billingInvoice.findFirst.mockResolvedValue(invoiceDetail)

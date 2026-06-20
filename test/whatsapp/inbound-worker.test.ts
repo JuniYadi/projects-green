@@ -30,11 +30,21 @@ const mockDevice: MockQuery = {
   update: mock(async () => null),
 }
 
+const mockDailyCount = {
+  upsert: mock(async () => null),
+}
+
+const mockMonthlyCount = {
+  upsert: mock(async () => null),
+}
+
 mock.module("@/lib/prisma", () => ({
   prisma: {
     whatsappConversation: mockConversation,
     whatsappMessage: mockMessage,
     whatsappDevice: mockDevice,
+    whatsappDailyCount: mockDailyCount,
+    whatsappMonthlyCount: mockMonthlyCount,
   },
 }))
 

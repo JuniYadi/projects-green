@@ -82,7 +82,8 @@ describe("BankAccountsTab", () => {
     globalThis.fetch = Object.assign(
       async (url: string | URL | Request, init?: RequestInit) => {
         calls.push({ url: String(url), init })
-        if (!init) {
+        const method = (init?.method ?? "GET").toUpperCase()
+        if (method === "GET") {
           return new Response(
             JSON.stringify({
               ok: true,

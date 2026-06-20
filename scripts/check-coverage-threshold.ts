@@ -3,7 +3,7 @@ import { Glob } from "bun"
 const COVERAGE_THRESHOLD = 90
 const LINE_THRESHOLD = 90
 
-const EXCLUDED_DIR_PATTERNS = ["whatsapp", "test/", "modules/deploy/"]
+const EXCLUDED_DIR_PATTERNS = ["whatsapp", "e2e/", "modules/deploy/"]
 
 export const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "")
 
@@ -74,7 +74,7 @@ export const collectCoverageSummary = (output: string) => {
 
         if (
           filename.includes("whatsapp") ||
-          filename.includes("test/") ||
+          filename.includes("e2e/") ||
           filename.includes("modules/deploy/")
         ) {
           continue
@@ -139,7 +139,7 @@ const main = async () => {
   )
 
   console.log(
-    `\nCoverage (excluding whatsapp/test/deploy): functions ${functionCoverage.toFixed(2)}%, lines ${lineCoverage.toFixed(2)}%`
+    `\nCoverage (excluding whatsapp/e2e/deploy): functions ${functionCoverage.toFixed(2)}%, lines ${lineCoverage.toFixed(2)}%`
   )
 
   // Base threshold - fail if below this

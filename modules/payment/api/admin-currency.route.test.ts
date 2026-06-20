@@ -27,6 +27,7 @@ const baseCurrency = {
   ratePerBase: { toNumber: () => 1 },
   minTopup: { toNumber: () => 5 },
   maxTopup: { toNumber: () => 10000 },
+  minBalanceWarn: { toNumber: () => 0 },
   isActive: true,
   sortOrder: 0,
   createdAt: new Date(),

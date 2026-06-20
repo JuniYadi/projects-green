@@ -67,6 +67,10 @@ mock.module(
         },
         whatsappConversation: { upsert: convUp },
         whatsappMessage: { create: msgCr },
+        whatsappDailyCount: { upsert: mock(async () => null) },
+        whatsappMonthlyCount: { upsert: mock(async () => null) },
+        whatsappBillingLedger: { create: mock(async () => null) },
+        whatsappTemplate: { findFirst: mock(async () => null) },
       },
     }) as any
 )
@@ -187,6 +191,7 @@ describe("dispatch", () => {
       accessToken: "tok",
       phoneNumberId: "pid",
       wabaId: "waba",
+      organizationId: "o1",
     })
     expect(sendTemplateMessageMock).toHaveBeenCalledWith(
       expect.objectContaining({
