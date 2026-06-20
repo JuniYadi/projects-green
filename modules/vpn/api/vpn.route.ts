@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import { CurrencyService } from "@/modules/billing/currency.service"
 import { prisma } from "@/lib/prisma"
 import { VpnClientService } from "../vpn-client.service"
 import { VpnBillingService } from "../billing/vpn-billing.service"
@@ -65,6 +66,7 @@ type VpnRouteDeps = {
   billing?: VpnBillingLike
   openVpn?: OpenVpnLike
   vpnClients?: VpnClientServiceLike
+  currency?: CurrencyService
 }
 
 const defaultAuthenticate = async (): Promise<VpnAuthContext> => withAuth()
@@ -184,6 +186,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
   const billing = deps.billing ?? defaultBilling()
   const openVpn = deps.openVpn ?? defaultOpenVpn()
   const vpnClients = deps.vpnClients ?? defaultVpnClients()
+  const currency = deps.currency ?? new CurrencyService(prisma)
 
   return new Elysia()
     .get("/status", async ({ set }) => {
@@ -295,10 +298,11 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
 
         let price
         try {
-          price = resolveVpnMonthlyPrice({
+          price = await resolveVpnMonthlyPrice({
             regionCode: body.regionCode,
             planCode: body.planCode,
             currency: account.currency as "IDR" | "USD",
+            currencyService: currency,
           })
         } catch (error) {
           if (error instanceof VpnPriceNotConfiguredError) {
