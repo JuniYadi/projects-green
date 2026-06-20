@@ -64,8 +64,8 @@ jobs:
           plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
           plugins: 'ponytail@ponytail'
           claude_args: >-
-            --model ${{ secrets.ANTHROPIC_MODEL }}
-            --max-turns 30
+            --model "auto[1m]"
+            --max-turns 125
             --dangerously-skip-permissions
             --allowedTools "Bash(cat*),Bash(git*),Bash(head*),Bash(date*),Bash(sed*),Bash(echo*),Bash(tee*),Bash(ls*),Bash(find*)"
           prompt: |
@@ -208,7 +208,7 @@ jobs:
           plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
           plugins: 'ponytail@ponytail'
           claude_args: >-
-            --model ${{ secrets.ANTHROPIC_MODEL }}
+            --model "auto[1m]"
             --max-turns 200
             --dangerously-skip-permissions
             --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
