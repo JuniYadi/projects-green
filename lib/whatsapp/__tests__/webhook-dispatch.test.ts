@@ -44,7 +44,7 @@ mock.module("ioredis", () => {
           const matched =
             pattern === "*"
               ? keys
-              : keys.filter((k) => k.startsWith(pattern?.replace("*", "") ?? ""))
+              : keys.filter((k) => k.startsWith(pattern?.replaceAll("*", "") ?? ""))
           return ["0", matched]
         }),
         on: mock(() => {}),
