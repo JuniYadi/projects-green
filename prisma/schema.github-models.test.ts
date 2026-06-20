@@ -17,9 +17,9 @@ describe("github prisma models", () => {
     )
 
     expect(schema).toContain("model GithubWebhookEvent {")
-    expect(schema).toContain("deliveryId           String    @unique")
+    expect(schema).toContain("deliveryId             String    @unique")
     expect(schema).toContain(
-      'processStatus        String    @default("pending")'
+      'processStatus          String    @default("pending")'
     )
     expect(schema).toContain("@@index([processStatus])")
   })
