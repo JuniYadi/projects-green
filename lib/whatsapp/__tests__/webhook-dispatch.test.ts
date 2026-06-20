@@ -5,7 +5,7 @@ import type { WhatsAppWebhookJobData } from "@/lib/queue/whatsapp-webhook"
 
 // Mock ioredis before any module that uses it is imported
 mock.module("ioredis", () => {
-  let store = new Map<string, string>()
+  const store = new Map<string, string>()
   return {
     default: function () {
       return {
