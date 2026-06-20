@@ -42,6 +42,12 @@ export type VpnSubscriptionDTO = {
   currentPeriodEnd: string
   deviceCount: number
   serverAccounts: VpnServerAccountDTO[]
+  // Multi-currency audit fields
+  priceLocked: string
+  currency: string
+  originalPrice: string | null
+  originalCurrency: string | null
+  exchangeRate: number | null
   createdAt: string
   updatedAt: string
 }
@@ -74,6 +80,13 @@ export function toVpnSubscriptionDTO(
     currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
     deviceCount: subscription._count.mobileDevices,
     serverAccounts: subscription.serverAccounts.map(toServerAccountDTO),
+    priceLocked: subscription.priceLocked.toString(),
+    currency: subscription.currency,
+    originalPrice: subscription.originalPrice?.toString() ?? null,
+    originalCurrency: subscription.originalCurrency ?? null,
+    exchangeRate: subscription.exchangeRate
+      ? Number(subscription.exchangeRate)
+      : null,
     createdAt: subscription.createdAt.toISOString(),
     updatedAt: subscription.updatedAt.toISOString(),
   }
