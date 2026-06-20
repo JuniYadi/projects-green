@@ -3,6 +3,65 @@ import { createHmac } from "node:crypto"
 import { resetIdempotencyStore } from "../idempotency-repository"
 import type { WhatsAppWebhookJobData } from "@/lib/queue/whatsapp-webhook"
 
+// Mock ioredis before any module that uses it is imported
+mock.module("ioredis", () => {
+  let store = new Map<string, string>()
+  return {
+    default: function () {
+      return {
+        status: "wait",
+        connect: mock(async () => {
+          this.status = "ready"
+        }),
+        get: mock(async (key: string) => store.get(key) ?? null),
+        set: mock(
+          async (
+            key: string,
+            value: string,
+            ...args: string[]
+          ) => {
+            store.set(key, value)
+            return "OK"
+          }
+        ),
+        del: mock(async (...keys: string[]) => {
+          let count = 0
+          for (const key of keys) {
+            if (store.delete(key)) count++
+          }
+          return count
+        }),
+        scan: mock(async (
+          cursor: string,
+          _type?: string,
+          pattern?: string,
+          _countCmd?: string,
+          _count?: number
+        ) => {
+          // Support both: scan(cursor, "MATCH", pattern, "COUNT", count)
+          // and scan(cursor, "0", "MATCH", pattern, ...)
+          const keys = [...store.keys()]
+          const matched =
+            pattern === "*"
+              ? keys
+              : keys.filter((k) => k.startsWith(pattern?.replace("*", "") ?? ""))
+          return ["0", matched]
+        }),
+        on: mock(() => {}),
+      }
+    },
+  }
+})
+
+// Mock prisma to prevent real DB connections in lookupDeviceByPhoneId
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    whatsappDevice: {
+      findFirst: mock(async () => null),
+    },
+  },
+}))
+
 // Mock the webhook queue module
 const mockEnqueue = mock<
   (
