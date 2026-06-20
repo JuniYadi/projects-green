@@ -248,7 +248,7 @@ jobs:
             STEP 4 — PUSH CODE:
             ```bash
             cd projects-green
-            git config user.name "hermes"
+            git config user.name "JuniYadi"
             git config user.email "$GIT_EMAIL"
             git add -A
             git status
