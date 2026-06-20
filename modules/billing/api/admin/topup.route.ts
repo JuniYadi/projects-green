@@ -131,7 +131,7 @@ export const createAdminTopupRoutes = (
           throw new Error("BALANCE_LIMIT_EXCEEDED")
         }
 
-        const userId = auth.user.id
+        const userId = auth.user!.id
 
         const [updatedAccount, adjustment] = await Promise.all([
           tx.billingAccount.update({
