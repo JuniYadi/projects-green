@@ -18,6 +18,7 @@ const subCreate = mock<AnyFn>(async () => ({}))
 const subUpdate = mock<AnyFn>(async () => ({}))
 const subDelete = mock<AnyFn>(async () => ({}))
 const debitServiceBalance = mock<AnyFn>(async () => ({}))
+const billingAccountFindUnique = mock<AnyFn>(async () => null)
 const dispatch = mock<AnyFn>(async () => {})
 
 const prismaMock = {
@@ -28,6 +29,7 @@ const prismaMock = {
     update: subUpdate,
     delete: subDelete,
   },
+  billingAccount: { findUnique: billingAccountFindUnique },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any
 
@@ -81,6 +83,7 @@ beforeEach(() => {
   subUpdate.mockClear()
   subDelete.mockClear()
   debitServiceBalance.mockClear()
+  billingAccountFindUnique.mockClear()
   dispatch.mockClear()
   pkgFindUnique.mockResolvedValue(activePackage)
   subFindFirst.mockResolvedValue(null)
@@ -88,6 +91,7 @@ beforeEach(() => {
   subUpdate.mockResolvedValue(createdSub)
   subDelete.mockResolvedValue(createdSub)
   debitServiceBalance.mockResolvedValue({})
+  billingAccountFindUnique.mockResolvedValue({ currency: "IDR" })
 })
 
 describe("buildAccountUsername", () => {
@@ -184,7 +188,7 @@ describe("VpnSubscriptionService.purchase", () => {
     expect(line.description).toBe(
       'VPN package "Global Bundle" — 17/30 month (2026-06)'
     )
-    expect(line.unitPrice.toString()).toBe("100000")
+    expect(line.unitPrice.toString()).toBe("56666.66")
   })
 
   it("charges pro-rated amount for end-of-month purchase", async () => {
@@ -217,5 +221,81 @@ describe("VpnSubscriptionService.purchase", () => {
     const createdData = subCreate.mock.calls[0][0].data
     const expectedEnd = new Date(Date.UTC(2026, 6, 0, 23, 59, 59, 999))
     expect(createdData.currentPeriodEnd.getTime()).toBe(expectedEnd.getTime())
+  })
+})
+
+describe("VpnSubscriptionService.purchase — cross-currency", () => {
+  it("converts USD package price to IDR billing currency", async () => {
+    // USD package: 0.50 USD, IDR billing account at rate 16000
+    const usdPackage = {
+      ...activePackage,
+      price: decimal("0.50"),
+      currency: "USD",
+    }
+    pkgFindUnique.mockResolvedValue(usdPackage)
+
+    // Mock CurrencyService: 0.50 USD → 8000 IDR
+    const rateMap: Record<string, string> = { USD: "1", IDR: "16000" }
+    const mockCurrencyService = {
+      convert: mock(async () => decimal("8000")),
+      getByCode: mock(async (code: string) => ({
+        code,
+        ratePerBase: decimal(rateMap[code] ?? "1"),
+      })),
+      getRate: mock(async (code: string) => decimal(rateMap[code] ?? "1")),
+    }
+
+    const svc = new VpnSubscriptionService(prismaMock, {
+      transactions,
+      dispatch,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      currency: mockCurrencyService as any,
+    })
+
+    await svc.purchase({ organizationId: "org-1", packageId: "pkg-1" })
+
+    // Should debit in IDR (account currency), not USD
+    const debitArgs = debitServiceBalance.mock.calls[0][0]
+    expect(debitArgs.currency).toBe("IDR")
+    expect(debitArgs.amount.toString()).toBe("8000")
+
+    // Subscription should lock IDR price, store original USD
+    const createArgs = subCreate.mock.calls[0][0].data
+    expect(createArgs.priceLocked.toString()).toBe("8000")
+    expect(createArgs.currency).toBe("IDR")
+    expect(createArgs.originalPrice.toString()).toBe("0.5")
+    expect(createArgs.originalCurrency).toBe("USD")
+    expect(createArgs.exchangeRate.toString()).toBe("16000")
+  })
+
+  it("same currency skips conversion", async () => {
+    // IDR package, IDR billing account — no conversion needed
+    const rateMap: Record<string, string> = { USD: "1", IDR: "16000" }
+    const mockCurrencyService = {
+      convert: mock(async () => decimal("100000")),
+      getByCode: mock(async (code: string) => ({
+        code,
+        ratePerBase: decimal(rateMap[code] ?? "1"),
+      })),
+      getRate: mock(async (code: string) => decimal(rateMap[code] ?? "1")),
+    }
+
+    const svc = new VpnSubscriptionService(prismaMock, {
+      transactions,
+      dispatch,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      currency: mockCurrencyService as any,
+    })
+
+    await svc.purchase({ organizationId: "org-1", packageId: "pkg-1" })
+
+    // Should NOT call convert (same currency)
+    expect(mockCurrencyService.convert).not.toHaveBeenCalled()
+
+    // Subscription stores original = locked
+    const createArgs = subCreate.mock.calls[0][0].data
+    expect(createArgs.originalPrice.toString()).toBe("100000")
+    expect(createArgs.originalCurrency).toBe("IDR")
+    expect(createArgs.exchangeRate.toString()).toBe("1")
   })
 })

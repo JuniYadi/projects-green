@@ -4,6 +4,10 @@ import { Prisma, type PrismaClient, type VpnProtocol } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import {
+  CurrencyService,
+  CurrencyNotFoundError,
+} from "@/modules/billing/currency.service"
 
 const subscriptionInclude = {
   serverAccounts: {
@@ -53,6 +57,15 @@ export class VpnBillingAccountNotFoundError extends Error {
   ) {
     super(message)
     this.name = "VpnBillingAccountNotFoundError"
+  }
+}
+
+export class VpnCurrencyNotSupportedError extends Error {
+  constructor(
+    message = "Currency conversion is not supported for this combination."
+  ) {
+    super(message)
+    this.name = "VpnCurrencyNotSupportedError"
   }
 }
 
@@ -114,18 +127,21 @@ export class VpnSubscriptionService {
   private readonly prisma: PrismaLike
   private readonly transactions: BillingTransactionService
   private readonly dispatch: ProvisioningDispatcher
+  private readonly currency: CurrencyService
 
   constructor(
     prisma: PrismaLike = defaultPrisma,
     options: {
       transactions?: BillingTransactionService
       dispatch?: ProvisioningDispatcher
+      currency?: CurrencyService
     } = {}
   ) {
     this.prisma = prisma
     this.transactions =
       options.transactions ?? new BillingTransactionService(prisma)
     this.dispatch = options.dispatch ?? (async () => {})
+    this.currency = options.currency ?? new CurrencyService(prisma)
   }
 
   listForOrganization(organizationId: string) {
@@ -193,6 +209,48 @@ export class VpnSubscriptionService {
       ? new Prisma.Decimal(1)
       : new Prisma.Decimal(daysRemaining).div(daysInMonth)
 
+    // ── Currency conversion ────────────────────────────────────────
+    // Fetch billing account to determine the charge currency.
+    const account = await this.prisma.billingAccount.findUnique({
+      where: { organizationId: input.organizationId },
+    })
+    if (!account) {
+      throw new VpnBillingAccountNotFoundError()
+    }
+    const accountCurrency = account.currency
+
+    let chargePrice: Prisma.Decimal
+    let exchangeRate: Prisma.Decimal
+
+    if (pkg.currency === accountCurrency) {
+      // Same currency — no conversion needed.
+      chargePrice = chargeAmount
+      exchangeRate = new Prisma.Decimal(1)
+    } else {
+      // Cross-currency — convert package price to billing account currency.
+      try {
+        chargePrice = await this.currency.convert(
+          chargeAmount,
+          pkg.currency,
+          accountCurrency
+        )
+        // Compute exchange rate: units of accountCurrency per 1 unit of pkgCurrency
+        const fromRate = await this.currency.getRate(pkg.currency)
+        const toRate = await this.currency.getRate(accountCurrency)
+        exchangeRate = toRate.div(fromRate)
+      } catch (error) {
+        if (
+          error instanceof CurrencyNotFoundError ||
+          (error instanceof Error && error.name === "CurrencyNotFoundError")
+        ) {
+          throw new VpnCurrencyNotSupportedError(
+            `Cannot convert from ${pkg.currency} to ${accountCurrency}. Currency not supported.`
+          )
+        }
+        throw error
+      }
+    }
+
     // Build the per-protocol account plan up front.
     const plan = pkg.servers.flatMap((entry) =>
       enabledProtocols(entry.server).map((protocol) => ({
@@ -212,8 +270,11 @@ export class VpnSubscriptionService {
         organizationId: input.organizationId,
         packageId: input.packageId,
         status: "SUSPENDED",
-        priceLocked: pkg.price,
-        currency: pkg.currency,
+        priceLocked: chargePrice,
+        currency: accountCurrency,
+        originalPrice: pkg.price,
+        originalCurrency: pkg.currency,
+        exchangeRate: exchangeRate,
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
         serverAccounts: {
@@ -236,8 +297,8 @@ export class VpnSubscriptionService {
     try {
       await this.transactions.debitServiceBalance({
         organizationId: input.organizationId,
-        amount: chargeAmount,
-        currency: pkg.currency,
+        amount: chargePrice,
+        currency: accountCurrency,
         source: "VPN",
         reason: `VPN package "${pkg.name}" monthly payment`,
         idempotencyKey: `vpn-package:${subscription.id}:${period}`,
@@ -251,7 +312,7 @@ export class VpnSubscriptionService {
             ? `VPN package "${pkg.name}" — ${period}`
             : `VPN package "${pkg.name}" — ${daysRemaining}/${daysInMonth} month (${period})`,
           quantity: chargeQuantity,
-          unitPrice: pkg.price,
+          unitPrice: chargePrice,
           lineType: "SUBSCRIPTION",
           category: "vpn",
         },
