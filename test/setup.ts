@@ -34,6 +34,63 @@ mock.module("react-icons/si", () => {
   }
 })
 
+mock.module("@workos-inc/node", () => {
+  class MockWorkOSException extends Error {
+    constructor(
+      props?: string | { message?: string; code?: string; requestID?: string; path?: string; errors?: unknown[] },
+      _statusCode?: number,
+      _requestID?: string,
+    ) {
+      if (typeof props === "string") {
+        super(props)
+      } else if (props && props.message) {
+        super(props.message)
+      } else {
+        super("WorkOS error")
+      }
+      this.name = new.target.name
+    }
+  }
+
+  return {
+    WorkOS: class WorkOS {},
+    createWorkOS: () => ({}),
+    // Exception classes used by auth / tenant / admin modules
+    NotFoundException: class NotFoundException extends MockWorkOSException {},
+    UnauthorizedException: class UnauthorizedException extends MockWorkOSException {},
+    AuthenticationException: class AuthenticationException extends MockWorkOSException {
+      data: unknown
+      constructor(statusCode: number, data: unknown, requestID: string) {
+        super(typeof data === "object" && data !== null && "message" in data ? (data as { message: string }).message : "auth error")
+        this.data = data
+      }
+    },
+    ConflictException: class ConflictException extends MockWorkOSException {},
+    UnprocessableEntityException: class UnprocessableEntityException extends MockWorkOSException {},
+    BadRequestException: class BadRequestException extends MockWorkOSException {},
+    // Stubs for remaining exports (unused in tests)
+    ApiKeyRequiredException: class ApiKeyRequiredException extends MockWorkOSException {},
+    GenericServerException: class GenericServerException extends MockWorkOSException {},
+    RateLimitExceededException: class RateLimitExceededException extends MockWorkOSException {},
+    OauthException: class OauthException extends MockWorkOSException {},
+    SignatureVerificationException: class SignatureVerificationException extends MockWorkOSException {},
+    NoApiKeyProvidedException: class NoApiKeyProvidedException extends MockWorkOSException {},
+    isAuthenticationErrorData: mock(() => false),
+    serializeRevokeSessionOptions: (opts: unknown) => opts,
+    AutoPaginatable: class AutoPaginatable {},
+    CookieSession: class CookieSession {},
+    PKCE: class PKCE {},
+    FeatureFlagsRuntimeClient: class FeatureFlagsRuntimeClient {},
+    AuthenticateWithSessionCookieFailureReason: {},
+    RefreshSessionFailureReason: {},
+    ConnectionType: {},
+    DomainDataState: {},
+    GenerateLinkIntent: {},
+    OrganizationDomainState: {},
+    OrganizationDomainVerificationStrategy: {},
+  }
+})
+
 mock.module("next/navigation", () => {
   const { mock } = require("bun:test")
 
