@@ -118,7 +118,7 @@ jobs:
             STEP 4 — COMMIT & PUSH:
             ```bash
             cd ide-projects
-            git config user.name "hermes"
+            git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
             git add -A
             git commit -m "task: ${{ inputs.task_id }} plan generated"
@@ -286,7 +286,7 @@ jobs:
             sed -i '/^### PR Details$/a- **PR URL:** https://github.com/JuniYadi/projects-green/pull/'"$PR_NUMBER" "${{ steps.task.outputs.task_file }}"
             sed -i '/^### PR Details$/a- **Branch:** `'"$BRANCH_NAME"'`' "${{ steps.task.outputs.task_file }}"
 
-            git config user.name "hermes"
+            git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
             git add -A
             git commit -m "task: ${{ inputs.task_id }} implementation done"
