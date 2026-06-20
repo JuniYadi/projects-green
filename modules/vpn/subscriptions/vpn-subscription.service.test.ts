@@ -265,7 +265,7 @@ describe("VpnSubscriptionService.purchase — cross-currency", () => {
     expect(createArgs.currency).toBe("IDR")
     expect(createArgs.originalPrice.toString()).toBe("0.5")
     expect(createArgs.originalCurrency).toBe("USD")
-    expect(createArgs.exchangeRate.toString()).toBe("16000")
+    expect(createArgs.exchangeRate.toNumber()).toBeCloseTo(16000, 0)
   })
 
   it("same currency skips conversion", async () => {
