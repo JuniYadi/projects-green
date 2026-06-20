@@ -58,6 +58,9 @@ export type VpnPackageSummary = {
   serverCount: number
   protocolCount: number
   regions: string[]
+  convertedPrice: string | null
+  convertedCurrency: string | null
+  exchangeRate: number | null
 }
 
 export type VpnPackageServer = {
