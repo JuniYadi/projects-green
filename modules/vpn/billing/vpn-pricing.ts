@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client"
+import { CurrencyService } from "@/modules/billing/currency.service"
 
 // ─── Static catalog (MVP) ──────────────────────────────────────────────
 //
@@ -44,9 +45,13 @@ export type ResolveVpnMonthlyPriceInput = {
   planCode: string
   /**
    * Account currency. Defaults to IDR for backward compatibility.
-   * When USD, the IDR amount is converted using a fixed FX rate.
+   * When USD, the IDR amount is converted using the rate from
+   * CurrencyService (PaymentCurrency table) if provided, otherwise
+   * the hardcoded fixed rate.
    */
   currency?: "IDR" | "USD"
+  /** Optional CurrencyService for dynamic rate lookup. */
+  currencyService?: CurrencyService
 }
 
 /**
@@ -54,9 +59,9 @@ export type ResolveVpnMonthlyPriceInput = {
  * Throws `VpnPriceNotConfiguredError` when the combination is missing
  * from the catalog so the route layer can surface a 422 to the UI.
  */
-export function resolveVpnMonthlyPrice(
+export async function resolveVpnMonthlyPrice(
   input: ResolveVpnMonthlyPriceInput
-): VpnResolvedPrice {
+): Promise<VpnResolvedPrice> {
   const region = CATALOG[input.regionCode as RegionCode]
   if (!region) {
     throw new VpnPriceNotConfiguredError(input.regionCode, input.planCode)
@@ -67,8 +72,16 @@ export function resolveVpnMonthlyPrice(
   }
 
   if (input.currency === "USD") {
+    let rate = IDR_USD_FIXED_RATE
+    if (input.currencyService) {
+      try {
+        rate = await input.currencyService.getRate("IDR")
+      } catch {
+        // Fallback to hardcoded rate if CurrencyService fails
+      }
+    }
     return {
-      amount: idrAmount.div(IDR_USD_FIXED_RATE),
+      amount: idrAmount.div(rate),
       currency: "USD",
     }
   }

@@ -1261,6 +1261,12 @@ model VpnSubscription {
   // existing subscription (grandfathering, Story 16).
   priceLocked        Decimal               @db.Decimal(12, 2)
   currency           String                @default("IDR")
+  // Original package price at purchase time (before any currency conversion).
+  // Null for subscriptions created before multi-currency support.
+  originalPrice    Decimal?              @db.Decimal(12, 2)
+  originalCurrency String?
+  // Exchange rate used at purchase time (units of originalCurrency per 1 base unit).
+  exchangeRate     Decimal?              @db.Decimal(18, 6)
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
   // First timestamp a renewal failed for insufficient balance. Drives the

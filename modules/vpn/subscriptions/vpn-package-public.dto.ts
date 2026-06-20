@@ -50,6 +50,10 @@ export type VpnPublicPackageDTO = {
   serverCount: number
   protocolCount: number
   regions: string[]
+  // Multi-currency: converted price for the buyer's billing currency
+  convertedPrice: string | null
+  convertedCurrency: string | null
+  exchangeRate: number | null
 }
 
 /** Detail shape with the per-server protocol breakdown. */
@@ -77,9 +81,16 @@ function buildServers(pkg: PublicPackagePayload): VpnPublicPackageServerDTO[] {
   return pkg.servers.map(toServerDTO)
 }
 
+export type PackageConversion = {
+  convertedPrice: Prisma.Decimal
+  convertedCurrency: string
+  exchangeRate: number
+}
+
 function summaryFields(
   pkg: PublicPackagePayload,
-  servers: VpnPublicPackageServerDTO[]
+  servers: VpnPublicPackageServerDTO[],
+  conversion?: PackageConversion
 ) {
   const regions = Array.from(new Set(servers.map((s) => s.region.name)))
   const protocolCount = servers.reduce((sum, s) => sum + s.protocols.length, 0)
@@ -92,18 +103,23 @@ function summaryFields(
     serverCount: servers.length,
     protocolCount,
     regions,
+    convertedPrice: conversion?.convertedPrice.toString() ?? null,
+    convertedCurrency: conversion?.convertedCurrency ?? null,
+    exchangeRate: conversion?.exchangeRate ?? null,
   }
 }
 
 export function toVpnPublicPackageDTO(
-  pkg: PublicPackagePayload
+  pkg: PublicPackagePayload,
+  conversion?: PackageConversion
 ): VpnPublicPackageDTO {
-  return summaryFields(pkg, buildServers(pkg))
+  return summaryFields(pkg, buildServers(pkg), conversion)
 }
 
 export function toVpnPublicPackageDetailDTO(
-  pkg: PublicPackagePayload
+  pkg: PublicPackagePayload,
+  conversion?: PackageConversion
 ): VpnPublicPackageDetailDTO {
   const servers = buildServers(pkg)
-  return { ...summaryFields(pkg, servers), servers }
+  return { ...summaryFields(pkg, servers, conversion), servers }
 }

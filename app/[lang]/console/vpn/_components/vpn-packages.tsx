@@ -50,6 +50,34 @@ function formatPrice(price: string, currency: string): string {
   return `${currency} ${amount.toLocaleString("en-US")}`
 }
 
+function PriceDisplay({
+  price,
+  currency,
+  convertedPrice,
+  convertedCurrency,
+}: {
+  price: string
+  currency: string
+  convertedPrice: string | null
+  convertedCurrency: string | null
+}) {
+  const primaryPrice = convertedPrice ?? price
+  const primaryCurrency = convertedCurrency ?? currency
+  const showReference = convertedPrice !== null
+
+  return (
+    <span>
+      {formatPrice(primaryPrice, primaryCurrency)}
+      {showReference && (
+        <span className="text-sm font-normal text-muted-foreground">
+          {" "}
+          (≈ {formatPrice(price, currency)})
+        </span>
+      )}
+    </span>
+  )
+}
+
 export function VpnPackages({ topupUrl, onPurchased }: Props) {
   const [packages, setPackages] = useState<VpnPackageSummary[] | null>(null)
   const [selected, setSelected] = useState<VpnPackageDetail | null>(null)
@@ -135,7 +163,12 @@ export function VpnPackages({ topupUrl, onPurchased }: Props) {
             </CardHeader>
             <CardContent className="flex-1 space-y-3">
               <p className="text-lg font-semibold">
-                {formatPrice(pkg.price, pkg.currency)}
+                <PriceDisplay
+                  price={pkg.price}
+                  currency={pkg.currency}
+                  convertedPrice={pkg.convertedPrice}
+                  convertedCurrency={pkg.convertedCurrency}
+                />
                 <span className="text-sm font-normal text-muted-foreground">
                   {" "}
                   / month
@@ -185,7 +218,13 @@ export function VpnPackages({ topupUrl, onPurchased }: Props) {
               <DialogHeader>
                 <DialogTitle>
                   {selected.name} —{" "}
-                  {formatPrice(selected.price, selected.currency)}/month
+                  <PriceDisplay
+                    price={selected.price}
+                    currency={selected.currency}
+                    convertedPrice={selected.convertedPrice}
+                    convertedCurrency={selected.convertedCurrency}
+                  />
+                  /month
                 </DialogTitle>
                 <DialogDescription>
                   You&apos;ll get access to all of these in one subscription.
@@ -230,7 +269,10 @@ export function VpnPackages({ topupUrl, onPurchased }: Props) {
               <Button onClick={handleBuy} disabled={purchasing}>
                 {purchasing
                   ? "Processing…"
-                  : `Buy Now — ${formatPrice(selected.price, selected.currency)}`}
+                  : `Buy Now — ${formatPrice(
+                      selected.convertedPrice ?? selected.price,
+                      selected.convertedCurrency ?? selected.currency
+                    )}`}
               </Button>
             </>
           )}

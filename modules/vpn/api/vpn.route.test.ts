@@ -23,6 +23,9 @@ const mockPrisma = {
   billingAccount: {
     findUnique: mock(),
   },
+  paymentCurrency: {
+    findUnique: mock(),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
@@ -87,6 +90,44 @@ const setupPrismaDefaults = () => {
   mockPrisma.serviceSubscription.create.mockReset()
   mockPrisma.serviceSubscription.update.mockReset()
   mockPrisma.billingAccount.findUnique.mockReset()
+  mockPrisma.paymentCurrency.findUnique.mockReset()
+  mockPrisma.paymentCurrency.findUnique.mockImplementation(
+    async (args: { where: { code: string } }) => {
+      if (args.where.code === "IDR") {
+        return {
+          id: "cur_idr",
+          code: "IDR",
+          name: "Indonesian Rupiah",
+          symbol: "Rp",
+          ratePerBase: new Prisma.Decimal("16000"),
+          isBase: false,
+          isActive: true,
+          minTopup: new Prisma.Decimal("10000"),
+          maxTopup: new Prisma.Decimal("100000000"),
+          sortOrder: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      }
+      if (args.where.code === "USD") {
+        return {
+          id: "cur_usd",
+          code: "USD",
+          name: "US Dollar",
+          symbol: "$",
+          ratePerBase: new Prisma.Decimal("1"),
+          isBase: true,
+          isActive: true,
+          minTopup: new Prisma.Decimal("1"),
+          maxTopup: new Prisma.Decimal("10000"),
+          sortOrder: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      }
+      return null
+    }
+  )
 
   mockPrisma.servicePackage.findUnique.mockResolvedValue({ id: "pkg_vpn" })
   mockPrisma.servicePlan.findUnique.mockResolvedValue({ id: "plan_standard" })

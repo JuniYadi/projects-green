@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 
 let invoicesPayload: {
@@ -15,6 +15,7 @@ const jsonResponse = (body: unknown) =>
     headers: { "Content-Type": "application/json" },
   })
 
+const originalFetch = globalThis.fetch
 const mockFetch = mock((input: string | URL | Request) => {
   const url = input.toString()
 
@@ -43,15 +44,18 @@ const mockFetch = mock((input: string | URL | Request) => {
   })
 })
 
-global.fetch = mockFetch as unknown as typeof fetch
-
 describe("ConsolePage", () => {
   beforeEach(() => {
+    globalThis.fetch = mockFetch as unknown as typeof fetch
     mockFetch.mockClear()
     invoicesPayload = {
       ok: true,
       invoices: [{ id: "inv_1", totalAmountIdr: 75000, status: "PAID" }],
     }
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
   })
 
   it("renders static header text", async () => {

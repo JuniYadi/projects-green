@@ -58,6 +58,9 @@ export type VpnPackageSummary = {
   serverCount: number
   protocolCount: number
   regions: string[]
+  convertedPrice: string | null
+  convertedCurrency: string | null
+  exchangeRate: number | null
 }
 
 export type VpnPackageServer = {
@@ -97,6 +100,11 @@ export type VpnSubscription = {
   status: "ACTIVE" | "SUSPENDED" | "EXPIRED"
   currentPeriodStart: string
   currentPeriodEnd: string
+  priceLocked: string
+  currency: string
+  originalPrice: string | null
+  originalCurrency: string | null
+  exchangeRate: number | null
   serverAccounts: VpnServerAccount[]
   createdAt: string
   updatedAt: string
