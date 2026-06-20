@@ -5,7 +5,13 @@ import {
   requireSuperAdmin,
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
-import { toAuditLogDTO } from "./admin-vpn-audit.dto"
+
+type RouteSet = { status?: number | string }
+
+const notFound = (set: RouteSet): AdminApiError => {
+  set.status = 404
+  return { ok: false, error: "NOT_FOUND", message: "Server account not found." }
+}
 
 export const createAdminVpnAuditRoutes = (deps: {
   requireSuperAdmin?: typeof requireSuperAdmin
@@ -63,7 +69,7 @@ export const createAdminVpnAuditRoutes = (deps: {
 
         return {
           ok: true,
-          data: entries.map(toAuditLogDTO),
+          data: entries,
           pagination: {
             page,
             limit,

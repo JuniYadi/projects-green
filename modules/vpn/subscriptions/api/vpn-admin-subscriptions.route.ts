@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { logProvisioningEvent } from "@/lib/audit.service"
 import {
   requireSuperAdmin,
+  type AdminActorContext,
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
 import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
@@ -59,7 +60,7 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
     .post(
       "/admin/vpn/subscriptions/:id/servers/:saId/retry",
       async ({ params, set }) => {
-        const actor = await guard(set)
+        const actor = (await guard(set)) as AdminActorContext | AdminApiError
         if (!actor.ok) return actor
         const sub = await service.getById(params.id)
         const account = sub?.serverAccounts.find((a) => a.id === params.saId)
