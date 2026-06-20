@@ -58,7 +58,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
-          track_progress: true
+          track_progress: false
           show_full_output: true
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
@@ -198,7 +198,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
-          track_progress: true
+          track_progress: false
           show_full_output: true
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
