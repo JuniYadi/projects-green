@@ -81,25 +81,33 @@ export function SubscriptionsTable() {
   const [auditAccount, setAuditAccount] = useState<VpnServerAccountEntry | null>(
     null
   )
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await vpnApi<{ ok: true; data: VpnSubscriptionItem[] }>(
-        "/admin/vpn/subscriptions"
-      )
-      setSubs(res.data)
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    void load()
-  }, [load])
+    let cancelled = false
+
+    const fetch = async () => {
+      try {
+        setError(null)
+        const res = await vpnApi<{ ok: true; data: VpnSubscriptionItem[] }>(
+          "/admin/vpn/subscriptions"
+        )
+        if (!cancelled) setSubs(res.data)
+      } catch (err) {
+        if (!cancelled) setError((err as Error).message)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    fetch()
+
+    return () => {
+      cancelled = true
+    }
+  }, [reloadKey])
+
+  const reload = useCallback(() => setReloadKey((k) => k + 1), [])
 
   const act = async (
     subId: string,
@@ -117,7 +125,7 @@ export function SubscriptionsTable() {
         `/admin/vpn/subscriptions/${subId}/servers/${account.id}/${action}`,
         { method: "POST" }
       )
-      await load()
+      reload()
     } catch (err) {
       window.alert((err as Error).message)
     } finally {
@@ -132,7 +140,7 @@ export function SubscriptionsTable() {
       await vpnApi(`/admin/vpn/subscriptions/${subId}/retry-all`, {
         method: "POST",
       })
-      await load()
+      reload()
     } catch (err) {
       window.alert((err as Error).message)
     } finally {

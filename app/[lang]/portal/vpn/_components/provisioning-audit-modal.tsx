@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { X } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -18,45 +18,53 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const loadEvents = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      // PGREEN-098 endpoint: fetch provisioning audit events for this account
-      const res = await vpnApi<{ ok: true; data: AuditEvent[] }>(
-        `/admin/vpn/audit/accounts/${account.id}`
-      )
-      setEvents(res.data)
-    } catch {
-      // Fallback: generate synthetic timeline from account data
-      const synthetic: AuditEvent[] = [
-        {
-          type: "PROVISIONING_STARTED",
-          timestamp: account.createdAt,
-          detail: `Account created for ${account.serverName}`,
-        },
-      ]
-      if (account.provisioningStatus === "FAILED") {
-        synthetic.push({
-          type: "PROVISIONING_FAILED",
-          timestamp: account.updatedAt,
-          detail: account.failureReason ?? "Unknown error",
-        })
-      } else if (account.provisioningStatus === "ACTIVE") {
-        synthetic.push({
-          type: "PROVISIONING_SUCCESS",
-          timestamp: account.updatedAt,
-        })
-      }
-      setEvents(synthetic)
-    } finally {
-      setLoading(false)
-    }
-  }, [account])
-
   useEffect(() => {
-    if (open) loadEvents()
-  }, [open, loadEvents])
+    if (!open) return
+    let cancelled = false
+
+    const loadEvents = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        // PGREEN-098 endpoint: fetch provisioning audit events for this account
+        const res = await vpnApi<{ ok: true; data: AuditEvent[] }>(
+          `/admin/vpn/audit/accounts/${account.id}`
+        )
+        if (!cancelled) setEvents(res.data)
+      } catch {
+        if (cancelled) return
+        // Fallback: generate synthetic timeline from account data
+        const synthetic: AuditEvent[] = [
+          {
+            type: "PROVISIONING_STARTED",
+            timestamp: account.createdAt,
+            detail: `Account created for ${account.serverName}`,
+          },
+        ]
+        if (account.provisioningStatus === "FAILED") {
+          synthetic.push({
+            type: "PROVISIONING_FAILED",
+            timestamp: account.updatedAt,
+            detail: account.failureReason ?? "Unknown error",
+          })
+        } else if (account.provisioningStatus === "ACTIVE") {
+          synthetic.push({
+            type: "PROVISIONING_SUCCESS",
+            timestamp: account.updatedAt,
+          })
+        }
+        if (!cancelled) setEvents(synthetic)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    loadEvents()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, account])
 
   if (!open) return null
 
