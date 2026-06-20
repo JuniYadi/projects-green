@@ -163,7 +163,7 @@ describe("createWhatsAppBroadcastQueue", () => {
     expect(add).toHaveBeenCalledWith(
       "custom-job",
       { campaignId: "camp_1", recipientId: "rec_1", method: "dispatch" },
-      { jobId: "wa-broadcast:camp_1:rec_1" }
+      { jobId: expect.stringContaining("wa-broadcast:dispatch:camp_1:rec_1:") }
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(0)
   })
@@ -197,7 +197,11 @@ describe("createWhatsAppBroadcastQueue", () => {
         recipientId: "rec_owned",
         method: "throttle",
       },
-      { jobId: "wa-broadcast:camp_owned:rec_owned" }
+      {
+        jobId: expect.stringContaining(
+          "wa-broadcast:throttle:camp_owned:rec_owned:"
+        ),
+      }
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(1)
   })
@@ -216,7 +220,10 @@ describe("createWhatsAppBroadcastQueue", () => {
     expect(add).toHaveBeenCalledWith(
       WHATSAPP_BROADCAST_JOB_NAME,
       { campaignId: "camp_2", recipientId: "rec_2", method: "dispatch" },
-      { jobId: "wa-broadcast:camp_2:rec_2", attempts: 5 }
+      {
+        jobId: expect.stringContaining("wa-broadcast:dispatch:camp_2:rec_2:"),
+        attempts: 5,
+      }
     )
   })
 
@@ -250,7 +257,11 @@ describe("enqueueWhatsAppBroadcast", () => {
         recipientId: "recipient_a",
         method: "dispatch",
       },
-      { jobId: "wa-broadcast:campaign_a:recipient_a" }
+      {
+        jobId: expect.stringContaining(
+          "wa-broadcast:dispatch:campaign_a:recipient_a:"
+        ),
+      }
     )
     expect(queueAddMock).toHaveBeenNthCalledWith(
       2,
@@ -260,7 +271,11 @@ describe("enqueueWhatsAppBroadcast", () => {
         recipientId: "recipient_b",
         method: "throttle",
       },
-      { jobId: "wa-broadcast:campaign_b:recipient_b" }
+      {
+        jobId: expect.stringContaining(
+          "wa-broadcast:throttle:campaign_b:recipient_b:"
+        ),
+      }
     )
     expect(queueAddMock).toHaveBeenNthCalledWith(
       3,
@@ -270,7 +285,11 @@ describe("enqueueWhatsAppBroadcast", () => {
         recipientId: "recipient_c",
         method: "status-update",
       },
-      { jobId: "wa-broadcast:campaign_c:recipient_c" }
+      {
+        jobId: expect.stringContaining(
+          "wa-broadcast:status-update:campaign_c:recipient_c:"
+        ),
+      }
     )
   })
 
@@ -282,7 +301,9 @@ describe("enqueueWhatsAppBroadcast", () => {
     expect(queueAddMock).toHaveBeenCalledWith(
       WHATSAPP_BROADCAST_JOB_NAME,
       { campaignId: "camp", recipientId: "rec", method: "dispatch" },
-      { jobId: "wa-broadcast:camp:rec" }
+      {
+        jobId: expect.stringContaining("wa-broadcast:dispatch:camp:rec:"),
+      }
     )
   })
 })
