@@ -4,6 +4,13 @@ import { afterEach, expect, mock } from "bun:test"
 import { cleanup } from "@testing-library/react"
 import * as matchers from "@testing-library/jest-dom/matchers"
 
+// Happy DOM sets window.location.origin to "null" (the string), which causes
+// Eden Treaty to build URLs like "null/api/...". Set the env var before any
+// module that imports eden gets loaded.
+if (!process.env.NEXT_PUBLIC_APP_URL) {
+  process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3300"
+}
+
 mock.module("react-icons/si", () => {
   const React = require("react")
   const createMock = (name: string) => (props: any) =>
