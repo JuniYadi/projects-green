@@ -32,6 +32,8 @@ type VoucherDetail = {
   metadataJson: Record<string, unknown> | null
   createdAt: string
   updatedAt: string
+  targetUserName?: string | null
+  targetOrgName?: string | null
   claims: VoucherClaimDTO[]
 }
 
@@ -42,6 +44,8 @@ type VoucherClaimDTO = {
   organizationId: string
   billingAdjustmentId: string | null
   claimedAt: string
+  userName?: string | null
+  orgName?: string | null
 }
 
 type ApiErrorResponse = {
@@ -200,8 +204,8 @@ export function VoucherDetail({ voucherId }: VoucherDetailProps) {
                 <dt className="text-sm font-medium text-muted-foreground">
                   Target User
                 </dt>
-                <dd className="font-mono text-xs">
-                  {voucher.targetWorkosUserId}
+                <dd className="text-sm">
+                  {voucher.targetUserName ?? voucher.targetWorkosUserId}
                 </dd>
               </div>
             )}
@@ -210,8 +214,8 @@ export function VoucherDetail({ voucherId }: VoucherDetailProps) {
                 <dt className="text-sm font-medium text-muted-foreground">
                   Target Organization
                 </dt>
-                <dd className="font-mono text-xs">
-                  {voucher.targetOrganizationId}
+                <dd className="text-sm">
+                  {voucher.targetOrgName ?? voucher.targetOrganizationId}
                 </dd>
               </div>
             )}
@@ -236,8 +240,8 @@ export function VoucherDetail({ voucherId }: VoucherDetailProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[50px]">#</TableHead>
-                    <TableHead>User ID</TableHead>
-                    <TableHead>Organization ID</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Organization</TableHead>
                     <TableHead>Claimed At</TableHead>
                     <TableHead>Adjustment ID</TableHead>
                   </TableRow>
@@ -248,11 +252,11 @@ export function VoucherDetail({ voucherId }: VoucherDetailProps) {
                       <TableCell className="text-muted-foreground">
                         {index + 1}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {claim.workosUserId}
+                      <TableCell className="text-sm">
+                        {claim.userName ?? claim.workosUserId}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {claim.organizationId}
+                      <TableCell className="text-sm">
+                        {claim.orgName ?? claim.organizationId}
                       </TableCell>
                       <TableCell className="text-xs">
                         {new Date(claim.claimedAt).toLocaleDateString(
