@@ -81,6 +81,7 @@ export default function ConsolePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (eden.api as any).support.tickets
         .get({ $query: { status: "open" } })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .then((r: any) => r.data),
     ])
 
