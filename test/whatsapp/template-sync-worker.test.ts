@@ -122,6 +122,7 @@ describe("whatsapp-template-sync-worker", () => {
       accessToken: "encrypted-token",
       phoneNumberId: "phone_1",
       wabaId: "waba_1",
+      organizationId: "org_1",
     })
     expect(listTemplatesPageMock).toHaveBeenNthCalledWith(1, undefined)
     expect(listTemplatesPageMock).toHaveBeenNthCalledWith(2, "cursor_2")
@@ -132,7 +133,7 @@ describe("whatsapp-template-sync-worker", () => {
           organizationId: "org_1",
           slug: "welcome-message",
           name: "welcome_message",
-          description: "MARKETING",
+          category: "MARKETING",
           syncStatus: "SYNCED",
           metaStatus: "APPROVED",
           whatsappDevice: { connect: { id: "device_1" } },
