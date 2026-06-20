@@ -1,8 +1,10 @@
 import { Elysia } from "elysia"
 
 import { prisma } from "@/lib/prisma"
+import { logProvisioningEvent } from "@/lib/audit.service"
 import {
   requireSuperAdmin,
+  type AdminActorContext,
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
 import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
@@ -58,16 +60,30 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
     .post(
       "/admin/vpn/subscriptions/:id/servers/:saId/retry",
       async ({ params, set }) => {
-        const actor = await guard(set)
-        if ("ok" in actor && !actor.ok) return actor as AdminApiError
+        const actor = (await guard(set)) as AdminActorContext | AdminApiError
+        if (!actor.ok) return actor
         const sub = await service.getById(params.id)
         const account = sub?.serverAccounts.find((a) => a.id === params.saId)
         if (!sub || !account) return notFound(set)
+
+        const previousFailureReason = account.failureReason ?? "Unknown"
         await prisma.vpnServerAccount.update({
           where: { id: account.id },
           data: { provisioningStatus: "PENDING", failureReason: null },
         })
         await dispatch(account.id)
+
+        logProvisioningEvent({
+          action: "PROVISIONING_RETRIED",
+          serverAccountId: account.id,
+          details: {
+            serverAccountId: account.id,
+            previousFailureReason,
+            triggeredByAdminId: actor.userId,
+          },
+          adminId: actor.userId,
+        })
+
         return { ok: true }
       }
     )

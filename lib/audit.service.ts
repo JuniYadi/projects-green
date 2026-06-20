@@ -1,5 +1,5 @@
 /**
- * Audit logging service for VPN mobile operations.
+ * Audit logging service for VPN operations.
  *
  * Fire-and-forget semantics — logs are written asynchronously and
  * never block the main request flow.
@@ -12,6 +12,16 @@ export type AuditAction =
   | "DEVICE_REGISTERED"
   | "DEVICE_REVOKED"
   | "CONFIG_DOWNLOADED"
+  | "PROVISIONING_STARTED"
+  | "PROVISIONING_SUCCESS"
+  | "PROVISIONING_FAILED"
+  | "PROVISIONING_RETRIED"
+
+export type ProvisioningEventDetails =
+  | { serverAccountId: string; protocol: string; username: string }
+  | { serverAccountId: string; protocol: string }
+  | { serverAccountId: string; failureReason: string; attemptNumber: number }
+  | { serverAccountId: string; previousFailureReason: string; triggeredByAdminId: string }
 
 /**
  * Log a VPN audit event to the database.
@@ -22,6 +32,7 @@ export type AuditAction =
 export async function logAuditEvent(params: {
   deviceId?: string | null
   userId?: string | null
+  adminId?: string | null
   action: AuditAction
   details?: Record<string, unknown>
   ip?: string | null
@@ -32,6 +43,7 @@ export async function logAuditEvent(params: {
       data: {
         deviceId: params.deviceId ?? null,
         userId: params.userId ?? null,
+        adminId: params.adminId ?? null,
         action: params.action,
         details: params.details as Prisma.InputJsonValue,
         ip: params.ip ?? null,
@@ -40,5 +52,33 @@ export async function logAuditEvent(params: {
     })
   } catch {
     // Best-effort — never block the main request flow
+  }
+}
+
+/**
+ * Log a VPN provisioning audit event.
+ *
+ * Fire-and-forget — provisioning must never be blocked by audit logging.
+ */
+export async function logProvisioningEvent(params: {
+  action:
+    | "PROVISIONING_STARTED"
+    | "PROVISIONING_SUCCESS"
+    | "PROVISIONING_FAILED"
+    | "PROVISIONING_RETRIED"
+  serverAccountId: string
+  details?: ProvisioningEventDetails
+  adminId?: string | null
+}): Promise<void> {
+  try {
+    await prisma.vpnAuditLog.create({
+      data: {
+        adminId: params.adminId ?? null,
+        action: params.action,
+        details: params.details as Prisma.InputJsonValue,
+      },
+    })
+  } catch {
+    // Best-effort — never block provisioning flow
   }
 }
