@@ -19,7 +19,8 @@ export const getApiBaseUrl = () => {
 }
 
 export const eden = edenTreaty<App>(getApiBaseUrl(), {
-  // Pass `fetch` directly so its full type (including Next 16's `preconnect`)
-  // is preserved; an arrow wrapper drops the non-call-signature members.
-  fetcher: fetch,
+   // Delegate to globalThis.fetch at call time so tests can replace it between
+  // module init and test execution without the eden client holding a stale ref.
+  fetcher: ((...args: Parameters<typeof fetch>) =>
+    globalThis.fetch(...args)) as typeof fetch,
 })
