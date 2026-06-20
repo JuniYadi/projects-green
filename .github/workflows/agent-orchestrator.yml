@@ -194,7 +194,7 @@ jobs:
             echo "${key}=${value}" >> "$GITHUB_ENV"
           done
           bun install --frozen-lockfile
-          bun run prisma:generate
+          bun run db:generate
 
       - name: Claude Code — Implement
         uses: anthropics/claude-code-action@v1
