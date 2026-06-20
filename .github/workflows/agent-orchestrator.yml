@@ -180,11 +180,16 @@ jobs:
           cp .env.example .env
           for line in $(grep -v '^#' .env | grep '='); do
             key=$(echo "$line" | cut -d'=' -f1)
+            # Skip known secret keys — avoid leaking to logs
+            case "$key" in
+              *DATABASE*|*REDIS*|*SECRET*|*KEY*|*TOKEN*|*PASSWORD*|*WORKOS*|*GITHUB*|*ANTHROPIC*|*AUTH*)
+                continue ;;
+            esac
             value=$(echo "$line" | cut -d'=' -f2- | sed 's/^"*//;s/"*$//')
             echo "${key}=${value}" >> "$GITHUB_ENV"
           done
           bun install --frozen-lockfile
-          bun run db:generate
+          bun run prisma:generate
 
       - name: Claude Code — Implement
         uses: anthropics/claude-code-action@v1
@@ -227,7 +232,7 @@ jobs:
 
             1. Read the current file if modifying
             2. Make the change
-            3. Run the relevant test if one exists: `cd projects-green && bun test --related <file>`
+            3. Run tests: `cd projects-green && bun test`
 
             TDD when applicable — write test first, then implementation.
 
@@ -270,7 +275,7 @@ jobs:
             BRANCH_NAME="${{ inputs.branch }}"
 
             # Get PR number from projects-green checkout
-            PR_URL=$(cd /home/runner/work/_temp && gh pr list --repo JuniYadi/projects-green --head "$BRANCH_NAME" --json number,url --jq '.[0]' 2>/dev/null || echo "{}")
+            PR_URL=$(cd projects-green && gh pr list --repo JuniYadi/projects-green --head "$BRANCH_NAME" --json number,url --jq '.[0]' 2>/dev/null || echo "{}")
             PR_NUMBER=$(echo "$PR_URL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('number',''))" 2>/dev/null || echo "")
 
             # Update status line
