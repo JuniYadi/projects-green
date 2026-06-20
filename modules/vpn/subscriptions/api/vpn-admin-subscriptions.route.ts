@@ -99,4 +99,39 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         return { ok: true }
       }
     )
+    .post(
+      "/admin/vpn/subscriptions/:id/retry-all",
+      async ({ params, set }) => {
+        const actor = (await guard(set)) as AdminActorContext | AdminApiError
+        if (!actor.ok) return actor
+
+        const failedAccounts = await prisma.vpnServerAccount.findMany({
+          where: {
+            subscriptionId: params.id,
+            provisioningStatus: "FAILED",
+          },
+        })
+
+        for (const account of failedAccounts) {
+          await prisma.vpnServerAccount.update({
+            where: { id: account.id },
+            data: { provisioningStatus: "PENDING", failureReason: null },
+          })
+          await dispatch(account.id)
+
+          logProvisioningEvent({
+            action: "PROVISIONING_RETRIED",
+            serverAccountId: account.id,
+            details: {
+              serverAccountId: account.id,
+              previousFailureReason: account.failureReason ?? "Unknown",
+              triggeredByAdminId: actor.userId,
+            },
+            adminId: actor.userId,
+          })
+        }
+
+        return { ok: true, retried: failedAccounts.length }
+      }
+    )
 }

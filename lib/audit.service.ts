@@ -21,7 +21,7 @@ export type ProvisioningEventDetails =
   | { serverAccountId: string; protocol: string; username: string }
   | { serverAccountId: string; protocol: string }
   | { serverAccountId: string; failureReason: string; attemptNumber: number }
-  | { serverAccountId: string; previousFailureReason: string; triggeredByAdminId: string }
+  | { serverAccountId: string; previousFailureReason: string; triggeredByAdminId: string | null }
 
 /**
  * Log a VPN audit event to the database.
