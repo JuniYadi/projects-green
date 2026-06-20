@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "serve": "local-to-pub --port 3300 --uri pgreen",
-    "test": "bun test 'test/**/*.test.ts' 'test/**/*.test.tsx' '**/*.test.ts' '**/*.test.tsx'",
+    "test": "bun test --isolate --path-ignore-patterns='**/*.e2e.test.ts' --path-ignore-patterns='e2e/**'",
     "test:coverage": "bun run scripts/check-coverage-threshold.ts",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
