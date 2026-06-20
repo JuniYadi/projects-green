@@ -33,6 +33,14 @@ export type VpnServerAccountDTO = {
   updatedAt: string
 }
 
+export type ProvisioningSummary = {
+  active: number
+  pending: number
+  failed: number
+  revoked: number
+  total: number
+}
+
 export type VpnSubscriptionDTO = {
   id: string
   organizationId: string
@@ -42,6 +50,7 @@ export type VpnSubscriptionDTO = {
   currentPeriodEnd: string
   deviceCount: number
   serverAccounts: VpnServerAccountDTO[]
+  provisioningSummary: ProvisioningSummary
   // Multi-currency audit fields
   priceLocked: string
   currency: string
@@ -68,9 +77,40 @@ function toServerAccountDTO(account: ServerAccount): VpnServerAccountDTO {
   }
 }
 
+export function computeProvisioningSummary(
+  accounts: VpnServerAccountDTO[]
+): ProvisioningSummary {
+  const summary: ProvisioningSummary = {
+    active: 0,
+    pending: 0,
+    failed: 0,
+    revoked: 0,
+    total: accounts.length,
+  }
+  for (const account of accounts) {
+    switch (account.provisioningStatus) {
+      case "ACTIVE":
+        summary.active++
+        break
+      case "PENDING":
+      case "PROVISIONING":
+        summary.pending++
+        break
+      case "FAILED":
+        summary.failed++
+        break
+      case "REVOKED":
+        summary.revoked++
+        break
+    }
+  }
+  return summary
+}
+
 export function toVpnSubscriptionDTO(
   subscription: SubscriptionPayload
 ): VpnSubscriptionDTO {
+  const accounts = subscription.serverAccounts.map(toServerAccountDTO)
   return {
     id: subscription.id,
     organizationId: subscription.organizationId,
@@ -79,7 +119,8 @@ export function toVpnSubscriptionDTO(
     currentPeriodStart: subscription.currentPeriodStart.toISOString(),
     currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
     deviceCount: subscription._count.mobileDevices,
-    serverAccounts: subscription.serverAccounts.map(toServerAccountDTO),
+    serverAccounts: accounts,
+    provisioningSummary: computeProvisioningSummary(accounts),
     priceLocked: subscription.priceLocked.toString(),
     currency: subscription.currency,
     originalPrice: subscription.originalPrice?.toString() ?? null,
