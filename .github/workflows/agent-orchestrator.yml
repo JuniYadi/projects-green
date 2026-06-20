@@ -60,11 +60,12 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: false
-          show_full_output: true
+          show_full_output: false
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
             --max-turns 30
-            --allowedTools "Bash(cat*),Bash(echo*),Bash(git*),Bash(gh*),Bash(find*),Bash(grep*),Bash(head*),Bash(wc*),Bash(mkdir*),Bash(ls*)"
+            --dangerously-skip-permissions
+            --allowedTools ""
           prompt: |
             REPO: JuniYadi/projects-green (Next.js 16 + TypeScript + strict + Bun)
             IDE PROJECTS: JuniYadi/ide-projects (private — planning docs)
@@ -201,11 +202,12 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: false
-          show_full_output: true
+          show_full_output: false
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
             --max-turns 120
-            --allowedTools "Bash(cat*),Bash(echo*),Bash(git*),Bash(gh*),Bash(find*),Bash(grep*),Bash(head*),Bash(wc*),Bash(mkdir*),Bash(ls*),Bash(cp*),Bash(rm*),Bash(mv*),Bash(sed*),Bash(bun*),Bash(node*),Bash(npx*),Bash(touch*),Bash(tee*),Bash(which*),Bash(date*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
+            --dangerously-skip-permissions
+            --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
           prompt: |
             REPO: JuniYadi/projects-green
             WORKING DIRECTORY: projects-green/
