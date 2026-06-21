@@ -11,10 +11,10 @@ on:
         required: true
         type: string
       mode:
-        description: 'plan | execute'
+        description: 'plan | execute | fix'
         required: true
         type: choice
-        options: [plan, execute]
+        options: [plan, execute, fix]
 
 env:
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
@@ -301,3 +301,145 @@ jobs:
             git commit -m "task: ${{ inputs.task_id }} implementation done"
             git push
             ```
+
+  fix:
+    if: inputs.mode == 'fix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout ide-projects (private)
+        uses: actions/checkout@v4
+        with:
+          repository: JuniYadi/ide-projects
+          token: ${{ secrets.PAT_IDE_PROJECTS }}
+          path: ide-projects
+          fetch-depth: 0
+
+      - name: Locate task file
+        id: task
+        run: |
+          TASK_FILE=$(find ide-projects -path "*/projects-green/_tasks/active/${{ inputs.task_id }}-*.md" | head -1)
+          echo "task_file=$TASK_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout projects-green @ branch
+        uses: actions/checkout@v4
+        with:
+          repository: JuniYadi/projects-green
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.branch }}
+          path: projects-green
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Prepare env + install deps
+        working-directory: projects-green
+        run: |
+          cp .env.example .env
+          bun install --frozen-lockfile
+          bun run db:generate
+
+      - name: Get PR review fix prompt
+        id: review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh pr list --head "${{ inputs.branch }}" --json number --jq '.[0].number' 2>/dev/null)
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          gh pr view "$PR_NUMBER" --json reviews --jq '.reviews[] | select(.state == "CHANGES_REQUESTED") | .body' 2>/dev/null > /tmp/review-body.md
+          python3 -c "
+import re
+with open('/tmp/review-body.md') as f:
+    c = f.read()
+m = re.search(r'AI Refactoring Prompt.*?\`\`\`\`+markdown(.*?)\`\`\`\`+', c, re.DOTALL)
+if m:
+    with open('/tmp/fix-prompt.md','w') as out:
+        out.write(m.group(1).strip())
+    print('fix_prompt_found=true')
+else:
+    print('fix_prompt_found=false')
+" 2>/dev/null || echo "fix_prompt_found=false"
+
+      - name: Show fix prompt status
+        run: |
+          echo "PR #${{ steps.review.outputs.pr_number }}"
+          echo "Fix prompt found: ${{ steps.review.outputs.fix_prompt_found }}"
+
+      - name: Claude Code — Apply Fixes
+        if: steps.review.outputs.fix_prompt_found == 'true'
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          track_progress: false
+          show_full_output: false
+          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
+          plugins: 'ponytail@ponytail'
+          claude_args: >-
+            --model "auto[1m]"
+            --max-turns 120
+            --dangerously-skip-permissions
+            --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
+          prompt: |
+            REPO: JuniYadi/projects-green
+            WORKING DIRECTORY: projects-green/
+            BRANCH: ${{ inputs.branch }}
+            PR NUMBER: ${{ steps.review.outputs.pr_number }}
+
+            YOUR ROLE:
+            You are applying PR review fixes from Claude Code Review.
+            The review identified issues and provided an "AI Refactoring Prompt".
+
+            STEP 1 — READ CONTEXT:
+            `cat projects-green/AGENTS.md` — repo rules (DTO layer, Prisma types, etc.)
+
+            STEP 2 — READ THE FIX PROMPT:
+            `cat /tmp/fix-prompt.md` — exact instructions with file paths and code
+
+            STEP 3 — APPLY FIXES:
+            For each issue:
+            1. Read the affected file
+            2. Apply the fix exactly as specified
+            3. Do not deviate from the fix prompt
+
+            STEP 4 — PUSH CODE (safety save):
+            ```bash
+            cd projects-green
+            git config user.name "JuniYadi"
+            git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            git add -A
+            git commit -m "fix: ${{ inputs.task_id }} address PR review feedback" --allow-empty
+            git push
+            ```
+
+            STEP 5 — 3 PILLARS (one at a time, amend + push each):
+            5a. `cd projects-green && bun run lint` — fix then amend commit
+            5b. `cd projects-green && bun run typecheck` — fix then amend commit
+            5c. `cd projects-green && bun run test` — fix then amend commit
+
+      - name: Report if no fix prompt found
+        if: steps.review.outputs.fix_prompt_found != 'true'
+        run: |
+          echo "::warning::No AI Refactoring Prompt found in PR #${{ steps.review.outputs.pr_number }} reviews"
+          echo "Check the reviews manually: gh pr view ${{ steps.review.outputs.pr_number }} --json reviews"
+
+      - name: Update task status in ide-projects
+        run: |
+          if [ -n "${{ steps.task.outputs.task_file }}" ] && [ -f "${{ steps.task.outputs.task_file }}" ]; then
+            cd ide-projects
+            git config user.name "JuniYadi"
+            git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            sed -i 's/^## Current Status:.*/## Current Status: `review`/' "${{ steps.task.outputs.task_file }}"
+            git add -A
+            git commit -m "task: ${{ inputs.task_id }} review fixes applied" --allow-empty
+            git push
+          fi
