@@ -12,6 +12,8 @@ import { StepWhatsappIds } from "./step-whatsapp-ids"
 import { StepQuotas } from "./step-quotas"
 import { StepProfile } from "./step-profile"
 import { StepReview } from "./step-review"
+import { adminCreateDeviceSchema } from "@/modules/whatsapp/devices/devices.schemas"
+import type { AppLocale } from "@/lib/i18n/config"
 
 export type WizardData = {
   organizationId: string
@@ -104,8 +106,7 @@ function validateStep(
   return errors
 }
 
-import { adminCreateDeviceSchema } from "@/modules/whatsapp/devices/devices.schemas"
-import type { AppLocale } from "@/lib/i18n/config"
+type ApiSuccessResponse = { ok: true; device?: { id?: string } }
 
 type DeviceCreateWizardProps = {
   locale: AppLocale
@@ -219,7 +220,7 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
         throw new Error(errBody.message || "Failed to create device.")
       }
 
-      const device = (body as { device?: { id?: string } }).device
+      const device = (body as ApiSuccessResponse).device
       toast.success("Device created successfully.")
       router.push(
         localizePathname({
@@ -228,9 +229,9 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
         })
       )
     } catch (err) {
-      if (err instanceof Error) {
-        toast.error(err.message)
-      }
+      const msg =
+        err instanceof Error ? err.message : "Failed to create device."
+      toast.error(msg)
     } finally {
       setIsSubmitting(false)
     }
