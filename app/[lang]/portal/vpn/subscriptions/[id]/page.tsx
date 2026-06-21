@@ -23,7 +23,10 @@ import {
 import { Separator } from "@/components/ui/separator"
 
 import {
-  vpnApi,
+  getVpnAdminSubscription,
+  retryVpnServerAccount,
+  revokeVpnServerAccount,
+  retryAllVpnServerAccounts,
   type VpnSubscriptionItem,
   type VpnServerAccountEntry,
 } from "../../_components/vpn-admin-client"
@@ -124,11 +127,10 @@ export default function SubscriptionDetailPage() {
   )
 
   const fetchSubscription = useCallback(async () => {
+    setLoading(true)
     try {
       setError(null)
-      const res = await vpnApi<{ ok: true; data: VpnSubscriptionItem }>(
-        `/admin/vpn/subscriptions/${subscriptionId}`
-      )
+      const res = await getVpnAdminSubscription(subscriptionId)
       setSubscription(res.data)
     } catch (err) {
       setError((err as Error).message)
@@ -138,6 +140,7 @@ export default function SubscriptionDetailPage() {
   }, [subscriptionId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSubscription()
   }, [fetchSubscription])
 
@@ -152,10 +155,11 @@ export default function SubscriptionDetailPage() {
       return
     setBusy(account.id)
     try {
-      await vpnApi(
-        `/admin/vpn/subscriptions/${subscriptionId}/servers/${account.id}/${action}`,
-        { method: "POST" }
-      )
+      if (action === "retry") {
+        await retryVpnServerAccount(subscriptionId, account.id)
+      } else {
+        await revokeVpnServerAccount(subscriptionId, account.id)
+      }
       await fetchSubscription()
     } catch (err) {
       window.alert((err as Error).message)
@@ -168,9 +172,7 @@ export default function SubscriptionDetailPage() {
     if (!window.confirm("Retry provisioning for all failed accounts?")) return
     setBusy(subscriptionId)
     try {
-      await vpnApi(`/admin/vpn/subscriptions/${subscriptionId}/retry-all`, {
-        method: "POST",
-      })
+      await retryAllVpnServerAccounts(subscriptionId)
       await fetchSubscription()
     } catch (err) {
       window.alert((err as Error).message)
