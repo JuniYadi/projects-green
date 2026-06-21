@@ -365,7 +365,8 @@ jobs:
           else
             echo "" > /tmp/review-body.md
           fi
-          echo 'aW1wb3J0IHJlCndpdGggb3BlbignL3RtcC9yZXZpZXctYm9keS5tZCcpIGFzIGY6CiAgICBjID0gZi5yZWFkKCkKbSA9IHJlLnNlYXJjaChyJ0FJIFJlZmFjdG9yaW5nIFByb21wdC4qP2BgYGBtYXJrZG93biguKj8pYGBgYCcsIGMsIHJlLkRPVEFMTCkKaWYgbToKICAgIHdpdGggb3BlbignL3RtcC9maXgtcHJvbXB0Lm1kJywgJ3cnKSBhcyBvdXQ6CiAgICAgICAgb3V0LndyaXRlKG0uZ3JvdXAoMSkuc3RyaXAoKSkKICAgIHByaW50KCdmaXhfcHJvbXB0X2ZvdW5kPXRydWUnKQplbHNlOgogICAgcHJpbnQoJ2ZpeF9wcm9tcHRfZm91bmQ9ZmFsc2UnKQo=' | base64 -d > /tmp/extract-fix-prompt.py && python3 /tmp/extract-fix-prompt.py 2>/dev/null || echo "fix_prompt_found=false"
+          echo "REVIEW_FILE_SIZE=$(wc -c < /tmp/review-body.md)"
+          echo 'aW1wb3J0IHJlCndpdGggb3BlbignL3RtcC9yZXZpZXctYm9keS5tZCcpIGFzIGY6CiAgICBjID0gZi5yZWFkKCkKbSA9IHJlLnNlYXJjaChyJ0FJIFJlZmFjdG9yaW5nIFByb21wdC4qP2BgYGBtYXJrZG93biguKj8pYGBgYCcsIGMsIHJlLkRPVEFMTCkKaWYgbToKICAgIHdpdGggb3BlbignL3RtcC9maXgtcHJvbXB0Lm1kJywgJ3cnKSBhcyBvdXQ6CiAgICAgICAgb3V0LndyaXRlKG0uZ3JvdXAoMSkuc3RyaXAoKSkKICAgIHByaW50KCdmaXhfcHJvbXB0X2ZvdW5kPXRydWUnKQplbHNlOgogICAgcHJpbnQoJ2ZpeF9wcm9tcHRfZm91bmQ9ZmFsc2UnKQo=' | base64 -d > /tmp/extract-fix-prompt.py && python3 /tmp/extract-fix-prompt.py 2>&1 || echo "fix_prompt_found=false"
 
       - name: Show fix prompt status
         run: |
