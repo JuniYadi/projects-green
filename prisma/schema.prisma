@@ -1365,17 +1365,21 @@ model VpnPairingToken {
 }
 
 model VpnAuditLog {
-  id        String   @id @default(cuid())
-  deviceId  String?
-  userId    String?
-  action    String // REGISTERED, REVOKED, CONFIG_DOWNLOADED
-  details   Json? // { pairedVia, profileId, revokedBy, reason, etc }
-  ip        String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  serverAccountId  String?   // FK to VpnServerAccount for provisioning events
+  deviceId         String?
+  userId           String?
+  adminId          String?   // populated for manual admin actions (retries, revokes)
+  action           String    // REGISTERED, REVOKED, CONFIG_DOWNLOADED | PROVISIONING_STARTED, SUCCESS, FAILED, RETRIED
+  details          Json?     // action-specific payload
+  ip               String?
+  userAgent        String?
+  createdAt        DateTime  @default(now())
 
+  @@index([serverAccountId, createdAt(sort: Desc)])
   @@index([deviceId, createdAt(sort: Desc)])
   @@index([action, createdAt(sort: Desc)])
+  @@index([adminId, createdAt(sort: Desc)])
 }
 
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────

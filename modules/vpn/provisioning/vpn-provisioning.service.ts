@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient, type VpnProtocol } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
+import { logProvisioningEvent } from "@/lib/audit.service"
 import {
   encryptVpnConfig,
   encryptProxyPassword,
@@ -75,6 +76,16 @@ export class VpnProvisioningService {
       data: { provisioningStatus: "PROVISIONING", failureReason: null },
     })
 
+    logProvisioningEvent({
+      action: "PROVISIONING_STARTED",
+      serverAccountId,
+      details: {
+        serverAccountId,
+        protocol: account.protocol,
+        username: account.username,
+      },
+    })
+
     const target: SshTarget = {
       host: account.server.hostname,
       user: account.server.sshUser,
@@ -95,12 +106,22 @@ export class VpnProvisioningService {
           ...data,
         },
       })
+      logProvisioningEvent({
+        action: "PROVISIONING_SUCCESS",
+        serverAccountId,
+        details: { serverAccountId, protocol: account.protocol },
+      })
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : "Provisioning failed"
       await this.prisma.vpnServerAccount.update({
         where: { id: serverAccountId },
         data: { provisioningStatus: "FAILED", failureReason: reason },
+      })
+      logProvisioningEvent({
+        action: "PROVISIONING_FAILED",
+        serverAccountId,
+        details: { serverAccountId, failureReason: reason },
       })
       throw error
     }

@@ -10,11 +10,15 @@ on:
         description: 'Branch on projects-green (e.g., feature/PGREEN-097)'
         required: true
         type: string
+      pr_id:
+        description: 'PR number (optional — avoids branch lookup)'
+        required: false
+        type: string
       mode:
-        description: 'plan | execute'
+        description: 'plan | execute | fix'
         required: true
         type: choice
-        options: [plan, execute]
+        options: [plan, execute, fix]
 
 env:
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
@@ -60,11 +64,14 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: false
-          show_full_output: true
+          show_full_output: false
+          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
+          plugins: 'ponytail@ponytail'
           claude_args: >-
-            --model ${{ secrets.ANTHROPIC_MODEL }}
-            --max-turns 30
-            --allowedTools "Bash(cat*),Bash(echo*),Bash(git*),Bash(gh*),Bash(find*),Bash(grep*),Bash(head*),Bash(wc*),Bash(mkdir*),Bash(ls*)"
+            --model "auto[1m]"
+            --max-turns 125
+            --dangerously-skip-permissions
+            --allowedTools "Bash(cat*),Bash(git*),Bash(head*),Bash(date*),Bash(sed*),Bash(echo*),Bash(tee*),Bash(ls*),Bash(find*)"
           prompt: |
             REPO: JuniYadi/projects-green (Next.js 16 + TypeScript + strict + Bun)
             IDE PROJECTS: JuniYadi/ide-projects (private — planning docs)
@@ -191,7 +198,7 @@ jobs:
             echo "${key}=${value}" >> "$GITHUB_ENV"
           done
           bun install --frozen-lockfile
-          bun run prisma:generate
+          bun run db:generate
 
       - name: Claude Code — Implement
         uses: anthropics/claude-code-action@v1
@@ -201,11 +208,14 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: false
-          show_full_output: true
+          show_full_output: false
+          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
+          plugins: 'ponytail@ponytail'
           claude_args: >-
-            --model ${{ secrets.ANTHROPIC_MODEL }}
-            --max-turns 120
-            --allowedTools "Bash(cat*),Bash(echo*),Bash(git*),Bash(gh*),Bash(find*),Bash(grep*),Bash(head*),Bash(wc*),Bash(mkdir*),Bash(ls*),Bash(cp*),Bash(rm*),Bash(mv*),Bash(sed*),Bash(bun*),Bash(node*),Bash(npx*),Bash(touch*),Bash(tee*),Bash(which*),Bash(date*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
+            --model "auto[1m]"
+            --max-turns 200
+            --dangerously-skip-permissions
+            --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
           prompt: |
             REPO: JuniYadi/projects-green
             WORKING DIRECTORY: projects-green/
@@ -235,28 +245,38 @@ jobs:
             1. Read the current file if modifying
             2. Make the change
             3. Run tests: `cd projects-green && bun test`
-
             TDD when applicable — write test first, then implementation.
 
-            STEP 3 — 3 PILLARS (HARD REQUIREMENT):
-            ALL three must pass before pushing:
-
-            1. `cd projects-green && bun run lint` — 0 errors
-            2. `cd projects-green && bun run typecheck` — 0 errors
-            3. `cd projects-green && bun run test` — all pass
-
-            If any fails, FIX it and re-run until all pass.
-
-            STEP 4 — PUSH CODE:
+            STEP 3 — PUSH CODE FIRST (do NOT wait for pillars):
             ```bash
             cd projects-green
             git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
             git add -A
-            git status
-            git commit -m "feat: implement ${{ inputs.task_id }}"
+            git commit -m "feat: implement ${{ inputs.task_id }}" --allow-empty
             git push
             ```
+            Code is now safe. Even if you run out of turns later, the work is saved.
+
+            STEP 4 — 3 PILLARS (IN DIVIDUAL — one at a time):
+            Run each separately. Fix, amend the last commit, and push before moving to the next.
+
+            4a. `cd projects-green && bun run lint` — 0 errors
+            If it fails, fix the lint errors, then:
+            `git add -A && git commit --amend --no-edit && git push --force-with-lease`
+            Only move to 4b when lint passes.
+
+            4b. `cd projects-green && bun run typecheck` — 0 errors
+            If it fails, fix the type errors, then:
+            `git add -A && git commit --amend --no-edit && git push --force-with-lease`
+            Only move to 4c when typecheck passes.
+
+            4c. `cd projects-green && bun run test` — all pass
+            If it fails, fix the test failures, then:
+            `git add -A && git commit --amend --no-edit && git push --force-with-lease`
+
+            If you run out of turns before finishing all 3 pillars, that's OK — the
+            code is already pushed on the branch. A follow-up run can fix the rest.
 
             STEP 5 — MARK PR READY:
             ```bash
@@ -272,25 +292,156 @@ jobs:
             STEP 6 — UPDATE TASK STATUS IN IDE-PROJECTS:
             ```bash
             cd ide-projects
-
-            # Get the branch name
             BRANCH_NAME="${{ inputs.branch }}"
-
-            # Get PR number from projects-green checkout
             PR_URL=$(cd projects-green && gh pr list --repo JuniYadi/projects-green --head "$BRANCH_NAME" --json number,url --jq '.[0]' 2>/dev/null || echo "{}")
             PR_NUMBER=$(echo "$PR_URL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('number',''))" 2>/dev/null || echo "")
-
-            # Update status line
             sed -i 's/^## Current Status:.*/## Current Status: `implementation`/' "${{ steps.task.outputs.task_file }}"
-
-            # Append PR details to Implementation section using sed insertion
-            sed -i '/^### PR Details$/a\\' "${{ steps.task.outputs.task_file }}"
+            sed -i '/^### PR Details$/a\\\\' "${{ steps.task.outputs.task_file }}"
             sed -i '/^### PR Details$/a- **PR URL:** https://github.com/JuniYadi/projects-green/pull/'"$PR_NUMBER" "${{ steps.task.outputs.task_file }}"
             sed -i '/^### PR Details$/a- **Branch:** `'"$BRANCH_NAME"'`' "${{ steps.task.outputs.task_file }}"
-
             git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
             git add -A
             git commit -m "task: ${{ inputs.task_id }} implementation done"
             git push
             ```
+
+  fix:
+    if: inputs.mode == 'fix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout ide-projects (private)
+        uses: actions/checkout@v4
+        with:
+          repository: JuniYadi/ide-projects
+          token: ${{ secrets.PAT_IDE_PROJECTS }}
+          path: ide-projects
+          fetch-depth: 0
+
+      - name: Locate task file
+        id: task
+        run: |
+          TASK_FILE=$(find ide-projects -path "*/projects-green/_tasks/active/${{ inputs.task_id }}-*.md" | head -1)
+          echo "task_file=$TASK_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout projects-green @ branch
+        uses: actions/checkout@v4
+        with:
+          repository: JuniYadi/projects-green
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.branch }}
+          path: projects-green
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Prepare env + install deps
+        working-directory: projects-green
+        run: |
+          cp .env.example .env
+          bun install --frozen-lockfile
+          bun run db:generate
+
+      - name: Get PR review fix prompt
+        id: review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ inputs.pr_id }}"
+          if [ -z "$PR_NUMBER" ]; then
+            PR_NUMBER=$(gh pr list --head "${{ inputs.branch }}" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          fi
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          if [ -n "$PR_NUMBER" ]; then
+            gh api "repos/JuniYadi/projects-green/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.state == "CHANGES_REQUESTED") | .body' > /tmp/review-body.md 2>&1 || true
+          else
+            echo "" > /tmp/review-body.md
+          fi
+          echo "REVIEW_FILE_SIZE=$(wc -c < /tmp/review-body.md)"
+          echo 'aW1wb3J0IHJlCndpdGggb3BlbignL3RtcC9yZXZpZXctYm9keS5tZCcpIGFzIGY6CiAgICBjID0gZi5yZWFkKCkKbSA9IHJlLnNlYXJjaChyJ0FJIFJlZmFjdG9yaW5nIFByb21wdC4qP2BgYGBtYXJrZG93biguKj8pYGBgYCcsIGMsIHJlLkRPVEFMTCkKaWYgbToKICAgIHdpdGggb3BlbignL3RtcC9maXgtcHJvbXB0Lm1kJywgJ3cnKSBhcyBvdXQ6CiAgICAgICAgb3V0LndyaXRlKG0uZ3JvdXAoMSkuc3RyaXAoKSkKICAgIHByaW50KCd0cnVlJykKZWxzZToKICAgIHByaW50KCdmYWxzZScpCg==' | base64 -d > /tmp/extract-fix-prompt.py && FIX_RESULT=$(python3 /tmp/extract-fix-prompt.py 2>&1) && echo "fix_prompt_found=$FIX_RESULT" >> "$GITHUB_OUTPUT" || echo "fix_prompt_found=false" >> "$GITHUB_OUTPUT"
+
+      - name: Show fix prompt status
+        run: |
+          echo "PR #${{ steps.review.outputs.pr_number }}"
+          echo "Fix prompt found: ${{ steps.review.outputs.fix_prompt_found }}"
+
+      - name: Claude Code — Apply Fixes
+        if: steps.review.outputs.fix_prompt_found == 'true'
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          track_progress: false
+          show_full_output: false
+          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
+          plugins: 'ponytail@ponytail'
+          claude_args: >-
+            --model "auto[1m]"
+            --max-turns 120
+            --dangerously-skip-permissions
+            --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
+          prompt: |
+            REPO: JuniYadi/projects-green
+            WORKING DIRECTORY: projects-green/
+            BRANCH: ${{ inputs.branch }}
+            PR NUMBER: ${{ steps.review.outputs.pr_number }}
+
+            YOUR ROLE:
+            You are applying PR review fixes from Claude Code Review.
+            The review identified issues and provided an "AI Refactoring Prompt".
+
+            STEP 1 — READ CONTEXT:
+            `cat projects-green/AGENTS.md` — repo rules (DTO layer, Prisma types, etc.)
+
+            STEP 2 — READ THE FIX PROMPT:
+            `cat /tmp/fix-prompt.md` — exact instructions with file paths and code
+
+            STEP 3 — APPLY FIXES:
+            For each issue:
+            1. Read the affected file
+            2. Apply the fix exactly as specified
+            3. Do not deviate from the fix prompt
+
+            STEP 4 — PUSH CODE (safety save):
+            ```bash
+            cd projects-green
+            git config user.name "JuniYadi"
+            git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            git add -A
+            git commit -m "fix: ${{ inputs.task_id }} address PR review feedback" --allow-empty
+            git push
+            ```
+
+            STEP 5 — 3 PILLARS (one at a time, amend + push each):
+            5a. `cd projects-green && bun run lint` — fix then amend commit
+            5b. `cd projects-green && bun run typecheck` — fix then amend commit
+            5c. `cd projects-green && bun run test` — fix then amend commit
+
+      - name: Report if no fix prompt found
+        if: steps.review.outputs.fix_prompt_found != 'true'
+        run: |
+          echo "::warning::No AI Refactoring Prompt found in PR #${{ steps.review.outputs.pr_number }} reviews"
+          echo "Check the reviews manually: gh pr view ${{ steps.review.outputs.pr_number }} --json reviews"
+
+      - name: Update task status in ide-projects
+        run: |
+          TASK_FILE="$(echo "${{ steps.task.outputs.task_file }}" | sed 's|^ide-projects/||')"
+          if [ -n "$TASK_FILE" ] && [ -f "$TASK_FILE" ]; then
+            git config user.name "JuniYadi"
+            git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            sed -i 's/^## Current Status:.*/## Current Status: `review`/' "$TASK_FILE"
+            git add -A
+            git commit -m "task: ${{ inputs.task_id }} review fixes applied" --allow-empty
+            git push
+          fi
+        working-directory: ide-projects

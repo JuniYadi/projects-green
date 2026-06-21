@@ -87,6 +87,7 @@ import {
   type VpnProvisioningJobData,
 } from "@/lib/queue/vpn-provisioning"
 import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
+import { vpnReconciliationService } from "@/modules/vpn/provisioning/vpn-reconciliation.service"
 
 // ══════════════════════════════════════════════════════════════════════════
 // BullMQ Workers
@@ -637,6 +638,10 @@ const vpnRenewalInterval = setInterval(async () => {
 }, 3_600_000) // 1 hour
 intervals.push(vpnRenewalInterval)
 
+// ── VPN Reconciliation (every 5 minutes) ─────────────────────────────────
+const vpnReconciliationInterval = vpnReconciliationService.start()
+intervals.push(vpnReconciliationInterval)
+
 // ══════════════════════════════════════════════════════════════════════════
 // Graceful Shutdown
 // ══════════════════════════════════════════════════════════════════════════
@@ -694,5 +699,5 @@ console.info(
   `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}`
 )
 console.info(
-  "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h)"
+  "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m)"
 )
