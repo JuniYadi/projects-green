@@ -230,8 +230,9 @@ export async function deleteVpnServer(id: string) {
   throwIfError(res)
 }
 
-export async function testVpnServer(id: string) {
-  const res = (await eden.api.admin.vpn.servers[id].test.post()) as EdenRes
+export async function testVpnServer(id: string, init?: RequestInit) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden POST body type doesn't accept RequestInit
+  const res = (await eden.api.admin.vpn.servers[id].test.post(init as any)) as EdenRes
   throwIfError(res)
   return res as { data: ScanResult }
 }
