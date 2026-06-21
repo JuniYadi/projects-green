@@ -1,5 +1,6 @@
 import { CheckCircle, XCircle, ArrowsClockwise, Circle } from "@phosphor-icons/react"
 import type { VpnServerAccountEntry } from "./vpn-admin-client"
+import { Badge } from "@/components/ui/badge"
 
 export type AuditEventType =
   | "PROVISIONING_STARTED"
@@ -116,4 +117,3 @@ function getStatusVariant(
   }
 }
 
-import { Badge } from "@/components/ui/badge"

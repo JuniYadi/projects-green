@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { X } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { vpnApi, type VpnServerAccountEntry } from "./vpn-admin-client"
+import { type VpnServerAccountEntry } from "./vpn-admin-client"
 import { ProvisioningTimeline, type AuditEvent } from "./provisioning-timeline"
 
 type Props = {
@@ -26,13 +26,12 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
       setLoading(true)
       setError(null)
       try {
-        // PGREEN-098 endpoint: fetch provisioning audit events for this account
-        const res = await vpnApi<{ ok: true; data: AuditEvent[] }>(
-          `/admin/vpn/audit/accounts/${account.id}`
-        )
-        if (!cancelled) setEvents(res.data)
-      } catch {
-        if (cancelled) return
+        // TODO(PGREEN-098): wire up real audit endpoint when available
+        // const res = await vpnApi<{ ok: true; data: AuditEvent[] }>(
+        //   `/admin/vpn/audit/accounts/${account.id}`
+        // )
+        // if (!cancelled) setEvents(res.data)
+
         // Fallback: generate synthetic timeline from account data
         const synthetic: AuditEvent[] = [
           {
@@ -54,6 +53,9 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
           })
         }
         if (!cancelled) setEvents(synthetic)
+      } catch (e) {
+        if (cancelled) return
+        setError((e as Error).message)
       } finally {
         if (!cancelled) setLoading(false)
       }
