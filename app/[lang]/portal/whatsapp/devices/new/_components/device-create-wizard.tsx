@@ -97,8 +97,10 @@ function validateStep(
   return errors
 }
 
+import type { AppLocale } from "@/lib/i18n/config"
+
 type DeviceCreateWizardProps = {
-  locale: string
+  locale: AppLocale
 }
 
 export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {

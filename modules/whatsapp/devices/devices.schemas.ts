@@ -43,7 +43,7 @@ export type CreateDeviceInput = z.infer<typeof createDeviceSchema>
 export const adminCreateDeviceSchema = createDeviceSchema.extend({
   organizationId: z.string().trim().min(1, "Organization ID is required"),
   expiredAt: z.string().datetime().optional(),
-  features: z.record(z.unknown()).optional(),
+  features: z.record(z.string(), z.unknown()).optional(),
   quotaBase: z.number().nonnegative().optional(),
   quotaBaseIn: z.number().int().nonnegative().optional(),
   quotaBaseOut: z.number().int().nonnegative().optional(),
@@ -53,7 +53,7 @@ export const adminCreateDeviceSchema = createDeviceSchema.extend({
   token: z.string().trim().min(1).optional(),
   dailyLimitMessage: z.number().int().nonnegative().optional(),
   balance: z.number().nonnegative().optional(),
-  whatsappProfile: z.record(z.unknown()).optional(),
+  whatsappProfile: z.record(z.string(), z.unknown()).optional(),
 })
 export type AdminCreateDeviceInput = z.infer<typeof adminCreateDeviceSchema>
 

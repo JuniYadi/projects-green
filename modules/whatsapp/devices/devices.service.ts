@@ -7,6 +7,7 @@
  * create/update but not persisted - add that column in a follow-up migration.
  */
 
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 import {
@@ -113,12 +114,14 @@ export const createDeviceService = (
           dailyLimitMessage: input.dailyLimitMessage ?? 0,
           ...(input.balance != null ? { balance: input.balance } : {}),
           ...(input.expiredAt ? { expiredAt: new Date(input.expiredAt) } : {}),
-          ...(input.features ? { features: input.features } : {}),
+          ...(input.features
+            ? { features: input.features as Prisma.InputJsonValue }
+            : {}),
           ...(input.displayName
-            ? { whatsappProfile: { name: input.displayName } }
+            ? { whatsappProfile: { name: input.displayName } as Prisma.InputJsonValue }
             : {}),
           ...(input.whatsappProfile
-            ? { whatsappProfile: input.whatsappProfile }
+            ? { whatsappProfile: input.whatsappProfile as Prisma.InputJsonValue }
             : {}),
         },
       })
