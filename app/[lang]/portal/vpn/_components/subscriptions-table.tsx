@@ -52,7 +52,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import {
-  vpnApi,
+  listVpnAdminSubscriptions,
+  retryVpnServerAccount,
+  revokeVpnServerAccount,
+  retryAllVpnServerAccounts,
   type VpnSubscriptionItem,
   type VpnServerAccountEntry,
   type ProvisioningSummary,
@@ -339,9 +342,7 @@ export function SubscriptionsTable() {
     const fetchSubs = async () => {
       try {
         setError(null)
-        const res = await vpnApi<{ ok: true; data: VpnSubscriptionItem[] }>(
-          "/admin/vpn/subscriptions"
-        )
+        const res = await listVpnAdminSubscriptions()
         if (!cancelled) setSubs(res.data)
       } catch (err) {
         if (!cancelled) setError((err as Error).message)
@@ -424,10 +425,11 @@ export function SubscriptionsTable() {
       return
     setBusy(account.id)
     try {
-      await vpnApi(
-        `/admin/vpn/subscriptions/${subId}/servers/${account.id}/${action}`,
-        { method: "POST" }
-      )
+      if (action === "retry") {
+        await retryVpnServerAccount(subId, account.id)
+      } else {
+        await revokeVpnServerAccount(subId, account.id)
+      }
       reload()
     } catch (err) {
       window.alert((err as Error).message)
@@ -440,9 +442,7 @@ export function SubscriptionsTable() {
     if (!window.confirm("Retry provisioning for all failed accounts?")) return
     setBusy(subId)
     try {
-      await vpnApi(`/admin/vpn/subscriptions/${subId}/retry-all`, {
-        method: "POST",
-      })
+      await retryAllVpnServerAccounts(subId)
       reload()
     } catch (err) {
       window.alert((err as Error).message)
