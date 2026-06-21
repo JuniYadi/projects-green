@@ -8,120 +8,88 @@ import { getPlatformRoleForUser } from "@/lib/platform-role"
 
 const confirmationService = new ConfirmationService()
 
+const requireConfirmationAuth = async (set: {
+  status?: number | string
+}) => {
+  const auth = await withAuth()
+  if (!auth.user) {
+    set.status = 401
+    return {
+      ok: false as const,
+      error: "UNAUTHORIZED" as const,
+      message: "Authentication required",
+      user: null,
+    }
+  }
+  const platformRole = await getPlatformRoleForUser(auth.user)
+  if (platformRole !== "super_admin") {
+    set.status = 403
+    return {
+      ok: false as const,
+      error: "FORBIDDEN" as const,
+      message: "Admin access required",
+      user: null,
+    }
+  }
+  return { ok: true as const, user: auth.user }
+}
+
 export const createAdminConfirmationRoutes = () =>
   new Elysia({ prefix: "/confirmations" })
-    .get("/", async ({ query }) => {
-      const auth = await withAuth()
-      if (!auth.user) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
-
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
+    .get("/", async ({ query, set }) => {
+      const err = await requireConfirmationAuth(set)
+      if (err) return err
 
       const limit = parseInt(query?.limit || "20")
       const offset = parseInt(query?.offset || "0")
 
-      const confirmations = await confirmationService.listPending(limit, offset)
-      return { ok: true, data: confirmations.map(toPaymentConfirmationDTO) }
+      return (await confirmationService.listPending(limit, offset)).map(
+        toPaymentConfirmationDTO
+      )
     })
 
-    .get("/:id", async ({ params }) => {
-      const auth = await withAuth()
-      if (!auth.user) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
-
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
+    .get("/:id", async ({ params, set }) => {
+      const err = await requireConfirmationAuth(set)
+      if (err) return err
 
       const confirmation = await confirmationService.findById(params.id)
       if (!confirmation) {
+        set.status = 404
         return {
-          ok: false,
-          error: "NOT_FOUND",
+          ok: false as const,
+          error: "NOT_FOUND" as const,
           message: "Confirmation not found",
         }
       }
 
-      return { ok: true, data: toPaymentConfirmationDTO(confirmation) }
+      return toPaymentConfirmationDTO(confirmation)
     })
 
-    .post("/:id/approve", async ({ params }) => {
-      const auth = await withAuth()
-      if (!auth.user) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
-
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
-
-      await confirmationService.approve(params.id, auth.user.id)
-      return { ok: true, message: "Payment approved and balance credited" }
+    .post("/:id/approve", async ({ params, set }) => {
+      const result = await requireConfirmationAuth(set)
+      if (!result.ok) return result
+      await confirmationService.approve(params.id, result.user.id)
+      return { message: "Payment approved and balance credited" }
     })
 
-    .post("/:id/reject", async ({ params, body }) => {
-      const auth = await withAuth()
-      if (!auth.user) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
-
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
+    .post("/:id/reject", async ({ params, body, set }) => {
+      const result = await requireConfirmationAuth(set)
+      if (!result.ok) return result
 
       const parseResult = ReviewConfirmationSchema.safeParse(body)
       if (!parseResult.success || parseResult.data.action !== "reject") {
+        set.status = 422
         return {
-          ok: false,
-          error: "VALIDATION_ERROR",
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
           message: "Invalid action",
         }
       }
 
       await confirmationService.reject(
         params.id,
-        auth.user.id,
+        result.user.id,
         parseResult.data.reason || ""
       )
-      return { ok: true, message: "Payment rejected" }
+      return { message: "Payment rejected" }
     })

@@ -3,38 +3,43 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { BankAccountService } from "../services/bank-account.service"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
-import { requireSuperAdmin } from "@/modules/admin/api/admin.guards"
+
 import { BANK_CODES } from "../constants"
 
 const bankAccountService = new BankAccountService()
 
+const requireBankAuth = async (set: { status?: number | string }) => {
+  const auth = await withAuth()
+  if (!auth.user || !auth.organizationId) {
+    set.status = 401
+    return {
+      ok: false as const,
+      error: "UNAUTHORIZED" as const,
+      message: "Authentication required",
+    }
+  }
+  const platformRole = await getPlatformRoleForUser(auth.user)
+  if (platformRole !== "super_admin") {
+    set.status = 403
+    return {
+      ok: false as const,
+      error: "FORBIDDEN" as const,
+      message: "Admin access required",
+    }
+  }
+  return null
+}
+
 export const createAdminBankRoutes = () =>
   new Elysia({ prefix: "/bank-accounts" })
     .get("/", async ({ set }) => {
-      const actor = await requireSuperAdmin(set)
-      if (!actor.ok) return actor
-      const accounts = await bankAccountService.list({ includeInactive: true })
-      return { ok: true, data: accounts }
+      const err = await requireBankAuth(set)
+      if (err) return err
+      return bankAccountService.list({ includeInactive: true })
     })
-    .post("/", async ({ body }) => {
-      const auth = await withAuth()
-      if (!auth.user || !auth.organizationId) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
-
-      // Check super_admin role
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
+    .post("/", async ({ body, set }) => {
+      const err = await requireBankAuth(set)
+      if (err) return err
 
       const {
         bankCode,
@@ -61,7 +66,7 @@ export const createAdminBankRoutes = () =>
       const resolvedBankName =
         BANK_CODES[bankCode as keyof typeof BANK_CODES]?.name || bankName
 
-      const account = await bankAccountService.create({
+      return bankAccountService.create({
         bankCode,
         bankName: resolvedBankName,
         accountName,
@@ -72,27 +77,10 @@ export const createAdminBankRoutes = () =>
         bankAddress,
         isDefault,
       })
-
-      return { ok: true, data: account }
     })
-    .put("/:id", async ({ body, params }) => {
-      const auth = await withAuth()
-      if (!auth.user || !auth.organizationId) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
-
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
+    .put("/:id", async ({ body, params, set }) => {
+      const err = await requireBankAuth(set)
+      if (err) return err
 
       const {
         bankCode,
@@ -120,7 +108,7 @@ export const createAdminBankRoutes = () =>
         ? BANK_CODES[bankCode as keyof typeof BANK_CODES]?.name
         : undefined
 
-      const account = await bankAccountService.update(params.id, {
+      return bankAccountService.update(params.id, {
         bankCode,
         bankName: resolvedBankName || bankName,
         accountName,
@@ -131,28 +119,10 @@ export const createAdminBankRoutes = () =>
         bankAddress,
         isDefault,
       })
-
-      return { ok: true, data: account }
     })
-    .patch("/:id/toggle", async ({ params }) => {
-      const auth = await withAuth()
-      if (!auth.user || !auth.organizationId) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
+    .patch("/:id/toggle", async ({ params, set }) => {
+      const err = await requireBankAuth(set)
+      if (err) return err
 
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
-
-      const account = await bankAccountService.toggle(params.id)
-      return { ok: true, data: account }
+      return bankAccountService.toggle(params.id)
     })
