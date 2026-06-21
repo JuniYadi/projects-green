@@ -434,12 +434,13 @@ jobs:
 
       - name: Update task status in ide-projects
         run: |
-          if [ -n "${{ steps.task.outputs.task_file }}" ] && [ -f "${{ steps.task.outputs.task_file }}" ]; then
-            cd ide-projects
+          TASK_FILE="$(echo "${{ steps.task.outputs.task_file }}" | sed 's|^ide-projects/||')"
+          if [ -n "$TASK_FILE" ] && [ -f "$TASK_FILE" ]; then
             git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
-            sed -i 's/^## Current Status:.*/## Current Status: `review`/' "${{ steps.task.outputs.task_file }}"
+            sed -i 's/^## Current Status:.*/## Current Status: `review`/' "$TASK_FILE"
             git add -A
             git commit -m "task: ${{ inputs.task_id }} review fixes applied" --allow-empty
             git push
           fi
+        working-directory: ide-projects
