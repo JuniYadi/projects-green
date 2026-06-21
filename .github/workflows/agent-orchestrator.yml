@@ -73,6 +73,7 @@ jobs:
             --dangerously-skip-permissions
             --allowedTools "Bash(cat*),Bash(git*),Bash(head*),Bash(date*),Bash(sed*),Bash(echo*),Bash(tee*),Bash(ls*),Bash(find*)"
           prompt: |
+            /ponytail:ponytail
             REPO: JuniYadi/projects-green (Next.js 16 + TypeScript + strict + Bun)
             IDE PROJECTS: JuniYadi/ide-projects (private — planning docs)
             TASK FILE: ${{ steps.task.outputs.task_file }}
@@ -217,6 +218,7 @@ jobs:
             --dangerously-skip-permissions
             --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
           prompt: |
+            /ponytail:ponytail
             REPO: JuniYadi/projects-green
             WORKING DIRECTORY: projects-green/
             TASK FILE: ${{ steps.task.outputs.task_file }}
@@ -391,6 +393,7 @@ jobs:
             --dangerously-skip-permissions
             --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
           prompt: |
+            /ponytail:ponytail
             REPO: JuniYadi/projects-green
             WORKING DIRECTORY: projects-green/
             BRANCH: ${{ inputs.branch }}
