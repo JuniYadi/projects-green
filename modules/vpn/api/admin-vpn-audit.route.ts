@@ -5,6 +5,7 @@ import {
   requireSuperAdmin,
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
+import { toAuditLogDTO } from "./admin-vpn-audit.dto"
 
 export const createAdminVpnAuditRoutes = (deps: {
   requireSuperAdmin?: typeof requireSuperAdmin
@@ -62,7 +63,7 @@ export const createAdminVpnAuditRoutes = (deps: {
 
         return {
           ok: true,
-          data: entries,
+          data: entries.map(toAuditLogDTO),
           pagination: {
             page,
             limit,
