@@ -22,7 +22,6 @@ type RouteSet = { status?: number | string }
 type Deps = {
   requireSuperAdmin?: typeof requireSuperAdmin
   service?: VpnSubscriptionService
-  dispatch?: (serverAccountId: string) => Promise<void>
   revokeAccount?: (serverAccountId: string) => Promise<void>
 }
 
@@ -41,8 +40,6 @@ const notFound = (set: RouteSet): AdminApiError => {
 export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
   const guard = deps.requireSuperAdmin ?? requireSuperAdmin
   const service = deps.service ?? vpnSubscriptionService
-  const dispatch =
-    deps.dispatch ?? ((id: string) => VpnProvisioningJob.dispatch(id))
   const revokeAccount = deps.revokeAccount ?? defaultRevoke
 
   return new Elysia()
@@ -95,7 +92,9 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
           where: { id: account.id },
           data: { provisioningStatus: "PENDING", failureReason: null },
         })
-        await dispatch(account.id)
+        // ponytail: no jobId — dispatch uses fixed jobId that silently dedup's,
+        // so a retry would never enqueue a second time.
+        await VpnProvisioningJob.enqueue({ serverAccountId: account.id })
 
         logProvisioningEvent({
           action: "PROVISIONING_RETRIED",
@@ -141,7 +140,7 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
             where: { id: account.id },
             data: { provisioningStatus: "PENDING", failureReason: null },
           })
-          await dispatch(account.id)
+          await VpnProvisioningJob.enqueue({ serverAccountId: account.id })
 
           logProvisioningEvent({
             action: "PROVISIONING_RETRIED",
