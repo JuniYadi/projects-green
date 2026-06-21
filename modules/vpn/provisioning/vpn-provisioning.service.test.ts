@@ -9,6 +9,8 @@ type PrismaLike = Pick<
 const mockAuditLogs: Array<{
   action: string
   adminId: string | null
+  step: string | null
+  status: string | null
   details: Record<string, unknown> | null
 }> = []
 
@@ -23,6 +25,8 @@ const mockPrisma = {
       mockAuditLogs.push({
         action: data.action as string,
         adminId: data.adminId as string | null,
+        step: (data.step as string) ?? null,
+        status: (data.status as string) ?? null,
         details: (data.details as Record<string, unknown>) ?? null,
       })
       return { id: "log_" + Date.now(), ...data }
@@ -79,7 +83,10 @@ beforeEach(() => {
   mockWireGuard.createPeer.mockReset()
   mockProxy.createUser.mockReset()
 
+  mockOpenVpn.createClient.mockResolvedValue(undefined)
   mockOpenVpn.fetchConfig.mockResolvedValue("mock-config")
+  mockWireGuard.createPeer.mockResolvedValue({ config: "wg-config" })
+  mockProxy.createUser.mockResolvedValue({ password: "secret" })
 
   mockPrisma.vpnServerAccount.findUnique.mockResolvedValue(account)
   mockPrisma.vpnServerAccount.update.mockResolvedValue({ ...account })
@@ -179,5 +186,101 @@ describe("VpnProvisioningService audit logging", () => {
       serverAccountId: ACCOUNT_ID,
       failureReason: "DNS resolution failed",
     })
+  })
+})
+
+describe("VpnProvisioningService step logging", () => {
+  const stepLog = () =>
+    mockAuditLogs.filter((l) => l.action === "PROVISIONING_STEP")
+  const stepLogFor = (step: string) =>
+    mockAuditLogs.find(
+      (l) => l.action === "PROVISIONING_STEP" && l.step === step
+    )
+
+  it("records step logs in order on OpenVPN happy path", async () => {
+    await service.provisionAccount(ACCOUNT_ID)
+
+    const steps = stepLog()
+    expect(steps.length).toBeGreaterThanOrEqual(2)
+
+    // All steps should have status OK
+    steps.forEach((s) => expect(s.status).toBe("OK"))
+
+    // Verify specific step entries
+    expect(stepLogFor("ssh_connecting")).toBeDefined()
+    expect(stepLogFor("creating_client")).toBeDefined()
+
+    // Existing audit events still present
+    expect(
+      mockAuditLogs.find((l) => l.action === "PROVISIONING_STARTED")
+    ).toBeDefined()
+    expect(
+      mockAuditLogs.find((l) => l.action === "PROVISIONING_SUCCESS")
+    ).toBeDefined()
+  })
+
+  it("records last step as FAILED when SSH fails", async () => {
+    mockOpenVpn.createClient.mockRejectedValue(
+      new Error("Connection timeout")
+    )
+
+    await expect(service.provisionAccount(ACCOUNT_ID)).rejects.toThrow(
+      "Connection timeout"
+    )
+
+    const failed = stepLogFor("ssh_connecting")
+    expect(failed).toBeDefined()
+    expect(failed?.status).toBe("FAILED")
+    expect(failed?.details).toMatchObject({
+      message: "Connection timeout",
+    })
+
+    // Subsequent steps should NOT be recorded
+    expect(stepLogFor("creating_client")).toBeUndefined()
+
+    // PROVISIONING_FAILED audit event also recorded
+    expect(
+      mockAuditLogs.find((l) => l.action === "PROVISIONING_FAILED")
+    ).toBeDefined()
+  })
+
+  it("records per-protocol step names for WireGuard and Proxy", async () => {
+    // --- WireGuard happy path ---
+    mockPrisma.vpnServerAccount.findUnique.mockResolvedValue({
+      ...account,
+      protocol: "WIREGUARD" as const,
+    })
+    await service.provisionAccount(ACCOUNT_ID)
+
+    const wgSteps = stepLog().map((s) => s.step)
+    expect(wgSteps).toContain("ssh_connecting")
+    expect(wgSteps).toContain("creating_peer")
+    // All OK
+    stepLog()
+      .filter((s) => s.step === "ssh_connecting" || s.step === "creating_peer")
+      .forEach((s) => expect(s.status).toBe("OK"))
+
+    // --- Proxy error path ---
+    mockAuditLogs.length = 0
+    mockProxy.createUser.mockRejectedValue(new Error("SSH handshake failed"))
+    mockPrisma.vpnServerAccount.findUnique.mockResolvedValue({
+      ...account,
+      protocol: "PROXY" as const,
+    })
+
+    await expect(service.provisionAccount(ACCOUNT_ID)).rejects.toThrow(
+      "SSH handshake failed"
+    )
+
+    const proxySteps = stepLog().map((s) => s.step)
+    expect(proxySteps).toContain("ssh_connecting")
+    // ssh_connecting should be FAILED
+    expect(stepLogFor("ssh_connecting")?.status).toBe("FAILED")
+    // creating_user should NOT be recorded (failed before that)
+    expect(
+      mockAuditLogs.find(
+        (l) => l.action === "PROVISIONING_STEP" && l.step === "creating_user"
+      )
+    ).toBeUndefined()
   })
 })

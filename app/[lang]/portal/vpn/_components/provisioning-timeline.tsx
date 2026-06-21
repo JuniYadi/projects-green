@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, ArrowsClockwise, Circle } from "@phosphor-icons/react"
+import { CheckCircle, XCircle, ArrowsClockwise, Circle, Minus } from "@phosphor-icons/react"
 import type { VpnServerAccountEntry } from "./vpn-admin-client"
 import { Badge } from "@/components/ui/badge"
 
@@ -8,6 +8,7 @@ export type AuditEventType =
   | "PROVISIONING_FAILED"
   | "PROVISIONING_RETRIED"
   | "PROVISIONING_REVOKED"
+  | "PROVISIONING_STEP"
 
 export type AuditEvent = {
   type: AuditEventType
@@ -48,6 +49,11 @@ const EVENT_CONFIG: Record<
     icon: XCircle,
     color: "text-gray-500",
     label: "Revoked",
+  },
+  PROVISIONING_STEP: {
+    icon: Minus,
+    color: "text-muted-foreground",
+    label: "Step",
   },
 }
 

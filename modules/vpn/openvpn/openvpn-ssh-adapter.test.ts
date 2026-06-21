@@ -1,14 +1,30 @@
-import { describe, expect, it, mock } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+
+import type { SshCommandResult, SshTarget } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
+import { VpnServerSshExecutor } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 
 import {
   OpenVpnSshAdapter,
   sanitizeOpenVpnClientName,
 } from "./openvpn-ssh-adapter"
 
-const target = {
+const target: SshTarget = {
   host: "vpn.example.com",
+  ipAddress: undefined,
   user: "vpnadmin",
   encryptedPrivateKey: "fake-encrypted-key",
+}
+
+const mockExecChecked = mock<
+  (target: SshTarget, args: string[], label?: string) => Promise<SshCommandResult>
+>()
+
+const mockExecInternal = mock()
+
+const mockExecutor = {
+  execChecked: mockExecChecked,
+  exec: mockExecInternal,
+  execInternal: mockExecInternal,
 }
 
 describe("sanitizeOpenVpnClientName", () => {
@@ -29,14 +45,17 @@ describe("sanitizeOpenVpnClientName", () => {
 })
 
 describe("OpenVpnSshAdapter", () => {
+  beforeEach(() => {
+    mockExecChecked.mockClear()
+  })
   it("composes create, fetch, revoke, and health via executor", async () => {
-    const execChecked = mock(async (_target: unknown, args: string[]) => {
+    mockExecChecked.mockImplementation(async (_target: SshTarget, args: string[]) => {
       if (args[0] === "cat") return { stdout: "client config", stderr: "", exitCode: 0 }
       return { stdout: "ok", stderr: "", exitCode: 0 }
     })
 
     const adapter = new OpenVpnSshAdapter({
-      executor: { execChecked } as any,
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
     })
 
     await adapter.createClient(target, "org_abc123_sub_456")
@@ -44,22 +63,22 @@ describe("OpenVpnSshAdapter", () => {
     await adapter.revokeClient(target, "org_abc123_sub_456")
     await adapter.healthCheck(target)
 
-    expect(execChecked).toHaveBeenNthCalledWith(
+    expect(mockExecChecked).toHaveBeenNthCalledWith(
       1, target,
       ["/usr/local/bin/create-openvpn-client", "org_abc123_sub_456"],
       "create OpenVPN client"
     )
-    expect(execChecked).toHaveBeenNthCalledWith(
+    expect(mockExecChecked).toHaveBeenNthCalledWith(
       2, target,
       ["cat", "/etc/openvpn/clients/org_abc123_sub_456.ovpn"],
       "fetch OpenVPN config"
     )
-    expect(execChecked).toHaveBeenNthCalledWith(
+    expect(mockExecChecked).toHaveBeenNthCalledWith(
       3, target,
       ["/usr/local/bin/revoke-openvpn-client", "org_abc123_sub_456"],
       "revoke OpenVPN client"
     )
-    expect(execChecked).toHaveBeenNthCalledWith(
+    expect(mockExecChecked).toHaveBeenNthCalledWith(
       4, target,
       ["systemctl", "is-active", "openvpn-server@server"],
       "check OpenVPN health"
@@ -67,14 +86,13 @@ describe("OpenVpnSshAdapter", () => {
   })
 
   it("does not execute commands when client name is unsafe", async () => {
-    const execChecked = mock()
     const adapter = new OpenVpnSshAdapter({
-      executor: { execChecked } as any,
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
     })
 
     await expect(adapter.createClient(target, "bad;name")).rejects.toThrow(
       "Invalid OpenVPN client name"
     )
-    expect(execChecked).not.toHaveBeenCalled()
+    expect(mockExecChecked).not.toHaveBeenCalled()
   })
 })

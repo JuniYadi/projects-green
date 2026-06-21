@@ -6,7 +6,7 @@
  */
 
 import { prisma } from "@/lib/prisma"
-import type { Prisma } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 
 export type AuditAction =
   | "DEVICE_REGISTERED"
@@ -16,6 +16,7 @@ export type AuditAction =
   | "PROVISIONING_SUCCESS"
   | "PROVISIONING_FAILED"
   | "PROVISIONING_RETRIED"
+  | "PROVISIONING_STEP"
 
 export type ProvisioningEventDetails =
   | { serverAccountId: string; protocol: string; username: string }
@@ -77,6 +78,35 @@ export async function logProvisioningEvent(params: {
         adminId: params.adminId ?? null,
         action: params.action,
         details: params.details as Prisma.InputJsonValue,
+      },
+    })
+  } catch {
+    // Best-effort — never block provisioning flow
+  }
+}
+
+/**
+ * Log a provisioning step entry (granular step within a provisioning run).
+ *
+ * Writes a PROVISIONING_STEP entry with step name and status.
+ * Fire-and-forget — never blocks provisioning.
+ */
+export async function logProvisioningStep(params: {
+  serverAccountId: string
+  step: string
+  status: "OK" | "FAILED"
+  message?: string
+}): Promise<void> {
+  try {
+    await prisma.vpnAuditLog.create({
+      data: {
+        serverAccountId: params.serverAccountId,
+        action: "PROVISIONING_STEP",
+        step: params.step,
+        status: params.status,
+        details: params.message
+          ? ({ message: params.message } as Prisma.InputJsonValue)
+          : Prisma.DbNull,
       },
     })
   } catch {
