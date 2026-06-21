@@ -133,7 +133,7 @@ export class VpnProvisioningService {
   ): Promise<Prisma.VpnServerAccountUpdateInput> {
     switch (protocol) {
       case "OPENVPN": {
-        await this.withStep(serverAccountId, "ssh_connecting", () =>
+        await this.withStep(serverAccountId, "creating_client", () =>
           this.openVpn.createClient(target, username),
         )
         const config = await this.withStep(serverAccountId, "fetching_config", () =>
@@ -146,19 +146,13 @@ export class VpnProvisioningService {
         const { config } = await this.withStep(serverAccountId, "creating_peer", () =>
           this.wireGuard.createPeer(target, username),
         )
-        const wgEncrypted = await this.withStep(serverAccountId, "encrypting_config", () =>
-          encryptVpnConfig(config),
-        )
-        return { configEncrypted: wgEncrypted }
+        return { configEncrypted: encryptVpnConfig(config) }
       }
       case "PROXY": {
         const { password } = await this.withStep(serverAccountId, "creating_user", () =>
           this.proxy.createUser(target, username),
         )
-        const pwd = await this.withStep(serverAccountId, "encrypting_password", () =>
-          encryptProxyPassword(password),
-        )
-        return { password: pwd }
+        return { password: encryptProxyPassword(password) }
       }
       default: {
         const exhaustive: never = protocol

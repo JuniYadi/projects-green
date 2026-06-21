@@ -207,7 +207,7 @@ describe("VpnProvisioningService step logging", () => {
     steps.forEach((s) => expect(s.status).toBe("OK"))
 
     // Verify specific step entries
-    expect(stepLogFor("ssh_connecting")).toBeDefined()
+    expect(stepLogFor("creating_client")).toBeDefined()
     expect(stepLogFor("fetching_config")).toBeDefined()
 
     // Existing audit events still present
@@ -228,7 +228,7 @@ describe("VpnProvisioningService step logging", () => {
       "Connection timeout"
     )
 
-    const failed = stepLogFor("ssh_connecting")
+    const failed = stepLogFor("creating_client")
     expect(failed).toBeDefined()
     expect(failed?.status).toBe("FAILED")
     expect(failed?.details).toMatchObject({
@@ -254,11 +254,8 @@ describe("VpnProvisioningService step logging", () => {
 
     const wgSteps = stepLog().map((s) => s.step)
     expect(wgSteps).toContain("creating_peer")
-    expect(wgSteps).toContain("encrypting_config")
-    // All OK
-    stepLog()
-      .filter((s) => s.step === "creating_peer" || s.step === "encrypting_config")
-      .forEach((s) => expect(s.status).toBe("OK"))
+    // encrypting_config no longer a step — crypto is synchronous, no DB write
+    expect(stepLogFor("creating_peer")?.status).toBe("OK")
 
     // --- Proxy error path ---
     mockAuditLogs.length = 0
@@ -276,11 +273,5 @@ describe("VpnProvisioningService step logging", () => {
     expect(proxySteps).toContain("creating_user")
     // creating_user should be FAILED
     expect(stepLogFor("creating_user")?.status).toBe("FAILED")
-    // encrypting_password should NOT be recorded (failed before that)
-    expect(
-      mockAuditLogs.find(
-        (l) => l.action === "PROVISIONING_STEP" && l.step === "encrypting_password"
-      )
-    ).toBeUndefined()
   })
 })
