@@ -13,7 +13,7 @@ import {
   type DeviceService,
   type DeviceDetail,
   type DeviceListItem,
-  type CreateDeviceInput,
+  type DeviceCreateInput,
   type UpdateDeviceInput,
   type DeviceStatus,
   DeviceNotFoundError,
@@ -93,7 +93,7 @@ export const createDeviceService = (
       return _toDeviceDetail(device as PrismaDeviceFields)
     },
 
-    async create(input) {
+    async create(input: DeviceCreateInput) {
       const device = await db.whatsappDevice.create({
         data: {
           organizationId: input.organizationId ?? "",
@@ -103,8 +103,22 @@ export const createDeviceService = (
           whatsappPhoneId: input.whatsappPhoneId ?? null,
           whatsappApplicationId: input.whatsappApplicationId ?? null,
           callbackUrl: input.callbackUrl || null,
+          whatsappVersion: input.whatsappVersion ?? "v24.0",
+          token: input.token ?? null,
+          rates: input.rates ?? null,
+          s3Path: input.s3 ?? null,
+          quotaBase: input.quotaBase ?? 1000,
+          quotaBaseIn: input.quotaBaseIn ?? 0,
+          quotaBaseOut: input.quotaBaseOut ?? 0,
+          dailyLimitMessage: input.dailyLimitMessage ?? 0,
+          ...(input.balance != null ? { balance: input.balance } : {}),
+          ...(input.expiredAt ? { expiredAt: new Date(input.expiredAt) } : {}),
+          ...(input.features ? { features: input.features } : {}),
           ...(input.displayName
             ? { whatsappProfile: { name: input.displayName } }
+            : {}),
+          ...(input.whatsappProfile
+            ? { whatsappProfile: input.whatsappProfile }
             : {}),
         },
       })

@@ -42,6 +42,18 @@ export type CreateDeviceInput = z.infer<typeof createDeviceSchema>
 
 export const adminCreateDeviceSchema = createDeviceSchema.extend({
   organizationId: z.string().trim().min(1, "Organization ID is required"),
+  expiredAt: z.string().datetime().optional(),
+  features: z.record(z.unknown()).optional(),
+  quotaBase: z.number().nonnegative().optional(),
+  quotaBaseIn: z.number().int().nonnegative().optional(),
+  quotaBaseOut: z.number().int().nonnegative().optional(),
+  rates: z.string().trim().max(200).optional(),
+  s3: z.string().trim().max(500).optional(),
+  whatsappVersion: z.string().trim().max(20).optional(),
+  token: z.string().trim().min(1).optional(),
+  dailyLimitMessage: z.number().int().nonnegative().optional(),
+  balance: z.number().nonnegative().optional(),
+  whatsappProfile: z.record(z.unknown()).optional(),
 })
 export type AdminCreateDeviceInput = z.infer<typeof adminCreateDeviceSchema>
 
@@ -122,14 +134,28 @@ export class DeviceNotOwnedError extends Error {
 
 // ─── Service interface ───────────────────────────────────────────────────────
 
+export type DeviceCreateInput = CreateDeviceInput & {
+  organizationId: string | null
+  expiredAt?: string
+  features?: Record<string, unknown>
+  whatsappProfile?: Record<string, unknown>
+  quotaBase?: number
+  quotaBaseIn?: number
+  quotaBaseOut?: number
+  rates?: string
+  s3?: string
+  whatsappVersion?: string
+  token?: string
+  dailyLimitMessage?: number
+  balance?: number
+}
+
 export type DeviceService = {
   listByOrganization: (
     organizationId: string | null
   ) => Promise<DeviceListItem[]>
   findById: (id: string, organizationId: string | null) => Promise<DeviceDetail>
-  create: (
-    input: CreateDeviceInput & { organizationId: string | null }
-  ) => Promise<DeviceDetail>
+  create: (input: DeviceCreateInput) => Promise<DeviceDetail>
   update: (
     id: string,
     input: UpdateDeviceInput,
