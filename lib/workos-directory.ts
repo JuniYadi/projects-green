@@ -1,14 +1,24 @@
 /**
- * Cached WorkOS directory resolver.
+ * CENTRALIZED WorkOS directory resolver.
+ *
+ * This is the SINGLE source of truth for resolving WorkOS user/org IDs
+ * to human-readable names. All WorkOS name resolution should go through
+ * this module.
  *
  * Wraps WorkOS userManagement.getUser / organizations.getOrganization
  * with a Redis-backed cache so repeated lookups (voucher claim tables,
- * admin member lists, org pickers) don't hammer the WorkOS API.
+ * admin member lists, org pickers, sidebar) don't hammer the WorkOS API.
  *
  * Cache key pattern:
  *   workos:user:{id}  → { id, name, email, avatarUrl }
  *   workos:org:{id}   → { id, name }
  * TTL: 1 hour — user/org names rarely change in WorkOS.
+ *
+ * Usage:
+ *   import { getCachedUser, getCachedOrganization } from "@/lib/workos-directory"
+ *
+ *   const user = await getCachedUser(userId)  // { id, name, email, avatarUrl }
+ *   const org = await getCachedOrganization(orgId)  // { id, name }
  */
 
 import { getWorkOS } from "@workos-inc/authkit-nextjs"
@@ -18,14 +28,15 @@ const CACHE_TTL_SECONDS = 60 * 60 // 1 hour
 
 export type WorkOSDirectoryUser = {
   id: string
-  name: string | null
-  email: string | null
+  name: string
+  email: string
   avatarUrl: string | null
 }
 
 export type WorkOSDirectoryOrg = {
   id: string
   name: string | null
+  slug: string
 }
 
 // ─── Cache helpers ──────────────────────────────────────────────────────────
@@ -74,8 +85,9 @@ export async function getCachedUser(
       id: user.id,
       name:
         [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
-        null,
-      email: user.email?.trim() || null,
+        user.email?.split("@")[0]?.trim() ||
+        "Unknown User",
+      email: user.email?.trim() || "",
       avatarUrl: user.profilePictureUrl?.trim() || null,
     }
 
@@ -116,6 +128,7 @@ export async function getCachedOrganization(
     const result: WorkOSDirectoryOrg = {
       id: org.id,
       name: org.name?.trim() || null,
+      slug: org.id,
     }
 
     // 3. Seed cache

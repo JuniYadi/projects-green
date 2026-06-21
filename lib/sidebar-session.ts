@@ -1,10 +1,13 @@
-import { getWorkOS } from "@workos-inc/authkit-nextjs"
 import type { User } from "@workos-inc/node"
 
 import type {
   AppSidebarOrganization,
   AppSidebarUser,
 } from "@/components/app-sidebar"
+import {
+  getCachedUser,
+  getCachedOrganization,
+} from "@/lib/workos-directory"
 
 const normalizeAvatarUrl = (value: string | null) => {
   if (!value) {
@@ -30,21 +33,39 @@ export const resolveSidebarUser = (user: User): AppSidebarUser => {
   }
 }
 
-export const getLatestWorkOSUser = async (user: User): Promise<User> => {
+/**
+ * Resolve a WorkOS user by ID using the centralized directory service.
+ * Falls back to the provided user object if the fetch fails.
+ */
+export const getLatestWorkOSUser = async (
+  user: User
+): Promise<User> => {
   try {
-    return await getWorkOS().userManagement.getUser(user.id)
+    const cached = await getCachedUser(user.id)
+    if (!cached) return user
+
+    // Map cached user back to WorkOS User shape for sidebar compatibility
+    return {
+      ...user,
+      firstName: cached.name?.split(" ")[0] ?? user.firstName,
+      lastName: cached.name?.split(" ").slice(1).join(" ") ?? user.lastName,
+      email: cached.email ?? user.email,
+      profilePictureUrl: cached.avatarUrl ?? user.profilePictureUrl,
+    } as User
   } catch (error) {
     console.warn(
-      "[dashboard-shell] Failed to load latest WorkOS user profile for sidebar.",
-      {
-        hasUserId: !!user.id,
-        errorMessage: error instanceof Error ? error.message : "Unknown error",
-      }
+      "[sidebar-session] Failed to refresh WorkOS user",
+      user.id,
+      error
     )
     return user
   }
 }
 
+/**
+ * Resolve an organization by ID using the centralized directory service.
+ * Returns { id, name } compatible with AppSidebarOrganization.
+ */
 export const resolveSidebarOrganization = async (
   organizationId: string | undefined
 ): Promise<AppSidebarOrganization> => {
@@ -57,18 +78,16 @@ export const resolveSidebarOrganization = async (
   }
 
   try {
-    const organization = await getWorkOS().organizations.getOrganization(id)
+    const org = await getCachedOrganization(id)
     return {
       id,
-      name: organization.name?.trim() || null,
+      name: org?.name?.trim() ?? null,
     }
   } catch (error) {
     console.warn(
-      "[dashboard-shell] Failed to load WorkOS organization for sidebar.",
-      {
-        hasOrganizationId: !!id,
-        errorMessage: error instanceof Error ? error.message : "Unknown error",
-      }
+      "[sidebar-session] Failed to resolve organization",
+      id,
+      error
     )
     return {
       id,

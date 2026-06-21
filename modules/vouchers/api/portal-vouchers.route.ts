@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { workosCacheService } from "@/lib/cache/workos-cache.service"
+import { getCachedUser, getCachedOrganization } from "@/lib/workos-directory"
 import { VoucherService } from "../vouchers.service"
 import {
   createVoucherSchema,
@@ -260,8 +260,8 @@ export const createPortalVoucherRoutes = (
 
           // Enrich with cached WorkOS names
           const [targetUser, targetOrg] = await Promise.all([
-            workosCacheService.getUser(voucher.targetWorkosUserId),
-            workosCacheService.getOrg(voucher.targetOrganizationId),
+            getCachedUser(voucher.targetWorkosUserId ?? ""),
+            getCachedOrganization(voucher.targetOrganizationId ?? ""),
           ])
 
           // Enrich claim names — deduplicate user/org IDs for efficiency
@@ -272,16 +272,16 @@ export const createPortalVoucherRoutes = (
             ...new Set(voucher.claims.map((c) => c.organizationId)),
           ]
 
-          const [users, orgs] = await Promise.all([
-            Promise.all(userIds.map((id) => workosCacheService.getUser(id))),
-            Promise.all(orgIds.map((id) => workosCacheService.getOrg(id))),
+          const [userResults, orgResults] = await Promise.all([
+            Promise.all(userIds.map((id) => getCachedUser(id))),
+            Promise.all(orgIds.map((id) => getCachedOrganization(id))),
           ])
 
           const userMap = new Map(
-            users.filter(Boolean).map((u) => [u!.id, u!.name])
+            userResults.filter(Boolean).map((u) => [u!.id, u!.name])
           )
           const orgMap = new Map(
-            orgs.filter(Boolean).map((o) => [o!.id, o!.name])
+            orgResults.filter(Boolean).map((o) => [o!.id, o!.name])
           )
 
           const claimNames = new Map<

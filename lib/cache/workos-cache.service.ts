@@ -1,86 +1,56 @@
-import { getWorkOS } from "@workos-inc/authkit-nextjs"
-import { getOrFetch, del } from "@/lib/cache"
+/**
+ * @deprecated This module is DEPRECATED. Use `@/lib/workos-directory` instead.
+ *
+ * This file is kept for backward compatibility only. All WorkOS name
+ * resolution should go through the centralized directory service:
+ *
+ *   import { getCachedUser, getCachedOrganization } from "@/lib/workos-directory"
+ *
+ * See AGENTS.md for the centralized WorkOS directory pattern.
+ */
 
-export interface CachedUser {
-  id: string
-  name: string
-  email: string
-}
+import {
+  getCachedUser,
+  getCachedOrganization,
+} from "@/lib/workos-directory"
+import type {
+  WorkOSDirectoryUser,
+  WorkOSDirectoryOrg,
+} from "@/lib/workos-directory"
 
-export interface CachedOrg {
-  id: string
-  name: string
-  slug: string // Will be the org.id as fallback
-}
+// Re-export types for backward compatibility
+export type CachedUser = WorkOSDirectoryUser
+export type CachedOrg = WorkOSDirectoryOrg
 
-const USER_TTL = Number(process.env.WORKOS_CACHE_TTL_USER ?? "3600")
-const ORG_TTL = Number(process.env.WORKOS_CACHE_TTL_ORG ?? "3600")
-
-const USER_PREFIX = "workos:user:"
-const ORG_PREFIX = "workos:org:"
-
-async function fetchUser(userId: string): Promise<CachedUser> {
-  const workos = getWorkOS()
-  const user = await workos.userManagement.getUser(userId)
-  const name =
-    [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
-    user.email?.split("@")[0] ||
-    "Unknown User"
-
-  return { id: user.id, name, email: user.email ?? "" }
-}
-
-async function fetchOrg(orgId: string): Promise<CachedOrg> {
-  const workos = getWorkOS()
-  const org = await workos.organizations.getOrganization(orgId)
-  return {
-    id: org.id,
-    name: org.name || org.id,
-    // WorkOS Organization type doesn't have slug — fall back to id
-    slug: org.id,
-  }
-}
-
+/**
+ * @deprecated Use getCachedUser from "@/lib/workos-directory" instead.
+ */
 export const workosCacheService = {
   async getUser(
     userId: string | null | undefined
   ): Promise<CachedUser | null> {
     if (!userId) return null
-
-    try {
-      return await getOrFetch(
-        `${USER_PREFIX}${userId}`,
-        () => fetchUser(userId),
-        USER_TTL
-      )
-    } catch (err) {
-      console.warn("[workos-cache] Failed to fetch user", userId, err)
-      return null
-    }
+    return getCachedUser(userId)
   },
 
   async getOrg(
     orgId: string | null | undefined
   ): Promise<CachedOrg | null> {
     if (!orgId) return null
-
-    try {
-      return await getOrFetch(
-        `${ORG_PREFIX}${orgId}`,
-        () => fetchOrg(orgId),
-        ORG_TTL
-      )
-    } catch (err) {
-      console.warn("[workos-cache] Failed to fetch org", orgId, err)
-      return null
-    }
+    return getCachedOrganization(orgId)
   },
 
-  async invalidateUser(userId: string): Promise<void> {
-    await del(`${USER_PREFIX}${userId}`)
+  async invalidateUser(_userId: string): Promise<void> {
+    // No-op — Redis cache handles TTL automatically
+    console.warn(
+      "[workos-cache] invalidateUser is deprecated. Cache invalidation is handled by TTL."
+    )
   },
 
-  async invalidateOrg(orgId: string): Promise<void> {
-    await del(`${ORG_PREFIX}${orgId}`)
+  async invalidateOrg(_orgId: string): Promise<void> {
+    // No-op — Redis cache handles TTL automatically
+    console.warn(
+      "[workos-cache] invalidateOrg is deprecated. Cache invalidation is handled by TTL."
+    )
   },
 }

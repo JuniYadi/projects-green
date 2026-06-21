@@ -1,17 +1,35 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import type { User } from "@workos-inc/node"
 
-const mockGetUser = mock(async () => ({
-  id: "user_1",
+// Use the same mock names as workos-cache.service.test.ts to avoid conflicts
+const mockWorkosGetUser = mock(async (userId: string) => ({
+  id: userId,
   firstName: "Refreshed",
   lastName: "User",
   email: "refreshed@example.com",
   profilePictureUrl: "https://example.com/avatar.png",
 }))
 
-const mockGetOrganization = mock(async () => ({
-  id: "org_1",
+const mockWorkosGetOrg = mock(async (orgId: string) => ({
+  id: orgId,
   name: "  Acme Org  ",
+  slug: orgId,
+}))
+
+// Mock Redis to prevent stale cache reads from real Redis
+const redisStore = new Map<string, string>()
+mock.module("@/lib/redis", () => ({
+  redis: {
+    get: async (key: string) => redisStore.get(key) ?? null,
+    set: async (key: string, val: string) => {
+      redisStore.set(key, val)
+      return "OK"
+    },
+    del: async (key: string) => {
+      redisStore.delete(key)
+      return 1
+    },
+  },
 }))
 
 mock.module("@workos-inc/authkit-nextjs", () => {
@@ -22,10 +40,10 @@ mock.module("@workos-inc/authkit-nextjs", () => {
     }),
     getWorkOS: () => ({
       userManagement: {
-        getUser: mockGetUser,
+        getUser: mockWorkosGetUser,
       },
       organizations: {
-        getOrganization: mockGetOrganization,
+        getOrganization: mockWorkosGetOrg,
       },
     }),
   }
@@ -47,20 +65,21 @@ const makeUser = (overrides: Partial<User> = {}): User => {
 
 describe("sidebar session helpers", () => {
   beforeEach(() => {
-    mockGetUser.mockClear()
-    mockGetOrganization.mockClear()
+    mockWorkosGetUser.mockClear()
+    mockWorkosGetOrg.mockClear()
 
-    mockGetUser.mockImplementation(async () => ({
-      id: "user_1",
+    mockWorkosGetUser.mockImplementation(async (userId: string) => ({
+      id: userId,
       firstName: "Refreshed",
       lastName: "User",
       email: "refreshed@example.com",
       profilePictureUrl: "https://example.com/avatar.png",
     }))
 
-    mockGetOrganization.mockImplementation(async () => ({
-      id: "org_1",
+    mockWorkosGetOrg.mockImplementation(async (orgId: string) => ({
+      id: orgId,
       name: "  Acme Org  ",
+      slug: orgId,
     }))
   })
 
@@ -107,8 +126,9 @@ describe("sidebar session helpers", () => {
 
     const result = await getLatestWorkOSUser(makeUser({ id: "user_55" }))
 
-    expect(mockGetUser).toHaveBeenCalledWith("user_55")
+    expect(mockWorkosGetUser).toHaveBeenCalledWith("user_55")
     expect(result.firstName).toBe("Refreshed")
+    expect(result.lastName).toBe("User")
   })
 
   it("returns existing user and logs warning when user refresh fails", async () => {
@@ -116,7 +136,7 @@ describe("sidebar session helpers", () => {
     const warn = mock(() => {})
     const originalWarn = console.warn
 
-    mockGetUser.mockImplementation(async () => {
+    mockWorkosGetUser.mockImplementation(async () => {
       throw new Error("network down")
     })
     console.warn = warn as unknown as typeof console.warn
@@ -141,7 +161,7 @@ describe("sidebar session helpers", () => {
       id: null,
       name: null,
     })
-    expect(mockGetOrganization).not.toHaveBeenCalled()
+    expect(mockWorkosGetOrg).not.toHaveBeenCalled()
   })
 
   it("returns trimmed organization name and fallback null on error", async () => {
@@ -151,7 +171,7 @@ describe("sidebar session helpers", () => {
 
     const success = await resolveSidebarOrganization("org_1")
 
-    mockGetOrganization.mockImplementation(async () => {
+    mockWorkosGetOrg.mockImplementation(async () => {
       throw new Error("service unavailable")
     })
     console.warn = warn as unknown as typeof console.warn

@@ -295,6 +295,22 @@ Authenticated tests are **excluded** when the `.auth/user.json` file is absent. 
   - Keep plan mode off by default; enable it only when explicitly requested.
   - Keep auto-review off by default; enable it only when explicitly requested.
 
+## WorkOS Directory: Centralized Name Resolution (HARD REQUIREMENT)
+
+All WorkOS user/org name resolution MUST go through `lib/workos-directory.ts`. The auth layer only returns IDs — names require separate WorkOS API calls.
+
+```ts
+import { getCachedUser, getCachedOrganization, getCachedUsers, getCachedOrganizations } from "@/lib/workos-directory"
+```
+
+- **Redis-backed** cache, 1h TTL, fire-and-forget seeding
+- Single: `getCachedUser(id) → { id, name, email, avatarUrl } | null`
+- Single: `getCachedOrganization(id) → { id, name } | null`
+- Batch: `getCachedUsers(ids) → Map<string, WorkOSDirectoryUser>`
+- Batch: `getCachedOrganizations(ids) → Map<string, WorkOSDirectoryOrg>`
+
+**Deprecated:** `lib/cache/workos-cache.service.ts`, `lib/sidebar-session.ts`, `hooks/use-workos-cache.ts` — use `workos-directory` directly.
+
 ## Security & Configuration Tips
 - Copy required values from `.env.example`; never commit real secrets.
 - Required integrations include PostgreSQL (`DATABASE_URL`) and WorkOS keys.
