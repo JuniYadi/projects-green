@@ -122,6 +122,31 @@ describe("resolveSidebarMenu", () => {
     ).toBe(true)
   })
 
+  it("includes Events link in app-hosting context", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/app/deploy",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("App Hosting")
+    expect(navMain.map((item) => item.title)).toContain("Events")
+
+    const events = navMain.find((item) => item.title === "Events")!
+    expect(events.url).toBe("/en/portal/app/events/github")
+    expect(events.isActive).toBe(false)
+  })
+
+  it("marks Events active for its routes", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/app/events/github",
+      locale: "en",
+    })
+
+    expect(navMain.find((item) => item.title === "Events")?.isActive).toBe(true)
+  })
+
   it("returns portal-only navigation and projects for portal surface", () => {
     const { navMain, projects } = resolveSidebarMenu({
       surface: "portal",
