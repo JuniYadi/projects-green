@@ -325,6 +325,10 @@ export async function retryAllVpnServerAccounts(subId: string) {
   throwIfError(res)
 }
 
+export function vpnAdminConfigDownloadUrl(subId: string, saId: string): string {
+  return `/api/admin/vpn/subscriptions/${subId}/servers/${saId}/config`
+}
+
 // ── Audit ────────────────────────────────────────────────────────────────
 
 type AuditEntry = {

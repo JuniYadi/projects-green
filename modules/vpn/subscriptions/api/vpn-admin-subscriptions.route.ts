@@ -9,6 +9,7 @@ import {
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
 import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
+import { decryptVpnConfig } from "@/modules/vpn/vpn-crypto"
 
 import {
   VpnSubscriptionService,
@@ -184,6 +185,41 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         }
 
         return { ok: true, retried: failedAccounts.length }
+      }
+    )
+    .get(
+      "/admin/vpn/subscriptions/:id/servers/:saId/config",
+      async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+        const account = await prisma.vpnServerAccount.findUnique({
+          where: { id: params.saId },
+          select: { id: true, subscriptionId: true, configEncrypted: true },
+        })
+
+        if (!account || account.subscriptionId !== params.id) {
+          return notFound(set)
+        }
+
+        if (!account.configEncrypted) {
+          set.status = 404
+          return {
+            ok: false,
+            error: "CONFIG_NOT_FOUND",
+            message: "Config not available for this account.",
+          }
+        }
+
+        const plainConfig = decryptVpnConfig(account.configEncrypted)
+
+        set.status = 200
+        set.headers = {
+          "Content-Type": "application/x-openvpn-profile",
+          "Content-Disposition": `attachment; filename="${params.saId}.ovpn"`,
+        }
+
+        return plainConfig
       }
     )
 }

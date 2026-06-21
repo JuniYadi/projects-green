@@ -27,6 +27,7 @@ import {
   retryVpnServerAccount,
   revokeVpnServerAccount,
   retryAllVpnServerAccounts,
+  vpnAdminConfigDownloadUrl,
   type VpnSubscriptionItem,
   type VpnServerAccountEntry,
 } from "../../_components/vpn-admin-client"
@@ -425,6 +426,20 @@ export default function SubscriptionDetailPage() {
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
+                  {account.hasConfig && account.provisioningStatus === "ACTIVE" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                    >
+                      <a
+                        href={vpnAdminConfigDownloadUrl(subscriptionId, account.id)}
+                        download
+                      >
+                        Download Config
+                      </a>
+                    </Button>
+                  )}
                   {(account.provisioningStatus === "FAILED" ||
                     account.provisioningStatus === "PENDING") && (
                     <Button
