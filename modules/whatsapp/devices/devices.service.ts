@@ -121,8 +121,8 @@ export const createDeviceService = (
           ...(input.displayName || input.whatsappProfile
             ? {
                 whatsappProfile: {
-                  ...(input.displayName ? { name: input.displayName } : {}),
                   ...(input.whatsappProfile ?? {}),
+                  ...(input.displayName ? { name: input.displayName } : {}),
                 } as Prisma.InputJsonValue,
               }
             : {}),
