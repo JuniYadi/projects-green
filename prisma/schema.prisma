@@ -1370,7 +1370,9 @@ model VpnAuditLog {
   deviceId         String?
   userId           String?
   adminId          String?   // populated for manual admin actions (retries, revokes)
-  action           String    // REGISTERED, REVOKED, CONFIG_DOWNLOADED | PROVISIONING_STARTED, SUCCESS, FAILED, RETRIED
+  action           String    // REGISTERED, REVOKED, CONFIG_DOWNLOADED | PROVISIONING_STARTED, SUCCESS, FAILED, RETRIED | PROVISIONING_STEP
+  step             String?   // step name for PROVISIONING_STEP entries (ssh_connecting, creating_client, etc.)
+  status           String?   // "OK" | "FAILED" for PROVISIONING_STEP entries
   details          Json?     // action-specific payload
   ip               String?
   userAgent        String?

@@ -12,7 +12,7 @@ import { WireGuardSshAdapter } from "./wireguard-ssh-adapter"
 import { ProxySshAdapter } from "./proxy-ssh-adapter"
 import type { SshTarget } from "./vpn-server-ssh-executor"
 
-type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer">
+type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer" | "vpnAuditLog">
 
 const accountWithServer = {
   include: {
@@ -93,7 +93,8 @@ export class VpnProvisioningService {
       const data = await this.runProtocol(
         account.protocol,
         target,
-        account.username
+        account.username,
+        serverAccountId,
       )
       await this.prisma.vpnServerAccount.update({
         where: { id: serverAccountId },
@@ -127,26 +128,81 @@ export class VpnProvisioningService {
   private async runProtocol(
     protocol: VpnProtocol,
     target: SshTarget,
-    username: string
+    username: string,
+    serverAccountId: string,
   ): Promise<Prisma.VpnServerAccountUpdateInput> {
     switch (protocol) {
       case "OPENVPN": {
-        await this.openVpn.createClient(target, username)
-        const config = await this.openVpn.fetchConfig(target, username)
-        return { configEncrypted: encryptVpnConfig(config) }
+        await this.withStep(serverAccountId, "creating_client", () =>
+          this.openVpn.createClient(target, username),
+        )
+        const config = await this.withStep(serverAccountId, "fetching_config", () =>
+          this.openVpn.fetchConfig(target, username),
+        )
+        const encrypted = encryptVpnConfig(config)
+        return { configEncrypted: encrypted }
       }
       case "WIREGUARD": {
-        const { config } = await this.wireGuard.createPeer(target, username)
+        const { config } = await this.withStep(serverAccountId, "creating_peer", () =>
+          this.wireGuard.createPeer(target, username),
+        )
         return { configEncrypted: encryptVpnConfig(config) }
       }
       case "PROXY": {
-        const { password } = await this.proxy.createUser(target, username)
+        const { password } = await this.withStep(serverAccountId, "creating_user", () =>
+          this.proxy.createUser(target, username),
+        )
         return { password: encryptProxyPassword(password) }
       }
       default: {
         const exhaustive: never = protocol
         throw new Error(`Unsupported protocol: ${String(exhaustive)}`)
       }
+    }
+  }
+
+  /**
+   * Run an operation with a provisioning step log.
+   * Logs OK on success, FAILED with message on error (re-throws).
+   */
+  /** Write a step log entry via the injected prisma instance. */
+  private async logStep(
+    serverAccountId: string,
+    step: string,
+    status: "OK" | "FAILED",
+    message?: string,
+  ): Promise<void> {
+    try {
+      await this.prisma.vpnAuditLog.create({
+        data: {
+          serverAccountId,
+          action: "PROVISIONING_STEP",
+          step,
+          status,
+          details: message
+            ? ({ message } as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        },
+      })
+    } catch {
+      // Best-effort — never block provisioning
+    }
+  }
+
+  private async withStep<T>(
+    serverAccountId: string,
+    step: string,
+    fn: () => T | Promise<T>,
+  ): Promise<T> {
+    try {
+      const result = await fn()
+      await this.logStep(serverAccountId, step, "OK")
+      return result
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown error"
+      await this.logStep(serverAccountId, step, "FAILED", message)
+      throw error
     }
   }
 }

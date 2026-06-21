@@ -6,12 +6,12 @@ import {
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
 
-type RouteSet = { status?: number | string }
-
-const notFound = (set: RouteSet): AdminApiError => {
-  set.status = 404
-  return { ok: false, error: "NOT_FOUND", message: "Server account not found." }
-}
+const AUDIT_ACTIONS = [
+  "PROVISIONING_STARTED",
+  "PROVISIONING_SUCCESS",
+  "PROVISIONING_FAILED",
+  "PROVISIONING_RETRIED",
+] as const
 
 export const createAdminVpnAuditRoutes = (deps: {
   requireSuperAdmin?: typeof requireSuperAdmin
@@ -29,36 +29,26 @@ export const createAdminVpnAuditRoutes = (deps: {
         const limit = Math.min(100, Math.max(1, Number(query.limit) || 50))
         const skip = (page - 1) * limit
 
+        const actionFilter: Record<string, unknown> | undefined =
+          query.type === "steps"
+            ? { action: "PROVISIONING_STEP" }
+            : query.type === "all"
+              ? undefined
+              : { action: { in: AUDIT_ACTIONS } }
+
+        const where: Record<string, unknown> = {
+          serverAccountId: params.saId,
+          ...actionFilter,
+        }
+
         const [entries, total] = await Promise.all([
           prisma.vpnAuditLog.findMany({
-            where: {
-              serverAccountId: params.saId, // Use column, not JSON path
-              action: {
-                in: [
-                  "PROVISIONING_STARTED",
-                  "PROVISIONING_SUCCESS",
-                  "PROVISIONING_FAILED",
-                  "PROVISIONING_RETRIED",
-                ],
-              },
-            },
+            where,
             orderBy: { createdAt: "desc" },
             skip,
             take: limit,
           }),
-          prisma.vpnAuditLog.count({
-            where: {
-              serverAccountId: params.saId,
-              action: {
-                in: [
-                  "PROVISIONING_STARTED",
-                  "PROVISIONING_SUCCESS",
-                  "PROVISIONING_FAILED",
-                  "PROVISIONING_RETRIED",
-                ],
-              },
-            },
-          }),
+          prisma.vpnAuditLog.count({ where }),
         ])
 
         return {
@@ -76,6 +66,7 @@ export const createAdminVpnAuditRoutes = (deps: {
         query: t.Object({
           page: t.Optional(t.Numeric({ minimum: 1 })),
           limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100 })),
+          type: t.Optional(t.Union([t.Literal("steps"), t.Literal("audit"), t.Literal("all")])),
         }),
       }
     )

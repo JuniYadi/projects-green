@@ -4,8 +4,18 @@ import { useEffect, useState } from "react"
 import { X } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { type VpnServerAccountEntry } from "./vpn-admin-client"
+import { type VpnServerAccountEntry, vpnApi } from "./vpn-admin-client"
 import { ProvisioningTimeline, type AuditEvent } from "./provisioning-timeline"
+
+type ApiAuditEntry = {
+  id: string
+  serverAccountId: string | null
+  action: string
+  step: string | null
+  status: string | null
+  details: Record<string, unknown> | null
+  createdAt: string
+}
 
 type Props = {
   account: VpnServerAccountEntry
@@ -26,13 +36,25 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
       setLoading(true)
       setError(null)
       try {
-        // TODO(PGREEN-098): wire up real audit endpoint when available
-        // const res = await vpnApi<{ ok: true; data: AuditEvent[] }>(
-        //   `/admin/vpn/audit/accounts/${account.id}`
-        // )
-        // if (!cancelled) setEvents(res.data)
+        const res = await vpnApi<{ ok: true; data: ApiAuditEntry[] }>(
+          `/admin/vpn/audit/accounts/${account.id}?type=all`,
+        )
 
-        // Fallback: generate synthetic timeline from account data
+        if (cancelled) return
+        const mapped: AuditEvent[] = (res.data ?? []).map((entry) => ({
+          type: entry.action as AuditEvent["type"],
+          timestamp: entry.createdAt,
+          detail:
+            entry.action === "PROVISIONING_STEP"
+              ? `${entry.step ?? "?"} — ${entry.status ?? "?"}${entry.details && typeof entry.details === "object" && "message" in entry.details ? `: ${entry.details.message as string}` : ""}`
+              : entry.details && typeof entry.details === "object" && "message" in entry.details
+                ? (entry.details.message as string)
+                : undefined,
+        }))
+        if (!cancelled) setEvents(mapped)
+      } catch (e) {
+        if (cancelled) return
+        // ponytail: API unavailable — fall back to synthetic timeline from account data
         const synthetic: AuditEvent[] = [
           {
             type: "PROVISIONING_STARTED",
@@ -53,9 +75,6 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
           })
         }
         if (!cancelled) setEvents(synthetic)
-      } catch (e) {
-        if (cancelled) return
-        setError((e as Error).message)
       } finally {
         if (!cancelled) setLoading(false)
       }
