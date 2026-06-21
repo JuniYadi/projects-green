@@ -28,7 +28,11 @@
 
 import { Worker, type Job } from "bullmq"
 import { prisma } from "@/lib/prisma"
-import { getRedisConnection, closeAllQueues } from "@/lib/queue/queue-config"
+import {
+  getRedisConnection,
+  getQueueRuntimeConfig,
+  closeAllQueues,
+} from "@/lib/queue/queue-config"
 
 // ── GitHub Events ──────────────────────────────────────────────────────────
 import { GithubEventJob } from "@/modules/github/jobs/github-event.job"
@@ -97,6 +101,7 @@ const allWorkers: Worker[] = []
 
 // ── Redis connection (shared across all workers) ────────────────────────────
 const redisConnection = getRedisConnection()
+const { prefix } = getQueueRuntimeConfig()
 
 // ── GitHub Events Worker ────────────────────────────────────────────────────
 allWorkers.push(GithubEventJob.createWorker())
@@ -190,7 +195,7 @@ const billingDailyWorker = new Worker<BillingCronJobData>(
       )
     }
   },
-  { connection: redisConnection, concurrency: 1 }
+  { connection: redisConnection, prefix, concurrency: 1 }
 )
 allWorkers.push(billingDailyWorker)
 
@@ -206,7 +211,7 @@ const billingMonthlyWorker = new Worker<BillingCronJobData>(
       await processMonthlyBilling()
     }
   },
-  { connection: redisConnection, concurrency: 1 }
+  { connection: redisConnection, prefix, concurrency: 1 }
 )
 allWorkers.push(billingMonthlyWorker)
 
@@ -217,7 +222,7 @@ const billingStatusWorker = new Worker<BillingCronJobData>(
       await processInvoiceStatusManager()
     }
   },
-  { connection: redisConnection, concurrency: 1 }
+  { connection: redisConnection, prefix, concurrency: 1 }
 )
 allWorkers.push(billingStatusWorker)
 
@@ -228,7 +233,7 @@ const billingReminderWorker = new Worker<BillingCronJobData>(
       await processPaymentReminder()
     }
   },
-  { connection: redisConnection, concurrency: 1 }
+  { connection: redisConnection, prefix, concurrency: 1 }
 )
 allWorkers.push(billingReminderWorker)
 
@@ -249,7 +254,7 @@ const opensearchWorker = new Worker<LogEntry>(
     }
     return { ingested: true }
   },
-  { connection: redisConnection, concurrency: opensearchConcurrency }
+  { connection: redisConnection, prefix, concurrency: opensearchConcurrency }
 )
 allWorkers.push(opensearchWorker)
 
@@ -345,6 +350,7 @@ const quotaWorker = new Worker<QuotaReconciliationJobData>(
   },
   {
     connection: redisConnection,
+    prefix,
     concurrency: 4,
   }
 )
@@ -377,6 +383,7 @@ const whatsappBroadcastWorker = new Worker<WhatsAppBroadcastJobData>(
   },
   {
     connection: redisConnection,
+    prefix,
     concurrency: 4,
   }
 )
@@ -402,6 +409,7 @@ const whatsappTemplateSyncWorker = new Worker<WhatsAppTemplateSyncJobData>(
   },
   {
     connection: redisConnection,
+    prefix,
     concurrency: 2,
   }
 )
@@ -415,6 +423,7 @@ const vpnProvisioningWorker = new Worker<VpnProvisioningJobData>(
   },
   {
     connection: redisConnection,
+    prefix,
     concurrency: VpnProvisioningJob.workerConcurrency,
     settings: { backoffStrategy: vpnStagedBackoff },
   }
