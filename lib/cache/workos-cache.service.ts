@@ -10,7 +10,7 @@ export interface CachedUser {
 export interface CachedOrg {
   id: string
   name: string
-  slug: string
+  slug: string // Will be the org.id as fallback
 }
 
 const USER_TTL = Number(process.env.WORKOS_CACHE_TTL_USER ?? "3600")
@@ -36,7 +36,8 @@ async function fetchOrg(orgId: string): Promise<CachedOrg> {
   return {
     id: org.id,
     name: org.name || org.id,
-    slug: (org as unknown as Record<string, unknown>).slug as string ?? "",
+    // WorkOS Organization type doesn't have slug — fall back to id
+    slug: org.id,
   }
 }
 

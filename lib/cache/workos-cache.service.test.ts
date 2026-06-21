@@ -240,7 +240,7 @@ describe("workosCacheService.getOrg", () => {
     expect(result).not.toBeNull()
     expect(result!.id).toBe("org_xyz")
     expect(result!.name).toBe("Acme Corp")
-    expect(result!.slug).toBe("acme-corp")
+    expect(result!.slug).toBe("org_xyz")
     expect(mockWorkosGetOrg).toHaveBeenCalledTimes(1)
 
     // Should be cached in Redis
@@ -249,7 +249,7 @@ describe("workosCacheService.getOrg", () => {
     expect(JSON.parse(cached!)).toEqual({
       id: "org_xyz",
       name: "Acme Corp",
-      slug: "acme-corp",
+      slug: "org_xyz",
     })
   })
 
