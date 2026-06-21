@@ -208,7 +208,7 @@ describe("VpnProvisioningService step logging", () => {
 
     // Verify specific step entries
     expect(stepLogFor("ssh_connecting")).toBeDefined()
-    expect(stepLogFor("creating_client")).toBeDefined()
+    expect(stepLogFor("fetching_config")).toBeDefined()
 
     // Existing audit events still present
     expect(
@@ -236,7 +236,7 @@ describe("VpnProvisioningService step logging", () => {
     })
 
     // Subsequent steps should NOT be recorded
-    expect(stepLogFor("creating_client")).toBeUndefined()
+    expect(stepLogFor("fetching_config")).toBeUndefined()
 
     // PROVISIONING_FAILED audit event also recorded
     expect(
@@ -253,11 +253,11 @@ describe("VpnProvisioningService step logging", () => {
     await service.provisionAccount(ACCOUNT_ID)
 
     const wgSteps = stepLog().map((s) => s.step)
-    expect(wgSteps).toContain("ssh_connecting")
     expect(wgSteps).toContain("creating_peer")
+    expect(wgSteps).toContain("encrypting_config")
     // All OK
     stepLog()
-      .filter((s) => s.step === "ssh_connecting" || s.step === "creating_peer")
+      .filter((s) => s.step === "creating_peer" || s.step === "encrypting_config")
       .forEach((s) => expect(s.status).toBe("OK"))
 
     // --- Proxy error path ---
@@ -273,13 +273,13 @@ describe("VpnProvisioningService step logging", () => {
     )
 
     const proxySteps = stepLog().map((s) => s.step)
-    expect(proxySteps).toContain("ssh_connecting")
-    // ssh_connecting should be FAILED
-    expect(stepLogFor("ssh_connecting")?.status).toBe("FAILED")
-    // creating_user should NOT be recorded (failed before that)
+    expect(proxySteps).toContain("creating_user")
+    // creating_user should be FAILED
+    expect(stepLogFor("creating_user")?.status).toBe("FAILED")
+    // encrypting_password should NOT be recorded (failed before that)
     expect(
       mockAuditLogs.find(
-        (l) => l.action === "PROVISIONING_STEP" && l.step === "creating_user"
+        (l) => l.action === "PROVISIONING_STEP" && l.step === "encrypting_password"
       )
     ).toBeUndefined()
   })

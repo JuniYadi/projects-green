@@ -136,29 +136,26 @@ export class VpnProvisioningService {
         await this.withStep(serverAccountId, "ssh_connecting", () =>
           this.openVpn.createClient(target, username),
         )
-        const config = await this.withStep(serverAccountId, "creating_client", () =>
+        const config = await this.withStep(serverAccountId, "fetching_config", () =>
           this.openVpn.fetchConfig(target, username),
         )
-        const encrypted = await this.withStep(serverAccountId, "fetching_config", () =>
-          encryptVpnConfig(config),
-        )
-        // ponytail: encrypting_config is a no-op step logged for consistency — encryptVpnConfig is already called above
+        const encrypted = encryptVpnConfig(config)
         return { configEncrypted: encrypted }
       }
       case "WIREGUARD": {
-        const { config } = await this.withStep(serverAccountId, "ssh_connecting", () =>
+        const { config } = await this.withStep(serverAccountId, "creating_peer", () =>
           this.wireGuard.createPeer(target, username),
         )
-        const wgEncrypted = await this.withStep(serverAccountId, "creating_peer", () =>
+        const wgEncrypted = await this.withStep(serverAccountId, "encrypting_config", () =>
           encryptVpnConfig(config),
         )
         return { configEncrypted: wgEncrypted }
       }
       case "PROXY": {
-        const { password } = await this.withStep(serverAccountId, "ssh_connecting", () =>
+        const { password } = await this.withStep(serverAccountId, "creating_user", () =>
           this.proxy.createUser(target, username),
         )
-        const pwd = await this.withStep(serverAccountId, "creating_user", () =>
+        const pwd = await this.withStep(serverAccountId, "encrypting_password", () =>
           encryptProxyPassword(password),
         )
         return { password: pwd }
