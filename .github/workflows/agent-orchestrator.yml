@@ -361,7 +361,7 @@ jobs:
           fi
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           if [ -n "$PR_NUMBER" ]; then
-            gh pr view "$PR_NUMBER" --json reviews --jq '.reviews[] | select(.state == "CHANGES_REQUESTED") | .body' > /tmp/review-body.md 2>&1 || true
+            gh api "repos/JuniYadi/projects-green/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.state == "CHANGES_REQUESTED") | .body' > /tmp/review-body.md 2>&1 || true
           else
             echo "" > /tmp/review-body.md
           fi
