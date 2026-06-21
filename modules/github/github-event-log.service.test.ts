@@ -18,7 +18,7 @@ type FakeEventLogPrisma = {
 }
 
 describe("github event log service", () => {
-  it("lists active tracked/error events by default without payloadJson", async () => {
+  it("lists all active events by default without payloadJson", async () => {
     const calls: unknown[] = []
     const prisma = {
       githubWebhookEvent: {
@@ -40,7 +40,9 @@ describe("github event log service", () => {
     })
 
     expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 25 })
-    expect(JSON.stringify(calls[0])).toContain("eventDisposition")
+    expect((calls[0] as { where: unknown }).where).toEqual({
+      deletedAt: null,
+    })
     expect(JSON.stringify(calls[0])).not.toContain("payloadJson")
   })
 

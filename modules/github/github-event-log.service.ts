@@ -100,9 +100,7 @@ const buildWhere = (
     where.deletedAt = { not: null }
   }
 
-  if (!query.eventDisposition) {
-    where.eventDisposition = { in: ["tracked", "error"] }
-  } else {
+  if (query.eventDisposition) {
     where.eventDisposition = query.eventDisposition
   }
 
