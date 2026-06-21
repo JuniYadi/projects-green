@@ -26,6 +26,9 @@ const mockPrisma = {
   paymentCurrency: {
     findUnique: mock(),
   },
+  vpnServer: {
+    findFirst: mock(),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
@@ -158,6 +161,12 @@ const setupPrismaDefaults = () => {
       updatedAt: new Date(),
     })
   )
+  mockPrisma.vpnServer.findFirst.mockResolvedValue({
+    id: "srv_1",
+    hostname: "vpn.example.com",
+    sshUser: "root",
+    sshKey: { privateKey: "fake-key" },
+  })
 }
 
 beforeEach(() => {
@@ -281,6 +290,7 @@ describe("POST /vpn/clients/:clientId/revoke", () => {
       status: "REVOKED",
     })
     expect(mockOpenVpn.revokeClient).toHaveBeenCalledWith(
+      expect.any(Object),
       "org_org_1_sub_vpn_new"
     )
     expect(mockVpnClients.markRevoked).toHaveBeenCalledWith({
@@ -395,9 +405,11 @@ describe("POST /vpn/subscriptions", () => {
     )
 
     expect(mockOpenVpn.createClient).toHaveBeenCalledWith(
+      expect.any(Object),
       "org_org_1_sub_vpn_new"
     )
     expect(mockOpenVpn.fetchConfig).toHaveBeenCalledWith(
+      expect.any(Object),
       "org_org_1_sub_vpn_new"
     )
     expect(mockVpnClients.createActiveClient).toHaveBeenCalledWith(
