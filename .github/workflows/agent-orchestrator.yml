@@ -241,44 +241,66 @@ jobs:
 
             `ls projects-green/modules/` — see all feature modules
 
-            STEP 2 — IMPLEMENT:
-            Follow the plan exactly. For each file to create/modify:
+            STEP 2 — LIST ACCEPTANCE CRITERIA:
+            Parse the task file and list all unchecked AC checkboxes:
+            `grep -- '- \[ \]' "${{ steps.task.outputs.task_file }}"` — these are your ACs.
 
-            1. Read the current file if modifying
-            2. Make the change
-            3. Run tests: `cd projects-green && bun test`
-            TDD when applicable — write test first, then implementation.
+            STEP 3 — AC-BY-AC LOOP (one AC at a time):
+            For EACH unchecked Acceptance Criteria, in order. Continue until all are marked [x].
 
-            STEP 3 — PUSH CODE FIRST (do NOT wait for pillars):
+            3a. IMPLEMENT THIS AC:
+            - Pick ONE AC (e.g. "Add step/status to VpnAuditLog")
+            - Work ONLY on files relevant to this AC
+            - Read current file if modifying, then make the change
+            - Run relevant tests: `cd projects-green && bun test --bail`
+
+            3b. COMMIT + PUSH (progress checkpoint):
             ```bash
             cd projects-green
             git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            SHORT_DESC=$(echo "[AC description]" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | cut -c1-50)
             git add -A
-            git commit -m "feat: implement ${{ inputs.task_id }}" --allow-empty
+            git commit -m "feat(${{ inputs.task_id }}): $SHORT_DESC"
             git push
             ```
-            Code is now safe. Even if you run out of turns later, the work is saved.
 
-            STEP 4 — 3 PILLARS (IN DIVIDUAL — one at a time):
-            Run each separately. Fix, amend the last commit, and push before moving to the next.
+            3c. UPDATE TASK FILE — mark AC done + record commit SHA:
+            ```bash
+            cd ide-projects
+            COMMIT_SHA=$(cd ../projects-green && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+            # Mark the first unchecked checkbox as [x] with SHA
+            sed -i '0,/^- \[ \]/{s//- [x] ('"$COMMIT_SHA"')/}' "${{ steps.task.outputs.task_file }}"
+            git config user.name "JuniYadi"
+            git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            git add -A
+            git commit -m "task: ${{ inputs.task_id }} — $SHORT_DESC done [sha:$COMMIT_SHA]"
+            git push
+            cd ../projects-green
+            ```
+            --- IMPORTANT ---
+            After pushing, a new GHA run may auto-trigger on the branch. Keep working.
+            If you run out of turns partway through, that's OK — pushed code and
+            updated checklist mean the next run picks up where you left off.
+            All done with this AC. Loop back to 3a for the next unchecked one.
+
+            STEP 4 — FINAL 3 PILLARS (once, after ALL ACs done):
+            Run each separately. Fix, amend the LAST commit, and push before moving to the next.
 
             4a. `cd projects-green && bun run lint` — 0 errors
             If it fails, fix the lint errors, then:
             `git add -A && git commit --amend --no-edit && git push --force-with-lease`
-            Only move to 4b when lint passes.
 
             4b. `cd projects-green && bun run typecheck` — 0 errors
             If it fails, fix the type errors, then:
             `git add -A && git commit --amend --no-edit && git push --force-with-lease`
-            Only move to 4c when typecheck passes.
 
             4c. `cd projects-green && bun run test` — all pass
             If it fails, fix the test failures, then:
             `git add -A && git commit --amend --no-edit && git push --force-with-lease`
 
-            If you run out of turns before finishing all 3 pillars, that's OK — the
-            code is already pushed on the branch. A follow-up run can fix the rest.
+            If any pillar fails and you can't fix it in time, push the fix anyway
+            (even with errors) — the code is already checkpointed per AC.
 
             STEP 5 — MARK PR READY:
             ```bash
@@ -291,7 +313,7 @@ jobs:
             fi
             ```
 
-            STEP 6 — UPDATE TASK STATUS IN IDE-PROJECTS:
+            STEP 6 — FINAL TASK STATUS UPDATE:
             ```bash
             cd ide-projects
             BRANCH_NAME="${{ inputs.branch }}"
