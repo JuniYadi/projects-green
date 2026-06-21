@@ -1,6 +1,16 @@
 import { cache } from "react"
-import { workosCacheService } from "@/lib/cache/workos-cache.service"
-import type { CachedUser, CachedOrg } from "@/lib/cache/workos-cache.service"
+import {
+  getCachedUser,
+  getCachedOrganization,
+} from "@/lib/workos-directory"
+import type {
+  WorkOSDirectoryUser,
+  WorkOSDirectoryOrg,
+} from "@/lib/workos-directory"
+
+// Re-export types for backward compatibility
+export type CachedUser = WorkOSDirectoryUser
+export type CachedOrg = WorkOSDirectoryOrg
 
 /**
  * Server-safe hook to resolve a WorkOS user ID to a cached user object.
@@ -10,7 +20,8 @@ import type { CachedUser, CachedOrg } from "@/lib/cache/workos-cache.service"
  */
 export const useWorkosUser = cache(
   async (userId: string | null | undefined): Promise<CachedUser | null> => {
-    return workosCacheService.getUser(userId)
+    if (!userId) return null
+    return getCachedUser(userId)
   }
 )
 
@@ -22,6 +33,7 @@ export const useWorkosUser = cache(
  */
 export const useWorkosOrg = cache(
   async (orgId: string | null | undefined): Promise<CachedOrg | null> => {
-    return workosCacheService.getOrg(orgId)
+    if (!orgId) return null
+    return getCachedOrganization(orgId)
   }
 )

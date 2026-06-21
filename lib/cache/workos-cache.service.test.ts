@@ -177,6 +177,7 @@ describe("workosCacheService.getUser", () => {
       id: "user_abc",
       name: "John Doe",
       email: "john@example.com",
+      avatarUrl: null,
     })
   })
 
@@ -271,22 +272,19 @@ describe("workosCacheService.getOrg", () => {
 })
 
 describe("workosCacheService.invalidateUser", () => {
-  it("removes cached user from Redis", async () => {
-    // Prime the cache
-    await workosCacheService.getUser("user_abc")
-    expect(redisStore.has("workos:user:user_abc")).toBe(true)
-
-    await workosCacheService.invalidateUser("user_abc")
-    expect(redisStore.has("workos:user:user_abc")).toBe(false)
+  it("is a no-op (deprecated)", async () => {
+    // invalidateUser is deprecated — cache uses TTL
+    await expect(
+      workosCacheService.invalidateUser("user_abc")
+    ).resolves.toBeUndefined()
   })
 })
 
 describe("workosCacheService.invalidateOrg", () => {
-  it("removes cached org from Redis", async () => {
-    await workosCacheService.getOrg("org_xyz")
-    expect(redisStore.has("workos:org:org_xyz")).toBe(true)
-
-    await workosCacheService.invalidateOrg("org_xyz")
-    expect(redisStore.has("workos:org:org_xyz")).toBe(false)
+  it("is a no-op (deprecated)", async () => {
+    // invalidateOrg is deprecated — cache uses TTL
+    await expect(
+      workosCacheService.invalidateOrg("org_xyz")
+    ).resolves.toBeUndefined()
   })
 })
