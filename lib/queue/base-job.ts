@@ -152,10 +152,11 @@ export abstract class BaseJob {
    *   // ... later: await worker.close()
    */
   static createWorker(): Worker {
-    const connection = getRedisConnection()
+    const { connection, prefix } = getQueueRuntimeConfig()
 
     return new Worker(this.queue, this.handle, {
       connection,
+      prefix,
       concurrency: this.workerConcurrency,
     })
   }
@@ -165,8 +166,11 @@ export abstract class BaseJob {
    * Use this when you want to manage the Worker lifecycle yourself.
    */
   static toWorkerOptions() {
+    const { connection, prefix } = getQueueRuntimeConfig()
+
     return {
-      connection: getRedisConnection(),
+      connection,
+      prefix,
       concurrency: this.workerConcurrency,
     }
   }

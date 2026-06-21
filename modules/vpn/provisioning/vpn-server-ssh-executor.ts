@@ -1,7 +1,4 @@
-import { spawn } from "node:child_process"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { Client } from "ssh2"
 
 import { decryptSshPrivateKey } from "@/modules/vpn/admin/vpn-ssh-key.crypto"
 
@@ -11,83 +8,130 @@ export type SshCommandResult = {
   exitCode: number
 }
 
-export type SshCommandRunner = (
-  command: string,
-  args: string[]
-) => Promise<SshCommandResult>
-
 export type SshTarget = {
   host: string
+  /**
+   * Fallback IP address to try when `host` (hostname) cannot be resolved.
+   * Matches the hostname→ip fallback in vpn-server-connection.ts.
+   */
+  ipAddress?: string
   user: string
   /** Encrypted SSH private key as stored on VpnSshKey.privateKey. */
   encryptedPrivateKey: string
 }
 
-function defaultRun(
-  command: string,
-  args: string[]
-): Promise<SshCommandResult> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] })
-    const stdout: Buffer[] = []
-    const stderr: Buffer[] = []
-
-    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk))
-    child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk))
-    child.on("error", reject)
-    child.on("close", (exitCode) => {
-      resolve({
-        stdout: Buffer.concat(stdout).toString("utf8"),
-        stderr: Buffer.concat(stderr).toString("utf8"),
-        exitCode: exitCode ?? 1,
-      })
-    })
-  })
-}
+/** Timeout for the SSH connection + command exec. */
+const SSH_EXEC_TIMEOUT_MS = 30_000
 
 /**
  * Execute a remote command on a VPN server over SSH using its stored,
- * encrypted private key. The key is decrypted to a 0600 temp file for the
- * lifetime of the call and removed afterwards.
- *
- * `remoteArgs` are passed verbatim after `--`, so callers MUST sanitize any
- * untrusted input before building the argument list.
+ * encrypted private key. Uses ssh2 (same library as the admin connection
+ * tester) instead of spawning a CLI ssh process — avoids key format
+ * differences between the ssh2 parser and the OpenSSH CLI.
  */
 export class VpnServerSshExecutor {
-  private readonly run: SshCommandRunner
-
-  constructor(options: { run?: SshCommandRunner } = {}) {
-    this.run = options.run ?? defaultRun
-  }
-
   async exec(
     target: SshTarget,
     remoteArgs: string[]
   ): Promise<SshCommandResult> {
-    if (!target.host.trim())
-      throw new Error("Server hostname is not configured.")
+    return this.execInternal(target.host, target, remoteArgs, new Set())
+  }
+
+  private async execInternal(
+    host: string,
+    target: SshTarget,
+    remoteArgs: string[],
+    visited: Set<string>
+  ): Promise<SshCommandResult> {
+    if (!host.trim()) throw new Error("Server hostname is not configured.")
+    if (visited.has(host)) throw new Error(`Circular SSH target: ${host}`)
+    visited.add(host)
 
     const privateKey = decryptSshPrivateKey(target.encryptedPrivateKey)
-    const dir = await mkdtemp(join(tmpdir(), "vpn-ssh-"))
-    const keyPath = join(dir, "id_key")
+    const command = remoteArgs.join(" ")
 
-    try {
-      await writeFile(keyPath, privateKey, { mode: 0o600 })
-      const result = await this.run("ssh", [
-        "-i",
-        keyPath,
-        "-o",
-        "BatchMode=yes",
-        "-o",
-        "StrictHostKeyChecking=yes",
-        `${target.user}@${target.host}`,
-        "--",
-        ...remoteArgs,
-      ])
-      return result
-    } finally {
-      await rm(dir, { recursive: true, force: true })
-    }
+    return new Promise<SshCommandResult>((resolve) => {
+      const client = new Client()
+      let settled = false
+
+      const finish = (result: SshCommandResult) => {
+        if (settled) return
+        settled = true
+        try {
+          client.end()
+        } catch {
+          /* ignore */
+        }
+        resolve(result)
+      }
+
+      const timeout = setTimeout(() => {
+        finish({ stdout: "", stderr: "SSH exec timed out", exitCode: 1 })
+      }, SSH_EXEC_TIMEOUT_MS)
+
+      client.on("ready", () => {
+        client.exec(command, (err, channel) => {
+          if (err) {
+            clearTimeout(timeout)
+            finish({ stdout: "", stderr: err.message, exitCode: 1 })
+            return
+          }
+
+          let stdout = ""
+          let stderr = ""
+
+          channel.on("data", (data: Buffer) => {
+            stdout += data.toString()
+          })
+          channel.stderr.on("data", (data: Buffer) => {
+            stderr += data.toString()
+          })
+          channel.on("close", () => {
+            clearTimeout(timeout)
+            finish({ stdout, stderr, exitCode: 0 })
+          })
+        })
+      })
+
+      client.on("error", (err) => {
+        clearTimeout(timeout)
+
+        // ponytail: hostname→ip fallback on DNS failure (matches admin
+        // connection tester in vpn-server-connection.ts).
+        const code = (err as NodeJS.ErrnoException).code
+        if (
+          (code === "ENOTFOUND" || code === "EAI_AGAIN") &&
+          target.ipAddress &&
+          target.ipAddress !== host
+        ) {
+          client.end()
+          this.execInternal(target.ipAddress, target, remoteArgs, visited).then(
+            resolve
+          )
+          return
+        }
+
+        finish({ stdout: "", stderr: err.message, exitCode: 1 })
+      })
+
+      try {
+        client.connect({
+          host,
+          username: target.user,
+          privateKey,
+          readyTimeout: SSH_EXEC_TIMEOUT_MS,
+          keepaliveInterval: 0,
+        })
+      } catch (err) {
+        clearTimeout(timeout)
+        finish({
+          stdout: "",
+          stderr:
+            err instanceof Error ? err.message : "Failed to start SSH",
+          exitCode: 1,
+        })
+      }
+    })
   }
 
   async execChecked(

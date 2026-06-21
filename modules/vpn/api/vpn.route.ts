@@ -6,10 +6,8 @@ import { CurrencyService } from "@/modules/billing/currency.service"
 import { prisma } from "@/lib/prisma"
 import { VpnClientService } from "../vpn-client.service"
 import { VpnBillingService } from "../billing/vpn-billing.service"
-import {
-  OpenVpnSshAdapter,
-  openVpnSshEnvFromProcessEnv,
-} from "../openvpn/openvpn-ssh-adapter"
+import { OpenVpnSshAdapter } from "../openvpn/openvpn-ssh-adapter"
+import type { SshTarget } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 import {
   VpnPriceNotConfiguredError,
   resolveVpnMonthlyPrice,
@@ -75,7 +73,7 @@ const defaultBilling = (): VpnBillingLike =>
   new VpnBillingService(prisma, new BillingTransactionService(prisma))
 
 const defaultOpenVpn = (): OpenVpnLike =>
-  new OpenVpnSshAdapter({ env: openVpnSshEnvFromProcessEnv() })
+  new OpenVpnSshAdapter()
 
 const defaultVpnClients = (): VpnClientServiceLike =>
   new VpnClientService(prisma)
@@ -158,6 +156,28 @@ const buildOpenVpnClientName = (
     .slice(0, 32)
 
   return `org_${safeOrgId}_${safeSubscriptionId}`
+}
+
+// ponytail: iterates region's servers for one with OpenVPN; no caching,
+// add a server-selection cache or preference table if the fleet grows.
+const resolveSshTarget = async (regionId: string): Promise<SshTarget> => {
+  const where =
+    regionId === "ANY"
+      ? { hasOpenVpn: true, isActive: true }
+      : { regionId, hasOpenVpn: true, isActive: true }
+
+  const server = await prisma.vpnServer.findFirst({
+    where,
+    include: { sshKey: { select: { privateKey: true } } },
+  })
+  if (!server) throw new Error("No active OpenVPN server found for region")
+
+  return {
+    host: server.hostname,
+    ipAddress: server.ipAddress ?? undefined,
+    user: server.sshUser,
+    encryptedPrivateKey: server.sshKey.privateKey,
+  }
 }
 
 // ─── Routes factory ─────────────────────────────────────────────────────
@@ -244,7 +264,8 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         organizationId,
         clientId: params.clientId,
       })
-      await openVpn.revokeClient(revoked.clientName)
+      const openvpnTarget = await resolveSshTarget("ANY")
+      await openVpn.revokeClient(openvpnTarget, revoked.clientName)
 
       return {
         ok: true as const,
@@ -264,7 +285,7 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
         return toForbidden(set, "You are not allowed to inspect VPN health.")
       }
 
-      const health = await openVpn.healthCheck()
+      const health = await openVpn.healthCheck(await resolveSshTarget("ANY"))
 
       return { ok: true as const, health }
     })
@@ -423,8 +444,9 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
           )
 
           try {
-            await openVpn.createClient(clientName)
-            const ovpnConfig = await openVpn.fetchConfig(clientName)
+            const target = await resolveSshTarget(refs.regionId)
+            await openVpn.createClient(target, clientName)
+            const ovpnConfig = await openVpn.fetchConfig(target, clientName)
             const vpnClient = await vpnClients.createActiveClient({
               organizationId: auth.organizationId,
               subscriptionId: vpnSubscriptionId,

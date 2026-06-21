@@ -6,10 +6,7 @@ import {
   encryptVpnConfig,
   encryptProxyPassword,
 } from "@/modules/vpn/vpn-crypto"
-import {
-  OpenVpnSshAdapter,
-  openVpnSshEnvFromProcessEnv,
-} from "@/modules/vpn/openvpn/openvpn-ssh-adapter"
+import { OpenVpnSshAdapter } from "@/modules/vpn/openvpn/openvpn-ssh-adapter"
 
 import { WireGuardSshAdapter } from "./wireguard-ssh-adapter"
 import { ProxySshAdapter } from "./proxy-ssh-adapter"
@@ -58,8 +55,7 @@ export class VpnProvisioningService {
   ) {
     this.prisma = prisma
     this.openVpn =
-      adapters.openVpn ??
-      new OpenVpnSshAdapter({ env: openVpnSshEnvFromProcessEnv() })
+      adapters.openVpn ?? new OpenVpnSshAdapter()
     this.wireGuard = adapters.wireGuard ?? new WireGuardSshAdapter()
     this.proxy = adapters.proxy ?? new ProxySshAdapter()
   }
@@ -88,6 +84,7 @@ export class VpnProvisioningService {
 
     const target: SshTarget = {
       host: account.server.hostname,
+      ipAddress: account.server.ipAddress ?? undefined,
       user: account.server.sshUser,
       encryptedPrivateKey: account.server.sshKey.privateKey,
     }
@@ -134,8 +131,8 @@ export class VpnProvisioningService {
   ): Promise<Prisma.VpnServerAccountUpdateInput> {
     switch (protocol) {
       case "OPENVPN": {
-        await this.openVpn.createClient(username)
-        const config = await this.openVpn.fetchConfig(username)
+        await this.openVpn.createClient(target, username)
+        const config = await this.openVpn.fetchConfig(target, username)
         return { configEncrypted: encryptVpnConfig(config) }
       }
       case "WIREGUARD": {
