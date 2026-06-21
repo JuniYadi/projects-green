@@ -354,18 +354,19 @@ jobs:
           PR_NUMBER=$(gh pr list --head "${{ inputs.branch }}" --json number --jq '.[0].number' 2>/dev/null)
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           gh pr view "$PR_NUMBER" --json reviews --jq '.reviews[] | select(.state == "CHANGES_REQUESTED") | .body' 2>/dev/null > /tmp/review-body.md
-          python3 -c "
-import re
-with open('/tmp/review-body.md') as f:
-    c = f.read()
-m = re.search(r'AI Refactoring Prompt.*?\`\`\`\`+markdown(.*?)\`\`\`\`+', c, re.DOTALL)
-if m:
-    with open('/tmp/fix-prompt.md','w') as out:
-        out.write(m.group(1).strip())
-    print('fix_prompt_found=true')
-else:
-    print('fix_prompt_found=false')
-" 2>/dev/null || echo "fix_prompt_found=false"
+          cat > /tmp/extract-fix-prompt.py << 'XXEOF'
+          import re
+          with open('/tmp/review-body.md') as f:
+              c = f.read()
+          m = re.search(r'AI Refactoring Prompt.*?\`\`\`\`+markdown(.*?)\`\`\`\`+', c, re.DOTALL)
+          if m:
+              with open('/tmp/fix-prompt.md', 'w') as out:
+                  out.write(m.group(1).strip())
+              print('fix_prompt_found=true')
+          else:
+              print('fix_prompt_found=false')
+          XXEOF
+          python3 /tmp/extract-fix-prompt.py 2>/dev/null || echo "fix_prompt_found=false"
 
       - name: Show fix prompt status
         run: |
