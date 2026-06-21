@@ -17,6 +17,8 @@ export type VoucherDTO = {
   createdByWorkosUserId: string
   createdAt: string
   updatedAt: string
+  targetUserName?: string | null
+  targetOrgName?: string | null
 }
 
 export type VoucherDetailDTO = VoucherDTO & {
@@ -30,6 +32,8 @@ export type VoucherClaimDTO = {
   organizationId: string
   billingAdjustmentId: string | null
   claimedAt: string
+  userName?: string | null
+  orgName?: string | null
 }
 
 export type RedeemResultDTO = {
@@ -67,14 +71,28 @@ export function toVoucherDTO(voucher: VoucherRecordBase): VoucherDTO {
   }
 }
 
-export function toVoucherDetailDTO(voucher: VoucherRecord): VoucherDetailDTO {
+export function toVoucherDetailDTO(
+  voucher: VoucherRecord,
+  enrichments?: {
+    targetUserName?: string | null
+    targetOrgName?: string | null
+    claimNames?: Map<string, { userName?: string | null; orgName?: string | null }>
+  }
+): VoucherDetailDTO {
   return {
     ...toVoucherDTO(voucher),
-    claims: voucher.claims.map(toVoucherClaimDTO),
+    targetUserName: enrichments?.targetUserName ?? null,
+    targetOrgName: enrichments?.targetOrgName ?? null,
+    claims: voucher.claims.map((claim) =>
+      toVoucherClaimDTO(claim, enrichments?.claimNames?.get(claim.id))
+    ),
   }
 }
 
-export function toVoucherClaimDTO(claim: VoucherClaimRecord): VoucherClaimDTO {
+export function toVoucherClaimDTO(
+  claim: VoucherClaimRecord,
+  names?: { userName?: string | null; orgName?: string | null }
+): VoucherClaimDTO {
   return {
     id: claim.id,
     voucherId: claim.voucherId,
@@ -82,5 +100,7 @@ export function toVoucherClaimDTO(claim: VoucherClaimRecord): VoucherClaimDTO {
     organizationId: claim.organizationId,
     billingAdjustmentId: claim.billingAdjustmentId,
     claimedAt: claim.claimedAt.toISOString(),
+    userName: names?.userName ?? null,
+    orgName: names?.orgName ?? null,
   }
 }

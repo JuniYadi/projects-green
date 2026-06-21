@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
+import { workosCacheService } from "@/lib/cache/workos-cache.service"
 import { VoucherService } from "../vouchers.service"
 import {
   createVoucherSchema,
@@ -257,9 +258,50 @@ export const createPortalVoucherRoutes = (
         try {
           const voucher = await service.getVoucherById(parsed.data.id)
 
+          // Enrich with cached WorkOS names
+          const [targetUser, targetOrg] = await Promise.all([
+            workosCacheService.getUser(voucher.targetWorkosUserId),
+            workosCacheService.getOrg(voucher.targetOrganizationId),
+          ])
+
+          // Enrich claim names — deduplicate user/org IDs for efficiency
+          const userIds = [
+            ...new Set(voucher.claims.map((c) => c.workosUserId)),
+          ]
+          const orgIds = [
+            ...new Set(voucher.claims.map((c) => c.organizationId)),
+          ]
+
+          const [users, orgs] = await Promise.all([
+            Promise.all(userIds.map((id) => workosCacheService.getUser(id))),
+            Promise.all(orgIds.map((id) => workosCacheService.getOrg(id))),
+          ])
+
+          const userMap = new Map(
+            users.filter(Boolean).map((u) => [u!.id, u!.name])
+          )
+          const orgMap = new Map(
+            orgs.filter(Boolean).map((o) => [o!.id, o!.name])
+          )
+
+          const claimNames = new Map<
+            string,
+            { userName?: string | null; orgName?: string | null }
+          >()
+          for (const claim of voucher.claims) {
+            claimNames.set(claim.id, {
+              userName: userMap.get(claim.workosUserId) ?? null,
+              orgName: orgMap.get(claim.organizationId) ?? null,
+            })
+          }
+
           return {
             ok: true as const,
-            data: toVoucherDetailDTO(voucher),
+            data: toVoucherDetailDTO(voucher, {
+              targetUserName: targetUser?.name ?? null,
+              targetOrgName: targetOrg?.name ?? null,
+              claimNames,
+            }),
           }
         } catch (error) {
           return toErrorResponse(set, error)
@@ -381,7 +423,7 @@ export const createPortalVoucherRoutes = (
 
           return {
             ok: true as const,
-            data: claims.map(toVoucherClaimDTO),
+            data: claims.map((claim) => toVoucherClaimDTO(claim)),
           }
         } catch (error) {
           return toErrorResponse(set, error)
