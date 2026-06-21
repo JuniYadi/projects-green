@@ -18,6 +18,11 @@ export type SshCommandRunner = (
 
 export type SshTarget = {
   host: string
+  /**
+   * Fallback IP address to try when `host` (hostname) cannot be resolved.
+   * Matches the hostname→ip fallback in vpn-server-connection.ts.
+   */
+  ipAddress?: string
   user: string
   /** Encrypted SSH private key as stored on VpnSshKey.privateKey. */
   encryptedPrivateKey: string
@@ -64,8 +69,18 @@ export class VpnServerSshExecutor {
     target: SshTarget,
     remoteArgs: string[]
   ): Promise<SshCommandResult> {
-    if (!target.host.trim())
-      throw new Error("Server hostname is not configured.")
+    return this.execInternal(target.host, target, remoteArgs, new Set())
+  }
+
+  private async execInternal(
+    host: string,
+    target: SshTarget,
+    remoteArgs: string[],
+    visited: Set<string>
+  ): Promise<SshCommandResult> {
+    if (!host.trim()) throw new Error("Server hostname is not configured.")
+    if (visited.has(host)) throw new Error(`Circular SSH target: ${host}`)
+    visited.add(host)
 
     const privateKey = decryptSshPrivateKey(target.encryptedPrivateKey)
     const dir = await mkdtemp(join(tmpdir(), "vpn-ssh-"))
@@ -80,10 +95,22 @@ export class VpnServerSshExecutor {
         "BatchMode=yes",
         "-o",
         "StrictHostKeyChecking=yes",
-        `${target.user}@${target.host}`,
+        `${target.user}@${host}`,
         "--",
         ...remoteArgs,
       ])
+
+      // ponytail: hostname→ip fallback on DNS failure (matches admin
+      // connection tester in vpn-server-connection.ts).
+      if (
+        result.exitCode !== 0 &&
+        isDnsStderr(result.stderr) &&
+        target.ipAddress &&
+        target.ipAddress !== host
+      ) {
+        return this.execInternal(target.ipAddress, target, remoteArgs, visited)
+      }
+
       return result
     } finally {
       await rm(dir, { recursive: true, force: true })
@@ -101,4 +128,13 @@ export class VpnServerSshExecutor {
     }
     return result
   }
+}
+
+function isDnsStderr(stderr: string): boolean {
+  return (
+    stderr.includes("Could not resolve hostname") ||
+    stderr.includes("Name or service not known") ||
+    stderr.includes("Temporary failure in name resolution") ||
+    stderr.includes("nodename nor servname")
+  )
 }

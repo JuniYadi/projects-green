@@ -174,6 +174,7 @@ const resolveSshTarget = async (regionId: string): Promise<SshTarget> => {
 
   return {
     host: server.hostname,
+    ipAddress: server.ipAddress ?? undefined,
     user: server.sshUser,
     encryptedPrivateKey: server.sshKey.privateKey,
   }

@@ -84,6 +84,7 @@ export class VpnProvisioningService {
 
     const target: SshTarget = {
       host: account.server.hostname,
+      ipAddress: account.server.ipAddress ?? undefined,
       user: account.server.sshUser,
       encryptedPrivateKey: account.server.sshKey.privateKey,
     }
