@@ -5,7 +5,13 @@ import {
   requireSuperAdmin,
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
-import { toAuditLogDTO } from "./admin-vpn-audit.dto"
+
+type RouteSet = { status?: number | string }
+
+const notFound = (set: RouteSet): AdminApiError => {
+  set.status = 404
+  return { ok: false, error: "NOT_FOUND", message: "Server account not found." }
+}
 
 export const createAdminVpnAuditRoutes = (deps: {
   requireSuperAdmin?: typeof requireSuperAdmin
@@ -26,6 +32,7 @@ export const createAdminVpnAuditRoutes = (deps: {
         const [entries, total] = await Promise.all([
           prisma.vpnAuditLog.findMany({
             where: {
+              serverAccountId: params.saId, // Use column, not JSON path
               action: {
                 in: [
                   "PROVISIONING_STARTED",
@@ -33,10 +40,6 @@ export const createAdminVpnAuditRoutes = (deps: {
                   "PROVISIONING_FAILED",
                   "PROVISIONING_RETRIED",
                 ],
-              },
-              details: {
-                path: ["serverAccountId"],
-                equals: params.saId,
               },
             },
             orderBy: { createdAt: "desc" },
@@ -45,6 +48,7 @@ export const createAdminVpnAuditRoutes = (deps: {
           }),
           prisma.vpnAuditLog.count({
             where: {
+              serverAccountId: params.saId,
               action: {
                 in: [
                   "PROVISIONING_STARTED",
@@ -53,17 +57,13 @@ export const createAdminVpnAuditRoutes = (deps: {
                   "PROVISIONING_RETRIED",
                 ],
               },
-              details: {
-                path: ["serverAccountId"],
-                equals: params.saId,
-              },
             },
           }),
         ])
 
         return {
           ok: true,
-          data: entries.map(toAuditLogDTO),
+          data: entries,
           pagination: {
             page,
             limit,

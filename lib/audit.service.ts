@@ -20,8 +20,8 @@ export type AuditAction =
 export type ProvisioningEventDetails =
   | { serverAccountId: string; protocol: string; username: string }
   | { serverAccountId: string; protocol: string }
-  | { serverAccountId: string; failureReason: string; attemptNumber: number }
-  | { serverAccountId: string; previousFailureReason: string; triggeredByAdminId: string }
+  | { serverAccountId: string; failureReason: string }
+  | { serverAccountId: string; previousFailureReason: string; triggeredByAdminId: string | null }
 
 /**
  * Log a VPN audit event to the database.
@@ -73,6 +73,7 @@ export async function logProvisioningEvent(params: {
   try {
     await prisma.vpnAuditLog.create({
       data: {
+        serverAccountId: params.serverAccountId, // Column, not in details
         adminId: params.adminId ?? null,
         action: params.action,
         details: params.details as Prisma.InputJsonValue,

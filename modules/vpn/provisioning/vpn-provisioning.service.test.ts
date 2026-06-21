@@ -163,7 +163,7 @@ describe("VpnProvisioningService audit logging", () => {
     expect(successCount).toBe(1)
   })
 
-  it("captures failureReason and attemptNumber in FAILED entry", async () => {
+  it("captures failureReason in FAILED entry", async () => {
     mockOpenVpn.createClient.mockRejectedValue(
       new Error("DNS resolution failed")
     )
@@ -178,7 +178,6 @@ describe("VpnProvisioningService audit logging", () => {
     expect(failed?.details).toMatchObject({
       serverAccountId: ACCOUNT_ID,
       failureReason: "DNS resolution failed",
-      attemptNumber: 1,
     })
   })
 })
