@@ -63,6 +63,7 @@ function makeSub(overrides: Partial<VpnSubscriptionItem> = {}): VpnSubscriptionI
   return {
     id: "sub-1",
     organizationId: "org-123",
+    organizationName: "Acme Inc",
     packageId: "pkg-1",
     status: "ACTIVE",
     currentPeriodStart: "2024-01-01T00:00:00.000Z",

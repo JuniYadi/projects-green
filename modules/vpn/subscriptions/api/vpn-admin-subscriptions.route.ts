@@ -13,6 +13,7 @@ import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
 import {
   VpnSubscriptionService,
   vpnSubscriptionService,
+  type VpnSubscriptionWithAccounts,
 } from "../vpn-subscription.service"
 import { toVpnSubscriptionDTO } from "../vpn-subscription.dto"
 
@@ -56,7 +57,7 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
       for (const sub of subs) {
         if (!orgNames.has(sub.organizationId)) {
           try {
-            const org = await workos.organizationManagement.getOrganization(
+            const org = await workos.organizations.getOrganization(
               sub.organizationId
             )
             orgNames.set(sub.organizationId, org.name)
@@ -68,7 +69,7 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
 
       return {
         ok: true,
-        data: subs.map((s) =>
+        data: subs.map((s: VpnSubscriptionWithAccounts) =>
           toVpnSubscriptionDTO(s, orgNames.get(s.organizationId) ?? null)
         ),
       }
