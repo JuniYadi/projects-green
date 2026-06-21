@@ -150,7 +150,9 @@ export class OpenVpnSshAdapter {
     ])
 
     if (result.exitCode !== 0) {
-      throw new Error(`Failed to ${action}`)
+      throw new Error(
+        `Failed to ${action}: ${result.stderr.trim() || result.stdout.trim() || "exit code " + result.exitCode}`
+      )
     }
 
     return result
