@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { getCachedUser, getCachedOrganization } from "@/lib/workos-directory"
+import { getCachedUser, getCachedOrganization, getCachedUsers, getCachedOrganizations } from "@/lib/workos-directory"
 import { VoucherService } from "../vouchers.service"
 import {
   createVoucherSchema,
@@ -273,16 +273,9 @@ export const createPortalVoucherRoutes = (
           ]
 
           const [userResults, orgResults] = await Promise.all([
-            Promise.all(userIds.map((id) => getCachedUser(id))),
-            Promise.all(orgIds.map((id) => getCachedOrganization(id))),
+            getCachedUsers(userIds),
+            getCachedOrganizations(orgIds),
           ])
-
-          const userMap = new Map(
-            userResults.filter(Boolean).map((u) => [u!.id, u!.name])
-          )
-          const orgMap = new Map(
-            orgResults.filter(Boolean).map((o) => [o!.id, o!.name])
-          )
 
           const claimNames = new Map<
             string,
@@ -290,8 +283,8 @@ export const createPortalVoucherRoutes = (
           >()
           for (const claim of voucher.claims) {
             claimNames.set(claim.id, {
-              userName: userMap.get(claim.workosUserId) ?? null,
-              orgName: orgMap.get(claim.organizationId) ?? null,
+              userName: userResults.get(claim.workosUserId)?.name ?? null,
+              orgName: orgResults.get(claim.organizationId)?.name ?? null,
             })
           }
 
