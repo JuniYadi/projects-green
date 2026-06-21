@@ -28,6 +28,7 @@ import {
   HardDrivesIcon,
   LifebuoyIcon,
   Lightning,
+  ListMagnifyingGlassIcon,
   MapPinIcon,
   PackageIcon,
   PaperPlaneTiltIcon,
@@ -239,6 +240,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <CrosshairIcon />,
         isActive: startsWithRoute(path, "/portal/app/detector"),
+      },
+      {
+        title: "Events",
+        url: localizePathname({
+          pathname: "/portal/app/events/github",
+          locale,
+        }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/portal/app/events"),
       },
     ],
   },
