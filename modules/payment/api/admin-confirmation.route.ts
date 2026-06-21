@@ -18,6 +18,7 @@ const requireConfirmationAuth = async (set: {
       ok: false as const,
       error: "UNAUTHORIZED" as const,
       message: "Authentication required",
+      user: null,
     }
   }
   const platformRole = await getPlatformRoleForUser(auth.user)
@@ -27,9 +28,10 @@ const requireConfirmationAuth = async (set: {
       ok: false as const,
       error: "FORBIDDEN" as const,
       message: "Admin access required",
+      user: null,
     }
   }
-  return null
+  return { ok: true as const, user: auth.user }
 }
 
 export const createAdminConfirmationRoutes = () =>
@@ -64,16 +66,15 @@ export const createAdminConfirmationRoutes = () =>
     })
 
     .post("/:id/approve", async ({ params, set }) => {
-      const err = await requireConfirmationAuth(set)
-      if (err) return err
-
-      await confirmationService.approve(params.id, (await withAuth()).user!.id)
+      const result = await requireConfirmationAuth(set)
+      if (!result.ok) return result
+      await confirmationService.approve(params.id, result.user.id)
       return { message: "Payment approved and balance credited" }
     })
 
     .post("/:id/reject", async ({ params, body, set }) => {
-      const err = await requireConfirmationAuth(set)
-      if (err) return err
+      const result = await requireConfirmationAuth(set)
+      if (!result.ok) return result
 
       const parseResult = ReviewConfirmationSchema.safeParse(body)
       if (!parseResult.success || parseResult.data.action !== "reject") {
@@ -87,7 +88,7 @@ export const createAdminConfirmationRoutes = () =>
 
       await confirmationService.reject(
         params.id,
-        (await withAuth()).user!.id,
+        result.user.id,
         parseResult.data.reason || ""
       )
       return { message: "Payment rejected" }

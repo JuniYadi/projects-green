@@ -100,7 +100,10 @@ export const createAdminGatewayRoutes = () =>
         supportedCurrencies,
       })
     })
-    .get("/providers", () => {
+    .get("/providers", async ({ set }) => {
+      const err = await requireGatewayAuth(set)
+      if (err) return err
+
       const providers = listProviders()
 
       return providers.map((p) => ({
