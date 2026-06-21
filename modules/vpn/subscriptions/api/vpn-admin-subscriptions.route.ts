@@ -1,4 +1,5 @@
 import { Elysia } from "elysia"
+import { createWorkOS } from "@workos-inc/node"
 
 import { prisma } from "@/lib/prisma"
 import { logProvisioningEvent } from "@/lib/audit.service"
@@ -48,7 +49,29 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
       const subs = await service.listAll()
-      return { ok: true, data: subs.map(toVpnSubscriptionDTO) }
+
+      // Resolve organization names from WorkOS
+      const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
+      const orgNames = new Map<string, string>()
+      for (const sub of subs) {
+        if (!orgNames.has(sub.organizationId)) {
+          try {
+            const org = await workos.organizationManagement.getOrganization(
+              sub.organizationId
+            )
+            orgNames.set(sub.organizationId, org.name)
+          } catch {
+            orgNames.set(sub.organizationId, sub.organizationId)
+          }
+        }
+      }
+
+      return {
+        ok: true,
+        data: subs.map((s) =>
+          toVpnSubscriptionDTO(s, orgNames.get(s.organizationId) ?? null)
+        ),
+      }
     })
     .get("/admin/vpn/subscriptions/:id", async ({ params, set }) => {
       const actor = await guard(set)

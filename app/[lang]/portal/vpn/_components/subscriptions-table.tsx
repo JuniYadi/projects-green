@@ -208,7 +208,7 @@ export function SubscriptionsTable() {
                         )}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {sub.organizationId}
+                        {sub.organizationName ?? sub.organizationId}
                       </TableCell>
                       <TableCell>
                         <Badge variant={STATUS_VARIANT[sub.status]}>
@@ -291,8 +291,8 @@ export function SubscriptionsTable() {
                                     >
                                       <Eye className="h-4 w-4" />
                                     </Button>
-                                    {account.provisioningStatus ===
-                                      "FAILED" && (
+                                    {(account.provisioningStatus === "FAILED" ||
+                                      account.provisioningStatus === "PENDING") && (
                                       <Button
                                         variant="outline"
                                         size="sm"
@@ -305,8 +305,8 @@ export function SubscriptionsTable() {
                                       </Button>
                                     )}
                                     {(account.provisioningStatus === "ACTIVE" ||
-                                      account.provisioningStatus ===
-                                        "FAILED") && (
+                                      account.provisioningStatus === "FAILED" ||
+                                      account.provisioningStatus === "PENDING") && (
                                       <Button
                                         variant="ghost"
                                         size="sm"

@@ -131,6 +131,7 @@ export type ProvisioningSummary = {
 export type VpnSubscriptionItem = {
   id: string
   organizationId: string
+  organizationName: string | null
   packageId: string
   status: "ACTIVE" | "SUSPENDED" | "EXPIRED"
   currentPeriodStart: string
