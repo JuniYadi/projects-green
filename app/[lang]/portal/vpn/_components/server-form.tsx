@@ -171,12 +171,10 @@ export function ServerForm({
         const createBody = { ...body, isActive: false }
         const created = await vpnApi<{ ok: true; data: { id: string } }>(
           "/admin/vpn/servers",
-          {
-            method: "POST",
-            body: JSON.stringify(createBody),
-          }
+          { method: "POST", body: JSON.stringify(createBody) }
         )
-        const serverId = created.data.id
+        const serverId = created.data?.id
+        if (!serverId) throw new Error("Server creation failed: invalid response")
 
         // Run connection test
         setSaving(false)
@@ -232,8 +230,8 @@ export function ServerForm({
   const rollbackServer = async (serverId: string) => {
     try {
       await vpnApi(`/admin/vpn/servers/${serverId}`, { method: "DELETE" })
-    } catch {
-      // Ignore rollback errors — the server stays inactive
+    } catch (err) {
+      console.error(`Failed to rollback server ${serverId}:`, err)
     }
   }
 
