@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -36,7 +37,10 @@ export function StepOrganization({ data, updateData, errors }: Props) {
           )
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error("Failed to load organizations:", err)
+        toast.error("Failed to load organizations")
+      })
       .finally(() => setLoading(false))
   }, [])
 

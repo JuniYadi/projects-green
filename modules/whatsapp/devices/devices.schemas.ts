@@ -6,6 +6,10 @@
 
 import { z } from "zod"
 
+// ─── Constants ──────────────────────────────────────────────────────────────────
+
+export const DEFAULT_QUOTA_BASE = 1000
+
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export const deviceStatusEnum = z.enum(["ACTIVE", "NON_ACTIVE"])

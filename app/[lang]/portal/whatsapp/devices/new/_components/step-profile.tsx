@@ -77,19 +77,6 @@ function KeyValueEditor({
 }
 
 export function StepProfile({ data, updateData, errors }: Props) {
-  const [profileField, setProfileField] = useState("")
-
-  const addProfileField = () => {
-    if (!profileField.trim()) return
-    updateData({
-      whatsappProfile: {
-        ...data.whatsappProfile,
-        [profileField.trim()]: "",
-      },
-    })
-    setProfileField("")
-  }
-
   return (
     <div className="grid gap-5">
       <h2 className="text-lg font-semibold">Profile & Features</h2>

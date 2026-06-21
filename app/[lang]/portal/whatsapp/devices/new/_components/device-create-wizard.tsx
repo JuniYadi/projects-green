@@ -35,6 +35,13 @@ export type WizardData = {
   token: string
 }
 
+type ApiValidationError = {
+  ok: false
+  error?: string
+  message?: string
+  fieldErrors?: Record<string, string>
+}
+
 const emptyData: WizardData = {
   organizationId: "",
   phoneNumber: "",
@@ -97,6 +104,7 @@ function validateStep(
   return errors
 }
 
+import { adminCreateDeviceSchema } from "@/modules/whatsapp/devices/devices.schemas"
 import type { AppLocale } from "@/lib/i18n/config"
 
 type DeviceCreateWizardProps = {
@@ -170,14 +178,13 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
             : undefined,
       }
 
-      const { data: body } = await eden.api.admin.devices.post(payload as never)
+      const validated = adminCreateDeviceSchema.parse(payload)
+      // ponytail: route handler uses `any` body — Eden can't infer the type here
+      const { data: body } = await eden.api.admin.devices.post(validated as any)
 
       if (!body?.ok) {
-        const errBody = body as {
-          message?: string
-          fieldErrors?: Record<string, string>
-        }
-        if (errBody?.fieldErrors) {
+        const errBody = body as ApiValidationError
+        if (errBody.fieldErrors) {
           setErrors(errBody.fieldErrors)
           // Find which step has the error and go there
           const fieldStepMap: Record<string, number> = {
@@ -209,7 +216,7 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
             }
           }
         }
-        throw new Error(errBody?.message || "Failed to create device.")
+        throw new Error(errBody.message || "Failed to create device.")
       }
 
       const device = (body as { device?: { id?: string } }).device
@@ -221,7 +228,7 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
         })
       )
     } catch (err) {
-      if (err instanceof Error && !err.message.includes("fieldErrors")) {
+      if (err instanceof Error) {
         toast.error(err.message)
       }
     } finally {

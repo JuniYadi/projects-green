@@ -11,6 +11,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 import {
+  DEFAULT_QUOTA_BASE,
   type DeviceService,
   type DeviceDetail,
   type DeviceListItem,
@@ -108,7 +109,7 @@ export const createDeviceService = (
           token: input.token ?? null,
           rates: input.rates ?? null,
           s3Path: input.s3 ?? null,
-          quotaBase: input.quotaBase ?? 1000,
+          quotaBase: input.quotaBase ?? DEFAULT_QUOTA_BASE,
           quotaBaseIn: input.quotaBaseIn ?? 0,
           quotaBaseOut: input.quotaBaseOut ?? 0,
           dailyLimitMessage: input.dailyLimitMessage ?? 0,
@@ -117,11 +118,13 @@ export const createDeviceService = (
           ...(input.features
             ? { features: input.features as Prisma.InputJsonValue }
             : {}),
-          ...(input.displayName
-            ? { whatsappProfile: { name: input.displayName } as Prisma.InputJsonValue }
-            : {}),
-          ...(input.whatsappProfile
-            ? { whatsappProfile: input.whatsappProfile as Prisma.InputJsonValue }
+          ...(input.displayName || input.whatsappProfile
+            ? {
+                whatsappProfile: {
+                  ...(input.displayName ? { name: input.displayName } : {}),
+                  ...(input.whatsappProfile ?? {}),
+                } as Prisma.InputJsonValue,
+              }
             : {}),
         },
       })

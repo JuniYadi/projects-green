@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Pencil } from "@phosphor-icons/react"
 import type { WizardData } from "./device-create-wizard"
+import { DEFAULT_QUOTA_BASE } from "@/modules/whatsapp/devices/devices.schemas"
 
 type Props = {
   data: WizardData
@@ -79,7 +80,7 @@ export function StepReview({ data, goToStep }: Props) {
       </ReviewSection>
 
       <ReviewSection title="Quotas & Limits" step={2} goToStep={goToStep}>
-        <Field label="Quota Base" value={data.quotaBase || "1000 (default)"} />
+        <Field label="Quota Base" value={data.quotaBase || `${DEFAULT_QUOTA_BASE} (default)`} />
         <Field label="Quota Base In" value={data.quotaBaseIn || "0"} />
         <Field label="Quota Base Out" value={data.quotaBaseOut || "0"} />
         <Field
