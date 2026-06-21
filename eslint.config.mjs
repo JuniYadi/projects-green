@@ -56,6 +56,12 @@ const eslintConfig = defineConfig([
     files: [
       "app/**/*.ts",
       "app/**/*.tsx",
+      "app/**/*/page.ts",
+      "app/**/*/page.tsx",
+      "app/**/*/*.ts",
+      "app/**/*/*.tsx",
+      "app/**/*/*/*.ts",
+      "app/**/*/*/*.tsx",
       "components/**/*.ts",
       "components/**/*.tsx",
       "hooks/**/*.ts",

@@ -25,7 +25,13 @@ import {
 } from "@/components/ui/dialog"
 import { PlusIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react"
 
-import { vpnApi, type VpnRegionItem } from "./vpn-admin-client"
+import {
+  listVpnRegions,
+  createVpnRegion,
+  updateVpnRegion,
+  deleteVpnRegion,
+  type VpnRegionItem,
+} from "./vpn-admin-client"
 
 type FormState = { name: string; countryCode: string; isActive: boolean }
 
@@ -45,9 +51,7 @@ export function RegionsTable() {
     setLoading(true)
     setError(null)
     try {
-      const res = await vpnApi<{ ok: true; data: VpnRegionItem[] }>(
-        "/admin/vpn/regions"
-      )
+      const res = await listVpnRegions()
       setRegions(res.data)
     } catch (err) {
       setError((err as Error).message)
@@ -85,12 +89,9 @@ export function RegionsTable() {
     try {
       const body = JSON.stringify(form)
       if (editing) {
-        await vpnApi(`/admin/vpn/regions/${editing.id}`, {
-          method: "PUT",
-          body,
-        })
+        await updateVpnRegion(editing.id, JSON.parse(body))
       } else {
-        await vpnApi("/admin/vpn/regions", { method: "POST", body })
+        await createVpnRegion(JSON.parse(body))
       }
       setDialogOpen(false)
       await load()
@@ -104,7 +105,7 @@ export function RegionsTable() {
   const remove = async (region: VpnRegionItem) => {
     if (!window.confirm(`Delete region "${region.name}"?`)) return
     try {
-      await vpnApi(`/admin/vpn/regions/${region.id}`, { method: "DELETE" })
+      await deleteVpnRegion(region.id)
       await load()
     } catch (err) {
       window.alert((err as Error).message)

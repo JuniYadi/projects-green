@@ -22,7 +22,10 @@ import {
 } from "@/components/ui/dialog"
 
 import {
-  vpnApi,
+  testVpnServer,
+  updateVpnServer,
+  createVpnServer,
+  deleteVpnServer,
   type ScanResult,
   type VpnRegionItem,
   type VpnServerItem,
@@ -124,10 +127,7 @@ export function ServerForm({
     setTestModalOpen(true)
     setScanResult(null)
     try {
-      const res = await vpnApi<{ ok: true; data: ScanResult }>(
-        `/admin/vpn/servers/${editing.id}/test`,
-        { method: "POST" }
-      )
+      const res = await testVpnServer(editing.id)
       setScanResult(res.data)
     } catch (err) {
       setTestModalOpen(false)
@@ -159,22 +159,73 @@ export function ServerForm({
         proxyPort: protocols.proxy.enabled ? protocols.proxy.port : undefined,
       }
       if (editing) {
-        await vpnApi(`/admin/vpn/servers/${editing.id}`, {
-          method: "PUT",
-          body: JSON.stringify(body),
-        })
+        // Edit flow: save directly (test is optional)
+        await updateVpnServer(editing.id, body)
+        onOpenChange(false)
+        await onSaved()
       } else {
-        await vpnApi("/admin/vpn/servers", {
-          method: "POST",
-          body: JSON.stringify(body),
-        })
+        // Create flow: save as inactive → test → activate or rollback
+        const createBody = { ...body, isActive: false }
+        const created = await createVpnServer(createBody)
+        const serverId = created.data?.id
+        if (!serverId) throw new Error("Server creation failed: invalid response")
+
+        // Run connection test
+        setSaving(false)
+        setTesting(true)
+        let testResult: ScanResult
+        try {
+          const testRes = await testVpnServer(serverId, {
+            signal: AbortSignal.timeout(30_000),
+          })
+          testResult = testRes.data
+        } catch (testErr) {
+          // Test request failed (network error, timeout, 500, etc.)
+          setTesting(false)
+          await rollbackServer(serverId)
+          const msg = (testErr as Error).message
+          setError(
+            msg.includes("timeout")
+              ? "Connection test timed out after 30s — server may be unreachable"
+              : `Connection test failed: ${msg}`
+          )
+          return
+        }
+
+        // Check SSH reachability
+        const sshPassed = testResult.results.some(
+          (r) => r.check === "ssh" && r.status === "pass"
+        )
+        if (!sshPassed) {
+          setTesting(false)
+          await rollbackServer(serverId)
+          const sshResult = testResult.results.find((r) => r.check === "ssh")
+          setError(
+            `Server unreachable: ${sshResult?.message ?? "SSH connection failed"}`
+          )
+          return
+        }
+
+        // SSH passed → activate the server
+        setSaving(true)
+        setTesting(false)
+        await updateVpnServer(serverId, { ...body, isActive: true })
+        onOpenChange(false)
+        await onSaved()
       }
-      onOpenChange(false)
-      await onSaved()
     } catch (err) {
       setError((err as Error).message)
     } finally {
       setSaving(false)
+      setTesting(false)
+    }
+  }
+
+  const rollbackServer = async (serverId: string) => {
+    try {
+      await deleteVpnServer(serverId)
+    } catch (err) {
+      console.error(`Failed to rollback server ${serverId}:`, err)
     }
   }
 
@@ -365,8 +416,12 @@ export function ServerForm({
               {testing ? "Testing..." : "Test Connection"}
             </Button>
           )}
-          <Button onClick={submit} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
+          <Button onClick={submit} disabled={saving || testing}>
+            {saving
+              ? "Saving..."
+              : testing
+                ? "Testing connection..."
+                : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>

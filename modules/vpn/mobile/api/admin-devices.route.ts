@@ -17,6 +17,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
 import { getClientIp } from "@/lib/rate-limit"
 import { logAuditEvent } from "@/lib/audit.service"
+import { getPlatformRoleForUser } from "@/lib/platform-role"
 
 import {
   VpnMobileDeviceService,
@@ -70,7 +71,7 @@ const notFound = (set: RouteSet) => {
   }
 }
 
-const isSuperAdmin = (auth: AuthContext) => {
+const isSuperAdminViaJwt = (auth: AuthContext) => {
   const roles = new Set([auth.role, ...(auth.roles ?? [])].filter(Boolean))
   return roles.has("super_admin")
 }
@@ -80,6 +81,22 @@ const isOrgAdmin = (auth: AuthContext) => {
   return ["admin", "owner", "user_admin", "user_owner"].some((role) =>
     roles.has(role)
   )
+}
+
+/**
+ * Check super_admin via DB (authPlatformUserRole table).
+ * Falls back to JWT role if DB lookup fails.
+ */
+const isSuperAdminViaDb = async (auth: AuthContext): Promise<boolean> => {
+  if (!auth.user) return false
+  try {
+    const platformRole = await getPlatformRoleForUser({
+      id: auth.user.id,
+    })
+    return platformRole === "super_admin"
+  } catch {
+    return isSuperAdminViaJwt(auth)
+  }
 }
 
 const EXPORT_TAKE_LIMIT = 10_000
@@ -94,12 +111,18 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
     if (!auth.organizationId) {
       return { error: forbidden(set, "No active organization found.") }
     }
-    if (!isSuperAdmin(auth) && !isOrgAdmin(auth)) {
+    const superAdmin = await isSuperAdminViaDb(auth)
+    if (!superAdmin && !isOrgAdmin(auth)) {
       return {
         error: forbidden(set, "Admin access required."),
       }
     }
-    return { auth, organizationId: auth.organizationId, userId: auth.user.id }
+    return {
+      auth,
+      organizationId: auth.organizationId,
+      userId: auth.user.id,
+      isSuperAdmin: superAdmin,
+    }
   }
 
   return (
@@ -124,9 +147,9 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
           const where: Prisma.VpnMobileDeviceWhereInput = {}
 
           // Super admin can filter by org; admin is scoped to own org.
-          if (isSuperAdmin(ctx.auth) && query.organizationId) {
+          if (ctx.isSuperAdmin && query.organizationId) {
             where.organizationId = query.organizationId
-          } else if (!isSuperAdmin(ctx.auth)) {
+          } else if (!ctx.isSuperAdmin) {
             where.organizationId = ctx.organizationId
           }
 
@@ -216,7 +239,7 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
           // Super admin can revoke any device.
           // Org admin can only revoke devices in their org.
           if (
-            !isSuperAdmin(ctx.auth) &&
+            !ctx.isSuperAdmin &&
             device.organizationId !== ctx.organizationId
           ) {
             return forbidden(
@@ -274,7 +297,7 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
           if ("error" in ctx) return ctx.error
 
           // Only super admin can export.
-          if (!isSuperAdmin(ctx.auth)) {
+          if (!ctx.isSuperAdmin) {
             return forbidden(set, "Only super admins can export device data.")
           }
 

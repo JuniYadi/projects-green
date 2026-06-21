@@ -25,7 +25,12 @@ import {
 } from "@/components/ui/dialog"
 import { PlusIcon, TrashIcon } from "@phosphor-icons/react"
 
-import { vpnApi, type VpnSshKeyItem } from "./vpn-admin-client"
+import {
+  listVpnSshKeys,
+  createVpnSshKey,
+  deleteVpnSshKey,
+  type VpnSshKeyItem,
+} from "./vpn-admin-client"
 
 export function SshKeysTable() {
   const [keys, setKeys] = useState<VpnSshKeyItem[]>([])
@@ -41,9 +46,7 @@ export function SshKeysTable() {
     setLoading(true)
     setError(null)
     try {
-      const res = await vpnApi<{ ok: true; data: VpnSshKeyItem[] }>(
-        "/admin/vpn/ssh-keys"
-      )
+      const res = await listVpnSshKeys()
       setKeys(res.data)
     } catch (err) {
       setError((err as Error).message)
@@ -68,10 +71,7 @@ export function SshKeysTable() {
     setSaving(true)
     setFormError(null)
     try {
-      await vpnApi("/admin/vpn/ssh-keys", {
-        method: "POST",
-        body: JSON.stringify({ name, privateKey }),
-      })
+      await createVpnSshKey({ name, privateKey })
       setDialogOpen(false)
       await load()
     } catch (err) {
@@ -84,7 +84,7 @@ export function SshKeysTable() {
   const remove = async (key: VpnSshKeyItem) => {
     if (!window.confirm(`Delete SSH key "${key.name}"?`)) return
     try {
-      await vpnApi(`/admin/vpn/ssh-keys/${key.id}`, { method: "DELETE" })
+      await deleteVpnSshKey(key.id)
       await load()
     } catch (err) {
       window.alert((err as Error).message)

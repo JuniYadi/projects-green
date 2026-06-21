@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { X } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { type VpnServerAccountEntry, vpnApi } from "./vpn-admin-client"
+import { type VpnServerAccountEntry, getVpnProvisioningAudit } from "./vpn-admin-client"
 import { ProvisioningTimeline, type AuditEvent } from "./provisioning-timeline"
 
 type ApiAuditEntry = {
@@ -36,9 +36,7 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
       setLoading(true)
       setError(null)
       try {
-        const res = await vpnApi<{ ok: true; data: ApiAuditEntry[] }>(
-          `/admin/vpn/audit/accounts/${account.id}?type=all`,
-        )
+        const res = await getVpnProvisioningAudit(account.id, { type: "all" })
 
         if (cancelled) return
         const mapped: AuditEvent[] = (res.data ?? []).map((entry) => ({

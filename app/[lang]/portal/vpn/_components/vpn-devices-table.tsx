@@ -29,7 +29,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { vpnApi } from "./vpn-admin-client"
+import {
+  listVpnMobileAdminDevices,
+  revokeVpnMobileDevice,
+} from "./vpn-admin-client"
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -115,14 +118,12 @@ export function VpnDevicesTable() {
       if (filters.pairedVia) params.set("pairedVia", filters.pairedVia)
       if (filters.search) params.set("search", filters.search)
 
-      const res = await vpnApi<
-        {
-          ok: true
-        } & AdminDeviceListResponse
-      >(`/vpn/mobile/admin/devices?${params.toString()}`)
+      const res = await listVpnMobileAdminDevices(
+        Object.fromEntries(params.entries())
+      )
       startTransition(() => {
-        setDevices(res.devices)
-        setTotal(res.total)
+        setDevices(res.data.devices)
+        setTotal(res.data.total)
       })
     } catch (err) {
       setError((err as Error).message)
@@ -143,12 +144,10 @@ export function VpnDevicesTable() {
     if (!deviceId) return
     setRevoking(deviceId)
     try {
-      await vpnApi<{ ok: true }>(`/vpn/mobile/admin/devices/${deviceId}`, {
-        method: "DELETE",
-        body: revokeReason
-          ? JSON.stringify({ reason: revokeReason })
-          : JSON.stringify({}),
-      })
+      await revokeVpnMobileDevice(
+        deviceId,
+        revokeReason ? { reason: revokeReason } : {}
+      )
       setShowRevokeDialog(null)
       setRevokeReason("")
       await load()

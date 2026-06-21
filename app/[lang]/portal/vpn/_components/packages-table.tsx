@@ -16,7 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { PlusIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react"
 
 import {
-  vpnApi,
+  listVpnPackages,
+  listVpnServers,
+  deleteVpnPackage,
   type VpnPackageItem,
   type VpnServerItem,
 } from "./vpn-admin-client"
@@ -45,8 +47,8 @@ export function PackagesTable() {
     setError(null)
     try {
       const [pkgRes, serverRes] = await Promise.all([
-        vpnApi<{ ok: true; data: VpnPackageItem[] }>("/admin/vpn/packages"),
-        vpnApi<{ ok: true; data: VpnServerItem[] }>("/admin/vpn/servers"),
+        listVpnPackages(),
+        listVpnServers(),
       ])
       setPackages(pkgRes.data)
       setServers(serverRes.data)
@@ -80,7 +82,7 @@ export function PackagesTable() {
     )
       return
     try {
-      await vpnApi(`/admin/vpn/packages/${pkg.id}`, { method: "DELETE" })
+      await deleteVpnPackage(pkg.id)
       await load()
     } catch (err) {
       window.alert((err as Error).message)

@@ -33,7 +33,11 @@ import {
 import { ServerForm } from "./server-form"
 import { ConnectionTestModal } from "./connection-test-modal"
 import {
-  vpnApi,
+  listVpnServers,
+  listVpnRegions,
+  listVpnSshKeys,
+  deleteVpnServer,
+  testVpnServer,
   type ScanResult,
   type VpnRegionItem,
   type VpnServerItem,
@@ -82,12 +86,11 @@ export function ServersTable() {
     setLoading(true)
     setError(null)
     try {
-      const qs = new URLSearchParams()
-      if (regionId && regionId !== "all") qs.set("regionId", regionId)
-      if (search) qs.set("search", search)
-      const query = qs.toString()
-      const res = await vpnApi<{ ok: true; data: VpnServerItem[] }>(
-        `/admin/vpn/servers${query ? `?${query}` : ""}`
+      const qs: Record<string, string> = {}
+      if (regionId && regionId !== "all") qs.regionId = regionId
+      if (search) qs.search = search
+      const res = await listVpnServers(
+        Object.keys(qs).length > 0 ? qs : undefined
       )
       setServers(res.data)
     } catch (err) {
@@ -100,8 +103,8 @@ export function ServersTable() {
   const loadRefs = useCallback(async () => {
     try {
       const [regionsRes, keysRes] = await Promise.all([
-        vpnApi<{ ok: true; data: VpnRegionItem[] }>("/admin/vpn/regions"),
-        vpnApi<{ ok: true; data: VpnSshKeyItem[] }>("/admin/vpn/ssh-keys"),
+        listVpnRegions(),
+        listVpnSshKeys(),
       ])
       setRegions(regionsRes.data)
       setSshKeys(keysRes.data)
@@ -148,7 +151,7 @@ export function ServersTable() {
   const remove = async (server: VpnServerItem) => {
     if (!window.confirm(`Delete server "${server.name}"?`)) return
     try {
-      await vpnApi(`/admin/vpn/servers/${server.id}`, { method: "DELETE" })
+      await deleteVpnServer(server.id)
       await loadServers(regionFilter, searchDebounced)
     } catch (err) {
       window.alert((err as Error).message)
@@ -160,10 +163,7 @@ export function ServersTable() {
     setTestTarget(server)
     setTestResult(null)
     try {
-      const res = await vpnApi<{ ok: true; data: ScanResult }>(
-        `/admin/vpn/servers/${server.id}/test`,
-        { method: "POST" }
-      )
+      const res = await testVpnServer(server.id)
       setTestResult(res.data)
     } catch (err) {
       window.alert((err as Error).message)

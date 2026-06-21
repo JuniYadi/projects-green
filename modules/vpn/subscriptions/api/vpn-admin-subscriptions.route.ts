@@ -64,10 +64,22 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
       )
       const orgNames = new Map(results.map((r) => [r.id, r.name]))
 
+      // Resolve package names from database
+      const uniquePackageIds = [...new Set(subs.map((s) => s.packageId))]
+      const packages = await prisma.vpnPackage.findMany({
+        where: { id: { in: uniquePackageIds } },
+        select: { id: true, name: true },
+      })
+      const packageNames = new Map(packages.map((p) => [p.id, p.name]))
+
       return {
         ok: true,
         data: subs.map((s: VpnSubscriptionWithAccounts) =>
-          toVpnSubscriptionDTO(s, orgNames.get(s.organizationId) ?? null)
+          toVpnSubscriptionDTO(
+            s,
+            orgNames.get(s.organizationId) ?? null,
+            packageNames.get(s.packageId) ?? null
+          )
         ),
       }
     })
@@ -76,7 +88,24 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
       const sub = await service.getById(params.id)
       if (!sub) return notFound(set)
-      return { ok: true, data: toVpnSubscriptionDTO(sub) }
+
+      // Resolve organization name from WorkOS
+      const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
+      let orgName: string | null = null
+      try {
+        const org = await workos.organizations.getOrganization(sub.organizationId)
+        orgName = org.name
+      } catch (err) {
+        console.error(`Failed to fetch org ${sub.organizationId}:`, err)
+      }
+
+      // Resolve package name from database
+      const pkg = await prisma.vpnPackage.findUnique({
+        where: { id: sub.packageId },
+        select: { name: true },
+      })
+
+      return { ok: true, data: toVpnSubscriptionDTO(sub, orgName, pkg?.name ?? null) }
     })
     .post(
       "/admin/vpn/subscriptions/:id/servers/:saId/retry",

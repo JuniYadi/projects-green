@@ -84,6 +84,11 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
   })),
 }))
 
+const mockGetPlatformRoleForUser = mock(async () => "super_admin")
+mock.module("@/lib/platform-role", () => ({
+  getPlatformRoleForUser: mockGetPlatformRoleForUser,
+}))
+
 // ── Imports (after mocks) ───────────────────────────────────────────────
 
 import { createMobileAuthRoutes } from "./mobile-auth.route"
@@ -276,6 +281,7 @@ beforeEach(() => {
   mockSignJwt.mockClear()
   authenticate.mockClear()
   fakeDeviceService.create.mockClear()
+  mockGetPlatformRoleForUser.mockClear()
 })
 
 // ── Tests ───────────────────────────────────────────────────────────────
