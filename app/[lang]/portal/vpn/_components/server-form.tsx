@@ -175,17 +175,21 @@ export function ServerForm({
         setTesting(true)
         let testResult: ScanResult
         try {
-          const testRes = await testVpnServer(serverId)
+          const testRes = await testVpnServer(serverId, {
+            signal: AbortSignal.timeout(30_000),
+          })
           testResult = testRes.data
         } catch (testErr) {
-          // Test request failed (network error, 500, etc.)
+          // Test request failed (network error, timeout, 500, etc.)
+          setTesting(false)
           await rollbackServer(serverId)
+          const msg = (testErr as Error).message
           setError(
-            `Connection test failed: ${(testErr as Error).message}`
+            msg.includes("timeout")
+              ? "Connection test timed out after 30s — server may be unreachable"
+              : `Connection test failed: ${msg}`
           )
           return
-        } finally {
-          setTesting(false)
         }
 
         // Check SSH reachability
@@ -193,6 +197,7 @@ export function ServerForm({
           (r) => r.check === "ssh" && r.status === "pass"
         )
         if (!sshPassed) {
+          setTesting(false)
           await rollbackServer(serverId)
           const sshResult = testResult.results.find((r) => r.check === "ssh")
           setError(
@@ -203,6 +208,7 @@ export function ServerForm({
 
         // SSH passed → activate the server
         setSaving(true)
+        setTesting(false)
         await updateVpnServer(serverId, { ...body, isActive: true })
         onOpenChange(false)
         await onSaved()
