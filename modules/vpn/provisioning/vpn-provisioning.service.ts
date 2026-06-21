@@ -121,7 +121,7 @@ export class VpnProvisioningService {
       logProvisioningEvent({
         action: "PROVISIONING_FAILED",
         serverAccountId,
-        details: { serverAccountId, failureReason: reason, attemptNumber: 1 },
+        details: { serverAccountId, failureReason: reason },
       })
       throw error
     }
