@@ -4,7 +4,7 @@
  * Mounted at /api/admin/devices
  */
 
-import { Elysia } from "elysia"
+import { Elysia, t } from "elysia"
 import { Prisma } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
@@ -128,7 +128,7 @@ export const createAdminDevicesRoutes = (
         },
       }
     })
-    .post("/", async ({ body, set }: any) => {
+    .post("/", async ({ body, set }) => {
       const actor = await guard(set)
       if (isAdminError(actor)) return actor
 
@@ -155,6 +155,8 @@ export const createAdminDevicesRoutes = (
         console.error("[AdminDevices] Create error:", error)
         return toServerError(set, "Unable to create device.")
       }
+    }, {
+      body: t.Any(),
     })
     .patch("/:id", async ({ params: { id }, body, set }: any) => {
       const actor = await guard(set)

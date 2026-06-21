@@ -12,7 +12,10 @@ import { StepWhatsappIds } from "./step-whatsapp-ids"
 import { StepQuotas } from "./step-quotas"
 import { StepProfile } from "./step-profile"
 import { StepReview } from "./step-review"
-import { adminCreateDeviceSchema } from "@/modules/whatsapp/devices/devices.schemas"
+import {
+  adminCreateDeviceSchema,
+  type AdminCreateDeviceInput,
+} from "@/modules/whatsapp/devices/devices.schemas"
 import type { AppLocale } from "@/lib/i18n/config"
 
 export type WizardData = {
@@ -43,6 +46,8 @@ type ApiValidationError = {
   message?: string
   fieldErrors?: Record<string, string>
 }
+
+type ApiSuccessResponse = { ok: true; device?: { id?: string } }
 
 const emptyData: WizardData = {
   organizationId: "",
@@ -105,8 +110,6 @@ function validateStep(
 
   return errors
 }
-
-type ApiSuccessResponse = { ok: true; device?: { id?: string } }
 
 type DeviceCreateWizardProps = {
   locale: AppLocale
@@ -180,8 +183,9 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
       }
 
       const validated = adminCreateDeviceSchema.parse(payload)
-      // ponytail: Eden type mismatch with Elysia body — `as never` is codebase convention here
-      const { data: body } = await eden.api.admin.devices.post(validated as never)
+      const { data: body } = await eden.api.admin.devices.post(
+        validated as AdminCreateDeviceInput
+      )
 
       if (!body?.ok) {
         const errBody = body as ApiValidationError
@@ -229,9 +233,9 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
         })
       )
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to create device."
-      toast.error(msg)
+      if (err instanceof Error) {
+        toast.error(err.message)
+      }
     } finally {
       setIsSubmitting(false)
     }
