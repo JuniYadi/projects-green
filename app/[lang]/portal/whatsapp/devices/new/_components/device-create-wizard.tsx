@@ -179,8 +179,8 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
       }
 
       const validated = adminCreateDeviceSchema.parse(payload)
-      // ponytail: route handler uses `any` body — Eden can't infer the type here
-      const { data: body } = await eden.api.admin.devices.post(validated as any)
+      // ponytail: Eden type mismatch with Elysia body — `as never` is codebase convention here
+      const { data: body } = await eden.api.admin.devices.post(validated as never)
 
       if (!body?.ok) {
         const errBody = body as ApiValidationError
