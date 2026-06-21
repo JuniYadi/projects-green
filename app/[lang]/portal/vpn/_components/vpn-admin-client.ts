@@ -120,6 +120,14 @@ export type VpnServerAccountEntry = {
   updatedAt: string
 }
 
+export type ProvisioningSummary = {
+  active: number
+  pending: number
+  failed: number
+  revoked: number
+  total: number
+}
+
 export type VpnSubscriptionItem = {
   id: string
   organizationId: string
@@ -129,6 +137,7 @@ export type VpnSubscriptionItem = {
   currentPeriodEnd: string
   deviceCount: number
   serverAccounts: VpnServerAccountEntry[]
+  provisioningSummary: ProvisioningSummary
   createdAt: string
   updatedAt: string
 }
