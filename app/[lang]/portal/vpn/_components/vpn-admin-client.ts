@@ -133,12 +133,19 @@ export type VpnSubscriptionItem = {
   organizationId: string
   organizationName: string | null
   packageId: string
+  packageName: string
   status: "ACTIVE" | "SUSPENDED" | "EXPIRED"
   currentPeriodStart: string
   currentPeriodEnd: string
   deviceCount: number
   serverAccounts: VpnServerAccountEntry[]
   provisioningSummary: ProvisioningSummary
+  // Multi-currency audit fields
+  priceLocked: string
+  currency: string
+  originalPrice: string | null
+  originalCurrency: string | null
+  exchangeRate: number | null
   createdAt: string
   updatedAt: string
 }
