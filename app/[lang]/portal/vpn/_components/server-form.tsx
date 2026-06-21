@@ -159,22 +159,81 @@ export function ServerForm({
         proxyPort: protocols.proxy.enabled ? protocols.proxy.port : undefined,
       }
       if (editing) {
+        // Edit flow: save directly (test is optional)
         await vpnApi(`/admin/vpn/servers/${editing.id}`, {
           method: "PUT",
           body: JSON.stringify(body),
         })
+        onOpenChange(false)
+        await onSaved()
       } else {
-        await vpnApi("/admin/vpn/servers", {
-          method: "POST",
-          body: JSON.stringify(body),
+        // Create flow: save as inactive → test → activate or rollback
+        const createBody = { ...body, isActive: false }
+        const created = await vpnApi<{ ok: true; data: { id: string } }>(
+          "/admin/vpn/servers",
+          {
+            method: "POST",
+            body: JSON.stringify(createBody),
+          }
+        )
+        const serverId = created.data.id
+
+        // Run connection test
+        setSaving(false)
+        setTesting(true)
+        let testResult: ScanResult
+        try {
+          const testRes = await vpnApi<{ ok: true; data: ScanResult }>(
+            `/admin/vpn/servers/${serverId}/test`,
+            { method: "POST" }
+          )
+          testResult = testRes.data
+        } catch (testErr) {
+          // Test request failed (network error, 500, etc.)
+          await rollbackServer(serverId)
+          setError(
+            `Connection test failed: ${(testErr as Error).message}`
+          )
+          return
+        } finally {
+          setTesting(false)
+        }
+
+        // Check SSH reachability
+        const sshPassed = testResult.results.some(
+          (r) => r.check === "ssh" && r.status === "pass"
+        )
+        if (!sshPassed) {
+          await rollbackServer(serverId)
+          const sshResult = testResult.results.find((r) => r.check === "ssh")
+          setError(
+            `Server unreachable: ${sshResult?.message ?? "SSH connection failed"}`
+          )
+          return
+        }
+
+        // SSH passed → activate the server
+        setSaving(true)
+        await vpnApi(`/admin/vpn/servers/${serverId}`, {
+          method: "PUT",
+          body: JSON.stringify({ ...body, isActive: true }),
         })
+        onOpenChange(false)
+        await onSaved()
       }
-      onOpenChange(false)
-      await onSaved()
     } catch (err) {
       setError((err as Error).message)
     } finally {
       setSaving(false)
+      setTesting(false)
+    }
+  }
+
+  const rollbackServer = async (serverId: string) => {
+    try {
+      await vpnApi(`/admin/vpn/servers/${serverId}`, { method: "DELETE" })
+    } catch {
+      // Ignore rollback errors — the server stays inactive
     }
   }
 
@@ -365,8 +424,12 @@ export function ServerForm({
               {testing ? "Testing..." : "Test Connection"}
             </Button>
           )}
-          <Button onClick={submit} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
+          <Button onClick={submit} disabled={saving || testing}>
+            {saving
+              ? "Saving..."
+              : testing
+                ? "Testing connection..."
+                : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>
