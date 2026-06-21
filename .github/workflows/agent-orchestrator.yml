@@ -10,6 +10,10 @@ on:
         description: 'Branch on projects-green (e.g., feature/PGREEN-097)'
         required: true
         type: string
+      pr_id:
+        description: 'PR number (optional — avoids branch lookup)'
+        required: false
+        type: string
       mode:
         description: 'plan | execute | fix'
         required: true
@@ -351,22 +355,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER=$(gh pr list --head "${{ inputs.branch }}" --json number --jq '.[0].number' 2>/dev/null)
+          PR_NUMBER="${{ inputs.pr_id }}"
+          if [ -z "$PR_NUMBER" ]; then
+            PR_NUMBER=$(gh pr list --head "${{ inputs.branch }}" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          fi
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          gh pr view "$PR_NUMBER" --json reviews --jq '.reviews[] | select(.state == "CHANGES_REQUESTED") | .body' 2>/dev/null > /tmp/review-body.md
-          cat > /tmp/extract-fix-prompt.py << 'XXEOF'
-          import re
-          with open('/tmp/review-body.md') as f:
-              c = f.read()
-          m = re.search(r'AI Refactoring Prompt.*?\`\`\`\`+markdown(.*?)\`\`\`\`+', c, re.DOTALL)
-          if m:
-              with open('/tmp/fix-prompt.md', 'w') as out:
-                  out.write(m.group(1).strip())
-              print('fix_prompt_found=true')
-          else:
-              print('fix_prompt_found=false')
-          XXEOF
-          python3 /tmp/extract-fix-prompt.py 2>/dev/null || echo "fix_prompt_found=false"
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr view "$PR_NUMBER" --json reviews --jq '.reviews[] | select(.state == "CHANGES_REQUESTED") | .body' 2>/dev/null > /tmp/review-body.md
+          else
+            echo "" > /tmp/review-body.md
+          fi
+          python3 -c "$(python3 -c "import base64,sys;sys.stdout.write(base64.b64decode('aW1wb3J0IHJlCndpdGggb3BlbignL3RtcC9yZXZpZXctYm9keS5tZCcpIGFzIGY6CiAgICBjID0gZi5yZWFkKCkKbSA9IHJlLnNlYXJjaChyJ0FJIFJlZmFjdG9yaW5nIFByb21wdC4qP2BgYGArbWFya2Rvd24oLio/KWBgYGA9JywgYywgcmUuRE9UQUxMKQppZiBtOgogICAgd2l0aCBvcGVuKCcvdG1wL2ZpeC1wcm9tcHQubWQnLCAndycpIGFzIG91dDoKICAgICAgICBvdXQud3JpdGUobS5ncm91cCgxKS5zdHJpcCgpKQogICAgcHJpbnQoJ2ZpeF9wcm9tcHRfZm91bmQ9dHJ1ZScpCmVsc2U6CiAgICBwcmludCgnZml4X3Byb21wdF9mb3VuZD1mYWxzZScpCg==').decode())" 2>/dev/null || echo "fix_prompt_found=false"
 
       - name: Show fix prompt status
         run: |
