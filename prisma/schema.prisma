@@ -1368,14 +1368,16 @@ model VpnAuditLog {
   id        String   @id @default(cuid())
   deviceId  String?
   userId    String?
-  action    String // REGISTERED, REVOKED, CONFIG_DOWNLOADED
-  details   Json? // { pairedVia, profileId, revokedBy, reason, etc }
+  adminId   String?  // populated for manual admin actions (retries, revokes)
+  action    String   // REGISTERED, REVOKED, CONFIG_DOWNLOADED | PROVISIONING_STARTED, SUCCESS, FAILED, RETRIED
+  details   Json?    // action-specific payload
   ip        String?
   userAgent String?
   createdAt DateTime @default(now())
 
   @@index([deviceId, createdAt(sort: Desc)])
   @@index([action, createdAt(sort: Desc)])
+  @@index([adminId, createdAt(sort: Desc)])
 }
 
 // ─── WhatsApp Enums ────────────────────────────────────────────────────────────
