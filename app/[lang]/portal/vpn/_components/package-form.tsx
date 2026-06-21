@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/dialog"
 
 import {
-  vpnApi,
+  updateVpnPackage,
+  createVpnPackage,
   type VpnPackageItem,
   type VpnServerItem,
 } from "./vpn-admin-client"
@@ -101,15 +102,9 @@ export function PackageForm({
         serverIds: [...selected],
       }
       if (editing) {
-        await vpnApi(`/admin/vpn/packages/${editing.id}`, {
-          method: "PUT",
-          body: JSON.stringify(body),
-        })
+        await updateVpnPackage(editing.id, body)
       } else {
-        await vpnApi("/admin/vpn/packages", {
-          method: "POST",
-          body: JSON.stringify(body),
-        })
+        await createVpnPackage(body)
       }
       onOpenChange(false)
       await onSaved()
