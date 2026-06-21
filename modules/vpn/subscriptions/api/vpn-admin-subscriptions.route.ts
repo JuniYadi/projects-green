@@ -51,21 +51,21 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
       const subs = await service.listAll()
 
-      // Resolve organization names from WorkOS
+      // Resolve organization names from WorkOS (parallel fetch)
       const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
-      const orgNames = new Map<string, string>()
-      for (const sub of subs) {
-        if (!orgNames.has(sub.organizationId)) {
+      const uniqueOrgIds = [...new Set(subs.map((s) => s.organizationId))]
+      const results = await Promise.all(
+        uniqueOrgIds.map(async (id) => {
           try {
-            const org = await workos.organizations.getOrganization(
-              sub.organizationId
-            )
-            orgNames.set(sub.organizationId, org.name)
-          } catch {
-            orgNames.set(sub.organizationId, sub.organizationId)
+            const org = await workos.organizations.getOrganization(id)
+            return { id, name: org.name } as const
+          } catch (err) {
+            console.error(`Failed to fetch org ${id}:`, err)
+            return { id, name: id } as const
           }
-        }
-      }
+        })
+      )
+      const orgNames = new Map(results.map((r) => [r.id, r.name]))
 
       return {
         ok: true,
