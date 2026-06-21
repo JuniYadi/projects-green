@@ -22,48 +22,39 @@ type ProviderOptionDTO = {
 
 const gatewayService = new GatewayService()
 
+const requireGatewayAuth = async (set: { status?: number | string }) => {
+  const auth = await withAuth()
+  if (!auth.user || !auth.organizationId) {
+    set.status = 401
+    return {
+      ok: false as const,
+      error: "UNAUTHORIZED" as const,
+      message: "Authentication required",
+    }
+  }
+  const platformRole = await getPlatformRoleForUser(auth.user)
+  if (platformRole !== "super_admin") {
+    set.status = 403
+    return {
+      ok: false as const,
+      error: "FORBIDDEN" as const,
+      message: "Admin access required",
+    }
+  }
+  return null
+}
+
 export const createAdminGatewayRoutes = () =>
   new Elysia({ prefix: "/gateways" })
-    .get("/", async () => {
-      const auth = await withAuth()
-      if (!auth.user || !auth.organizationId) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
+    .get("/", async ({ set }) => {
+      const err = await requireGatewayAuth(set)
+      if (err) return err
 
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
-
-      const gateways = await gatewayService.list(true)
-      return { ok: true, data: gateways }
+      return gatewayService.list(true)
     })
-    .post("/", async ({ body }) => {
-      const auth = await withAuth()
-      if (!auth.user || !auth.organizationId) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
-
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
+    .post("/", async ({ body, set }) => {
+      const err = await requireGatewayAuth(set)
+      if (err) return err
 
       const { name, type, config, isDefault, supportedCurrencies } = body as {
         name: string
@@ -78,33 +69,17 @@ export const createAdminGatewayRoutes = () =>
         supportedCurrencies?: string[]
       }
 
-      const gateway = await gatewayService.create({
+      return gatewayService.create({
         name,
         type,
         config,
         isDefault,
         supportedCurrencies,
       })
-      return { ok: true, data: gateway }
     })
-    .put("/:id", async ({ body, params }) => {
-      const auth = await withAuth()
-      if (!auth.user || !auth.organizationId) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
-
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
+    .put("/:id", async ({ body, params, set }) => {
+      const err = await requireGatewayAuth(set)
+      if (err) return err
 
       const { name, config, isDefault, supportedCurrencies } = body as {
         name?: string
@@ -118,18 +93,17 @@ export const createAdminGatewayRoutes = () =>
         supportedCurrencies?: string[]
       }
 
-      const gateway = await gatewayService.update(params.id, {
+      return gatewayService.update(params.id, {
         name,
         config,
         isDefault,
         supportedCurrencies,
       })
-      return { ok: true, data: gateway }
     })
-    .get("/providers", async () => {
+    .get("/providers", () => {
       const providers = listProviders()
 
-      const dtos: ProviderOptionDTO[] = providers.map((p) => ({
+      return providers.map((p) => ({
         value: p.id,
         label: p.name,
         supportedCurrencies: p.supportedCurrencies,
@@ -143,28 +117,10 @@ export const createAdminGatewayRoutes = () =>
           options: f.options,
         })),
       }))
-
-      return { ok: true, data: dtos }
     })
-    .patch("/:id/toggle", async ({ params }) => {
-      const auth = await withAuth()
-      if (!auth.user || !auth.organizationId) {
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Authentication required",
-        }
-      }
+    .patch("/:id/toggle", async ({ params, set }) => {
+      const err = await requireGatewayAuth(set)
+      if (err) return err
 
-      const platformRole = await getPlatformRoleForUser(auth.user)
-      if (platformRole !== "super_admin") {
-        return {
-          ok: false,
-          error: "FORBIDDEN",
-          message: "Admin access required",
-        }
-      }
-
-      const gateway = await gatewayService.toggle(params.id)
-      return { ok: true, data: gateway }
+      return gatewayService.toggle(params.id)
     })

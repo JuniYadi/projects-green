@@ -39,7 +39,7 @@ export function OverviewTab() {
 
   const fetchStats = useCallback(async () => {
     try {
-      // Fetch stats in parallel
+      // Fetch stats in parallel — Eden returns { data: rawValue, error }
       const [gatewaysRes, bankAccountsRes, confirmationsRes] =
         await Promise.all([
           eden.api.portal.payments.gateways.get(),
@@ -47,27 +47,23 @@ export function OverviewTab() {
           eden.api.portal.payments.confirmations.get(),
         ])
 
-      const gateways = gatewaysRes.data ?? { ok: false }
-      const bankAccounts = bankAccountsRes.data ?? { ok: false }
-      const confirmations = confirmationsRes.data ?? { ok: false }
+      const gateways = (gatewaysRes.data ?? []) as {
+        isActive?: boolean
+      }[]
+      const bankAccounts = (bankAccountsRes.data ?? []) as {
+        isDefault?: boolean
+      }[]
+      const confirmations = (confirmationsRes.data ?? []) as ConfirmationItem[]
 
       setState({
         status: "success",
-        pendingItems: confirmations.ok ? (confirmations.data ?? []) : [],
+        pendingItems: confirmations,
         data: {
-          totalGateways: gateways.ok ? (gateways.data?.length ?? 0) : 0,
-          activeGateways: gateways.ok
-            ? (gateways.data?.filter((g) => g.isActive).length ?? 0)
-            : 0,
-          totalBankAccounts: bankAccounts.ok
-            ? (bankAccounts.data?.length ?? 0)
-            : 0,
-          verifiedBankAccounts: bankAccounts.ok
-            ? (bankAccounts.data?.filter((b) => b.isDefault).length ?? 0)
-            : 0,
-          pendingConfirmations: confirmations.ok
-            ? (confirmations.data?.length ?? 0)
-            : 0,
+          totalGateways: gateways.length,
+          activeGateways: gateways.filter((g) => g.isActive).length,
+          totalBankAccounts: bankAccounts.length,
+          verifiedBankAccounts: bankAccounts.filter((b) => b.isDefault).length,
+          pendingConfirmations: confirmations.length,
           totalProcessed: 0, // Would need separate API for this
         },
       })

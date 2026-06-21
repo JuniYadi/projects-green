@@ -135,15 +135,20 @@ export function CurrenciesTab() {
 
   const fetchCurrencies = useCallback(async () => {
     try {
-      const { data: payload } = await eden.api.portal.payments.currencies.get()
-      if (!payload?.ok) {
+      const { data, error } = await eden.api.portal.payments.currencies.get()
+      if (error) {
         setState({
           status: "error",
-          message: payload?.message || "Failed to load currencies",
+          message:
+            (error.value as { message?: string })?.message ||
+            "Failed to load currencies",
         })
         return
       }
-      setState({ status: "success", data: payload.data || [] })
+      setState({
+        status: "success",
+        data: (data as Currency[]) ?? [],
+      })
     } catch {
       setState({ status: "error", message: "Failed to load currencies" })
     }
@@ -173,25 +178,21 @@ export function CurrenciesTab() {
         minTopup: Number(formData.get("minTopup") || 0),
         maxTopup: Number(formData.get("maxTopup") || 0),
       }
-      let rawPayload: unknown
+      let res: { data: unknown; error: unknown }
       if (method === "POST") {
-        rawPayload = await eden.api.portal.payments.currencies.post(
-          body as never
-        )
+        res = await eden.api.portal.payments.currencies.post(body as never)
       } else {
-        rawPayload = await (
+        res = await (
           eden.api.portal.payments.currencies.put as unknown as (
             ...args: never[]
-          ) => Promise<unknown>
+          ) => Promise<{ data: unknown; error: unknown }>
         )(body as never)
       }
-      const payload = (
-        rawPayload as { data: { ok: boolean; message?: string } }
-      ).data
-      if (!payload?.ok) {
+      if (res.error) {
+        const errVal = (res.error as { value?: { message?: string } })?.value
         setState({
           status: "error",
-          message: payload?.message || "Failed to save currency",
+          message: errVal?.message || "Failed to save currency",
         })
         return false
       }
@@ -235,12 +236,14 @@ export function CurrenciesTab() {
   async function handleToggle(id: string) {
     setIsSubmitting(true)
     try {
-      const { data: payload } =
+      const { error } =
         await eden.api.portal.payments.currencies[id].toggle.patch()
-      if (!payload?.ok) {
+      if (error) {
         setState({
           status: "error",
-          message: payload?.message || "Failed to toggle currency",
+          message:
+            (error.value as { message?: string })?.message ||
+            "Failed to toggle currency",
         })
         return
       }

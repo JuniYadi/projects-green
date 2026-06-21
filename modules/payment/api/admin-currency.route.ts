@@ -61,8 +61,7 @@ export const createAdminCurrencyRoutes = () =>
         return { ok: false, error: guard.error, message: guard.message }
       }
 
-      const currencies = await currencyService.listDTO(true)
-      return { ok: true, data: currencies }
+      return currencyService.listDTO(true)
     })
     .post("/", async ({ body, set }) => {
       const guard = await requireSuperAdmin()
@@ -84,7 +83,7 @@ export const createAdminCurrencyRoutes = () =>
 
       try {
         const currency = await currencyService.create(parsed.data)
-        return { ok: true, data: toCurrencyDTO(currency) }
+        return toCurrencyDTO(currency)
       } catch (error) {
         set.status = 400
         return {
@@ -117,7 +116,7 @@ export const createAdminCurrencyRoutes = () =>
 
       try {
         const currency = await currencyService.update(params.id, parsed.data)
-        return { ok: true, data: toCurrencyDTO(currency) }
+        return toCurrencyDTO(currency)
       } catch (error) {
         set.status = 400
         return {
@@ -139,7 +138,7 @@ export const createAdminCurrencyRoutes = () =>
 
       try {
         const currency = await currencyService.toggle(params.id)
-        return { ok: true, data: toCurrencyDTO(currency) }
+        return toCurrencyDTO(currency)
       } catch (error) {
         set.status = 400
         return {
