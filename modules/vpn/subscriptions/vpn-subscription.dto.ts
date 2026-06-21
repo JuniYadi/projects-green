@@ -44,6 +44,7 @@ export type ProvisioningSummary = {
 export type VpnSubscriptionDTO = {
   id: string
   organizationId: string
+  organizationName: string | null
   packageId: string
   status: SubscriptionPayload["status"]
   currentPeriodStart: string
@@ -108,12 +109,14 @@ export function computeProvisioningSummary(
 }
 
 export function toVpnSubscriptionDTO(
-  subscription: SubscriptionPayload
+  subscription: SubscriptionPayload,
+  orgName: string | null = null
 ): VpnSubscriptionDTO {
   const accounts = subscription.serverAccounts.map(toServerAccountDTO)
   return {
     id: subscription.id,
     organizationId: subscription.organizationId,
+    organizationName: orgName ?? null,
     packageId: subscription.packageId,
     status: subscription.status,
     currentPeriodStart: subscription.currentPeriodStart.toISOString(),

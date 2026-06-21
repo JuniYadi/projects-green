@@ -1,4 +1,5 @@
 import { Elysia } from "elysia"
+import { createWorkOS } from "@workos-inc/node"
 
 import { prisma } from "@/lib/prisma"
 import { logProvisioningEvent } from "@/lib/audit.service"
@@ -12,6 +13,7 @@ import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
 import {
   VpnSubscriptionService,
   vpnSubscriptionService,
+  type VpnSubscriptionWithAccounts,
 } from "../vpn-subscription.service"
 import { toVpnSubscriptionDTO } from "../vpn-subscription.dto"
 
@@ -48,7 +50,29 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
       const subs = await service.listAll()
-      return { ok: true, data: subs.map(toVpnSubscriptionDTO) }
+
+      // Resolve organization names from WorkOS (parallel fetch)
+      const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
+      const uniqueOrgIds = [...new Set(subs.map((s) => s.organizationId))]
+      const results = await Promise.all(
+        uniqueOrgIds.map(async (id) => {
+          try {
+            const org = await workos.organizations.getOrganization(id)
+            return { id, name: org.name } as const
+          } catch (err) {
+            console.error(`Failed to fetch org ${id}:`, err)
+            return { id, name: id } as const
+          }
+        })
+      )
+      const orgNames = new Map(results.map((r) => [r.id, r.name]))
+
+      return {
+        ok: true,
+        data: subs.map((s: VpnSubscriptionWithAccounts) =>
+          toVpnSubscriptionDTO(s, orgNames.get(s.organizationId) ?? null)
+        ),
+      }
     })
     .get("/admin/vpn/subscriptions/:id", async ({ params, set }) => {
       const actor = await guard(set)

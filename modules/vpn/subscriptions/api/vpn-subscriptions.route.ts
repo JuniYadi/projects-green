@@ -82,7 +82,7 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
       const ctx = await resolveOrg(set)
       if ("error" in ctx) return ctx.error
       const subs = await service.listForOrganization(ctx.organizationId)
-      return { ok: true as const, data: subs.map(toVpnSubscriptionDTO) }
+      return { ok: true as const, data: subs.map((s) => toVpnSubscriptionDTO(s)) }
     })
     .get("/vpn/subscriptions/:id", async ({ params, set }) => {
       const ctx = await resolveOrg(set)
