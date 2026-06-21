@@ -4,10 +4,10 @@ import { render, screen, findByText, waitFor, fireEvent } from "@testing-library
 import { SubscriptionsTable } from "./subscriptions-table"
 import type { VpnSubscriptionItem } from "./vpn-admin-client"
 
-// Mock the vpnApi client
-const mockVpnApi = vi.fn()
+// Mock the typed API helpers
+const mockListVpnAdminSubscriptions = vi.fn()
 vi.mock("./vpn-admin-client", () => ({
-  vpnApi: mockVpnApi,
+  listVpnAdminSubscriptions: mockListVpnAdminSubscriptions,
 }))
 
 // Mock Badge component
@@ -157,7 +157,7 @@ describe("SubscriptionsTable", () => {
   })
 
   it("renders provisioning health summary correctly", async () => {
-    mockVpnApi.mockResolvedValue({
+    mockListVpnAdminSubscriptions.mockResolvedValue({
       ok: true,
       data: [makeSub()],
     })
@@ -171,7 +171,7 @@ describe("SubscriptionsTable", () => {
   })
 
   it("shows Retry All Failed button when there are failed accounts", async () => {
-    mockVpnApi.mockResolvedValue({
+    mockListVpnAdminSubscriptions.mockResolvedValue({
       ok: true,
       data: [makeSub()],
     })
@@ -187,7 +187,7 @@ describe("SubscriptionsTable", () => {
   })
 
   it("hides Retry All Failed button when no failed accounts", async () => {
-    mockVpnApi.mockResolvedValue({
+    mockListVpnAdminSubscriptions.mockResolvedValue({
       ok: true,
       data: [
         makeSub({
