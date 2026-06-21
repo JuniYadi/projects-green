@@ -22,7 +22,10 @@ import {
 } from "@/components/ui/dialog"
 
 import {
-  vpnApi,
+  testVpnServer,
+  updateVpnServer,
+  createVpnServer,
+  deleteVpnServer,
   type ScanResult,
   type VpnRegionItem,
   type VpnServerItem,
@@ -124,10 +127,7 @@ export function ServerForm({
     setTestModalOpen(true)
     setScanResult(null)
     try {
-      const res = await vpnApi<{ ok: true; data: ScanResult }>(
-        `/admin/vpn/servers/${editing.id}/test`,
-        { method: "POST" }
-      )
+      const res = await testVpnServer(editing.id)
       setScanResult(res.data)
     } catch (err) {
       setTestModalOpen(false)
@@ -160,19 +160,13 @@ export function ServerForm({
       }
       if (editing) {
         // Edit flow: save directly (test is optional)
-        await vpnApi(`/admin/vpn/servers/${editing.id}`, {
-          method: "PUT",
-          body: JSON.stringify(body),
-        })
+        await updateVpnServer(editing.id, body)
         onOpenChange(false)
         await onSaved()
       } else {
         // Create flow: save as inactive → test → activate or rollback
         const createBody = { ...body, isActive: false }
-        const created = await vpnApi<{ ok: true; data: { id: string } }>(
-          "/admin/vpn/servers",
-          { method: "POST", body: JSON.stringify(createBody) }
-        )
+        const created = await createVpnServer(createBody)
         const serverId = created.data?.id
         if (!serverId) throw new Error("Server creation failed: invalid response")
 
@@ -181,10 +175,7 @@ export function ServerForm({
         setTesting(true)
         let testResult: ScanResult
         try {
-          const testRes = await vpnApi<{ ok: true; data: ScanResult }>(
-            `/admin/vpn/servers/${serverId}/test`,
-            { method: "POST" }
-          )
+          const testRes = await testVpnServer(serverId)
           testResult = testRes.data
         } catch (testErr) {
           // Test request failed (network error, 500, etc.)
@@ -212,10 +203,7 @@ export function ServerForm({
 
         // SSH passed → activate the server
         setSaving(true)
-        await vpnApi(`/admin/vpn/servers/${serverId}`, {
-          method: "PUT",
-          body: JSON.stringify({ ...body, isActive: true }),
-        })
+        await updateVpnServer(serverId, { ...body, isActive: true })
         onOpenChange(false)
         await onSaved()
       }
@@ -229,7 +217,7 @@ export function ServerForm({
 
   const rollbackServer = async (serverId: string) => {
     try {
-      await vpnApi(`/admin/vpn/servers/${serverId}`, { method: "DELETE" })
+      await deleteVpnServer(serverId)
     } catch (err) {
       console.error(`Failed to rollback server ${serverId}:`, err)
     }
