@@ -7,13 +7,15 @@
  * create/update but not persisted - add that column in a follow-up migration.
  */
 
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 import {
+  DEFAULT_QUOTA_BASE,
   type DeviceService,
   type DeviceDetail,
   type DeviceListItem,
-  type CreateDeviceInput,
+  type DeviceCreateInput,
   type UpdateDeviceInput,
   type DeviceStatus,
   DeviceNotFoundError,
@@ -93,7 +95,7 @@ export const createDeviceService = (
       return _toDeviceDetail(device as PrismaDeviceFields)
     },
 
-    async create(input) {
+    async create(input: DeviceCreateInput) {
       const device = await db.whatsappDevice.create({
         data: {
           organizationId: input.organizationId ?? "",
@@ -103,8 +105,26 @@ export const createDeviceService = (
           whatsappPhoneId: input.whatsappPhoneId ?? null,
           whatsappApplicationId: input.whatsappApplicationId ?? null,
           callbackUrl: input.callbackUrl || null,
-          ...(input.displayName
-            ? { whatsappProfile: { name: input.displayName } }
+          whatsappVersion: input.whatsappVersion ?? "v24.0",
+          token: input.token ?? null,
+          rates: input.rates ?? null,
+          s3Path: input.s3 ?? null,
+          quotaBase: input.quotaBase ?? DEFAULT_QUOTA_BASE,
+          quotaBaseIn: input.quotaBaseIn ?? 0,
+          quotaBaseOut: input.quotaBaseOut ?? 0,
+          dailyLimitMessage: input.dailyLimitMessage ?? 0,
+          ...(input.balance != null ? { balance: input.balance } : {}),
+          ...(input.expiredAt ? { expiredAt: new Date(input.expiredAt) } : {}),
+          ...(input.features
+            ? { features: input.features as Prisma.InputJsonValue }
+            : {}),
+          ...(input.displayName || input.whatsappProfile
+            ? {
+                whatsappProfile: {
+                  ...(input.whatsappProfile ?? {}),
+                  ...(input.displayName ? { name: input.displayName } : {}),
+                } as Prisma.InputJsonValue,
+              }
             : {}),
         },
       })

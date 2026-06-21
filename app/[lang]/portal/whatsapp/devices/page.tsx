@@ -18,7 +18,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { StatusBadge, DeviceEmptyState } from "./_components/devices-ui"
-import { AddDeviceDialog } from "./_components/add-device-dialog"
+import { Button } from "@/components/ui/button"
+import { Plus } from "@phosphor-icons/react"
 
 type DevicesPageProps = {
   params: Promise<{
@@ -88,7 +89,17 @@ export default async function PortalWhatsAppDevicesPage({
                   View and manage WhatsApp devices across all organizations
                 </CardDescription>
               </div>
-              <AddDeviceDialog />
+              <Link
+                href={localizePathname({
+                  pathname: "/portal/whatsapp/devices/new",
+                  locale,
+                })}
+              >
+                <Button size="sm">
+                  <Plus className="mr-1.5 size-4" />
+                  Add Device
+                </Button>
+              </Link>
             </div>
           </CardHeader>
           <CardContent>
