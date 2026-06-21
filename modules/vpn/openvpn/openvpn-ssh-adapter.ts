@@ -57,8 +57,22 @@ export class OpenVpnSshAdapter {
   async createClient(target: SshTarget, clientName: string): Promise<void> {
     const safeName = sanitizeOpenVpnClientName(clientName)
     const script = assertSafeAbsolutePath(this.createScript, "create script")
+    const directory = assertSafeAbsolutePath(
+      this.configDirectory,
+      "config directory"
+    )
 
     await this.executor.execChecked(target, [script, safeName], "create OpenVPN client")
+
+    // Verify config file was created
+    const configPath = `${directory}/${safeName}.ovpn`
+    const verifyResult = await this.executor.exec(target, ["test", "-f", configPath])
+
+    if (verifyResult.exitCode !== 0) {
+      throw new Error(
+        `OpenVPN config file not found on server after creation: ${configPath}`
+      )
+    }
   }
 
   async fetchConfig(target: SshTarget, clientName: string): Promise<string> {

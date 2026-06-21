@@ -47,12 +47,14 @@ describe("sanitizeOpenVpnClientName", () => {
 describe("OpenVpnSshAdapter", () => {
   beforeEach(() => {
     mockExecChecked.mockClear()
+    mockExecInternal.mockClear()
   })
   it("composes create, fetch, revoke, and health via executor", async () => {
     mockExecChecked.mockImplementation(async (_target: SshTarget, args: string[]) => {
       if (args[0] === "cat") return { stdout: "client config", stderr: "", exitCode: 0 }
       return { stdout: "ok", stderr: "", exitCode: 0 }
     })
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
 
     const adapter = new OpenVpnSshAdapter({
       executor: mockExecutor as unknown as VpnServerSshExecutor,
@@ -94,5 +96,34 @@ describe("OpenVpnSshAdapter", () => {
       "Invalid OpenVPN client name"
     )
     expect(mockExecChecked).not.toHaveBeenCalled()
+  })
+
+  it("verifies config file exists after creation", async () => {
+    mockExecChecked.mockResolvedValue({ stdout: "ok", stderr: "", exitCode: 0 })
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    await adapter.createClient(target, "org_abc123_sub_456")
+
+    expect(mockExecInternal).toHaveBeenCalledWith(
+      target,
+      ["test", "-f", "/etc/openvpn/clients/org_abc123_sub_456.ovpn"]
+    )
+  })
+
+  it("throws error when config file not found after creation", async () => {
+    mockExecChecked.mockResolvedValue({ stdout: "ok", stderr: "", exitCode: 0 })
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 1 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    await expect(adapter.createClient(target, "org_abc123_sub_456")).rejects.toThrow(
+      "OpenVPN config file not found on server after creation"
+    )
   })
 })
