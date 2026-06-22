@@ -282,6 +282,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         icon: <Lightning />,
         isActive: startsWithRoute(path, "/portal/whatsapp/templates"),
       },
+      {
+        title: "Webhook Logs",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/webhook-logs",
+          locale,
+        }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/webhook-logs"),
+      },
     ],
   },
 ]
