@@ -8,20 +8,17 @@ describe("BankAccountsTab", () => {
     globalThis.fetch = Object.assign(
       async () =>
         new Response(
-          JSON.stringify({
-            ok: true,
-            data: [
-              {
-                id: "ba-1",
-                bankName: "BCA",
-                accountNumber: "123456",
-                accountName: "Test",
-                isActive: true,
-                isDefault: false,
-                createdAt: "2026-06-09",
-              },
-            ],
-          }),
+          JSON.stringify([
+            {
+              id: "ba-1",
+              bankName: "BCA",
+              accountNumber: "123456",
+              accountName: "Test",
+              isActive: true,
+              isDefault: false,
+              createdAt: "2026-06-09",
+            },
+          ]),
           { status: 200 }
         ),
       { preconnect: () => {} }
@@ -42,20 +39,17 @@ describe("BankAccountsTab", () => {
       async (url: string | URL | Request, init?: RequestInit) => {
         calls.push({ url: String(url), init })
         return new Response(
-          JSON.stringify({
-            ok: true,
-            data: [
-              {
-                id: "ba-1",
-                bankName: "BCA",
-                accountNumber: "123456",
-                accountName: "Test",
-                isActive: true,
-                isDefault: false,
-                createdAt: "2026-06-09",
-              },
-            ],
-          }),
+          JSON.stringify([
+            {
+              id: "ba-1",
+              bankName: "BCA",
+              accountNumber: "123456",
+              accountName: "Test",
+              isActive: true,
+              isDefault: false,
+              createdAt: "2026-06-09",
+            },
+          ]),
           { status: 200 }
         )
       },
@@ -85,20 +79,17 @@ describe("BankAccountsTab", () => {
         const method = (init?.method ?? "GET").toUpperCase()
         if (method === "GET") {
           return new Response(
-            JSON.stringify({
-              ok: true,
-              data: [
-                {
-                  id: "ba-1",
-                  bankName: "BCA",
-                  accountNumber: "123456",
-                  accountName: "Test",
-                  isActive: true,
-                  isDefault: false,
-                  createdAt: "2026-06-09",
-                },
-              ],
-            }),
+            JSON.stringify([
+              {
+                id: "ba-1",
+                bankName: "BCA",
+                accountNumber: "123456",
+                accountName: "Test",
+                isActive: true,
+                isDefault: false,
+                createdAt: "2026-06-09",
+              },
+            ]),
             { status: 200 }
           )
         }

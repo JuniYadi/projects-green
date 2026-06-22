@@ -1,5 +1,9 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach, mock, beforeAll } from "bun:test"
 import { Elysia } from "elysia"
+
+// Set encryption key for GatewayService/BankAccountService
+process.env.ENCRYPTION_KEY =
+  "0000000000000000000000000000000000000000000000000000000000000000"
 
 // Mock withAuth
 const mockWithAuth = mock(() =>
@@ -27,64 +31,83 @@ const mockInvoiceCreate = mock(() =>
   })
 )
 
-mock.module("@/lib/prisma", () => ({
-  prisma: {
-    billingInvoice: {
-      create: mockInvoiceCreate,
-      update: mock(() => Promise.resolve({})),
-      findFirst: mock(() => Promise.resolve(null)),
-      findUnique: mock(() => Promise.resolve(null)),
-      findMany: mock(() => Promise.resolve([])),
-    },
-    billingAccount: {
-      findUnique: mock(() =>
-        Promise.resolve({
-          id: "ba-123",
-          organizationId: "org-123",
-          currency: "IDR",
-          balance: { toNumber: () => 0 },
-        })
-      ),
-      create: mock(() =>
-        Promise.resolve({
-          id: "ba-123",
-          organizationId: "org-123",
-        })
-      ),
-    },
-    paymentGateway: {
-      findFirst: mock(() => Promise.resolve(null)),
-      findMany: mock(() => Promise.resolve([])),
-    },
-    paymentBankAccount: {
-      findMany: mock(() => Promise.resolve([])),
-    },
-    paymentCurrency: {
-      findUnique: mock(() =>
-        Promise.resolve({
-          code: "USD",
-          symbol: "$",
-          ratePerBase: { toNumber: () => 1 },
-          minTopup: { toNumber: () => 10 },
-          maxTopup: { toNumber: () => 10000 },
-        })
-      ),
-      findFirst: mock(() =>
-        Promise.resolve({
-          code: "USD",
-          symbol: "$",
-          ratePerBase: { toNumber: () => 1 },
-          minTopup: { toNumber: () => 10 },
-          maxTopup: { toNumber: () => 10000 },
-        })
-      ),
-    },
-    $transaction: mock((fns: unknown[]) => Promise.all(fns)),
+const mockPrisma = {
+  billingInvoice: {
+    create: mockInvoiceCreate,
+    update: mock(() => Promise.resolve({})),
+    findFirst: mock(() => Promise.resolve(null)),
+    findUnique: mock(() => Promise.resolve(null)),
+    findMany: mock(() => Promise.resolve([])),
   },
+  billingAccount: {
+    findUnique: mock(() =>
+      Promise.resolve({
+        id: "ba-123",
+        organizationId: "org-123",
+        currency: "IDR",
+        balance: { toNumber: () => 0 },
+      })
+    ),
+    create: mock(() =>
+      Promise.resolve({
+        id: "ba-123",
+        organizationId: "org-123",
+      })
+    ),
+  },
+  paymentGateway: {
+    findFirst: mock(() => Promise.resolve(null)),
+    findMany: mock(() => Promise.resolve([])),
+  },
+  paymentBankAccount: {
+    findMany: mock(() => Promise.resolve([])),
+  },
+  paymentCurrency: {
+    findUnique: mock(() =>
+      Promise.resolve({
+        code: "USD",
+        symbol: "$",
+        ratePerBase: { toNumber: () => 1 },
+        minTopup: { toNumber: () => 10 },
+        maxTopup: { toNumber: () => 10000 },
+      })
+    ),
+    findFirst: mock(() =>
+      Promise.resolve({
+        code: "USD",
+        symbol: "$",
+        ratePerBase: { toNumber: () => 1 },
+        minTopup: { toNumber: () => 10 },
+        maxTopup: { toNumber: () => 10000 },
+      })
+    ),
+    update: mock(() => Promise.resolve({})),
+  },
+  $transaction: mock(
+    (arg: unknown) => {
+      // ponytail: callback & array both work
+      if (typeof arg === "function") {
+        return Promise.resolve(arg(mockPrisma))
+      }
+      return Promise.resolve()
+    },
+  ),
+}
+
+mock.module("@/lib/prisma", () => ({
+  prisma: mockPrisma,
 }))
 
-// Import route after mocks
-import { createTopupRoutes, createPaymentHistoryRoutes } from "./topup.route"
+// Import route after mocks — use dynamic import so mock.module fires first
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let createTopupRoutes: any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let createPaymentHistoryRoutes: any
+beforeAll(async () => {
+  const mod = await import("./topup.route")
+  createTopupRoutes = mod.createTopupRoutes
+  createPaymentHistoryRoutes = mod.createPaymentHistoryRoutes
+})
 
 describe("Topup Route", () => {
   let app: ReturnType<typeof Elysia.prototype.compile>

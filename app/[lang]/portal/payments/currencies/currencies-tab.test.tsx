@@ -8,23 +8,20 @@ describe("CurrenciesTab", () => {
     globalThis.fetch = Object.assign(
       async () =>
         new Response(
-          JSON.stringify({
-            ok: true,
-            data: [
-              {
-                id: "cur-1",
-                code: "USD",
-                name: "US Dollar",
-                symbol: "$",
-                isBase: true,
-                ratePerBase: 1,
-                minTopup: 10,
-                maxTopup: 1000,
-                isActive: true,
-                sortOrder: 1,
-              },
-            ],
-          }),
+          JSON.stringify([
+            {
+              id: "cur-1",
+              code: "USD",
+              name: "US Dollar",
+              symbol: "$",
+              isBase: true,
+              ratePerBase: 1,
+              minTopup: 10,
+              maxTopup: 1000,
+              isActive: true,
+              sortOrder: 1,
+            },
+          ]),
           { status: 200 }
         ),
       { preconnect: () => {} }

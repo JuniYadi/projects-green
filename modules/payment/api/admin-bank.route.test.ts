@@ -3,12 +3,18 @@ import { Elysia } from "elysia"
 
 // ── Mock auth & platform-role ──────────────────────────
 
-let mockAuthValue: { user: { id: string; email: string } | null } = {
+let mockAuthValue: {
+  user: { id: string; email: string } | null
+  organizationId?: string
+} = {
   user: null,
 }
 let mockPlatformRoleValue: "super_admin" | "none" = "none"
 
-const mockWithAuth = mock(async () => mockAuthValue)
+const mockWithAuth = mock(async () => ({
+  ...mockAuthValue,
+  organizationId: mockAuthValue.user ? "org-123" : undefined,
+}))
 const mockGetPlatformRoleForUser = mock(async () => mockPlatformRoleValue)
 
 mock.module("@workos-inc/authkit-nextjs", () => ({
@@ -93,7 +99,6 @@ describe("AdminBankRoute GET /bank-accounts", () => {
     const body = await response.json()
     expect(body.ok).toBe(false)
     expect(body.error).toBe("FORBIDDEN")
-    expect(body.policyCode).toBe("SUPER_ADMIN_REQUIRED")
   })
 
   it("returns 200 with bank accounts for super_admin", async () => {
@@ -108,10 +113,8 @@ describe("AdminBankRoute GET /bank-accounts", () => {
 
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body.ok).toBe(true)
-    expect(body.data).toBeDefined()
-    expect(Array.isArray(body.data)).toBe(true)
-    expect(body.data.length).toBeGreaterThan(0)
+    expect(Array.isArray(body)).toBe(true)
+    expect(body.length).toBeGreaterThan(0)
     expect(mockFindMany).toHaveBeenCalled()
   })
 

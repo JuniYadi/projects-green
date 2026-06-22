@@ -3,3 +3,4 @@ preload = ["./test/setup.ts"]
 coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
 coverageSkipTestFiles = true
+coverageExclude = ["**/*.dto.ts", "**/prisma/**", "next.config.*"]

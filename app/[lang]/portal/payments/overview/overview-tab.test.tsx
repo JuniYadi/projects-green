@@ -8,9 +8,9 @@ import { OverviewTab } from "./overview-tab"
 type FetchMock = typeof globalThis.fetch
 
 function mockPaymentFetch(overrides?: {
-  gateways?: object
-  bankAccounts?: object
-  confirmations?: object
+  gateways?: unknown[]
+  bankAccounts?: unknown[]
+  confirmations?: unknown[]
 }): FetchMock {
   return Object.assign(
     async (_url: string | URL | Request) => {
@@ -19,14 +19,11 @@ function mockPaymentFetch(overrides?: {
       if (urlStr.includes("/gateways")) {
         return new Response(
           JSON.stringify(
-            overrides?.gateways ?? {
-              ok: true,
-              data: [
-                { id: "gw-1", isActive: true },
-                { id: "gw-2", isActive: true },
-                { id: "gw-3", isActive: false },
-              ],
-            }
+            overrides?.gateways ?? [
+              { id: "gw-1", isActive: true },
+              { id: "gw-2", isActive: true },
+              { id: "gw-3", isActive: false },
+            ]
           ),
           { status: 200 }
         )
@@ -35,14 +32,11 @@ function mockPaymentFetch(overrides?: {
       if (urlStr.includes("/bank-accounts")) {
         return new Response(
           JSON.stringify(
-            overrides?.bankAccounts ?? {
-              ok: true,
-              data: [
-                { id: "ba-1", isDefault: true },
-                { id: "ba-2", isDefault: true },
-                { id: "ba-3", isDefault: false },
-              ],
-            }
+            overrides?.bankAccounts ?? [
+              { id: "ba-1", isDefault: true },
+              { id: "ba-2", isDefault: true },
+              { id: "ba-3", isDefault: false },
+            ]
           ),
           { status: 200 }
         )
@@ -51,10 +45,9 @@ function mockPaymentFetch(overrides?: {
       if (urlStr.includes("/confirmations")) {
         return new Response(
           JSON.stringify(
-            overrides?.confirmations ?? {
-              ok: true,
-              data: [{ id: "conf-1" }, { id: "conf-2" }, { id: "conf-3" }],
-            }
+            overrides?.confirmations ?? [
+              { id: "conf-1" }, { id: "conf-2" }, { id: "conf-3" },
+            ]
           ),
           { status: 200 }
         )
@@ -172,9 +165,9 @@ describe("OverviewTab", () => {
   describe("edge cases — all zero counts", () => {
     it("renders 0 when endpoints return empty data", async () => {
       globalThis.fetch = mockPaymentFetch({
-        gateways: { ok: true, data: [] },
-        bankAccounts: { ok: true, data: [] },
-        confirmations: { ok: true, data: [] },
+        gateways: [],
+        bankAccounts: [],
+        confirmations: [],
       }) as FetchMock
 
       let view: ReturnType<typeof render>
@@ -189,11 +182,11 @@ describe("OverviewTab", () => {
       expect(zeros.length).toBeGreaterThanOrEqual(3)
     })
 
-    it("renders 0 when fetch returns ok=false", async () => {
+    it("renders 0 when fetch returns empty arrays", async () => {
       globalThis.fetch = mockPaymentFetch({
-        gateways: { ok: false },
-        bankAccounts: { ok: false },
-        confirmations: { ok: false },
+        gateways: [],
+        bankAccounts: [],
+        confirmations: [],
       }) as FetchMock
 
       let view: ReturnType<typeof render>
@@ -211,17 +204,14 @@ describe("OverviewTab", () => {
   describe("filtered counts work correctly", () => {
     it("active gateway count excludes inactive/suspended gateways", async () => {
       globalThis.fetch = mockPaymentFetch({
-        gateways: {
-          ok: true,
-          data: [
-            { id: "gw-1", isActive: true },
-            { id: "gw-2", isActive: false },
-            { id: "gw-3", isActive: false },
-            { id: "gw-4", isActive: false },
-          ],
-        },
-        bankAccounts: { ok: true, data: [] },
-        confirmations: { ok: true, data: [] },
+        gateways: [
+          { id: "gw-1", isActive: true },
+          { id: "gw-2", isActive: false },
+          { id: "gw-3", isActive: false },
+          { id: "gw-4", isActive: false },
+        ],
+        bankAccounts: [],
+        confirmations: [],
       }) as FetchMock
 
       let view: ReturnType<typeof render>
@@ -237,17 +227,14 @@ describe("OverviewTab", () => {
 
     it("verified bank account count excludes unverified accounts", async () => {
       globalThis.fetch = mockPaymentFetch({
-        gateways: { ok: true, data: [] },
-        bankAccounts: {
-          ok: true,
-          data: [
-            { id: "ba-1", isDefault: true },
-            { id: "ba-2", isDefault: false },
-            { id: "ba-3", isDefault: true },
-            { id: "ba-4", isDefault: false },
-          ],
-        },
-        confirmations: { ok: true, data: [] },
+        gateways: [],
+        bankAccounts: [
+          { id: "ba-1", isDefault: true },
+          { id: "ba-2", isDefault: false },
+          { id: "ba-3", isDefault: true },
+          { id: "ba-4", isDefault: false },
+        ],
+        confirmations: [],
       }) as FetchMock
 
       let view: ReturnType<typeof render>

@@ -3,23 +3,20 @@ import { fireEvent, render, waitFor } from "@testing-library/react"
 
 import { ConfirmationsTab } from "./confirmations-tab"
 
-const confirmationPayload = {
-  ok: true,
-  data: [
-    {
-      id: "pc-1",
-      amount: 100000,
-      currency: "IDR",
-      bankAccountId: "ba-1",
-      bankName: "BCA",
-      accountName: "PT Projects Green",
-      accountNumber: "123456",
-      status: "pending",
-      submittedAt: "2026-06-09T00:00:00Z",
-      notes: "Transfer received",
-    },
-  ],
-}
+const confirmationPayload = [
+  {
+    id: "pc-1",
+    amount: 100000,
+    currency: "IDR",
+    bankAccountId: "ba-1",
+    bankName: "BCA",
+    accountName: "PT Projects Green",
+    accountNumber: "123456",
+    status: "pending",
+    submittedAt: "2026-06-09T00:00:00Z",
+    notes: "Transfer received",
+  },
+]
 
 describe("ConfirmationsTab", () => {
   it("renders confirmations in a filterable table and opens a review modal", async () => {
