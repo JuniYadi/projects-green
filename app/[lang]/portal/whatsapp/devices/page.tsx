@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { StatusBadge, DeviceEmptyState } from "./_components/devices-ui"
+import { SyncButton } from "./_components/sync-button"
 import { Button } from "@/components/ui/button"
 
 type DevicesPageProps = {
@@ -199,6 +200,7 @@ export default async function PortalWhatsAppDevicesPage({
                     <TableHead className="text-right">Quota Base</TableHead>
                     <TableHead className="text-right">Daily Limit</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -235,6 +237,9 @@ export default async function PortalWhatsAppDevicesPage({
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {formatDate(device.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <SyncButton deviceId={device.id} />
                       </TableCell>
                     </TableRow>
                   ))}

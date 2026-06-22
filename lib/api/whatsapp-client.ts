@@ -154,6 +154,13 @@ export const whatsappClient = {
           method: "POST",
         }
       ),
+    syncTemplates: (id: string) =>
+      serverFetch<{ ok: boolean; message: string }>(
+        `/api/admin/devices/${id}/sync-templates`,
+        {
+          method: "POST",
+        }
+      ),
   },
 
   // templates: migrated to Eden (@/modules/whatsapp/templates/api/templates.hooks.ts)

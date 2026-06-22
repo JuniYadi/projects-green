@@ -16,6 +16,7 @@ import {
   updateDeviceSchema,
 } from "../devices.schemas"
 import { createDeviceService } from "../devices.service"
+import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
 import {
   requireSuperAdmin,
   type AdminActorContext,
@@ -210,6 +211,29 @@ export const createAdminDevicesRoutes = (
         console.error("[AdminDevices] Delete error:", error)
         return toServerError(set, "Unable to delete device.")
       }
+    })
+    .post("/:id/sync-templates", async ({ params: { id }, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
+
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+        select: { id: true, token: true, tokenEncrypted: true, organizationId: true },
+      })
+
+      if (!device) {
+        set.status = 404
+        return { ok: false as const, error: "NOT_FOUND" as const, message: "Device not found." }
+      }
+
+      if (!device.token && !device.tokenEncrypted) {
+        set.status = 400
+        return { ok: false as const, error: "BAD_REQUEST" as const, message: "Device token required for template sync." }
+      }
+
+      await enqueueWhatsAppTemplateSync(device.organizationId, device.id, "sync-templates")
+
+      return { ok: true as const, message: "Sync job enqueued." }
     })
     .post("/:id/top-up", async ({ params: { id }, body, set }: any) => {
       const actor = await guard(set)
