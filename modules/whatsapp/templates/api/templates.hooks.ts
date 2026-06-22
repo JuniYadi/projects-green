@@ -46,20 +46,56 @@ export function useTemplates(filters?: TemplateFilters) {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
-  const load = React.useCallback(async () => {
+  const orgId = filters?.organizationId
+  const deviceId = filters?.whatsappDeviceId
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void (async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const query: Record<string, string> = {}
+        if (orgId) query.organizationId = orgId
+        if (deviceId) query.whatsappDeviceId = deviceId
+        const { data, error: edenError } =
+          await eden.api.whatsapp.templates.get({
+            $query: query,
+          })
+        if (cancelled) return
+        if (edenError)
+          throw new Error(edenError.message ?? "Failed to load templates.")
+        const result = data as unknown as TemplatesListResponse
+        setTemplates(result?.templates ?? [])
+      } catch (err) {
+        if (!cancelled)
+          setError(
+            err instanceof Error ? err.message : "Failed to load templates."
+          )
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [orgId, deviceId])
+
+  const reload = React.useCallback(async () => {
     setLoading(true)
     setError(null)
-
     try {
       const query: Record<string, string> = {}
-      if (filters?.organizationId) query.organizationId = filters.organizationId
-      if (filters?.whatsappDeviceId)
-        query.whatsappDeviceId = filters.whatsappDeviceId
+      if (orgId) query.organizationId = orgId
+      if (deviceId) query.whatsappDeviceId = deviceId
       const { data, error: edenError } =
         await eden.api.whatsapp.templates.get({
           $query: query,
         })
-      if (edenError) throw new Error(edenError.message ?? "Failed to load templates.")
+      if (edenError)
+        throw new Error(edenError.message ?? "Failed to load templates.")
       const result = data as unknown as TemplatesListResponse
       setTemplates(result?.templates ?? [])
     } catch (err) {
@@ -67,24 +103,53 @@ export function useTemplates(filters?: TemplateFilters) {
     } finally {
       setLoading(false)
     }
-  }, [filters?.organizationId, filters?.whatsappDeviceId])
+  }, [orgId, deviceId])
 
-  React.useEffect(() => {
-    void load()
-  }, [load])
-
-  return { templates, loading, error, reload: load }
+  return { templates, loading, error, reload }
 }
+
+
 
 export function useTemplate(id: string) {
   const [template, setTemplate] = React.useState<WhatsAppTemplate | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
-  const load = React.useCallback(async () => {
+  React.useEffect(() => {
+    let cancelled = false
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void (async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const { data, error: edenError } =
+          await eden.api.whatsapp.templates[id].get()
+        if (cancelled) return
+        if (edenError)
+          throw new Error(edenError.message ?? "Failed to load template.")
+        const result = data as unknown as {
+          ok: boolean
+          template: WhatsAppTemplate
+        }
+        setTemplate(result?.template ?? null)
+      } catch (err) {
+        if (!cancelled)
+          setError(
+            err instanceof Error ? err.message : "Failed to load template."
+          )
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  const reload = React.useCallback(async () => {
     setLoading(true)
     setError(null)
-
     try {
       const { data, error: edenError } =
         await eden.api.whatsapp.templates[id].get()
@@ -102,11 +167,7 @@ export function useTemplate(id: string) {
     }
   }, [id])
 
-  React.useEffect(() => {
-    void load()
-  }, [load])
-
-  return { template, loading, error, reload: load }
+  return { template, loading, error, reload }
 }
 
 export function useCreateTemplate() {
