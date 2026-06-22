@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 
 import { Prisma, type PrismaClient, type VpnProtocol } from "@prisma/client"
 
+import { logAuditEvent } from "@/lib/audit.service"
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import {
@@ -92,20 +93,19 @@ function enabledProtocols(server: {
 }
 
 /**
- * Username scheme from Story 14: `vpn-{orgId}-{serverId}-{protocol}`,
- * sanitized to the adapter-safe charset. A 4-char hex suffix is appended
- * to ensure uniqueness when an org subscribes to the same package+protocol
- * multiple times (multi-sub).
+ * Short remote account name for OpenVPN/EasyRSA CN safety.
+ * The DB already tracks organization, server, and protocol, so the remote
+ * username only needs a compact org hint plus random uniqueness.
  */
 export function buildAccountUsername(
   organizationId: string,
-  serverId: string,
-  protocol: VpnProtocol
+  _serverId: string,
+  _protocol: VpnProtocol
 ): string {
-  const safeOrg = organizationId.replace(/[^A-Za-z0-9]/g, "").slice(0, 16)
-  const safeServer = serverId.replace(/[^A-Za-z0-9]/g, "").slice(0, 16)
-  const suffix = crypto.randomBytes(2).toString("hex")
-  return `vpn-${safeOrg}-${safeServer}-${protocol.toLowerCase()}-${suffix}`
+  const safeOrg = organizationId.replace(/[^A-Za-z0-9]/g, "").toLowerCase()
+  const orgHint = safeOrg.slice(-8) || "org"
+  const suffix = crypto.randomBytes(3).toString("hex")
+  return `org${orgHint}-${suffix}`
 }
 
 export type PurchaseInput = {
@@ -347,6 +347,22 @@ export class VpnSubscriptionService {
       await this.dispatch(account.id)
     }
 
+    logAuditEvent({
+      organizationId: activated.organizationId,
+      subscriptionId: activated.id,
+      action: "SUBSCRIPTION_CREATED",
+      status: "OK",
+      message: `Subscription created for org ${activated.organizationId}: package ${input.packageId}, ${activated.serverAccounts.length} accounts`,
+      details: {
+        packageId: input.packageId,
+        organizationId: activated.organizationId,
+        price: chargePrice.toFixed(2),
+        currency: accountCurrency,
+        serverAccountCount: activated.serverAccounts.length,
+        isFullMonth,
+      },
+    }).catch(() => {})
+
     return activated
   }
 
@@ -364,11 +380,22 @@ export class VpnSubscriptionService {
     })
     if (!existing) throw new VpnSubscriptionNotFoundError()
 
-    return this.prisma.vpnSubscription.update({
+    const updated = await this.prisma.vpnSubscription.update({
       where: { id: existing.id },
       data: { cancelAtPeriodEnd: true },
       include: subscriptionInclude,
     })
+
+    logAuditEvent({
+      organizationId,
+      subscriptionId: id,
+      action: "SUBSCRIPTION_CANCELLED",
+      status: "OK",
+      message: `Subscription cancelled at period end: ${existing.currentPeriodEnd.toISOString()}`,
+      details: { currentPeriodEnd: existing.currentPeriodEnd.toISOString() },
+    }).catch(() => {})
+
+    return updated
   }
 
   /**

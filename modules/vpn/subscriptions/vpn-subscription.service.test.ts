@@ -95,9 +95,10 @@ beforeEach(() => {
 })
 
 describe("buildAccountUsername", () => {
-  it("follows the vpn-{org}-{server}-{protocol}-{suffix} scheme with random suffix", () => {
-    const result = buildAccountUsername("org_abc", "srv1", "OPENVPN")
-    expect(result).toMatch(/^vpn-orgabc-srv1-openvpn-[0-9a-f]{4}$/)
+  it("uses a compact org hint plus random suffix", () => {
+    const result = buildAccountUsername("org_01KS2FV9E85ERH10HHT7XT0P0G", "srv1", "OPENVPN")
+    expect(result).toMatch(/^orgt7xt0p0g-[0-9a-f]{6}$/)
+    expect(result.length).toBeLessThanOrEqual(18)
   })
 })
 

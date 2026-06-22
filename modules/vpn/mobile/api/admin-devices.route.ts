@@ -268,11 +268,14 @@ export const createAdminDevicesRoutes = (deps: Deps = {}) => {
           logAuditEvent({
             deviceId: device.id,
             userId: ctx.userId,
+            adminId: ctx.userId,
+            organizationId: ctx.organizationId,
             action: "DEVICE_REVOKED",
-            details: {
-              revokedBy: ctx.userId,
-              reason: body.reason ?? null,
-            },
+            status: "OK",
+            message: body.reason
+              ? `Device forcefully revoked by admin: ${body.reason}`
+              : "Device forcefully revoked by admin",
+            details: { revokedBy: ctx.userId, reason: body.reason ?? null },
             ip: getClientIp(request),
             userAgent: request.headers.get("user-agent"),
           }).catch(() => {})

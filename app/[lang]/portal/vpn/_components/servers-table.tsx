@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 
 import {
   Table,
@@ -28,6 +29,7 @@ import {
   PlugIcon,
   CopyIcon,
   MagnifyingGlassIcon,
+  EyeIcon,
 } from "@phosphor-icons/react"
 
 import { ServerForm } from "./server-form"
@@ -165,6 +167,7 @@ export function ServersTable() {
     try {
       const res = await testVpnServer(server.id)
       setTestResult(res.data)
+      await loadServers(regionFilter, searchDebounced)
     } catch (err) {
       window.alert((err as Error).message)
       setTestTarget(null)
@@ -251,7 +254,14 @@ export function ServersTable() {
             ) : (
               servers.map((server) => (
                 <TableRow key={server.id}>
-                  <TableCell className="font-medium">{server.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/portal/vpn/servers/${server.id}`}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      {server.name}
+                    </Link>
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {server.region.countryCode.toUpperCase()} —{" "}
                     {server.region.name}
@@ -292,6 +302,14 @@ export function ServersTable() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" asChild>
+                        <Link
+                          href={`/portal/vpn/servers/${server.id}`}
+                          aria-label={`View details for ${server.name}`}
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </Link>
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

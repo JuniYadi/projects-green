@@ -1366,6 +1366,21 @@ model VpnPairingToken {
 
 model VpnAuditLog {
   id               String    @id @default(cuid())
+  // NEW linkage columns
+  organizationId   String?
+  subscriptionId   String?
+  serverId         String?
+  correlationId    String?
+  // NEW event columns
+  message          String?
+  errorMessage     String?
+  // NEW payload columns
+  requestPayload   Json?
+  responsePayload  Json?
+  // NEW performance column
+  durationMs       Int?
+
+  // Existing columns (unchanged)
   serverAccountId  String?   // FK to VpnServerAccount for provisioning events
   deviceId         String?
   userId           String?
@@ -1378,6 +1393,13 @@ model VpnAuditLog {
   userAgent        String?
   createdAt        DateTime  @default(now())
 
+  // NEW indexes
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([subscriptionId, createdAt(sort: Desc)])
+  @@index([serverId, createdAt(sort: Desc)])
+  @@index([correlationId])
+
+  // Existing indexes (unchanged)
   @@index([serverAccountId, createdAt(sort: Desc)])
   @@index([deviceId, createdAt(sort: Desc)])
   @@index([action, createdAt(sort: Desc)])

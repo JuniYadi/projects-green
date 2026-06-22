@@ -63,28 +63,153 @@ describe("OpenVpnSshAdapter", () => {
     await adapter.createClient(target, "org_abc123_sub_456")
     await adapter.fetchConfig(target, "org_abc123_sub_456")
     await adapter.revokeClient(target, "org_abc123_sub_456")
+    await adapter.removeClient(target, "org_abc123_sub_456")
     await adapter.healthCheck(target)
 
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       1, target,
-      ["/usr/local/bin/create-openvpn-client", "org_abc123_sub_456"],
+      ["bash", "/root/genclient.sh", "org_abc123_sub_456"],
       "create OpenVPN client"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       2, target,
-      ["cat", "/etc/openvpn/clients/org_abc123_sub_456.ovpn"],
+      ["cat", "/root/openvpn/clients/org_abc123_sub_456.ovpn"],
       "fetch OpenVPN config"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       3, target,
-      ["/usr/local/bin/revoke-openvpn-client", "org_abc123_sub_456"],
+      ["bash", "/root/revoke.sh", "org_abc123_sub_456"],
       "revoke OpenVPN client"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       4, target,
+      ["bash", "/root/rmcert.sh", "org_abc123_sub_456"],
+      "remove OpenVPN client certificate"
+    )
+    expect(mockExecChecked).toHaveBeenNthCalledWith(
+      5, target,
       ["systemctl", "is-active", "openvpn-server@server"],
       "check OpenVPN health"
     )
+  })
+
+  it("lists OpenVPN users via root userlist script", async () => {
+    mockExecChecked.mockResolvedValue({
+      stdout: "User aktif sekarang (3): juniyadi, orgabc-123456, + server cert\n",
+      stderr: "",
+      exitCode: 0,
+    })
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 1 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const users = await adapter.listClients(target)
+
+    expect(mockExecChecked).toHaveBeenCalledWith(
+      target,
+      ["bash", "/root/userlist.sh"],
+      "list OpenVPN users"
+    )
+    expect(users).toEqual([
+      {
+        clientName: "juniyadi",
+        status: "ACTIVE",
+        serial: null,
+        expiresAt: null,
+        ipAllocation: null,
+        connected: false,
+        realAddress: null,
+        virtualAddress: null,
+        bytesReceived: null,
+        bytesSent: null,
+        connectedSince: null,
+      },
+      {
+        clientName: "orgabc-123456",
+        status: "ACTIVE",
+        serial: null,
+        expiresAt: null,
+        ipAllocation: null,
+        connected: false,
+        realAddress: null,
+        virtualAddress: null,
+        bytesReceived: null,
+        bytesSent: null,
+        connectedSince: null,
+      },
+    ])
+  })
+
+  it("parses table format with active and revoked sections", async () => {
+    mockExecChecked.mockResolvedValue({
+      stdout: [
+        "=== ACTIVE USERS ===",
+        "USERNAME             | SERIAL                             | EXPIRES             | IP",
+        "OpenVPNServer        | AAAA                               | 27-06-02 03:01:22   | dynamic",
+        "juniyadi             | BBBB                               | 28-09-04 03:33:17   | dynamic.pool",
+        "orgt7xt0p0g-5fbe09   | CCCC                               | 28-09-24 12:49:35   | dynamic.pool",
+        "=== REVOKED USERS ===",
+        "  test-yi-v2 (59671FE5DB5E0CB8F50D3819CC962B6A)",
+        "Total active: 2",
+        "Total revoked: 1",
+      ].join("\n"),
+      stderr: "",
+      exitCode: 0,
+    })
+    mockExecInternal.mockResolvedValue({
+      stdout:
+        "CLIENT_LIST,juniyadi,140.213.10.107:11447,10.0.70.9,,468985,1868448,2026-06-22 10:35:44,1782124544,UNDEF,217,0,AES-256-GCM\n",
+      stderr: "",
+      exitCode: 0,
+    })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    await expect(adapter.listClients(target)).resolves.toEqual([
+      {
+        clientName: "juniyadi",
+        status: "ACTIVE",
+        serial: "BBBB",
+        expiresAt: "28-09-04 03:33:17",
+        ipAllocation: "dynamic.pool",
+        connected: true,
+        realAddress: "140.213.10.107:11447",
+        virtualAddress: "10.0.70.9",
+        bytesReceived: 468985,
+        bytesSent: 1868448,
+        connectedSince: "2026-06-22 10:35:44",
+      },
+      {
+        clientName: "orgt7xt0p0g-5fbe09",
+        status: "ACTIVE",
+        serial: "CCCC",
+        expiresAt: "28-09-24 12:49:35",
+        ipAllocation: "dynamic.pool",
+        connected: false,
+        realAddress: null,
+        virtualAddress: null,
+        bytesReceived: null,
+        bytesSent: null,
+        connectedSince: null,
+      },
+      {
+        clientName: "test-yi-v2",
+        status: "REVOKED",
+        serial: "59671FE5DB5E0CB8F50D3819CC962B6A",
+        expiresAt: null,
+        ipAllocation: null,
+        connected: false,
+        realAddress: null,
+        virtualAddress: null,
+        bytesReceived: null,
+        bytesSent: null,
+        connectedSince: null,
+      },
+    ])
   })
 
   it("does not execute commands when client name is unsafe", async () => {
@@ -98,7 +223,7 @@ describe("OpenVpnSshAdapter", () => {
     expect(mockExecChecked).not.toHaveBeenCalled()
   })
 
-  it("verifies config file exists after creation", async () => {
+  it("verifies generated ovpn profile exists after creation", async () => {
     mockExecChecked.mockResolvedValue({ stdout: "ok", stderr: "", exitCode: 0 })
     mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
 
@@ -108,13 +233,44 @@ describe("OpenVpnSshAdapter", () => {
 
     await adapter.createClient(target, "org_abc123_sub_456")
 
-    expect(mockExecInternal).toHaveBeenCalledWith(
-      target,
-      ["test", "-f", "/etc/openvpn/clients/org_abc123_sub_456.ovpn"]
-    )
+    expect(mockExecInternal).toHaveBeenCalledWith(target, [
+      "test",
+      "-f",
+      "/root/openvpn/clients/org_abc123_sub_456.ovpn",
+    ])
   })
 
-  it("throws error when config file not found after creation", async () => {
+  it("validates generated ovpn profile existence", async () => {
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const result = await adapter.validateClient(target, "org_abc123_sub_456")
+
+    expect(result.exists).toBe(true)
+    expect(mockExecInternal).toHaveBeenCalledWith(target, [
+      "test",
+      "-f",
+      "/root/openvpn/clients/org_abc123_sub_456.ovpn",
+    ])
+  })
+
+  it("returns missing when ovpn profile is absent", async () => {
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 1 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const result = await adapter.validateClient(target, "org_abc123_sub_456")
+
+    expect(result.exists).toBe(false)
+    expect(result.message).toContain("OpenVPN profile not found")
+  })
+
+  it("throws error when ovpn profile is not found after creation", async () => {
     mockExecChecked.mockResolvedValue({ stdout: "ok", stderr: "", exitCode: 0 })
     mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 1 })
 
@@ -123,7 +279,7 @@ describe("OpenVpnSshAdapter", () => {
     })
 
     await expect(adapter.createClient(target, "org_abc123_sub_456")).rejects.toThrow(
-      "OpenVPN config file not found on server after creation"
+      "OpenVPN profile not found"
     )
   })
 })

@@ -55,6 +55,8 @@ import {
   retryVpnServerAccount,
   revokeVpnServerAccount,
   retryAllVpnServerAccounts,
+  validateVpnServerAccount,
+  recreateVpnServerAccount,
   type VpnSubscriptionItem,
   type VpnServerAccountEntry,
   type ProvisioningSummary,
@@ -418,21 +420,40 @@ export function SubscriptionsTable() {
   const act = async (
     subId: string,
     account: VpnServerAccountEntry,
-    action: "retry" | "revoke"
+    action: "retry" | "revoke" | "validate" | "recreate"
   ) => {
     if (
       action === "revoke" &&
       !window.confirm(`Revoke ${account.protocol} on ${account.serverName}?`)
     )
       return
-    setBusy(account.id)
+    if (
+      action === "recreate" &&
+      !window.confirm(
+        `Recreate ${account.protocol} account on ${account.serverName}? This clears stored config/credentials and queues provisioning again.`
+      )
+    )
+      return
+
+    setBusy(`${action}:${account.id}`)
     try {
       if (action === "retry") {
         await retryVpnServerAccount(subId, account.id)
-      } else {
+        reload()
+      } else if (action === "revoke") {
         await revokeVpnServerAccount(subId, account.id)
+        reload()
+      } else if (action === "recreate") {
+        await recreateVpnServerAccount(subId, account.id)
+        reload()
+      } else {
+        const result = await validateVpnServerAccount(subId, account.id)
+        window.alert(
+          result.data.exists
+            ? `Account exists on server.\n\n${result.data.message}`
+            : `Account is missing on server.\n\n${result.data.message}`
+        )
       }
-      reload()
     } catch (err) {
       window.alert((err as Error).message)
     } finally {
@@ -642,13 +663,39 @@ export function SubscriptionsTable() {
                                     >
                                       <Eye className="h-4 w-4" />
                                     </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={busy?.endsWith(account.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        act(sub.id, account, "validate")
+                                      }}
+                                    >
+                                      {busy === `validate:${account.id}`
+                                        ? "Validating..."
+                                        : "Validate"}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={busy?.endsWith(account.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        act(sub.id, account, "recreate")
+                                      }}
+                                    >
+                                      {busy === `recreate:${account.id}`
+                                        ? "Recreating..."
+                                        : "Recreate"}
+                                    </Button>
                                     {(account.provisioningStatus === "FAILED" ||
                                       account.provisioningStatus ===
                                         "PENDING") && (
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        disabled={busy === account.id}
+                                        disabled={busy?.endsWith(account.id)}
                                         onClick={(e) => {
                                           e.stopPropagation()
                                           act(sub.id, account, "retry")
@@ -664,7 +711,7 @@ export function SubscriptionsTable() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        disabled={busy === account.id}
+                                        disabled={busy?.endsWith(account.id)}
                                         onClick={(e) => {
                                           e.stopPropagation()
                                           act(sub.id, account, "revoke")

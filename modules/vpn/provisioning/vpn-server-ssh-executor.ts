@@ -86,9 +86,9 @@ export class VpnServerSshExecutor {
           channel.stderr.on("data", (data: Buffer) => {
             stderr += data.toString()
           })
-          channel.on("close", () => {
+          channel.on("close", (code?: number) => {
             clearTimeout(timeout)
-            finish({ stdout, stderr, exitCode: 0 })
+            finish({ stdout, stderr, exitCode: code ?? 0 })
           })
         })
       })

@@ -175,7 +175,10 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
           logAuditEvent({
             deviceId: device.id,
             userId: ctx.userId,
+            organizationId: ctx.organizationId,
             action: "DEVICE_REVOKED",
+            status: "OK",
+            message: "Device revoked by user",
             details: { reason: "User-initiated revocation" },
             ip: getClientIp(request),
             userAgent: request.headers.get("user-agent"),
@@ -215,6 +218,17 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
           }
 
           await deviceService.updateName(device.id, body.deviceName)
+
+          // Audit: log device rename
+          logAuditEvent({
+            deviceId: device.id,
+            userId: ctx.userId,
+            organizationId: ctx.organizationId,
+            action: "DEVICE_RENAMED",
+            status: "OK",
+            message: `Device renamed to "${body.deviceName}"`,
+            details: { newDeviceName: body.deviceName },
+          }).catch(() => {})
 
           return { ok: true as const }
         },

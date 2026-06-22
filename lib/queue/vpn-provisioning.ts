@@ -32,7 +32,26 @@ export class VpnProvisioningJob extends BaseJob {
   }
 
   static async handle(job: Job<VpnProvisioningJobData>): Promise<void> {
-    await vpnProvisioningService.provisionAccount(job.data.serverAccountId)
+    const { serverAccountId } = job.data
+    console.info(
+      `[vpn-provisioning] handle job=${job.id ?? "unknown"} account=${serverAccountId} started`
+    )
+    await job.log(`Provisioning account ${serverAccountId} started`)
+
+    try {
+      await vpnProvisioningService.provisionAccount(serverAccountId)
+      await job.log(`Provisioning account ${serverAccountId} completed`)
+      console.info(
+        `[vpn-provisioning] handle job=${job.id ?? "unknown"} account=${serverAccountId} completed`
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      await job.log(`Provisioning account ${serverAccountId} failed: ${message}`)
+      console.error(
+        `[vpn-provisioning] handle job=${job.id ?? "unknown"} account=${serverAccountId} failed: ${message}`
+      )
+      throw error
+    }
   }
 }
 

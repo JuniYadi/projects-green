@@ -204,8 +204,11 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
         logAuditEvent({
           deviceId: device.id,
           userId: auth.user.id,
+          organizationId: auth.organizationId,
           action: "DEVICE_REGISTERED",
-          details: { pairedVia: "SSO" },
+          status: "OK",
+          message: "Device registered via SSO",
+          details: { pairedVia: "SSO", deviceName: body.deviceName, platform: body.platform },
           ip: getClientIp(request),
           userAgent: request.headers.get("user-agent"),
         }).catch(() => {})
@@ -259,6 +262,12 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
 
         // Deprecated endpoint.
         set.status = 410
+        logAuditEvent({
+          action: "AUTH_TOKEN_EXCHANGED",
+          status: "FAILED",
+          message: "Token refresh attempted on deprecated endpoint",
+          errorMessage: "Token refresh is deprecated.",
+        }).catch(() => {})
         return {
           error: {
             code: "GONE" as const,

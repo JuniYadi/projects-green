@@ -92,6 +92,7 @@ import {
 } from "@/lib/queue/vpn-provisioning"
 import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
 import { vpnReconciliationService } from "@/modules/vpn/provisioning/vpn-reconciliation.service"
+import { vpnHealthService } from "@/modules/vpn/admin/vpn-health.service"
 
 // ══════════════════════════════════════════════════════════════════════════
 // BullMQ Workers
@@ -651,6 +652,10 @@ intervals.push(vpnRenewalInterval)
 const vpnReconciliationInterval = vpnReconciliationService.start()
 intervals.push(vpnReconciliationInterval)
 
+// ── VPN Health Checks (every 15 minutes) ──────────────────────────────────
+const vpnHealthInterval = vpnHealthService.start()
+intervals.push(vpnHealthInterval)
+
 // ══════════════════════════════════════════════════════════════════════════
 // Graceful Shutdown
 // ══════════════════════════════════════════════════════════════════════════
@@ -708,5 +713,5 @@ console.info(
   `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}`
 )
 console.info(
-  "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m)"
+  "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m), vpn-health (15m)"
 )

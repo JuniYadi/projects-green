@@ -39,16 +39,27 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
         const res = await getVpnProvisioningAudit(account.id, { type: "all" })
 
         if (cancelled) return
-        const mapped: AuditEvent[] = (res.data ?? []).map((entry) => ({
-          type: entry.action as AuditEvent["type"],
-          timestamp: entry.createdAt,
-          detail:
-            entry.action === "PROVISIONING_STEP"
-              ? `${entry.step ?? "?"} — ${entry.status ?? "?"}${entry.details && typeof entry.details === "object" && "message" in entry.details ? `: ${entry.details.message as string}` : ""}`
-              : entry.details && typeof entry.details === "object" && "message" in entry.details
-                ? (entry.details.message as string)
-                : undefined,
-        }))
+        const mapped: AuditEvent[] = (res.data ?? []).map((entry) => {
+          const details =
+            entry.details && typeof entry.details === "object"
+              ? entry.details
+              : null
+          const step =
+            typeof details?.step === "string" ? details.step : entry.step
+          const status =
+            typeof details?.status === "string" ? details.status : entry.status
+          const message =
+            typeof details?.message === "string" ? details.message : undefined
+
+          return {
+            type: entry.action as AuditEvent["type"],
+            timestamp: entry.createdAt,
+            detail:
+              entry.action === "PROVISIONING_STEP"
+                ? `${step ?? "?"} — ${status ?? "?"}${message ? `: ${message}` : ""}`
+                : message,
+          }
+        })
         if (!cancelled) setEvents(mapped)
       } catch (e) {
         if (cancelled) return

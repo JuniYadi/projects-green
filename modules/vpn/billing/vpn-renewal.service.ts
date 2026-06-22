@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
@@ -27,6 +28,16 @@ type PrismaLike = Pick<
   PrismaClient,
   "vpnSubscription" | "vpnMobileDevice" | "vpnPairingToken"
 >
+
+type RenewalSubscription = {
+  id: string
+  organizationId: string
+  packageId: string
+  priceLocked: Prisma.Decimal
+  currency: string
+  renewalFailedAt: Date | null
+  serverAccounts?: Array<{ id: string }>
+}
 
 // ─── Service ────────────────────────────────────────────────────────────
 
@@ -79,6 +90,7 @@ export class VpnRenewalService {
         take: BATCH_SIZE,
         orderBy: { id: "asc" },
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        include: { serverAccounts: { select: { id: true } } },
       })
 
       if (batch.length === 0) break
@@ -119,14 +131,7 @@ export class VpnRenewalService {
   // ─── Private ────────────────────────────────────────────────────────
 
   private async renewOne(
-    subscription: {
-      id: string
-      organizationId: string
-      packageId: string
-      priceLocked: Prisma.Decimal
-      currency: string
-      renewalFailedAt: Date | null
-    },
+    subscription: RenewalSubscription,
     now: Date,
     result: VpnRenewalResult
   ): Promise<void> {
@@ -174,7 +179,7 @@ export class VpnRenewalService {
    * Day 0-2 → retry, Day 3-6 → suspend, Day 7+ → expire.
    */
   private async applyGrace(
-    subscription: { id: string; renewalFailedAt: Date | null },
+    subscription: { id: string; renewalFailedAt: Date | null; serverAccounts?: Array<{ id: string }> },
     now: Date,
     result: VpnRenewalResult
   ): Promise<void> {
@@ -187,6 +192,13 @@ export class VpnRenewalService {
           where: { id: subscription.id },
           data: { status: "EXPIRED" },
         })
+        // Product terminated: permanently remove remote OpenVPN certs/configs.
+        await Promise.allSettled(
+          (subscription.serverAccounts ?? []).map((account) =>
+            vpnProvisioningService.removeRemoteAccount(account.id)
+          )
+        )
+
         // T7.2 — Revoke all mobile devices on subscription expiry.
         await this.prisma.vpnMobileDevice
           .updateMany({
