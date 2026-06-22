@@ -6,6 +6,9 @@ import {
 export type OpenVpnClientSummary = {
   clientName: string
   status: "ACTIVE" | "REVOKED" | "UNKNOWN"
+  serial: string | null
+  expiresAt: string | null
+  ipAllocation: string | null
 }
 
 export type RemoteAccountValidationResult = {
@@ -36,12 +39,16 @@ export class OpenVpnSshAdapter {
   private readonly executor: VpnServerSshExecutor
   private readonly createScript: string
   private readonly revokeScript: string
+  private readonly removeScript: string
+  private readonly userListScript: string
   private readonly configDirectory: string
 
   constructor(options: {
     executor?: VpnServerSshExecutor
     createScript?: string
     revokeScript?: string
+    removeScript?: string
+    userListScript?: string
     configDirectory?: string
   } = {}) {
     this.executor = options.executor ?? new VpnServerSshExecutor()
@@ -53,6 +60,14 @@ export class OpenVpnSshAdapter {
       options.revokeScript ??
       process.env.OPENVPN_REVOKE_CLIENT_SCRIPT ??
       "/root/revoke.sh"
+    this.removeScript =
+      options.removeScript ??
+      process.env.OPENVPN_REMOVE_CLIENT_SCRIPT ??
+      "/root/rmcert.sh"
+    this.userListScript =
+      options.userListScript ??
+      process.env.OPENVPN_USERLIST_SCRIPT ??
+      "/root/userlist.sh"
     this.configDirectory =
       options.configDirectory ??
       process.env.OPENVPN_CLIENT_CONFIG_DIR ??
@@ -128,8 +143,95 @@ export class OpenVpnSshAdapter {
     )
   }
 
-  async listClients(): Promise<OpenVpnClientSummary[]> {
-    return []
+  async removeClient(target: SshTarget, clientName: string): Promise<void> {
+    const safeName = sanitizeOpenVpnClientName(clientName)
+    const script = assertSafeAbsolutePath(this.removeScript, "remove script")
+
+    await this.executor.execChecked(
+      target,
+      ["bash", script, safeName],
+      "remove OpenVPN client certificate"
+    )
+  }
+
+  async listClients(target: SshTarget): Promise<OpenVpnClientSummary[]> {
+    const script = assertSafeAbsolutePath(this.userListScript, "userlist script")
+    const result = await this.executor.execChecked(
+      target,
+      ["bash", script],
+      "list OpenVPN users"
+    )
+
+    const users: OpenVpnClientSummary[] = []
+    let section: OpenVpnClientSummary["status"] | null = null
+
+    for (const rawLine of result.stdout.split("\n")) {
+      const line = rawLine.trim()
+      if (!line || /^[-=]+$/.test(line)) continue
+
+      if (/^===\s*ACTIVE USERS\s*===/i.test(line)) {
+        section = "ACTIVE"
+        continue
+      }
+      if (/^===\s*REVOKED USERS\s*===/i.test(line)) {
+        section = "REVOKED"
+        continue
+      }
+      if (/^USERNAME\s*\|/i.test(line)) continue
+      if (/^Total\s+(active|revoked):/i.test(line)) continue
+
+      if (/^user aktif(?: sekarang)?(?: \(\d+\))?:/i.test(line)) {
+        const payload = line.replace(/^user aktif(?: sekarang)?(?: \(\d+\))?:\s*/i, "")
+        for (const name of payload.split(",").map((value) => value.trim())) {
+          const clientName = name.replace(/^[-*+]\s*/, "")
+          if (clientName && !/^server cert$/i.test(clientName)) {
+            users.push({
+              clientName,
+              status: "ACTIVE",
+              serial: null,
+              expiresAt: null,
+              ipAllocation: null,
+            })
+          }
+        }
+        continue
+      }
+
+      if (!section) continue
+
+      if (section === "ACTIVE") {
+        const columns = line.split("|").map((value) => value.trim())
+        const clientName = columns[0]
+        if (clientName && !/^OpenVPNServer$/i.test(clientName)) {
+          users.push({
+            clientName,
+            status: section,
+            serial: columns[1] || null,
+            expiresAt: columns[2] || null,
+            ipAllocation: columns[3] || null,
+          })
+        }
+        continue
+      }
+
+      const revokedMatch = line.match(/^(.+?)\s*\(([A-Fa-f0-9]+)\)$/)
+      const clientName = revokedMatch?.[1]?.trim() ?? line
+      const serial = revokedMatch?.[2] ?? null
+
+      if (clientName) {
+        users.push({
+          clientName,
+          status: section,
+          serial,
+          expiresAt: null,
+          ipAllocation: null,
+        })
+      }
+    }
+
+    return Array.from(
+      new Map(users.map((user) => [`${user.status}:${user.clientName}`, user])).values()
+    )
   }
 
   async healthCheck(target: SshTarget): Promise<{ ok: boolean; output: string }> {

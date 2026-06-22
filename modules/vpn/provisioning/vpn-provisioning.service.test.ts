@@ -49,6 +49,8 @@ const mockOpenVpn = {
     exists: true,
     message: "OpenVPN config exists",
   }),
+  revokeClient: mock().mockResolvedValue(undefined),
+  removeClient: mock().mockResolvedValue(undefined),
 }
 
 const mockWireGuard = {
@@ -94,6 +96,8 @@ beforeEach(() => {
   mockOpenVpn.createClient.mockReset()
   mockOpenVpn.fetchConfig.mockReset()
   mockOpenVpn.validateClient.mockReset()
+  mockOpenVpn.revokeClient.mockReset()
+  mockOpenVpn.removeClient.mockReset()
   mockWireGuard.createPeer.mockReset()
   mockWireGuard.validatePeer.mockReset()
   mockProxy.createUser.mockReset()
@@ -105,6 +109,8 @@ beforeEach(() => {
     exists: true,
     message: "OpenVPN config exists",
   })
+  mockOpenVpn.revokeClient.mockResolvedValue(undefined)
+  mockOpenVpn.removeClient.mockResolvedValue(undefined)
   mockWireGuard.createPeer.mockResolvedValue({ config: "wg-config" })
   mockWireGuard.validatePeer.mockResolvedValue({
     exists: true,

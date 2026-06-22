@@ -26,7 +26,7 @@ type AccountWithServer = Prisma.VpnServerAccountGetPayload<
 >
 
 export type ProvisioningAdapters = {
-  openVpn?: Pick<OpenVpnSshAdapter, "createClient" | "fetchConfig" | "validateClient">
+  openVpn?: Pick<OpenVpnSshAdapter, "createClient" | "fetchConfig" | "validateClient" | "revokeClient" | "removeClient">
   wireGuard?: Pick<WireGuardSshAdapter, "createPeer" | "validatePeer">
   proxy?: Pick<ProxySshAdapter, "createUser" | "validateUser">
 }
@@ -126,6 +126,33 @@ export class VpnProvisioningService {
       })
       throw error
     }
+  }
+
+  async removeRemoteAccount(serverAccountId: string): Promise<void> {
+    const account = await this.findAccount(serverAccountId)
+    const target = this.toSshTarget(account)
+
+    if (account.protocol !== "OPENVPN") return
+
+    await this.withStep(serverAccountId, "revoking_client", () =>
+      this.openVpn.revokeClient(target, account.username)
+    )
+    await this.withStep(serverAccountId, "removing_certificate", () =>
+      this.openVpn.removeClient(target, account.username)
+    )
+    await this.prisma.vpnServerAccount.update({
+      where: { id: serverAccountId },
+      data: {
+        provisioningStatus: "REVOKED",
+        configEncrypted: null,
+        password: null,
+      },
+    })
+    await this.logEvent(serverAccountId, "REMOTE_ACCOUNT_REMOVED", {
+      serverAccountId,
+      protocol: account.protocol,
+      username: account.username,
+    })
   }
 
   async validateAccount(

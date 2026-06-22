@@ -64,6 +64,46 @@ export type VpnSshKeyItem = {
   updatedAt: string
 }
 
+export type VpnServerTrafficPoint = {
+  label: string
+  rx: number
+  tx: number
+  total: number
+}
+
+export type VpnServerProcessItem = {
+  pid: number
+  command: string
+  cpu: number
+  memory: number
+}
+
+export type VpnServerMetrics = {
+  ports: {
+    openVpn: number | null
+    wireGuard: number | null
+    proxy: number | null
+  }
+  uptime: string | null
+  traffic: {
+    daily: VpnServerTrafficPoint[]
+    monthly: VpnServerTrafficPoint[]
+  }
+  processes: {
+    cpu: VpnServerProcessItem[]
+    memory: VpnServerProcessItem[]
+  }
+  collectedAt: string
+}
+
+export type OpenVpnUserItem = {
+  clientName: string
+  status: "ACTIVE" | "REVOKED" | "UNKNOWN"
+  serial: string | null
+  expiresAt: string | null
+  ipAllocation: string | null
+}
+
 export type VpnServerItem = {
   id: string
   name: string
@@ -224,6 +264,25 @@ export async function listVpnServers(query?: Record<string, string>) {
       : await eden.api.admin.vpn.servers.get()
   ) as EdenRes
   return unwrapData<VpnServerItem[]>(res)
+}
+
+export async function getVpnServer(id: string) {
+  const res = (await eden.api.admin.vpn.servers[id].get()) as EdenRes
+  return unwrapData<VpnServerItem>(res)
+}
+
+export async function listOpenVpnUsers(serverId: string) {
+  const res = (
+    await eden.api.admin.vpn.servers[serverId]["openvpn-users"].get()
+  ) as EdenRes
+  return unwrapData<OpenVpnUserItem[]>(res)
+}
+
+export async function getVpnServerMetrics(serverId: string) {
+  const res = (
+    await eden.api.admin.vpn.servers[serverId].metrics.get()
+  ) as EdenRes
+  return unwrapData<VpnServerMetrics>(res)
 }
 
 export async function createVpnServer(body: Record<string, unknown>) {

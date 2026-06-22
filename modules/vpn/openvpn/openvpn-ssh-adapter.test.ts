@@ -63,6 +63,7 @@ describe("OpenVpnSshAdapter", () => {
     await adapter.createClient(target, "org_abc123_sub_456")
     await adapter.fetchConfig(target, "org_abc123_sub_456")
     await adapter.revokeClient(target, "org_abc123_sub_456")
+    await adapter.removeClient(target, "org_abc123_sub_456")
     await adapter.healthCheck(target)
 
     expect(mockExecChecked).toHaveBeenNthCalledWith(
@@ -82,9 +83,96 @@ describe("OpenVpnSshAdapter", () => {
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       4, target,
+      ["bash", "/root/rmcert.sh", "org_abc123_sub_456"],
+      "remove OpenVPN client certificate"
+    )
+    expect(mockExecChecked).toHaveBeenNthCalledWith(
+      5, target,
       ["systemctl", "is-active", "openvpn-server@server"],
       "check OpenVPN health"
     )
+  })
+
+  it("lists OpenVPN users via root userlist script", async () => {
+    mockExecChecked.mockResolvedValue({
+      stdout: "User aktif sekarang (3): juniyadi, orgabc-123456, + server cert\n",
+      stderr: "",
+      exitCode: 0,
+    })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const users = await adapter.listClients(target)
+
+    expect(mockExecChecked).toHaveBeenCalledWith(
+      target,
+      ["bash", "/root/userlist.sh"],
+      "list OpenVPN users"
+    )
+    expect(users).toEqual([
+      {
+        clientName: "juniyadi",
+        status: "ACTIVE",
+        serial: null,
+        expiresAt: null,
+        ipAllocation: null,
+      },
+      {
+        clientName: "orgabc-123456",
+        status: "ACTIVE",
+        serial: null,
+        expiresAt: null,
+        ipAllocation: null,
+      },
+    ])
+  })
+
+  it("parses table format with active and revoked sections", async () => {
+    mockExecChecked.mockResolvedValue({
+      stdout: [
+        "=== ACTIVE USERS ===",
+        "USERNAME             | SERIAL                             | EXPIRES             | IP",
+        "OpenVPNServer        | AAAA                               | 27-06-02 03:01:22   | dynamic",
+        "juniyadi             | BBBB                               | 28-09-04 03:33:17   | dynamic.pool",
+        "orgt7xt0p0g-5fbe09   | CCCC                               | 28-09-24 12:49:35   | dynamic.pool",
+        "=== REVOKED USERS ===",
+        "  test-yi-v2 (59671FE5DB5E0CB8F50D3819CC962B6A)",
+        "Total active: 2",
+        "Total revoked: 1",
+      ].join("\n"),
+      stderr: "",
+      exitCode: 0,
+    })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    await expect(adapter.listClients(target)).resolves.toEqual([
+      {
+        clientName: "juniyadi",
+        status: "ACTIVE",
+        serial: "BBBB",
+        expiresAt: "28-09-04 03:33:17",
+        ipAllocation: "dynamic.pool",
+      },
+      {
+        clientName: "orgt7xt0p0g-5fbe09",
+        status: "ACTIVE",
+        serial: "CCCC",
+        expiresAt: "28-09-24 12:49:35",
+        ipAllocation: "dynamic.pool",
+      },
+      {
+        clientName: "test-yi-v2",
+        status: "REVOKED",
+        serial: "59671FE5DB5E0CB8F50D3819CC962B6A",
+        expiresAt: null,
+        ipAllocation: null,
+      },
+    ])
   })
 
   it("does not execute commands when client name is unsafe", async () => {

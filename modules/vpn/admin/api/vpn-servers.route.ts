@@ -17,6 +17,13 @@ import {
   vpnServerService,
   type VpnServerService,
 } from "../vpn-server.service"
+import { prisma } from "@/lib/prisma"
+import { OpenVpnSshAdapter } from "@/modules/vpn/openvpn/openvpn-ssh-adapter"
+import {
+  VpnServerSshExecutor,
+  type SshTarget,
+} from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
+
 import type { VpnServerScanner } from "../vpn-connection-scanner"
 
 type Deps = {
@@ -94,6 +101,83 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
         return toServerError(set, error)
       }
     })
+    .get("/admin/vpn/servers/:id", async ({ params, set }) => {
+      const actor = await guard(set)
+      if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+      try {
+        const server = await service.getById(params.id)
+        return { ok: true, data: toVpnServerDTO(server) }
+      } catch (error) {
+        return toServerError(set, error)
+      }
+    })
+    .get("/admin/vpn/servers/:id/metrics", async ({ params, set }) => {
+      const actor = await guard(set)
+      if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+      const server = await prisma.vpnServer.findUnique({
+        where: { id: params.id },
+        include: { sshKey: { select: { privateKey: true } } },
+      })
+      if (!server) return toServerError(set, new VpnServerNotFoundError())
+
+      const target = toSshTarget(server)
+      const executor = new VpnServerSshExecutor()
+      const [uptime, daily, monthly, topCpu, topMemory] = await Promise.all([
+        execText(executor, target, ["uptime", "-p"]),
+        execJson(executor, target, ["vnstat", "-d", "--json"]),
+        execJson(executor, target, ["vnstat", "-m", "--json"]),
+        execText(executor, target, [
+          "bash",
+          "-lc",
+          "'ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head -n 6'",
+        ]),
+        execText(executor, target, [
+          "bash",
+          "-lc",
+          "'ps -eo pid,comm,%cpu,%mem --sort=-%mem | head -n 6'",
+        ]),
+      ])
+
+      return {
+        ok: true,
+        data: {
+          ports: {
+            openVpn: server.hasOpenVpn ? server.openVpnPort : null,
+            wireGuard: server.hasWireGuard ? server.wireGuardPort : null,
+            proxy: server.hasProxy ? server.proxyPort : null,
+          },
+          uptime,
+          traffic: {
+            daily: parseVnstatTraffic(daily, "day"),
+            monthly: parseVnstatTraffic(monthly, "month"),
+          },
+          processes: {
+            cpu: parseProcessList(topCpu),
+            memory: parseProcessList(topMemory),
+          },
+          collectedAt: new Date().toISOString(),
+        },
+      }
+    })
+    .get("/admin/vpn/servers/:id/openvpn-users", async ({ params, set }) => {
+      const actor = await guard(set)
+      if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+      const server = await prisma.vpnServer.findUnique({
+        where: { id: params.id },
+        include: { sshKey: { select: { privateKey: true } } },
+      })
+      if (!server) return toServerError(set, new VpnServerNotFoundError())
+      if (!server.hasOpenVpn) {
+        return { ok: true, data: [] }
+      }
+
+      const target = toSshTarget(server)
+      const users = await new OpenVpnSshAdapter().listClients(target)
+      return { ok: true, data: users }
+    })
     .post("/admin/vpn/servers/:id/test", async ({ params, set }) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
@@ -126,7 +210,97 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
     })
 }
 
+type ServerWithPrivateKey = {
+  hostname: string
+  ipAddress: string | null
+  sshUser: string
+  sshKey: { privateKey: string }
+}
+
 type RouteSet = { status?: number | string }
+
+function toSshTarget(server: ServerWithPrivateKey): SshTarget {
+  return {
+    host: server.hostname,
+    ipAddress: server.ipAddress ?? undefined,
+    user: server.sshUser,
+    encryptedPrivateKey: server.sshKey.privateKey,
+  }
+}
+
+async function execText(
+  executor: VpnServerSshExecutor,
+  target: SshTarget,
+  args: string[]
+): Promise<string | null> {
+  const result = await executor.exec(target, args)
+  if (result.exitCode !== 0) return null
+  return result.stdout.trim()
+}
+
+async function execJson(
+  executor: VpnServerSshExecutor,
+  target: SshTarget,
+  args: string[]
+): Promise<unknown | null> {
+  const text = await execText(executor, target, args)
+  if (!text) return null
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    return null
+  }
+}
+
+type VnstatDate = { year?: number; month?: number; day?: number }
+type VnstatEntry = {
+  date?: VnstatDate
+  rx?: number
+  tx?: number
+  total?: number
+}
+
+function parseVnstatTraffic(payload: unknown, bucket: "day" | "month") {
+  const interfaces =
+    payload && typeof payload === "object" && "interfaces" in payload
+      ? (payload.interfaces as Array<{ traffic?: Record<string, VnstatEntry[]> }>)
+      : []
+  const byLabel = new Map<string, { label: string; rx: number; tx: number; total: number }>()
+
+  for (const iface of interfaces) {
+    for (const entry of iface.traffic?.[bucket] ?? []) {
+      const label = formatVnstatDate(entry.date, bucket)
+      const current = byLabel.get(label) ?? { label, rx: 0, tx: 0, total: 0 }
+      current.rx += entry.rx ?? 0
+      current.tx += entry.tx ?? 0
+      current.total += entry.total ?? (entry.rx ?? 0) + (entry.tx ?? 0)
+      byLabel.set(label, current)
+    }
+  }
+
+  return Array.from(byLabel.values()).slice(-12)
+}
+
+function formatVnstatDate(date: VnstatDate | undefined, bucket: "day" | "month") {
+  if (!date?.year || !date.month) return "unknown"
+  if (bucket === "month") return `${date.year}-${String(date.month).padStart(2, "0")}`
+  return `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day ?? 1).padStart(2, "0")}`
+}
+
+function parseProcessList(output: string | null) {
+  if (!output) return []
+  return output
+    .split("\n")
+    .slice(1, 6)
+    .map((line) => line.trim().split(/\s+/))
+    .filter((parts) => parts.length >= 4)
+    .map(([pid, command, cpu, memory]) => ({
+      pid: Number(pid),
+      command,
+      cpu: Number(cpu),
+      memory: Number(memory),
+    }))
+}
 
 function toServerError(set: RouteSet, error: unknown): AdminApiError {
   if (error instanceof VpnServerNotFoundError) {
