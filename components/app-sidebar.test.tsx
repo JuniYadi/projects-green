@@ -253,6 +253,26 @@ describe("resolveSidebarMenu", () => {
     )
   })
 
+  it("returns portal whatsapp context with Dashboard as first item for /portal/whatsapp", () => {
+    const { navMain, projects, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/whatsapp",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Dashboard",
+      "Devices",
+      "Templates",
+    ])
+    expect(navMain.find((item) => item.title === "Dashboard")?.isActive).toBe(
+      true
+    )
+
+    expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
+  })
+
   it("marks messages active for its routes", () => {
     const { navMain, navMainLabel } = resolveSidebarMenu({
       surface: "console",

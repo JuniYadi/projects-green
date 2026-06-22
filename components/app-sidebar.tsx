@@ -265,6 +265,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     ],
     getNavMain: (path, locale) => [
       {
+        title: "Dashboard",
+        url: localizePathname({
+          pathname: "/portal/whatsapp",
+          locale,
+        }),
+        icon: <GaugeIcon />,
+        isActive: path === "/portal/whatsapp",
+      },
+      {
         title: "Devices",
         url: localizePathname({
           pathname: "/portal/whatsapp/devices",
@@ -526,7 +535,7 @@ const buildPortalNavMain = (
   },
   {
     title: "WhatsApp",
-    url: localizePathname({ pathname: "/portal/whatsapp/devices", locale }),
+    url: localizePathname({ pathname: "/portal/whatsapp", locale }),
     icon: <WhatsappLogoIcon />,
     isActive: startsWithRoute(pathname, "/portal/whatsapp"),
   },
