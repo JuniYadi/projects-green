@@ -9,118 +9,114 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 
 export type AuditAction =
+  // ── Device lifecycle ──
   | "DEVICE_REGISTERED"
   | "DEVICE_REVOKED"
-  | "CONFIG_DOWNLOADED"
+  | "DEVICE_RENAMED"
+  | "DEVICE_HEARTBEAT"
+  | "DEVICE_EXPORTED"
+
+  // ── Provisioning lifecycle ──
   | "PROVISIONING_STARTED"
+  | "PROVISIONING_STEP"
   | "PROVISIONING_SUCCESS"
   | "PROVISIONING_FAILED"
   | "PROVISIONING_RETRIED"
   | "PROVISIONING_RECREATE_REQUESTED"
-  | "PROVISIONING_STEP"
+
+  // ── Remote account ──
   | "REMOTE_ACCOUNT_VALIDATED"
   | "REMOTE_ACCOUNT_MISSING"
+  | "REMOTE_ACCOUNT_REMOVED"
 
-export type ProvisioningEventDetails =
-  | { serverAccountId: string; protocol: string; username: string }
-  | { serverAccountId: string; protocol: string }
-  | { serverAccountId: string; failureReason: string }
-  | { serverAccountId: string; previousFailureReason: string; triggeredByAdminId: string | null }
-  | { serverAccountId: string; triggeredByAdminId: string | null }
-  | { serverAccountId: string; previousUsername: string; username: string; triggeredByAdminId: string | null }
-  | { serverAccountId: string; protocol: string; username: string; message: string }
+  // ── Config access ──
+  | "CONFIG_DOWNLOADED"
+  | "CONFIG_VIEWED_BY_ADMIN"
+
+  // ── Subscription lifecycle ──
+  | "SUBSCRIPTION_CREATED"
+  | "SUBSCRIPTION_ACTIVATED"
+  | "SUBSCRIPTION_CANCELLED"
+  | "SUBSCRIPTION_RENEWED"
+  | "SUBSCRIPTION_RENEWAL_FAILED"
+  | "SUBSCRIPTION_EXPIRED"
+  | "SUBSCRIPTION_SUSPENDED"
+
+  // ── Admin operations ──
+  | "ADMIN_RETRY_ALL"
+  | "RECONCILIATION_RAN"
+
+  // ── Auth ──
+  | "AUTH_TOKEN_EXCHANGED"
+
+  // ── System ──
+  | "RATE_LIMIT_HIT"
+
+export type AuditEventStatus = "OK" | "FAILED" | "STARTED" | "PENDING"
+
+export type AuditEventParams = {
+  // Linkage — at least one should be set
+  organizationId?: string | null
+  subscriptionId?: string | null
+  serverAccountId?: string | null
+  serverId?: string | null
+  deviceId?: string | null
+  userId?: string | null
+  adminId?: string | null
+
+  // Correlation
+  correlationId?: string | null
+
+  // Event
+  action: AuditAction
+  status?: AuditEventStatus | null
+  step?: string | null
+  /** Required human-readable one-line summary */
+  message: string
+
+  // Debug
+  errorMessage?: string | null
+  requestPayload?: Record<string, unknown> | null
+  responsePayload?: Record<string, unknown> | null
+  details?: Record<string, unknown> | null
+  durationMs?: number | null
+
+  // Network
+  ip?: string | null
+  userAgent?: string | null
+}
 
 /**
  * Log a VPN audit event to the database.
  *
- * This function is intentionally fire-and-forget — it swallows errors
- * so that audit logging never blocks or breaks the main request flow.
+ * Fire-and-forget — never blocks the main request flow.
  */
-export async function logAuditEvent(params: {
-  deviceId?: string | null
-  userId?: string | null
-  adminId?: string | null
-  action: AuditAction
-  details?: Record<string, unknown>
-  ip?: string | null
-  userAgent?: string | null
-}): Promise<void> {
+export async function logAuditEvent(params: AuditEventParams): Promise<void> {
   try {
     await prisma.vpnAuditLog.create({
       data: {
+        organizationId: params.organizationId ?? null,
+        subscriptionId: params.subscriptionId ?? null,
+        serverAccountId: params.serverAccountId ?? null,
+        serverId: params.serverId ?? null,
+        correlationId: params.correlationId ?? null,
         deviceId: params.deviceId ?? null,
         userId: params.userId ?? null,
         adminId: params.adminId ?? null,
         action: params.action,
-        details: params.details as Prisma.InputJsonValue,
+        status: params.status ?? null,
+        step: params.step ?? null,
+        message: params.message,
+        errorMessage: params.errorMessage ?? null,
+        requestPayload: params.requestPayload as Prisma.InputJsonValue ?? Prisma.JsonNull,
+        responsePayload: params.responsePayload as Prisma.InputJsonValue ?? Prisma.JsonNull,
+        details: params.details as Prisma.InputJsonValue ?? Prisma.JsonNull,
+        durationMs: params.durationMs ?? null,
         ip: params.ip ?? null,
         userAgent: params.userAgent ?? null,
       },
     })
   } catch {
     // Best-effort — never block the main request flow
-  }
-}
-
-/**
- * Log a VPN provisioning audit event.
- *
- * Fire-and-forget — provisioning must never be blocked by audit logging.
- */
-export async function logProvisioningEvent(params: {
-  action:
-    | "PROVISIONING_STARTED"
-    | "PROVISIONING_SUCCESS"
-    | "PROVISIONING_FAILED"
-    | "PROVISIONING_RETRIED"
-    | "PROVISIONING_RECREATE_REQUESTED"
-    | "REMOTE_ACCOUNT_VALIDATED"
-    | "REMOTE_ACCOUNT_MISSING"
-  serverAccountId: string
-  details?: ProvisioningEventDetails
-  adminId?: string | null
-}): Promise<void> {
-  try {
-    await prisma.vpnAuditLog.create({
-      data: {
-        adminId: params.adminId ?? null,
-        action: params.action,
-        details: {
-          serverAccountId: params.serverAccountId,
-          ...(params.details ?? {}),
-        } as Prisma.InputJsonValue,
-      },
-    })
-  } catch {
-    // Best-effort — never block provisioning flow
-  }
-}
-
-/**
- * Log a provisioning step entry (granular step within a provisioning run).
- *
- * Writes a PROVISIONING_STEP entry with step name and status.
- * Fire-and-forget — never blocks provisioning.
- */
-export async function logProvisioningStep(params: {
-  serverAccountId: string
-  step: string
-  status: "STARTED" | "OK" | "FAILED"
-  message?: string
-}): Promise<void> {
-  try {
-    await prisma.vpnAuditLog.create({
-      data: {
-        action: "PROVISIONING_STEP",
-        details: {
-          serverAccountId: params.serverAccountId,
-          step: params.step,
-          status: params.status,
-          ...(params.message ? { message: params.message } : {}),
-        } as Prisma.InputJsonValue,
-      },
-    })
-  } catch {
-    // Best-effort — never block provisioning flow
   }
 }
