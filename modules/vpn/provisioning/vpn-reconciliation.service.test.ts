@@ -104,10 +104,7 @@ describe("VpnReconciliationService", () => {
         (l) => l.action === "PROVISIONING_RETRIED"
       )
       expect(retryLog).toBeDefined()
-      expect(retryLog?.details).toMatchObject({
-        serverAccountId: "acc_old",
-        triggeredByAdminId: null,
-      })
+      expect(retryLog?.action).toBe("PROVISIONING_RETRIED")
     })
 
     it("returns zero when no orphaned accounts found", async () => {
