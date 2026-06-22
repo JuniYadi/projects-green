@@ -32,6 +32,7 @@ const mockPrisma = {
     findFirst: mock(async (..._args: unknown[]) => null as unknown),
     create: mock(async (..._args: unknown[]) => ({})),
     update: mock(async (..._args: unknown[]) => ({})),
+    updateMany: mock(async (..._args: unknown[]) => ({ count: 0 })),
   },
   whatsappTemplateLanguage: {
     upsert: mock(async (..._args: unknown[]) => ({})),
