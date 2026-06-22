@@ -99,7 +99,7 @@ describe("WireGuardService", () => {
     })
 
     const service = new WireGuardService(mockPrisma as never, mockWireGuardSshAdapter as never)
-    const result = await service.createPeer("test-peer")
+    const result = await service.createPeer("test-peer", "org-1")
 
     expect(result.username).toBe("test-peer")
     expect(result.ip).toBe("10.0.0.2/32")
@@ -114,7 +114,7 @@ describe("WireGuardService", () => {
     mockPrisma.vpnClient.findUnique.mockResolvedValue({ id: "existing", clientName: "dup-peer" })
 
     const service = new WireGuardService(mockPrisma as never, mockWireGuardSshAdapter as never)
-    await expect(service.createPeer("dup-peer")).rejects.toThrow("already exists")
+    await expect(service.createPeer("dup-peer", "org-1")).rejects.toThrow("already exists")
   })
 
   it("lists peers from wg dump", async () => {

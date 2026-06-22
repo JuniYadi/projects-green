@@ -45,7 +45,7 @@ export const wireguardRoutes = new Elysia({ prefix: "/console/wireguard" })
       if (!auth.ok) { set.status = auth.status; return auth.body }
 
       try {
-        const result = await wireguard.createPeer(body.username)
+        const result = await wireguard.createPeer(body.username, auth.orgId)
         set.status = 201
         return result
       } catch (err) {

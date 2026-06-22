@@ -53,7 +53,7 @@ export class WireGuardService {
     })
   }
 
-  async createPeer(username: string): Promise<CreatePeerResult> {
+  async createPeer(username: string, orgId: string): Promise<CreatePeerResult> {
     const { target } = await this.resolveServer()
 
     // Check duplicate
@@ -79,7 +79,7 @@ export class WireGuardService {
     const encryptedConfig = encryptVpnConfig(config)
     await this.prisma.vpnClient.create({
       data: {
-        organizationId: "", // ponytail: requires multi-tenant context; set by caller
+        organizationId: orgId,
         subscriptionId: "",
         provider: "WIREGUARD",
         clientName: username,

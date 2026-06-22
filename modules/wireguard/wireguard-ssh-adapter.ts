@@ -30,7 +30,8 @@ function parseWgDump(stdout: string): { serverKey: string; peers: WgPeer[] } {
 
     // Extract username from comment or use pubkey prefix
     const ip = allowedIps.split(",")[0]?.trim() ?? allowedIps
-    const username = parts[0]?.substring(0, 8) ?? "unknown"
+    const pubkey = parts[0] ?? "unknown"
+    const username = pubkey.substring(0, Math.min(8, pubkey.length))  // pubkey prefix as fallback
 
     return {
       username,
@@ -112,15 +113,5 @@ export class WireGuardSshAdapter {
       "fetch WireGuard config"
     )
     return result.stdout
-  }
-
-  async validatePeer(target: SshTarget, username: string): Promise<boolean> {
-    const safeName = sanitizeUsername(username)
-    // ponytail: grep wg dump output for presence; server-side check for existing peer
-    const result = await this.executor.exec(
-      target,
-      ["wg", "show", "wg0", "dump"]
-    )
-    return result.stdout.includes(safeName)
   }
 }

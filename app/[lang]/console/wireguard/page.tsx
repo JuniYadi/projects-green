@@ -117,8 +117,9 @@ export default function WireGuardPage() {
   const handleDelete = async (username: string) => {
     if (!confirm(`Remove peer "${username}"?`)) return
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (eden.api.console.wireguard.peers as any)[username].delete()
+      // eslint-disable-next-line no-restricted-globals
+      const res = await fetch(`/api/console/wireguard/peers/${encodeURIComponent(username)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error("Failed")
       await fetchPeers()
     } catch {
       alert("Failed to remove peer")
