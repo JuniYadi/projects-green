@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 
 import { Prisma, type PrismaClient, type VpnProtocol } from "@prisma/client"
 
+import { logAuditEvent } from "@/lib/audit.service"
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import {
@@ -346,6 +347,22 @@ export class VpnSubscriptionService {
       await this.dispatch(account.id)
     }
 
+    logAuditEvent({
+      organizationId: activated.organizationId,
+      subscriptionId: activated.id,
+      action: "SUBSCRIPTION_CREATED",
+      status: "OK",
+      message: `Subscription created for org ${activated.organizationId}: package ${input.packageId}, ${activated.serverAccounts.length} accounts`,
+      details: {
+        packageId: input.packageId,
+        organizationId: activated.organizationId,
+        price: chargePrice.toFixed(2),
+        currency: accountCurrency,
+        serverAccountCount: activated.serverAccounts.length,
+        isFullMonth,
+      },
+    }).catch(() => {})
+
     return activated
   }
 
@@ -363,11 +380,22 @@ export class VpnSubscriptionService {
     })
     if (!existing) throw new VpnSubscriptionNotFoundError()
 
-    return this.prisma.vpnSubscription.update({
+    const updated = await this.prisma.vpnSubscription.update({
       where: { id: existing.id },
       data: { cancelAtPeriodEnd: true },
       include: subscriptionInclude,
     })
+
+    logAuditEvent({
+      organizationId,
+      subscriptionId: id,
+      action: "SUBSCRIPTION_CANCELLED",
+      status: "OK",
+      message: `Subscription cancelled at period end: ${existing.currentPeriodEnd.toISOString()}`,
+      details: { currentPeriodEnd: existing.currentPeriodEnd.toISOString() },
+    }).catch(() => {})
+
+    return updated
   }
 
   /**
