@@ -147,6 +147,33 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.find((item) => item.title === "Events")?.isActive).toBe(true)
   })
 
+  it("includes Webhook Logs link in whatsapp context", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/whatsapp/devices",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(navMain.map((item) => item.title)).toContain("Webhook Logs")
+
+    const webhookLogs = navMain.find((item) => item.title === "Webhook Logs")!
+    expect(webhookLogs.url).toBe("/en/portal/whatsapp/webhook-logs")
+    expect(webhookLogs.isActive).toBe(false)
+  })
+
+  it("marks Webhook Logs active for its route", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/whatsapp/webhook-logs",
+      locale: "en",
+    })
+
+    expect(navMain.find((item) => item.title === "Webhook Logs")?.isActive).toBe(
+      true
+    )
+  })
+
   it("returns portal-only navigation and projects for portal surface", () => {
     const { navMain, projects } = resolveSidebarMenu({
       surface: "portal",

@@ -45,6 +45,50 @@ function determineEventType(payload: unknown): string {
 
 export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
 
+  // GET /events — list ALL webhook events across all devices (org-scoped, paginated)
+  .get(
+    "/events",
+    async ({ request, query, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      if (!whatsappAuth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Organization required." }
+      }
+
+      const page = Math.max(Number(query.page) || 1, 1)
+      const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
+
+      const result = await listWebhookEvents({
+        organizationId: whatsappAuth.organizationId as string,
+        whatsappDeviceId: query.deviceId ?? undefined, // null/undefined = all devices
+        eventType: query.type,
+        processingStatus: query.status,
+        from: query.from,
+        to: query.to,
+        page,
+        limit,
+      })
+
+      return { ok: true, data: result.data, meta: result.meta }
+    },
+    {
+      query: t.Object({
+        deviceId: t.Optional(t.String()),
+        type: t.Optional(t.String()),
+        status: t.Optional(t.String()),
+        from: t.Optional(t.String()),
+        to: t.Optional(t.String()),
+        page: t.Optional(t.String()),
+        limit: t.Optional(t.String()),
+      }),
+    }
+  )
+
   // GET / — list webhook configs (paginated)
   .get(
     "/",
