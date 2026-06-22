@@ -1,7 +1,11 @@
+import { withAuth } from "@workos-inc/authkit-nextjs"
 import { notFound } from "next/navigation"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { prisma } from "@/lib/prisma"
+import { toDeviceDetail } from "@/modules/whatsapp/devices/devices.dto"
+import type { DeviceDetail } from "@/modules/whatsapp/devices/devices.schemas"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -55,40 +59,28 @@ export default async function PortalWhatsAppDeviceDetailPage({
     locale,
   })
 
-  let device: {
-    id: string
-    phoneNumber: string
-    name: string
-    status: string
-    environment: string
-    balance: number
-    quotaBase: number
-    quotaBaseOut: number
-    dailyLimitMessage: number
-    organizationId: string
-    businessId: string | null
-    callbackUrl: string | null
-    expiredAt: string | null
-    whatsappBusinessAccountId: string | null
-    whatsappPhoneId: string | null
-    whatsappProfile: Record<string, unknown> | null
-    features: Record<string, unknown> | null
-    createdAt: string
-    updatedAt: string
-  } | null = null
+  let device: DeviceDetail | null = null
 
-  try {
-    const response = await whatsappClient.devices.get(deviceId)
-    if (response.ok) {
-      device = response.device
-    }
-  } catch {
+  const auth = await withAuth({ ensureSignedIn: true })
+  const platformRole = await getPlatformRoleForUser({
+    id: auth.user.id,
+    email: auth.user.email,
+  })
+
+  const deviceRecord = await prisma.whatsappDevice.findFirst({
+    where: {
+      id: deviceId,
+      ...(platformRole === "super_admin"
+        ? {}
+        : { organizationId: auth.organizationId }),
+    },
+  })
+
+  if (!deviceRecord) {
     notFound()
   }
 
-  if (!device) {
-    notFound()
-  }
+  device = toDeviceDetail(deviceRecord)
 
   // Overview tab content (existing cards)
   const overviewContent = (

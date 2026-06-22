@@ -285,11 +285,18 @@ export function GithubEventsTable() {
                         {event.senderLogin}
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[event.processStatus ?? ""] ?? "bg-gray-100 text-gray-800"}`}
-                        >
-                          {event.processStatus}
-                        </span>
+                        <div className="space-y-1">
+                          <span
+                            className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[event.processStatus ?? ""] ?? "bg-gray-100 text-gray-800"}`}
+                          >
+                            {event.processStatus}
+                          </span>
+                          {event.ignoreReason ? (
+                            <div className="text-xs text-muted-foreground">
+                              {event.ignoreReason}
+                            </div>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Button
