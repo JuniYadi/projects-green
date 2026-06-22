@@ -25,7 +25,7 @@ export function SyncButton({ deviceId }: { deviceId: string }) {
   return (
     <Button size="sm" variant="outline" onClick={handleSync} disabled={loading}>
       <CloudArrowDown weight="bold" className="mr-1 size-3.5" />
-      {loading ? "..." : "Sync"}
+      {loading ? "Syncing..." : "Sync"}
     </Button>
   )
 }

@@ -215,27 +215,23 @@ async function upsertTemplate(
 export async function syncTemplates(jobData: WhatsAppTemplateSyncJobData) {
   const client = await createClient(jobData)
   const templates = await fetchAllTemplates(client)
-  const syncedSlugs = new Set<string>()
 
   for (const template of templates) {
     await upsertTemplate(jobData.organizationId, jobData.deviceId, template)
-    syncedSlugs.add(slugifyTemplateName(template.name) || template.name)
   }
 
   // ponytail: mark templates in DB not returned by Meta as NOT_IN_META
-  if (syncedSlugs.size > 0) {
-    await prisma.whatsappTemplate.updateMany({
-      where: {
-        organizationId: jobData.organizationId,
-        whatsappDeviceId: jobData.deviceId,
-        slug: { notIn: Array.from(syncedSlugs) },
-        syncStatus: { not: WhatsappTemplateSyncStatus.NOT_IN_META },
-      },
-      data: {
-        syncStatus: WhatsappTemplateSyncStatus.NOT_IN_META,
-      },
-    })
-  }
+  await prisma.whatsappTemplate.updateMany({
+    where: {
+      organizationId: jobData.organizationId,
+      whatsappDeviceId: jobData.deviceId,
+      slug: { notIn: templates.map(t => slugifyTemplateName(t.name) || t.name) },
+      syncStatus: { not: WhatsappTemplateSyncStatus.NOT_IN_META },
+    },
+    data: {
+      syncStatus: WhatsappTemplateSyncStatus.NOT_IN_META,
+    },
+  })
 
   console.info(
     `[whatsapp-template-sync-worker] synced ${templates.length} templates org=${jobData.organizationId} device=${jobData.deviceId}`
