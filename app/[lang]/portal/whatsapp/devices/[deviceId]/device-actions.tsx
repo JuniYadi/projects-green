@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { eden } from "@/lib/eden"
+import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
@@ -10,6 +11,7 @@ import {
   PencilSimple,
   Pause,
   Trash,
+  CloudArrowDown,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -29,7 +31,7 @@ type DeviceActionsProps = {
   deviceStatus: string
 }
 
-type ActionState = "idle" | "verifying" | "reconnecting"
+type ActionState = "idle" | "verifying" | "reconnecting" | "syncing"
 
 export function DeviceActions({ deviceId, deviceStatus }: DeviceActionsProps) {
   const router = useRouter()
@@ -62,6 +64,29 @@ export function DeviceActions({ deviceId, deviceStatus }: DeviceActionsProps) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to verify device"
+      toast.error(message)
+    } finally {
+      setActionState("idle")
+    }
+  }
+
+  async function handleSyncTemplates() {
+    setActionState("syncing")
+
+    try {
+      const res = await whatsappClient.devices.syncTemplates(deviceId)
+
+      if (!res.ok) {
+        throw new Error(
+          (res as { message?: string })?.message || "Failed to sync templates"
+        )
+      }
+
+      toast.success(res.message)
+      router.refresh()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to sync templates"
       toast.error(message)
     } finally {
       setActionState("idle")
@@ -218,6 +243,15 @@ export function DeviceActions({ deviceId, deviceStatus }: DeviceActionsProps) {
         >
           <ArrowsClockwise weight="bold" className="mr-1.5 size-4" />
           {actionState === "reconnecting" ? "Reconnecting..." : "Reconnect"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleSyncTemplates}
+          disabled={actionState !== "idle"}
+        >
+          <CloudArrowDown weight="bold" className="mr-1.5 size-4" />
+          {actionState === "syncing" ? "Syncing..." : "Template Sync"}
         </Button>
         <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
           <PencilSimple weight="bold" className="mr-1.5 size-4" />

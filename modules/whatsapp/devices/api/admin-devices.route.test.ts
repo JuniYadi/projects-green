@@ -42,6 +42,10 @@ const mockTransaction = mock<(...args: any[]) => any>(
     })
 )
 
+mock.module("@/lib/queue/whatsapp-template-sync", () => ({
+  enqueueWhatsAppTemplateSync: mock(async () => {}),
+}))
+
 mock.module("@/lib/prisma", () => ({
   prisma: {
     whatsappDevice: {
@@ -687,6 +691,97 @@ describe("Admin Devices Routes", () => {
       expect(res.status).toBe(200)
       expect(body.ok).toBe(true)
       expect(body.message).toBe("Device deleted.")
+    })
+  })
+
+  // ─── POST /:id/sync-templates ──────────────────────────────────────────
+
+  describe("POST /:id/sync-templates", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-templates`, {
+          method: "POST",
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not super admin", async () => {
+      const app = createTestApp(forbiddenContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-templates`, {
+          method: "POST",
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 404 when device not found", async () => {
+      mockFindUnique.mockResolvedValue(null)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/nonexistent/sync-templates`, {
+          method: "POST",
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("returns 400 when device has no token", async () => {
+      mockFindUnique.mockResolvedValue({
+        id: "dev-1",
+        token: null,
+        tokenEncrypted: null,
+        organizationId: "org-1",
+      })
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-templates`, {
+          method: "POST",
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("BAD_REQUEST")
+      expect(body.message).toContain("token")
+    })
+
+    it("enqueues sync job and returns 200 when device has token", async () => {
+      mockFindUnique.mockResolvedValue({
+        id: "dev-1",
+        token: "some-token",
+        tokenEncrypted: null,
+        organizationId: "org-1",
+      })
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-templates`, {
+          method: "POST",
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.message).toContain("Sync")
     })
   })
 
