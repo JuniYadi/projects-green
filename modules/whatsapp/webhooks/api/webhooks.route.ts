@@ -55,11 +55,16 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
 
+      if (!whatsappAuth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Organization required." }
+      }
+
       const page = Math.max(Number(query.page) || 1, 1)
       const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
 
       const result = await listWebhookEvents({
-        organizationId: (whatsappAuth as any).organizationId as string,
+        organizationId: whatsappAuth.organizationId as string,
         whatsappDeviceId: query.deviceId ?? undefined, // null/undefined = all devices
         eventType: query.type,
         processingStatus: query.status,
