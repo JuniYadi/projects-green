@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient, type VpnProtocol } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
+import { logAuditEvent } from "@/lib/audit.service"
 import {
   encryptVpnConfig,
   encryptProxyPassword,
@@ -11,12 +12,15 @@ import { WireGuardSshAdapter } from "./wireguard-ssh-adapter"
 import { ProxySshAdapter } from "./proxy-ssh-adapter"
 import type { SshTarget } from "./vpn-server-ssh-executor"
 
-type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer" | "vpnAuditLog">
+type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer">
 
 const accountWithServer = {
   include: {
     server: {
       include: { sshKey: { select: { privateKey: true } } },
+    },
+    subscription: {
+      select: { organizationId: true },
     },
   },
 } satisfies { include: Prisma.VpnServerAccountInclude }
@@ -80,19 +84,23 @@ export class VpnProvisioningService {
     console.info(
       `[vpn-provisioning] starting account=${serverAccountId} protocol=${account.protocol} username=${account.username} server=${account.server.hostname}`
     )
-    await this.logEvent(serverAccountId, "PROVISIONING_STARTED", {
+    await logAuditEvent({
       serverAccountId,
-      protocol: account.protocol,
-      username: account.username,
+      serverId: account.serverId,
+      subscriptionId: account.subscriptionId,
+      organizationId: account.subscription.organizationId,
+      action: "PROVISIONING_STARTED",
+      status: "STARTED",
+      message: `Provisioning ${account.protocol} account "${account.username}" on ${account.server.hostname}`,
+      details: { protocol: account.protocol, username: account.username },
     })
 
     const target = this.toSshTarget(account)
 
     try {
       const data = await this.runProtocol(
-        account.protocol,
+        account,
         target,
-        account.username,
         serverAccountId,
       )
       await this.prisma.vpnServerAccount.update({
@@ -106,9 +114,15 @@ export class VpnProvisioningService {
       console.info(
         `[vpn-provisioning] success account=${serverAccountId} protocol=${account.protocol}`
       )
-      await this.logEvent(serverAccountId, "PROVISIONING_SUCCESS", {
+      await logAuditEvent({
         serverAccountId,
-        protocol: account.protocol,
+        serverId: account.serverId,
+        subscriptionId: account.subscriptionId,
+        organizationId: account.subscription.organizationId,
+        action: "PROVISIONING_SUCCESS",
+        status: "OK",
+        message: `Provisioning ${account.protocol} account "${account.username}" succeeded on ${account.server.hostname}`,
+        details: { protocol: account.protocol },
       })
     } catch (error) {
       const reason =
@@ -120,10 +134,17 @@ export class VpnProvisioningService {
       console.error(
         `[vpn-provisioning] failed account=${serverAccountId}: ${reason}`
       )
-      await this.logEvent(serverAccountId, "PROVISIONING_FAILED", {
+      await logAuditEvent({
         serverAccountId,
-        failureReason: reason,
-      })
+        serverId: account.serverId,
+        subscriptionId: account.subscriptionId,
+        organizationId: account.subscription.organizationId,
+        action: "PROVISIONING_FAILED",
+        status: "FAILED",
+        message: `Provisioning account failed: ${reason}`,
+        errorMessage: reason,
+        details: { protocol: account.protocol },
+      }).catch(() => {})
       throw error
     }
   }
@@ -137,10 +158,10 @@ export class VpnProvisioningService {
     // cleanup on subscription expiry.
     if (account.protocol !== "OPENVPN") return
 
-    await this.withStep(serverAccountId, "revoking_client", () =>
+    await this.withStep(serverAccountId, account, "revoking_client", () =>
       this.openVpn.revokeClient(target, account.username)
     )
-    await this.withStep(serverAccountId, "removing_certificate", () =>
+    await this.withStep(serverAccountId, account, "removing_certificate", () =>
       this.openVpn.removeClient(target, account.username)
     )
     await this.prisma.vpnServerAccount.update({
@@ -151,10 +172,15 @@ export class VpnProvisioningService {
         password: null,
       },
     })
-    await this.logEvent(serverAccountId, "REMOTE_ACCOUNT_REMOVED", {
+    await logAuditEvent({
       serverAccountId,
-      protocol: account.protocol,
-      username: account.username,
+      serverId: account.serverId,
+      subscriptionId: account.subscriptionId,
+      organizationId: account.subscription.organizationId,
+      action: "REMOTE_ACCOUNT_REMOVED",
+      status: "OK",
+      message: `Remote ${account.protocol} account "${account.username}" removed from ${account.server.hostname}`,
+      details: { protocol: account.protocol, username: account.username },
     })
   }
 
@@ -169,16 +195,19 @@ export class VpnProvisioningService {
       account.username
     )
 
-    await this.logEvent(
+    await logAuditEvent({
       serverAccountId,
-      result.exists ? "REMOTE_ACCOUNT_VALIDATED" : "REMOTE_ACCOUNT_MISSING",
-      {
-        serverAccountId,
-        protocol: account.protocol,
-        username: account.username,
-        message: result.message,
-      }
-    )
+      serverId: account.serverId,
+      subscriptionId: account.subscriptionId,
+      organizationId: account.subscription.organizationId,
+      action: result.exists ? "REMOTE_ACCOUNT_VALIDATED" : "REMOTE_ACCOUNT_MISSING",
+      status: result.exists ? "OK" : "FAILED",
+      message: result.exists
+        ? `Remote account "${account.username}" exists on ${account.server.hostname}`
+        : `Remote account "${account.username}" missing on ${account.server.hostname}: ${result.message}`,
+      errorMessage: result.exists ? null : result.message,
+      details: { protocol: account.protocol, username: account.username },
+    })
 
     return {
       exists: result.exists,
@@ -206,36 +235,35 @@ export class VpnProvisioningService {
   }
 
   private async runProtocol(
-    protocol: VpnProtocol,
+    account: AccountWithServer,
     target: SshTarget,
-    username: string,
     serverAccountId: string,
   ): Promise<Prisma.VpnServerAccountUpdateInput> {
-    switch (protocol) {
+    switch (account.protocol) {
       case "OPENVPN": {
-        await this.withStep(serverAccountId, "creating_client", () =>
-          this.openVpn.createClient(target, username),
+        await this.withStep(serverAccountId, account, "creating_client", () =>
+          this.openVpn.createClient(target, account.username),
         )
-        const config = await this.withStep(serverAccountId, "fetching_config", () =>
-          this.openVpn.fetchConfig(target, username),
+        const config = await this.withStep(serverAccountId, account, "fetching_config", () =>
+          this.openVpn.fetchConfig(target, account.username),
         )
         const encrypted = encryptVpnConfig(config)
         return { configEncrypted: encrypted }
       }
       case "WIREGUARD": {
-        const { config } = await this.withStep(serverAccountId, "creating_peer", () =>
-          this.wireGuard.createPeer(target, username),
+        const { config } = await this.withStep(serverAccountId, account, "creating_peer", () =>
+          this.wireGuard.createPeer(target, account.username),
         )
         return { configEncrypted: encryptVpnConfig(config) }
       }
       case "PROXY": {
-        const { password } = await this.withStep(serverAccountId, "creating_user", () =>
-          this.proxy.createUser(target, username),
+        const { password } = await this.withStep(serverAccountId, account, "creating_user", () =>
+          this.proxy.createUser(target, account.username),
         )
         return { password: encryptProxyPassword(password) }
       }
       default: {
-        const exhaustive: never = protocol
+        const exhaustive: never = account.protocol
         throw new Error(`Unsupported protocol: ${String(exhaustive)}`)
       }
     }
@@ -260,60 +288,59 @@ export class VpnProvisioningService {
     }
   }
 
-  /** Write a provisioning event via the injected prisma instance. */
-  private async logEvent(
-    serverAccountId: string,
-    action: string,
-    details?: Record<string, unknown>
-  ): Promise<void> {
-    await this.prisma.vpnAuditLog.create({
-      data: {
-        action,
-        details: (details ?? { serverAccountId }) as Prisma.InputJsonValue,
-      },
-    })
-  }
-
-  /** Write a step log entry via the injected prisma instance. */
-  // ponytail: intentional — audit log failure should fail provisioning
-  // loudly during dev rather than silently swallowing. If this becomes
-  // noisy in production, wrap in try/catch with console.warn.
-  private async logStep(
-    serverAccountId: string,
-    step: string,
-    status: "STARTED" | "OK" | "FAILED",
-    message?: string,
-  ): Promise<void> {
-    await this.prisma.vpnAuditLog.create({
-      data: {
-        action: "PROVISIONING_STEP",
-        details: {
-          serverAccountId,
-          step,
-          status,
-          ...(message ? { message } : {}),
-        } as Prisma.InputJsonValue,
-      },
-    })
-  }
-
+  /** Write a step log entry via the unified audit service. */
   private async withStep<T>(
     serverAccountId: string,
+    account: AccountWithServer,
     step: string,
     fn: () => T | Promise<T>,
   ): Promise<T> {
-    await this.logStep(serverAccountId, step, "STARTED")
+    const start = performance.now()
+
+    await logAuditEvent({
+      serverAccountId,
+      serverId: account.serverId,
+      subscriptionId: account.subscriptionId,
+      organizationId: account.subscription.organizationId,
+      action: "PROVISIONING_STEP",
+      status: "STARTED",
+      step,
+      message: `Step "${step}" started for account ${serverAccountId}`,
+    })
     console.info(`[vpn-provisioning] step=${step} account=${serverAccountId} started`)
 
     try {
       const result = await fn()
-      await this.logStep(serverAccountId, step, "OK")
+      const durationMs = Math.round(performance.now() - start)
+      await logAuditEvent({
+        serverAccountId,
+        serverId: account.serverId,
+        subscriptionId: account.subscriptionId,
+        organizationId: account.subscription.organizationId,
+        action: "PROVISIONING_STEP",
+        status: "OK",
+        step,
+        message: `Step "${step}" completed for account ${serverAccountId}`,
+        durationMs,
+      })
       console.info(`[vpn-provisioning] step=${step} account=${serverAccountId} ok`)
       return result
     } catch (error) {
+      const durationMs = Math.round(performance.now() - start)
       const message =
         error instanceof Error ? error.message : "Unknown error"
-      await this.logStep(serverAccountId, step, "FAILED", message)
+      await logAuditEvent({
+        serverAccountId,
+        serverId: account.serverId,
+        subscriptionId: account.subscriptionId,
+        organizationId: account.subscription.organizationId,
+        action: "PROVISIONING_STEP",
+        status: "FAILED",
+        step,
+        message: `Step "${step}" failed for account ${serverAccountId}: ${message}`,
+        errorMessage: message,
+        durationMs,
+      })
       console.error(
         `[vpn-provisioning] step=${step} account=${serverAccountId} failed: ${message}`
       )

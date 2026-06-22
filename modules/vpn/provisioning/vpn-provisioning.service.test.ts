@@ -3,7 +3,7 @@ import type { PrismaClient } from "@prisma/client"
 
 type PrismaLike = Pick<
   PrismaClient,
-  "vpnServerAccount" | "vpnServer" | "vpnAuditLog"
+  "vpnServerAccount" | "vpnServer"
 >
 
 const mockAuditLogs: Array<{
@@ -11,6 +11,8 @@ const mockAuditLogs: Array<{
   adminId: string | null
   step: string | null
   status: string | null
+  message: string | null
+  errorMessage: string | null
   details: Record<string, unknown> | null
 }> = []
 
@@ -28,6 +30,8 @@ const mockPrisma = {
         adminId: data.adminId as string | null,
         step: ((data.step as string) ?? details?.step) as string | null,
         status: ((data.status as string) ?? details?.status) as string | null,
+        message: data.message as string | null,
+        errorMessage: data.errorMessage as string | null,
         details,
       })
       return { id: "log_" + Date.now(), ...data }
@@ -73,6 +77,8 @@ let service: InstanceType<typeof VpnProvisioningService>
 
 const account = {
   id: ACCOUNT_ID,
+  serverId: "srv_1",
+  subscriptionId: "sub_1",
   username: USERNAME,
   protocol: "OPENVPN" as const,
   provisioningStatus: "PENDING" as const,
@@ -80,8 +86,12 @@ const account = {
   server: {
     id: "srv_1",
     hostname: "vpn.example.com",
+    ipAddress: null,
     sshUser: "root",
     sshKey: { privateKey: "-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----" },
+  },
+  subscription: {
+    organizationId: "org_1",
   },
 }
 
@@ -145,14 +155,12 @@ describe("VpnProvisioningService audit logging", () => {
 
     expect(started).toBeDefined()
     expect(started?.details).toMatchObject({
-      serverAccountId: ACCOUNT_ID,
       protocol: "OPENVPN",
       username: USERNAME,
     })
 
     expect(success).toBeDefined()
     expect(success?.details).toMatchObject({
-      serverAccountId: ACCOUNT_ID,
       protocol: "OPENVPN",
     })
 
@@ -179,10 +187,7 @@ describe("VpnProvisioningService audit logging", () => {
 
     expect(started).toBeDefined()
     expect(failed).toBeDefined()
-    expect(failed?.details).toMatchObject({
-      serverAccountId: ACCOUNT_ID,
-      failureReason: "SSH connection refused",
-    })
+    expect(failed?.errorMessage).toBe("SSH connection refused")
 
     expect(
       mockAuditLogs.find((l) => l.action === "PROVISIONING_SUCCESS")
@@ -216,10 +221,7 @@ describe("VpnProvisioningService audit logging", () => {
     const failed = mockAuditLogs.find(
       (l) => l.action === "PROVISIONING_FAILED"
     )
-    expect(failed?.details).toMatchObject({
-      serverAccountId: ACCOUNT_ID,
-      failureReason: "DNS resolution failed",
-    })
+    expect(failed?.errorMessage).toBe("DNS resolution failed")
   })
 })
 
@@ -242,6 +244,10 @@ describe("VpnProvisioningService step logging", () => {
 
     expect(stepLogFor("creating_client", "STARTED")).toBeDefined()
     expect(stepLogFor("creating_client", "OK")).toBeDefined()
+    // OK steps should have durationMs
+    const creatingOk = stepLogFor("creating_client", "OK")
+    expect(creatingOk?.message).toMatch(/completed/)
+
     expect(stepLogFor("fetching_config", "STARTED")).toBeDefined()
     expect(stepLogFor("fetching_config", "OK")).toBeDefined()
 
@@ -266,9 +272,7 @@ describe("VpnProvisioningService step logging", () => {
     const failed = stepLogFor("creating_client", "FAILED")
     expect(failed).toBeDefined()
     expect(failed?.status).toBe("FAILED")
-    expect(failed?.details).toMatchObject({
-      message: "Connection timeout",
-    })
+    expect(failed?.errorMessage).toBe("Connection timeout")
 
     // Subsequent steps should NOT be recorded
     expect(stepLogFor("fetching_config", "STARTED")).toBeUndefined()
