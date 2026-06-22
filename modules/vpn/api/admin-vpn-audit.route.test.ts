@@ -45,6 +45,15 @@ const sampleRows = [
     action: "PROVISIONING_SUCCESS",
     step: null,
     status: null,
+    message: null,
+    errorMessage: null,
+    durationMs: null,
+    organizationId: null,
+    subscriptionId: null,
+    serverId: null,
+    correlationId: null,
+    requestPayload: null,
+    responsePayload: null,
     details: { serverName: "vpn-sgp-01", durationMs: 1500 },
     ip: "10.0.0.1",
     userAgent: "curl/8",
@@ -59,6 +68,15 @@ const sampleRows = [
     action: "PROVISIONING_STEP",
     step: "ssh_connecting",
     status: "FAILED",
+    message: null,
+    errorMessage: null,
+    durationMs: null,
+    organizationId: null,
+    subscriptionId: null,
+    serverId: null,
+    correlationId: null,
+    requestPayload: null,
+    responsePayload: null,
     details: { step: "ssh_connecting", status: "FAILED", error: "timeout" },
     ip: "10.0.0.2",
     userAgent: "node",
@@ -232,9 +250,9 @@ describe("GET /admin/vpn/audit/accounts/:saId (unchanged behaviour)", () => {
     const body = await res.json()
     expect(body.ok).toBe(true)
     expect(body.data).toHaveLength(1)
-    // The per-account route uses the lean DTO (id, action, details, createdAt)
+    // The per-account route uses the lean DTO (includes new audit columns)
     expect(Object.keys(body.data[0]).sort()).toEqual(
-      ["action", "createdAt", "details", "id"].sort()
+      ["action", "createdAt", "details", "durationMs", "errorMessage", "id", "message", "status", "step"].sort()
     )
   })
 })
