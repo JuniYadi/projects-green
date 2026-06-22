@@ -92,20 +92,19 @@ function enabledProtocols(server: {
 }
 
 /**
- * Username scheme from Story 14: `vpn-{orgId}-{serverId}-{protocol}`,
- * sanitized to the adapter-safe charset. A 4-char hex suffix is appended
- * to ensure uniqueness when an org subscribes to the same package+protocol
- * multiple times (multi-sub).
+ * Short remote account name for OpenVPN/EasyRSA CN safety.
+ * The DB already tracks organization, server, and protocol, so the remote
+ * username only needs a compact org hint plus random uniqueness.
  */
 export function buildAccountUsername(
   organizationId: string,
-  serverId: string,
-  protocol: VpnProtocol
+  _serverId: string,
+  _protocol: VpnProtocol
 ): string {
-  const safeOrg = organizationId.replace(/[^A-Za-z0-9]/g, "").slice(0, 16)
-  const safeServer = serverId.replace(/[^A-Za-z0-9]/g, "").slice(0, 16)
-  const suffix = crypto.randomBytes(2).toString("hex")
-  return `vpn-${safeOrg}-${safeServer}-${protocol.toLowerCase()}-${suffix}`
+  const safeOrg = organizationId.replace(/[^A-Za-z0-9]/g, "").toLowerCase()
+  const orgHint = safeOrg.slice(-8) || "org"
+  const suffix = crypto.randomBytes(3).toString("hex")
+  return `org${orgHint}-${suffix}`
 }
 
 export type PurchaseInput = {

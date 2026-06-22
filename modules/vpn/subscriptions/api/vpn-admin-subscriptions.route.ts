@@ -10,9 +10,11 @@ import {
 } from "@/modules/admin/api/admin.guards"
 import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
 import { decryptVpnConfig } from "@/modules/vpn/vpn-crypto"
+import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
 
 import {
   VpnSubscriptionService,
+  buildAccountUsername,
   vpnSubscriptionService,
   type VpnSubscriptionWithAccounts,
 } from "../vpn-subscription.service"
@@ -132,6 +134,62 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
           details: {
             serverAccountId: account.id,
             previousFailureReason,
+            triggeredByAdminId: actor.userId,
+          },
+          adminId: actor.userId,
+        })
+
+        return { ok: true }
+      }
+    )
+    .post(
+      "/admin/vpn/subscriptions/:id/servers/:saId/validate",
+      async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
+        const sub = await service.getById(params.id)
+        const account = sub?.serverAccounts.find((a) => a.id === params.saId)
+        if (!sub || !account) return notFound(set)
+
+        const validation = await vpnProvisioningService.validateAccount(account.id)
+        return { ok: true, data: validation }
+      }
+    )
+    .post(
+      "/admin/vpn/subscriptions/:id/servers/:saId/recreate",
+      async ({ params, set }) => {
+        const actor = (await guard(set)) as AdminActorContext | AdminApiError
+        if (!actor.ok) return actor
+        const sub = await service.getById(params.id)
+        const account = sub?.serverAccounts.find((a) => a.id === params.saId)
+        if (!sub || !account) return notFound(set)
+
+        const previousUsername = account.username
+        const username = buildAccountUsername(
+          sub.organizationId,
+          account.serverId,
+          account.protocol
+        )
+
+        await prisma.vpnServerAccount.update({
+          where: { id: account.id },
+          data: {
+            username,
+            provisioningStatus: "PENDING",
+            failureReason: null,
+            configEncrypted: null,
+            password: null,
+          },
+        })
+        await VpnProvisioningJob.enqueue({ serverAccountId: account.id })
+
+        logProvisioningEvent({
+          action: "PROVISIONING_RECREATE_REQUESTED",
+          serverAccountId: account.id,
+          details: {
+            serverAccountId: account.id,
+            previousUsername,
+            username,
             triggeredByAdminId: actor.userId,
           },
           adminId: actor.userId,

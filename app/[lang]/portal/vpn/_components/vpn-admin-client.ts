@@ -157,6 +157,8 @@ export type VpnSubscriptionItem = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden response union requires narrowing
 type EdenRes = { data: any; error: any }
 
+type ApiBody<T> = { ok: true; data: T } | { ok: false; message?: string }
+
 function throwIfError(res: EdenRes) {
   if (res.error) throw new Error(String(res.error))
   const body = res.data as Record<string, unknown> | null
@@ -169,12 +171,28 @@ function throwIfError(res: EdenRes) {
   }
 }
 
+function unwrapData<T>(res: EdenRes): { data: T } {
+  throwIfError(res)
+
+  const body = res.data as ApiBody<T> | T
+  if (
+    body &&
+    typeof body === "object" &&
+    "ok" in body &&
+    body.ok === true &&
+    "data" in body
+  ) {
+    return { data: (body as { data: T }).data }
+  }
+
+  return { data: body as T }
+}
+
 // ── Regions ──────────────────────────────────────────────────────────────
 
 export async function listVpnRegions() {
   const res = (await eden.api.admin.vpn.regions.get()) as EdenRes
-  throwIfError(res)
-  return res as { data: VpnRegionItem[] }
+  return unwrapData<VpnRegionItem[]>(res)
 }
 
 export async function createVpnRegion(body: Record<string, unknown>) {
@@ -205,15 +223,13 @@ export async function listVpnServers(query?: Record<string, string>) {
       ? await eden.api.admin.vpn.servers.get({ $query: query })
       : await eden.api.admin.vpn.servers.get()
   ) as EdenRes
-  throwIfError(res)
-  return res as { data: VpnServerItem[] }
+  return unwrapData<VpnServerItem[]>(res)
 }
 
 export async function createVpnServer(body: Record<string, unknown>) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden infers strict body types; generic callers pass untyped objects
   const res = (await eden.api.admin.vpn.servers.post(body as any)) as EdenRes
-  throwIfError(res)
-  return res as { data: { id: string } }
+  return unwrapData<{ id: string }>(res)
 }
 
 export async function updateVpnServer(
@@ -233,16 +249,14 @@ export async function deleteVpnServer(id: string) {
 export async function testVpnServer(id: string, init?: RequestInit) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden POST body type doesn't accept RequestInit
   const res = (await eden.api.admin.vpn.servers[id].test.post(init as any)) as EdenRes
-  throwIfError(res)
-  return res as { data: ScanResult }
+  return unwrapData<ScanResult>(res)
 }
 
 // ── SSH Keys ─────────────────────────────────────────────────────────────
 
 export async function listVpnSshKeys() {
   const res = (await eden.api.admin.vpn["ssh-keys"].get()) as EdenRes
-  throwIfError(res)
-  return res as { data: VpnSshKeyItem[] }
+  return unwrapData<VpnSshKeyItem[]>(res)
 }
 
 export async function createVpnSshKey(body: Record<string, unknown>) {
@@ -260,8 +274,7 @@ export async function deleteVpnSshKey(id: string) {
 
 export async function listVpnPackages() {
   const res = (await eden.api.admin.vpn.packages.get()) as EdenRes
-  throwIfError(res)
-  return res as { data: VpnPackageItem[] }
+  return unwrapData<VpnPackageItem[]>(res)
 }
 
 export async function createVpnPackage(body: Record<string, unknown>) {
@@ -288,14 +301,18 @@ export async function deleteVpnPackage(id: string) {
 
 export async function listVpnAdminSubscriptions() {
   const res = (await eden.api.admin.vpn.subscriptions.get()) as EdenRes
-  throwIfError(res)
-  return res as { data: VpnSubscriptionItem[] }
+  return unwrapData<VpnSubscriptionItem[]>(res)
 }
 
 export async function getVpnAdminSubscription(id: string) {
   const res = (await eden.api.admin.vpn.subscriptions[id].get()) as EdenRes
-  throwIfError(res)
-  return res as { data: VpnSubscriptionItem }
+  return unwrapData<VpnSubscriptionItem>(res)
+}
+
+export type VpnAccountValidationResult = {
+  exists: boolean
+  status: "FOUND" | "MISSING"
+  message: string
 }
 
 export async function retryVpnServerAccount(
@@ -304,6 +321,26 @@ export async function retryVpnServerAccount(
 ) {
   const res = (
     await eden.api.admin.vpn.subscriptions[subId].servers[saId].retry.post()
+  ) as EdenRes
+  throwIfError(res)
+}
+
+export async function validateVpnServerAccount(
+  subId: string,
+  saId: string
+) {
+  const res = (
+    await eden.api.admin.vpn.subscriptions[subId].servers[saId].validate.post()
+  ) as EdenRes
+  return unwrapData<VpnAccountValidationResult>(res)
+}
+
+export async function recreateVpnServerAccount(
+  subId: string,
+  saId: string
+) {
+  const res = (
+    await eden.api.admin.vpn.subscriptions[subId].servers[saId].recreate.post()
   ) as EdenRes
   throwIfError(res)
 }
@@ -351,8 +388,7 @@ export async function getVpnProvisioningAudit(
       : // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden route requires args; no-arg variant is valid
         await eden.api.admin.vpn.audit.accounts[saId].get({} as any)
   ) as EdenRes
-  throwIfError(res)
-  return res as { data: AuditEntry[] }
+  return unwrapData<AuditEntry[]>(res)
 }
 
 // ── Mobile Devices (admin) ───────────────────────────────────────────────
@@ -379,15 +415,12 @@ export async function listVpnMobileAdminDevices(
   const res = (
     await eden.api.vpn.mobile.admin.devices.get({ $query: query })
   ) as EdenRes
-  throwIfError(res)
-  return res as {
-    data: {
-      devices: AdminDeviceEntry[]
-      total: number
-      page: number
-      limit: number
-    }
-  }
+  return unwrapData<{
+    devices: AdminDeviceEntry[]
+    total: number
+    page: number
+    limit: number
+  }>(res)
 }
 
 export async function revokeVpnMobileDevice(

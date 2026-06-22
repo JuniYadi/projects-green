@@ -16,13 +16,19 @@ export type AuditAction =
   | "PROVISIONING_SUCCESS"
   | "PROVISIONING_FAILED"
   | "PROVISIONING_RETRIED"
+  | "PROVISIONING_RECREATE_REQUESTED"
   | "PROVISIONING_STEP"
+  | "REMOTE_ACCOUNT_VALIDATED"
+  | "REMOTE_ACCOUNT_MISSING"
 
 export type ProvisioningEventDetails =
   | { serverAccountId: string; protocol: string; username: string }
   | { serverAccountId: string; protocol: string }
   | { serverAccountId: string; failureReason: string }
   | { serverAccountId: string; previousFailureReason: string; triggeredByAdminId: string | null }
+  | { serverAccountId: string; triggeredByAdminId: string | null }
+  | { serverAccountId: string; previousUsername: string; username: string; triggeredByAdminId: string | null }
+  | { serverAccountId: string; protocol: string; username: string; message: string }
 
 /**
  * Log a VPN audit event to the database.
@@ -67,6 +73,9 @@ export async function logProvisioningEvent(params: {
     | "PROVISIONING_SUCCESS"
     | "PROVISIONING_FAILED"
     | "PROVISIONING_RETRIED"
+    | "PROVISIONING_RECREATE_REQUESTED"
+    | "REMOTE_ACCOUNT_VALIDATED"
+    | "REMOTE_ACCOUNT_MISSING"
   serverAccountId: string
   details?: ProvisioningEventDetails
   adminId?: string | null
@@ -74,10 +83,12 @@ export async function logProvisioningEvent(params: {
   try {
     await prisma.vpnAuditLog.create({
       data: {
-        serverAccountId: params.serverAccountId, // Column, not in details
         adminId: params.adminId ?? null,
         action: params.action,
-        details: params.details as Prisma.InputJsonValue,
+        details: {
+          serverAccountId: params.serverAccountId,
+          ...(params.details ?? {}),
+        } as Prisma.InputJsonValue,
       },
     })
   } catch {
@@ -94,19 +105,19 @@ export async function logProvisioningEvent(params: {
 export async function logProvisioningStep(params: {
   serverAccountId: string
   step: string
-  status: "OK" | "FAILED"
+  status: "STARTED" | "OK" | "FAILED"
   message?: string
 }): Promise<void> {
   try {
     await prisma.vpnAuditLog.create({
       data: {
-        serverAccountId: params.serverAccountId,
         action: "PROVISIONING_STEP",
-        step: params.step,
-        status: params.status,
-        details: params.message
-          ? ({ message: params.message } as Prisma.InputJsonValue)
-          : Prisma.DbNull,
+        details: {
+          serverAccountId: params.serverAccountId,
+          step: params.step,
+          status: params.status,
+          ...(params.message ? { message: params.message } : {}),
+        } as Prisma.InputJsonValue,
       },
     })
   } catch {

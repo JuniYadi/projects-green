@@ -8,6 +8,11 @@ export type OpenVpnClientSummary = {
   status: "ACTIVE" | "REVOKED" | "UNKNOWN"
 }
 
+export type RemoteAccountValidationResult = {
+  exists: boolean
+  message: string
+}
+
 const CLIENT_NAME_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_-]{2,63}$/
 const SCRIPT_PATH_PATTERN = /^\/[A-Za-z0-9_./-]+$/
 
@@ -43,35 +48,31 @@ export class OpenVpnSshAdapter {
     this.createScript =
       options.createScript ??
       process.env.OPENVPN_CREATE_CLIENT_SCRIPT ??
-      "/usr/local/bin/create-openvpn-client"
+      "/root/genclient.sh"
     this.revokeScript =
       options.revokeScript ??
       process.env.OPENVPN_REVOKE_CLIENT_SCRIPT ??
-      "/usr/local/bin/revoke-openvpn-client"
+      "/root/revoke.sh"
     this.configDirectory =
       options.configDirectory ??
       process.env.OPENVPN_CLIENT_CONFIG_DIR ??
-      "/etc/openvpn/clients"
+      "/root/openvpn/clients"
   }
 
   async createClient(target: SshTarget, clientName: string): Promise<void> {
     const safeName = sanitizeOpenVpnClientName(clientName)
     const script = assertSafeAbsolutePath(this.createScript, "create script")
-    const directory = assertSafeAbsolutePath(
-      this.configDirectory,
-      "config directory"
+
+    await this.executor.execChecked(
+      target,
+      ["bash", script, safeName],
+      "create OpenVPN client"
     )
 
-    await this.executor.execChecked(target, [script, safeName], "create OpenVPN client")
-
-    // Verify config file was created
-    const configPath = `${directory}/${safeName}.ovpn`
-    const verifyResult = await this.executor.exec(target, ["test", "-f", configPath])
-
-    if (verifyResult.exitCode !== 0) {
-      throw new Error(
-        `OpenVPN config file not found on server after creation: ${configPath}`
-      )
+    // d3vilh/openvpn-server's generated client artifact is the .ovpn file.
+    const validation = await this.validateClient(target, safeName)
+    if (!validation.exists) {
+      throw new Error(validation.message)
     }
   }
 
@@ -91,11 +92,40 @@ export class OpenVpnSshAdapter {
     return result.stdout
   }
 
+  async validateClient(
+    target: SshTarget,
+    clientName: string
+  ): Promise<RemoteAccountValidationResult> {
+    const safeName = sanitizeOpenVpnClientName(clientName)
+    const directory = assertSafeAbsolutePath(
+      this.configDirectory,
+      "config directory"
+    )
+    const configPath = `${directory}/${safeName}.ovpn`
+    const result = await this.executor.exec(target, ["test", "-f", configPath])
+
+    if (result.exitCode === 0) {
+      return {
+        exists: true,
+        message: `OpenVPN profile exists: ${configPath}`,
+      }
+    }
+
+    return {
+      exists: false,
+      message: `OpenVPN profile not found on server: ${configPath}`,
+    }
+  }
+
   async revokeClient(target: SshTarget, clientName: string): Promise<void> {
     const safeName = sanitizeOpenVpnClientName(clientName)
     const script = assertSafeAbsolutePath(this.revokeScript, "revoke script")
 
-    await this.executor.execChecked(target, [script, safeName], "revoke OpenVPN client")
+    await this.executor.execChecked(
+      target,
+      ["bash", script, safeName],
+      "revoke OpenVPN client"
+    )
   }
 
   async listClients(): Promise<OpenVpnClientSummary[]> {

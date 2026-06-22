@@ -67,17 +67,17 @@ describe("OpenVpnSshAdapter", () => {
 
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       1, target,
-      ["/usr/local/bin/create-openvpn-client", "org_abc123_sub_456"],
+      ["bash", "/root/genclient.sh", "org_abc123_sub_456"],
       "create OpenVPN client"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       2, target,
-      ["cat", "/etc/openvpn/clients/org_abc123_sub_456.ovpn"],
+      ["cat", "/root/openvpn/clients/org_abc123_sub_456.ovpn"],
       "fetch OpenVPN config"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       3, target,
-      ["/usr/local/bin/revoke-openvpn-client", "org_abc123_sub_456"],
+      ["bash", "/root/revoke.sh", "org_abc123_sub_456"],
       "revoke OpenVPN client"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
@@ -98,7 +98,7 @@ describe("OpenVpnSshAdapter", () => {
     expect(mockExecChecked).not.toHaveBeenCalled()
   })
 
-  it("verifies config file exists after creation", async () => {
+  it("verifies generated ovpn profile exists after creation", async () => {
     mockExecChecked.mockResolvedValue({ stdout: "ok", stderr: "", exitCode: 0 })
     mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
 
@@ -108,13 +108,44 @@ describe("OpenVpnSshAdapter", () => {
 
     await adapter.createClient(target, "org_abc123_sub_456")
 
-    expect(mockExecInternal).toHaveBeenCalledWith(
-      target,
-      ["test", "-f", "/etc/openvpn/clients/org_abc123_sub_456.ovpn"]
-    )
+    expect(mockExecInternal).toHaveBeenCalledWith(target, [
+      "test",
+      "-f",
+      "/root/openvpn/clients/org_abc123_sub_456.ovpn",
+    ])
   })
 
-  it("throws error when config file not found after creation", async () => {
+  it("validates generated ovpn profile existence", async () => {
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const result = await adapter.validateClient(target, "org_abc123_sub_456")
+
+    expect(result.exists).toBe(true)
+    expect(mockExecInternal).toHaveBeenCalledWith(target, [
+      "test",
+      "-f",
+      "/root/openvpn/clients/org_abc123_sub_456.ovpn",
+    ])
+  })
+
+  it("returns missing when ovpn profile is absent", async () => {
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 1 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const result = await adapter.validateClient(target, "org_abc123_sub_456")
+
+    expect(result.exists).toBe(false)
+    expect(result.message).toContain("OpenVPN profile not found")
+  })
+
+  it("throws error when ovpn profile is not found after creation", async () => {
     mockExecChecked.mockResolvedValue({ stdout: "ok", stderr: "", exitCode: 0 })
     mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 1 })
 
@@ -123,7 +154,7 @@ describe("OpenVpnSshAdapter", () => {
     })
 
     await expect(adapter.createClient(target, "org_abc123_sub_456")).rejects.toThrow(
-      "OpenVPN config file not found on server after creation"
+      "OpenVPN profile not found"
     )
   })
 })

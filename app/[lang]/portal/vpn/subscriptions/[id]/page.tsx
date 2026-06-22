@@ -27,6 +27,8 @@ import {
   retryVpnServerAccount,
   revokeVpnServerAccount,
   retryAllVpnServerAccounts,
+  validateVpnServerAccount,
+  recreateVpnServerAccount,
   vpnAdminConfigDownloadUrl,
   type VpnSubscriptionItem,
   type VpnServerAccountEntry,
@@ -147,21 +149,40 @@ export default function SubscriptionDetailPage() {
 
   const act = async (
     account: VpnServerAccountEntry,
-    action: "retry" | "revoke"
+    action: "retry" | "revoke" | "validate" | "recreate"
   ) => {
     if (
       action === "revoke" &&
       !window.confirm(`Revoke ${account.protocol} on ${account.serverName}?`)
     )
       return
-    setBusy(account.id)
+    if (
+      action === "recreate" &&
+      !window.confirm(
+        `Recreate ${account.protocol} account on ${account.serverName}? This clears stored config/credentials and queues provisioning again.`
+      )
+    )
+      return
+
+    setBusy(`${action}:${account.id}`)
     try {
       if (action === "retry") {
         await retryVpnServerAccount(subscriptionId, account.id)
-      } else {
+        await fetchSubscription()
+      } else if (action === "revoke") {
         await revokeVpnServerAccount(subscriptionId, account.id)
+        await fetchSubscription()
+      } else if (action === "recreate") {
+        await recreateVpnServerAccount(subscriptionId, account.id)
+        await fetchSubscription()
+      } else {
+        const result = await validateVpnServerAccount(subscriptionId, account.id)
+        window.alert(
+          result.data.exists
+            ? `Account exists on server.\n\n${result.data.message}`
+            : `Account is missing on server.\n\n${result.data.message}`
+        )
       }
-      await fetchSubscription()
     } catch (err) {
       window.alert((err as Error).message)
     } finally {
@@ -440,12 +461,32 @@ export default function SubscriptionDetailPage() {
                       </a>
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busy?.endsWith(account.id)}
+                    onClick={() => act(account, "validate")}
+                  >
+                    {busy === `validate:${account.id}`
+                      ? "Validating..."
+                      : "Validate"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busy?.endsWith(account.id)}
+                    onClick={() => act(account, "recreate")}
+                  >
+                    {busy === `recreate:${account.id}`
+                      ? "Recreating..."
+                      : "Recreate"}
+                  </Button>
                   {(account.provisioningStatus === "FAILED" ||
                     account.provisioningStatus === "PENDING") && (
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={busy === account.id}
+                      disabled={busy?.endsWith(account.id)}
                       onClick={() => act(account, "retry")}
                     >
                       Retry
@@ -457,7 +498,7 @@ export default function SubscriptionDetailPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={busy === account.id}
+                      disabled={busy?.endsWith(account.id)}
                       onClick={() => act(account, "revoke")}
                     >
                       Revoke

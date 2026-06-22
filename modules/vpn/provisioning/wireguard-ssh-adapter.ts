@@ -13,6 +13,11 @@ export type WireGuardProvisionResult = {
   config: string
 }
 
+export type WireGuardValidationResult = {
+  exists: boolean
+  message: string
+}
+
 /**
  * WireGuard provisioning over SSH.
  *
@@ -53,6 +58,30 @@ export class WireGuardSshAdapter {
       throw new Error("WireGuard config was not returned by the server")
     }
     return { config }
+  }
+
+  async validatePeer(
+    target: SshTarget,
+    username: string
+  ): Promise<WireGuardValidationResult> {
+    const safeName = sanitizeUsername(username)
+    const result = await this.executor.exec(target, [
+      this.addPeerScript,
+      "--exists",
+      safeName,
+    ])
+
+    if (result.exitCode === 0) {
+      return { exists: true, message: "WireGuard peer exists on server." }
+    }
+
+    return {
+      exists: false,
+      message:
+        result.stderr.trim() ||
+        result.stdout.trim() ||
+        "WireGuard peer was not found on server.",
+    }
   }
 
   async revokePeer(target: SshTarget, username: string): Promise<void> {

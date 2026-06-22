@@ -21,6 +21,11 @@ export type ProxyProvisionResult = {
   password: string
 }
 
+export type ProxyValidationResult = {
+  exists: boolean
+  message: string
+}
+
 /**
  * Proxy provisioning over SSH.
  *
@@ -62,6 +67,30 @@ export class ProxySshAdapter {
       "create proxy user"
     )
     return { password }
+  }
+
+  async validateUser(
+    target: SshTarget,
+    username: string
+  ): Promise<ProxyValidationResult> {
+    const safeName = sanitizeUsername(username)
+    const result = await this.executor.exec(target, [
+      this.addUserScript,
+      "--exists",
+      safeName,
+    ])
+
+    if (result.exitCode === 0) {
+      return { exists: true, message: "Proxy user exists on server." }
+    }
+
+    return {
+      exists: false,
+      message:
+        result.stderr.trim() ||
+        result.stdout.trim() ||
+        "Proxy user was not found on server.",
+    }
   }
 
   async revokeUser(target: SshTarget, username: string): Promise<void> {

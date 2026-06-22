@@ -22,12 +22,13 @@ const mockPrisma = {
   vpnServer: { findUnique: mock() },
   vpnAuditLog: {
     create: mock().mockImplementation(async ({ data }) => {
+      const details = (data.details as Record<string, unknown>) ?? null
       mockAuditLogs.push({
         action: data.action as string,
         adminId: data.adminId as string | null,
-        step: (data.step as string) ?? null,
-        status: (data.status as string) ?? null,
-        details: (data.details as Record<string, unknown>) ?? null,
+        step: ((data.step as string) ?? details?.step) as string | null,
+        status: ((data.status as string) ?? details?.status) as string | null,
+        details,
       })
       return { id: "log_" + Date.now(), ...data }
     }),
@@ -44,14 +45,26 @@ const USERNAME = "testuser"
 const mockOpenVpn = {
   createClient: mock(),
   fetchConfig: mock().mockResolvedValue("mock-config"),
+  validateClient: mock().mockResolvedValue({
+    exists: true,
+    message: "OpenVPN config exists",
+  }),
 }
 
 const mockWireGuard = {
   createPeer: mock().mockResolvedValue({ config: "wg-config" }),
+  validatePeer: mock().mockResolvedValue({
+    exists: true,
+    message: "WireGuard peer exists",
+  }),
 }
 
 const mockProxy = {
   createUser: mock().mockResolvedValue({ password: "secret" }),
+  validateUser: mock().mockResolvedValue({
+    exists: true,
+    message: "Proxy user exists",
+  }),
 }
 
 let service: InstanceType<typeof VpnProvisioningService>
@@ -80,13 +93,28 @@ beforeEach(() => {
   // Reset adapter mocks too — they persist across parallel tests
   mockOpenVpn.createClient.mockReset()
   mockOpenVpn.fetchConfig.mockReset()
+  mockOpenVpn.validateClient.mockReset()
   mockWireGuard.createPeer.mockReset()
+  mockWireGuard.validatePeer.mockReset()
   mockProxy.createUser.mockReset()
+  mockProxy.validateUser.mockReset()
 
   mockOpenVpn.createClient.mockResolvedValue(undefined)
   mockOpenVpn.fetchConfig.mockResolvedValue("mock-config")
+  mockOpenVpn.validateClient.mockResolvedValue({
+    exists: true,
+    message: "OpenVPN config exists",
+  })
   mockWireGuard.createPeer.mockResolvedValue({ config: "wg-config" })
+  mockWireGuard.validatePeer.mockResolvedValue({
+    exists: true,
+    message: "WireGuard peer exists",
+  })
   mockProxy.createUser.mockResolvedValue({ password: "secret" })
+  mockProxy.validateUser.mockResolvedValue({
+    exists: true,
+    message: "Proxy user exists",
+  })
 
   mockPrisma.vpnServerAccount.findUnique.mockResolvedValue(account)
   mockPrisma.vpnServerAccount.update.mockResolvedValue({ ...account })
@@ -192,9 +220,12 @@ describe("VpnProvisioningService audit logging", () => {
 describe("VpnProvisioningService step logging", () => {
   const stepLog = () =>
     mockAuditLogs.filter((l) => l.action === "PROVISIONING_STEP")
-  const stepLogFor = (step: string) =>
+  const stepLogFor = (step: string, status?: string) =>
     mockAuditLogs.find(
-      (l) => l.action === "PROVISIONING_STEP" && l.step === step
+      (l) =>
+        l.action === "PROVISIONING_STEP" &&
+        l.step === step &&
+        (!status || l.status === status)
     )
 
   it("records step logs in order on OpenVPN happy path", async () => {
@@ -203,12 +234,10 @@ describe("VpnProvisioningService step logging", () => {
     const steps = stepLog()
     expect(steps.length).toBeGreaterThanOrEqual(2)
 
-    // All steps should have status OK
-    steps.forEach((s) => expect(s.status).toBe("OK"))
-
-    // Verify specific step entries
-    expect(stepLogFor("creating_client")).toBeDefined()
-    expect(stepLogFor("fetching_config")).toBeDefined()
+    expect(stepLogFor("creating_client", "STARTED")).toBeDefined()
+    expect(stepLogFor("creating_client", "OK")).toBeDefined()
+    expect(stepLogFor("fetching_config", "STARTED")).toBeDefined()
+    expect(stepLogFor("fetching_config", "OK")).toBeDefined()
 
     // Existing audit events still present
     expect(
@@ -228,7 +257,7 @@ describe("VpnProvisioningService step logging", () => {
       "Connection timeout"
     )
 
-    const failed = stepLogFor("creating_client")
+    const failed = stepLogFor("creating_client", "FAILED")
     expect(failed).toBeDefined()
     expect(failed?.status).toBe("FAILED")
     expect(failed?.details).toMatchObject({
@@ -236,11 +265,52 @@ describe("VpnProvisioningService step logging", () => {
     })
 
     // Subsequent steps should NOT be recorded
-    expect(stepLogFor("fetching_config")).toBeUndefined()
+    expect(stepLogFor("fetching_config", "STARTED")).toBeUndefined()
 
     // PROVISIONING_FAILED audit event also recorded
     expect(
       mockAuditLogs.find((l) => l.action === "PROVISIONING_FAILED")
+    ).toBeDefined()
+  })
+
+  it("validates whether the remote account exists", async () => {
+    const result = await service.validateAccount(ACCOUNT_ID)
+
+    expect(result).toEqual({
+      exists: true,
+      status: "FOUND",
+      message: "OpenVPN config exists",
+    })
+    expect(mockOpenVpn.validateClient).toHaveBeenCalledWith(
+      {
+        host: "vpn.example.com",
+        ipAddress: undefined,
+        user: "root",
+        encryptedPrivateKey:
+          "-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----",
+      },
+      USERNAME
+    )
+    expect(
+      mockAuditLogs.find((l) => l.action === "REMOTE_ACCOUNT_VALIDATED")
+    ).toBeDefined()
+  })
+
+  it("returns MISSING when remote validation cannot find the account", async () => {
+    mockOpenVpn.validateClient.mockResolvedValue({
+      exists: false,
+      message: "OpenVPN config not found on server",
+    })
+
+    const result = await service.validateAccount(ACCOUNT_ID)
+
+    expect(result).toEqual({
+      exists: false,
+      status: "MISSING",
+      message: "OpenVPN config not found on server",
+    })
+    expect(
+      mockAuditLogs.find((l) => l.action === "REMOTE_ACCOUNT_MISSING")
     ).toBeDefined()
   })
 
@@ -255,7 +325,7 @@ describe("VpnProvisioningService step logging", () => {
     const wgSteps = stepLog().map((s) => s.step)
     expect(wgSteps).toContain("creating_peer")
     // encrypting_config no longer a step — crypto is synchronous, no DB write
-    expect(stepLogFor("creating_peer")?.status).toBe("OK")
+    expect(stepLogFor("creating_peer", "OK")).toBeDefined()
 
     // --- Proxy error path ---
     mockAuditLogs.length = 0
@@ -272,6 +342,6 @@ describe("VpnProvisioningService step logging", () => {
     const proxySteps = stepLog().map((s) => s.step)
     expect(proxySteps).toContain("creating_user")
     // creating_user should be FAILED
-    expect(stepLogFor("creating_user")?.status).toBe("FAILED")
+    expect(stepLogFor("creating_user", "FAILED")).toBeDefined()
   })
 })

@@ -37,7 +37,7 @@ export const createAdminVpnAuditRoutes = (deps: {
               : { action: { in: AUDIT_ACTIONS } }
 
         const where: Record<string, unknown> = {
-          serverAccountId: params.saId,
+          details: { path: ["serverAccountId"], equals: params.saId },
           ...actionFilter,
         }
 
