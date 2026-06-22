@@ -59,8 +59,8 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
       const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
 
       const result = await listWebhookEvents({
-        organizationId: whatsappAuth.organizationId,
-        whatsappDeviceId: query.deviceId, // undefined = all devices
+        organizationId: (whatsappAuth as any).organizationId as string,
+        whatsappDeviceId: query.deviceId ?? undefined, // null/undefined = all devices
         eventType: query.type,
         processingStatus: query.status,
         from: query.from,
