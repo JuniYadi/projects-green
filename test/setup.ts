@@ -4,6 +4,22 @@ import { afterEach, expect, mock } from "bun:test"
 import { cleanup } from "@testing-library/react"
 import * as matchers from "@testing-library/jest-dom/matchers"
 
+// Prevent ioredis from attempting real connections during tests
+mock.module("ioredis", () => ({
+  default: class MockRedis {
+    status = "end"
+    get() { return Promise.resolve(null) }
+    set() { return Promise.resolve("OK") }
+    del() { return Promise.resolve(1) }
+    exists() { return Promise.resolve(0) }
+    expire() { return Promise.resolve(1) }
+    on() { return this }
+    quit() { return Promise.resolve("OK") }
+    disconnect() {}
+    connect() {}
+  },
+}))
+
 // Happy DOM sets window.location.origin to "null" (the string), which causes
 // Eden Treaty to build URLs like "null/api/...". Set the env var before any
 // module that imports eden gets loaded.

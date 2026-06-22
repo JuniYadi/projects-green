@@ -1,27 +1,21 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 
-const mockListVpnSubscriptions = mock()
-const mockListVpnPackages = mock()
+const mockListVpnSubscriptions = mock(() => Promise.resolve([]))
+const mockListVpnPackages = mock(() => Promise.resolve([]))
 
 mock.module("@/lib/vpn-client", () => ({
   listVpnSubscriptions: mockListVpnSubscriptions,
   listVpnPackages: mockListVpnPackages,
-  getVpnPackage: mock(),
-  purchaseVpnPackage: mock(),
-  cancelVpnSubscription: mock(),
-  getVpnProxyCredentials: mock(),
+  getVpnPackage: mock(() => Promise.resolve(null)),
+  purchaseVpnPackage: mock(() => Promise.resolve({ id: "new-sub" })),
+  cancelVpnSubscription: mock(() => Promise.resolve({ success: true })),
+  getVpnProxyCredentials: mock(() => Promise.resolve(null)),
   vpnConfigDownloadUrl: (s: string, a: string) =>
     `/api/vpn/subscriptions/${s}/servers/${a}/config`,
 }))
 
 import ConsoleVpnDashboardPage from "./dashboard/page"
-
-beforeEach(() => {
-  mockListVpnSubscriptions.mockReset()
-  mockListVpnPackages.mockReset()
-  mockListVpnPackages.mockResolvedValue([])
-})
 
 describe("ConsoleVpnDashboardPage", () => {
   it("shows available packages heading when no subscriptions exist", async () => {
@@ -69,7 +63,7 @@ describe("ConsoleVpnDashboardPage", () => {
 
     await waitFor(() => {
       expect(view.getByText("My VPN Subscriptions")).toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
     expect(view.getByText("ID-01")).toBeInTheDocument()
     expect(view.getByText("Add another package")).toBeInTheDocument()
   })

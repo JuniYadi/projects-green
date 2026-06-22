@@ -3,104 +3,98 @@ import { fireEvent, render, waitFor } from "@testing-library/react"
 
 import { GatewaysTab } from "./gateways-tab"
 
-const MOCK_PROVIDERS_RESPONSE = {
-  ok: true,
-  data: [
-    {
-      value: "duitku",
-      label: "Duitku",
-      supportedCurrencies: ["IDR"],
-      configFields: [
-        {
-          key: "merchantCode",
-          label: "Merchant Code",
-          type: "string",
-          placeholder: "M12345",
-          required: true,
-        },
-        {
-          key: "apiKey",
-          label: "API Key",
-          type: "password",
-          placeholder: "Your Duitku API key",
-          required: true,
-        },
-        {
-          key: "sandboxUrl",
-          label: "Sandbox URL",
-          type: "url",
-          placeholder: "https://sandbox.duitku.com",
-          required: false,
-          defaultValue: "https://sandbox.duitku.com",
-        },
-        {
-          key: "productionUrl",
-          label: "Production URL",
-          type: "url",
-          placeholder: "https://api.duitku.com",
-          required: false,
-          defaultValue: "https://api.duitku.com",
-        },
-      ],
-    },
-    {
-      value: "paypal",
-      label: "PayPal",
-      supportedCurrencies: ["USD"],
-      configFields: [
-        {
-          key: "clientId",
-          label: "Client ID",
-          type: "string",
-          placeholder: "Your PayPal REST app Client ID",
-          required: true,
-        },
-        {
-          key: "clientSecret",
-          label: "Client Secret",
-          type: "password",
-          placeholder: "Your PayPal REST app Secret",
-          required: true,
-        },
-        {
-          key: "environment",
-          label: "Environment",
-          type: "select",
-          placeholder: "",
-          required: false,
-          options: [
-            { label: "Sandbox", value: "sandbox" },
-            { label: "Production", value: "production" },
-          ],
-        },
-        {
-          key: "webhookId",
-          label: "Webhook ID",
-          type: "string",
-          placeholder: "Webhook verification ID from PayPal dashboard",
-          required: false,
-        },
-      ],
-    },
-  ],
-}
+const MOCK_PROVIDERS_RESPONSE = [
+  {
+    value: "duitku",
+    label: "Duitku",
+    supportedCurrencies: ["IDR"],
+    configFields: [
+      {
+        key: "merchantCode",
+        label: "Merchant Code",
+        type: "string",
+        placeholder: "M12345",
+        required: true,
+      },
+      {
+        key: "apiKey",
+        label: "API Key",
+        type: "password",
+        placeholder: "Your Duitku API key",
+        required: true,
+      },
+      {
+        key: "sandboxUrl",
+        label: "Sandbox URL",
+        type: "url",
+        placeholder: "https://sandbox.duitku.com",
+        required: false,
+        defaultValue: "https://sandbox.duitku.com",
+      },
+      {
+        key: "productionUrl",
+        label: "Production URL",
+        type: "url",
+        placeholder: "https://api.duitku.com",
+        required: false,
+        defaultValue: "https://api.duitku.com",
+      },
+    ],
+  },
+  {
+    value: "paypal",
+    label: "PayPal",
+    supportedCurrencies: ["USD"],
+    configFields: [
+      {
+        key: "clientId",
+        label: "Client ID",
+        type: "string",
+        placeholder: "Your PayPal REST app Client ID",
+        required: true,
+      },
+      {
+        key: "clientSecret",
+        label: "Client Secret",
+        type: "password",
+        placeholder: "Your PayPal REST app Secret",
+        required: true,
+      },
+      {
+        key: "environment",
+        label: "Environment",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { label: "Sandbox", value: "sandbox" },
+          { label: "Production", value: "production" },
+        ],
+      },
+      {
+        key: "webhookId",
+        label: "Webhook ID",
+        type: "string",
+        placeholder: "Webhook verification ID from PayPal dashboard",
+        required: false,
+      },
+    ],
+  },
+]
 
-const MOCK_GATEWAYS_RESPONSE_ONE = {
-  ok: true,
-  data: [
-    {
-      id: "gw-1",
-      name: "Duitku",
-      type: "duitku",
-      isActive: true,
-      isDefault: false,
-      supportedCurrencies: ["IDR"],
-      config: {},
-    },
-  ],
-}
+const MOCK_GATEWAYS_RESPONSE_ONE = [
+  {
+    id: "gw-1",
+    name: "Duitku",
+    type: "duitku",
+    isActive: true,
+    isDefault: false,
+    supportedCurrencies: ["IDR"],
+    config: {},
+  },
+]
 
-const MOCK_GATEWAYS_RESPONSE_EMPTY = { ok: true, data: [] }
+const MOCK_GATEWAYS_RESPONSE_EMPTY: unknown[] = []
 
 /**
  * Mock global fetch to return gateways data for the list endpoint and
