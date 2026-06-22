@@ -99,6 +99,7 @@ describe("OpenVpnSshAdapter", () => {
       stderr: "",
       exitCode: 0,
     })
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 1 })
 
     const adapter = new OpenVpnSshAdapter({
       executor: mockExecutor as unknown as VpnServerSshExecutor,
@@ -118,6 +119,12 @@ describe("OpenVpnSshAdapter", () => {
         serial: null,
         expiresAt: null,
         ipAllocation: null,
+        connected: false,
+        realAddress: null,
+        virtualAddress: null,
+        bytesReceived: null,
+        bytesSent: null,
+        connectedSince: null,
       },
       {
         clientName: "orgabc-123456",
@@ -125,6 +132,12 @@ describe("OpenVpnSshAdapter", () => {
         serial: null,
         expiresAt: null,
         ipAllocation: null,
+        connected: false,
+        realAddress: null,
+        virtualAddress: null,
+        bytesReceived: null,
+        bytesSent: null,
+        connectedSince: null,
       },
     ])
   })
@@ -145,6 +158,12 @@ describe("OpenVpnSshAdapter", () => {
       stderr: "",
       exitCode: 0,
     })
+    mockExecInternal.mockResolvedValue({
+      stdout:
+        "CLIENT_LIST,juniyadi,140.213.10.107:11447,10.0.70.9,,468985,1868448,2026-06-22 10:35:44,1782124544,UNDEF,217,0,AES-256-GCM\n",
+      stderr: "",
+      exitCode: 0,
+    })
 
     const adapter = new OpenVpnSshAdapter({
       executor: mockExecutor as unknown as VpnServerSshExecutor,
@@ -157,6 +176,12 @@ describe("OpenVpnSshAdapter", () => {
         serial: "BBBB",
         expiresAt: "28-09-04 03:33:17",
         ipAllocation: "dynamic.pool",
+        connected: true,
+        realAddress: "140.213.10.107:11447",
+        virtualAddress: "10.0.70.9",
+        bytesReceived: 468985,
+        bytesSent: 1868448,
+        connectedSince: "2026-06-22 10:35:44",
       },
       {
         clientName: "orgt7xt0p0g-5fbe09",
@@ -164,6 +189,12 @@ describe("OpenVpnSshAdapter", () => {
         serial: "CCCC",
         expiresAt: "28-09-24 12:49:35",
         ipAllocation: "dynamic.pool",
+        connected: false,
+        realAddress: null,
+        virtualAddress: null,
+        bytesReceived: null,
+        bytesSent: null,
+        connectedSince: null,
       },
       {
         clientName: "test-yi-v2",
@@ -171,6 +202,12 @@ describe("OpenVpnSshAdapter", () => {
         serial: "59671FE5DB5E0CB8F50D3819CC962B6A",
         expiresAt: null,
         ipAllocation: null,
+        connected: false,
+        realAddress: null,
+        virtualAddress: null,
+        bytesReceived: null,
+        bytesSent: null,
+        connectedSince: null,
       },
     ])
   })

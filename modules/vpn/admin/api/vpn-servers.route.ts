@@ -24,6 +24,7 @@ import {
   type SshTarget,
 } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 
+import { vpnHealthService } from "../vpn-health.service"
 import type { VpnServerScanner } from "../vpn-connection-scanner"
 
 type Deps = {
@@ -124,7 +125,7 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
 
       const target = toSshTarget(server)
       const executor = new VpnServerSshExecutor()
-      const [uptime, daily, monthly, topCpu, topMemory] = await Promise.all([
+      const [uptime, daily, monthly, topCpu, topMemory, cpuSummary, memorySummary] = await Promise.all([
         execText(executor, target, ["uptime", "-p"]),
         execJson(executor, target, ["vnstat", "-d", "--json"]),
         execJson(executor, target, ["vnstat", "-m", "--json"]),
@@ -138,7 +139,15 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
           "-lc",
           "'ps -eo pid,comm,%cpu,%mem --sort=-%mem | head -n 6'",
         ]),
+        execText(executor, target, [
+          "bash",
+          "-lc",
+          "'nproc; head -n 1 /proc/stat'",
+        ]),
+        execText(executor, target, ["free", "-b"]),
       ])
+
+      const monthlyTraffic = parseVnstatTraffic(monthly, "month")
 
       return {
         ok: true,
@@ -149,9 +158,15 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
             proxy: server.hasProxy ? server.proxyPort : null,
           },
           uptime,
+          resources: {
+            cpu: parseCpuSummary(cpuSummary),
+            memory: parseMemorySummary(memorySummary),
+            currentMonthBandwidth:
+              monthlyTraffic.at(-1)?.total ?? 0,
+          },
           traffic: {
             daily: parseVnstatTraffic(daily, "day"),
-            monthly: parseVnstatTraffic(monthly, "month"),
+            monthly: monthlyTraffic,
           },
           processes: {
             cpu: parseProcessList(topCpu),
@@ -199,10 +214,9 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
       try {
         const server = await service.getById(params.id)
         lastTestAt.set(params.id, current)
-        const scanConnection =
-          deps.scanConnection ??
-          (await import("../vpn-connection-scanner")).scanVpnServerConnection
-        const result = await scanConnection(server)
+        const result = deps.scanConnection
+          ? await deps.scanConnection(server)
+          : await vpnHealthService.checkServerById(params.id)
         return { ok: true, data: result }
       } catch (error) {
         return toServerError(set, error)
@@ -285,6 +299,38 @@ function formatVnstatDate(date: VnstatDate | undefined, bucket: "day" | "month")
   if (!date?.year || !date.month) return "unknown"
   if (bucket === "month") return `${date.year}-${String(date.month).padStart(2, "0")}`
   return `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day ?? 1).padStart(2, "0")}`
+}
+
+function parseCpuSummary(output: string | null) {
+  if (!output) return { usedPercent: null, totalCores: null }
+  const [coresLine, statLine] = output.split("\n")
+  const totalCores = Number(coresLine)
+  const values = statLine?.trim().split(/\s+/).slice(1).map(Number) ?? []
+  const total = values.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0)
+  const idle = (values[3] ?? 0) + (values[4] ?? 0)
+  const usedPercent =
+    total > 0
+      ? Math.max(0, Math.min(100, ((total - idle) / total) * 100))
+      : null
+
+  return {
+    usedPercent,
+    totalCores: Number.isFinite(totalCores) ? totalCores : null,
+  }
+}
+
+function parseMemorySummary(output: string | null) {
+  const line = output
+    ?.split("\n")
+    .find((value) => value.trim().startsWith("Mem:"))
+  const parts = line?.trim().split(/\s+/).map(Number) ?? []
+  const total = parts[1]
+  const used = parts[2]
+
+  return {
+    used: Number.isFinite(used) ? used : null,
+    total: Number.isFinite(total) ? total : null,
+  }
 }
 
 function parseProcessList(output: string | null) {

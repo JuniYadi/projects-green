@@ -21,6 +21,7 @@ import {
   getVpnServer,
   getVpnServerMetrics,
   listOpenVpnUsers,
+  testVpnServer,
   type OpenVpnUserItem,
   type VpnServerItem,
   type VpnServerMetrics,
@@ -102,6 +103,7 @@ export default function VpnServerDetailPage() {
   const [loading, setLoading] = useState(true)
   const [usersLoading, setUsersLoading] = useState(false)
   const [metricsLoading, setMetricsLoading] = useState(false)
+  const [healthChecking, setHealthChecking] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadServer = useCallback(async () => {
@@ -140,6 +142,18 @@ export default function VpnServerDetailPage() {
       setUsersLoading(false)
     }
   }, [serverId])
+
+  const runHealthCheck = useCallback(async () => {
+    setHealthChecking(true)
+    try {
+      await testVpnServer(serverId)
+      await loadServer()
+    } catch (err) {
+      window.alert((err as Error).message)
+    } finally {
+      setHealthChecking(false)
+    }
+  }, [serverId, loadServer])
 
   useEffect(() => {
     void loadServer()
@@ -184,12 +198,30 @@ export default function VpnServerDetailPage() {
                   <Badge variant={server.isActive ? "default" : "secondary"}>
                     {server.isActive ? "Active" : "Inactive"}
                   </Badge>
-                  <Badge variant="outline">{server.health}</Badge>
+                  <Badge
+                    variant={
+                      server.health === "HEALTHY"
+                        ? "default"
+                        : server.health === "DOWN"
+                          ? "destructive"
+                          : "secondary"
+                    }
+                  >
+                    {server.health}
+                  </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {server.region.countryCode.toUpperCase()} — {server.region.name}
                 </p>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={runHealthCheck}
+                disabled={healthChecking}
+              >
+                {healthChecking ? "Checking..." : "Run health check"}
+              </Button>
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">

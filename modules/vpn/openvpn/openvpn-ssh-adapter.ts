@@ -9,6 +9,12 @@ export type OpenVpnClientSummary = {
   serial: string | null
   expiresAt: string | null
   ipAllocation: string | null
+  connected: boolean
+  realAddress: string | null
+  virtualAddress: string | null
+  bytesReceived: number | null
+  bytesSent: number | null
+  connectedSince: string | null
 }
 
 export type RemoteAccountValidationResult = {
@@ -18,6 +24,14 @@ export type RemoteAccountValidationResult = {
 
 const CLIENT_NAME_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_-]{2,63}$/
 const SCRIPT_PATH_PATTERN = /^\/[A-Za-z0-9_./-]+$/
+const disconnectedState = {
+  connected: false,
+  realAddress: null,
+  virtualAddress: null,
+  bytesReceived: null,
+  bytesSent: null,
+  connectedSince: null,
+} as const
 
 export function sanitizeOpenVpnClientName(clientName: string): string {
   if (!CLIENT_NAME_PATTERN.test(clientName)) {
@@ -41,6 +55,7 @@ export class OpenVpnSshAdapter {
   private readonly revokeScript: string
   private readonly removeScript: string
   private readonly userListScript: string
+  private readonly statusLogPath: string
   private readonly configDirectory: string
 
   constructor(options: {
@@ -49,6 +64,7 @@ export class OpenVpnSshAdapter {
     revokeScript?: string
     removeScript?: string
     userListScript?: string
+    statusLogPath?: string
     configDirectory?: string
   } = {}) {
     this.executor = options.executor ?? new VpnServerSshExecutor()
@@ -68,6 +84,10 @@ export class OpenVpnSshAdapter {
       options.userListScript ??
       process.env.OPENVPN_USERLIST_SCRIPT ??
       "/root/userlist.sh"
+    this.statusLogPath =
+      options.statusLogPath ??
+      process.env.OPENVPN_STATUS_LOG_PATH ??
+      "/root/openvpn/log/openvpn-status.log"
     this.configDirectory =
       options.configDirectory ??
       process.env.OPENVPN_CLIENT_CONFIG_DIR ??
@@ -162,6 +182,7 @@ export class OpenVpnSshAdapter {
       "list OpenVPN users"
     )
 
+    const connections = await this.listConnectedClients(target)
     const users: OpenVpnClientSummary[] = []
     let section: OpenVpnClientSummary["status"] | null = null
 
@@ -191,6 +212,7 @@ export class OpenVpnSshAdapter {
               serial: null,
               expiresAt: null,
               ipAllocation: null,
+              ...(connections.get(clientName) ?? disconnectedState),
             })
           }
         }
@@ -209,6 +231,7 @@ export class OpenVpnSshAdapter {
             serial: columns[1] || null,
             expiresAt: columns[2] || null,
             ipAllocation: columns[3] || null,
+            ...(connections.get(clientName) ?? disconnectedState),
           })
         }
         continue
@@ -225,6 +248,7 @@ export class OpenVpnSshAdapter {
           serial,
           expiresAt: null,
           ipAllocation: null,
+          ...(connections.get(clientName) ?? disconnectedState),
         })
       }
     }
@@ -232,6 +256,33 @@ export class OpenVpnSshAdapter {
     return Array.from(
       new Map(users.map((user) => [`${user.status}:${user.clientName}`, user])).values()
     )
+  }
+
+  private async listConnectedClients(target: SshTarget) {
+    const path = assertSafeAbsolutePath(this.statusLogPath, "status log path")
+    const result = await this.executor.exec(target, ["cat", path])
+    const connected = new Map<string, Omit<OpenVpnClientSummary, "clientName" | "status" | "serial" | "expiresAt" | "ipAllocation">>()
+
+    if (result.exitCode !== 0) return connected
+
+    for (const rawLine of result.stdout.split("\n")) {
+      const line = rawLine.trim()
+      if (!line.startsWith("CLIENT_LIST,")) continue
+      const parts = line.split(",")
+      const clientName = parts[1]?.trim()
+      if (!clientName) continue
+
+      connected.set(clientName, {
+        connected: true,
+        realAddress: parts[2] || null,
+        virtualAddress: parts[3] || null,
+        bytesReceived: Number.isFinite(Number(parts[5])) ? Number(parts[5]) : null,
+        bytesSent: Number.isFinite(Number(parts[6])) ? Number(parts[6]) : null,
+        connectedSince: parts[7] || null,
+      })
+    }
+
+    return connected
   }
 
   async healthCheck(target: SshTarget): Promise<{ ok: boolean; output: string }> {
