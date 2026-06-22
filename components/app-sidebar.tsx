@@ -206,6 +206,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         icon: <DeviceMobileIcon />,
         isActive: startsWithRoute(path, "/portal/vpn/devices"),
       },
+      {
+        title: "Audit Logs",
+        url: localizePathname({
+          pathname: "/portal/vpn/audit-logs",
+          locale,
+        }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/portal/vpn/audit-logs"),
+      },
     ],
   },
   {

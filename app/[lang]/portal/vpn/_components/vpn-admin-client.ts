@@ -467,6 +467,73 @@ export async function getVpnProvisioningAudit(
   return unwrapData<AuditEntry[]>(res)
 }
 
+// ── Audit Log (global list) ─────────────────────────────────────────────
+
+export type VpnAuditLogListItem = {
+  id: string
+  serverAccountId: string | null
+  deviceId: string | null
+  userId: string | null
+  adminId: string | null
+  action: string
+  step: string | null
+  status: string | null
+  // `Prisma.JsonValue` → serialized as `unknown` on the wire.
+  details: Record<string, unknown> | null
+  ip: string | null
+  userAgent: string | null
+  createdAt: string
+}
+
+export type AuditLogPagination = {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+type AuditListResponse = {
+  data: VpnAuditLogListItem[]
+  pagination: AuditLogPagination
+}
+
+export type AuditLogQuery = {
+  page?: number
+  limit?: number
+  action?: string
+  status?: string
+  q?: string
+  from?: string
+  to?: string
+}
+
+export async function listVpnAuditLogs(query: AuditLogQuery = {}) {
+  const $query: Record<string, string> = {}
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null && value !== "") {
+      $query[key] = String(value)
+    }
+  }
+
+  const res = (await eden.api.admin.vpn.audit.get({ $query })) as EdenRes
+  throwIfError(res)
+
+  const body = res.data as
+    | { ok: true; data: VpnAuditLogListItem[]; pagination: AuditLogPagination }
+    | VpnAuditLogListItem[]
+
+  // The route returns an envelope with pagination; fall back to a bare array
+  // for forward-compat with simpler list endpoints.
+  if (Array.isArray(body)) {
+    return {
+      data: body,
+      pagination: { page: 1, limit: body.length, total: body.length, totalPages: 1 },
+    }
+  }
+
+  return { data: body.data, pagination: body.pagination }
+}
+
 // ── Mobile Devices (admin) ───────────────────────────────────────────────
 
 type AdminDeviceEntry = {
