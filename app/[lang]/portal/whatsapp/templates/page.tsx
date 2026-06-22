@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Plus } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,13 @@ import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
 
 export default function PortalTemplatesPage() {
   const router = useRouter()
-  const { templates, loading, error, reload } = useTemplates()
+  const searchParams = useSearchParams()
+  const organizationId = searchParams.get("organizationId") ?? undefined
+  const whatsappDeviceId = searchParams.get("whatsappDeviceId") ?? undefined
+  const { templates, loading, error, reload } = useTemplates({
+    organizationId,
+    whatsappDeviceId,
+  })
 
   return (
     <ErrorBoundary>
