@@ -156,43 +156,7 @@ export const whatsappClient = {
       ),
   },
 
-  templates: {
-    list: () =>
-      serverFetch<{ ok: boolean; templates: WhatsAppTemplate[] }>(
-        "/api/whatsapp/templates"
-      ),
-    get: (id: string) =>
-      serverFetch<{ ok: boolean; template: WhatsAppTemplate }>(
-        `/api/whatsapp/templates/${id}`
-      ),
-    create: (input: any) =>
-      serverFetch<{ ok: boolean; template: WhatsAppTemplate }>(
-        "/api/whatsapp/templates",
-        {
-          method: "POST",
-          body: JSON.stringify(input),
-        }
-      ),
-    update: (id: string, input: any) =>
-      serverFetch<{ ok: boolean; template: WhatsAppTemplate }>(
-        `/api/whatsapp/templates/${id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(input),
-        }
-      ),
-    delete: (id: string) =>
-      serverFetch<{ ok: boolean }>(`/api/whatsapp/templates/${id}`, {
-        method: "DELETE",
-      }),
-    sync: (id: string) =>
-      serverFetch<{ ok: boolean; message: string }>(
-        `/api/whatsapp/templates/${id}/sync`,
-        {
-          method: "POST",
-        }
-      ),
-  },
+  // templates: migrated to Eden (@/modules/whatsapp/templates/api/templates.hooks.ts)
 
   messages: {
     list: (params?: {
