@@ -56,7 +56,11 @@ export default function PortalWhatsAppDashboardPage() {
 
         if (cancelled) return
 
-        setOverview(overviewRes as unknown as OverviewData)
+        setOverview({
+          month: overviewRes.month,
+          today: overviewRes.today,
+          cost: { byCategory: overviewRes.cost.byCategory },
+        })
         setDevices(deviceRes.devices)
         setState("loaded")
       } catch (err) {
@@ -94,6 +98,9 @@ export default function PortalWhatsAppDashboardPage() {
 
   // Total device count from fetched list
   const deviceCount = devices.length
+
+  // ponytail: category message total — computed once, not per-map iteration
+  const categoryTotal = byCategory.reduce((sum, c) => sum + c.count, 0)
 
   const hasData =
     deviceCount > 0 || totalMonthlyOutbound > 0 || totalMonthlyInbound > 0
@@ -223,12 +230,8 @@ export default function PortalWhatsAppDashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {byCategory.map((cat) => {
-                const total = byCategory.reduce(
-                  (sum, c) => sum + c.count,
-                  0
-                )
                 const percentage =
-                  total > 0 ? (cat.count / total) * 100 : 0
+                  categoryTotal > 0 ? (cat.count / categoryTotal) * 100 : 0
                 return (
                   <div key={cat.category} className="space-y-2">
                     <div className="flex items-center justify-between">
