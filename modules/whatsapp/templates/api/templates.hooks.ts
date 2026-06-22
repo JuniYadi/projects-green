@@ -1,15 +1,15 @@
 /**
- * WhatsApp Templates — React Hooks
+ * WhatsApp Templates — React Hooks (Eden)
  *
- * Reusable data-fetching hooks that wrap whatsappClient with loading/error
- * state management, following the same pattern used across the app.
+ * Reusable data-fetching hooks that use eden for type-safe API calls,
+ * with loading/error state management.
  */
 
 "use client"
 
 import * as React from "react"
 
-import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { eden } from "@/lib/eden"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 
 export type TemplateFormInput = {
@@ -29,7 +29,19 @@ export type TemplateFormInput = {
   }>
 }
 
-export function useTemplates() {
+type TemplateFilters = {
+  organizationId?: string
+  whatsappDeviceId?: string
+}
+
+type TemplatesListResponse = {
+  ok: boolean
+  templates: WhatsAppTemplate[]
+  data: WhatsAppTemplate[]
+  meta: { total: number; page: number; limit: number; totalPages: number }
+}
+
+export function useTemplates(filters?: TemplateFilters) {
   const [templates, setTemplates] = React.useState<WhatsAppTemplate[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -39,17 +51,25 @@ export function useTemplates() {
     setError(null)
 
     try {
-      const result = await whatsappClient.templates.list()
-      setTemplates(result.templates)
+      const query: Record<string, string> = {}
+      if (filters?.organizationId) query.organizationId = filters.organizationId
+      if (filters?.whatsappDeviceId)
+        query.whatsappDeviceId = filters.whatsappDeviceId
+      const { data, error: edenError } =
+        await eden.api.whatsapp.templates.get({
+          $query: query,
+        })
+      if (edenError) throw new Error(edenError.message ?? "Failed to load templates.")
+      const result = data as unknown as TemplatesListResponse
+      setTemplates(result?.templates ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load templates.")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [filters?.organizationId, filters?.whatsappDeviceId])
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
 
@@ -66,8 +86,15 @@ export function useTemplate(id: string) {
     setError(null)
 
     try {
-      const result = await whatsappClient.templates.get(id)
-      setTemplate(result.template)
+      const { data, error: edenError } =
+        await eden.api.whatsapp.templates[id].get()
+      if (edenError)
+        throw new Error(edenError.message ?? "Failed to load template.")
+      const result = data as unknown as {
+        ok: boolean
+        template: WhatsAppTemplate
+      }
+      setTemplate(result?.template ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load template.")
     } finally {
@@ -76,7 +103,6 @@ export function useTemplate(id: string) {
   }, [id])
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
 
@@ -92,7 +118,14 @@ export function useCreateTemplate() {
     setError(null)
 
     try {
-      const result = await whatsappClient.templates.create(input)
+      const { data, error: edenError } =
+        await eden.api.whatsapp.templates.post(input)
+      if (edenError)
+        throw new Error(edenError.message ?? "Failed to create template.")
+      const result = data as unknown as {
+        ok: boolean
+        template: WhatsAppTemplate
+      }
       return result.template
     } catch (err) {
       const message =
@@ -117,7 +150,14 @@ export function useUpdateTemplate() {
       setError(null)
 
       try {
-        const result = await whatsappClient.templates.update(id, input)
+        const { data, error: edenError } =
+          await eden.api.whatsapp.templates[id].patch(input)
+        if (edenError)
+          throw new Error(edenError.message ?? "Failed to update template.")
+        const result = data as unknown as {
+          ok: boolean
+          template: WhatsAppTemplate
+        }
         return result.template
       } catch (err) {
         const message =
@@ -143,7 +183,10 @@ export function useDeleteTemplate() {
     setError(null)
 
     try {
-      await whatsappClient.templates.delete(id)
+      const { error: edenError } =
+        await eden.api.whatsapp.templates[id].delete()
+      if (edenError)
+        throw new Error(edenError.message ?? "Failed to delete template.")
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to delete template."
@@ -166,8 +209,11 @@ export function useSyncTemplate() {
     setError(null)
 
     try {
-      const result = await whatsappClient.templates.sync(id)
-      return result
+      const { data, error: edenError } =
+        await eden.api.whatsapp.templates[id].sync.post()
+      if (edenError)
+        throw new Error(edenError.message ?? "Failed to sync template.")
+      return data as unknown as { ok: boolean; message: string }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to sync template."
