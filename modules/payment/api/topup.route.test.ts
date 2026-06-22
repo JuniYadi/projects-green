@@ -99,7 +99,9 @@ mock.module("@/lib/prisma", () => ({
 }))
 
 // Import route after mocks — use dynamic import so mock.module fires first
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let createTopupRoutes: any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let createPaymentHistoryRoutes: any
 beforeAll(async () => {
   const mod = await import("./topup.route")

@@ -24,6 +24,7 @@ const mockPrisma = {
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 // Use dynamic import instead of static import
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let createTopupRoutes: any
 beforeAll(async () => {
   const mod = await import("./topup.route")
