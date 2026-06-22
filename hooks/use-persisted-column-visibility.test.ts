@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, mock } from "bun:test"
+import { describe, expect, test, beforeEach } from "bun:test"
 import { renderHook, act } from "@testing-library/react"
 import { usePersistedColumnVisibility } from "./use-persisted-column-visibility"
 
