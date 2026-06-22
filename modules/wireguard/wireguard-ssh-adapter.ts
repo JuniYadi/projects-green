@@ -1,6 +1,5 @@
 import {
   VpnServerSshExecutor,
-  type SshCommandResult,
 } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 import type { SshTarget } from "./wireguard.types"
 import type { WgPeer } from "./wireguard.types"

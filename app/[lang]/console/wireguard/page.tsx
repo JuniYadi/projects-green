@@ -74,19 +74,22 @@ export default function WireGuardPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await eden.api.console.wireguard.peers.get()
-      // @ts-expect-error — eden type narrowing for raw response
-      const data = await res.json()
-      if (data?.peers) setPeers(data.peers)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res: any = await eden.api.console.wireguard.peers.get()
+      if (res?.data?.peers) setPeers(res.data.peers)
       else setError("Failed to fetch peers")
     } catch {
       setError("Failed to connect to server")
     } finally {
       setLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => { fetchPeers() }, [fetchPeers])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchPeers()
+  }, [fetchPeers])
 
   const handleCreate = async () => {
     if (!newUsername.trim()) return
@@ -94,13 +97,15 @@ export default function WireGuardPage() {
     try {
       const res = await eden.api.console.wireguard.peers.post({ username: newUsername.trim() })
       if (res.status === 201) {
-        const data = await res.json() as unknown as CreateResult
-        setCreateResult(data)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: any = res
+        setCreateResult(data.data)
         setNewUsername("")
         await fetchPeers()
       } else {
-        const data = await res.json() as any
-        alert(data?.message ?? "Failed to create peer")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: any = res
+        alert((data?.error?.message as string) ?? "Failed to create peer")
       }
     } catch {
       alert("Failed to create peer")
@@ -112,7 +117,8 @@ export default function WireGuardPage() {
   const handleDelete = async (username: string) => {
     if (!confirm(`Remove peer "${username}"?`)) return
     try {
-      await eden.api.console.wireguard.peers({ username }).delete()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (eden.api.console.wireguard.peers as any)[username].delete()
       await fetchPeers()
     } catch {
       alert("Failed to remove peer")
@@ -121,7 +127,8 @@ export default function WireGuardPage() {
 
   const handleDownload = async (username: string) => {
     try {
-      // ponytail: direct fetch for raw text response
+      // ponytail: direct fetch for blob response; eden doesn't support blobs
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(`/api/console/wireguard/peers/${username}/config`)
       if (!res.ok) throw new Error("Failed")
       const blob = await res.blob()
@@ -138,6 +145,7 @@ export default function WireGuardPage() {
 
   const handleShowQr = async (username: string) => {
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(`/api/console/wireguard/peers/${username}/qr`)
       if (!res.ok) throw new Error("Failed")
       const blob = await res.blob()

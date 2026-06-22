@@ -92,6 +92,7 @@ describe("resolveSidebarMenu", () => {
       "Applications",
       "WhatsApp",
       "VPN",
+      "WireGuard",
     ])
     expect(navMain[0]?.isActive).toBe(false)
   })
@@ -111,6 +112,7 @@ describe("resolveSidebarMenu", () => {
       "Applications",
       "WhatsApp",
       "VPN",
+      "WireGuard",
     ])
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",

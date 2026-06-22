@@ -5,8 +5,6 @@ import { WireGuardSshAdapter } from "./wireguard-ssh-adapter"
 import type { SshTarget, WgPeer, CreatePeerResult } from "./wireguard.types"
 import { encryptVpnConfig, decryptVpnConfig } from "@/modules/vpn/vpn-crypto"
 
-type VpnClientRecord = Prisma.VpnClientGetPayload<{}>
-
 export class WireGuardService {
   constructor(
     private readonly prisma: PrismaClient,
@@ -38,7 +36,6 @@ export class WireGuardService {
     const wgPeers = await this.adapter.listPeers(target)
 
     // Enrich with usernames from DB
-    const peerIps = wgPeers.map((p) => p.ip)
     const clients = await this.prisma.vpnClient.findMany({
       where: { provider: "WIREGUARD", encryptedConfig: { not: null } },
       select: { clientName: true, metadataJson: true },
@@ -57,7 +54,7 @@ export class WireGuardService {
   }
 
   async createPeer(username: string): Promise<CreatePeerResult> {
-    const { target, server } = await this.resolveServer()
+    const { target } = await this.resolveServer()
 
     // Check duplicate
     const existing = await this.prisma.vpnClient.findUnique({

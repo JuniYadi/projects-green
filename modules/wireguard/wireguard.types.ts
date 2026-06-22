@@ -24,8 +24,10 @@ export type CreatePeerResult = {
 // DTO for API boundary
 export type WgPeerDTO = WgPeer
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+type VpnServerPayload = Prisma.VpnServerGetPayload<{}>
 export type WireGuardServerDTO = Pick<
-  Prisma.VpnServerGetPayload<{}>,
+  VpnServerPayload,
   "id" | "hostname" | "ipAddress" | "wireGuardPort" | "wireGuardPublicKey" | "wireGuardSubnet" | "sshPort" | "sshUser"
 >
 
