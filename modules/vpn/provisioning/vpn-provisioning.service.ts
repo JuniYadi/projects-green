@@ -132,6 +132,9 @@ export class VpnProvisioningService {
     const account = await this.findAccount(serverAccountId)
     const target = this.toSshTarget(account)
 
+    // ponytail: WireGuard/Proxy cleanup not yet implemented — add
+    // removePeer/removeUser adapters when those protocols need remote
+    // cleanup on subscription expiry.
     if (account.protocol !== "OPENVPN") return
 
     await this.withStep(serverAccountId, "revoking_client", () =>
@@ -272,6 +275,9 @@ export class VpnProvisioningService {
   }
 
   /** Write a step log entry via the injected prisma instance. */
+  // ponytail: intentional — audit log failure should fail provisioning
+  // loudly during dev rather than silently swallowing. If this becomes
+  // noisy in production, wrap in try/catch with console.warn.
   private async logStep(
     serverAccountId: string,
     step: string,
