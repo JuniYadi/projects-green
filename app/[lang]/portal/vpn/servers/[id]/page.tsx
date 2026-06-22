@@ -35,13 +35,20 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
 }
 
-function PortBadge({ label, port }: { label: string; port: number | null }) {
+function MetricCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string
+  value: string
+  hint?: string
+}) {
   return (
     <div className="rounded-lg border p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 font-mono text-sm font-medium">
-        {port ? `:${port}` : "Disabled"}
-      </div>
+      <div className="mt-1 text-sm font-semibold">{value}</div>
+      {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
     </div>
   )
 }
@@ -151,10 +158,12 @@ export default function VpnServerDetailPage() {
         </Button>
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold">
-            {server?.name ?? "VPN Server"}
+            {server
+              ? `${server.name} (${server.ipAddress ?? server.hostname})`
+              : "VPN Server"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Realtime OpenVPN users from <code>/root/userlist.sh</code>.
+            Realtime VPN server details, resource metrics, traffic usage, processes, and OpenVPN users.
           </p>
         </header>
       </div>
@@ -166,22 +175,101 @@ export default function VpnServerDetailPage() {
           {error}
         </div>
       ) : server ? (
-        <section className="grid gap-3 rounded-lg border p-4 text-sm md:grid-cols-3">
-          <div>
-            <div className="text-muted-foreground">Host</div>
-            <div className="font-medium">{server.hostname}</div>
+        <section className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+          <div className="rounded-lg border p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{server.name}</h2>
+                  <Badge variant={server.isActive ? "default" : "secondary"}>
+                    {server.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                  <Badge variant="outline">{server.health}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {server.region.countryCode.toUpperCase()} — {server.region.name}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Public endpoint
+                </div>
+                <div className="mt-1 font-mono text-sm font-medium">
+                  {server.hostname}
+                </div>
+                <div className="mt-1 font-mono text-xs text-muted-foreground">
+                  {server.ipAddress ?? "No IP address configured"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  SSH access
+                </div>
+                <div className="mt-1 font-mono text-sm font-medium">
+                  {server.sshUser}@{server.hostname}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Port {server.sshPort}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-md bg-muted/40 p-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                SSH key
+              </div>
+              <div className="mt-1 text-sm font-medium">{server.sshKey.name}</div>
+              <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                {server.sshKey.fingerprint}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Private key material is hidden. Only key name and fingerprint are shown.
+              </p>
+            </div>
           </div>
-          <div>
-            <div className="text-muted-foreground">IP</div>
-            <div className="font-medium">{server.ipAddress ?? "—"}</div>
-          </div>
-          <div>
-            <div className="text-muted-foreground">OpenVPN</div>
-            <Badge variant={server.protocols.openVpn.enabled ? "default" : "secondary"}>
-              {server.protocols.openVpn.enabled
-                ? `Enabled :${server.protocols.openVpn.port ?? "?"}`
-                : "Disabled"}
-            </Badge>
+
+          <div className="rounded-lg border p-5">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">Protocol configuration</h2>
+              <p className="text-sm text-muted-foreground">
+                Enabled services and exposed ports for this server.
+              </p>
+            </div>
+            <div className="mt-5 space-y-3">
+              {[
+                ["OpenVPN", server.protocols.openVpn],
+                ["WireGuard", server.protocols.wireGuard],
+                ["Proxy", server.protocols.proxy],
+              ].map(([label, protocol]) => (
+                <div
+                  key={label as string}
+                  className="flex items-center justify-between rounded-md border bg-background p-3"
+                >
+                  <div>
+                    <div className="text-sm font-medium">{label as string}</div>
+                    <div className="font-mono text-xs text-muted-foreground">
+                      {(protocol as { enabled: boolean; port: number | null }).enabled
+                        ? `:${(protocol as { port: number | null }).port ?? "?"}`
+                        : "No port configured"}
+                    </div>
+                  </div>
+                  <Badge
+                    variant={
+                      (protocol as { enabled: boolean }).enabled
+                        ? "default"
+                        : "secondary"
+                    }
+                  >
+                    {(protocol as { enabled: boolean }).enabled
+                      ? "Enabled"
+                      : "Disabled"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       ) : null}
@@ -210,15 +298,34 @@ export default function VpnServerDetailPage() {
         ) : metrics ? (
           <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-4">
-              <PortBadge label="OpenVPN Port" port={metrics.ports.openVpn} />
-              <PortBadge label="WireGuard Port" port={metrics.ports.wireGuard} />
-              <PortBadge label="Proxy Port" port={metrics.ports.proxy} />
-              <div className="rounded-lg border p-3">
-                <div className="text-xs text-muted-foreground">Uptime</div>
-                <div className="mt-1 text-sm font-medium">
-                  {metrics.uptime ?? "Unavailable"}
-                </div>
-              </div>
+              <MetricCard
+                label="Uptime"
+                value={metrics.uptime ?? "Unavailable"}
+              />
+              <MetricCard
+                label="CPU"
+                value={
+                  metrics.resources.cpu.usedPercent === null
+                    ? "Unavailable"
+                    : `${metrics.resources.cpu.usedPercent.toFixed(1)}% / ${metrics.resources.cpu.totalCores ?? "?"} cores`
+                }
+                hint="usage / total"
+              />
+              <MetricCard
+                label="Memory"
+                value={
+                  metrics.resources.memory.used === null ||
+                  metrics.resources.memory.total === null
+                    ? "Unavailable"
+                    : `${formatBytes(metrics.resources.memory.used)} / ${formatBytes(metrics.resources.memory.total)}`
+                }
+                hint="usage / total"
+              />
+              <MetricCard
+                label="Bandwidth this month"
+                value={formatBytes(metrics.resources.currentMonthBandwidth)}
+                hint="vnStat total"
+              />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
@@ -267,6 +374,10 @@ export default function VpnServerDetailPage() {
               <TableRow>
                 <TableHead>Username</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Connection</TableHead>
+                <TableHead>VPN IP</TableHead>
+                <TableHead>Real Address</TableHead>
+                <TableHead>Traffic</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>IP Allocation</TableHead>
                 <TableHead>Serial</TableHead>
@@ -275,7 +386,7 @@ export default function VpnServerDetailPage() {
             <TableBody>
               {usersLoading && users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={9}>
                     <Skeleton className="h-8 w-full" />
                   </TableCell>
                 </TableRow>
@@ -298,6 +409,22 @@ export default function VpnServerDetailPage() {
                         {user.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={user.connected ? "default" : "secondary"}>
+                        {user.connected ? "Online" : "Offline"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {user.virtualAddress ?? "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {user.realAddress ?? "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {user.connected
+                        ? `↓ ${formatBytes(user.bytesReceived ?? 0)} ↑ ${formatBytes(user.bytesSent ?? 0)}`
+                        : "—"}
+                    </TableCell>
                     <TableCell className="font-mono text-xs">
                       {user.expiresAt ?? "—"}
                     </TableCell>
@@ -311,7 +438,7 @@ export default function VpnServerDetailPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                     No OpenVPN users returned by server.
                   </TableCell>
                 </TableRow>

@@ -167,6 +167,7 @@ export function ServersTable() {
     try {
       const res = await testVpnServer(server.id)
       setTestResult(res.data)
+      await loadServers(regionFilter, searchDebounced)
     } catch (err) {
       window.alert((err as Error).message)
       setTestTarget(null)

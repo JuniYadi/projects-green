@@ -85,6 +85,17 @@ export type VpnServerMetrics = {
     proxy: number | null
   }
   uptime: string | null
+  resources: {
+    cpu: {
+      usedPercent: number | null
+      totalCores: number | null
+    }
+    memory: {
+      used: number | null
+      total: number | null
+    }
+    currentMonthBandwidth: number
+  }
   traffic: {
     daily: VpnServerTrafficPoint[]
     monthly: VpnServerTrafficPoint[]
@@ -102,6 +113,12 @@ export type OpenVpnUserItem = {
   serial: string | null
   expiresAt: string | null
   ipAllocation: string | null
+  connected: boolean
+  realAddress: string | null
+  virtualAddress: string | null
+  bytesReceived: number | null
+  bytesSent: number | null
+  connectedSince: string | null
 }
 
 export type VpnServerItem = {
