@@ -48,11 +48,24 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
       const { page, limit, skip } = getPagination(query)
-      const where =
+      const where: Record<string, unknown> = {}
+
+      // Non-super_admin: auto-scope to own org (existing behavior)
+      if (
         whatsappAuth.type === "workos" &&
         whatsappAuth.platformRole !== "super_admin"
-          ? { organizationId: whatsappAuth.organizationId! }
-          : {}
+      ) {
+        where.organizationId = whatsappAuth.organizationId!
+      } else if (query.organizationId) {
+        // Super_admin explicit org filter
+        where.organizationId = String(query.organizationId)
+      }
+
+      // Device filter (any role)
+      if (query.whatsappDeviceId) {
+        where.whatsappDeviceId = String(query.whatsappDeviceId)
+      }
+
       const [total, templates] = await Promise.all([
         prisma.whatsappTemplate.count({ where }),
         prisma.whatsappTemplate.findMany({

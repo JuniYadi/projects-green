@@ -1,7 +1,7 @@
 "use client"
 
-import { useParams, useRouter } from "next/navigation"
-import { Plus, ArrowsClockwise } from "@phosphor-icons/react"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { Plus, ArrowsClockwise, Funnel } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   useTemplates,
   useSyncTemplate,
@@ -23,13 +24,19 @@ import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 export default function ConsoleTemplatesPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
+  const searchParams = useSearchParams()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
   const templatesBasePath = localizePathname({
     pathname: "/console/whatsapp/templates",
     locale,
   })
-  const { templates, loading, error, reload } = useTemplates()
+  const organizationId = searchParams.get("organizationId") ?? undefined
+  const whatsappDeviceId = searchParams.get("whatsappDeviceId") ?? undefined
+  const { templates, loading, error, reload } = useTemplates({
+    organizationId,
+    whatsappDeviceId,
+  })
   const { sync, syncing } = useSyncTemplate()
 
   const handleSyncAll = async () => {
@@ -76,6 +83,13 @@ export default function ConsoleTemplatesPage() {
     (t) => t.syncStatus === "NOT_SYNCED"
   ).length
 
+  const updateFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value) params.set(key, value)
+    else params.delete(key)
+    router.replace(`?${params.toString()}`)
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -85,6 +99,25 @@ export default function ConsoleTemplatesPage() {
         <p className="text-muted-foreground">
           {messages.console.whatsapp.templates.description}
         </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Funnel className="size-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Filters:</span>
+        </div>
+        <Input
+          placeholder="Organization ID"
+          value={organizationId ?? ""}
+          onChange={(e) => updateFilter("organizationId", e.target.value)}
+          className="max-w-[200px]"
+        />
+        <Input
+          placeholder="Device ID"
+          value={whatsappDeviceId ?? ""}
+          onChange={(e) => updateFilter("whatsappDeviceId", e.target.value)}
+          className="max-w-[200px]"
+        />
       </div>
 
       <Card>
