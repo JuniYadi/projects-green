@@ -26,7 +26,6 @@ bun run dev
 - `bun run build`: Production build
 - `bun run test`: Run Bun test suite (excludes e2e tests)
 - `bun run test:coverage`: Run tests with coverage report + threshold check
-- `bun run test:coverage`: Run tests with coverage and validate thresholds (functions ≥80%, lines ≥80%)
 - `bun run lint`: Run ESLint checks
 - `bun run typecheck`: Run TypeScript compiler checks
 - `bun run prisma:migrate:dev`: Apply database migrations

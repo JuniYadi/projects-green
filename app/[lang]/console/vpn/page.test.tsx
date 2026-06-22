@@ -1,8 +1,9 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
+import type { VpnSubscription, VpnPackageSummary } from "@/lib/vpn-client"
 
-const mockListVpnSubscriptions = mock(() => Promise.resolve([]))
-const mockListVpnPackages = mock(() => Promise.resolve([]))
+const mockListVpnSubscriptions = mock(() => Promise.resolve([] as VpnSubscription[]))
+const mockListVpnPackages = mock(() => Promise.resolve([] as VpnPackageSummary[]))
 
 mock.module("@/lib/vpn-client", () => ({
   listVpnSubscriptions: mockListVpnSubscriptions,
@@ -39,6 +40,11 @@ describe("ConsoleVpnDashboardPage", () => {
         status: "ACTIVE",
         currentPeriodStart: "2026-06-01T00:00:00.000Z",
         currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+        priceLocked: "10.00",
+        currency: "USD",
+        originalPrice: null,
+        originalCurrency: null,
+        exchangeRate: null,
         createdAt: "2026-06-01T00:00:00.000Z",
         updatedAt: "2026-06-01T00:00:00.000Z",
         serverAccounts: [
