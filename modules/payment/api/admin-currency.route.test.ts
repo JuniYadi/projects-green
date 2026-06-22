@@ -79,9 +79,9 @@ describe("Admin Currency Route", () => {
     )
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body.ok).toBe(true)
-    expect(body.data[0].code).toBe("USD")
-    expect(body.data[0].ratePerBase).toBe(1)
+    expect(Array.isArray(body)).toBe(true)
+    expect(body[0].code).toBe("USD")
+    expect(body[0].ratePerBase).toBe(1)
   })
 
   it("returns 403 for non super admin", async () => {
@@ -124,7 +124,7 @@ describe("Admin Currency Route", () => {
     )
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body.ok).toBe(true)
+    expect(body.code).toBe("USD") // DTO shape
     expect(mockCurrency.create).toHaveBeenCalled()
   })
 
@@ -138,7 +138,7 @@ describe("Admin Currency Route", () => {
     )
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body.ok).toBe(true)
+    expect(body.code).toBe("USD") // DTO shape
     expect(mockCurrency.update).toHaveBeenCalled()
   })
 })
