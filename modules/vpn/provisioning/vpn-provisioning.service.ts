@@ -289,6 +289,7 @@ export class VpnProvisioningService {
   }
 
   /** Write a step log entry via the unified audit service. */
+  // ponytail: audit failures propagate — provisioning should not proceed if audit log write fails
   private async withStep<T>(
     serverAccountId: string,
     account: AccountWithServer,
