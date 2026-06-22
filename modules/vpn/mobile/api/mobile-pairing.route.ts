@@ -259,8 +259,12 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
             // Audit: log device registration via QR
             logAuditEvent({
               deviceId: result.deviceId,
+              organizationId: result.organizationId,
+              subscriptionId: result.subscriptionId,
               action: "DEVICE_REGISTERED",
-              details: { pairedVia: "QR" },
+              status: "OK",
+              message: "Device paired via QR code",
+              details: { pairedVia: "QR", deviceName: body.deviceName, platform: body.platform },
               ip: getClientIp(request),
               userAgent: request.headers.get("user-agent"),
             }).catch(() => {})

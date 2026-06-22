@@ -221,8 +221,12 @@ export const createMobileProfilesRoutes = () => {
           logAuditEvent({
             deviceId: auth.mobileAuth.deviceId,
             userId: auth.mobileAuth.userId,
+            subscriptionId: access.device.subscriptionId,
+            serverAccountId: account.id,
             action: "CONFIG_DOWNLOADED",
-            details: { profileId: account.id },
+            status: "OK",
+            message: `VPN config downloaded for profile ${account.id} (${account.protocol})`,
+            details: { profileId: account.id, protocol: account.protocol, format },
             ip: getClientIp(request),
             userAgent: request.headers.get("user-agent"),
           }).catch(() => {})
