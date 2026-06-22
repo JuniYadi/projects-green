@@ -301,6 +301,7 @@ export default function VouchersPage() {
             <Skeleton className="h-32" />
           ) : (
             <DataTable
+              tableId="console-billing-vouchers"
               columns={columns}
               data={claims}
               emptyMessage="You have not redeemed any vouchers yet."

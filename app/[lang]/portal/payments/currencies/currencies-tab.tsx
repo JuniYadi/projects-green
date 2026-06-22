@@ -333,6 +333,7 @@ export function CurrenciesTab() {
 
         {!editing && !isCreating && (
           <DataTable
+            tableId="portal-payments-currencies"
             columns={currencyColumns}
             data={currencies}
             searchPlaceholder="Filter currencies..."

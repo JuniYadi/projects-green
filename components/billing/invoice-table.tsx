@@ -13,6 +13,7 @@ type InvoiceTableProps = {
   emptyMessage?: string
   invoices: InvoiceListItem[]
   lang: string
+  tableId?: string
 }
 
 const INVOICE_STATUS_FILTERS = [
@@ -68,6 +69,7 @@ export function InvoiceTable({
   emptyMessage = "No invoices match your filters.",
   invoices,
   lang,
+  tableId,
 }: InvoiceTableProps) {
   const columns = useMemo<ColumnDef<InvoiceListItem, unknown>[]>(
     () => [
@@ -136,6 +138,7 @@ export function InvoiceTable({
 
   return (
     <DataTable
+      tableId={tableId}
       columns={columns}
       data={invoices}
       searchableColumns={["invoiceNumber"]}

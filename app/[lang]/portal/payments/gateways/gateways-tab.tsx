@@ -574,6 +574,7 @@ export function GatewaysTab() {
               </div>
             ) : (
               <DataTable
+                tableId="portal-payments-gateways"
                 columns={gatewayColumns}
                 data={gateways}
                 searchPlaceholder="Filter gateways..."

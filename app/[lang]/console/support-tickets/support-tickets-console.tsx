@@ -173,6 +173,7 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
             <TicketTableSkeleton />
           ) : (
             <DataTable
+              tableId="console-support-tickets-listing"
               columns={columns}
               data={tickets}
               searchPlaceholder="Filter by Ticket ID or Subject..."

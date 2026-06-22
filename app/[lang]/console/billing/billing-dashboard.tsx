@@ -293,6 +293,7 @@ export function BillingDashboard() {
         <InvoiceTable
           invoices={data.invoices?.invoices.slice(0, 5) ?? []}
           lang={locale}
+          tableId="console-billing-invoices-dashboard"
           emptyMessage={messages.console.billing.noInvoices}
         />
       </section>

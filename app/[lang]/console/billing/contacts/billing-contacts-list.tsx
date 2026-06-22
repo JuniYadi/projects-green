@@ -421,6 +421,7 @@ export function BillingContactsList() {
   return (
     <>
       <DataTable
+        tableId="console-billing-contacts"
         columns={columns}
         data={contacts}
         searchableColumns={["email", "name"]}

@@ -161,6 +161,7 @@ export function SupportTicketsPortal({ lang }: SupportTicketsPortalProps) {
             <TicketTableSkeleton />
           ) : (
             <DataTable
+              tableId="portal-support-tickets"
               columns={columns}
               data={tickets}
               searchPlaceholder="Filter by Ticket ID, Organization, or Subject..."

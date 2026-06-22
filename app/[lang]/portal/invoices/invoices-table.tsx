@@ -192,6 +192,7 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
 
   return (
     <DataTable
+      tableId="portal-invoices"
       columns={invoiceColumns}
       data={state.data}
       searchPlaceholder="Filter by Invoice ID..."

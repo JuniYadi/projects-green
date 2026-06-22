@@ -505,6 +505,7 @@ export function BankAccountsTab() {
               </div>
             ) : (
               <DataTable
+                tableId="portal-payments-bank-accounts"
                 columns={bankAccountColumns}
                 data={bankAccounts}
                 searchPlaceholder="Filter bank accounts..."

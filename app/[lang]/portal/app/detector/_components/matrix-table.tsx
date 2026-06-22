@@ -442,6 +442,7 @@ export function MatrixTable() {
         </Button>
       </div>
       <DataTable
+        tableId="portal-app-detector-matrix"
         columns={columns}
         data={mappings}
         searchableColumns={["frameworkId", "runtimeId"]}
