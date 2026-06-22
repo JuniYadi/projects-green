@@ -431,6 +431,7 @@ export function RulesTable() {
         </Button>
       </div>
       <DataTable
+        tableId="portal-app-detector-rules"
         columns={columns}
         data={rules}
         searchableColumns={["name"]}

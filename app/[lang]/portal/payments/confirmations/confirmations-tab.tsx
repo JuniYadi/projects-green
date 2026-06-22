@@ -301,6 +301,7 @@ export function ConfirmationsTab() {
           </div>
 
           <DataTable
+            tableId="portal-payments-confirmations"
             columns={confirmationColumns}
             data={confirmations}
             searchPlaceholder="Filter confirmations..."

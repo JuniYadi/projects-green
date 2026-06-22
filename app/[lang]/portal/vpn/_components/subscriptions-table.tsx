@@ -6,7 +6,6 @@ import {
   type ColumnDef,
   type ColumnFiltersState,
   type SortingState,
-  type VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -60,6 +59,8 @@ import {
   type VpnServerAccountEntry,
   type ProvisioningSummary,
 } from "./vpn-admin-client"
+import { usePersistedColumnVisibility } from "@/hooks/use-persisted-column-visibility"
+
 import { ProvisioningAuditModal } from "./provisioning-audit-modal"
 
 const STATUS_VARIANT: Record<
@@ -333,7 +334,8 @@ export function SubscriptionsTable() {
     { id: "createdAt", desc: true },
   ])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] =
+    usePersistedColumnVisibility("portal-vpn-subscriptions")
   const [globalFilter, setGlobalFilter] = useState("")
 
   useEffect(() => {

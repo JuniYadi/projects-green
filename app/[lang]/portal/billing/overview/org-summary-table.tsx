@@ -89,6 +89,7 @@ export function OrgSummaryTable() {
       </CardHeader>
       <CardContent>
         <DataTable
+          tableId="portal-billing-org-summary"
           columns={columns}
           data={orgs}
           searchableColumns={["orgName"]}

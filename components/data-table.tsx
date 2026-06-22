@@ -12,6 +12,8 @@ import {
   type VisibilityState,
   useReactTable,
 } from "@tanstack/react-table"
+
+import { usePersistedColumnVisibility } from "@/hooks/use-persisted-column-visibility"
 import { CaretDownIcon } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -60,6 +62,7 @@ type DataTableProps<TData> = {
   initialSorting?: SortingState
   searchableColumns: string[]
   searchPlaceholder: string
+  tableId?: string
 }
 
 export function DataTable<TData>({
@@ -70,6 +73,7 @@ export function DataTable<TData>({
   initialSorting = [],
   searchableColumns,
   searchPlaceholder,
+  tableId,
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
@@ -77,7 +81,7 @@ export function DataTable<TData>({
     []
   )
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    usePersistedColumnVisibility(tableId)
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({

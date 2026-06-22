@@ -76,6 +76,7 @@ export function MemberBillingTable({ members, lang }: MemberBillingTableProps) {
 
   return (
     <DataTable
+      tableId="console-billing-members"
       columns={columns}
       data={members}
       searchableColumns={["name", "email"]}

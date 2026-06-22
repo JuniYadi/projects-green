@@ -371,6 +371,7 @@ export function LogViewer() {
         </div>
       </div>
       <DataTable
+        tableId="portal-app-detector-logs"
         columns={columns}
         data={logs}
         searchableColumns={["repoUrl"]}

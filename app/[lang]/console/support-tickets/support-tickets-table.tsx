@@ -117,6 +117,7 @@ export function SupportTicketsTable() {
   const messages = getMessages(locale)
   return (
     <DataTable
+      tableId="console-support-tickets"
       columns={supportTicketColumns(messages)}
       data={supportTicketRows}
       searchPlaceholder={messages.console.supportTickets.searchPlaceholder}

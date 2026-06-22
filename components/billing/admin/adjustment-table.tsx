@@ -119,6 +119,7 @@ export function AdjustmentTable({ adjustments }: AdjustmentTableProps) {
 
   return (
     <DataTable
+      tableId="portal-billing-adjustments"
       columns={columns}
       data={adjustments}
       searchableColumns={["reason", "type"]}
