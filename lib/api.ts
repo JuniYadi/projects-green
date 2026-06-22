@@ -32,6 +32,7 @@ import {
   vpnSubscriptionRoutes,
   adminVpnSubscriptionRoutes,
 } from "@/modules/vpn/subscriptions/api"
+import { wireguardRoutes } from "@/modules/wireguard/api/wireguard.route"
 import { voucherRoutes } from "@/modules/vouchers/api"
 import { healthRoutes } from "@/modules/health/api/health.route"
 import { markStartupComplete } from "@/modules/health/health.service"
@@ -124,6 +125,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(healthRoutes)
   .use(whatsappWebhookRoutes)
   .use(whatsappRoutes)
+  .use(wireguardRoutes)
   .onError(({ code, error, set, request, path }) => {
     if (code === "VALIDATION") {
       set.status = 422

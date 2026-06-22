@@ -540,6 +540,7 @@ enum BillingContactRole {
 
 enum VpnProvider {
   OPENVPN
+  WIREGUARD
 }
 
 enum VpnRegionCode {
@@ -1165,9 +1166,11 @@ model VpnServer {
   sshUser       String          @default("root")
   hasOpenVpn    Boolean         @default(false)
   openVpnPort   Int?
-  hasWireGuard  Boolean         @default(false)
-  wireGuardPort Int?
-  hasProxy      Boolean         @default(false)
+  hasWireGuard      Boolean         @default(false)
+  wireGuardPort     Int?
+  wireGuardPublicKey String?
+  wireGuardSubnet   String?
+  hasProxy          Boolean         @default(false)
   proxyPort     Int?
   health        VpnServerHealth @default(UNKNOWN)
   isActive      Boolean         @default(true)
