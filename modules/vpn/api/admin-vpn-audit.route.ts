@@ -16,6 +16,7 @@ const AUDIT_ACTIONS = [
   "PROVISIONING_SUCCESS",
   "PROVISIONING_FAILED",
   "PROVISIONING_RETRIED",
+  "PROVISIONING_RECREATE_REQUESTED",
 ] as const
 
 /**
@@ -70,6 +71,19 @@ export const createAdminVpnAuditRoutes = (deps: {
               },
             },
           ]
+        }
+
+        if (query.organizationId) {
+          where.organizationId = query.organizationId
+        }
+        if (query.subscriptionId) {
+          where.subscriptionId = query.subscriptionId
+        }
+        if (query.serverId) {
+          where.serverId = query.serverId
+        }
+        if (query.correlationId) {
+          where.correlationId = query.correlationId
         }
 
         if (query.q) {
@@ -136,6 +150,10 @@ export const createAdminVpnAuditRoutes = (deps: {
             t.Union(STATUS_FILTER_VALUES.map((v) => t.Literal(v)))
           ),
           q: t.Optional(t.String({ maxLength: 128 })),
+          organizationId: t.Optional(t.String()),
+          subscriptionId: t.Optional(t.String()),
+          serverId: t.Optional(t.String()),
+          correlationId: t.Optional(t.String()),
           from: t.Optional(t.String({ maxLength: 32 })),
           to: t.Optional(t.String({ maxLength: 32 })),
         }),
