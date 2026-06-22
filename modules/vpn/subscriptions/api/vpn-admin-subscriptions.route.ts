@@ -1,8 +1,10 @@
 import { Elysia } from "elysia"
 import { createWorkOS } from "@workos-inc/node"
 
+import crypto from "node:crypto"
+
 import { prisma } from "@/lib/prisma"
-import { logProvisioningEvent } from "@/lib/audit.service"
+import { logAuditEvent } from "@/lib/audit.service"
 import {
   requireSuperAdmin,
   type AdminActorContext,
@@ -128,16 +130,15 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         // so a retry would never enqueue a second time.
         await VpnProvisioningJob.enqueue({ serverAccountId: account.id })
 
-        logProvisioningEvent({
-          action: "PROVISIONING_RETRIED",
+        logAuditEvent({
           serverAccountId: account.id,
-          details: {
-            serverAccountId: account.id,
-            previousFailureReason,
-            triggeredByAdminId: actor.userId,
-          },
           adminId: actor.userId,
-        })
+          action: "PROVISIONING_RETRIED",
+          status: "PENDING",
+          message: `Admin retried provisioning for account ${account.id}`,
+          errorMessage: previousFailureReason,
+          details: { previousFailureReason, triggeredByAdminId: actor.userId },
+        }).catch(() => {})
 
         return { ok: true }
       }
@@ -183,17 +184,14 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         })
         await VpnProvisioningJob.enqueue({ serverAccountId: account.id })
 
-        logProvisioningEvent({
-          action: "PROVISIONING_RECREATE_REQUESTED",
+        logAuditEvent({
           serverAccountId: account.id,
-          details: {
-            serverAccountId: account.id,
-            previousUsername,
-            username,
-            triggeredByAdminId: actor.userId,
-          },
           adminId: actor.userId,
-        })
+          action: "PROVISIONING_RECREATE_REQUESTED",
+          status: "PENDING",
+          message: `Admin requested recreate for account: ${previousUsername} → ${username}`,
+          details: { previousUsername, username, triggeredByAdminId: actor.userId },
+        }).catch(() => {})
 
         return { ok: true }
       }
@@ -216,6 +214,8 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         const actor = (await guard(set)) as AdminActorContext | AdminApiError
         if (!actor.ok) return actor
 
+        const correlationId = crypto.randomUUID()
+
         const failedAccounts = await prisma.vpnServerAccount.findMany({
           where: {
             subscriptionId: params.id,
@@ -230,17 +230,26 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
           })
           await VpnProvisioningJob.enqueue({ serverAccountId: account.id })
 
-          logProvisioningEvent({
-            action: "PROVISIONING_RETRIED",
+          logAuditEvent({
             serverAccountId: account.id,
-            details: {
-              serverAccountId: account.id,
-              previousFailureReason: account.failureReason ?? "Unknown",
-              triggeredByAdminId: actor.userId,
-            },
             adminId: actor.userId,
-          })
+            correlationId,
+            action: "PROVISIONING_RETRIED",
+            status: "PENDING",
+            message: `Admin retried provisioning for account ${account.id} (batch)`,
+            errorMessage: account.failureReason ?? "Unknown",
+            details: { previousFailureReason: account.failureReason ?? "Unknown", triggeredByAdminId: actor.userId },
+          }).catch(() => {})
         }
+
+        logAuditEvent({
+          adminId: actor.userId,
+          correlationId,
+          action: "ADMIN_RETRY_ALL",
+          status: "OK",
+          message: `Admin retried all ${failedAccounts.length} failed accounts for subscription ${params.id}`,
+          details: { subscriptionId: params.id, totalRetried: failedAccounts.length },
+        }).catch(() => {})
 
         return { ok: true, retried: failedAccounts.length }
       }

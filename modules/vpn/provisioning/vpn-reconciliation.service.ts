@@ -11,7 +11,7 @@
  */
 
 import { prisma } from "@/lib/prisma"
-import { logProvisioningEvent } from "@/lib/audit.service"
+import { logAuditEvent } from "@/lib/audit.service"
 import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
 
 const RECONCILIATION_INTERVAL_MS = 5 * 60 * 1_000 // 5 minutes
@@ -58,16 +58,12 @@ export class VpnReconciliationService {
     for (const account of orphanedAccounts) {
       try {
         await VpnProvisioningJob.dispatch(account.id)
-        logProvisioningEvent({
-          action: "PROVISIONING_RETRIED",
+        logAuditEvent({
           serverAccountId: account.id,
-          details: {
-            serverAccountId: account.id,
-            previousFailureReason: "Orphaned — worker crash before processing",
-            triggeredByAdminId: null,
-          },
-          adminId: null,
-        })
+          action: "PROVISIONING_RETRIED",
+          status: "PENDING",
+          message: `Reconciliation dispatched retry for orphaned account ${account.id}`,
+        }).catch(() => {})
         dispatched++
       } catch {
         errors++
@@ -76,6 +72,13 @@ export class VpnReconciliationService {
 
     // Accounts not returned by the query (not ACTIVE subscription, or too recent) are skipped
     skipped = MAX_ACCOUNTS_PER_CYCLE - dispatched - errors
+
+    logAuditEvent({
+      action: "RECONCILIATION_RAN",
+      status: "OK",
+      message: `Reconciliation cycle: ${dispatched} dispatched, ${skipped} skipped, ${errors} errors`,
+      details: { dispatched, skipped, errors },
+    }).catch(() => {})
 
     return { dispatched, skipped: Math.max(skipped, 0), errors }
   }
