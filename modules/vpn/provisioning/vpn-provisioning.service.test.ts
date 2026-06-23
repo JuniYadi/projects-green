@@ -64,6 +64,7 @@ const mockWireGuard = {
     exists: true,
     message: "WireGuard peer exists",
   }),
+  revokePeer: mock().mockResolvedValue(undefined),
 }
 
 const mockProxy = {
@@ -112,6 +113,7 @@ beforeEach(() => {
   mockOpenVpn.restartServer.mockReset()
   mockWireGuard.createPeer.mockReset()
   mockWireGuard.validatePeer.mockReset()
+  mockWireGuard.revokePeer.mockReset()
   mockProxy.createUser.mockReset()
   mockProxy.validateUser.mockReset()
 
@@ -129,6 +131,7 @@ beforeEach(() => {
     exists: true,
     message: "WireGuard peer exists",
   })
+  mockWireGuard.revokePeer.mockResolvedValue(undefined)
   mockProxy.createUser.mockResolvedValue({ password: "secret" })
   mockProxy.validateUser.mockResolvedValue({
     exists: true,
@@ -393,7 +396,21 @@ describe("VpnProvisioningService removeRemoteAccount", () => {
     )
   })
 
-  it("returns early for non-OpenVPN protocols", async () => {
+  it("returns early for PROXY (WireGuard cleanup unimplemented)", async () => {
+    mockPrisma.vpnServerAccount.findUnique.mockResolvedValue({
+      ...account,
+      protocol: "PROXY" as const,
+    })
+
+    await service.removeRemoteAccount(ACCOUNT_ID)
+
+    expect(mockOpenVpn.revokeClient).not.toHaveBeenCalled()
+    expect(mockWireGuard.revokePeer).not.toHaveBeenCalled()
+    expect(mockOpenVpn.restartServer).not.toHaveBeenCalled()
+    expect(mockPrisma.vpnServerAccount.update).not.toHaveBeenCalled()
+  })
+
+  it("revokes WireGuard peer and updates DB to REVOKED", async () => {
     mockPrisma.vpnServerAccount.findUnique.mockResolvedValue({
       ...account,
       protocol: "WIREGUARD" as const,
@@ -401,9 +418,16 @@ describe("VpnProvisioningService removeRemoteAccount", () => {
 
     await service.removeRemoteAccount(ACCOUNT_ID)
 
-    expect(mockOpenVpn.revokeClient).not.toHaveBeenCalled()
-    expect(mockOpenVpn.restartServer).not.toHaveBeenCalled()
-    expect(mockPrisma.vpnServerAccount.update).not.toHaveBeenCalled()
+    expect(mockWireGuard.revokePeer).toHaveBeenCalledWith(
+      expect.objectContaining({ host: "vpn.example.com" }),
+      USERNAME
+    )
+    expect(mockPrisma.vpnServerAccount.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: ACCOUNT_ID },
+        data: expect.objectContaining({ provisioningStatus: "REVOKED" }),
+      })
+    )
   })
 
   it("throws and does NOT update DB to REVOKED when SSH revoke fails", async () => {

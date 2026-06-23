@@ -21,26 +21,46 @@ export type WireGuardValidationResult = {
 /**
  * WireGuard provisioning over SSH.
  *
- * Generates a peer keypair on the server (`wg genkey | wg pubkey`), registers
- * the peer against the server's interface, and renders a client `.conf`. The
- * remote helper script is expected at `WIREGUARD_ADD_PEER_SCRIPT` and must
- * accept `<peerName>` and print the client config to stdout.
+ * Runs the server's wg-add.sh to create a peer, then reads the resulting
+ * .conf file from the clients directory.
+ *
+ * Server scripts expected:
+ *   - `/root/wg-add.sh <username>`  — creates peer, writes .conf to clients dir
+ *   - `/root/wg-remove.sh <username>` — removes peer and its .conf
+ *
+ * Client configs are stored at:
+ *   `/root/wireguard/clients/<username>.conf`
+ *
+ * Paths can be overridden via constructor options or environment variables:
+ *   WIREGUARD_ADD_PEER_SCRIPT, WIREGUARD_REMOVE_PEER_SCRIPT, WIREGUARD_CLIENT_DIR
  */
 export class WireGuardSshAdapter {
   private readonly executor: VpnServerSshExecutor
-  private readonly addPeerScript: string
+  private readonly addScript: string
+  private readonly removeScript: string
+  private readonly clientDir: string
 
   constructor(
     options: {
       executor?: VpnServerSshExecutor
-      addPeerScript?: string
+      addScript?: string
+      removeScript?: string
+      clientDir?: string
     } = {}
   ) {
     this.executor = options.executor ?? new VpnServerSshExecutor()
-    this.addPeerScript =
-      options.addPeerScript ??
+    this.addScript =
+      options.addScript ??
       process.env.WIREGUARD_ADD_PEER_SCRIPT ??
-      "/usr/local/bin/add-wireguard-peer"
+      "/root/wg-add.sh"
+    this.removeScript =
+      options.removeScript ??
+      process.env.WIREGUARD_REMOVE_PEER_SCRIPT ??
+      "/root/wg-remove.sh"
+    this.clientDir =
+      options.clientDir ??
+      process.env.WIREGUARD_CLIENT_DIR ??
+      "/root/wireguard/clients"
   }
 
   async createPeer(
@@ -48,15 +68,26 @@ export class WireGuardSshAdapter {
     username: string
   ): Promise<WireGuardProvisionResult> {
     const safeName = sanitizeUsername(username)
-    const result = await this.executor.execChecked(
+
+    // Step 1: Run the add script to create the peer and write the .conf file
+    await this.executor.execChecked(
       target,
-      [this.addPeerScript, safeName],
+      ["bash", this.addScript, safeName],
       "create WireGuard peer"
     )
-    const config = result.stdout.trim()
+
+    // Step 2: Read the config file the script wrote to the clients directory
+    const configResult = await this.executor.execChecked(
+      target,
+      ["cat", `${this.clientDir}/${safeName}.conf`],
+      "read WireGuard peer config"
+    )
+
+    const config = configResult.stdout.trim()
     if (!config.includes("[Interface]")) {
       throw new Error("WireGuard config was not returned by the server")
     }
+
     return { config }
   }
 
@@ -66,9 +97,9 @@ export class WireGuardSshAdapter {
   ): Promise<WireGuardValidationResult> {
     const safeName = sanitizeUsername(username)
     const result = await this.executor.exec(target, [
-      this.addPeerScript,
-      "--exists",
-      safeName,
+      "test",
+      "-f",
+      `${this.clientDir}/${safeName}.conf`,
     ])
 
     if (result.exitCode === 0) {
@@ -77,10 +108,7 @@ export class WireGuardSshAdapter {
 
     return {
       exists: false,
-      message:
-        result.stderr.trim() ||
-        result.stdout.trim() ||
-        "WireGuard peer was not found on server.",
+      message: `WireGuard peer '${safeName}' not found on server.`,
     }
   }
 
@@ -88,7 +116,7 @@ export class WireGuardSshAdapter {
     const safeName = sanitizeUsername(username)
     await this.executor.execChecked(
       target,
-      [this.addPeerScript, "--revoke", safeName],
+      ["bash", this.removeScript, safeName],
       "revoke WireGuard peer"
     )
   }
