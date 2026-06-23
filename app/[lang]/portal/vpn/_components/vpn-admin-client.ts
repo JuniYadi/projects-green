@@ -328,6 +328,17 @@ export async function testVpnServer(id: string, init?: RequestInit) {
   return unwrapData<ScanResult>(res)
 }
 
+// ── Sync Protocols ─────────────────────────────────────────────────────────
+
+type SyncProtocolsResult = { ok: true; queued: boolean; correlationId: string }
+
+export async function syncVpnServerProtocols(id: string) {
+  const res = (await eden.api.admin.vpn.servers[id][
+    "sync-protocols"
+  ].post()) as EdenRes
+  return unwrapData<SyncProtocolsResult>(res)
+}
+
 // ── SSH Keys ─────────────────────────────────────────────────────────────
 
 export async function listVpnSshKeys() {
