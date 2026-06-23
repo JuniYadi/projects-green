@@ -577,16 +577,6 @@ export default function SubscriptionDetailPage() {
                       </div>
                     )}
                   </CollapsibleTrigger>
-                  {summary?.failed > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={busy === subscriptionId}
-                      onClick={retryAllFailed}
-                    >
-                      {busy === subscriptionId ? "Retrying..." : "Retry All Failed"}
-                    </Button>
-                  )}
                 </div>
               </CardHeader>
               <CollapsibleContent>
