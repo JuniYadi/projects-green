@@ -386,9 +386,47 @@ export async function deleteVpnPackage(id: string) {
 
 // ── Subscriptions ────────────────────────────────────────────────────────
 
-export async function listVpnAdminSubscriptions() {
-  const res = (await eden.api.admin.vpn.subscriptions.get()) as EdenRes
-  return unwrapData<VpnSubscriptionItem[]>(res)
+export type VpnAdminSubscriptionsQuery = {
+  orgId?: string
+  packageId?: string
+  status?: "ACTIVE" | "SUSPENDED" | "EXPIRED"
+  periodStartFrom?: string
+  periodStartTo?: string
+  q?: string
+  page?: number
+  limit?: number
+}
+
+export type PaginationMeta = {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+export async function listVpnAdminSubscriptions(query: VpnAdminSubscriptionsQuery = {}) {
+  const $query: Record<string, string> = {}
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null && value !== "") {
+      $query[key] = String(value)
+    }
+  }
+
+  const res = (await eden.api.admin.vpn.subscriptions.get({ $query })) as EdenRes
+  throwIfError(res)
+
+  const body = res.data as
+    | { ok: true; data: VpnSubscriptionItem[]; pagination: PaginationMeta }
+    | VpnSubscriptionItem[]
+
+  if (Array.isArray(body)) {
+    return {
+      data: body,
+      pagination: { page: 1, limit: body.length, total: body.length, totalPages: 1 },
+    }
+  }
+
+  return { data: body.data, pagination: body.pagination }
 }
 
 export async function getVpnAdminSubscription(id: string) {

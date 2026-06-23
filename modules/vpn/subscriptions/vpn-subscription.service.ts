@@ -159,11 +159,55 @@ export class VpnSubscriptionService {
     })
   }
 
-  listAll() {
-    return this.prisma.vpnSubscription.findMany({
-      include: subscriptionInclude,
-      orderBy: { createdAt: "desc" },
-    })
+  async listAll(
+    query: {
+      orgId?: string
+      packageId?: string
+      status?: "ACTIVE" | "SUSPENDED" | "EXPIRED"
+      periodStartFrom?: string
+      periodStartTo?: string
+      q?: string
+      page?: number
+      limit?: number
+    } = {}
+  ): Promise<{ data: VpnSubscriptionWithAccounts[]; total: number }> {
+    const where: Prisma.VpnSubscriptionWhereInput = {}
+
+    if (query.orgId) where.organizationId = query.orgId
+    if (query.packageId) where.packageId = query.packageId
+    if (query.status) where.status = query.status
+    if (query.periodStartFrom || query.periodStartTo) {
+      where.currentPeriodStart = {}
+      if (query.periodStartFrom)
+        where.currentPeriodStart.gte = new Date(query.periodStartFrom)
+      if (query.periodStartTo)
+        where.currentPeriodStart.lte = new Date(query.periodStartTo)
+    }
+    // ponytail: server-side q only searches id + organizationId.
+    // Full org name search is client-side on the loaded page.
+    if (query.q) {
+      where.OR = [
+        { id: { contains: query.q } },
+        { organizationId: { contains: query.q } },
+      ]
+    }
+
+    const page = query.page ?? 1
+    const limit = query.limit ?? 20
+    const skip = (page - 1) * limit
+
+    const [data, total] = await Promise.all([
+      this.prisma.vpnSubscription.findMany({
+        where,
+        include: subscriptionInclude,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      this.prisma.vpnSubscription.count({ where }),
+    ])
+
+    return { data, total }
   }
 
   getById(id: string) {

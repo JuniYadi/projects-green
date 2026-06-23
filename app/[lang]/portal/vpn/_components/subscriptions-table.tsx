@@ -1,24 +1,21 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   type ColumnDef,
-  type ColumnFiltersState,
   type SortingState,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
 import {
-  CaretDown,
-  CaretRight,
-  Eye,
-  ArrowsDownUpIcon,
   CaretDownIcon,
   CaretUpIcon,
+  ArrowsDownUpIcon,
+  DeviceMobileIcon,
+  X,
 } from "@phosphor-icons/react"
 
 import {
@@ -32,7 +29,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { DeviceMobileIcon } from "@phosphor-icons/react"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -52,18 +48,13 @@ import {
 
 import {
   listVpnAdminSubscriptions,
-  retryVpnServerAccount,
-  revokeVpnServerAccount,
-  retryAllVpnServerAccounts,
-  validateVpnServerAccount,
-  recreateVpnServerAccount,
   type VpnSubscriptionItem,
   type VpnServerAccountEntry,
   type ProvisioningSummary,
+  type VpnAdminSubscriptionsQuery,
+  type PaginationMeta,
 } from "./vpn-admin-client"
 import { usePersistedColumnVisibility } from "@/hooks/use-persisted-column-visibility"
-
-import { ProvisioningAuditModal } from "./provisioning-audit-modal"
 
 const STATUS_VARIANT: Record<
   VpnSubscriptionItem["status"],
@@ -72,17 +63,6 @@ const STATUS_VARIANT: Record<
   ACTIVE: "default",
   SUSPENDED: "secondary",
   EXPIRED: "destructive",
-}
-
-const PROVISION_VARIANT: Record<
-  VpnServerAccountEntry["provisioningStatus"],
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  ACTIVE: "default",
-  PENDING: "outline",
-  PROVISIONING: "secondary",
-  FAILED: "destructive",
-  REVOKED: "secondary",
 }
 
 const STATUS_FILTER_OPTIONS = [
@@ -169,50 +149,17 @@ function ColumnHeader({
   )
 }
 
-function getColumns(
-  expanded: Set<string>,
-  toggleExpand: (id: string) => void
-): ColumnDef<VpnSubscriptionItem>[] {
+function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
   return [
-    {
-      id: "expand",
-      header: "",
-      cell: ({ row }) => {
-        const isExpanded = expanded.has(row.original.id)
-        return (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={(e) => {
-              e.stopPropagation()
-              toggleExpand(row.original.id)
-            }}
-          >
-            {isExpanded ? (
-              <CaretDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <CaretRight className="h-4 w-4 text-muted-foreground" />
-            )}
-          </Button>
-        )
-      },
-      enableSorting: false,
-      enableHiding: false,
-      size: 40,
-    },
     {
       accessorKey: "id",
       header: ({ column }) => (
         <ColumnHeader column={column} title="ID" />
       ),
       cell: ({ row }) => (
-        <Link
-          href={`/portal/vpn/subscriptions/${row.original.id}`}
-          className="font-mono text-xs text-foreground underline-offset-4 hover:underline"
-        >
+        <span className="font-mono text-xs text-foreground">
           {row.original.id.slice(0, 8)}...
-        </Link>
+        </span>
       ),
     },
     {
@@ -253,13 +200,14 @@ function getColumns(
         <ColumnHeader column={column} title="Devices" />
       ),
       cell: ({ row }) => (
-        <Link
+        <a
           href={`/portal/vpn/devices?subscriptionId=${row.original.id}`}
+          onClick={(e) => e.stopPropagation()}
           className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
         >
           <DeviceMobileIcon className="h-4 w-4 text-muted-foreground" />
           {row.original.deviceCount}
-        </Link>
+        </a>
       ),
     },
     {
@@ -320,161 +268,123 @@ function getColumns(
   ]
 }
 
+function extractUnique(
+  items: VpnSubscriptionItem[],
+  key: (item: VpnSubscriptionItem) => string | null
+): string[] {
+  const set = new Set<string>()
+  for (const item of items) {
+    const val = key(item)
+    if (val) set.add(val)
+  }
+  return [...set].sort()
+}
+
 export function SubscriptionsTable() {
+  const router = useRouter()
   const [subs, setSubs] = useState<VpnSubscriptionItem[]>([])
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [auditAccount, setAuditAccount] = useState<VpnServerAccountEntry | null>(
-    null
-  )
-  const [reloadKey, setReloadKey] = useState(0)
+
+  // Filter state
+  const [orgFilter, setOrgFilter] = useState("all")
+  const [pkgFilter, setPkgFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [page, setPage] = useState(1)
 
   // Table state
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] =
     usePersistedColumnVisibility("portal-vpn-subscriptions")
-  const [globalFilter, setGlobalFilter] = useState("")
 
-  useEffect(() => {
-    let cancelled = false
-
-    const fetchSubs = async () => {
-      try {
-        setError(null)
-        const res = await listVpnAdminSubscriptions()
-        if (!cancelled) setSubs(res.data)
-      } catch (err) {
-        if (!cancelled) setError((err as Error).message)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+  const fetchSubs = useCallback(async (filters: VpnAdminSubscriptionsQuery) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await listVpnAdminSubscriptions(filters)
+      setSubs(res.data)
+      setPagination(res.pagination)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
     }
-
-    fetchSubs()
-
-    return () => {
-      cancelled = true
-    }
-  }, [reloadKey])
-
-  const reload = useCallback(() => setReloadKey((k) => k + 1), [])
-
-  const toggleExpand = useCallback((subId: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(subId)) next.delete(subId)
-      else next.add(subId)
-      return next
-    })
   }, [])
 
-  const columns = useMemo(
-    () => getColumns(expanded, toggleExpand),
-    [expanded, toggleExpand]
-  )
+  // Debounce search, fire immediately for everything else
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const query: VpnAdminSubscriptionsQuery = { page }
+      if (orgFilter !== "all") query.orgId = orgFilter
+      if (pkgFilter !== "all") query.packageId = pkgFilter
+      if (statusFilter !== "all") query.status = statusFilter as "ACTIVE" | "SUSPENDED" | "EXPIRED"
+      if (dateFrom) query.periodStartFrom = dateFrom
+      if (dateTo) query.periodStartTo = dateTo
+      if (searchQuery.trim()) query.q = searchQuery.trim()
 
-  // eslint-disable-next-line react-hooks/incompatible-library
+      fetchSubs(query)
+    }, searchQuery ? 300 : 0)
+
+    return () => clearTimeout(timer)
+  }, [orgFilter, pkgFilter, statusFilter, dateFrom, dateTo, searchQuery, page, fetchSubs])
+
+  // Reset to page 1 when any filter changes
+  useEffect(() => {
+    setPage(1)
+  }, [orgFilter, pkgFilter, statusFilter, dateFrom, dateTo, searchQuery])
+
+  const columns = useMemo(() => getColumns(), [])
+
   const table = useReactTable({
     data: subs,
     columns,
     state: {
       sorting,
-      columnFilters,
       columnVisibility,
-      globalFilter,
-    },
-    globalFilterFn: (row, _, filterValue) => {
-      const searchValue = String(filterValue ?? "")
-        .trim()
-        .toLowerCase()
-
-      if (!searchValue) return true
-
-      const searchable = [
-        "id",
-        "organizationName",
-        "packageName",
-        "status",
-      ]
-      return searchable.some((col) => {
-        const value = row.getValue(col)
-        return String(value ?? "")
-          .toLowerCase()
-          .includes(searchValue)
-      })
     },
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
 
-  const act = async (
-    subId: string,
-    account: VpnServerAccountEntry,
-    action: "retry" | "revoke" | "validate" | "recreate"
-  ) => {
-    if (
-      action === "revoke" &&
-      !window.confirm(`Revoke ${account.protocol} on ${account.serverName}?`)
-    )
-      return
-    if (
-      action === "recreate" &&
-      !window.confirm(
-        `Recreate ${account.protocol} account on ${account.serverName}? This clears stored config/credentials and queues provisioning again.`
-      )
-    )
-      return
+  const hasActiveFilters =
+    orgFilter !== "all" ||
+    pkgFilter !== "all" ||
+    statusFilter !== "all" ||
+    dateFrom !== "" ||
+    dateTo !== "" ||
+    searchQuery.trim() !== ""
 
-    setBusy(`${action}:${account.id}`)
-    try {
-      if (action === "retry") {
-        await retryVpnServerAccount(subId, account.id)
-        reload()
-      } else if (action === "revoke") {
-        await revokeVpnServerAccount(subId, account.id)
-        reload()
-      } else if (action === "recreate") {
-        await recreateVpnServerAccount(subId, account.id)
-        reload()
-      } else {
-        const result = await validateVpnServerAccount(subId, account.id)
-        window.alert(
-          result.data.exists
-            ? `Account exists on server.\n\n${result.data.message}`
-            : `Account is missing on server.\n\n${result.data.message}`
-        )
-      }
-    } catch (err) {
-      window.alert((err as Error).message)
-    } finally {
-      setBusy(null)
-    }
+  const clearFilters = () => {
+    setOrgFilter("all")
+    setPkgFilter("all")
+    setStatusFilter("all")
+    setDateFrom("")
+    setDateTo("")
+    setSearchQuery("")
+    setPage(1)
   }
 
-  const retryAllFailed = async (subId: string) => {
-    if (!window.confirm("Retry provisioning for all failed accounts?")) return
-    setBusy(subId)
-    try {
-      await retryAllVpnServerAccounts(subId)
-      reload()
-    } catch (err) {
-      window.alert((err as Error).message)
-    } finally {
-      setBusy(null)
-    }
-  }
+  // Extract unique org/package names from current data for dropdown options
+  const orgOptions = useMemo(() => extractUnique(subs, (s) => s.organizationName), [subs])
+  const pkgOptions = useMemo(() => extractUnique(subs, (s) => s.packageName), [subs])
 
-  if (loading) {
+  const start = subs.length === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1
+  const end = Math.min(pagination.page * pagination.limit, pagination.total)
+
+  if (loading && subs.length === 0) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
@@ -492,27 +402,47 @@ export function SubscriptionsTable() {
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Input
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          placeholder="Search by ID, org, package..."
-          className="w-full sm:max-w-sm"
-          aria-label="Search subscriptions"
-        />
-        <div className="flex flex-wrap gap-3 sm:ml-auto">
-          <Select
-            value={String(
-              table.getColumn("status")?.getFilterValue() ?? "all"
-            )}
-            onValueChange={(val) =>
-              table
-                .getColumn("status")
-                ?.setFilterValue(val === "all" ? undefined : val)
-            }
-          >
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by ID, org..."
+            className="w-full sm:max-w-sm"
+            aria-label="Search subscriptions"
+          />
+
+          <Select value={orgFilter} onValueChange={setOrgFilter}>
+            <SelectTrigger className="w-[180px]" size="sm">
+              <SelectValue placeholder="All organizations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All organizations</SelectItem>
+              {orgOptions.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={pkgFilter} onValueChange={setPkgFilter}>
+            <SelectTrigger className="w-[180px]" size="sm">
+              <SelectValue placeholder="All packages" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All packages</SelectItem>
+              {pkgOptions.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]" size="sm">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="All status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All status</SelectItem>
@@ -523,6 +453,34 @@ export function SubscriptionsTable() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground">From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground">To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            />
+          </div>
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="mr-1 h-3.5 w-3.5" />
+              Clear filters
+            </Button>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -575,169 +533,31 @@ export function SubscriptionsTable() {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => {
-                const sub = row.original
-                const isExpanded = expanded.has(sub.id)
-                return (
-                  <React.Fragment key={row.id}>
-                    <TableRow
-                      className="cursor-pointer"
-                      onClick={() => toggleExpand(sub.id)}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-
-                    {isExpanded && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={columns.length}
-                          className="bg-muted/30 p-4"
-                        >
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-sm font-semibold">
-                                Server Accounts
-                              </h4>
-                              {sub.provisioningSummary.failed > 0 && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={busy === sub.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    retryAllFailed(sub.id)
-                                  }}
-                                >
-                                  {busy === sub.id
-                                    ? "Retrying..."
-                                    : "Retry All Failed"}
-                                </Button>
-                              )}
-                            </div>
-                            <div className="space-y-2">
-                              {sub.serverAccounts.map((account) => (
-                                <div
-                                  key={account.id}
-                                  className="flex items-center justify-between rounded-md border bg-background p-3"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex flex-col">
-                                      <span className="text-sm font-medium">
-                                        {account.serverName}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {account.protocol} · {account.username}
-                                      </span>
-                                    </div>
-                                    <Badge
-                                      variant={
-                                        PROVISION_VARIANT[
-                                          account.provisioningStatus
-                                        ]
-                                      }
-                                    >
-                                      {account.provisioningStatus}
-                                    </Badge>
-                                    {account.failureReason && (
-                                      <span className="max-w-xs truncate text-xs text-red-500">
-                                        {account.failureReason}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      title="View Audit Log"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setAuditAccount(account)
-                                      }}
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={busy?.endsWith(account.id)}
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        act(sub.id, account, "validate")
-                                      }}
-                                    >
-                                      {busy === `validate:${account.id}`
-                                        ? "Validating..."
-                                        : "Validate"}
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={busy?.endsWith(account.id)}
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        act(sub.id, account, "recreate")
-                                      }}
-                                    >
-                                      {busy === `recreate:${account.id}`
-                                        ? "Recreating..."
-                                        : "Recreate"}
-                                    </Button>
-                                    {(account.provisioningStatus === "FAILED" ||
-                                      account.provisioningStatus ===
-                                        "PENDING") && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={busy?.endsWith(account.id)}
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          act(sub.id, account, "retry")
-                                        }}
-                                      >
-                                        Retry
-                                      </Button>
-                                    )}
-                                    {(account.provisioningStatus === "ACTIVE" ||
-                                      account.provisioningStatus === "FAILED" ||
-                                      account.provisioningStatus ===
-                                        "PENDING") && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        disabled={busy?.endsWith(account.id)}
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          act(sub.id, account, "revoke")
-                                        }}
-                                      >
-                                        Revoke
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                )
-              })
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/portal/vpn/subscriptions/${row.original.id}`)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
             ) : (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
-                  No subscriptions found.
+                  {hasActiveFilters
+                    ? "No subscriptions match the current filters."
+                    : "No subscriptions found."}
                 </TableCell>
               </TableRow>
             )}
@@ -745,12 +565,34 @@ export function SubscriptionsTable() {
         </Table>
       </div>
 
-      {auditAccount && (
-        <ProvisioningAuditModal
-          account={auditAccount}
-          open={!!auditAccount}
-          onClose={() => setAuditAccount(null)}
-        />
+      {/* Pagination */}
+      {pagination.totalPages > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            Showing {start}-{end} of {pagination.total}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= pagination.totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   )
