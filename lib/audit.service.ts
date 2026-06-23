@@ -49,6 +49,14 @@ export type AuditAction =
   // ── Auth ──
   | "AUTH_TOKEN_EXCHANGED"
 
+  // ── Sync Protocols ──
+  | "SYNC_PROTOCOLS_REQUESTED"
+  | "SYNC_PROTOCOLS_STARTED"
+  | "SYNC_PROTOCOLS_ACCOUNT_CREATED"
+  | "SYNC_PROTOCOLS_ACCOUNT_SKIPPED"
+  | "SYNC_PROTOCOLS_COMPLETED"
+  | "SYNC_PROTOCOLS_FAILED"
+
   // ── System ──
   | "RATE_LIMIT_HIT"
 

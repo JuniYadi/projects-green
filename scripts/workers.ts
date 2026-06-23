@@ -416,6 +416,12 @@ const whatsappTemplateSyncWorker = new Worker<WhatsAppTemplateSyncJobData>(
 )
 allWorkers.push(whatsappTemplateSyncWorker)
 
+// ── VPN Server Sync Worker ──────────────────────────────────────────
+import { VpnServerSyncJob } from "@/lib/queue/vpn-server-sync"
+
+const vpnServerSyncWorker = VpnServerSyncJob.createWorker()
+allWorkers.push(vpnServerSyncWorker)
+
 // ── VPN Provisioning Worker ──────────────────────────────────────────
 const vpnProvisioningWorker = new Worker<VpnProvisioningJobData>(
   VpnProvisioningJob.queue,

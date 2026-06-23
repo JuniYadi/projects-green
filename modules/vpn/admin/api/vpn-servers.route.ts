@@ -26,6 +26,8 @@ import {
 
 import { vpnHealthService } from "../vpn-health.service"
 import type { VpnServerScanner } from "../vpn-connection-scanner"
+import { VpnServerSyncJob } from "@/lib/queue/vpn-server-sync"
+import { logAuditEvent } from "@/lib/audit.service"
 
 type Deps = {
   requireSuperAdmin?: typeof requireSuperAdmin
@@ -192,6 +194,28 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
       const target = toSshTarget(server)
       const users = await new OpenVpnSshAdapter().listClients(target)
       return { ok: true, data: users }
+    })
+    .post("/admin/vpn/servers/:id/sync-protocols", async ({ params, set }) => {
+      const actor = await guard(set)
+      if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+      const server = await prisma.vpnServer.findUnique({
+        where: { id: params.id },
+      })
+      if (!server) return toServerError(set, new VpnServerNotFoundError())
+
+      await logAuditEvent({
+        serverId: params.id,
+        action: "SYNC_PROTOCOLS_REQUESTED",
+        status: "PENDING",
+        message: `Sync protocols requested for server "${server.name}"`,
+        details: { serverName: server.name },
+      })
+
+      const jobId = `vpn-sync-${params.id}`
+      await VpnServerSyncJob.dispatch(params.id, jobId)
+
+      return { ok: true, queued: true, correlationId: jobId }
     })
     .post("/admin/vpn/servers/:id/test", async ({ params, set }) => {
       const actor = await guard(set)
