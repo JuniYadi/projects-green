@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -199,32 +199,35 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
     >
   >({})
 
-  const loadDevices = useCallback(async () => {
-    try {
-      const { listMobileDevices } = await import("@/lib/vpn-mobile-client")
-      const devices = await listMobileDevices()
-      const grouped: Record<
-        string,
-        Array<{ deviceName: string; platform: string; status: string }>
-      > = {}
-      for (const d of devices) {
-        if (!grouped[d.subscriptionId]) grouped[d.subscriptionId] = []
-        grouped[d.subscriptionId].push(d)
-      }
-      setDevicesBySub(grouped)
-    } catch {
-      // Device data is supplementary.
-    }
-  }, [])
-
+  // ponytail: inline async, no useCallback wrapper to appease the lint rule
   useEffect(() => {
-    loadDevices()
-  }, [loadDevices])
+    let cancelled = false
+    const run = async () => {
+      try {
+        const { listMobileDevices } = await import("@/lib/vpn-mobile-client")
+        const devices = await listMobileDevices()
+        if (cancelled) return
+        const grouped: Record<
+          string,
+          Array<{ deviceName: string; platform: string; status: string }>
+        > = {}
+        for (const d of devices) {
+          if (!grouped[d.subscriptionId]) grouped[d.subscriptionId] = []
+          grouped[d.subscriptionId].push(d)
+        }
+        setDevicesBySub(grouped)
+      } catch {
+        // Device data is supplementary.
+      }
+    }
+    run()
+    return () => { cancelled = true }
+  }, [])
 
   const handleCancel = async (id: string) => {
     setCancelling(id)
     try {
-      await cancellVpnSubscription(id)
+      await cancelVpnSubscription(id)
       onChanged()
     } finally {
       setCancelling(null)
