@@ -266,6 +266,7 @@ export function TabsDeviceDetail({
       </Tabs>
     </main>
   )
+}
 
 // ─── Audit Log Tab Content ──────────────────────────────────────────────────
 
@@ -302,7 +303,11 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
     }
   }, [deviceId, page])
 
-  React.useEffect(() => { fetchLogs() }, [fetchLogs])
+  React.useEffect(() => {
+    ;(async () => {
+      await fetchLogs()
+    })()
+  }, [fetchLogs])
 
   const handleRetry = fetchLogs
   const handlePageChange = (newPage: number) => { setPage(newPage) }
@@ -320,5 +325,4 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
       }
     />
   )
-}
 }

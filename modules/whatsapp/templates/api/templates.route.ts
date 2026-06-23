@@ -224,6 +224,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         return { ok: false, error: "FORBIDDEN", message: "Access denied." }
       }
 
+      const { organizationId: orgId } = template
       try {
         const updated = await prisma.whatsappTemplate.update({
           where: { id },
@@ -245,7 +246,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       } catch (err) {
         logWhatsappAuditEvent({
           action: "TEMPLATE_UPDATE_FAILED",
-          organizationId: template.organizationId,
+          organizationId: orgId,
           adminId: (whatsappAuth as any).userId,
           message: "Template update failed",
           errorMessage: String(err),
