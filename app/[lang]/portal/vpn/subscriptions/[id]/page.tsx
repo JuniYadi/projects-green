@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import {
   ArrowLeft,
   Copy,
@@ -21,6 +21,11 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
 import {
   getVpnAdminSubscription,
@@ -115,6 +120,115 @@ function InfoRow({
   )
 }
 
+function ServerAccountCard({
+  account,
+  subscriptionId,
+  busy,
+  onAction,
+  onAudit,
+}: {
+  account: VpnServerAccountEntry
+  subscriptionId: string
+  busy: string | null
+  onAction: (account: VpnServerAccountEntry, action: "retry" | "revoke" | "validate" | "recreate") => void
+  onAudit: (account: VpnServerAccountEntry) => void
+}) {
+  return (
+    <div className="rounded-lg border bg-background p-4">
+      <div className="flex flex-col gap-3">
+        {/* Top: info */}
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium">{account.serverName}</span>
+            <span className="text-sm text-muted-foreground">
+              {account.protocol} · {account.username}
+            </span>
+            <Badge
+              variant={PROVISION_VARIANT[account.provisioningStatus]}
+              className="w-fit"
+            >
+              {account.provisioningStatus}
+            </Badge>
+            {account.failureReason && (
+              <span className="text-sm text-red-500">
+                {account.failureReason}
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">
+            Created {formatDate(account.createdAt)}
+          </span>
+        </div>
+
+        {/* Bottom: actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            title="View Audit Log"
+            onClick={() => onAudit(account)}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          {account.hasConfig && account.provisioningStatus === "ACTIVE" && (
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href={vpnAdminConfigDownloadUrl(subscriptionId, account.id)}
+                download
+              >
+                Download Config
+              </a>
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy?.endsWith(account.id)}
+            onClick={() => onAction(account, "validate")}
+          >
+            {busy === `validate:${account.id}`
+              ? "Validating..."
+              : "Validate"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy?.endsWith(account.id)}
+            onClick={() => onAction(account, "recreate")}
+          >
+            {busy === `recreate:${account.id}`
+              ? "Recreating..."
+              : "Recreate"}
+          </Button>
+          {(account.provisioningStatus === "FAILED" ||
+            account.provisioningStatus === "PENDING") && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy?.endsWith(account.id)}
+              onClick={() => onAction(account, "retry")}
+            >
+              Retry
+            </Button>
+          )}
+          {(account.provisioningStatus === "ACTIVE" ||
+            account.provisioningStatus === "FAILED" ||
+            account.provisioningStatus === "PENDING") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy?.endsWith(account.id)}
+              onClick={() => onAction(account, "revoke")}
+            >
+              Revoke
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SubscriptionDetailPage() {
   const params = useParams()
   const subscriptionId = params.id as string
@@ -203,6 +317,37 @@ export default function SubscriptionDetailPage() {
     }
   }
 
+  // Group server accounts by protocol
+  const groupedAccounts = useMemo(() => {
+    if (!subscription) return {}
+    const groups: Record<string, VpnServerAccountEntry[]> = {}
+    for (const account of subscription.serverAccounts) {
+      const p = account.protocol
+      if (!groups[p]) groups[p] = []
+      groups[p].push(account)
+    }
+    return groups
+  }, [subscription])
+
+  // Compute per-group provisioning summaries
+  const groupSummaries = useMemo(() => {
+    const summaries: Record<string, { active: number; pending: number; failed: number; revoked: number; total: number }> = {}
+    for (const [protocol, accounts] of Object.entries(groupedAccounts)) {
+      const s = { active: 0, pending: 0, failed: 0, revoked: 0, total: accounts.length }
+      for (const a of accounts) {
+        switch (a.provisioningStatus) {
+          case "ACTIVE": s.active++; break
+          case "PENDING":
+          case "PROVISIONING": s.pending++; break
+          case "FAILED": s.failed++; break
+          case "REVOKED": s.revoked++; break
+        }
+      }
+      summaries[protocol] = s
+    }
+    return summaries
+  }, [groupedAccounts])
+
   if (loading) {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -233,7 +378,7 @@ export default function SubscriptionDetailPage() {
     )
   }
 
-  const { serverAccounts, provisioningSummary } = subscription
+  const { provisioningSummary } = subscription
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -357,8 +502,22 @@ export default function SubscriptionDetailPage() {
       {/* Provisioning Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>Provisioning Summary</CardTitle>
-          <CardDescription>Status of server account provisioning</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Provisioning Summary</CardTitle>
+              <CardDescription>Status of server account provisioning</CardDescription>
+            </div>
+            {provisioningSummary.failed > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy === subscriptionId}
+                onClick={retryAllFailed}
+              >
+                {busy === subscriptionId ? "Retrying..." : "Retry All Failed"}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -390,126 +549,66 @@ export default function SubscriptionDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Server Accounts */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Server Accounts</CardTitle>
-              <CardDescription>
-                {serverAccounts.length} account{serverAccounts.length !== 1 ? "s" : ""} configured
-              </CardDescription>
-            </div>
-            {provisioningSummary.failed > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy === subscriptionId}
-                onClick={retryAllFailed}
-              >
-                {busy === subscriptionId ? "Retrying..." : "Retry All Failed"}
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {serverAccounts.map((account) => (
-              <div
-                key={account.id}
-                className="flex items-center justify-between rounded-lg border p-4"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col">
-                    <span className="font-medium">{account.serverName}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {account.protocol} · {account.username}
-                    </span>
+      {/* Server Accounts — grouped by protocol */}
+      {Object.entries(groupedAccounts).map(([protocol, accounts]) => {
+        const summary = groupSummaries[protocol]
+        return (
+          <Collapsible key={protocol} defaultOpen>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CollapsibleTrigger className="flex items-center gap-2 hover:underline">
+                    <span className="text-lg font-semibold">{protocol}</span>
+                    <Badge variant="secondary">{accounts.length}</Badge>
+                    {summary && (
+                      <div className="flex items-center gap-1.5">
+                        {summary.active > 0 && (
+                          <Badge variant="default" className="text-xs">{summary.active}</Badge>
+                        )}
+                        {summary.pending > 0 && (
+                          <Badge variant="outline" className="text-xs">{summary.pending}</Badge>
+                        )}
+                        {summary.failed > 0 && (
+                          <Badge variant="destructive" className="text-xs">{summary.failed}</Badge>
+                        )}
+                        {summary.revoked > 0 && (
+                          <Badge variant="secondary" className="text-xs">{summary.revoked}</Badge>
+                        )}
+                      </div>
+                    )}
+                  </CollapsibleTrigger>
+                  {summary?.failed > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy === subscriptionId}
+                      onClick={retryAllFailed}
+                    >
+                      {busy === subscriptionId ? "Retrying..." : "Retry All Failed"}
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent>
+                  <div className="space-y-3">
+                    {accounts.map((account) => (
+                      <ServerAccountCard
+                        key={account.id}
+                        account={account}
+                        subscriptionId={subscriptionId}
+                        busy={busy}
+                        onAction={act}
+                        onAudit={setAuditAccount}
+                      />
+                    ))}
                   </div>
-                  <Badge variant={PROVISION_VARIANT[account.provisioningStatus]}>
-                    {account.provisioningStatus}
-                  </Badge>
-                  {account.failureReason && (
-                    <span className="max-w-md truncate text-sm text-red-500">
-                      {account.failureReason}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    Created {formatDate(account.createdAt)}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="View Audit Log"
-                    onClick={() => setAuditAccount(account)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  {account.hasConfig && account.provisioningStatus === "ACTIVE" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                    >
-                      <a
-                        href={vpnAdminConfigDownloadUrl(subscriptionId, account.id)}
-                        download
-                      >
-                        Download Config
-                      </a>
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={busy?.endsWith(account.id)}
-                    onClick={() => act(account, "validate")}
-                  >
-                    {busy === `validate:${account.id}`
-                      ? "Validating..."
-                      : "Validate"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={busy?.endsWith(account.id)}
-                    onClick={() => act(account, "recreate")}
-                  >
-                    {busy === `recreate:${account.id}`
-                      ? "Recreating..."
-                      : "Recreate"}
-                  </Button>
-                  {(account.provisioningStatus === "FAILED" ||
-                    account.provisioningStatus === "PENDING") && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={busy?.endsWith(account.id)}
-                      onClick={() => act(account, "retry")}
-                    >
-                      Retry
-                    </Button>
-                  )}
-                  {(account.provisioningStatus === "ACTIVE" ||
-                    account.provisioningStatus === "FAILED" ||
-                    account.provisioningStatus === "PENDING") && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy?.endsWith(account.id)}
-                      onClick={() => act(account, "revoke")}
-                    >
-                      Revoke
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )
+      })}
 
       {auditAccount && (
         <ProvisioningAuditModal

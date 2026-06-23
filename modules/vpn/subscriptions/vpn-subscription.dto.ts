@@ -138,3 +138,35 @@ export function toVpnSubscriptionDTO(
     updatedAt: subscription.updatedAt.toISOString(),
   }
 }
+
+/** List DTO — same as VpnSubscriptionDTO but without serverAccounts (saves bandwidth). */
+export type VpnSubscriptionListDTO = Omit<VpnSubscriptionDTO, "serverAccounts">
+
+export function toVpnSubscriptionListDTO(
+  subscription: SubscriptionPayload,
+  orgName: string | null = null,
+  packageName: string | null = null
+): VpnSubscriptionListDTO {
+  const accounts = subscription.serverAccounts.map(toServerAccountDTO)
+  return {
+    id: subscription.id,
+    organizationId: subscription.organizationId,
+    organizationName: orgName ?? null,
+    packageId: subscription.packageId,
+    packageName: packageName ?? "Unknown Package",
+    status: subscription.status,
+    currentPeriodStart: subscription.currentPeriodStart.toISOString(),
+    currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+    deviceCount: subscription._count.mobileDevices,
+    provisioningSummary: computeProvisioningSummary(accounts),
+    priceLocked: subscription.priceLocked.toString(),
+    currency: subscription.currency,
+    originalPrice: subscription.originalPrice?.toString() ?? null,
+    originalCurrency: subscription.originalCurrency ?? null,
+    exchangeRate: subscription.exchangeRate
+      ? Number(subscription.exchangeRate)
+      : null,
+    createdAt: subscription.createdAt.toISOString(),
+    updatedAt: subscription.updatedAt.toISOString(),
+  }
+}

@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { createWorkOS } from "@workos-inc/node"
 
 import crypto from "node:crypto"
+import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
 import { logAuditEvent } from "@/lib/audit.service"
@@ -20,7 +21,21 @@ import {
   vpnSubscriptionService,
   type VpnSubscriptionWithAccounts,
 } from "../vpn-subscription.service"
-import { toVpnSubscriptionDTO } from "../vpn-subscription.dto"
+import {
+  toVpnSubscriptionDTO,
+  toVpnSubscriptionListDTO,
+} from "../vpn-subscription.dto"
+
+const listQuerySchema = z.object({
+  orgId: z.string().optional(),
+  packageId: z.string().optional(),
+  status: z.enum(["ACTIVE", "SUSPENDED", "EXPIRED"]).optional(),
+  periodStartFrom: z.string().optional(),
+  periodStartTo: z.string().optional(),
+  q: z.string().optional(),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+})
 
 type RouteSet = { status?: number | string }
 
@@ -45,10 +60,22 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
   const revokeAccount = deps.revokeAccount ?? defaultRevoke
 
   return new Elysia()
-    .get("/admin/vpn/subscriptions", async ({ set }) => {
+    .get("/admin/vpn/subscriptions", async ({ query, set }) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
-      const subs = await service.listAll()
+
+      const parsed = listQuerySchema.safeParse(query)
+      if (!parsed.success) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: parsed.error.issues.map((issue: { message: string }) => issue.message).join(", "),
+        } as AdminApiError
+      }
+
+      const { data: filters } = parsed
+      const { data: subs, total } = await service.listAll(filters)
 
       // Resolve organization names from WorkOS (parallel fetch)
       const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
@@ -77,12 +104,18 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
       return {
         ok: true,
         data: subs.map((s: VpnSubscriptionWithAccounts) =>
-          toVpnSubscriptionDTO(
+          toVpnSubscriptionListDTO(
             s,
             orgNames.get(s.organizationId) ?? null,
             packageNames.get(s.packageId) ?? null
           )
         ),
+        pagination: {
+          page: filters.page,
+          limit: filters.limit,
+          total,
+          totalPages: Math.ceil(total / filters.limit),
+        },
       }
     })
     .get("/admin/vpn/subscriptions/:id", async ({ params, set }) => {
