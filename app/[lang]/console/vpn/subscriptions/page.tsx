@@ -47,7 +47,7 @@ function applyFilters(
         const matchesSearch =
           !filters.search ||
           sa.serverName.toLowerCase().includes(q) ||
-          sa.hostname?.toLowerCase().includes(q) ||
+          (sa.hostname ?? "").toLowerCase().includes(q) ||
           sa.ipAddress?.toLowerCase().includes(q)
         return matchesRegion && matchesSearch
       })

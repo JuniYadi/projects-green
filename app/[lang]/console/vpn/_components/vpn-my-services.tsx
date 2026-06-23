@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -163,6 +163,7 @@ function ProtocolIcon({ protocol }: ProtocolIconProps) {
 }
 
 type ServerGroup = {
+  serverId: string
   serverName: string
   hostname: string
   ipAddress: string | null
@@ -177,6 +178,7 @@ function groupByServer(accounts: VpnServerAccount[]): ServerGroup[] {
     let group = map.get(key)
     if (!group) {
       group = {
+        serverId: a.serverId,
         serverName: a.serverName,
         hostname: a.hostname,
         ipAddress: a.ipAddress,
@@ -234,21 +236,6 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
     }
   }
 
-  // ponytail: all region filters derived client-side from subscription data
-  const regionOptions = useMemo(() => {
-    const seen = new Set<string>()
-    const options: Array<{ slug: string; name: string; countryCode: string }> = []
-    for (const sub of subscriptions) {
-      for (const sa of sub.serverAccounts) {
-        if (sa.region && !seen.has(sa.region.slug)) {
-          seen.add(sa.region.slug)
-          options.push(sa.region)
-        }
-      }
-    }
-    return options
-  }, [subscriptions])
-
   return (
     <div className="space-y-6">
       {subscriptions.map((sub) => {
@@ -302,7 +289,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
               <div className="space-y-4">
                 {groups.map((group) => (
                   <div
-                    key={group.serverName}
+                    key={group.serverId}
                     className="rounded-lg border p-3"
                   >
                     {/* Server header */}
