@@ -20,9 +20,18 @@ export class VpnServerSyncJob extends BaseJob {
   static readonly attempts = 3
 
   static async dispatch(serverId: string, correlationId?: string): Promise<void> {
+    const jobId = `vpn-sync-${serverId}`
+
+    // Check if a non-terminal job already exists
+    const existingJob = await this.getQueue().getJob(jobId)
+    if (existingJob && !["completed", "failed", "delayed"].includes(await existingJob.getState())) {
+      console.info(`[vpn-server-sync] job=${jobId} already pending, skipping dispatch`)
+      return
+    }
+
     await this.enqueue(
       { serverId, correlationId: correlationId ?? null },
-      { jobId: `vpn-sync-${serverId}` }
+      { jobId }
     )
   }
 
