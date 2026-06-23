@@ -68,7 +68,7 @@ jobs:
           plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
           plugins: 'ponytail@ponytail'
           claude_args: >-
-            --model "auto[1m]"
+            --model ${{ secrets.PLAN_ANTHROPIC_MODEL }}
             --max-turns 125
             --dangerously-skip-permissions
             --allowedTools "Bash(cat*),Bash(git*),Bash(head*),Bash(date*),Bash(sed*),Bash(echo*),Bash(tee*),Bash(ls*),Bash(find*)"
@@ -213,7 +213,7 @@ jobs:
           plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
           plugins: 'ponytail@ponytail'
           claude_args: >-
-            --model "auto[1m]"
+            --model ${{ secrets.EXECUTE_ANTHROPIC_MODEL }}
             --max-turns 200
             --dangerously-skip-permissions
             --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
@@ -319,10 +319,32 @@ jobs:
             BRANCH_NAME="${{ inputs.branch }}"
             PR_URL=$(cd projects-green && gh pr list --repo JuniYadi/projects-green --head "$BRANCH_NAME" --json number,url --jq '.[0]' 2>/dev/null || echo "{}")
             PR_NUMBER=$(echo "$PR_URL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('number',''))" 2>/dev/null || echo "")
-            sed -i 's/^## Current Status:.*/## Current Status: `implementation`/' "${{ steps.task.outputs.task_file }}"
-            sed -i '/^### PR Details$/a\\\\' "${{ steps.task.outputs.task_file }}"
-            sed -i '/^### PR Details$/a- **PR URL:** https://github.com/JuniYadi/projects-green/pull/'"$PR_NUMBER" "${{ steps.task.outputs.task_file }}"
-            sed -i '/^### PR Details$/a- **Branch:** `'"$BRANCH_NAME"'`' "${{ steps.task.outputs.task_file }}"
+            TASK_FILE="${{ steps.task.outputs.task_file }}"
+
+            # Update overall status
+            sed -i 's/^## Current Status:.*/## Current Status: `implementation`/' "$TASK_FILE"
+
+            # Update Implementation section — status & date
+            sed -i 's/> \*\*Status:\*\* .*/> **Status:** ✅ Done/' "$TASK_FILE"
+            TODAY=$(date +%Y-%m-%d)
+            sed -i 's/> \*\*Implemented:\*\* .*/> **Implemented:** '"$TODAY"'/' "$TASK_FILE"
+
+            # Populate Files Changed from PR
+            if [ -n "$PR_NUMBER" ]; then
+              FILES_LIST=$(cd projects-green && gh pr view "$PR_NUMBER" --json files --jq '.files[].path' 2>/dev/null || true)
+              if [ -n "$FILES_LIST" ]; then
+                sed -i '/^\[To be filled after implementation\]$/d' "$TASK_FILE"
+                echo "$FILES_LIST" | while IFS= read -r f; do
+                  sed -i '/^### Files Changed$/a\- `'"$f"'`' "$TASK_FILE"
+                done
+              fi
+            fi
+
+            # Update PR details
+            sed -i '/^### PR Details$/a\\\\' "$TASK_FILE"
+            sed -i '/^### PR Details$/a- **PR URL:** https://github.com/JuniYadi/projects-green/pull/'"$PR_NUMBER" "$TASK_FILE"
+            sed -i '/^### PR Details$/a- **Branch:** `'"$BRANCH_NAME"'`' "$TASK_FILE"
+
             git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
             git add -A
@@ -410,7 +432,7 @@ jobs:
           plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
           plugins: 'ponytail@ponytail'
           claude_args: >-
-            --model "auto[1m]"
+            --model ${{ secrets.FIX_ANTHROPIC_MODEL }}
             --max-turns 120
             --dangerously-skip-permissions
             --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
