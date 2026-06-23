@@ -417,7 +417,7 @@ jobs:
             echo "" > /tmp/review-body.md
           fi
           echo "REVIEW_FILE_SIZE=$(wc -c < /tmp/review-body.md)"
-          echo 'aW1wb3J0IHJlCndpdGggb3BlbignL3RtcC9yZXZpZXctYm9keS5tZCcpIGFzIGY6CiAgICBjID0gZi5yZWFkKCkKbSA9IHJlLnNlYXJjaChyJ0FJIFJlZmFjdG9yaW5nIFByb21wdC4qP2BgYGBtYXJrZG93biguKj8pYGBgYCcsIGMsIHJlLkRPVEFMTCkKaWYgbToKICAgIHdpdGggb3BlbignL3RtcC9maXgtcHJvbXB0Lm1kJywgJ3cnKSBhcyBvdXQ6CiAgICAgICAgb3V0LndyaXRlKG0uZ3JvdXAoMSkuc3RyaXAoKSkKICAgIHByaW50KCd0cnVlJykKZWxzZToKICAgIHByaW50KCdmYWxzZScpCg==' | base64 -d > /tmp/extract-fix-prompt.py && FIX_RESULT=$(python3 /tmp/extract-fix-prompt.py 2>&1) && echo "fix_prompt_found=$FIX_RESULT" >> "$GITHUB_OUTPUT" || echo "fix_prompt_found=false" >> "$GITHUB_OUTPUT"
+          echo 'aW1wb3J0IHJlCndpdGggb3BlbignL3RtcC9yZXZpZXctYm9keS5tZCcpIGFzIGY6CiAgICBjID0gZi5yZWFkKCkKbSA9IHJlLnNlYXJjaChyJ0FJIFJlZmFjdG9yaW5nIFByb21wdC4qP2BgYGBtYXJrZG93biguKj8pYGBgYCcsIGMsIHJlLkRPVEFMTCkKaWYgbToKICAgIHdpdGggb3BlbignL3RtcC9maXgtcHJvbXB0Lm1kJywgJ3cnKSBhcyBvdXQ6CiAgICAgICAgb3V0LndyaXRlKG0uZ3JvdXAoMSkuc3RyaXAoKSkKICAgIHByaW50KCd0cnVlJykKZWxpZiBjLnN0cmlwKCk6CiAgICAjIEZhbGxiYWNrOiB1c2UgcmF3IHJldmlldyBib2R5IGFzIGZpeCBwcm9tcHQKICAgIHdpdGggb3BlbignL3RtcC9maXgtcHJvbXB0Lm1kJywgJ3cnKSBhcyBvdXQ6CiAgICAgICAgb3V0LndyaXRlKGMpCiAgICBwcmludCgndHJ1ZScpCmVsc2U6CiAgICBwcmludCgnZmFsc2UnKQo=' | base64 -d > /tmp/extract-fix-prompt.py && FIX_RESULT=$(python3 /tmp/extract-fix-prompt.py 2>&1) && echo "fix_prompt_found=$FIX_RESULT" >> "$GITHUB_OUTPUT" || echo "fix_prompt_found=false" >> "$GITHUB_OUTPUT"
 
       - name: Show fix prompt status
         run: |
@@ -451,19 +451,23 @@ jobs:
 
             YOUR ROLE:
             You are applying PR review fixes from Claude Code Review.
-            The review identified issues and provided an "AI Refactoring Prompt".
+            The review identified issues with the code and requested changes.
 
             STEP 1 — READ CONTEXT:
             `cat projects-green/AGENTS.md` — repo rules (DTO layer, Prisma types, etc.)
 
-            STEP 2 — READ THE FIX PROMPT:
-            `cat /tmp/fix-prompt.md` — exact instructions with file paths and code
+            STEP 2 — READ THE FIX PROMPT OR REVIEW:
+            `cat /tmp/fix-prompt.md` — this contains either:
+            - An "AI Refactoring Prompt" with exact file paths and code patches (structured format), OR
+            - The raw PR review body with issue descriptions (fallback when no structured prompt exists)
 
-            STEP 3 — APPLY FIXES:
+            STEP 3 — ANALYZE AND FIX EACH ISSUE:
+            - If structured prompt: follow each instruction exactly as specified
+            - If raw review body: parse each issue, identify the files/lines to fix, apply the fix
             For each issue:
             1. Read the affected file
-            2. Apply the fix exactly as specified
-            3. Do not deviate from the fix prompt
+            2. Apply the fix
+            3. Do not leave any issue unfixed
 
             STEP 4 — PUSH CODE (safety save):
             ```bash
