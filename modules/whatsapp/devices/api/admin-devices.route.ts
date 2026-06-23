@@ -22,6 +22,7 @@ import {
   type AdminActorContext,
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
+import { logWhatsappAuditEvent, type WhatsappAuditAction, type WhatsappAuditEventStatus } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
 const MAX_BALANCE = new Decimal("999999999.99")
 
@@ -174,9 +175,54 @@ export const createAdminDevicesRoutes = (
 
       try {
         const service = createDeviceService()
+        // Fetch current device for change detection
+        const currentDevice = await prisma.whatsappDevice.findUnique({
+          where: { id },
+          select: { id: true, organizationId: true, name: true, status: true, callbackUrl: true },
+        })
+
         const device = await service.update(id, parsed.data, null)
+
+        // Audit: detect field changes
+        if (currentDevice) {
+          const changedFields: string[] = []
+          let action: WhatsappAuditAction = "DEVICE_INFO_UPDATED"
+
+          if (parsed.data.name && parsed.data.name !== currentDevice.name) {
+            changedFields.push("name")
+          }
+          if (parsed.data.callbackUrl !== undefined && parsed.data.callbackUrl !== currentDevice.callbackUrl) {
+            action = "DEVICE_CALLBACK_URL_UPDATED"
+            changedFields.push("callbackUrl")
+          }
+          if (parsed.data.status && parsed.data.status !== currentDevice.status) {
+            action = "DEVICE_STATUS_CHANGED"
+            changedFields.push("status")
+          }
+
+          if (changedFields.length > 0) {
+            logWhatsappAuditEvent({
+              action,
+              organizationId: currentDevice.organizationId,
+              deviceId: id,
+              adminId: actor.userId,
+              message: `Device updated: ${changedFields.join(", ")}`,
+              status: "OK",
+              details: { changedFields },
+            })
+          }
+        }
+
         return { ok: true as const, device }
       } catch (error) {
+        // Log failed update
+        if (!(error instanceof Error && error.name === "DeviceNotFoundError")) {
+          try {
+            const orgId = (await prisma.whatsappDevice.findUnique({ where: { id }, select: { organizationId: true } }))?.organizationId
+            logWhatsappAuditEvent({ action: "DEVICE_INFO_UPDATED", organizationId: orgId ?? "", deviceId: id, adminId: actor.userId, message: "Device update failed", errorMessage: String(error), status: "FAILED" })
+          } catch { /* ignore */ }
+        }
+
         if (error instanceof Error && error.name === "DeviceNotFoundError") {
           set.status = 404
           return {
@@ -222,16 +268,20 @@ export const createAdminDevicesRoutes = (
       })
 
       if (!device) {
+        logWhatsappAuditEvent({ action: "TEMPLATE_SYNC_FAILED", organizationId: "", deviceId: id, adminId: actor.userId, message: "Device not found for sync", status: "FAILED" })
         set.status = 404
         return { ok: false as const, error: "NOT_FOUND" as const, message: "Device not found." }
       }
 
       if (!device.token && !device.tokenEncrypted) {
+        logWhatsappAuditEvent({ action: "TEMPLATE_SYNC_FAILED", organizationId: device.organizationId, deviceId: id, adminId: actor.userId, message: "No device token configured", status: "FAILED" })
         set.status = 400
         return { ok: false as const, error: "BAD_REQUEST" as const, message: "Device token required for template sync." }
       }
 
+      logWhatsappAuditEvent({ action: "TEMPLATE_SYNC_REQUESTED", organizationId: device.organizationId, deviceId: id, adminId: actor.userId, message: "Template sync requested", status: "STARTED" })
       await enqueueWhatsAppTemplateSync(device.organizationId, device.id, "sync-templates")
+      logWhatsappAuditEvent({ action: "TEMPLATE_SYNCED", organizationId: device.organizationId, deviceId: id, adminId: actor.userId, message: "Sync job enqueued", status: "OK" })
 
       return { ok: true as const, message: "Sync job enqueued." }
     })
