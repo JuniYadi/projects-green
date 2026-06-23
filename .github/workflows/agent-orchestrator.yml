@@ -129,6 +129,8 @@ jobs:
             cd ide-projects
             git config user.name "JuniYadi"
             git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            # Embed PAT in remote URL for git push (GITHUB_TOKEN env has PAT_IDE_PROJECTS)
+            git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${IDE_PROJECTS_REPO}.git
             git add -A
             git commit -m "task: ${{ inputs.task_id }} plan generated"
             git push
@@ -206,6 +208,7 @@ jobs:
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IDE_PROJECTS_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: false
@@ -272,7 +275,8 @@ jobs:
             # Mark the first unchecked checkbox as [x] with SHA
             sed -i '0,/^- \[ \]/{s//- [x] ('"$COMMIT_SHA"')/}' "${{ steps.task.outputs.task_file }}"
             git config user.name "JuniYadi"
-            git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            git config user.email "${{ env.GIT_EMAIL }}"
+            git remote set-url origin https://x-access-token:${IDE_PROJECTS_TOKEN}@github.com/${{ env.IDE_PROJECTS_REPO }}.git
             git add -A
             git commit -m "task: ${{ inputs.task_id }} — $SHORT_DESC done [sha:$COMMIT_SHA]"
             git push
@@ -346,7 +350,8 @@ jobs:
             sed -i '/^### PR Details$/a- **Branch:** `'"$BRANCH_NAME"'`' "$TASK_FILE"
 
             git config user.name "JuniYadi"
-            git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            git config user.email "${{ env.GIT_EMAIL }}"
+            git remote set-url origin https://x-access-token:${IDE_PROJECTS_TOKEN}@github.com/${{ env.IDE_PROJECTS_REPO }}.git
             git add -A
             git commit -m "task: ${{ inputs.task_id }} implementation done"
             git push
@@ -425,6 +430,7 @@ jobs:
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IDE_PROJECTS_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: false
@@ -485,7 +491,8 @@ jobs:
           TASK_FILE="$(echo "${{ steps.task.outputs.task_file }}" | sed 's|^ide-projects/||')"
           if [ -n "$TASK_FILE" ] && [ -f "$TASK_FILE" ]; then
             git config user.name "JuniYadi"
-            git config user.email "31454084+JuniYadi@users.noreply.github.com"
+            git config user.email "${{ env.GIT_EMAIL }}"
+            git remote set-url origin https://x-access-token:${{ secrets.PAT_IDE_PROJECTS }}@github.com/${{ env.IDE_PROJECTS_REPO }}.git
             git pull --rebase origin main
             sed -i 's/^## Current Status:.*/## Current Status: `review`/' "$TASK_FILE"
             git add -A
