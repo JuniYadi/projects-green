@@ -1,10 +1,14 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
 import {
   setMockAuthContext,
   mockAuthContext,
 } from "@/lib/whatsapp/__tests__/auth-mock"
+import {
+  decryptWhatsAppToken,
+  encryptWhatsAppToken,
+} from "@/lib/whatsapp/crypto"
 import { workosNodeMock } from "../../../../test/workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
@@ -12,6 +16,15 @@ import { workosNodeMock } from "../../../../test/workos-node-mock"
 const mockFindUnique = mock(async (): Promise<any> => null)
 const mockFindMany = mock(async (): Promise<any[]> => [])
 const mockUpdate = mock(async (): Promise<any> => createMockDevice())
+const mockEnqueueWhatsAppTemplateSync = mock(async () => {})
+const originalAppKey = process.env.APP_KEY
+const TEST_APP_KEY = Buffer.alloc(32, 5).toString("base64")
+const mockWithAuth = mock(async () => ({
+  user: { id: "user_1", email: "admin@example.com" },
+  organizationId: "org_1",
+  role: "admin",
+  roles: ["admin"],
+}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -21,6 +34,18 @@ mock.module("@/lib/prisma", () => ({
       update: mockUpdate,
     },
   },
+}))
+
+mock.module("@/lib/queue/whatsapp-template-sync", () => ({
+  enqueueWhatsAppTemplateSync: mockEnqueueWhatsAppTemplateSync,
+}))
+
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  withAuth: mockWithAuth,
+}))
+
+mock.module("@/lib/platform-role", () => ({
+  getPlatformRoleForUser: mock(async () => "none"),
 }))
 
 // ─── Auth mock ─────────────────────────────────────────────────────────────────
@@ -64,16 +89,39 @@ function createMockDevice(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function getUpdatedTokenEncrypted() {
+  const calls = mockUpdate.mock.calls as unknown as Array<
+    [{ data?: { tokenEncrypted?: unknown } }]
+  >
+  const updateArg = calls[0]?.[0]
+
+  if (typeof updateArg?.data?.tokenEncrypted !== "string") {
+    throw new Error("Expected tokenEncrypted update payload")
+  }
+
+  return updateArg.data.tokenEncrypted
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("devices routes", () => {
   beforeEach(() => {
+    process.env.APP_KEY = TEST_APP_KEY
     mockFindUnique.mockClear()
     mockFindMany.mockClear()
     mockUpdate.mockClear()
+    mockEnqueueWhatsAppTemplateSync.mockClear()
+    mockWithAuth.mockClear()
     mockFindUnique.mockImplementation(async () => null)
     mockFindMany.mockImplementation(async () => [])
     mockUpdate.mockImplementation(async () => createMockDevice())
+    mockEnqueueWhatsAppTemplateSync.mockImplementation(async () => {})
+    mockWithAuth.mockImplementation(async () => ({
+      user: { id: "user_1", email: "admin@example.com" },
+      organizationId: "org_1",
+      role: "admin",
+      roles: ["admin"],
+    }))
     setMockAuthContext({
       type: "workos",
       userId: "user_1",
@@ -82,6 +130,14 @@ describe("devices routes", () => {
       orgRole: "admin",
       platformRole: "none",
     })
+  })
+
+  afterEach(() => {
+    if (originalAppKey === undefined) {
+      delete process.env.APP_KEY
+    } else {
+      process.env.APP_KEY = originalAppKey
+    }
   })
 
   // ── List ────────────────────────────────────────────────────────────────────
@@ -366,5 +422,249 @@ describe("devices routes", () => {
     expect(response.status).toBe(403)
     const payload = (await response.json()) as { ok: boolean; error: string }
     expect(payload.error).toBe("FORBIDDEN")
+  })
+
+  // ── Template sync ──────────────────────────────────────────────────────────
+
+  it("returns 404 when syncing templates for missing device", async () => {
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_missing/sync-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(404)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.error).toBe("NOT_FOUND")
+    expect(mockEnqueueWhatsAppTemplateSync).not.toHaveBeenCalled()
+  })
+
+  it("returns 403 when syncing templates for device from other org", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({
+        id: "dev_other",
+        organizationId: "org_other",
+        tokenEncrypted: "encrypted-token",
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+    )
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_other/sync-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.error).toBe("FORBIDDEN")
+    expect(mockEnqueueWhatsAppTemplateSync).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 when syncing templates without a device token", async () => {
+    mockFindUnique.mockImplementationOnce(async () => createMockDevice())
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(400)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.error).toBe("BAD_REQUEST")
+    expect(mockEnqueueWhatsAppTemplateSync).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 when syncing templates without Meta account ids", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ tokenEncrypted: await encryptWhatsAppToken("token") })
+    )
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(400)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+    expect(payload.error).toBe("BAD_REQUEST")
+    expect(payload.message).toContain("WhatsApp Business Account ID")
+    expect(mockEnqueueWhatsAppTemplateSync).not.toHaveBeenCalled()
+  })
+
+  it("encrypts legacy raw token before enqueuing template sync", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({
+        token: "legacy-token",
+        tokenEncrypted: null,
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+    )
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "dev_1" },
+      data: {
+        token: null,
+        tokenEncrypted: expect.any(String),
+        tokenIv: null,
+      },
+    })
+
+    const encryptedToken = getUpdatedTokenEncrypted()
+    await expect(decryptWhatsAppToken(encryptedToken)).resolves.toBe(
+      "legacy-token"
+    )
+    expect(mockEnqueueWhatsAppTemplateSync).toHaveBeenCalledWith(
+      "org_1",
+      "dev_1",
+      "sync-templates"
+    )
+  })
+
+  it("repairs invalid encrypted token from legacy raw token", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({
+        token: "replacement-token",
+        tokenEncrypted: "v1.bad.bad",
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+    )
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const encryptedToken = getUpdatedTokenEncrypted()
+    await expect(decryptWhatsAppToken(encryptedToken)).resolves.toBe(
+      "replacement-token"
+    )
+    expect(mockEnqueueWhatsAppTemplateSync).toHaveBeenCalledWith(
+      "org_1",
+      "dev_1",
+      "sync-templates"
+    )
+  })
+
+  it("returns 400 when encrypted token is invalid and no raw token remains", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({
+        token: null,
+        tokenEncrypted: "v1.bad.bad",
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+    )
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(400)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("BAD_REQUEST")
+    expect(payload.message).toContain("cannot be decrypted")
+    expect(mockEnqueueWhatsAppTemplateSync).not.toHaveBeenCalled()
+  })
+
+  it("enqueues Meta template sync for own org device", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({
+        tokenEncrypted: await encryptWhatsAppToken("token"),
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+    )
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as {
+      ok: boolean
+      message: string
+    }
+    expect(payload.ok).toBe(true)
+    expect(payload.message).toBe("Sync job enqueued.")
+    expect(mockEnqueueWhatsAppTemplateSync).toHaveBeenCalledWith(
+      "org_1",
+      "dev_1",
+      "sync-templates"
+    )
+  })
+
+  it("returns 503 when template sync queue enqueue fails", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({
+        tokenEncrypted: await encryptWhatsAppToken("token"),
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+    )
+    mockEnqueueWhatsAppTemplateSync.mockImplementationOnce(async () => {
+      throw new Error("WRONGPASS invalid username-password pair")
+    })
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(503)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("QUEUE_UNAVAILABLE")
+    expect(payload.message).toContain("REDIS_URL")
   })
 })

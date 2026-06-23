@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { eden } from "@/lib/eden"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
@@ -23,29 +24,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
 type DeviceActionsProps = {
   deviceId: string
   deviceStatus: string
+  editHref: string
 }
 
 type ActionState = "idle" | "verifying" | "reconnecting" | "syncing"
 
-export function DeviceActions({ deviceId, deviceStatus }: DeviceActionsProps) {
+export function DeviceActions({
+  deviceId,
+  deviceStatus,
+  editHref,
+}: DeviceActionsProps) {
   const router = useRouter()
   const [actionState, setActionState] = useState<ActionState>("idle")
-  const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deactivateOpen, setDeactivateOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeactivating, setIsDeactivating] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-
-  // Edit form state
-  const [editPhoneNumber, setEditPhoneNumber] = useState("")
-  const [editCallbackUrl, setEditCallbackUrl] = useState("")
 
   async function handleVerify() {
     setActionState("verifying")
@@ -115,60 +113,6 @@ export function DeviceActions({ deviceId, deviceStatus }: DeviceActionsProps) {
       toast.error(message)
     } finally {
       setActionState("idle")
-    }
-  }
-
-  async function handleEdit() {
-    setIsEditing(true)
-    try {
-      const payload: Record<string, unknown> = {}
-      if (editPhoneNumber.trim()) payload.phoneNumber = editPhoneNumber.trim()
-      if (editCallbackUrl.trim()) payload.callbackUrl = editCallbackUrl.trim()
-
-      if (Object.keys(payload).length === 0) {
-        toast.error("No changes to save.")
-        setIsEditing(false)
-        return
-      }
-
-      const { data } = await eden.api.admin.devices[deviceId].patch(
-        payload as never
-      )
-
-      if (!data?.ok) {
-        const errData = data as {
-          error?: string
-          message?: string
-          fieldErrors?: Record<string, string[]>
-        }
-        if (errData.error === "VALIDATION_ERROR") {
-          const fieldMessages = errData.fieldErrors
-            ? Object.entries(errData.fieldErrors)
-                .map(
-                  ([field, msgs]) =>
-                    `${field}: ${(msgs as string[]).join(", ")}`
-                )
-                .join("\n")
-            : ""
-          toast.error(errData.message || "Validation failed", {
-            description: fieldMessages || undefined,
-          })
-          return
-        }
-        throw new Error(errData.message || "Failed to update device")
-      }
-
-      toast.success("Device updated successfully")
-      setEditOpen(false)
-      setEditPhoneNumber("")
-      setEditCallbackUrl("")
-      router.refresh()
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to update device"
-      toast.error(message)
-    } finally {
-      setIsEditing(false)
     }
   }
 
@@ -253,9 +197,11 @@ export function DeviceActions({ deviceId, deviceStatus }: DeviceActionsProps) {
           <CloudArrowDown weight="bold" className="mr-1.5 size-4" />
           {actionState === "syncing" ? "Syncing..." : "Template Sync"}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
-          <PencilSimple weight="bold" className="mr-1.5 size-4" />
-          Edit
+        <Button size="sm" variant="outline" asChild>
+          <Link href={editHref}>
+            <PencilSimple weight="bold" className="mr-1.5 size-4" />
+            Edit
+          </Link>
         </Button>
         {isActive && (
           <Button
@@ -276,54 +222,6 @@ export function DeviceActions({ deviceId, deviceStatus }: DeviceActionsProps) {
           Delete
         </Button>
       </div>
-
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Device</DialogTitle>
-            <DialogDescription>
-              Update device configuration. Leave fields empty to keep current
-              values.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-phone">Phone Number</Label>
-              <Input
-                id="edit-phone"
-                value={editPhoneNumber}
-                onChange={(e) => setEditPhoneNumber(e.target.value)}
-                placeholder="+1234567890"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-callback">Callback URL</Label>
-              <Input
-                id="edit-callback"
-                value={editCallbackUrl}
-                onChange={(e) => setEditCallbackUrl(e.target.value)}
-                placeholder="https://example.com/whatsapp/callback"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditOpen(false)
-                setEditPhoneNumber("")
-                setEditCallbackUrl("")
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={() => void handleEdit()} disabled={isEditing}>
-              {isEditing ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Deactivate Confirmation */}
       <Dialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>

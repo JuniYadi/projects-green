@@ -237,6 +237,16 @@ describe("assertAppKeyCryptoConfigured", () => {
     expect(() => assertAppKeyCryptoConfigured()).not.toThrow()
   })
 
+  it("does not throw when APP_KEY is a Laravel-style base64 key", () => {
+    setAppKey(`base64:${VALID_APP_KEY_32B}`)
+    expect(() => assertAppKeyCryptoConfigured()).not.toThrow()
+  })
+
+  it("does not throw when APP_KEY is a 32-byte hex key", () => {
+    setAppKey(Buffer.alloc(32).fill("k").toString("hex"))
+    expect(() => assertAppKeyCryptoConfigured()).not.toThrow()
+  })
+
   it("throws AppKeyCryptoError when APP_KEY is missing", () => {
     setAppKey(undefined)
     expect(() => assertAppKeyCryptoConfigured()).toThrow(AppKeyCryptoError)
