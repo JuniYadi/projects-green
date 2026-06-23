@@ -165,6 +165,14 @@ export class VpnProvisioningService {
         this.wireGuard.revokePeer(target, account.username)
       )
 
+      // ponytail: verify peer was actually removed — matches OpenVPN pattern
+      await this.withStep(serverAccountId, account, "verifying_revocation", async () => {
+        const validation = await this.wireGuard.validatePeer(target, account.username)
+        if (validation.exists) {
+          throw new Error(`WireGuard peer "${account.username}" still exists after revoke`)
+        }
+      })
+
       await this.prisma.vpnServerAccount.update({
         where: { id: serverAccountId },
         data: {

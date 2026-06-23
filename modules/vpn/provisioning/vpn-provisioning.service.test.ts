@@ -396,7 +396,7 @@ describe("VpnProvisioningService removeRemoteAccount", () => {
     )
   })
 
-  it("returns early for PROXY (WireGuard cleanup unimplemented)", async () => {
+  it("returns early for PROXY (cleanup not yet implemented)", async () => {
     mockPrisma.vpnServerAccount.findUnique.mockResolvedValue({
       ...account,
       protocol: "PROXY" as const,
@@ -410,15 +410,24 @@ describe("VpnProvisioningService removeRemoteAccount", () => {
     expect(mockPrisma.vpnServerAccount.update).not.toHaveBeenCalled()
   })
 
-  it("revokes WireGuard peer and updates DB to REVOKED", async () => {
+  it("revokes WireGuard peer, verifies removal, and updates DB to REVOKED", async () => {
     mockPrisma.vpnServerAccount.findUnique.mockResolvedValue({
       ...account,
       protocol: "WIREGUARD" as const,
+    })
+    // validatePeer must return exists=false after revoke for happy path
+    mockWireGuard.validatePeer.mockResolvedValueOnce({
+      exists: false,
+      message: "WireGuard peer not found on server",
     })
 
     await service.removeRemoteAccount(ACCOUNT_ID)
 
     expect(mockWireGuard.revokePeer).toHaveBeenCalledWith(
+      expect.objectContaining({ host: "vpn.example.com" }),
+      USERNAME
+    )
+    expect(mockWireGuard.validatePeer).toHaveBeenCalledWith(
       expect.objectContaining({ host: "vpn.example.com" }),
       USERNAME
     )
