@@ -202,6 +202,16 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         const account = sub?.serverAccounts.find((a) => a.id === params.saId)
         if (!sub || !account) return notFound(set)
         await revokeAccount(account.id)
+
+        logAuditEvent({
+          serverAccountId: account.id,
+          adminId: actor.userId,
+          action: "ADMIN_REVOKE_REQUESTED",
+          status: "OK",
+          message: `Admin requested revoke for account ${account.id}`,
+          details: { triggeredByAdminId: actor.userId },
+        }).catch(() => {})
+
         return { ok: true }
       }
     )

@@ -57,6 +57,7 @@ export class OpenVpnSshAdapter {
   private readonly userListScript: string
   private readonly statusLogPath: string
   private readonly configDirectory: string
+  private readonly dockerComposeFile: string
 
   constructor(options: {
     executor?: VpnServerSshExecutor
@@ -66,6 +67,7 @@ export class OpenVpnSshAdapter {
     userListScript?: string
     statusLogPath?: string
     configDirectory?: string
+    dockerComposeFile?: string
   } = {}) {
     this.executor = options.executor ?? new VpnServerSshExecutor()
     this.createScript =
@@ -92,6 +94,10 @@ export class OpenVpnSshAdapter {
       options.configDirectory ??
       process.env.OPENVPN_CLIENT_CONFIG_DIR ??
       "/root/openvpn/clients"
+    this.dockerComposeFile =
+      options.dockerComposeFile ??
+      process.env.OPENVPN_DOCKER_COMPOSE_FILE ??
+      "/root/openvpn/docker-compose.yaml"
   }
 
   async createClient(target: SshTarget, clientName: string): Promise<void> {
@@ -288,7 +294,7 @@ export class OpenVpnSshAdapter {
   async restartServer(target: SshTarget): Promise<void> {
     await this.executor.execChecked(
       target,
-      ["docker", "compose", "-f", "/root/openvpn/docker-compose.yaml", "restart", "openvpn"],
+      ["docker", "compose", "-f", this.dockerComposeFile, "restart", "openvpn"],
       "restart OpenVPN server"
     )
   }
