@@ -347,7 +347,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         logWhatsappAuditEvent({
           action: "MESSAGE_SENT",
           organizationId: whatsappAuth.organizationId!,
-          deviceId: result.deviceId ?? deviceId,
+          deviceId: deviceId ?? null,
           adminId: (whatsappAuth as any).userId,
           message: `Message sent to ${phoneNumber}`,
           status: "OK",
