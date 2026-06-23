@@ -285,6 +285,14 @@ export class OpenVpnSshAdapter {
     return connected
   }
 
+  async restartServer(target: SshTarget): Promise<void> {
+    await this.executor.execChecked(
+      target,
+      ["docker", "compose", "-f", "/root/openvpn/docker-compose.yaml", "restart", "openvpn"],
+      "restart OpenVPN server"
+    )
+  }
+
   async healthCheck(target: SshTarget): Promise<{ ok: boolean; output: string }> {
     const result = await this.executor.execChecked(
       target,

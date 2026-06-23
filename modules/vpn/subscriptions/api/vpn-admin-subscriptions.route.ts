@@ -31,10 +31,7 @@ type Deps = {
 }
 
 const defaultRevoke = async (serverAccountId: string) => {
-  await prisma.vpnServerAccount.update({
-    where: { id: serverAccountId },
-    data: { provisioningStatus: "REVOKED", failureReason: null },
-  })
+  await vpnProvisioningService.removeRemoteAccount(serverAccountId)
 }
 
 const notFound = (set: RouteSet): AdminApiError => {

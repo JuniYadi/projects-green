@@ -30,7 +30,10 @@ type AccountWithServer = Prisma.VpnServerAccountGetPayload<
 >
 
 export type ProvisioningAdapters = {
-  openVpn?: Pick<OpenVpnSshAdapter, "createClient" | "fetchConfig" | "validateClient" | "revokeClient" | "removeClient">
+  openVpn?: Pick<
+    OpenVpnSshAdapter,
+    "createClient" | "fetchConfig" | "validateClient" | "revokeClient" | "removeClient" | "restartServer"
+  >
   wireGuard?: Pick<WireGuardSshAdapter, "createPeer" | "validatePeer">
   proxy?: Pick<ProxySshAdapter, "createUser" | "validateUser">
 }
@@ -164,6 +167,18 @@ export class VpnProvisioningService {
     await this.withStep(serverAccountId, account, "removing_certificate", () =>
       this.openVpn.removeClient(target, account.username)
     )
+    // Verify the user no longer exists on the server after revoke
+    await this.withStep(serverAccountId, account, "verifying_revocation", async () => {
+      const validation = await this.openVpn.validateClient(target, account.username)
+      if (validation.exists) {
+        throw new Error(`Client "${account.username}" still exists on server after revoke`)
+      }
+    })
+    // Restart OpenVPN to drop the active connection immediately
+    await this.withStep(serverAccountId, account, "restarting_openvpn", () =>
+      this.openVpn.restartServer(target),
+    )
+
     await this.prisma.vpnServerAccount.update({
       where: { id: serverAccountId },
       data: {

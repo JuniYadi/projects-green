@@ -55,6 +55,7 @@ const mockOpenVpn = {
   }),
   revokeClient: mock().mockResolvedValue(undefined),
   removeClient: mock().mockResolvedValue(undefined),
+  restartServer: mock().mockResolvedValue(undefined),
 }
 
 const mockWireGuard = {
@@ -108,6 +109,7 @@ beforeEach(() => {
   mockOpenVpn.validateClient.mockReset()
   mockOpenVpn.revokeClient.mockReset()
   mockOpenVpn.removeClient.mockReset()
+  mockOpenVpn.restartServer.mockReset()
   mockWireGuard.createPeer.mockReset()
   mockWireGuard.validatePeer.mockReset()
   mockProxy.createUser.mockReset()
@@ -121,6 +123,7 @@ beforeEach(() => {
   })
   mockOpenVpn.revokeClient.mockResolvedValue(undefined)
   mockOpenVpn.removeClient.mockResolvedValue(undefined)
+  mockOpenVpn.restartServer.mockResolvedValue(undefined)
   mockWireGuard.createPeer.mockResolvedValue({ config: "wg-config" })
   mockWireGuard.validatePeer.mockResolvedValue({
     exists: true,
@@ -353,5 +356,76 @@ describe("VpnProvisioningService step logging", () => {
     expect(proxySteps).toContain("creating_user")
     // creating_user should be FAILED
     expect(stepLogFor("creating_user", "FAILED")).toBeDefined()
+  })
+})
+
+describe("VpnProvisioningService removeRemoteAccount", () => {
+  beforeEach(() => {
+    mockPrisma.vpnServerAccount.findUnique.mockResolvedValue(account)
+    mockPrisma.vpnServerAccount.update.mockResolvedValue({ ...account })
+    mockOpenVpn.revokeClient.mockResolvedValue(undefined)
+    mockOpenVpn.removeClient.mockResolvedValue(undefined)
+    mockOpenVpn.validateClient.mockResolvedValue({
+      exists: true,
+      message: "OpenVPN config exists",
+    })
+    mockOpenVpn.restartServer.mockResolvedValue(undefined)
+  })
+
+  it("revokes, verifies (gone), and restarts server on happy path", async () => {
+    // User is gone after revoke — validateClient returns exists=false
+    mockOpenVpn.validateClient.mockResolvedValue({
+      exists: false,
+      message: "OpenVPN profile not found on server",
+    })
+
+    await service.removeRemoteAccount(ACCOUNT_ID)
+
+    expect(mockOpenVpn.revokeClient).toHaveBeenCalledWith(
+      expect.objectContaining({ host: "vpn.example.com" }),
+      USERNAME
+    )
+    expect(mockOpenVpn.removeClient).toHaveBeenCalled()
+    expect(mockOpenVpn.validateClient).toHaveBeenCalled()
+    expect(mockOpenVpn.restartServer).toHaveBeenCalled()
+    expect(mockPrisma.vpnServerAccount.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: ACCOUNT_ID }, data: expect.objectContaining({ provisioningStatus: "REVOKED" }) })
+    )
+  })
+
+  it("returns early for non-OpenVPN protocols", async () => {
+    mockPrisma.vpnServerAccount.findUnique.mockResolvedValue({
+      ...account,
+      protocol: "WIREGUARD" as const,
+    })
+
+    await service.removeRemoteAccount(ACCOUNT_ID)
+
+    expect(mockOpenVpn.revokeClient).not.toHaveBeenCalled()
+    expect(mockOpenVpn.restartServer).not.toHaveBeenCalled()
+    expect(mockPrisma.vpnServerAccount.update).not.toHaveBeenCalled()
+  })
+
+  it("throws and does NOT update DB to REVOKED when SSH revoke fails", async () => {
+    mockOpenVpn.revokeClient.mockRejectedValue(new Error("SSH connection refused"))
+
+    await expect(service.removeRemoteAccount(ACCOUNT_ID)).rejects.toThrow(
+      "SSH connection refused"
+    )
+
+    // DB should NOT be updated to REVOKED
+    expect(mockPrisma.vpnServerAccount.update).not.toHaveBeenCalled()
+    expect(mockOpenVpn.restartServer).not.toHaveBeenCalled()
+  })
+
+  it("throws when client still exists on server after revoke", async () => {
+    // Default validateClient returns exists=true — the verify step catches it
+    await expect(service.removeRemoteAccount(ACCOUNT_ID)).rejects.toThrow(
+      'still exists on server after revoke'
+    )
+
+    // DB should NOT be updated to REVOKED if verify fails
+    expect(mockPrisma.vpnServerAccount.update).not.toHaveBeenCalled()
+    expect(mockOpenVpn.restartServer).not.toHaveBeenCalled()
   })
 })
