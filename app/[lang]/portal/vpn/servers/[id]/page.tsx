@@ -156,6 +156,8 @@ export default function VpnServerDetailPage() {
   }, [serverId, loadServer])
 
   useEffect(() => {
+    // ponytail: voided async calls; setState fires after fetch resolves, not synchronously
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadServer()
     void loadMetrics()
     void loadUsers()

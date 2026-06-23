@@ -503,6 +503,12 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       icon: <GlobeIcon />,
       isActive: startsWithRoute(path, "/console/vpn"),
     },
+    {
+      title: "WireGuard",
+      url: localizePathname({ pathname: "/console/wireguard", locale }),
+      icon: <ShieldCheckIcon />,
+      isActive: startsWithRoute(path, "/console/wireguard"),
+    },
   ],
 })
 
