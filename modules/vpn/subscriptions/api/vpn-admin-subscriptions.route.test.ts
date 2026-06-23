@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 import type { RouteSet, AdminActorContext, AdminApiError } from "@/modules/admin/api/admin.guards"
+import type { VpnSubscriptionService } from "@/modules/vpn/subscriptions/vpn-subscription.service"
 
 mock.module("@/lib/prisma", () => ({ prisma: {} }))
 mock.module("@/lib/audit.service", () => ({
@@ -17,7 +18,7 @@ const adminGuard = mock<(set: RouteSet) => Promise<AdminActorContext | AdminApiE
 describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
   it("calls revokeAccount when revoking a server account", async () => {
     const revokeAccount = mock<(saId: string) => Promise<void>>().mockResolvedValue(undefined)
-    const mockService: any = {
+    const mockService = {
       listAll: mock(),
       getById: mock().mockResolvedValue({
         id: "sub_1",
@@ -28,7 +29,7 @@ describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
     const app = new Elysia().use(
       createAdminVpnSubscriptionsRoutes({
         revokeAccount,
-        service: mockService,
+        service: mockService as unknown as VpnSubscriptionService,
         requireSuperAdmin: adminGuard,
       })
     )
@@ -48,7 +49,7 @@ describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
 
   it("returns 404 when subscription not found", async () => {
     const revokeAccount = mock<(saId: string) => Promise<void>>()
-    const mockService: any = {
+    const mockService = {
       listAll: mock(),
       getById: mock().mockResolvedValue(null),
     }
@@ -56,7 +57,7 @@ describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
     const app = new Elysia().use(
       createAdminVpnSubscriptionsRoutes({
         revokeAccount,
-        service: mockService,
+        service: mockService as unknown as VpnSubscriptionService,
         requireSuperAdmin: adminGuard,
       })
     )
@@ -74,7 +75,7 @@ describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
 
   it("returns 404 when server account not found in subscription", async () => {
     const revokeAccount = mock<(saId: string) => Promise<void>>()
-    const mockService: any = {
+    const mockService = {
       listAll: mock(),
       getById: mock().mockResolvedValue({
         id: "sub_1",
@@ -85,7 +86,7 @@ describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
     const app = new Elysia().use(
       createAdminVpnSubscriptionsRoutes({
         revokeAccount,
-        service: mockService,
+        service: mockService as unknown as VpnSubscriptionService,
         requireSuperAdmin: adminGuard,
       })
     )
@@ -104,7 +105,7 @@ describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
   it("errors propagate from revokeAccount to the caller", async () => {
     const revokeAccount = mock<(saId: string) => Promise<void>>()
       .mockRejectedValue(new Error("SSH connection refused"))
-    const mockService: any = {
+    const mockService = {
       listAll: mock(),
       getById: mock().mockResolvedValue({
         id: "sub_1",
@@ -115,7 +116,7 @@ describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
     const app = new Elysia().use(
       createAdminVpnSubscriptionsRoutes({
         revokeAccount,
-        service: mockService,
+        service: mockService as unknown as VpnSubscriptionService,
         requireSuperAdmin: adminGuard,
       })
     )
@@ -134,7 +135,7 @@ describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
     const failingGuard = mock<(set: RouteSet) => Promise<AdminActorContext | AdminApiError>>()
       .mockResolvedValue({ ok: false as const, error: "UNAUTHORIZED", message: "Unauthorized" })
     const revokeAccount = mock<(saId: string) => Promise<void>>()
-    const mockService: any = {
+    const mockService = {
       listAll: mock(),
       getById: mock().mockResolvedValue({ id: "sub_1", serverAccounts: [{ id: "sa_1" }] }),
     }
@@ -142,7 +143,7 @@ describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {
     const app = new Elysia().use(
       createAdminVpnSubscriptionsRoutes({
         revokeAccount,
-        service: mockService,
+        service: mockService as unknown as VpnSubscriptionService,
         requireSuperAdmin: failingGuard,
       })
     )

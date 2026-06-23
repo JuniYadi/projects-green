@@ -213,9 +213,9 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
       })
 
       const jobId = `vpn-sync-${params.id}`
-      await VpnServerSyncJob.dispatch(params.id, jobId)
+      const queued = await VpnServerSyncJob.dispatch(params.id, jobId)
 
-      return { ok: true, queued: true, correlationId: jobId }
+      return { ok: true, queued, correlationId: jobId }
     })
     .post("/admin/vpn/servers/:id/test", async ({ params, set }) => {
       const actor = await guard(set)

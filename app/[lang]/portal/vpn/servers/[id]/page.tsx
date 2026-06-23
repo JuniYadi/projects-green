@@ -165,8 +165,12 @@ export default function VpnServerDetailPage() {
     ) return
     setSyncing(true)
     try {
-      await syncVpnServerProtocols(serverId)
-      window.alert("Sync protocols job queued. Accounts will be created in the background.")
+      const res = await syncVpnServerProtocols(serverId)
+      if (res.data.queued) {
+        window.alert("Sync protocols job queued. Accounts will be created in the background.")
+      } else {
+        window.alert("A sync is already in progress. Please wait for it to complete.")
+      }
     } catch (err) {
       window.alert((err as Error).message)
     } finally {
