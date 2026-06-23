@@ -12,6 +12,7 @@ import {
   getWhatsAppTemplateSyncRedisConnection,
   type WhatsAppTemplateSyncJobData,
 } from "@/lib/queue/whatsapp-template-sync"
+import { getQueueRuntimeConfig } from "@/lib/queue/queue-config"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 
 type MetaTemplateComponent = {
@@ -41,6 +42,18 @@ type MetaTemplatePage = {
     }
     next?: string
   }
+}
+
+export type WhatsAppTemplateSyncSummary = {
+  method: WhatsAppTemplateSyncJobData["method"]
+  organizationId: string
+  deviceId: string
+  fetched: number
+  created: number
+  updated: number
+  skipped: number
+  notInMeta: number
+  failed: number
 }
 
 const SUPPORTED_META_STATUSES = new Set<string>([
@@ -108,6 +121,14 @@ async function loadDevice(data: WhatsAppTemplateSyncJobData) {
       id: data.deviceId,
       organizationId: data.organizationId,
     },
+    select: {
+      id: true,
+      token: true,
+      tokenEncrypted: true,
+      tokenIv: true,
+      whatsappPhoneId: true,
+      whatsappBusinessAccountId: true,
+    },
   })
 
   if (!device) {
@@ -116,7 +137,11 @@ async function loadDevice(data: WhatsAppTemplateSyncJobData) {
     )
   }
 
-  const accessToken = device.tokenEncrypted
+  const encryptedParts = device.tokenEncrypted?.split(".") ?? []
+  const accessToken =
+    device.tokenEncrypted && device.tokenIv && encryptedParts.length === 2
+      ? `${encryptedParts[0]}.${device.tokenIv}.${encryptedParts[1]}`
+      : device.tokenEncrypted
   const phoneNumberId = device.whatsappPhoneId
   const wabaId = device.whatsappBusinessAccountId
 
@@ -157,7 +182,7 @@ async function upsertTemplate(
   organizationId: string,
   deviceId: string,
   template: MetaTemplate
-) {
+): Promise<"created" | "updated"> {
   const existing = await prisma.whatsappTemplate.findFirst({
     where: {
       organizationId,
@@ -189,7 +214,7 @@ async function upsertTemplate(
         },
       },
     })
-    return
+    return "created"
   }
 
   await prisma.whatsappTemplate.update({
@@ -210,163 +235,244 @@ async function upsertTemplate(
     },
     update: languageData,
   })
+
+  return "updated"
 }
 
-export async function syncTemplates(jobData: WhatsAppTemplateSyncJobData) {
+export async function syncTemplates(
+  jobData: WhatsAppTemplateSyncJobData
+): Promise<WhatsAppTemplateSyncSummary> {
   const client = await createClient(jobData)
   const templates = await fetchAllTemplates(client)
+  const summary: WhatsAppTemplateSyncSummary = {
+    method: "sync-templates",
+    organizationId: jobData.organizationId,
+    deviceId: jobData.deviceId,
+    fetched: templates.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    notInMeta: 0,
+    failed: 0,
+  }
 
   for (const template of templates) {
-    await upsertTemplate(jobData.organizationId, jobData.deviceId, template)
+    try {
+      const result = await upsertTemplate(
+        jobData.organizationId,
+        jobData.deviceId,
+        template
+      )
+      summary[result] += 1
+    } catch (error) {
+      summary.failed += 1
+      console.error(
+        `[whatsapp-template-sync-worker] failed template name=${template.name} org=${jobData.organizationId} device=${jobData.deviceId}`,
+        error
+      )
+    }
   }
 
   // ponytail: mark templates in DB not returned by Meta as NOT_IN_META
-  await prisma.whatsappTemplate.updateMany({
+  const notInMeta = await prisma.whatsappTemplate.updateMany({
     where: {
       organizationId: jobData.organizationId,
       whatsappDeviceId: jobData.deviceId,
-      slug: { notIn: templates.map(t => slugifyTemplateName(t.name) || t.name) },
+      slug: {
+        notIn: templates.map((t) => slugifyTemplateName(t.name) || t.name),
+      },
       syncStatus: { not: WhatsappTemplateSyncStatus.NOT_IN_META },
     },
     data: {
       syncStatus: WhatsappTemplateSyncStatus.NOT_IN_META,
     },
   })
+  summary.notInMeta = notInMeta.count
 
   console.info(
-    `[whatsapp-template-sync-worker] synced ${templates.length} templates org=${jobData.organizationId} device=${jobData.deviceId}`
+    `[whatsapp-template-sync-worker] sync-templates result org=${jobData.organizationId} device=${jobData.deviceId} fetched=${summary.fetched} created=${summary.created} updated=${summary.updated} notInMeta=${summary.notInMeta} failed=${summary.failed}`
   )
+
+  if (summary.failed > 0) {
+    throw new Error(
+      `Template sync partially failed: failed=${summary.failed} fetched=${summary.fetched}`
+    )
+  }
+
+  return summary
 }
 
-export async function syncTemplateStatus(jobData: WhatsAppTemplateSyncJobData) {
+export async function syncTemplateStatus(
+  jobData: WhatsAppTemplateSyncJobData
+): Promise<WhatsAppTemplateSyncSummary> {
   const client = await createClient(jobData)
   const templates = await fetchAllTemplates(client)
+  const summary: WhatsAppTemplateSyncSummary = {
+    method: "sync-status",
+    organizationId: jobData.organizationId,
+    deviceId: jobData.deviceId,
+    fetched: templates.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    notInMeta: 0,
+    failed: 0,
+  }
 
   for (const template of templates) {
-    const existing = await prisma.whatsappTemplate.findFirst({
-      where: {
-        organizationId: jobData.organizationId,
-        name: template.name,
-      },
-      select: { id: true },
-    })
-
-    if (!existing) {
-      continue
-    }
-
-    const metaStatus = toSupportedMetaStatus(template.status)
-    const languageData = toLanguageData(template)
-
-    await prisma.whatsappTemplate.update({
-      where: { id: existing.id },
-      data: {
-        syncStatus: WhatsappTemplateSyncStatus.SYNCED,
-        metaStatus,
-        lastSyncedAt: new Date(),
-      },
-    })
-
-    await prisma.whatsappTemplateLanguage.upsert({
-      where: {
-        templateId_lang: {
-          templateId: existing.id,
-          lang: languageData.lang,
+    try {
+      const existing = await prisma.whatsappTemplate.findFirst({
+        where: {
+          organizationId: jobData.organizationId,
+          name: template.name,
         },
-      },
-      create: {
-        ...languageData,
-        template: { connect: { id: existing.id } },
-      },
-      update: languageData,
-    })
+        select: { id: true },
+      })
+
+      if (!existing) {
+        summary.skipped += 1
+        continue
+      }
+
+      const metaStatus = toSupportedMetaStatus(template.status)
+      const languageData = toLanguageData(template)
+
+      await prisma.whatsappTemplate.update({
+        where: { id: existing.id },
+        data: {
+          syncStatus: WhatsappTemplateSyncStatus.SYNCED,
+          metaStatus,
+          lastSyncedAt: new Date(),
+        },
+      })
+
+      await prisma.whatsappTemplateLanguage.upsert({
+        where: {
+          templateId_lang: {
+            templateId: existing.id,
+            lang: languageData.lang,
+          },
+        },
+        create: {
+          ...languageData,
+          template: { connect: { id: existing.id } },
+        },
+        update: languageData,
+      })
+
+      summary.updated += 1
+    } catch (error) {
+      summary.failed += 1
+      console.error(
+        `[whatsapp-template-sync-worker] failed template status name=${template.name} org=${jobData.organizationId} device=${jobData.deviceId}`,
+        error
+      )
+    }
   }
 
   console.info(
-    `[whatsapp-template-sync-worker] synced ${templates.length} template statuses org=${jobData.organizationId} device=${jobData.deviceId}`
+    `[whatsapp-template-sync-worker] sync-status result org=${jobData.organizationId} device=${jobData.deviceId} fetched=${summary.fetched} updated=${summary.updated} skipped=${summary.skipped} failed=${summary.failed}`
   )
+
+  if (summary.failed > 0) {
+    throw new Error(
+      `Template status sync partially failed: failed=${summary.failed} fetched=${summary.fetched}`
+    )
+  }
+
+  return summary
 }
 
 export async function processWhatsAppTemplateSyncJob(
   job: Job<WhatsAppTemplateSyncJobData>
-) {
+): Promise<WhatsAppTemplateSyncSummary | undefined> {
   if (job.data.method === "sync-templates") {
-    await syncTemplates(job.data)
-    return
+    const summary = await syncTemplates(job.data)
+    await job.log(
+      `Sync templates: fetched=${summary.fetched}, created=${summary.created}, updated=${summary.updated}, notInMeta=${summary.notInMeta}, failed=${summary.failed}`
+    )
+    return summary
   }
 
   if (job.data.method === "sync-status") {
-    await syncTemplateStatus(job.data)
-    return
+    const summary = await syncTemplateStatus(job.data)
+    await job.log(
+      `Sync status: fetched=${summary.fetched}, updated=${summary.updated}, skipped=${summary.skipped}, failed=${summary.failed}`
+    )
+    return summary
   }
 }
 
-const redisConnection = getWhatsAppTemplateSyncRedisConnection()
+if (import.meta.main) {
+  const redisConnection = getWhatsAppTemplateSyncRedisConnection()
+  const { prefix } = getQueueRuntimeConfig()
 
-const worker = new Worker<WhatsAppTemplateSyncJobData>(
-  WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME,
-  processWhatsAppTemplateSyncJob,
-  {
-    connection: redisConnection,
-    concurrency: 2,
-  }
-)
-
-worker.on("active", (job) => {
-  console.info(
-    `[whatsapp-template-sync-worker] processing ${job.name} id=${job.id}`
+  const worker = new Worker<WhatsAppTemplateSyncJobData>(
+    WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME,
+    processWhatsAppTemplateSyncJob,
+    {
+      connection: redisConnection,
+      prefix,
+      concurrency: 2,
+    }
   )
-})
 
-worker.on("completed", (job) => {
-  console.info(
-    `[whatsapp-template-sync-worker] completed ${job.name} id=${job.id}`
-  )
-})
+  worker.on("active", (job) => {
+    console.info(
+      `[whatsapp-template-sync-worker] processing ${job.name} id=${job.id}`
+    )
+  })
 
-worker.on("failed", (job, error) => {
-  if (!job) {
+  worker.on("completed", (job, summary) => {
+    console.info(
+      `[whatsapp-template-sync-worker] completed ${job.name} id=${job.id} result=${JSON.stringify(summary ?? null)}`
+    )
+  })
+
+  worker.on("failed", (job, error) => {
+    if (!job) {
+      console.error(
+        "[whatsapp-template-sync-worker] failed job missing payload",
+        error
+      )
+      return
+    }
+
     console.error(
-      "[whatsapp-template-sync-worker] failed job missing payload",
+      `[whatsapp-template-sync-worker] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
       error
     )
-    return
-  }
+  })
 
-  console.error(
-    `[whatsapp-template-sync-worker] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-    error
-  )
-})
+  let shuttingDown = false
 
-let shuttingDown = false
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) {
+      return
+    }
 
-const shutdown = async (signal: string) => {
-  if (shuttingDown) {
-    return
-  }
-
-  shuttingDown = true
-  console.info(
-    `[whatsapp-template-sync-worker] received ${signal}, shutting down`
-  )
-
-  try {
-    await worker.close()
-    process.exit(0)
-  } catch (error) {
-    console.error(
-      "[whatsapp-template-sync-worker] shutdown failed while closing worker",
-      error
+    shuttingDown = true
+    console.info(
+      `[whatsapp-template-sync-worker] received ${signal}, shutting down`
     )
-    process.exit(1)
+
+    try {
+      await worker.close()
+      process.exit(0)
+    } catch (error) {
+      console.error(
+        "[whatsapp-template-sync-worker] shutdown failed while closing worker",
+        error
+      )
+      process.exit(1)
+    }
   }
+
+  process.on("SIGTERM", () => {
+    void shutdown("SIGTERM")
+  })
+
+  process.on("SIGINT", () => {
+    void shutdown("SIGINT")
+  })
 }
-
-process.on("SIGTERM", () => {
-  void shutdown("SIGTERM")
-})
-
-process.on("SIGINT", () => {
-  void shutdown("SIGINT")
-})

@@ -78,6 +78,7 @@ import {
   WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME,
   type WhatsAppTemplateSyncJobData,
 } from "@/lib/queue/whatsapp-template-sync"
+import { processWhatsAppTemplateSyncJob } from "./whatsapp-template-sync-worker"
 
 // ── Interval-based services ────────────────────────────────────────────────
 import { monitorActiveDeployments } from "@/modules/deploy/deploy-monitor.service"
@@ -393,27 +394,18 @@ allWorkers.push(whatsappBroadcastWorker)
 // ── WhatsApp Template Sync Worker ───────────────────────────────────────────
 const whatsappTemplateSyncWorker = new Worker<WhatsAppTemplateSyncJobData>(
   WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME,
-  async (job: Job<WhatsAppTemplateSyncJobData>) => {
-    if (job.data.method === "sync-templates") {
-      console.info(
-        `[whatsapp-template-sync] sync-templates org=${job.data.organizationId} device=${job.data.deviceId}`
-      )
-      return
-    }
-
-    if (job.data.method === "sync-status") {
-      console.info(
-        `[whatsapp-template-sync] sync-status org=${job.data.organizationId} device=${job.data.deviceId}`
-      )
-      return
-    }
-  },
+  processWhatsAppTemplateSyncJob,
   {
     connection: redisConnection,
     prefix,
     concurrency: 2,
   }
 )
+whatsappTemplateSyncWorker.on("completed", (job, summary) => {
+  console.info(
+    `[whatsapp-template-sync] completed ${job.name} id=${job.id} result=${JSON.stringify(summary ?? null)}`
+  )
+})
 allWorkers.push(whatsappTemplateSyncWorker)
 
 // ── VPN Server Sync Worker ──────────────────────────────────────────

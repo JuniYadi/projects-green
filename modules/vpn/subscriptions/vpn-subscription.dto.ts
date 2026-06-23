@@ -65,6 +65,7 @@ export type VpnSubscriptionDTO = {
   status: SubscriptionPayload["status"]
   currentPeriodStart: string
   currentPeriodEnd: string
+  cancelAtPeriodEnd: boolean
   deviceCount: number
   serverAccounts: VpnServerAccountDTO[]
   provisioningSummary: ProvisioningSummary
@@ -160,6 +161,7 @@ export function toVpnSubscriptionDTO(
     status: subscription.status,
     currentPeriodStart: subscription.currentPeriodStart.toISOString(),
     currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+    cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     deviceCount: subscription._count.mobileDevices,
     serverAccounts: accounts,
     provisioningSummary: computeProvisioningSummary(accounts),
