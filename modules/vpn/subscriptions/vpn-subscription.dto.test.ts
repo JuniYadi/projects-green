@@ -51,9 +51,8 @@ describe("toServerAccountDTO", () => {
   it("returns null port for unknown protocol", () => {
     const result = toServerAccountDTO({
       ...baseAccount,
-      // @ts-expect-error - testing fallback
-      protocol: "UNKNOWN",
-    })
+      protocol: "UNKNOWN" as "OPENVPN" | "WIREGUARD" | "PROXY",
+    } as Parameters<typeof toServerAccountDTO>[0])
     expect(result.port).toBeNull()
   })
 
