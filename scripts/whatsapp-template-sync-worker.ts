@@ -121,6 +121,14 @@ async function loadDevice(data: WhatsAppTemplateSyncJobData) {
       id: data.deviceId,
       organizationId: data.organizationId,
     },
+    select: {
+      id: true,
+      token: true,
+      tokenEncrypted: true,
+      tokenIv: true,
+      whatsappPhoneId: true,
+      whatsappBusinessAccountId: true,
+    },
   })
 
   if (!device) {

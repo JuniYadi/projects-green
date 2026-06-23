@@ -106,6 +106,7 @@ export const enqueueWhatsAppTemplateSync = async (
 
 export const __testing = {
   async resetQueueCache() {
-    // Shared queue lifecycle is owned by lib/queue/queue-config.
+    const { closeAllQueues } = await import("@/lib/queue/queue-config")
+    await closeAllQueues()
   },
 }
