@@ -4,7 +4,18 @@ type SubscriptionPayload = Prisma.VpnSubscriptionGetPayload<{
   include: {
     serverAccounts: {
       include: {
-        server: { select: { id: true; name: true; hostname: true } }
+        server: {
+          select: {
+            id: true
+            name: true
+            hostname: true
+            ipAddress: true
+            openVpnPort: true
+            wireGuardPort: true
+            proxyPort: true
+            region: { select: { id: true; name: true; slug: true; countryCode: true } }
+          }
+        }
       }
     }
     _count: {
@@ -29,6 +40,10 @@ export type VpnServerAccountDTO = {
   failureReason: string | null
   hasConfig: boolean
   hasCredentials: boolean
+  hostname: string
+  ipAddress: string | null
+  region: { name: string; slug: string; countryCode: string } | null
+  port: number | null
   createdAt: string
   updatedAt: string
 }
@@ -59,11 +74,22 @@ export type VpnSubscriptionDTO = {
   originalPrice: string | null
   originalCurrency: string | null
   exchangeRate: number | null
+  cancelAtPeriodEnd: boolean
   createdAt: string
   updatedAt: string
 }
 
-function toServerAccountDTO(account: ServerAccount): VpnServerAccountDTO {
+export function toServerAccountDTO(account: ServerAccount): VpnServerAccountDTO {
+  // ponytail: port is protocol-specific, simple ternary
+  const port =
+    account.protocol === "OPENVPN"
+      ? account.server.openVpnPort
+      : account.protocol === "WIREGUARD"
+        ? account.server.wireGuardPort
+        : account.protocol === "PROXY"
+          ? account.server.proxyPort
+          : null
+
   return {
     id: account.id,
     serverId: account.serverId,
@@ -74,6 +100,16 @@ function toServerAccountDTO(account: ServerAccount): VpnServerAccountDTO {
     failureReason: account.failureReason,
     hasConfig: account.configEncrypted !== null,
     hasCredentials: account.password !== null,
+    hostname: account.server.hostname,
+    ipAddress: account.server.ipAddress,
+    region: account.server.region
+      ? {
+          name: account.server.region.name,
+          slug: account.server.region.slug,
+          countryCode: account.server.region.countryCode,
+        }
+      : null,
+    port,
     createdAt: account.createdAt.toISOString(),
     updatedAt: account.updatedAt.toISOString(),
   }
@@ -134,6 +170,7 @@ export function toVpnSubscriptionDTO(
     exchangeRate: subscription.exchangeRate
       ? Number(subscription.exchangeRate)
       : null,
+    cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     createdAt: subscription.createdAt.toISOString(),
     updatedAt: subscription.updatedAt.toISOString(),
   }

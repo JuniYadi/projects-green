@@ -14,7 +14,16 @@ const subscriptionInclude = {
   serverAccounts: {
     include: {
       server: {
-        select: { id: true, name: true, hostname: true },
+        select: {
+          id: true,
+          name: true,
+          hostname: true,
+          ipAddress: true,
+          openVpnPort: true,
+          wireGuardPort: true,
+          proxyPort: true,
+          region: { select: { id: true, name: true, slug: true, countryCode: true } },
+        },
       },
     },
   },
