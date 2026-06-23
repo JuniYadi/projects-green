@@ -330,7 +330,7 @@ export async function testVpnServer(id: string, init?: RequestInit) {
 
 // ── Sync Protocols ─────────────────────────────────────────────────────────
 
-export type SyncProtocolsResult = { ok: true; queued: true; correlationId: string }
+type SyncProtocolsResult = { ok: true; queued: boolean; correlationId: string }
 
 export async function syncVpnServerProtocols(id: string) {
   const res = (await eden.api.admin.vpn.servers[id][
