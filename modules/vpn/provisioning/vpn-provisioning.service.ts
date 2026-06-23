@@ -34,7 +34,7 @@ export type ProvisioningAdapters = {
     OpenVpnSshAdapter,
     "createClient" | "fetchConfig" | "validateClient" | "revokeClient" | "removeClient" | "restartServer"
   >
-  wireGuard?: Pick<WireGuardSshAdapter, "createPeer" | "validatePeer">
+  wireGuard?: Pick<WireGuardSshAdapter, "createPeer" | "validatePeer" | "revokePeer">
   proxy?: Pick<ProxySshAdapter, "createUser" | "validateUser">
 }
 
@@ -156,10 +156,43 @@ export class VpnProvisioningService {
     const account = await this.findAccount(serverAccountId)
     const target = this.toSshTarget(account)
 
-    // ponytail: WireGuard/Proxy cleanup not yet implemented — add
-    // removePeer/removeUser adapters when those protocols need remote
-    // cleanup on subscription expiry.
-    if (account.protocol !== "OPENVPN") return
+    // ponytail: Proxy cleanup not yet implemented — add
+    // removeUser adapter when that protocol needs remote cleanup.
+    if (account.protocol === "PROXY") return
+
+    if (account.protocol === "WIREGUARD") {
+      await this.withStep(serverAccountId, account, "revoking_peer", () =>
+        this.wireGuard.revokePeer(target, account.username)
+      )
+
+      // ponytail: verify peer was actually removed — matches OpenVPN pattern
+      await this.withStep(serverAccountId, account, "verifying_revocation", async () => {
+        const validation = await this.wireGuard.validatePeer(target, account.username)
+        if (validation.exists) {
+          throw new Error(`WireGuard peer "${account.username}" still exists after revoke`)
+        }
+      })
+
+      await this.prisma.vpnServerAccount.update({
+        where: { id: serverAccountId },
+        data: {
+          provisioningStatus: "REVOKED",
+          configEncrypted: null,
+          password: null,
+        },
+      })
+      await logAuditEvent({
+        serverAccountId,
+        serverId: account.serverId,
+        subscriptionId: account.subscriptionId,
+        organizationId: account.subscription.organizationId,
+        action: "REMOTE_ACCOUNT_REMOVED",
+        status: "OK",
+        message: `Remote ${account.protocol} account "${account.username}" removed from ${account.server.hostname}`,
+        details: { protocol: account.protocol, username: account.username },
+      })
+      return
+    }
 
     await this.withStep(serverAccountId, account, "revoking_client", () =>
       this.openVpn.revokeClient(target, account.username)
