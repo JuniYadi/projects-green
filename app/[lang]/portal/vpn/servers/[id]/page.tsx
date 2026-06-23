@@ -21,6 +21,7 @@ import {
   getVpnServer,
   getVpnServerMetrics,
   listOpenVpnUsers,
+  syncVpnServerProtocols,
   testVpnServer,
   type OpenVpnUserItem,
   type VpnServerItem,
@@ -104,6 +105,7 @@ export default function VpnServerDetailPage() {
   const [usersLoading, setUsersLoading] = useState(false)
   const [metricsLoading, setMetricsLoading] = useState(false)
   const [healthChecking, setHealthChecking] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadServer = useCallback(async () => {
@@ -154,6 +156,23 @@ export default function VpnServerDetailPage() {
       setHealthChecking(false)
     }
   }, [serverId, loadServer])
+
+  const runSyncProtocols = useCallback(async () => {
+    if (
+      !window.confirm(
+        "Sync protocols will create missing VpnServerAccounts for all ACTIVE subscriptions linked to this server. Continue?",
+      )
+    ) return
+    setSyncing(true)
+    try {
+      await syncVpnServerProtocols(serverId)
+      window.alert("Sync protocols job queued. Accounts will be created in the background.")
+    } catch (err) {
+      window.alert((err as Error).message)
+    } finally {
+      setSyncing(false)
+    }
+  }, [serverId])
 
   useEffect(() => {
     // ponytail: voided async calls; setState fires after fetch resolves, not synchronously
@@ -303,6 +322,21 @@ export default function VpnServerDetailPage() {
                   </Badge>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={runSyncProtocols}
+                disabled={syncing}
+              >
+                <ArrowClockwise className="mr-2 h-4 w-4" />
+                {syncing ? "Syncing..." : "Sync Protocols to Subscriptions"}
+              </Button>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Creates server accounts for all ACTIVE subscriptions based on enabled protocols.
+              </p>
             </div>
           </div>
         </section>
