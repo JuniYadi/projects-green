@@ -1,9 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { useParams, useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Phone, ArrowsClockwise } from "@phosphor-icons/react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -278,21 +277,21 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
   const [pageState, setPageState] = React.useState<PageState>("loading")
   const [errorMessage, setErrorMessage] = React.useState("")
 
-  const loadLogs = React.useCallback(async () => {
+  const fetchLogs = React.useCallback(async () => {
     setPageState("loading")
     setErrorMessage("")
     try {
-      const { data, error } = await eden.api.whatsapp["admin/whatsapp/audit/devices"][
-        deviceId
-      ].get({
-        $query: { page: String(page), limit: "50" },
-      })
-      if (error) throw new Error(error.message ?? "Failed to load audit logs")
-      const result = data as unknown as {
+      // ponytail: audit routes aren't in Eden's type system yet — use raw fetch
+      // eslint-disable-next-line no-restricted-globals
+      const res = await fetch(
+        `/api/whatsapp/admin/whatsapp/audit/devices/${deviceId}?page=${page}&limit=50`
+      )
+      const result = await res.json() as {
         ok: boolean
         data: AuditLogDTO[]
         pagination: { page: number; total: number; totalPages: number }
       }
+      if (!result.ok) throw new Error("Failed to load audit logs")
       setLogs(result.data)
       setTotal(result.pagination.total)
       setTotalPages(result.pagination.totalPages)
@@ -303,9 +302,9 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
     }
   }, [deviceId, page])
 
-  React.useEffect(() => { void loadLogs() }, [loadLogs])
+  React.useEffect(() => { fetchLogs() }, [fetchLogs])
 
-  const handleRetry = () => { void loadLogs() }
+  const handleRetry = fetchLogs
   const handlePageChange = (newPage: number) => { setPage(newPage) }
 
   return (

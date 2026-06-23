@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { eden } from "@/lib/eden"
 import {
   AuditLogTable,
   type AuditLogDTO,
@@ -63,34 +61,38 @@ export default function PortalWhatsAppAuditLogsPage() {
     return q
   }, [page, filterAction, filterStatus, filterDeviceId, filterQ, filterFrom, filterTo])
 
-  const loadLogs = React.useCallback(async () => {
-    setPageState("loading")
-    setErrorMessage("")
-    try {
-      const { data, error } = await eden.api.whatsapp["admin/whatsapp/audit"].get({
-        $query: buildQuery(),
-      })
-      if (error) throw new Error(error.message ?? "Failed to load audit logs")
-      const result = data as unknown as {
-        ok: boolean
-        data: AuditLogDTO[]
-        pagination: { page: number; total: number; totalPages: number }
+  React.useEffect(() => {
+    const fetchData = async () => {
+      setPageState("loading")
+      setErrorMessage("")
+      try {
+        const q = buildQuery()
+        const params = new URLSearchParams(q)
+        // ponytail: audit routes aren't in Eden's type system yet — use raw fetch
+        // eslint-disable-next-line no-restricted-globals
+        const res = await fetch(`/api/whatsapp/admin/whatsapp/audit?${params}`)
+        const result = await res.json() as {
+          ok: boolean
+          data: AuditLogDTO[]
+          pagination: { page: number; total: number; totalPages: number }
+        }
+        if (!result.ok) throw new Error("Failed to load audit logs")
+        setLogs(result.data)
+        setTotal(result.pagination.total)
+        setTotalPages(result.pagination.totalPages)
+        setPageState("loaded")
+      } catch (err) {
+        setErrorMessage(err instanceof Error ? err.message : "Failed to load audit logs")
+        setPageState("error")
       }
-      setLogs(result.data)
-      setTotal(result.pagination.total)
-      setTotalPages(result.pagination.totalPages)
-      setPageState("loaded")
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Failed to load audit logs")
-      setPageState("error")
     }
-  }, [buildQuery])
-
-  React.useEffect(() => { void loadLogs() }, [loadLogs])
+    fetchData()
+    // ponytail: only re-fetch when page or filters change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filterAction, filterStatus, filterDeviceId, filterQ, filterFrom, filterTo])
 
   const handleApplyFilters = () => {
     setPage(1)
-    void loadLogs()
   }
 
   const handleResetFilters = () => {
@@ -106,6 +108,8 @@ export default function PortalWhatsAppAuditLogsPage() {
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
   }
+
+  const retry = () => setPage(1)
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -197,7 +201,7 @@ export default function PortalWhatsAppAuditLogsPage() {
         logs={logs}
         isLoading={pageState === "loading"}
         error={pageState === "error" ? errorMessage : undefined}
-        onRetry={() => void loadLogs()}
+        onRetry={retry}
         pagination={
           totalPages > 1
             ? { page, totalPages, total, onPageChange: handlePageChange }

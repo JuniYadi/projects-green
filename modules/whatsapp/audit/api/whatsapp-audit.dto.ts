@@ -17,8 +17,11 @@ export type WhatsappAuditLogDTO = {
   createdAt: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+type AuditLogPayload = Prisma.WhatsappAuditLogGetPayload<{}>
+
 export function toWhatsappAuditLogDTO(
-  log: Prisma.WhatsappAuditLogGetPayload<{}>
+  log: AuditLogPayload
 ): WhatsappAuditLogDTO {
   return {
     id: log.id,

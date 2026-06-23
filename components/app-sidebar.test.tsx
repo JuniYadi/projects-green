@@ -295,6 +295,7 @@ describe("resolveSidebarMenu", () => {
       "Devices",
       "Templates",
       "Webhook Logs",
+      "Audit Logs",
     ])
     expect(navMain.find((item) => item.title === "Dashboard")?.isActive).toBe(
       true

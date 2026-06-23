@@ -178,7 +178,7 @@ export const createAdminDevicesRoutes = (
         // Fetch current device for change detection
         const currentDevice = await prisma.whatsappDevice.findUnique({
           where: { id },
-          select: { id: true, organizationId: true, name: true, status: true, callbackUrl: true },
+          select: { id: true, organizationId: true, status: true, callbackUrl: true },
         })
 
         const device = await service.update(id, parsed.data, null)
@@ -188,9 +188,6 @@ export const createAdminDevicesRoutes = (
           const changedFields: string[] = []
           let action: WhatsappAuditAction = "DEVICE_INFO_UPDATED"
 
-          if (parsed.data.name && parsed.data.name !== currentDevice.name) {
-            changedFields.push("name")
-          }
           if (parsed.data.callbackUrl !== undefined && parsed.data.callbackUrl !== currentDevice.callbackUrl) {
             action = "DEVICE_CALLBACK_URL_UPDATED"
             changedFields.push("callbackUrl")
