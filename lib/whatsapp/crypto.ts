@@ -85,21 +85,29 @@ function getKeyBuffer(): Buffer {
   const appKey = readAppKey()
   if (cachedKeyBuffer && cachedAppKeyRaw === appKey) return cachedKeyBuffer
 
+  const normalizedAppKey = appKey.startsWith("base64:")
+    ? appKey.slice("base64:".length)
+    : appKey
+
   // Try base64url first, then base64
   let keyBuffer: Buffer
-  try {
-    keyBuffer = Buffer.from(
-      appKey.replace(/-/g, "+").replace(/_/g, "/"),
-      "base64url"
-    )
-  } catch {
+  if (/^[0-9a-fA-F]{64}$/.test(normalizedAppKey)) {
+    keyBuffer = Buffer.from(normalizedAppKey, "hex")
+  } else {
     try {
-      keyBuffer = Buffer.from(appKey, "base64")
-    } catch {
-      throw new AppKeyCryptoError(
-        "APP_KEY_INVALID",
-        "APP_KEY must be valid base64/base64url-encoded key material"
+      keyBuffer = Buffer.from(
+        normalizedAppKey.replace(/-/g, "+").replace(/_/g, "/"),
+        "base64url"
       )
+    } catch {
+      try {
+        keyBuffer = Buffer.from(normalizedAppKey, "base64")
+      } catch {
+        throw new AppKeyCryptoError(
+          "APP_KEY_INVALID",
+          "APP_KEY must be valid 32-byte hex, base64, or base64url key material"
+        )
+      }
     }
   }
 

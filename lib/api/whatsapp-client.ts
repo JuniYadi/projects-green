@@ -3,6 +3,7 @@ import {
   type DeviceDetail,
   updateDeviceSchema,
 } from "@/modules/whatsapp/devices/devices.schemas"
+import { eden } from "@/lib/eden"
 import { z } from "zod"
 
 // --- Response Types for other entities (inferred from routes until schemas are extracted) ---
@@ -154,13 +155,27 @@ export const whatsappClient = {
           method: "POST",
         }
       ),
-    syncTemplates: (id: string) =>
-      serverFetch<{ ok: boolean; message: string }>(
-        `/api/admin/devices/${id}/sync-templates`,
-        {
-          method: "POST",
-        }
-      ),
+    syncTemplates: async (id: string) => {
+      const res = (await eden.api.whatsapp.devices[id][
+        "sync-templates"
+      ].post()) as {
+        data: { ok: boolean; message?: string } | null
+        error: unknown
+      }
+
+      if (res.error) {
+        throw new Error(String(res.error))
+      }
+
+      if (!res.data?.ok) {
+        throw new Error(res.data?.message ?? "Failed to sync templates")
+      }
+
+      return {
+        ok: true,
+        message: res.data.message ?? "Sync job enqueued.",
+      }
+    },
   },
 
   // templates: migrated to Eden (@/modules/whatsapp/templates/api/templates.hooks.ts)

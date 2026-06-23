@@ -14,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { eden } from "@/lib/eden"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { whatsappClient } from "@/lib/api/whatsapp-client"
 import {
   WebhookEventTable,
   type WebhookEventDTO,
@@ -80,8 +79,10 @@ export default function PortalWhatsAppWebhookLogsPage() {
 
   const loadDevices = React.useCallback(async () => {
     try {
-      const response = await whatsappClient.devices.list()
-      setDevices(response.devices)
+      const { data, error } = await eden.api.whatsapp.devices.get()
+      if (error) throw new Error(String(error))
+      const result = data as unknown as { ok: boolean; devices: DeviceListItem[] }
+      setDevices(result.devices)
     } catch (err) {
       console.error("Failed to load devices:", err)
     }

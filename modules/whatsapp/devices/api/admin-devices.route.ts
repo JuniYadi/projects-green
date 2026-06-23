@@ -18,6 +18,10 @@ import {
 import { createDeviceService } from "../devices.service"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
 import {
+  decryptWhatsAppToken,
+  encryptWhatsAppToken,
+} from "@/lib/whatsapp/crypto"
+import {
   requireSuperAdmin,
   type AdminActorContext,
   type AdminApiError,
@@ -38,6 +42,24 @@ const toServerError = (set: RouteSet, message: string) => {
     ok: false as const,
     error: "INTERNAL_SERVER_ERROR" as const,
     message,
+  }
+}
+
+const toTokenInvalid = (set: RouteSet) => {
+  set.status = 400
+  return {
+    ok: false as const,
+    error: "BAD_REQUEST" as const,
+    message: "Device token is corrupt and cannot be decrypted.",
+  }
+}
+
+const toTokenEncryptionUnavailable = (set: RouteSet) => {
+  set.status = 500
+  return {
+    ok: false as const,
+    error: "INTERNAL_SERVER_ERROR" as const,
+    message: "Token encryption service unavailable.",
   }
 }
 
@@ -261,7 +283,13 @@ export const createAdminDevicesRoutes = (
 
       const device = await prisma.whatsappDevice.findUnique({
         where: { id },
-        select: { id: true, token: true, tokenEncrypted: true, organizationId: true },
+        select: {
+          id: true,
+          token: true,
+          tokenEncrypted: true,
+          tokenIv: true,
+          organizationId: true,
+        },
       })
 
       if (!device) {
@@ -270,10 +298,62 @@ export const createAdminDevicesRoutes = (
         return { ok: false as const, error: "NOT_FOUND" as const, message: "Device not found." }
       }
 
-      if (!device.token && !device.tokenEncrypted) {
+      const encryptAndPersistRawToken = async (rawToken: string) => {
+        const encrypted = await encryptWhatsAppToken(rawToken)
+        await prisma.whatsappDevice.update({
+          where: { id: device.id },
+          data: {
+            token: null,
+            tokenEncrypted: encrypted,
+            tokenIv: null,
+          },
+        })
+        return encrypted
+      }
+
+      let tokenEncrypted = device.tokenEncrypted
+      if (tokenEncrypted) {
+        const encryptedParts = tokenEncrypted.split(".")
+        const decryptableToken =
+          device.tokenIv && encryptedParts.length === 2
+            ? `${encryptedParts[0]}.${device.tokenIv}.${encryptedParts[1]}`
+            : tokenEncrypted
+
+        try {
+          await decryptWhatsAppToken(decryptableToken)
+        } catch (error) {
+          if (!device.token) {
+            console.error("[AdminDevices] Token decryption failed:", error)
+            return toTokenInvalid(set)
+          }
+
+          try {
+            tokenEncrypted = await encryptAndPersistRawToken(device.token)
+          } catch (encryptError) {
+            console.error(
+              "[AdminDevices] Token encryption failed:",
+              encryptError
+            )
+            return toTokenEncryptionUnavailable(set)
+          }
+        }
+      } else if (device.token) {
+        try {
+          tokenEncrypted = await encryptAndPersistRawToken(device.token)
+        } catch (error) {
+          console.error("[AdminDevices] Token encryption failed:", error)
+          return toTokenEncryptionUnavailable(set)
+        }
+      }
+
+      if (!tokenEncrypted) {
         logWhatsappAuditEvent({ action: "TEMPLATE_SYNC_FAILED", organizationId: device.organizationId, deviceId: id, adminId: actor.userId, message: "No device token configured", status: "FAILED" })
         set.status = 400
-        return { ok: false as const, error: "BAD_REQUEST" as const, message: "Device token required for template sync." }
+        return {
+          ok: false as const,
+          error: "BAD_REQUEST" as const,
+          message: "Encrypted device token required for template sync.",
+        }
       }
 
       logWhatsappAuditEvent({ action: "TEMPLATE_SYNC_REQUESTED", organizationId: device.organizationId, deviceId: id, adminId: actor.userId, message: "Template sync requested", status: "STARTED" })

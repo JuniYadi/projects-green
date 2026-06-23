@@ -58,6 +58,10 @@ export default async function PortalWhatsAppDeviceDetailPage({
     pathname: "/portal/whatsapp/devices",
     locale,
   })
+  const editPath = localizePathname({
+    pathname: `/portal/whatsapp/devices/${deviceId}/edit`,
+    locale,
+  })
 
   let device: DeviceDetail | null = null
 
@@ -172,7 +176,11 @@ export default async function PortalWhatsAppDeviceDetailPage({
       backHref={devicesPath}
       overviewChildren={overviewContent}
       actions={
-        <DeviceActions deviceId={device.id} deviceStatus={device.status} />
+        <DeviceActions
+          deviceId={device.id}
+          deviceStatus={device.status}
+          editHref={editPath}
+        />
       }
     />
   )

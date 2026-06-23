@@ -9,6 +9,7 @@
 
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { encryptWhatsAppToken } from "@/lib/whatsapp/crypto"
 
 import {
   DEFAULT_QUOTA_BASE,
@@ -96,6 +97,9 @@ export const createDeviceService = (
     },
 
     async create(input: DeviceCreateInput) {
+      const tokenEncrypted = input.token
+        ? await encryptWhatsAppToken(input.token)
+        : null
       const device = await db.whatsappDevice.create({
         data: {
           organizationId: input.organizationId ?? "",
@@ -106,7 +110,9 @@ export const createDeviceService = (
           whatsappApplicationId: input.whatsappApplicationId ?? null,
           callbackUrl: input.callbackUrl || null,
           whatsappVersion: input.whatsappVersion ?? "v24.0",
-          token: input.token ?? null,
+          token: null,
+          tokenEncrypted,
+          tokenIv: null,
           rates: input.rates ?? null,
           s3Path: input.s3 ?? null,
           quotaBase: input.quotaBase ?? DEFAULT_QUOTA_BASE,
@@ -132,6 +138,9 @@ export const createDeviceService = (
     },
 
     async update(id, input, _organizationId) {
+      const tokenEncrypted = input.token
+        ? await encryptWhatsAppToken(input.token)
+        : undefined
       const updated = await db.$transaction(async (tx) => {
         const existing = await tx.whatsappDevice.findUnique({
           where: { id },
@@ -143,10 +152,46 @@ export const createDeviceService = (
           data: {
             phoneNumber: input.phoneNumber ?? undefined,
             status: input.status ?? undefined,
-            token: input.token ?? undefined,
+            token: tokenEncrypted ? null : undefined,
+            tokenEncrypted,
+            tokenIv: tokenEncrypted ? null : undefined,
+            whatsappBusinessAccountId:
+              input.whatsappBusinessAccountId !== undefined
+                ? input.whatsappBusinessAccountId || null
+                : undefined,
+            whatsappPhoneId:
+              input.whatsappPhoneId !== undefined
+                ? input.whatsappPhoneId || null
+                : undefined,
+            whatsappApplicationId:
+              input.whatsappApplicationId !== undefined
+                ? input.whatsappApplicationId || null
+                : undefined,
+            whatsappVersion: input.whatsappVersion || undefined,
             quotaBase: input.quotaBase ?? undefined,
+            quotaBaseIn: input.quotaBaseIn ?? undefined,
+            quotaBaseOut: input.quotaBaseOut ?? undefined,
             dailyLimitMessage: input.dailyLimitMessage ?? undefined,
-            callbackUrl: input.callbackUrl || undefined,
+            balance: input.balance ?? undefined,
+            expiredAt: input.expiredAt ? new Date(input.expiredAt) : undefined,
+            rates: input.rates !== undefined ? input.rates || null : undefined,
+            s3Path: input.s3 !== undefined ? input.s3 || null : undefined,
+            features:
+              input.features !== undefined
+                ? (input.features as Prisma.InputJsonValue)
+                : undefined,
+            whatsappProfile:
+              input.displayName !== undefined ||
+              input.whatsappProfile !== undefined
+                ? ({
+                    ...(input.whatsappProfile ?? {}),
+                    ...(input.displayName ? { name: input.displayName } : {}),
+                  } as Prisma.InputJsonValue)
+                : undefined,
+            callbackUrl:
+              input.callbackUrl !== undefined
+                ? input.callbackUrl || null
+                : undefined,
           },
         })
       })
