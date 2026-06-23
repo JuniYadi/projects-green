@@ -4,6 +4,7 @@ import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { messageService } from "../messages.service"
 import { toWhatsappMessageDTO } from "../messages.dto"
 import { InsufficientQuotaError } from "../quota.service"
+import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 import {
   InsufficientBalanceError,
   QuotaExceededError,
@@ -343,6 +344,16 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           deviceId,
         })
 
+        logWhatsappAuditEvent({
+          action: "MESSAGE_SENT",
+          organizationId: whatsappAuth.organizationId!,
+          deviceId: deviceId ?? null,
+          adminId: (whatsappAuth as any).userId,
+          message: `Message sent to ${phoneNumber}`,
+          status: "OK",
+          details: { waMessageId: result.waMessageId, phoneNumber, type: type ?? "text" },
+        })
+
         return {
           ok: true,
           jobId: result.jobId,
@@ -352,6 +363,16 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         }
       } catch (error) {
         // Handle billing-related errors with appropriate HTTP status codes
+        logWhatsappAuditEvent({
+          action: "MESSAGE_FAILED",
+          organizationId: whatsappAuth.organizationId!,
+          deviceId: deviceId ?? null,
+          adminId: (whatsappAuth as any).userId,
+          message: "Send message failed",
+          errorMessage: error instanceof Error ? error.message : String(error),
+          status: "FAILED",
+        })
+
         if (error instanceof InsufficientBalanceError) {
           set.status = 402
           return {

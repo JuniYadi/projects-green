@@ -309,6 +309,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         icon: <ListMagnifyingGlassIcon />,
         isActive: startsWithRoute(path, "/portal/whatsapp/webhook-logs"),
       },
+      {
+        title: "Audit Logs",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/audit-logs",
+          locale,
+        }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/audit-logs"),
+      },
     ],
   },
 ]

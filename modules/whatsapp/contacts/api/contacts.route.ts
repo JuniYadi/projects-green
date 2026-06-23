@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { toWhatsappContactDTO } from "../contacts.dto"
+import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
 const contactBodySchema = t.Object({
   phoneNumber: t.String(),
@@ -192,6 +193,15 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
           contactGroupId: resolvedGroup.id,
           organizationId: whatsappAuth.organizationId!,
         },
+      })
+
+      logWhatsappAuditEvent({
+        action: "CONTACT_IMPORTED",
+        organizationId: whatsappAuth.organizationId!,
+        adminId: (whatsappAuth as any).userId,
+        message: `Contact imported: ${contact.phoneNumber}`,
+        status: "OK",
+        details: { contactId: contact.id, phoneNumber: contact.phoneNumber },
       })
 
       return { ok: true, contact: toWhatsappContactDTO(contact) }

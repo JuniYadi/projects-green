@@ -2098,6 +2098,28 @@ model VoucherClaim {
   @@index([organizationId])
 }
 
+model WhatsappAuditLog {
+  id             String    @id @default(cuid())
+  organizationId String
+  deviceId       String?
+  adminId        String?
+  correlationId  String?
+  action         String
+  status         String?
+  message        String?
+  errorMessage   String?
+  details        Json?
+  durationMs     Int?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([deviceId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([adminId, createdAt(sort: Desc)])
+}
+
 model CacheEntry {
   id        String    @id @default(cuid())
   key       String    @unique

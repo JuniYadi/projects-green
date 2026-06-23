@@ -1,9 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { useParams, useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Phone, ArrowsClockwise } from "@phosphor-icons/react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,6 +24,10 @@ import {
   DEFAULT_FILTER_STATE,
   type WebhookEventFilterState,
 } from "@/modules/whatsapp/webhooks/ui/webhook-event-filter"
+import {
+  AuditLogTable,
+  type AuditLogDTO,
+} from "@/modules/whatsapp/audit/ui/whatsapp-audit-table"
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -226,6 +229,7 @@ export function TabsDeviceDetail({
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="webhook-log">Webhook Log</TabsTrigger>
+          <TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -245,7 +249,80 @@ export function TabsDeviceDetail({
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="audit-logs" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Audit Logs</CardTitle>
+              <CardDescription>
+                Admin actions for this device.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AuditLogTabContent deviceId={device.id} />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </main>
+  )
+}
+
+// ─── Audit Log Tab Content ──────────────────────────────────────────────────
+
+function AuditLogTabContent({ deviceId }: { deviceId: string }) {
+  const [logs, setLogs] = React.useState<AuditLogDTO[]>([])
+  const [page, setPage] = React.useState(1)
+  const [totalPages, setTotalPages] = React.useState(0)
+  const [total, setTotal] = React.useState(0)
+  const [pageState, setPageState] = React.useState<PageState>("loading")
+  const [errorMessage, setErrorMessage] = React.useState("")
+
+  const fetchLogs = React.useCallback(async () => {
+    setPageState("loading")
+    setErrorMessage("")
+    try {
+      // ponytail: audit routes aren't in Eden's type system yet — use raw fetch
+      // eslint-disable-next-line no-restricted-globals
+      const res = await fetch(
+        `/api/whatsapp/admin/whatsapp/audit/devices/${deviceId}?page=${page}&limit=50`
+      )
+      const result = await res.json() as {
+        ok: boolean
+        data: AuditLogDTO[]
+        pagination: { page: number; total: number; totalPages: number }
+      }
+      if (!result.ok) throw new Error("Failed to load audit logs")
+      setLogs(result.data)
+      setTotal(result.pagination.total)
+      setTotalPages(result.pagination.totalPages)
+      setPageState("loaded")
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to load audit logs")
+      setPageState("error")
+    }
+  }, [deviceId, page])
+
+  React.useEffect(() => {
+    ;(async () => {
+      await fetchLogs()
+    })()
+  }, [fetchLogs])
+
+  const handleRetry = fetchLogs
+  const handlePageChange = (newPage: number) => { setPage(newPage) }
+
+  return (
+    <AuditLogTable
+      logs={logs}
+      isLoading={pageState === "loading"}
+      error={pageState === "error" ? errorMessage : undefined}
+      onRetry={handleRetry}
+      pagination={
+        totalPages > 1
+          ? { page, totalPages, total, onPageChange: handlePageChange }
+          : undefined
+      }
+    />
   )
 }

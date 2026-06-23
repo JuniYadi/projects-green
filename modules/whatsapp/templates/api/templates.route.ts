@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
 import { toWhatsappTemplateDTO } from "../templates.dto"
+import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
 const templateLanguageSchema = t.Object({
   lang: t.String(),
@@ -145,23 +146,44 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
 
       const { languages, ...templateData } = body
 
-      const template = await prisma.whatsappTemplate.create({
-        data: {
-          ...templateData,
-          organizationId:
-            whatsappAuth.type === "workos"
-              ? whatsappAuth.organizationId!
-              : (body as any).organizationId,
-          languages: {
-            create: languages,
+      try {
+        const template = await prisma.whatsappTemplate.create({
+          data: {
+            ...templateData,
+            organizationId:
+              whatsappAuth.type === "workos"
+                ? whatsappAuth.organizationId!
+                : (body as any).organizationId,
+            languages: {
+              create: languages,
+            },
           },
-        },
-        include: {
-          languages: true,
-        },
-      })
+          include: {
+            languages: true,
+          },
+        })
 
-      return { ok: true, template: toWhatsappTemplateDTO(template) }
+        logWhatsappAuditEvent({
+          action: "TEMPLATE_CREATED",
+          organizationId: template.organizationId,
+          adminId: (whatsappAuth as any).userId,
+          message: `Template created: ${template.name}`,
+          status: "OK",
+          details: { templateId: template.id, slug: template.slug },
+        })
+
+        return { ok: true, template: toWhatsappTemplateDTO(template) }
+      } catch (err) {
+        logWhatsappAuditEvent({
+          action: "TEMPLATE_CREATE_FAILED",
+          organizationId: whatsappAuth.organizationId ?? "",
+          adminId: (whatsappAuth as any).userId,
+          message: "Template creation failed",
+          errorMessage: String(err),
+          status: "FAILED",
+        })
+        throw err
+      }
     },
     {
       body: templateBodySchema,
@@ -202,15 +224,36 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         return { ok: false, error: "FORBIDDEN", message: "Access denied." }
       }
 
-      const updated = await prisma.whatsappTemplate.update({
-        where: { id },
-        data: body,
-        include: {
-          languages: true,
-        },
-      })
+      const { organizationId: orgId } = template
+      try {
+        const updated = await prisma.whatsappTemplate.update({
+          where: { id },
+          data: body,
+          include: {
+            languages: true,
+          },
+        })
 
-      return { ok: true, template: toWhatsappTemplateDTO(updated) }
+        logWhatsappAuditEvent({
+          action: "TEMPLATE_UPDATED",
+          organizationId: updated.organizationId,
+          adminId: (whatsappAuth as any).userId,
+          message: `Template updated: ${updated.name}`,
+          status: "OK",
+        })
+
+        return { ok: true, template: toWhatsappTemplateDTO(updated) }
+      } catch (err) {
+        logWhatsappAuditEvent({
+          action: "TEMPLATE_UPDATE_FAILED",
+          organizationId: orgId,
+          adminId: (whatsappAuth as any).userId,
+          message: "Template update failed",
+          errorMessage: String(err),
+          status: "FAILED",
+        })
+        throw err
+      }
     },
     {
       body: templateUpdateSchema,
@@ -252,6 +295,15 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       await prisma.whatsappTemplate.delete({
         where: { id },
       })
+
+      logWhatsappAuditEvent({
+        action: "TEMPLATE_DELETED",
+        organizationId: template.organizationId,
+        adminId: (whatsappAuth as any).userId,
+        message: `Template deleted: ${template.name}`,
+        status: "OK",
+      })
+
       return { ok: true, message: "Template deleted." }
     }
   )

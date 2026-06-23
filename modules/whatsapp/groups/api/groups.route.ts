@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
 const groupBodySchema = t.Object({
   name: t.String({ maxLength: 100 } as any),
@@ -100,6 +101,15 @@ export const groupsRoutes = new Elysia({ prefix: "/groups" })
         },
       })
 
+      logWhatsappAuditEvent({
+        action: "CONTACT_GROUP_CREATED",
+        organizationId: whatsappAuth.organizationId!,
+        adminId: (whatsappAuth as any).userId,
+        message: `Contact group created: ${group.name}`,
+        status: "OK",
+        details: { groupId: group.id },
+      })
+
       return { ok: true, group }
     },
     {
@@ -139,6 +149,14 @@ export const groupsRoutes = new Elysia({ prefix: "/groups" })
       const updated = await prisma.whatsappContactGroup.update({
         where: { id },
         data: body,
+      })
+
+      logWhatsappAuditEvent({
+        action: "CONTACT_GROUP_UPDATED",
+        organizationId: whatsappAuth.organizationId!,
+        adminId: (whatsappAuth as any).userId,
+        message: `Contact group updated: ${updated.name}`,
+        status: "OK",
       })
 
       return { ok: true, group: updated }
