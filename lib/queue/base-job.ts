@@ -30,7 +30,7 @@
 
 import { Worker, Queue, type Job, type JobsOptions } from "bullmq"
 import {
-  getRedisConnection,
+  getQueue,
   getQueueRuntimeConfig,
 } from "@/lib/queue/queue-config"
 
@@ -77,6 +77,14 @@ export abstract class BaseJob {
     DEFAULTS.removeOnFail
 
   // ── Producer ──────────────────────────────────────────────────────────────
+
+  /**
+   * Get a Queue instance for this job class.
+   * Uses the cached getQueue from queue-config.
+   */
+  static getQueue(): Queue {
+    return getQueue(this.queue)
+  }
 
   /**
    * Enqueue a job with the default job options merged.
