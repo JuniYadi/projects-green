@@ -44,6 +44,7 @@ export type AuditAction =
 
   // ── Admin operations ──
   | "ADMIN_RETRY_ALL"
+  | "ADMIN_REVOKE_REQUESTED"
   | "RECONCILIATION_RAN"
 
   // ── Auth ──
