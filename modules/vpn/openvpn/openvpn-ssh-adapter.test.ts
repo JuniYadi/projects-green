@@ -64,6 +64,7 @@ describe("OpenVpnSshAdapter", () => {
     await adapter.fetchConfig(target, "org_abc123_sub_456")
     await adapter.revokeClient(target, "org_abc123_sub_456")
     await adapter.removeClient(target, "org_abc123_sub_456")
+    await adapter.restartServer(target)
     await adapter.healthCheck(target)
 
     expect(mockExecChecked).toHaveBeenNthCalledWith(
@@ -88,6 +89,11 @@ describe("OpenVpnSshAdapter", () => {
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       5, target,
+      ["docker", "compose", "-f", "/root/openvpn/docker-compose.yaml", "restart", "openvpn"],
+      "restart OpenVPN server"
+    )
+    expect(mockExecChecked).toHaveBeenNthCalledWith(
+      6, target,
       ["systemctl", "is-active", "openvpn-server@server"],
       "check OpenVPN health"
     )
