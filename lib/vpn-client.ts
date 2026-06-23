@@ -89,14 +89,27 @@ export type VpnServerAccount = {
   failureReason: string | null
   hasConfig: boolean
   hasCredentials: boolean
+  hostname: string
+  ipAddress: string | null
+  region: { name: string; slug: string; countryCode: string } | null
+  port: number | null
   createdAt: string
   updatedAt: string
+}
+
+export type ProvisioningSummary = {
+  active: number
+  pending: number
+  failed: number
+  revoked: number
+  total: number
 }
 
 export type VpnSubscription = {
   id: string
   organizationId: string
   packageId: string
+  packageName: string
   status: "ACTIVE" | "SUSPENDED" | "EXPIRED"
   currentPeriodStart: string
   currentPeriodEnd: string
@@ -105,7 +118,10 @@ export type VpnSubscription = {
   originalPrice: string | null
   originalCurrency: string | null
   exchangeRate: number | null
+  deviceCount: number
   serverAccounts: VpnServerAccount[]
+  provisioningSummary: ProvisioningSummary
+  cancelAtPeriodEnd: boolean
   createdAt: string
   updatedAt: string
 }
