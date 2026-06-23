@@ -5,6 +5,7 @@ import { toServerAccountDTO, computeProvisioningSummary, type VpnServerAccountDT
 const baseAccount = {
   id: "sa-1",
   serverId: "srv-1",
+  subscriptionId: "sub-1",
   protocol: "OPENVPN" as const,
   username: "org-test-abc123",
   provisioningStatus: "ACTIVE" as const,
@@ -68,7 +69,7 @@ describe("toServerAccountDTO", () => {
   it("handles missing region gracefully", () => {
     const result = toServerAccountDTO({
       ...baseAccount,
-      server: { ...baseAccount.server, region: null },
+      server: { ...baseAccount.server, region: null as unknown as typeof baseAccount.server.region },
     })
     expect(result.region).toBeNull()
   })
