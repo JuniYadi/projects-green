@@ -56,8 +56,12 @@ type TemplateListProps = {
   onRetry: () => void
   onCreate?: () => void
   onSelect?: (id: string) => void
+  /** Portal needs the full template for device-aware navigation. Mutually exclusive with onSelect. */
+  onSelectTemplate?: (template: WhatsAppTemplate) => void
   emptyMessage?: string
   emptyActionLabel?: string
+  /** Separate callback for empty-state action when it's not "create". */
+  onEmptyAction?: () => void
 }
 
 export function TemplateList({
@@ -67,8 +71,10 @@ export function TemplateList({
   onRetry,
   onCreate,
   onSelect,
+  onSelectTemplate,
   emptyMessage = "No templates configured yet",
   emptyActionLabel = "Create Template",
+  onEmptyAction,
 }: TemplateListProps) {
   // ── Loading skeleton ──────────────────────────────────────────────────
 
@@ -121,11 +127,15 @@ export function TemplateList({
           weight="fill"
         />
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-        {onCreate && (
+        {onEmptyAction ? (
+          <Button variant="outline" className="mt-3" onClick={onEmptyAction}>
+            {emptyActionLabel}
+          </Button>
+        ) : onCreate ? (
           <Button variant="outline" className="mt-3" onClick={onCreate}>
             {emptyActionLabel}
           </Button>
-        )}
+        ) : null}
       </div>
     )
   }
@@ -147,7 +157,7 @@ export function TemplateList({
               <button
                 type="button"
                 className="text-left font-medium hover:underline"
-                onClick={() => onSelect?.(template.id)}
+                onClick={() => onSelectTemplate?.(template) ?? onSelect?.(template.id)}
               >
                 {template.name}
               </button>
