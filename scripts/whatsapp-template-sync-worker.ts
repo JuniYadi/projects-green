@@ -241,7 +241,8 @@ async function upsertTemplate(
 }
 
 export async function syncTemplates(
-  jobData: WhatsAppTemplateSyncJobData
+  jobData: WhatsAppTemplateSyncJobData,
+  correlationId?: string | null
 ): Promise<WhatsAppTemplateSyncSummary> {
   // ponytail: independent try-catch — audit failure must not break worker flow
   try {
@@ -249,6 +250,7 @@ export async function syncTemplates(
       action: "TEMPLATE_SYNC_STARTED",
       organizationId: jobData.organizationId,
       deviceId: jobData.deviceId,
+      correlationId: correlationId ?? null,
       message: "Template sync started",
       status: "STARTED",
     })
@@ -256,8 +258,31 @@ export async function syncTemplates(
     console.warn("[whatsapp-template-sync-worker] audit failed", e)
   }
 
-  const client = await createClient(jobData)
-  const templates = await fetchAllTemplates(client)
+  // ponytail: independent try-catch — early-stage errors (createClient, fetchAllTemplates)
+  // must also produce a FAILED audit to close the trace
+  let client: WhatsAppDeviceClient
+  let templates: MetaTemplate[]
+
+  try {
+    client = await createClient(jobData)
+    templates = await fetchAllTemplates(client)
+  } catch (error) {
+    try {
+      await logWhatsappAuditEvent({
+        action: "TEMPLATE_SYNC_FAILED",
+        organizationId: jobData.organizationId,
+        deviceId: jobData.deviceId,
+        correlationId: correlationId ?? null,
+        message: "Template sync failed",
+        errorMessage: String(error),
+        status: "FAILED",
+      })
+    } catch (e) {
+      console.warn("[whatsapp-template-sync-worker] audit failed", e)
+    }
+    throw error
+  }
+
   const summary: WhatsAppTemplateSyncSummary = {
     method: "sync-templates",
     organizationId: jobData.organizationId,
@@ -313,6 +338,7 @@ export async function syncTemplates(
         action: "TEMPLATE_SYNC_FAILED",
         organizationId: jobData.organizationId,
         deviceId: jobData.deviceId,
+        correlationId: correlationId ?? null,
         message: "Template sync partially failed",
         errorMessage: `Partial failure: failed=${summary.failed} fetched=${summary.fetched}`,
         status: "FAILED",
@@ -331,6 +357,7 @@ export async function syncTemplates(
       action: "TEMPLATE_SYNCED",
       organizationId: jobData.organizationId,
       deviceId: jobData.deviceId,
+      correlationId: correlationId ?? null,
       message: "Template sync completed",
       status: "OK",
       details: { summary } as any,
@@ -343,7 +370,8 @@ export async function syncTemplates(
 }
 
 export async function syncTemplateStatus(
-  jobData: WhatsAppTemplateSyncJobData
+  jobData: WhatsAppTemplateSyncJobData,
+  correlationId?: string | null
 ): Promise<WhatsAppTemplateSyncSummary> {
   // ponytail: independent try-catch — audit failure must not break worker flow
   try {
@@ -351,6 +379,7 @@ export async function syncTemplateStatus(
       action: "TEMPLATE_SYNC_STARTED",
       organizationId: jobData.organizationId,
       deviceId: jobData.deviceId,
+      correlationId: correlationId ?? null,
       message: "Template status sync started",
       status: "STARTED",
     })
@@ -358,8 +387,31 @@ export async function syncTemplateStatus(
     console.warn("[whatsapp-template-sync-worker] audit failed", e)
   }
 
-  const client = await createClient(jobData)
-  const templates = await fetchAllTemplates(client)
+  // ponytail: independent try-catch — early-stage errors (createClient, fetchAllTemplates)
+  // must also produce a FAILED audit to close the trace
+  let client: WhatsAppDeviceClient
+  let templates: MetaTemplate[]
+
+  try {
+    client = await createClient(jobData)
+    templates = await fetchAllTemplates(client)
+  } catch (error) {
+    try {
+      await logWhatsappAuditEvent({
+        action: "TEMPLATE_SYNC_FAILED",
+        organizationId: jobData.organizationId,
+        deviceId: jobData.deviceId,
+        correlationId: correlationId ?? null,
+        message: "Template status sync failed",
+        errorMessage: String(error),
+        status: "FAILED",
+      })
+    } catch (e) {
+      console.warn("[whatsapp-template-sync-worker] audit failed", e)
+    }
+    throw error
+  }
+
   const summary: WhatsAppTemplateSyncSummary = {
     method: "sync-status",
     organizationId: jobData.organizationId,
@@ -433,6 +485,7 @@ export async function syncTemplateStatus(
         action: "TEMPLATE_SYNC_FAILED",
         organizationId: jobData.organizationId,
         deviceId: jobData.deviceId,
+        correlationId: correlationId ?? null,
         message: "Template status sync partially failed",
         errorMessage: `Partial failure: failed=${summary.failed} fetched=${summary.fetched}`,
         status: "FAILED",
@@ -451,6 +504,7 @@ export async function syncTemplateStatus(
       action: "TEMPLATE_SYNCED",
       organizationId: jobData.organizationId,
       deviceId: jobData.deviceId,
+      correlationId: correlationId ?? null,
       message: "Template status sync completed",
       status: "OK",
       details: { summary } as any,
@@ -465,8 +519,10 @@ export async function syncTemplateStatus(
 export async function processWhatsAppTemplateSyncJob(
   job: Job<WhatsAppTemplateSyncJobData>
 ): Promise<WhatsAppTemplateSyncSummary | undefined> {
+  const correlationId = job.id ?? null
+
   if (job.data.method === "sync-templates") {
-    const summary = await syncTemplates(job.data)
+    const summary = await syncTemplates(job.data, correlationId)
     await job.log(
       `Sync templates: fetched=${summary.fetched}, created=${summary.created}, updated=${summary.updated}, notInMeta=${summary.notInMeta}, failed=${summary.failed}`
     )
@@ -474,7 +530,7 @@ export async function processWhatsAppTemplateSyncJob(
   }
 
   if (job.data.method === "sync-status") {
-    const summary = await syncTemplateStatus(job.data)
+    const summary = await syncTemplateStatus(job.data, correlationId)
     await job.log(
       `Sync status: fetched=${summary.fetched}, updated=${summary.updated}, skipped=${summary.skipped}, failed=${summary.failed}`
     )

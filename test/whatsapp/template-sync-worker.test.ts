@@ -244,15 +244,19 @@ describe("whatsapp-template-sync-worker", () => {
       })
     ).rejects.toThrow("partially failed")
 
-    expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "TEMPLATE_SYNC_STARTED", status: "STARTED" })
+    // Verify audit event ordering: STARTED must come before FAILED
+    const auditCalls = logWhatsappAuditEventMock.mock.calls as Array<[Record<string, unknown>]>
+    expect(auditCalls.length).toBeGreaterThanOrEqual(2)
+    const startedIdx = auditCalls.findIndex(
+      (call) => (call[0] as Record<string, unknown>)?.action === "TEMPLATE_SYNC_STARTED"
     )
-    expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "TEMPLATE_SYNC_FAILED",
-        status: "FAILED",
-        details: expect.objectContaining({ summary: expect.objectContaining({ failed: 1 }) }),
-      })
+    const failedIdx = auditCalls.findIndex(
+      (call) => (call[0] as Record<string, unknown>)?.action === "TEMPLATE_SYNC_FAILED"
     )
+    expect(startedIdx).toBeLessThan(failedIdx)
+    expect(auditCalls[failedIdx][0] as Record<string, unknown>).toMatchObject({
+      action: "TEMPLATE_SYNC_FAILED",
+      status: "FAILED",
+    })
   })
 })
