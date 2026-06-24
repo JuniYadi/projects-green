@@ -2,7 +2,6 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import Link from "next/link"
 
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
 import {
   Card,
@@ -71,10 +70,6 @@ export default async function PortalWebhookDetailPage({
   const locale = resolveLocaleOrDefault(lang)
 
   const auth = await withAuth({ ensureSignedIn: true })
-  const platformRole = await getPlatformRoleForUser({
-    id: auth.user.id,
-    email: auth.user.email,
-  })
 
   const webhook = await prisma.whatsappWebhook.findUnique({
     where: { id: webhookId },
