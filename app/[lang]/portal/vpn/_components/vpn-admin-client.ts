@@ -164,6 +164,10 @@ export type VpnServerAccountEntry = {
   id: string
   serverId: string
   serverName: string
+  hostname: string
+  ipAddress: string | null
+  region: { name: string; slug: string; countryCode: string } | null
+  port: number | null
   protocol: "OPENVPN" | "WIREGUARD" | "PROXY"
   username: string
   provisioningStatus:

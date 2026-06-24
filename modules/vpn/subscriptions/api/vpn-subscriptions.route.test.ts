@@ -1,0 +1,113 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { Elysia } from "elysia"
+import { Prisma } from "@prisma/client"
+
+import type { VpnSubscriptionService } from "../vpn-subscription.service"
+
+const mockPackageFindMany = mock()
+
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    vpnPackage: {
+      findMany: mockPackageFindMany,
+    },
+  },
+}))
+
+mock.module("@/lib/audit.service", () => ({
+  logAuditEvent: mock().mockResolvedValue(undefined),
+}))
+
+mock.module("@/lib/queue/vpn-provisioning", () => ({
+  VpnProvisioningJob: {
+    dispatch: mock().mockResolvedValue(undefined),
+  },
+}))
+
+const { createVpnSubscriptionRoutes } = await import(
+  "./vpn-subscriptions.route"
+)
+
+const subscription = {
+  id: "sub_1",
+  organizationId: "org_1",
+  packageId: "pkg_1",
+  status: "ACTIVE",
+  priceLocked: new Prisma.Decimal("3240"),
+  currency: "IDR",
+  originalPrice: new Prisma.Decimal("0.50"),
+  originalCurrency: "USD",
+  exchangeRate: new Prisma.Decimal("6480"),
+  currentPeriodStart: new Date("2026-06-01T00:00:00Z"),
+  currentPeriodEnd: new Date("2026-07-01T00:00:00Z"),
+  renewalFailedAt: null,
+  cancelAtPeriodEnd: false,
+  createdAt: new Date("2026-06-01T00:00:00Z"),
+  updatedAt: new Date("2026-06-01T00:00:00Z"),
+  _count: { mobileDevices: 0 },
+  serverAccounts: [
+    {
+      id: "sa_1",
+      serverId: "srv_1",
+      subscriptionId: "sub_1",
+      protocol: "OPENVPN",
+      username: "org-test",
+      provisioningStatus: "ACTIVE",
+      failureReason: null,
+      configEncrypted: "encrypted",
+      password: null,
+      createdAt: new Date("2026-06-01T00:00:00Z"),
+      updatedAt: new Date("2026-06-01T00:00:00Z"),
+      server: {
+        id: "srv_1",
+        name: "SG01",
+        hostname: "sg01.vpn.example.com",
+        ipAddress: "203.0.113.10",
+        openVpnPort: 1194,
+        wireGuardPort: 51820,
+        proxyPort: 3128,
+        region: {
+          id: "reg_1",
+          name: "Singapore",
+          slug: "singapore",
+          countryCode: "sg",
+        },
+      },
+    },
+  ],
+}
+
+describe("VPN subscription routes", () => {
+  beforeEach(() => {
+    mockPackageFindMany.mockClear()
+    mockPackageFindMany.mockResolvedValue([{ id: "pkg_1", name: "VPN SG" }])
+  })
+
+  it("returns package names for customer subscriptions", async () => {
+    const service = {
+      listForOrganization: mock().mockResolvedValue([subscription]),
+    }
+
+    const app = new Elysia().use(
+      createVpnSubscriptionRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          user: { id: "user_1" },
+        }),
+        service: service as unknown as VpnSubscriptionService,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/vpn/subscriptions")
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data[0].packageName).toBe("VPN SG")
+    expect(mockPackageFindMany).toHaveBeenCalledWith({
+      where: { id: { in: ["pkg_1"] } },
+      select: { id: true, name: true },
+    })
+  })
+})

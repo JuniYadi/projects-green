@@ -70,7 +70,9 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         return {
           ok: false,
           error: "VALIDATION_ERROR",
-          message: parsed.error.issues.map((issue: { message: string }) => issue.message).join(", "),
+          message: parsed.error.issues
+            .map((issue: { message: string }) => issue.message)
+            .join(", "),
         } as AdminApiError
       }
 
@@ -128,7 +130,9 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
       const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
       let orgName: string | null = null
       try {
-        const org = await workos.organizations.getOrganization(sub.organizationId)
+        const org = await workos.organizations.getOrganization(
+          sub.organizationId
+        )
         orgName = org.name
       } catch (err) {
         console.error(`Failed to fetch org ${sub.organizationId}:`, err)
@@ -140,7 +144,10 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         select: { name: true },
       })
 
-      return { ok: true, data: toVpnSubscriptionDTO(sub, orgName, pkg?.name ?? null) }
+      return {
+        ok: true,
+        data: toVpnSubscriptionDTO(sub, orgName, pkg?.name ?? null),
+      }
     })
     .post(
       "/admin/vpn/subscriptions/:id/servers/:saId/retry",
@@ -182,7 +189,9 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         const account = sub?.serverAccounts.find((a) => a.id === params.saId)
         if (!sub || !account) return notFound(set)
 
-        const validation = await vpnProvisioningService.validateAccount(account.id)
+        const validation = await vpnProvisioningService.validateAccount(
+          account.id
+        )
         return { ok: true, data: validation }
       }
     )
@@ -220,7 +229,11 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
           action: "PROVISIONING_RECREATE_REQUESTED",
           status: "PENDING",
           message: `Admin requested recreate for account: ${previousUsername} → ${username}`,
-          details: { previousUsername, username, triggeredByAdminId: actor.userId },
+          details: {
+            previousUsername,
+            username,
+            triggeredByAdminId: actor.userId,
+          },
         }).catch(() => {})
 
         return { ok: true }
@@ -248,52 +261,55 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         return { ok: true }
       }
     )
-    .post(
-      "/admin/vpn/subscriptions/:id/retry-all",
-      async ({ params, set }) => {
-        const actor = (await guard(set)) as AdminActorContext | AdminApiError
-        if (!actor.ok) return actor
+    .post("/admin/vpn/subscriptions/:id/retry-all", async ({ params, set }) => {
+      const actor = (await guard(set)) as AdminActorContext | AdminApiError
+      if (!actor.ok) return actor
 
-        const correlationId = crypto.randomUUID()
+      const correlationId = crypto.randomUUID()
 
-        const failedAccounts = await prisma.vpnServerAccount.findMany({
-          where: {
-            subscriptionId: params.id,
-            provisioningStatus: "FAILED",
-          },
+      const failedAccounts = await prisma.vpnServerAccount.findMany({
+        where: {
+          subscriptionId: params.id,
+          provisioningStatus: "FAILED",
+        },
+      })
+
+      for (const account of failedAccounts) {
+        await prisma.vpnServerAccount.update({
+          where: { id: account.id },
+          data: { provisioningStatus: "PENDING", failureReason: null },
         })
-
-        for (const account of failedAccounts) {
-          await prisma.vpnServerAccount.update({
-            where: { id: account.id },
-            data: { provisioningStatus: "PENDING", failureReason: null },
-          })
-          await VpnProvisioningJob.enqueue({ serverAccountId: account.id })
-
-          logAuditEvent({
-            serverAccountId: account.id,
-            adminId: actor.userId,
-            correlationId,
-            action: "PROVISIONING_RETRIED",
-            status: "PENDING",
-            message: `Admin retried provisioning for account ${account.id} (batch)`,
-            errorMessage: account.failureReason ?? "Unknown",
-            details: { previousFailureReason: account.failureReason ?? "Unknown", triggeredByAdminId: actor.userId },
-          }).catch(() => {})
-        }
+        await VpnProvisioningJob.enqueue({ serverAccountId: account.id })
 
         logAuditEvent({
+          serverAccountId: account.id,
           adminId: actor.userId,
           correlationId,
-          action: "ADMIN_RETRY_ALL",
-          status: "OK",
-          message: `Admin retried all ${failedAccounts.length} failed accounts for subscription ${params.id}`,
-          details: { subscriptionId: params.id, totalRetried: failedAccounts.length },
+          action: "PROVISIONING_RETRIED",
+          status: "PENDING",
+          message: `Admin retried provisioning for account ${account.id} (batch)`,
+          errorMessage: account.failureReason ?? "Unknown",
+          details: {
+            previousFailureReason: account.failureReason ?? "Unknown",
+            triggeredByAdminId: actor.userId,
+          },
         }).catch(() => {})
-
-        return { ok: true, retried: failedAccounts.length }
       }
-    )
+
+      logAuditEvent({
+        adminId: actor.userId,
+        correlationId,
+        action: "ADMIN_RETRY_ALL",
+        status: "OK",
+        message: `Admin retried all ${failedAccounts.length} failed accounts for subscription ${params.id}`,
+        details: {
+          subscriptionId: params.id,
+          totalRetried: failedAccounts.length,
+        },
+      }).catch(() => {})
+
+      return { ok: true, retried: failedAccounts.length }
+    })
     .get(
       "/admin/vpn/subscriptions/:id/servers/:saId/config",
       async ({ params, set }) => {
@@ -302,7 +318,13 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
 
         const account = await prisma.vpnServerAccount.findUnique({
           where: { id: params.saId },
-          select: { id: true, subscriptionId: true, configEncrypted: true },
+          select: {
+            id: true,
+            subscriptionId: true,
+            protocol: true,
+            username: true,
+            configEncrypted: true,
+          },
         })
 
         if (!account || account.subscriptionId !== params.id) {
@@ -319,11 +341,16 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         }
 
         const plainConfig = decryptVpnConfig(account.configEncrypted)
+        const isWireGuard = account.protocol === "WIREGUARD"
+        const extension = isWireGuard ? "conf" : "ovpn"
+        const contentType = isWireGuard
+          ? "text/plain; charset=utf-8"
+          : "application/x-openvpn-profile"
 
         set.status = 200
         set.headers = {
-          "Content-Type": "application/x-openvpn-profile",
-          "Content-Disposition": `attachment; filename="${params.saId}.ovpn"`,
+          "Content-Type": contentType,
+          "Content-Disposition": `attachment; filename="${account.username}.${extension}"`,
         }
 
         return plainConfig

@@ -17,6 +17,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
   DeviceMobileIcon,
+  MapPinIcon,
 } from "@phosphor-icons/react"
 
 type Props = {
@@ -52,12 +53,42 @@ const PROVISIONING_VARIANT: Record<
   REVOKED: "outline",
 }
 
-/** ponytail: inline helper, extracted only if a 2nd caller appears. */
+function normalizeCountryCode(countryCode: string | undefined): string {
+  return countryCode?.trim().toUpperCase() ?? ""
+}
+
 function flagEmoji(countryCode: string | undefined): string {
-  if (!countryCode || countryCode.length !== 2) return ""
-  const a = 0x1f1e6 + countryCode.charCodeAt(0) - 65
-  const b = 0x1f1e6 + countryCode.charCodeAt(1) - 65
+  const normalized = normalizeCountryCode(countryCode)
+  if (!/^[A-Z]{2}$/.test(normalized)) return ""
+  const a = 0x1f1e6 + normalized.charCodeAt(0) - 65
+  const b = 0x1f1e6 + normalized.charCodeAt(1) - 65
   return String.fromCodePoint(a, b)
+}
+
+function RegionBadge({
+  region,
+}: {
+  region: { name: string; slug: string; countryCode: string } | null
+}) {
+  if (!region) {
+    return (
+      <Badge variant="outline" className="gap-1 text-muted-foreground">
+        <MapPinIcon className="h-3.5 w-3.5" />
+        Region
+      </Badge>
+    )
+  }
+
+  const countryCode = normalizeCountryCode(region.countryCode)
+  const flag = flagEmoji(countryCode)
+
+  return (
+    <Badge variant="outline" className="gap-1.5">
+      <span aria-hidden>{flag}</span>
+      <span>{countryCode || region.slug.toUpperCase()}</span>
+      <span className="text-muted-foreground">{region.name}</span>
+    </Badge>
+  )
 }
 
 function ProxyCredentialCell({
@@ -91,11 +122,11 @@ function ProxyCredentialCell({
   }
 
   return (
-    <div className="space-y-1 text-sm">
-      <p>
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      <span>
         user: <span className="font-mono">{account.username}</span>
-      </p>
-      <div className="flex items-center gap-2">
+      </span>
+      <span className="flex items-center gap-1">
         <span className="font-mono">
           pass: {revealed ? (password ?? "…") : "••••••••"}
         </span>
@@ -113,7 +144,7 @@ function ProxyCredentialCell({
             <EyeIcon className="h-4 w-4" />
           )}
         </Button>
-      </div>
+      </span>
     </div>
   )
 }
@@ -132,12 +163,12 @@ function ConfigCell({
   }
   const ext = account.protocol === "WIREGUARD" ? ".conf" : ".ovpn"
   if (!account.hasConfig) {
-    return <span className="text-sm text-muted-foreground">Provisioning…</span>
+    return <span className="text-xs text-muted-foreground">Provisioning…</span>
   }
   return (
-    <Button asChild size="sm" variant="outline">
+    <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
       <a href={vpnConfigDownloadUrl(subscriptionId, account.id)}>
-        <DownloadIcon className="mr-1 h-4 w-4" />
+        <DownloadIcon className="mr-1 h-3.5 w-3.5" />
         {ext}
       </a>
     </Button>
@@ -156,9 +187,42 @@ function ProtocolIcon({ protocol }: ProtocolIconProps) {
         ? "WG"
         : "Proxy"
   return (
-    <span className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider bg-muted text-muted-foreground">
+    <span className="inline-flex items-center justify-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold uppercase text-muted-foreground">
       {label}
     </span>
+  )
+}
+
+function ProtocolControl({
+  subscriptionId,
+  account,
+}: {
+  subscriptionId: string
+  account: VpnServerAccount
+}) {
+  return (
+    <div className="min-w-0 rounded-md border bg-muted/20 px-2.5 py-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <ProtocolIcon protocol={account.protocol} />
+        {account.port != null && (
+          <span className="font-mono text-xs text-muted-foreground">
+            :{account.port}
+          </span>
+        )}
+        <ConfigCell subscriptionId={subscriptionId} account={account} />
+        <Badge
+          variant={PROVISIONING_VARIANT[account.provisioningStatus]}
+          className="ml-auto"
+        >
+          {account.provisioningStatus}
+        </Badge>
+      </div>
+      {account.provisioningStatus === "FAILED" && account.failureReason && (
+        <p className="mt-1 text-xs text-destructive">
+          {account.failureReason}
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -243,7 +307,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         const subDevices = devicesBySub[sub.id] ?? []
 
         return (
-          <Card key={sub.id}>
+          <Card key={sub.id} size="sm">
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -284,76 +348,34 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                     : "Cancel"}
               </Button>
             </CardHeader>
-            <CardContent>
-              {/* Server groups */}
-              <div className="space-y-4">
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
                 {groups.map((group) => (
                   <div
                     key={group.serverId}
-                    className="rounded-lg border p-3"
+                    className="grid gap-3 rounded-lg border px-3 py-2.5 lg:grid-cols-[minmax(220px,320px)_1fr] lg:items-center"
                   >
-                    {/* Server header */}
-                    <div className="mb-2 flex items-center gap-2">
-                      {group.region && (
-                        <span className="text-lg leading-none" aria-hidden>
-                          {flagEmoji(group.region.countryCode)}
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold">
+                          {group.serverName}
                         </span>
-                      )}
-                      <span className="font-semibold">{group.serverName}</span>
-                      {group.region && (
-                        <span className="text-sm text-muted-foreground">
-                          {group.region.name}
-                        </span>
-                      )}
+                        <RegionBadge region={group.region} />
+                      </div>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {group.hostname || "—"}
+                        <span className="mx-1">·</span>
+                        {group.ipAddress || "—"}
+                      </p>
                     </div>
 
-                    {/* Hostname / IP */}
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      {group.hostname || "—"}
-                      <span className="mx-1">·</span>
-                      {group.ipAddress || "—"}
-                    </p>
-
-                    {/* Protocol rows */}
-                    <div className="space-y-2">
+                    <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-3">
                       {group.accounts.map((account) => (
-                        <div
+                        <ProtocolControl
                           key={account.id}
-                          className="flex flex-wrap items-center gap-2 rounded-md bg-muted/30 p-2 sm:flex-nowrap sm:gap-3"
-                        >
-                          <ProtocolIcon protocol={account.protocol} />
-
-                          {account.port != null && (
-                            <span className="font-mono text-sm text-muted-foreground">
-                              :{account.port}
-                            </span>
-                          )}
-
-                          <div className="flex-1">
-                            <ConfigCell
-                              subscriptionId={sub.id}
-                              account={account}
-                            />
-                          </div>
-
-                          <div className="flex flex-col items-end gap-0.5">
-                            <Badge
-                              variant={
-                                PROVISIONING_VARIANT[
-                                  account.provisioningStatus
-                                ]
-                              }
-                            >
-                              {account.provisioningStatus}
-                            </Badge>
-                            {account.provisioningStatus === "FAILED" &&
-                              account.failureReason && (
-                                <span className="max-w-[200px] text-xs text-destructive">
-                                  {account.failureReason}
-                                </span>
-                              )}
-                          </div>
-                        </div>
+                          subscriptionId={sub.id}
+                          account={account}
+                        />
                       ))}
                     </div>
                   </div>

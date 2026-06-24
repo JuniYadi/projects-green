@@ -2,12 +2,13 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import {
   ArrowLeft,
   Copy,
   DeviceMobileIcon,
   Eye,
+  HardDrivesIcon,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -60,6 +61,59 @@ const PROVISION_VARIANT: Record<
   REVOKED: "secondary",
 }
 
+type ProvisioningStatusSummary = {
+  active: number
+  pending: number
+  failed: number
+  revoked: number
+  total: number
+}
+
+type ServerAccountGroup = {
+  serverId: string
+  serverName: string
+  hostname: string
+  ipAddress: string | null
+  region: { name: string; slug: string; countryCode: string } | null
+  accounts: VpnServerAccountEntry[]
+  summary: ProvisioningStatusSummary
+}
+
+function createEmptySummary(): ProvisioningStatusSummary {
+  return { active: 0, pending: 0, failed: 0, revoked: 0, total: 0 }
+}
+
+function addAccountToSummary(
+  summary: ProvisioningStatusSummary,
+  account: VpnServerAccountEntry
+) {
+  summary.total += 1
+
+  switch (account.provisioningStatus) {
+    case "ACTIVE":
+      summary.active += 1
+      break
+    case "PENDING":
+    case "PROVISIONING":
+      summary.pending += 1
+      break
+    case "FAILED":
+      summary.failed += 1
+      break
+    case "REVOKED":
+      summary.revoked += 1
+      break
+  }
+}
+
+function flagEmoji(countryCode: string | undefined): string {
+  if (!countryCode || countryCode.length !== 2) return ""
+  const upper = countryCode.toUpperCase()
+  const a = 0x1f1e6 + upper.charCodeAt(0) - 65
+  const b = 0x1f1e6 + upper.charCodeAt(1) - 65
+  return String.fromCodePoint(a, b)
+}
+
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric",
@@ -91,7 +145,12 @@ function CopyButton({ text }: { text: string }) {
   }
 
   return (
-    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopy}>
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6"
+      onClick={handleCopy}
+    >
       <Copy className="h-3.5 w-3.5" />
       {copied && <span className="sr-only">Copied!</span>}
     </Button>
@@ -112,9 +171,7 @@ function InfoRow({
       <span className="text-sm text-muted-foreground">{label}</span>
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">{value}</span>
-        {copyable && typeof value === "string" && (
-          <CopyButton text={value} />
-        )}
+        {copyable && typeof value === "string" && <CopyButton text={value} />}
       </div>
     </div>
   )
@@ -130,101 +187,151 @@ function ServerAccountCard({
   account: VpnServerAccountEntry
   subscriptionId: string
   busy: string | null
-  onAction: (account: VpnServerAccountEntry, action: "retry" | "revoke" | "validate" | "recreate") => void
+  onAction: (
+    account: VpnServerAccountEntry,
+    action: "retry" | "revoke" | "validate" | "recreate"
+  ) => void
   onAudit: (account: VpnServerAccountEntry) => void
 }) {
+  const configExtension = account.protocol === "WIREGUARD" ? ".conf" : ".ovpn"
+
   return (
     <div className="rounded-lg border bg-background p-4">
       <div className="flex flex-col gap-3">
         {/* Top: info */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col gap-1">
-            <span className="font-medium">{account.serverName}</span>
-            <span className="text-sm text-muted-foreground">
-              {account.protocol} · {account.username}
-            </span>
-            <Badge
-              variant={PROVISION_VARIANT[account.provisioningStatus]}
-              className="w-fit"
-            >
-              {account.provisioningStatus}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">{account.protocol}</span>
+              <Badge
+                variant={PROVISION_VARIANT[account.provisioningStatus]}
+                className="w-fit"
+              >
+                {account.provisioningStatus}
+              </Badge>
+              {account.hasConfig && (
+                <Badge variant="outline" className="w-fit">
+                  Config
+                </Badge>
+              )}
+              {account.hasCredentials && (
+                <Badge variant="outline" className="w-fit">
+                  Credentials
+                </Badge>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <span>{account.username}</span>
+              {account.port != null && (
+                <span className="font-mono">:{account.port}</span>
+              )}
+              <span>Created {formatDate(account.createdAt)}</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Account ID: {account.id}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Updated {formatDate(account.updatedAt)}
+            </div>
             {account.failureReason && (
               <span className="text-sm text-red-500">
                 {account.failureReason}
               </span>
             )}
           </div>
-          <span className="text-xs text-muted-foreground">
-            Created {formatDate(account.createdAt)}
-          </span>
-        </div>
 
-        {/* Bottom: actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            title="View Audit Log"
-            onClick={() => onAudit(account)}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          {account.hasConfig && account.provisioningStatus === "ACTIVE" && (
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={vpnAdminConfigDownloadUrl(subscriptionId, account.id)}
-                download
-              >
-                Download Config
-              </a>
+          {/* Actions */}
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <Button
+              variant="ghost"
+              size="icon"
+              title="View Audit Log"
+              onClick={() => onAudit(account)}
+            >
+              <Eye className="h-4 w-4" />
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy?.endsWith(account.id)}
-            onClick={() => onAction(account, "validate")}
-          >
-            {busy === `validate:${account.id}`
-              ? "Validating..."
-              : "Validate"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy?.endsWith(account.id)}
-            onClick={() => onAction(account, "recreate")}
-          >
-            {busy === `recreate:${account.id}`
-              ? "Recreating..."
-              : "Recreate"}
-          </Button>
-          {(account.provisioningStatus === "FAILED" ||
-            account.provisioningStatus === "PENDING") && (
+            {account.hasConfig && account.provisioningStatus === "ACTIVE" && (
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href={vpnAdminConfigDownloadUrl(subscriptionId, account.id)}
+                  download
+                >
+                  Download {configExtension}
+                </a>
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
               disabled={busy?.endsWith(account.id)}
-              onClick={() => onAction(account, "retry")}
+              onClick={() => onAction(account, "validate")}
             >
-              Retry
+              {busy === `validate:${account.id}` ? "Validating..." : "Validate"}
             </Button>
-          )}
-          {(account.provisioningStatus === "ACTIVE" ||
-            account.provisioningStatus === "FAILED" ||
-            account.provisioningStatus === "PENDING") && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               disabled={busy?.endsWith(account.id)}
-              onClick={() => onAction(account, "revoke")}
+              onClick={() => onAction(account, "recreate")}
             >
-              Revoke
+              {busy === `recreate:${account.id}` ? "Recreating..." : "Recreate"}
             </Button>
-          )}
+            {(account.provisioningStatus === "FAILED" ||
+              account.provisioningStatus === "PENDING") && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy?.endsWith(account.id)}
+                onClick={() => onAction(account, "retry")}
+              >
+                Retry
+              </Button>
+            )}
+            {(account.provisioningStatus === "ACTIVE" ||
+              account.provisioningStatus === "FAILED" ||
+              account.provisioningStatus === "PENDING") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy?.endsWith(account.id)}
+                onClick={() => onAction(account, "revoke")}
+              >
+                Revoke
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function SummaryBadges({ summary }: { summary: ProvisioningStatusSummary }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Badge variant="secondary" className="text-xs">
+        {summary.total} accounts
+      </Badge>
+      {summary.active > 0 && (
+        <Badge variant="default" className="text-xs">
+          {summary.active} active
+        </Badge>
+      )}
+      {summary.pending > 0 && (
+        <Badge variant="outline" className="text-xs">
+          {summary.pending} pending
+        </Badge>
+      )}
+      {summary.failed > 0 && (
+        <Badge variant="destructive" className="text-xs">
+          {summary.failed} failed
+        </Badge>
+      )}
+      {summary.revoked > 0 && (
+        <Badge variant="secondary" className="text-xs">
+          {summary.revoked} revoked
+        </Badge>
+      )}
     </div>
   )
 }
@@ -239,9 +346,8 @@ export default function SubscriptionDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const [auditAccount, setAuditAccount] = useState<VpnServerAccountEntry | null>(
-    null
-  )
+  const [auditAccount, setAuditAccount] =
+    useState<VpnServerAccountEntry | null>(null)
 
   const fetchSubscription = useCallback(async () => {
     setLoading(true)
@@ -290,7 +396,10 @@ export default function SubscriptionDetailPage() {
         await recreateVpnServerAccount(subscriptionId, account.id)
         await fetchSubscription()
       } else {
-        const result = await validateVpnServerAccount(subscriptionId, account.id)
+        const result = await validateVpnServerAccount(
+          subscriptionId,
+          account.id
+        )
         window.alert(
           result.data.exists
             ? `Account exists on server.\n\n${result.data.message}`
@@ -317,36 +426,34 @@ export default function SubscriptionDetailPage() {
     }
   }
 
-  // Group server accounts by protocol
-  const groupedAccounts = useMemo(() => {
-    if (!subscription) return {}
-    const groups: Record<string, VpnServerAccountEntry[]> = {}
-    for (const account of subscription.serverAccounts) {
-      const p = account.protocol
-      if (!groups[p]) groups[p] = []
-      groups[p].push(account)
-    }
-    return groups
-  }, [subscription])
+  const serverGroups = useMemo(() => {
+    if (!subscription) return []
 
-  // Compute per-group provisioning summaries
-  const groupSummaries = useMemo(() => {
-    const summaries: Record<string, { active: number; pending: number; failed: number; revoked: number; total: number }> = {}
-    for (const [protocol, accounts] of Object.entries(groupedAccounts)) {
-      const s = { active: 0, pending: 0, failed: 0, revoked: 0, total: accounts.length }
-      for (const a of accounts) {
-        switch (a.provisioningStatus) {
-          case "ACTIVE": s.active++; break
-          case "PENDING":
-          case "PROVISIONING": s.pending++; break
-          case "FAILED": s.failed++; break
-          case "REVOKED": s.revoked++; break
-        }
+    const groups = new Map<string, ServerAccountGroup>()
+
+    for (const account of subscription.serverAccounts) {
+      const group = groups.get(account.serverId) ?? {
+        serverId: account.serverId,
+        serverName: account.serverName,
+        hostname: account.hostname,
+        ipAddress: account.ipAddress,
+        region: account.region,
+        accounts: [],
+        summary: createEmptySummary(),
       }
-      summaries[protocol] = s
+
+      group.accounts.push(account)
+      addAccountToSummary(group.summary, account)
+      groups.set(account.serverId, group)
     }
-    return summaries
-  }, [groupedAccounts])
+
+    return Array.from(groups.values()).map((group) => ({
+      ...group,
+      accounts: group.accounts.sort((a, b) =>
+        a.protocol.localeCompare(b.protocol)
+      ),
+    }))
+  }, [subscription])
 
   if (loading) {
     return (
@@ -392,11 +499,15 @@ export default function SubscriptionDetailPage() {
         <div>
           <h1 className="text-2xl font-semibold">Subscription Details</h1>
           <p className="text-sm text-muted-foreground">
-            {subscription.packageName} · {subscription.organizationName ?? subscription.organizationId}
+            {subscription.packageName} ·{" "}
+            {subscription.organizationName ?? subscription.organizationId}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Badge variant={STATUS_VARIANT[subscription.status]} className="text-sm">
+          <Badge
+            variant={STATUS_VARIANT[subscription.status]}
+            className="text-sm"
+          >
             {subscription.status}
           </Badge>
           {provisioningSummary.failed > 0 && (
@@ -422,7 +533,12 @@ export default function SubscriptionDetailPage() {
           <CardContent className="space-y-1">
             <InfoRow label="ID" value={subscription.id} copyable />
             <Separator />
-            <InfoRow label="Organization" value={subscription.organizationName ?? subscription.organizationId} />
+            <InfoRow
+              label="Organization"
+              value={
+                subscription.organizationName ?? subscription.organizationId
+              }
+            />
             <Separator />
             <InfoRow label="Package" value={subscription.packageName} />
             <Separator />
@@ -459,7 +575,10 @@ export default function SubscriptionDetailPage() {
           <CardContent className="space-y-1">
             <InfoRow
               label="Price"
-              value={formatCurrency(subscription.priceLocked, subscription.currency)}
+              value={formatCurrency(
+                subscription.priceLocked,
+                subscription.currency
+              )}
             />
             <Separator />
             <InfoRow label="Currency" value={subscription.currency} />
@@ -492,9 +611,15 @@ export default function SubscriptionDetailPage() {
               value={formatDate(subscription.currentPeriodEnd)}
             />
             <Separator />
-            <InfoRow label="Created" value={formatDate(subscription.createdAt)} />
+            <InfoRow
+              label="Created"
+              value={formatDate(subscription.createdAt)}
+            />
             <Separator />
-            <InfoRow label="Updated" value={formatDate(subscription.updatedAt)} />
+            <InfoRow
+              label="Updated"
+              value={formatDate(subscription.updatedAt)}
+            />
           </CardContent>
         </Card>
       </div>
@@ -505,7 +630,9 @@ export default function SubscriptionDetailPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Provisioning Summary</CardTitle>
-              <CardDescription>Status of server account provisioning</CardDescription>
+              <CardDescription>
+                Status of server account provisioning
+              </CardDescription>
             </div>
             {provisioningSummary.failed > 0 && (
               <Button
@@ -549,40 +676,43 @@ export default function SubscriptionDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Server Accounts — grouped by protocol */}
-      {Object.entries(groupedAccounts).map(([protocol, accounts]) => {
-        const summary = groupSummaries[protocol]
+      {/* Server Accounts — grouped by server */}
+      {serverGroups.map((group) => {
+        const protocols = group.accounts.map((account) => account.protocol)
+        const regionLabel = group.region
+          ? `${flagEmoji(group.region.countryCode)} ${group.region.name}`
+          : "No region"
+
         return (
-          <Collapsible key={protocol} defaultOpen>
+          <Collapsible key={group.serverId} defaultOpen>
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CollapsibleTrigger className="flex items-center gap-2 hover:underline">
-                    <span className="text-lg font-semibold">{protocol}</span>
-                    <Badge variant="secondary">{accounts.length}</Badge>
-                    {summary && (
-                      <div className="flex items-center gap-1.5">
-                        {summary.active > 0 && (
-                          <Badge variant="default" className="text-xs">{summary.active}</Badge>
-                        )}
-                        {summary.pending > 0 && (
-                          <Badge variant="outline" className="text-xs">{summary.pending}</Badge>
-                        )}
-                        {summary.failed > 0 && (
-                          <Badge variant="destructive" className="text-xs">{summary.failed}</Badge>
-                        )}
-                        {summary.revoked > 0 && (
-                          <Badge variant="secondary" className="text-xs">{summary.revoked}</Badge>
-                        )}
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <CollapsibleTrigger className="flex items-start gap-3 text-left hover:underline">
+                    <div className="rounded-md border bg-muted/30 p-2">
+                      <HardDrivesIcon className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-lg font-semibold">
+                        {group.serverName}
                       </div>
-                    )}
+                      <div className="text-sm text-muted-foreground">
+                        {regionLabel}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span>Host: {group.hostname || "—"}</span>
+                        <span>IP: {group.ipAddress || "—"}</span>
+                        <span>Protocols: {protocols.join(" + ")}</span>
+                      </div>
+                    </div>
                   </CollapsibleTrigger>
+                  <SummaryBadges summary={group.summary} />
                 </div>
               </CardHeader>
               <CollapsibleContent>
                 <CardContent>
                   <div className="space-y-3">
-                    {accounts.map((account) => (
+                    {group.accounts.map((account) => (
                       <ServerAccountCard
                         key={account.id}
                         account={account}
