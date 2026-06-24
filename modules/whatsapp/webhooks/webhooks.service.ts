@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma, WhatsappMessageDeliveryStatus } from "@prisma/client"
 
 import { toWebhookEventDTO, type WhatsappWebhookEventDTO } from "./webhooks.dto"
+import { webhookDispatcher } from "./webhook-dispatcher.service"
 
 export type ParsedMessagePayload = {
   from: string
@@ -144,6 +145,21 @@ export async function processInboundMessage(
       },
     }),
   ])
+
+  // Fire-and-forget: dispatch webhook to customer-configured URLs
+  webhookDispatcher
+    .dispatchForDevice(
+      deviceId,
+      "inbound_message",
+      { message: whatsappMessage, conversation },
+      whatsappMessage.id
+    )
+    .catch((err: unknown) =>
+      console.error(
+        `[webhooks] dispatch failed for inbound_message device=${deviceId}`,
+        err
+      )
+    )
 
   return {
     messageId: whatsappMessage.id,
@@ -347,6 +363,21 @@ export async function processDeliveryStatus(
         err
       )
     })
+
+  // Fire-and-forget: dispatch webhook for status update
+  webhookDispatcher
+    .dispatchForDevice(
+      deviceId,
+      "status_update",
+      { status: statusRecord, message },
+      statusRecord.id
+    )
+    .catch((err: unknown) =>
+      console.error(
+        `[webhooks] dispatch failed for status_update device=${deviceId}`,
+        err
+      )
+    )
 
   return {
     statusId: statusRecord.id,

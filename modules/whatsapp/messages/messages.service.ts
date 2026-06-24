@@ -6,6 +6,8 @@ import { randomUUID } from "crypto"
 import { Prisma } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
+import { webhookDispatcher } from "@/modules/whatsapp/webhooks/webhook-dispatcher.service"
+
 import { BalanceGateService } from "@/modules/billing/balance-gate.service"
 import { QuotaGateService } from "@/modules/billing/quota-gate.service"
 import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
@@ -391,6 +393,23 @@ export const messageService: MessageService = {
         metadata: { jobId, quotaPending },
       },
     })
+
+    // Fire-and-forget: dispatch webhook for sent message
+    if (waMessageId) {
+      webhookDispatcher
+        .dispatchForDevice(
+          device.id,
+          "message_sent",
+          { message: whatsappMessage, recipient: phoneNumber },
+          whatsappMessage.id
+        )
+        .catch((err: unknown) =>
+          console.error(
+            `[messages] dispatch failed for message_sent device=${device.id}`,
+            err
+          )
+        )
+    }
 
     return {
       jobId,

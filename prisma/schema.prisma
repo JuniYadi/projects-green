@@ -1486,6 +1486,15 @@ enum WhatsappApiKeyEnvironment {
   LIVE
 }
 
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  DEAD_LETTERED
+
+  @@map("WebhookDeliveryStatus")
+}
+
 // ─── WhatsApp Models ──────────────────────────────────────────────────────────
 
 model WhatsappDevice {
@@ -1851,32 +1860,51 @@ model WhatsappWebhook {
   whatsappDeviceId String
   webhookUrl       String
   verifyToken      String
+  authType         String?         @default("none")
+  /// WARNING: stored in plain text. Use credentials scoped to webhook delivery only (least privilege).
+  authValue        String?
+  authHeaderName   String?
+  retryMaxAttempts Int             @default(3)
+  retryIntervalMs  Int             @default(5000)
   active           Boolean         @default(true)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   whatsappDevice   WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
 
+  deliveryLogs WhatsappWebhookDeliveryLog[]
+
   @@index([organizationId])
   @@index([whatsappDeviceId])
 }
 
-model WhatsappWebhookDeadLetter {
-  id             String    @id @default(cuid())
-  organizationId String?
-  deviceId       String
-  eventType      String
-  payloadJson    Json
-  errorMessage   String?
-  attempts       Int       @default(0)
-  status         String    @default("dead_lettered")
-  failedAt       DateTime  @default(now())
-  replayedAt     DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+model WhatsappWebhookDeliveryLog {
+  id               String                @id @default(cuid())
+  webhookId        String
+  organizationId   String
+  whatsappDeviceId String
+  eventType        String
+  triggerEventId   String?
+  status           WebhookDeliveryStatus @default(PENDING)
+  attempt          Int                   @default(1)
+  maxAttempts      Int                   @default(3)
+  requestUrl       String
+  requestHeaders   Json?
+  requestBody      Json
+  responseStatus   Int?
+  responseBody     String?
+  errorMessage     String?
+  resolvedAt       DateTime?
+  startedAt        DateTime              @default(now())
+  completedAt      DateTime?
+  nextRetryAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
-  @@index([organizationId, status])
-  @@index([deviceId, status])
-  @@index([failedAt(sort: Desc)])
+  webhook WhatsappWebhook @relation(fields: [webhookId], references: [id])
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([webhookId, createdAt(sort: Desc)])
+  @@index([status, nextRetryAt])
 }
 
 model WhatsappWebhookEvent {
