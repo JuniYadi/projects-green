@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { recordDeployEvent, recordDeployLog } from "../../deploy-event.service"
-import { processQueuedDeployment } from "../../deploy-builder.service"
 
 /**
  * POST /api/deploy/jenkins-webhook
@@ -36,6 +35,7 @@ export const deployJenkinsWebhookRoutes = new Elysia({ prefix: "/deploy" })
         where: {
           stackId: stack.id,
           status: { in: ["QUEUED", "BUILDING"] },
+          ...(commitSha ? { commitSha } : {}),
         },
         orderBy: { createdAt: "desc" },
       })
@@ -44,10 +44,20 @@ export const deployJenkinsWebhookRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: true, message: "No active deployment to update" }
       }
 
+      // Idempotency check — skip if already processed
+      if (deployment.status === "RUNNING") {
+        return { ok: true, message: "Deployment already completed" }
+      }
+
       if (buildStatus === "SUCCESS") {
+        // Only update status - do NOT call processQueuedDeployment
+        await prisma.applicationDeployment.update({
+          where: { id: deployment.id },
+          data: { status: "RUNNING" },
+        })
         await recordDeployEvent({
           deploymentId: deployment.id,
-          type: "MANIFEST_PUSHED",
+          type: "DEPLOY_COMPLETED",
           message: `Jenkins build succeeded for ${slug}`,
         })
         await recordDeployLog({
@@ -56,9 +66,6 @@ export const deployJenkinsWebhookRoutes = new Elysia({ prefix: "/deploy" })
           status: "BUILD_SUCCESS",
           message: "Jenkins build completed successfully.",
         })
-
-        // Trigger manifest generation and deploy
-        await processQueuedDeployment(deployment.id)
       } else {
         const attempt = deployment.attempt ?? 1
         if (attempt < 3) {
