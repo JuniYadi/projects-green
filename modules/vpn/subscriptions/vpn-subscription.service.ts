@@ -420,13 +420,50 @@ export class VpnSubscriptionService {
   }
 
   /**
+   * Reinstate a previously cancelled subscription. The subscription will
+   * resume normal billing at the next period end instead of expiring.
+   * Only valid when `cancelAtPeriodEnd` is true.
+   */
+  async reinstate(
+    organizationId: string,
+    id: string,
+    reason?: string,
+  ): Promise<VpnSubscriptionWithAccounts> {
+    const existing = await this.prisma.vpnSubscription.findFirst({
+      where: { id, organizationId },
+    })
+    if (!existing) throw new VpnSubscriptionNotFoundError()
+    if (!existing.cancelAtPeriodEnd) {
+      throw new Error("Subscription is not pending cancellation.")
+    }
+
+    const updated = await this.prisma.vpnSubscription.update({
+      where: { id: existing.id },
+      data: { cancelAtPeriodEnd: false },
+      include: subscriptionInclude,
+    })
+
+    logAuditEvent({
+      organizationId,
+      subscriptionId: id,
+      action: "SUBSCRIPTION_REINSTATED",
+      status: "OK",
+      message: `Subscription reinstated (cancellation undone). Reason: ${reason ?? "Not provided"}`,
+      details: { reason: reason ?? null },
+    }).catch(() => {})
+
+    return updated
+  }
+
+  /**
    * Cancel a subscription at period end (no refund, Story 16). The customer
    * keeps access until `currentPeriodEnd`; the renewal worker then lets it
    * lapse instead of charging again.
    */
   async cancelAtPeriodEnd(
     organizationId: string,
-    id: string
+    id: string,
+    reason?: string,
   ): Promise<VpnSubscriptionWithAccounts> {
     const existing = await this.prisma.vpnSubscription.findFirst({
       where: { id, organizationId },
@@ -444,8 +481,11 @@ export class VpnSubscriptionService {
       subscriptionId: id,
       action: "SUBSCRIPTION_CANCELLED",
       status: "OK",
-      message: `Subscription cancelled at period end: ${existing.currentPeriodEnd.toISOString()}`,
-      details: { currentPeriodEnd: existing.currentPeriodEnd.toISOString() },
+      message: `Subscription cancelled at period end: ${existing.currentPeriodEnd.toISOString()}. Reason: ${reason ?? "Not provided"}`,
+      details: {
+        currentPeriodEnd: existing.currentPeriodEnd.toISOString(),
+        reason: reason ?? null,
+      },
     }).catch(() => {})
 
     return updated

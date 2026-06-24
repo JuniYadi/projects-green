@@ -247,13 +247,14 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
     })
     .post(
       "/vpn/subscriptions/:id/cancel",
-      async ({ params, set }) => {
+      async ({ params, set, body }) => {
         const ctx = await resolveOrg(set)
         if ("error" in ctx) return ctx.error
         try {
           const sub = await service.cancelAtPeriodEnd(
             ctx.organizationId,
-            params.id
+            params.id,
+            (body as { reason?: string } | undefined)?.reason,
           )
           const packageNames = await resolvePackageNames([sub.packageId])
           return {
@@ -281,7 +282,55 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           }
         }
       },
-      { body: t.Optional(t.Object({})) }
+      {
+        body: t.Optional(
+          t.Object({ reason: t.Optional(t.String()) }),
+        ),
+      },
+    )
+    .post(
+      "/vpn/subscriptions/:id/reinstate",
+      async ({ params, set, body }) => {
+        const ctx = await resolveOrg(set)
+        if ("error" in ctx) return ctx.error
+        try {
+          const sub = await service.reinstate(
+            ctx.organizationId,
+            params.id,
+            (body as { reason?: string } | undefined)?.reason,
+          )
+          const packageNames = await resolvePackageNames([sub.packageId])
+          return {
+            ok: true as const,
+            data: toVpnSubscriptionDTO(
+              sub,
+              null,
+              packageNames.get(sub.packageId) ?? null,
+            ),
+          }
+        } catch (error) {
+          if (error instanceof VpnSubscriptionNotFoundError)
+            return notFound(set)
+          console.error(
+            "[VPN SUBSCRIPTION] reinstate error:",
+            error instanceof Error
+              ? (error.stack ?? error.message)
+              : String(error),
+          )
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_ERROR" as const,
+            message:
+              "Something went wrong while reinstating the subscription.",
+          }
+        }
+      },
+      {
+        body: t.Optional(
+          t.Object({ reason: t.Optional(t.String()) }),
+        ),
+      },
     )
 }
 

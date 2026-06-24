@@ -187,7 +187,7 @@ describe("VpnMyServices", () => {
     expect(view.getByText("Cancel")).toBeInTheDocument()
   })
 
-  it("shows Cancelled when cancelAtPeriodEnd is true", () => {
+  it("shows Reinstate when cancelAtPeriodEnd is true", () => {
     const view = renderAsync(
       <VpnMyServices
         subscriptions={[subscription({ cancelAtPeriodEnd: true })]}
@@ -195,7 +195,7 @@ describe("VpnMyServices", () => {
       />,
     )
 
-    expect(view.getByText("Cancelled")).toBeInTheDocument()
+    expect(view.getByText("Reinstate")).toBeInTheDocument()
   })
 
   it("disables cancel button for non-ACTIVE subscriptions", () => {
