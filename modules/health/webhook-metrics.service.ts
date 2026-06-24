@@ -10,14 +10,12 @@
 
 const HMAC_FAILURE_WINDOW_MS = 60_000 // 1 minute
 const HMAC_FAILURE_THRESHOLD = 10 // alerts if >10 failures in window
-const DEAD_LETTER_ALERT_THRESHOLD = 10 // alerts if dead-letter count exceeds this
 
 class WebhookMetricsCollector {
   private totalRequests = 0
   private hmacFailures = 0
   private duplicateEvents = 0
   private processingErrors = 0
-  private deadLetterEvents = 0
   private queueDepth = 0
 
   /** Timestamps of recent HMAC failures for sliding-window alerting. */
@@ -42,10 +40,6 @@ class WebhookMetricsCollector {
     this.processingErrors++
   }
 
-  incrementDeadLetterEvents(): void {
-    this.deadLetterEvents++
-  }
-
   /** Allow external callers (e.g. a periodic poller) to set queue depth. */
   setQueueDepth(depth: number): void {
     this.queueDepth = depth
@@ -59,7 +53,6 @@ class WebhookMetricsCollector {
       hmacFailures: this.hmacFailures,
       duplicateEvents: this.duplicateEvents,
       processingErrors: this.processingErrors,
-      deadLetterEvents: this.deadLetterEvents,
       queueDepth: this.queueDepth,
     }
   }
@@ -84,13 +77,6 @@ class WebhookMetricsCollector {
       })
     }
 
-    if (this.deadLetterEvents > DEAD_LETTER_ALERT_THRESHOLD) {
-      alerts.push({
-        severity: "warn",
-        message: `Dead-letter queue has ${this.deadLetterEvents} events (threshold: ${DEAD_LETTER_ALERT_THRESHOLD})`,
-      })
-    }
-
     return alerts
   }
 
@@ -100,7 +86,6 @@ class WebhookMetricsCollector {
     this.hmacFailures = 0
     this.duplicateEvents = 0
     this.processingErrors = 0
-    this.deadLetterEvents = 0
     this.queueDepth = 0
     this.hmacFailureTimestamps = []
   }

@@ -220,11 +220,23 @@ export async function listVpnSubscriptions(): Promise<VpnSubscription[]> {
 }
 
 export async function cancelVpnSubscription(
-  id: string
+  id: string,
+  reason?: string,
 ): Promise<VpnSubscription> {
   const res = await fetchVpn<{ ok: true; data: VpnSubscription }>(
     `/api/vpn/subscriptions/${id}/cancel`,
-    { method: "POST", body: JSON.stringify({}) }
+    { method: "POST", body: JSON.stringify({ reason }) },
+  )
+  return res.data
+}
+
+export async function reinstateVpnSubscription(
+  id: string,
+  reason: string,
+): Promise<VpnSubscription> {
+  const res = await fetchVpn<{ ok: true; data: VpnSubscription }>(
+    `/api/vpn/subscriptions/${id}/reinstate`,
+    { method: "POST", body: JSON.stringify({ reason }) },
   )
   return res.data
 }

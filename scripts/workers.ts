@@ -80,6 +80,13 @@ import {
 } from "@/lib/queue/whatsapp-template-sync"
 import { processWhatsAppTemplateSyncJob } from "./whatsapp-template-sync-worker"
 
+// ── WhatsApp Outgoing Webhook ──────────────────────────────────────────────
+import {
+  WHATSAPP_WEBHOOK_OUTGOING_QUEUE,
+  type WhatsappOutgoingWebhookJobData,
+} from "@/lib/queue/whatsapp-webhook-outgoing"
+import { processOutgoingWebhookJob } from "./whatsapp-webhook-outgoing-worker"
+
 // ── Interval-based services ────────────────────────────────────────────────
 import { monitorActiveDeployments } from "@/modules/deploy/deploy-monitor.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
@@ -434,6 +441,18 @@ allWorkers.push(vpnProvisioningWorker)
 const emailWorker = EmailJob.createWorker()
 allWorkers.push(emailWorker)
 
+// ── WhatsApp Outgoing Webhook Worker ──────────────────────────────────────
+const waOutgoingWorker = new Worker<WhatsappOutgoingWebhookJobData>(
+  WHATSAPP_WEBHOOK_OUTGOING_QUEUE,
+  processOutgoingWebhookJob,
+  {
+    connection: redisConnection,
+    prefix,
+    concurrency: 4,
+  }
+)
+allWorkers.push(waOutgoingWorker)
+
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {
   const name = worker.name
@@ -713,7 +732,7 @@ try {
 
 console.info("[workers] unified worker process ready")
 console.info(
-  `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}, ${EmailJob.queue}`
+  `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}, ${EmailJob.queue}, ${WHATSAPP_WEBHOOK_OUTGOING_QUEUE}`
 )
 console.info(
   "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m), vpn-health (15m)"
