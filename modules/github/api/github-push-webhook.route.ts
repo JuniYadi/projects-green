@@ -1,6 +1,5 @@
 import { Hono } from "hono"
 import {
-  GithubPushEventHandler,
   verifyGitHubSignature,
   parsePushPayload,
 } from "../github-push-dispatcher"
@@ -20,43 +19,15 @@ app.post("/push", async (c) => {
   }
 
   const payload = parsePushPayload(JSON.parse(body))
-  const handler = new GithubPushEventHandler()
-
-  // Find stacks associated with this repository
-  // NOTE: Stack model was removed from Prisma schema but this route is still referenced
-  // by webhook dispatch. Cast is required until this route is fully deprecated.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stacks = await (prisma as any).stack.findMany({
-    where: {
-      githubRepositoryConnection: {
-        fullName: payload.repository.full_name,
-      },
-    },
-  })
 
   if (payload.deleted) {
     return c.json({ message: "Branch deleted, skipping" }, 200)
   }
 
-  if (stacks.length === 0) {
-    return c.json({ message: "No stacks found for this repository" }, 200)
-  }
-
-  // Handle push for each stack
-  const results = await Promise.allSettled(
-    stacks.map((stack: Record<string, unknown>) =>
-      handler.handlePush(
-        stack as unknown as import("../github-push-dispatcher").Stack,
-        payload
-      )
-    )
-  )
-
-  return c.json({
-    message: "Processed push event",
-    stacksProcessed: stacks.length,
-    results: results.map((r) => r.status),
-  })
+  // NOTE: This Hono route is deprecated — push events are handled via
+  // the Elysia webhook route at POST /api/integrations/github/webhook.
+  // This route is kept only for backward compat with older webhook configs.
+  return c.json({ message: "Use the Elysia webhook endpoint instead" }, 200)
 })
 
 export default app

@@ -1,13 +1,18 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma, type ApplicationDeployEventType } from "@prisma/client"
 
-export async function recordDeployEvent(params: {
-  deploymentId: string
-  type: ApplicationDeployEventType
-  message?: string
-  metadata?: Record<string, unknown>
-}) {
-  return prisma.applicationDeployEvent.create({
+type PrismaClient = Prisma.TransactionClient
+
+export async function recordDeployEvent(
+  params: {
+    deploymentId: string
+    type: ApplicationDeployEventType
+    message?: string
+    metadata?: Record<string, unknown>
+  },
+  db: PrismaClient = prisma,
+) {
+  return db.applicationDeployEvent.create({
     data: {
       deploymentId: params.deploymentId,
       type: params.type,
@@ -17,13 +22,16 @@ export async function recordDeployEvent(params: {
   })
 }
 
-export async function recordDeployLog(params: {
-  deploymentId: string
-  scope: string
-  status: string
-  message: string
-}) {
-  return prisma.applicationDeploymentLog.create({
+export async function recordDeployLog(
+  params: {
+    deploymentId: string
+    scope: string
+    status: string
+    message: string
+  },
+  db: PrismaClient = prisma,
+) {
+  return db.applicationDeploymentLog.create({
     data: {
       deploymentId: params.deploymentId,
       scope: params.scope,

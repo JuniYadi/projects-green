@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { recordDeployEvent, recordDeployLog } from "./deploy-event.service"
+import { processQueuedDeployment } from "./deploy-builder.service"
 
 const BATCH_SIZE = 10
 
@@ -79,6 +80,19 @@ async function checkDeploymentStatus(deployment: {
   attempt: number
   stack: { name: string }
 }) {
+  // Process QUEUED deployments through the builder pipeline
+  if (deployment.status === "QUEUED") {
+    const result = await processQueuedDeployment(deployment.id)
+    if (result.processed) {
+      return {
+        deploymentId: deployment.id,
+        status: result.status,
+        manifestPushed: result.status === "RUNNING",
+        argocdSynced: result.status === "RUNNING",
+      }
+    }
+  }
+
   // In production, this would:
   // 1. Check GitHub repo for manifest push status
   // 2. Poll ArgoCD API for sync status

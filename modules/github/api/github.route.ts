@@ -11,6 +11,11 @@ import {
   type GithubService,
 } from "@/modules/github/github.service"
 import { enqueueGithubWebhookEvent } from "@/modules/github/github.webhook"
+import {
+  issueGithubInstallState,
+  validateGithubInstallState,
+} from "@/modules/github/github-install-state"
+import { getGithubInstallUrl, fetchGithubInstallationDetails, fetchGithubInstallationRepositories, syncGithubInstallation } from "@/modules/github/github.service"
 
 const repositoriesQuerySchema = z.object({
   ownerId: z.string().trim().min(1).optional(),
@@ -126,14 +131,117 @@ export const createGithubRoutes = (
     }))
     .get(
       "/install/start",
-      withGithubFeatureFlag(dependencies.service, ({ set }) => {
-        set.status = 501
+      withGithubFeatureFlag(dependencies.service, async ({ query, set }) => {
+        const auth = await dependencies.authenticate()
 
-        return {
-          ok: false as const,
-          error: "NOT_IMPLEMENTED" as const,
-          message: "GitHub installation flow is not implemented yet.",
+        if (!auth.user) {
+          set.status = 401
+          return {
+            ok: false as const,
+            error: "UNAUTHORIZED" as const,
+            message: "You must be signed in to start the GitHub installation.",
+          }
         }
+
+        try {
+          const state = await issueGithubInstallState({
+            workosUserId: auth.user.id,
+            organizationId: auth.organizationId ?? null,
+            returnTo: (query.returnTo as string) ?? null,
+            secret: process.env.APP_SECRET ?? "",
+          })
+
+          const redirectUrl = getGithubInstallUrl({ state: state.state })
+
+          set.redirect = redirectUrl
+
+          return {
+            ok: true as const,
+            redirectUrl,
+          }
+        } catch (error) {
+          console.error(
+            `[github] GET /integrations/github/install/start —`,
+            error instanceof Error ? (error.stack ?? error.message) : error
+          )
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INSTALL_START_FAILED" as const,
+            message: "Failed to start GitHub installation flow.",
+          }
+        }
+      })
+    )
+    .get(
+      "/install/callback",
+      withGithubFeatureFlag(dependencies.service, async ({ query, set }) => {
+        const auth = await dependencies.authenticate()
+
+        // Determine locale from query or session for redirect
+        const locale = (query.locale as string) ?? "en"
+
+        const errorRedirect = () => {
+          set.redirect = `/${locale}/console/app/deploy?github=error`
+        }
+
+        if (!auth.user) {
+          errorRedirect()
+          return
+        }
+
+        const installationIdParam = query.installation_id as string | undefined
+        const stateParam = query.state as string | undefined
+
+        if (!installationIdParam || !stateParam) {
+          errorRedirect()
+          return
+        }
+
+        try {
+          // Validate and consume the state nonce
+          await validateGithubInstallState({
+            state: stateParam,
+            secret: process.env.APP_SECRET ?? "",
+          })
+        } catch {
+          errorRedirect()
+          return
+        }
+
+        let installationId: bigint
+        try {
+          installationId = BigInt(installationIdParam)
+        } catch {
+          errorRedirect()
+          return
+        }
+
+        try {
+          // Fetch installation details from GitHub API
+          const installation = await fetchGithubInstallationDetails(installationId)
+
+          // Fetch all repositories for this installation
+          const repositories = await fetchGithubInstallationRepositories(installationId)
+
+          // Sync to DB
+          await syncGithubInstallation({
+            installationId,
+            workosUserId: auth.user.id,
+            organizationId: auth.organizationId ?? null,
+            installation,
+            repositories,
+          })
+        } catch (error) {
+          console.error(
+            `[github] GET /integrations/github/install/callback —`,
+            error instanceof Error ? (error.stack ?? error.message) : error
+          )
+          errorRedirect()
+          return
+        }
+
+        set.redirect = `/${locale}/console/app/deploy?github=connected`
       })
     )
     .get(

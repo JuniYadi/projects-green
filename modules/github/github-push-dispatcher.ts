@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
-import { triggerJenkinsJob } from "@/modules/jenkins/jenkins.service"
+import { triggerDeploy } from "@/modules/deploy/deploy-pipeline.service"
+import { prisma } from "@/lib/prisma"
 
 export interface GithubPushPayload {
   ref: string
@@ -28,143 +29,6 @@ export interface GithubPushPayload {
     }
   }
   deleted?: boolean
-}
-
-export interface StackMetadata {
-  lastPush?: {
-    ref: string
-    commitCount: number
-    author: string
-    timestamp: string
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any
-}
-
-export interface Stack {
-  id: string
-  autoDeploy: boolean
-  branchFilter?: string
-  jenkinsJobName: string
-  metadata: StackMetadata
-}
-
-export class GithubPushEventHandler {
-  async handlePush(stack: Stack, payload: GithubPushPayload): Promise<void> {
-    const branch = this.extractBranch(payload.ref)
-
-    if (!branch) {
-      console.log(
-        `[GitHubPushEventHandler] Skipped stack ${stack.id}: Invalid ref ${payload.ref}`
-      )
-      return
-    }
-
-    if (!this.shouldTriggerDeploy(stack, branch)) {
-      console.log(
-        `[GitHubPushEventHandler] Skipped stack ${stack.id}: Auto-deploy disabled or branch mismatch`
-      )
-      return
-    }
-
-    const commits = this.extractCommits(payload)
-    const pusher = payload.pusher.name || payload.pusher.email
-
-    await this.syncPushMetadata(stack, branch, commits, pusher)
-
-    const dispatcher = new GithubPushDispatcher()
-    await dispatcher.dispatchDeployment(stack, branch, payload)
-  }
-
-  extractBranch(ref: string): string | null {
-    if (!ref.startsWith("refs/heads/")) {
-      return null
-    }
-    return ref.replace("refs/heads/", "")
-  }
-
-  extractCommits(payload: GithubPushPayload, limit = 10) {
-    return (payload.commits || []).slice(0, limit).map((commit) => ({
-      id: commit.id,
-      message: commit.message,
-      author: commit.author.name || commit.author.username || "Unknown",
-      url: commit.url,
-    }))
-  }
-
-  shouldTriggerDeploy(stack: Stack, branch: string): boolean {
-    if (!stack.autoDeploy) {
-      return false
-    }
-
-    if (stack.branchFilter) {
-      const filters = stack.branchFilter
-        .split(",")
-        .map((f) => f.trim().toLowerCase())
-        .filter((f) => f.length > 0)
-      return filters.includes(branch.toLowerCase())
-    }
-
-    return true
-  }
-
-  async syncPushMetadata(
-    stack: Stack,
-    branch: string,
-    commits: Array<{
-      id: string
-      message: string
-      author: string
-      url: string
-    }>,
-    pusher: string
-  ): Promise<void> {
-    stack.metadata = {
-      ...stack.metadata,
-      lastPush: {
-        ref: branch,
-        commitCount: commits.length,
-        author: pusher,
-        timestamp: new Date().toISOString(),
-      },
-    }
-
-    console.log(
-      `[GitHubPushEventHandler] Updated metadata for stack ${stack.id}`
-    )
-  }
-}
-
-export class GithubPushDispatcher {
-  async dispatchDeployment(
-    stack: Stack,
-    branch: string,
-    pushPayload: GithubPushPayload
-  ): Promise<void> {
-    console.log(
-      `[GitHubPushDispatcher] Dispatching deployment for stack ${stack.id} on branch ${branch}`
-    )
-
-    const params = {
-      GIT_REF: branch,
-      GIT_COMMIT: pushPayload.after,
-      PUSHER: pushPayload.pusher.name,
-      STACK_ID: stack.id,
-    }
-
-    try {
-      await triggerJenkinsJob(stack.jenkinsJobName, params)
-      console.log(
-        `[GitHubPushDispatcher] Successfully triggered Jenkins job ${stack.jenkinsJobName} for stack ${stack.id}`
-      )
-    } catch (error) {
-      console.error(
-        `[GitHubPushDispatcher] Failed to trigger Jenkins job for stack ${stack.id}:`,
-        error
-      )
-      throw error
-    }
-  }
 }
 
 export function parsePushPayload(
@@ -236,24 +100,59 @@ export function createJenkinsPushDispatcher() {
     branch: string
     payload: Record<string, unknown>
   }) => {
-    const repo = payload.payload.repository as
-      | Record<string, unknown>
-      | undefined
-    const repoName = (repo?.name as string) || "unknown"
     const commitSha = (payload.payload.after as string) || ""
     const shortSha = commitSha.length >= 7 ? commitSha.slice(0, 7) : commitSha
-    const pusher = payload.payload.pusher as Record<string, unknown> | undefined
+    const repo = payload.payload.repository as Record<string, unknown> | undefined
 
-    const params: Record<string, string | boolean | number> = {
-      GIT_REF: payload.branch,
-      GIT_COMMIT: commitSha,
-      PUSHER: (pusher?.name as string) || "unknown",
-      STACK_ID: payload.connectionId,
-      WEBHOOK_EVENT_ID: payload.webhookEventId,
+    // Find all ApplicationStack records for this connection + branch
+    const stacks = await prisma.applicationStack.findMany({
+      where: {
+        repositoryConnectionId: payload.connectionId,
+        branchName: payload.branch,
+      },
+    })
+
+    if (stacks.length === 0) {
+      console.log(
+        `[push-dispatcher] No stacks found for connection ${payload.connectionId} branch ${payload.branch}`
+      )
+      return { jobId: null }
     }
 
-    await triggerJenkinsJob(`deploy-${repoName}`, params)
+    let triggered = 0
+    for (const stack of stacks) {
+      // Dedup: ignore if same commit SHA within last 5 minutes
+      if (commitSha) {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+        const recent = await prisma.applicationDeployment.findFirst({
+          where: {
+            stackId: stack.id,
+            commitSha,
+            createdAt: { gte: fiveMinutesAgo },
+          },
+        })
+        if (recent) {
+          console.log(
+            `[push-dispatcher] Skipping stack ${stack.slug}: same commit ${shortSha} deployed within 5min`
+          )
+          continue
+        }
+      }
 
-    return { jobId: `${repoName}/${shortSha || "unknown"}` }
+      try {
+        await triggerDeploy({
+          stackId: stack.id,
+          triggerType: "GITHUB",
+        })
+        triggered++
+      } catch (error) {
+        console.error(
+          `[push-dispatcher] Failed to trigger deploy for stack ${stack.slug}:`,
+          error
+        )
+      }
+    }
+
+    return { jobId: triggered > 0 ? `${repo?.name ?? "unknown"}/${shortSha || "unknown"}` : null }
   }
 }

@@ -8,6 +8,7 @@ import { deployTriggerRoutes } from "@/modules/deploy/api/routes/deploy-trigger.
 import { environmentVariablesRoutes } from "@/modules/deploy/api/routes/environment-variables.route"
 import { monitoringRoutes } from "@/modules/deploy/api/routes/monitoring.route"
 import { opensearchLogsRoutes } from "@/modules/deploy/api/routes/opensearch-logs.route"
+import { deployJenkinsWebhookRoutes } from "@/modules/deploy/api/routes/jenkins-webhook.route"
 
 export const deployRoutes = new Elysia()
   .use(appStacksRoutes)
@@ -18,3 +19,4 @@ export const deployRoutes = new Elysia()
   .use(environmentVariablesRoutes)
   .use(monitoringRoutes)
   .use(opensearchLogsRoutes)
+  .use(deployJenkinsWebhookRoutes)
