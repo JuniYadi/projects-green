@@ -71,7 +71,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: true
-          show_full_output: true
+          show_full_output: false
+          display_report: true
+          use_sticky_comment: true
           allowed_bots: 'github-actions,claude'
           plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
           plugins: 'ponytail@ponytail'
