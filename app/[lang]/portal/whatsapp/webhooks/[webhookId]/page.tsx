@@ -13,25 +13,14 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  webhookDispatcher,
-  toDeliveryLogDTO,
-} from "@/modules/whatsapp/webhooks/webhook-dispatcher.service"
+  DeliveryLogsSection,
+  TestPingButton,
+} from "@/modules/whatsapp/webhooks/ui/portal-delivery-logs"
 
 type WebhookDetailPageProps = {
   params: Promise<{
     lang: string
     webhookId: string
-  }>
-  searchParams: Promise<{
-    deliveryPage?: string
   }>
 }
 
@@ -54,19 +43,10 @@ const formatDate = (date: Date | string | null | undefined) => {
   }).format(date)
 }
 
-const STATUS_VARIANTS: Record<string, "success" | "destructive" | "warning" | "default"> = {
-  SUCCESS: "success",
-  FAILED: "destructive",
-  DEAD_LETTERED: "destructive",
-  PENDING: "warning",
-}
-
 export default async function PortalWebhookDetailPage({
   params,
-  searchParams,
 }: WebhookDetailPageProps) {
   const { lang, webhookId } = await params
-  const { deliveryPage } = await searchParams
   const locale = resolveLocaleOrDefault(lang)
 
   const auth = await withAuth({ ensureSignedIn: true })
@@ -88,13 +68,7 @@ export default async function PortalWebhookDetailPage({
     )
   }
 
-  const deliveryPageNum = Math.max(Number(deliveryPage) || 1, 1)
-  const deliveryLimit = 20
-
-  const result = await webhookDispatcher.getDeliveryLogs(webhookId, {
-    page: deliveryPageNum,
-    limit: deliveryLimit,
-  })
+  // Delivery logs are rendered client-side via DeliveryLogsSection
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -176,111 +150,11 @@ export default async function PortalWebhookDetailPage({
                 Outgoing webhook delivery attempts.
               </CardDescription>
             </div>
-            <form
-              action={`/portal/whatsapp/webhooks/${webhookId}`}
-              method="GET"
-              className="contents"
-            >
-              {/* ponytail: minimal action, form for test ping — server action would need client component */}
-            </form>
+            <TestPingButton webhookId={webhookId} />
           </div>
         </CardHeader>
         <CardContent>
-          {result.data.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No delivery logs yet.
-            </p>
-          ) : (
-            <>
-              <div className="overflow-x-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Event Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Attempt</TableHead>
-                      <TableHead>HTTP Status</TableHead>
-                      <TableHead>Error</TableHead>
-                      <TableHead>Started</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {result.data.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="text-sm">{log.eventType}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              STATUS_VARIANTS[log.status] ?? "default"
-                            }
-                          >
-                            {log.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {log.attempt}/{log.maxAttempts}
-                        </TableCell>
-                        <TableCell>
-                          {log.responseStatus ? (
-                            <span
-                              className={
-                                log.responseStatus >= 200 &&
-                                log.responseStatus < 300
-                                  ? "text-green-600"
-                                  : "text-red-600"
-                              }
-                            >
-                              {log.responseStatus}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                          {log.errorMessage ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(log.startedAt)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {result.meta.totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={deliveryPageNum <= 1}
-                    asChild
-                  >
-                    <Link
-                      href={`/portal/whatsapp/webhooks/${webhookId}?deliveryPage=${deliveryPageNum - 1}`}
-                    >
-                      Previous
-                    </Link>
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    Page {deliveryPageNum} of {result.meta.totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={deliveryPageNum >= result.meta.totalPages}
-                    asChild
-                  >
-                    <Link
-                      href={`/portal/whatsapp/webhooks/${webhookId}?deliveryPage=${deliveryPageNum + 1}`}
-                    >
-                      Next
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
+          <DeliveryLogsSection webhookId={webhookId} />
         </CardContent>
       </Card>
     </main>
