@@ -7,6 +7,10 @@ import {
   recordProcessingResult,
   listWebhookEvents,
 } from "../webhooks.service"
+import {
+  webhookDispatcher,
+  toDeliveryLogDTO,
+} from "../webhook-dispatcher.service"
 
 /**
  * Infer the webhook event type from the Meta payload structure.
@@ -179,7 +183,12 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
           whatsappDeviceId: body.deviceId,
           organizationId: whatsappAuth.organizationId,
           webhookUrl: body.webhookUrl,
-          verifyToken: body.verifyToken,
+          verifyToken: body.verifyToken ?? null,
+          authType: body.authType ?? "none",
+          authValue: body.authValue ?? null,
+          authHeaderName: body.authHeaderName ?? null,
+          retryMaxAttempts: body.retryMaxAttempts ?? 3,
+          retryIntervalMs: body.retryIntervalMs ?? 5000,
           active: true,
         },
       })
@@ -189,7 +198,17 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
       body: t.Object({
         deviceId: t.String(),
         webhookUrl: t.String(),
-        verifyToken: t.String(),
+        verifyToken: t.Optional(t.String()),
+        authType: t.Optional(t.Union([
+          t.Literal("bearer"),
+          t.Literal("basic"),
+          t.Literal("custom-header"),
+          t.Literal("none"),
+        ])),
+        authValue: t.Optional(t.String()),
+        authHeaderName: t.Optional(t.String()),
+        retryMaxAttempts: t.Optional(t.Number()),
+        retryIntervalMs: t.Optional(t.Number()),
       }),
     }
   )
@@ -231,6 +250,16 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
           webhookUrl: t.String(),
           verifyToken: t.String(),
           active: t.Boolean(),
+          authType: t.Union([
+            t.Literal("bearer"),
+            t.Literal("basic"),
+            t.Literal("custom-header"),
+            t.Literal("none"),
+          ]),
+          authValue: t.String(),
+          authHeaderName: t.String(),
+          retryMaxAttempts: t.Number(),
+          retryIntervalMs: t.Number(),
         })
       ),
     }
@@ -262,6 +291,132 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
     await prisma.whatsappWebhook.delete({ where: { id: params.id } })
     return { ok: true }
   })
+
+  // GET /:id/deliveries — paginated delivery logs (org-scoped)
+  .get(
+    "/:id/deliveries",
+    async ({ request, params, query, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      const webhook = await prisma.whatsappWebhook.findUnique({
+        where: { id: params.id },
+        select: { organizationId: true },
+      })
+
+      if (!webhook) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
+      }
+
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        webhook.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      const result = await webhookDispatcher.getDeliveryLogs(params.id, {
+        eventType: query.eventType,
+        status: query.status,
+        from: query.from,
+        to: query.to,
+        page: Number(query.page) || 1,
+        limit: Number(query.limit) || 20,
+      })
+
+      return { ok: true, data: result.data, meta: result.meta }
+    },
+    {
+      query: t.Object({
+        eventType: t.Optional(t.String()),
+        status: t.Optional(t.String()),
+        from: t.Optional(t.String()),
+        to: t.Optional(t.String()),
+        page: t.Optional(t.String()),
+        limit: t.Optional(t.String()),
+      }),
+    }
+  )
+
+  // POST /:id/deliveries/:deliveryId/resend — manual resend (org-scoped)
+  .post(
+    "/:id/deliveries/:deliveryId/resend",
+    async ({ request, params, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      const deliveryLog =
+        await prisma.whatsappWebhookDeliveryLog.findUnique({
+          where: { id: params.deliveryId },
+          select: {
+            webhookId: true,
+            organizationId: true,
+          },
+        })
+
+      if (!deliveryLog || deliveryLog.webhookId !== params.id) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Delivery log not found." }
+      }
+
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        deliveryLog.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      await webhookDispatcher.resendDelivery(params.deliveryId)
+      return { ok: true, message: "Delivery re-enqueued for resend." }
+    }
+  )
+
+  // POST /:id/test — send a test ping (org-scoped)
+  .post(
+    "/:id/test",
+    async ({ request, params, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      const webhook = await prisma.whatsappWebhook.findUnique({
+        where: { id: params.id },
+        select: { organizationId: true },
+      })
+
+      if (!webhook) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
+      }
+
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        webhook.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      await webhookDispatcher.dispatch(
+        params.id,
+        "test",
+        { test: true, timestamp: new Date().toISOString() }
+      )
+
+      return { ok: true, message: "Test webhook enqueued." }
+    }
+  )
 
   // GET /:id/verify — Meta webhook verification endpoint
   .get(
