@@ -349,12 +349,33 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         }
       }
 
-      await enqueueWhatsAppTemplateSync(
-        template.organizationId,
-        template.whatsappDeviceId,
-        "sync-templates"
-      )
+      logWhatsappAuditEvent({
+        action: "TEMPLATE_SYNC_REQUESTED",
+        organizationId: template.organizationId,
+        adminId: (whatsappAuth as any).userId,
+        message: `Template sync requested: ${template.name}`,
+        status: "STARTED",
+      })
 
-      return { ok: true, message: "Sync job enqueued." }
+      try {
+        await enqueueWhatsAppTemplateSync(
+          template.organizationId,
+          template.whatsappDeviceId,
+          "sync-templates"
+        )
+
+        return { ok: true, message: "Sync job enqueued." }
+      } catch (err) {
+        logWhatsappAuditEvent({
+          action: "TEMPLATE_SYNC_FAILED",
+          organizationId: template.organizationId,
+          adminId: (whatsappAuth as any).userId,
+          message: "Template sync failed at route level",
+          errorMessage: String(err),
+          status: "FAILED",
+        })
+        set.status = 500
+        return { ok: false, error: "INTERNAL", message: "Failed to enqueue sync job." }
+      }
     }
   )

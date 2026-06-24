@@ -5,14 +5,12 @@ process.env.REDIS_URL = "redis://localhost:6379/0"
 
 const workerOnMock = mock((_event: string, _handler: unknown) => undefined)
 const workerCloseMock = mock(async () => undefined)
-let capturedProcessor: ((job: Job<any>) => Promise<void>) | null = null
 
 class WorkerMock {
   name: string
 
-  constructor(name: string, processor: (job: Job<any>) => Promise<void>) {
+  constructor(name: string, _processor: (job: Job<any>) => Promise<void>) {
     this.name = name
-    capturedProcessor = processor
   }
 
   on(event: string, handler: unknown) {
@@ -45,6 +43,7 @@ const listTemplatesPageMock = mock(
 const fromDeviceMock = mock(async (..._args: unknown[]) => ({
   listTemplatesPage: listTemplatesPageMock,
 }))
+const logWhatsappAuditEventMock = mock(async (..._args: unknown[]) => undefined)
 
 class QueueMock {}
 
@@ -53,8 +52,13 @@ mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   WhatsAppDeviceClient: { fromDevice: fromDeviceMock },
 }))
+mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
+  logWhatsappAuditEvent: logWhatsappAuditEventMock,
+}))
 
-await import("@/scripts/whatsapp-template-sync-worker")
+const { syncTemplates, syncTemplateStatus } = await import(
+  "@/scripts/whatsapp-template-sync-worker"
+)
 
 beforeEach(() => {
   workerOnMock.mockClear()
@@ -66,6 +70,7 @@ beforeEach(() => {
   mockPrisma.whatsappTemplateLanguage.upsert.mockClear()
   listTemplatesPageMock.mockClear()
   fromDeviceMock.mockClear()
+  logWhatsappAuditEventMock.mockClear()
 
   mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
     id: "device_1",
@@ -108,16 +113,11 @@ describe("whatsapp-template-sync-worker", () => {
         ],
       })
 
-    await capturedProcessor?.({
-      id: "job_1",
-      name: "sync-templates",
-      attemptsMade: 0,
-      data: {
-        organizationId: "org_1",
-        deviceId: "device_1",
-        method: "sync-templates",
-      },
-    } as Job<any>)
+    await syncTemplates({
+      organizationId: "org_1",
+      deviceId: "device_1",
+      method: "sync-templates",
+    })
 
     expect(fromDeviceMock).toHaveBeenCalledWith({
       accessToken: "encrypted-token",
@@ -156,6 +156,14 @@ describe("whatsapp-template-sync-worker", () => {
         },
       }
     )
+
+    // Audit assertions — STARTED then SYNCED
+    expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "TEMPLATE_SYNC_STARTED", status: "STARTED" })
+    )
+    expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "TEMPLATE_SYNCED", status: "OK" })
+    )
   })
 
   it("updates status and stores rejection reason on rejected templates", async () => {
@@ -174,16 +182,11 @@ describe("whatsapp-template-sync-worker", () => {
       ],
     })
 
-    await capturedProcessor?.({
-      id: "job_2",
-      name: "sync-status",
-      attemptsMade: 0,
-      data: {
-        organizationId: "org_1",
-        deviceId: "device_1",
-        method: "sync-status",
-      },
-    } as Job<any>)
+    await syncTemplateStatus({
+      organizationId: "org_1",
+      deviceId: "device_1",
+      method: "sync-status",
+    })
 
     expect(mockPrisma.whatsappTemplate.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -208,5 +211,52 @@ describe("whatsapp-template-sync-worker", () => {
         }),
       })
     )
+
+    // Audit — STARTED then SYNCED for sync-status
+    expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "TEMPLATE_SYNC_STARTED", status: "STARTED" })
+    )
+    expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "TEMPLATE_SYNCED", status: "OK" })
+    )
+  })
+
+  it("emits TEMPLATE_SYNC_FAILED when sync-templates partially fails", async () => {
+    // First template throws, second succeeds
+    listTemplatesPageMock.mockResolvedValue({
+      data: [
+        { name: "fail", components: [] },
+        { name: "ok", language: "en", components: [{ type: "BODY", text: "ok" }] },
+      ],
+    })
+    mockPrisma.whatsappTemplate.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+    mockPrisma.whatsappTemplate.create
+      .mockRejectedValueOnce(new Error("Meta API error"))
+      .mockResolvedValueOnce({})
+
+    await expect(
+      syncTemplates({
+        organizationId: "org_1",
+        deviceId: "device_1",
+        method: "sync-templates",
+      })
+    ).rejects.toThrow("partially failed")
+
+    // Verify audit event ordering: STARTED must come before FAILED
+    const auditCalls = logWhatsappAuditEventMock.mock.calls as Array<[Record<string, unknown>]>
+    expect(auditCalls.length).toBeGreaterThanOrEqual(2)
+    const startedIdx = auditCalls.findIndex(
+      (call) => (call[0] as Record<string, unknown>)?.action === "TEMPLATE_SYNC_STARTED"
+    )
+    const failedIdx = auditCalls.findIndex(
+      (call) => (call[0] as Record<string, unknown>)?.action === "TEMPLATE_SYNC_FAILED"
+    )
+    expect(startedIdx).toBeLessThan(failedIdx)
+    expect(auditCalls[failedIdx][0] as Record<string, unknown>).toMatchObject({
+      action: "TEMPLATE_SYNC_FAILED",
+      status: "FAILED",
+    })
   })
 })
