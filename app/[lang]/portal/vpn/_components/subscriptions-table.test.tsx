@@ -1,4 +1,3 @@
-import { act } from "react"
 import { describe, expect, it, mock } from "bun:test"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import type { VpnSubscriptionItem } from "./vpn-admin-client"
@@ -46,7 +45,6 @@ describe("SubscriptionsTable", () => {
   it("renders provisioning health summary correctly", async () => {
     mockListVpnAdminSubscriptions.mockResolvedValue(makeSuccess([makeSub()]))
     const view = render(<SubscriptionsTable />)
-    await act(async () => { await new Promise(r => setTimeout(r, 10)) })
 
     await waitFor(() => expect(view.getByText(/1 ACTIVE/)).toBeTruthy())
     await waitFor(() => expect(view.getByText(/1 FAILED/)).toBeTruthy())
@@ -55,7 +53,6 @@ describe("SubscriptionsTable", () => {
   it("shows Retry All Failed button when there are failed accounts", async () => {
     mockListVpnAdminSubscriptions.mockResolvedValue(makeSuccess([makeSub()]))
     const view = render(<SubscriptionsTable />)
-    await act(async () => { await new Promise(r => setTimeout(r, 10)) })
 
     await waitFor(() => expect(view.getByText(/1 FAILED/)).toBeTruthy())
   })
@@ -68,14 +65,12 @@ describe("SubscriptionsTable", () => {
       })])
     )
     const view = render(<SubscriptionsTable />)
-    await act(async () => { await new Promise(r => setTimeout(r, 10)) })
 
     await waitFor(() => expect(view.getByText(/Acme Inc/)).toBeTruthy())
 
     const dataRow = view.getByText(/Acme Inc/).closest("tr")
     if (dataRow) {
       fireEvent.click(dataRow)
-      await act(async () => { await new Promise(r => setTimeout(r, 10)) })
     }
 
     await waitFor(() => {

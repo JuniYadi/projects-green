@@ -157,6 +157,10 @@ const main = async () => {
     console.warn("Below target but above base - continuing.")
   }
 
+  if (exitCode !== 0) {
+    process.exit(exitCode)
+  }
+
 }
 
 if (import.meta.main) {

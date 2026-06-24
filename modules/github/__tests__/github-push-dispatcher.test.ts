@@ -65,6 +65,15 @@ describe("createJenkinsPushDispatcher", () => {
     })
 
     expect(result).toEqual({ jobId: expect.stringContaining("my-repo/") })
+
+    expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          repositoryConnectionId: "conn_1",
+          branchName: "main",
+        },
+      })
+    )
   })
 
   it("returns a job ID with repo/sha format", async () => {
