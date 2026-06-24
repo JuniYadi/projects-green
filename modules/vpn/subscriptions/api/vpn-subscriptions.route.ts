@@ -66,6 +66,18 @@ const notFound = (set: RouteSet) => {
   }
 }
 
+async function resolvePackageNames(packageIds: string[]) {
+  const ids = [...new Set(packageIds)]
+  if (ids.length === 0) return new Map<string, string>()
+
+  const packages = await prisma.vpnPackage.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true },
+  })
+
+  return new Map(packages.map((pkg) => [pkg.id, pkg.name]))
+}
+
 export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
   const authenticate = deps.authenticate ?? (() => withAuth())
   const service = deps.service ?? defaultService()
@@ -82,7 +94,19 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
       const ctx = await resolveOrg(set)
       if ("error" in ctx) return ctx.error
       const subs = await service.listForOrganization(ctx.organizationId)
-      return { ok: true as const, data: subs.map((s) => toVpnSubscriptionDTO(s)) }
+      const packageNames = await resolvePackageNames(
+        subs.map((sub) => sub.packageId)
+      )
+      return {
+        ok: true as const,
+        data: subs.map((sub) =>
+          toVpnSubscriptionDTO(
+            sub,
+            null,
+            packageNames.get(sub.packageId) ?? null
+          )
+        ),
+      }
     })
     .get("/vpn/subscriptions/:id", async ({ params, set }) => {
       const ctx = await resolveOrg(set)
@@ -92,7 +116,15 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
         params.id
       )
       if (!sub) return notFound(set)
-      return { ok: true as const, data: toVpnSubscriptionDTO(sub) }
+      const packageNames = await resolvePackageNames([sub.packageId])
+      return {
+        ok: true as const,
+        data: toVpnSubscriptionDTO(
+          sub,
+          null,
+          packageNames.get(sub.packageId) ?? null
+        ),
+      }
     })
     .get(
       "/vpn/subscriptions/:id/servers/:saId/config",
@@ -159,7 +191,15 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
             packageId: params.id,
           })
           set.status = 201
-          return { ok: true as const, data: toVpnSubscriptionDTO(sub) }
+          const packageNames = await resolvePackageNames([sub.packageId])
+          return {
+            ok: true as const,
+            data: toVpnSubscriptionDTO(
+              sub,
+              null,
+              packageNames.get(sub.packageId) ?? null
+            ),
+          }
         } catch (error) {
           return toPurchaseError(set, error)
         }
@@ -215,7 +255,15 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
             ctx.organizationId,
             params.id
           )
-          return { ok: true as const, data: toVpnSubscriptionDTO(sub) }
+          const packageNames = await resolvePackageNames([sub.packageId])
+          return {
+            ok: true as const,
+            data: toVpnSubscriptionDTO(
+              sub,
+              null,
+              packageNames.get(sub.packageId) ?? null
+            ),
+          }
         } catch (error) {
           if (error instanceof VpnSubscriptionNotFoundError)
             return notFound(set)

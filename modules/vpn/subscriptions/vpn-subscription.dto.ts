@@ -75,7 +75,6 @@ export type VpnSubscriptionDTO = {
   originalPrice: string | null
   originalCurrency: string | null
   exchangeRate: number | null
-  cancelAtPeriodEnd: boolean
   createdAt: string
   updatedAt: string
 }
@@ -172,7 +171,6 @@ export function toVpnSubscriptionDTO(
     exchangeRate: subscription.exchangeRate
       ? Number(subscription.exchangeRate)
       : null,
-    cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     createdAt: subscription.createdAt.toISOString(),
     updatedAt: subscription.updatedAt.toISOString(),
   }
@@ -196,6 +194,7 @@ export function toVpnSubscriptionListDTO(
     status: subscription.status,
     currentPeriodStart: subscription.currentPeriodStart.toISOString(),
     currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+    cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     deviceCount: subscription._count.mobileDevices,
     provisioningSummary: computeProvisioningSummary(accounts),
     priceLocked: subscription.priceLocked.toString(),
