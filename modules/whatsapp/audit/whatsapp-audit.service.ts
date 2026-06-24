@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 
 export type WhatsappAuditAction =
   // Template
+  | "TEMPLATE_SYNC_STARTED"
   | "TEMPLATE_SYNC_REQUESTED"
   | "TEMPLATE_SYNCED"
   | "TEMPLATE_SYNC_FAILED"

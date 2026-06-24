@@ -1481,13 +1481,6 @@ enum WhatsappBillingStatus {
   REVERTED_FAILED
 }
 
-enum WhatsappLogType {
-  INFO
-  ERROR
-  INBOX
-  AUDIT
-}
-
 enum WhatsappApiKeyEnvironment {
   SANDBOX
   LIVE
@@ -1532,7 +1525,6 @@ model WhatsappDevice {
   monthlyCounts         WhatsappMonthlyCount[]
   quotaSessions         WhatsappQuotaSession[]
   billingLedgers        WhatsappBillingLedger[]
-  logs                  WhatsappLog[]
   attachments           WhatsappAttachment[]
   broadcastRateStates   WhatsappBroadcastRateState[]
   webhooks              WhatsappWebhook[]
@@ -1808,20 +1800,6 @@ model WhatsappApiCall {
   @@index([phoneNumberId, status, createdAt(sort: Desc)])
   @@map("WhatsappApiCall")
 }
-
-model WhatsappLog {
-  id               String          @id @default(cuid())
-  organizationId   String
-  type             WhatsappLogType
-  message          String
-  metadata         Json?
-  createdAt        DateTime        @default(now())
-  whatsappDevice   WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
-  whatsappDeviceId String?
-
-  @@index([organizationId, type, createdAt])
-}
-
 model WhatsappAttachment {
   id               String          @id @default(cuid())
   organizationId   String
