@@ -121,6 +121,16 @@ declare module "sshpk" {
   }
 }
 
+declare module "lru-cache" {
+  class LRUCache<K, V> {
+    constructor(options: { max: number })
+    get(key: K): V | undefined
+    set(key: K, value: V): this
+    has(key: K): boolean
+  }
+  export = LRUCache
+}
+
 declare module "@prisma/adapter-pg" {
   export class PrismaPg {
     connect(): Promise<any>
