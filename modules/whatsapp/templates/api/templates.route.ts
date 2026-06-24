@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import type { WhatsappTemplateSyncStatus } from "@prisma/client"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import { requireSuperAdmin } from "@/lib/whatsapp/auth"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
 import { toWhatsappTemplateDTO } from "../templates.dto"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
@@ -53,16 +54,12 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       const where: Record<string, unknown> = {}
 
       // Non-super_admin: auto-scope to own org
-      if (whatsappAuth.type === "workos") {
-        if (whatsappAuth.platformRole !== "super_admin") {
-          if (!whatsappAuth.organizationId) {
-            set.status = 403
-            return { ok: false, error: "FORBIDDEN", message: "Organization ID required." }
-          }
-          where.organizationId = whatsappAuth.organizationId
-        } else if (query.organizationId) {
-          where.organizationId = String(query.organizationId)
+      if (!requireSuperAdmin(whatsappAuth)) {
+        if (!whatsappAuth.organizationId) {
+          set.status = 403
+          return { ok: false, error: "FORBIDDEN", message: "Organization ID required." }
         }
+        where.organizationId = whatsappAuth.organizationId
       } else if (query.organizationId) {
         where.organizationId = String(query.organizationId)
       }
