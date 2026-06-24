@@ -334,6 +334,10 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         return next
       })
       onChanged()
+    } catch (err) {
+      // Keep dialog open so user can retry
+      console.error("[VPN] cancel failed:", err)
+      // TODO: toast.error("Failed to cancel subscription. Please try again.")
     } finally {
       setCancelling(null)
     }
@@ -350,6 +354,10 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         return next
       })
       onChanged()
+    } catch (err) {
+      // Keep dialog open so user can retry
+      console.error("[VPN] reinstate failed:", err)
+      // TODO: toast.error("Failed to reinstate subscription. Please try again.")
     } finally {
       setReinstating(null)
     }
