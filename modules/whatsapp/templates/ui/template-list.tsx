@@ -18,6 +18,34 @@ import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 
 type SyncStatus = "NOT_SYNCED" | "SYNCING" | "SYNCED" | "FAILED"
 
+function MetaStatusBadge({ status }: { status?: string | null }) {
+  const config: Record<string, { label: string; className: string }> = {
+    APPROVED: {
+      label: "Approved",
+      className: "text-green-600 bg-green-50 dark:bg-green-900/20",
+    },
+    PENDING: {
+      label: "Pending",
+      className: "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20",
+    },
+    REJECTED: {
+      label: "Rejected",
+      className: "text-red-600 bg-red-50 dark:bg-red-900/20",
+    },
+  }
+
+  if (!status) return null
+  const { label, className } = config[status] ?? { label: status, className: "text-gray-500 bg-gray-50 dark:bg-gray-900/20" }
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}
+    >
+      {label}
+    </span>
+  )
+}
+
 function TemplateStatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; className: string }> = {
     NOT_SYNCED: {
@@ -164,7 +192,10 @@ export function TemplateList({
               <p className="text-sm text-muted-foreground">{template.slug}</p>
             </div>
           </div>
-          <TemplateStatusBadge status={template.syncStatus ?? "NOT_SYNCED"} />
+          <div className="flex items-center gap-2">
+            <TemplateStatusBadge status={template.syncStatus ?? "NOT_SYNCED"} />
+            <MetaStatusBadge status={template.metaStatus} />
+          </div>
         </div>
       ))}
     </div>

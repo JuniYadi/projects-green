@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowsClockwise, ArrowUp, ArrowDown } from "@phosphor-icons/react"
+import { ArrowUp, ArrowDown } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { ErrorBoundary } from "@/components/ui/error-boundary"
@@ -68,7 +68,7 @@ export function TemplatesPageClient({ isSuperAdmin }: TemplatesPageClientProps) 
   }, [isSuperAdmin])
 
   React.useEffect(() => {
-    if (isSuperAdmin) void loadOrganizations()
+    if (isSuperAdmin) void loadOrganizations() // eslint-disable-line react-hooks/set-state-in-effect
   }, [isSuperAdmin, loadOrganizations])
 
   // ── Device list ─────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ export function TemplatesPageClient({ isSuperAdmin }: TemplatesPageClientProps) 
   }, [organizationId])
 
   React.useEffect(() => {
-    void loadDevices()
+    void loadDevices() // eslint-disable-line react-hooks/set-state-in-effect
   }, [loadDevices])
 
   // ── Filter helpers ──────────────────────────────────────────────────

@@ -38,7 +38,6 @@ type TemplateFilters = {
 
 type TemplatesListResponse = {
   ok: boolean
-  templates: WhatsAppTemplate[]
   data: WhatsAppTemplate[]
   meta: { total: number; page: number; limit: number; totalPages: number }
 }
@@ -74,7 +73,7 @@ export function useTemplates(filters?: TemplateFilters) {
         if (edenError)
           throw new Error(edenError.message ?? "Failed to load templates.")
         const result = data as unknown as TemplatesListResponse
-        setTemplates(result?.templates ?? [])
+        setTemplates(result?.data ?? [])
       } catch (err) {
         if (!cancelled)
           setError(
@@ -105,7 +104,7 @@ export function useTemplates(filters?: TemplateFilters) {
       if (edenError)
         throw new Error(edenError.message ?? "Failed to load templates.")
       const result = data as unknown as TemplatesListResponse
-      setTemplates(result?.templates ?? [])
+      setTemplates(result?.data ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load templates.")
     } finally {

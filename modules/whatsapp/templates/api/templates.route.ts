@@ -52,14 +52,18 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       const { page, limit, skip } = getPagination(query)
       const where: Record<string, unknown> = {}
 
-      // Non-super_admin: auto-scope to own org (existing behavior)
-      if (
-        whatsappAuth.type === "workos" &&
-        whatsappAuth.platformRole !== "super_admin"
-      ) {
-        where.organizationId = whatsappAuth.organizationId!
+      // Non-super_admin: auto-scope to own org
+      if (whatsappAuth.type === "workos") {
+        if (whatsappAuth.platformRole !== "super_admin") {
+          if (!whatsappAuth.organizationId) {
+            set.status = 403
+            return { ok: false, error: "FORBIDDEN", message: "Organization ID required." }
+          }
+          where.organizationId = whatsappAuth.organizationId
+        } else if (query.organizationId) {
+          where.organizationId = String(query.organizationId)
+        }
       } else if (query.organizationId) {
-        // Super_admin explicit org filter
         where.organizationId = String(query.organizationId)
       }
 
@@ -68,9 +72,10 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         where.whatsappDeviceId = String(query.whatsappDeviceId)
       }
 
-      // Sync status filter
-      if (query.syncStatus) {
-        where.syncStatus = String(query.syncStatus) as WhatsappTemplateSyncStatus
+      // Sync status filter with validation
+      const VALID_SYNC_STATUSES = ["SYNCED", "NOT_SYNCED", "NOT_IN_META"] as const
+      if (query.syncStatus && VALID_SYNC_STATUSES.includes(query.syncStatus as typeof VALID_SYNC_STATUSES[number])) {
+        where.syncStatus = query.syncStatus as WhatsappTemplateSyncStatus
       }
 
       const sortOrder = query.sort === "asc" ? "asc" : ("desc" as const)
@@ -90,7 +95,6 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       const data = templates.map(toWhatsappTemplateDTO)
       return {
         ok: true,
-        templates: data,
         data,
         meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       }
