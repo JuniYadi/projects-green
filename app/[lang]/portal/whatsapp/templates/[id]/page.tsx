@@ -80,12 +80,23 @@ export default function PortalTemplateDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="w-fit px-0">
-        <Link href="../">
-          <ArrowLeft className="mr-1 size-4" />
-          Back to Templates
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button asChild variant="ghost" size="sm" className="w-fit px-0">
+          <Link href="../">
+            <ArrowLeft className="mr-1 size-4" />
+            Back to Templates
+          </Link>
+        </Button>
+        {template?.whatsappDeviceId && (
+          <Button asChild variant="outline" size="sm">
+            <Link
+              href={`/portal/whatsapp/devices/${template.whatsappDeviceId}?tab=template`}
+            >
+              View Device →
+            </Link>
+          </Button>
+        )}
+      </div>
 
       {editing && template ? (
         <Card>

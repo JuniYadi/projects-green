@@ -24,6 +24,8 @@ export type WhatsappTemplateDTO = Pick<
   | "slug"
   | "name"
   | "description"
+  | "organizationId"
+  | "whatsappDeviceId"
   | "syncStatus"
   | "metaStatus"
   | "lastSyncedAt"
@@ -68,6 +70,8 @@ export function toWhatsappTemplateDTO(
     slug: template.slug,
     name: template.name,
     description: template.description,
+    organizationId: template.organizationId,
+    whatsappDeviceId: template.whatsappDeviceId,
     syncStatus: template.syncStatus,
     metaStatus: template.metaStatus,
     lastSyncedAt: template.lastSyncedAt,

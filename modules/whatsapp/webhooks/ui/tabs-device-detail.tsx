@@ -28,6 +28,10 @@ import {
   AuditLogTable,
   type AuditLogDTO,
 } from "@/modules/whatsapp/audit/ui/whatsapp-audit-table"
+import {
+  TemplateList,
+} from "@/modules/whatsapp/templates/ui/template-list"
+import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -228,12 +232,30 @@ export function TabsDeviceDetail({
       <Tabs value={defaultTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="templates">
+            Templates{" "}
+            <TemplateCountBadge deviceId={device.id} />
+          </TabsTrigger>
           <TabsTrigger value="webhook-log">Webhook Log</TabsTrigger>
           <TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
           {overviewChildren}
+        </TabsContent>
+
+        <TabsContent value="templates" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Device Templates</CardTitle>
+              <CardDescription>
+                WhatsApp message templates synced to this device.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TemplateTabContent deviceId={device.id} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="webhook-log" className="mt-6">
@@ -268,7 +290,58 @@ export function TabsDeviceDetail({
   )
 }
 
-// ─── Audit Log Tab Content ──────────────────────────────────────────────────
+// ─── Template Tab Content ────────────────────────────────────────────
+
+function TemplateCountBadge({ deviceId }: { deviceId: string }) {
+  type CountState =
+    | { status: "loading" }
+    | { status: "loaded"; count: number }
+    | { status: "error" }
+  const [state, setState] = React.useState<CountState>({ status: "loading" })
+
+  React.useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await eden.api.whatsapp.templates.get({
+          $query: { whatsappDeviceId: deviceId, limit: "1", page: "1" },
+        })
+        if (!cancelled) {
+          const result = data as unknown as { meta: { total: number } }
+          setState({ status: "loaded", count: result?.meta?.total ?? 0 })
+        }
+      } catch {
+        if (!cancelled) setState({ status: "error" })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [deviceId])
+
+  if (state.status === "loading") {
+    return <span className="ml-1 inline-block size-3 animate-pulse rounded-full bg-muted-foreground/30 align-middle" />
+  }
+  if (state.status === "error") {
+    return <span className="ml-1 text-xs text-muted-foreground">(?)</span>
+  }
+  return <span className="ml-1 text-xs text-muted-foreground">({state.count})</span>
+}
+
+function TemplateTabContent({ deviceId }: { deviceId: string }) {
+  const { templates, loading, error, reload } = useTemplates({
+    whatsappDeviceId: deviceId,
+    sort: "desc",
+  })
+
+  return (
+    <TemplateList
+      templates={templates}
+      loading={loading}
+      error={error}
+      onRetry={() => void reload()}
+      emptyMessage="No templates synced to this device"
+    />
+  )
+}
 
 function AuditLogTabContent({ deviceId }: { deviceId: string }) {
   const [logs, setLogs] = React.useState<AuditLogDTO[]>([])

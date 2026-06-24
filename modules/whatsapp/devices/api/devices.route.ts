@@ -135,14 +135,19 @@ const buildDeviceUpdateData = async (
 }
 
 export const devicesRoutes = new Elysia({ prefix: "/devices" })
-  .get("/", async ({ request, set }: any) => {
+  .get("/", async ({ request, query, set }: any) => {
     const whatsappAuth = await resolveDeviceAuth(request)
     if (!whatsappAuth) return toUnauthorized(set)
 
+    const where: Record<string, unknown> = {}
+    if (!isSuperAdmin(whatsappAuth)) {
+      where.organizationId = whatsappAuth.organizationId!
+    } else if (query?.organizationId) {
+      where.organizationId = String(query.organizationId)
+    }
+
     const devices = await prisma.whatsappDevice.findMany({
-      where: isSuperAdmin(whatsappAuth)
-        ? {}
-        : { organizationId: whatsappAuth.organizationId! },
+      where,
       orderBy: { createdAt: "desc" },
     })
 
