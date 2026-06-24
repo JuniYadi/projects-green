@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
-import { triggerJenkinsJob } from "@/modules/jenkins/jenkins.service"
+import { triggerDeploy } from "@/modules/deploy/deploy-pipeline.service"
+import { prisma } from "@/lib/prisma"
 
 export interface GithubPushPayload {
   ref: string
@@ -236,24 +237,59 @@ export function createJenkinsPushDispatcher() {
     branch: string
     payload: Record<string, unknown>
   }) => {
-    const repo = payload.payload.repository as
-      | Record<string, unknown>
-      | undefined
-    const repoName = (repo?.name as string) || "unknown"
     const commitSha = (payload.payload.after as string) || ""
     const shortSha = commitSha.length >= 7 ? commitSha.slice(0, 7) : commitSha
-    const pusher = payload.payload.pusher as Record<string, unknown> | undefined
+    const repo = payload.payload.repository as Record<string, unknown> | undefined
 
-    const params: Record<string, string | boolean | number> = {
-      GIT_REF: payload.branch,
-      GIT_COMMIT: commitSha,
-      PUSHER: (pusher?.name as string) || "unknown",
-      STACK_ID: payload.connectionId,
-      WEBHOOK_EVENT_ID: payload.webhookEventId,
+    // Find all ApplicationStack records for this connection + branch
+    const stacks = await prisma.applicationStack.findMany({
+      where: {
+        repositoryConnectionId: payload.connectionId,
+        branchName: payload.branch,
+      },
+    })
+
+    if (stacks.length === 0) {
+      console.log(
+        `[push-dispatcher] No stacks found for connection ${payload.connectionId} branch ${payload.branch}`
+      )
+      return { jobId: null }
     }
 
-    await triggerJenkinsJob(`deploy-${repoName}`, params)
+    let triggered = 0
+    for (const stack of stacks) {
+      // Dedup: ignore if same commit SHA within last 5 minutes
+      if (commitSha) {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+        const recent = await prisma.applicationDeployment.findFirst({
+          where: {
+            stackId: stack.id,
+            commitSha,
+            createdAt: { gte: fiveMinutesAgo },
+          },
+        })
+        if (recent) {
+          console.log(
+            `[push-dispatcher] Skipping stack ${stack.slug}: same commit ${shortSha} deployed within 5min`
+          )
+          continue
+        }
+      }
 
-    return { jobId: `${repoName}/${shortSha || "unknown"}` }
+      try {
+        await triggerDeploy({
+          stackId: stack.id,
+          triggerType: "GITHUB",
+        })
+        triggered++
+      } catch (error) {
+        console.error(
+          `[push-dispatcher] Failed to trigger deploy for stack ${stack.slug}:`,
+          error
+        )
+      }
+    }
+
+    return { jobId: triggered > 0 ? `${repo?.name ?? "unknown"}/${shortSha || "unknown"}` : null }
   }
 }
