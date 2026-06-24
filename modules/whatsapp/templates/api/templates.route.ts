@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
+import type { WhatsappTemplateSyncStatus } from "@prisma/client"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
 import { toWhatsappTemplateDTO } from "../templates.dto"
@@ -67,6 +68,13 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         where.whatsappDeviceId = String(query.whatsappDeviceId)
       }
 
+      // Sync status filter
+      if (query.syncStatus) {
+        where.syncStatus = String(query.syncStatus) as WhatsappTemplateSyncStatus
+      }
+
+      const sortOrder = query.sort === "asc" ? "asc" : ("desc" as const)
+
       const [total, templates] = await Promise.all([
         prisma.whatsappTemplate.count({ where }),
         prisma.whatsappTemplate.findMany({
@@ -74,7 +82,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           include: {
             languages: true,
           },
-          orderBy: { createdAt: "desc" },
+          orderBy: { createdAt: sortOrder },
           skip,
           take: limit,
         }),

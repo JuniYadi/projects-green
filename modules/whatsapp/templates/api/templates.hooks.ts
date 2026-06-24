@@ -32,6 +32,8 @@ export type TemplateFormInput = {
 type TemplateFilters = {
   organizationId?: string
   whatsappDeviceId?: string
+  syncStatus?: string
+  sort?: string
 }
 
 type TemplatesListResponse = {
@@ -48,6 +50,8 @@ export function useTemplates(filters?: TemplateFilters) {
 
   const orgId = filters?.organizationId
   const deviceId = filters?.whatsappDeviceId
+  const syncStatus = filters?.syncStatus
+  const sort = filters?.sort
 
   React.useEffect(() => {
     let cancelled = false
@@ -60,6 +64,8 @@ export function useTemplates(filters?: TemplateFilters) {
         const query: Record<string, string> = {}
         if (orgId) query.organizationId = orgId
         if (deviceId) query.whatsappDeviceId = deviceId
+        if (syncStatus) query.syncStatus = syncStatus
+        if (sort) query.sort = sort
         const { data, error: edenError } =
           await eden.api.whatsapp.templates.get({
             $query: query,
@@ -81,7 +87,7 @@ export function useTemplates(filters?: TemplateFilters) {
     return () => {
       cancelled = true
     }
-  }, [orgId, deviceId])
+  }, [orgId, deviceId, syncStatus, sort])
 
   const reload = React.useCallback(async () => {
     setLoading(true)
@@ -90,6 +96,8 @@ export function useTemplates(filters?: TemplateFilters) {
       const query: Record<string, string> = {}
       if (orgId) query.organizationId = orgId
       if (deviceId) query.whatsappDeviceId = deviceId
+      if (syncStatus) query.syncStatus = syncStatus
+      if (sort) query.sort = sort
       const { data, error: edenError } =
         await eden.api.whatsapp.templates.get({
           $query: query,
@@ -103,7 +111,7 @@ export function useTemplates(filters?: TemplateFilters) {
     } finally {
       setLoading(false)
     }
-  }, [orgId, deviceId])
+  }, [orgId, deviceId, syncStatus, sort])
 
   return { templates, loading, error, reload }
 }
