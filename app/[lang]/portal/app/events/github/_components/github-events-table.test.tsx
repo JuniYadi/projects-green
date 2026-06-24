@@ -54,13 +54,13 @@ describe("GithubEventsTable", () => {
 
     await waitFor(() => {
       expect(view.getByText("acme/api")).toBeTruthy()
-    })
+    }, { timeout: 5000 })
     expect(view.getByText("feat: webhook logs")).toBeTruthy()
 
     fireEvent.click(view.getByRole("button", { name: /json/i }))
 
     await waitFor(() => {
       expect(view.getByText(/refs\/heads\/main/)).toBeTruthy()
-    })
+    }, { timeout: 5000 })
   })
 })

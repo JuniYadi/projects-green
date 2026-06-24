@@ -107,6 +107,7 @@ const main = async () => {
     [
       "bun",
       "test",
+      "--isolate",
       "--coverage",
       "--coverage-reporter=text",
       "--coverage-reporter=lcov",
