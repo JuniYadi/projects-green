@@ -273,13 +273,19 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(
     null,
   )
-  const [confirmCancelText, setConfirmCancelText] = useState("")
-  const [cancelReason, setCancelReason] = useState("")
+  const [confirmCancelTexts, setConfirmCancelTexts] = useState<
+    Record<string, string>
+  >({})
+  const [cancelReasons, setCancelReasons] = useState<
+    Record<string, string>
+  >({})
   const [reinstating, setReinstating] = useState<string | null>(null)
   const [reinstateDialogId, setReinstateDialogId] = useState<
     string | null
   >(null)
-  const [reinstateReason, setReinstateReason] = useState("")
+  const [reinstateReasons, setReinstateReasons] = useState<
+    Record<string, string>
+  >({})
   const [devicesBySub, setDevicesBySub] = useState<
     Record<
       string,
@@ -315,10 +321,18 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
   const handleCancel = async (id: string) => {
     setCancelling(id)
     try {
-      await cancelVpnSubscription(id, cancelReason)
+      await cancelVpnSubscription(id, cancelReasons[id] ?? "")
       setConfirmCancelId(null)
-      setConfirmCancelText("")
-      setCancelReason("")
+      setConfirmCancelTexts((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+      setCancelReasons((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
       onChanged()
     } finally {
       setCancelling(null)
@@ -328,9 +342,13 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
   const handleReinstate = async (id: string) => {
     setReinstating(id)
     try {
-      await reinstateVpnSubscription(id, reinstateReason)
+      await reinstateVpnSubscription(id, reinstateReasons[id] ?? "")
       setReinstateDialogId(null)
-      setReinstateReason("")
+      setReinstateReasons((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
       onChanged()
     } finally {
       setReinstating(null)
@@ -382,7 +400,10 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                   className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-800/40"
                   onClick={() => {
                     setReinstateDialogId(sub.id)
-                    setReinstateReason("")
+                    setReinstateReasons((prev) => ({
+                      ...prev,
+                      [sub.id]: "",
+                    }))
                   }}
                   disabled={reinstating === sub.id}
                 >
@@ -396,8 +417,14 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                   size="sm"
                   onClick={() => {
                     setConfirmCancelId(sub.id)
-                    setConfirmCancelText("")
-                    setCancelReason("")
+                    setConfirmCancelTexts((prev) => ({
+                      ...prev,
+                      [sub.id]: "",
+                    }))
+                    setCancelReasons((prev) => ({
+                      ...prev,
+                      [sub.id]: "",
+                    }))
                   }}
                   disabled={
                     cancelling === sub.id ||
@@ -492,15 +519,26 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         const sub = subscriptions.find((s) => s.id === confirmCancelId)
         if (!sub) return null
         const isProcessing = cancelling === confirmCancelId
-        const confirmed = confirmCancelText === "CANCEL"
+        const confirmed =
+          (confirmCancelTexts[confirmCancelId] ?? "") === "CANCEL"
 
         return (
           <Dialog
             open
             onOpenChange={(open) => {
               if (!open) {
+                const id = confirmCancelId
                 setConfirmCancelId(null)
-                setConfirmCancelText("")
+                setConfirmCancelTexts((prev) => {
+                  const next = { ...prev }
+                  if (id) delete next[id]
+                  return next
+                })
+                setCancelReasons((prev) => {
+                  const next = { ...prev }
+                  if (id) delete next[id]
+                  return next
+                })
               }
             }}
           >
@@ -529,8 +567,13 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                     Why are you cancelling?
                   </label>
                   <Textarea
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
+                    value={cancelReasons[confirmCancelId] ?? ""}
+                    onChange={(e) =>
+                      setCancelReasons((prev) => ({
+                        ...prev,
+                        [confirmCancelId]: e.target.value,
+                      }))
+                    }
                     placeholder="Tell us why you're cancelling..."
                     rows={2}
                     autoFocus
@@ -544,8 +587,13 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                     to confirm
                   </label>
                   <Input
-                    value={confirmCancelText}
-                    onChange={(e) => setConfirmCancelText(e.target.value)}
+                    value={confirmCancelTexts[confirmCancelId] ?? ""}
+                    onChange={(e) =>
+                      setConfirmCancelTexts((prev) => ({
+                        ...prev,
+                        [confirmCancelId]: e.target.value,
+                      }))
+                    }
                     placeholder='Type "CANCEL" to confirm'
                     autoComplete="off"
                   />
@@ -556,9 +604,18 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                 <Button
                   variant="outline"
                   onClick={() => {
+                    const id = confirmCancelId
                     setConfirmCancelId(null)
-                    setConfirmCancelText("")
-                    setCancelReason("")
+                    setConfirmCancelTexts((prev) => {
+                      const next = { ...prev }
+                      if (id) delete next[id]
+                      return next
+                    })
+                    setCancelReasons((prev) => {
+                      const next = { ...prev }
+                      if (id) delete next[id]
+                      return next
+                    })
                   }}
                   disabled={isProcessing}
                 >
@@ -585,15 +642,21 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         const sub = subscriptions.find((s) => s.id === reinstateDialogId)
         if (!sub) return null
         const isProcessing = reinstating === reinstateDialogId
-        const hasReason = reinstateReason.trim().length > 0
+        const hasReason =
+          (reinstateReasons[reinstateDialogId] ?? "").trim().length > 0
 
         return (
           <Dialog
             open
             onOpenChange={(open) => {
               if (!open) {
+                const id = reinstateDialogId
                 setReinstateDialogId(null)
-                setReinstateReason("")
+                setReinstateReasons((prev) => {
+                  const next = { ...prev }
+                  if (id) delete next[id]
+                  return next
+                })
               }
             }}
           >
@@ -620,8 +683,13 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                   Why did you decide to reinstate?
                 </label>
                 <Textarea
-                  value={reinstateReason}
-                  onChange={(e) => setReinstateReason(e.target.value)}
+                  value={reinstateReasons[reinstateDialogId] ?? ""}
+                  onChange={(e) =>
+                    setReinstateReasons((prev) => ({
+                      ...prev,
+                      [reinstateDialogId]: e.target.value,
+                    }))
+                  }
                   placeholder="Tell us why you changed your mind..."
                   rows={3}
                   autoFocus
@@ -632,8 +700,13 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                 <Button
                   variant="outline"
                   onClick={() => {
+                    const id = reinstateDialogId
                     setReinstateDialogId(null)
-                    setReinstateReason("")
+                    setReinstateReasons((prev) => {
+                      const next = { ...prev }
+                      if (id) delete next[id]
+                      return next
+                    })
                   }}
                   disabled={isProcessing}
                 >
