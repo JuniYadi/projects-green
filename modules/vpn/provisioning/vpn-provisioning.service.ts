@@ -6,6 +6,8 @@ import {
   encryptVpnConfig,
   encryptProxyPassword,
 } from "@/modules/vpn/vpn-crypto"
+import { vpnEmailService } from "@/modules/vpn/email.service"
+import type { VpnEmailService } from "@/modules/vpn/email.service"
 import { OpenVpnSshAdapter } from "@/modules/vpn/openvpn/openvpn-ssh-adapter"
 
 import { WireGuardSshAdapter } from "./wireguard-ssh-adapter"
@@ -64,6 +66,7 @@ export class VpnProvisioningService {
   private readonly openVpn: NonNullable<ProvisioningAdapters["openVpn"]>
   private readonly wireGuard: NonNullable<ProvisioningAdapters["wireGuard"]>
   private readonly proxy: NonNullable<ProvisioningAdapters["proxy"]>
+  private readonly emailService: VpnEmailService
 
   constructor(
     prisma: PrismaLike = defaultPrisma,
@@ -74,6 +77,7 @@ export class VpnProvisioningService {
       adapters.openVpn ?? new OpenVpnSshAdapter()
     this.wireGuard = adapters.wireGuard ?? new WireGuardSshAdapter()
     this.proxy = adapters.proxy ?? new ProxySshAdapter()
+    this.emailService = vpnEmailService
   }
 
   async provisionAccount(serverAccountId: string): Promise<void> {
@@ -127,6 +131,10 @@ export class VpnProvisioningService {
         message: `Provisioning ${account.protocol} account "${account.username}" succeeded on ${account.server.hostname}`,
         details: { protocol: account.protocol },
       })
+
+      this.emailService
+        .sendProvisioningSuccess(account.subscription.organizationId)
+        .catch(() => {})
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : "Provisioning failed"
@@ -148,6 +156,10 @@ export class VpnProvisioningService {
         errorMessage: reason,
         details: { protocol: account.protocol },
       }).catch(() => {})
+
+      this.emailService
+        .sendProvisioningFailed(account.subscription.organizationId)
+        .catch(() => {})
       throw error
     }
   }

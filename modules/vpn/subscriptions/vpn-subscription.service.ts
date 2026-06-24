@@ -9,6 +9,8 @@ import {
   CurrencyService,
   CurrencyNotFoundError,
 } from "@/modules/billing/currency.service"
+import { vpnEmailService } from "@/modules/vpn/email.service"
+import type { VpnEmailService } from "@/modules/vpn/email.service"
 
 const subscriptionInclude = {
   serverAccounts: {
@@ -137,6 +139,7 @@ export class VpnSubscriptionService {
   private readonly transactions: BillingTransactionService
   private readonly dispatch: ProvisioningDispatcher
   private readonly currency: CurrencyService
+  private readonly emailService: VpnEmailService
 
   constructor(
     prisma: PrismaLike = defaultPrisma,
@@ -144,6 +147,7 @@ export class VpnSubscriptionService {
       transactions?: BillingTransactionService
       dispatch?: ProvisioningDispatcher
       currency?: CurrencyService
+      emailService?: VpnEmailService
     } = {}
   ) {
     this.prisma = prisma
@@ -151,6 +155,7 @@ export class VpnSubscriptionService {
       options.transactions ?? new BillingTransactionService(prisma)
     this.dispatch = options.dispatch ?? (async () => {})
     this.currency = options.currency ?? new CurrencyService(prisma)
+    this.emailService = options.emailService ?? vpnEmailService
   }
 
   listForOrganization(organizationId: string) {
@@ -416,6 +421,10 @@ export class VpnSubscriptionService {
       },
     }).catch(() => {})
 
+    this.emailService
+      .sendSubscriptionCreated(activated.organizationId, pkg.name)
+      .catch(() => {})
+
     return activated
   }
 
@@ -447,6 +456,14 @@ export class VpnSubscriptionService {
       message: `Subscription cancelled at period end: ${existing.currentPeriodEnd.toISOString()}`,
       details: { currentPeriodEnd: existing.currentPeriodEnd.toISOString() },
     }).catch(() => {})
+
+    this.emailService
+      .sendSubscriptionCancelled(
+        organizationId,
+        undefined,
+        existing.currentPeriodEnd.toISOString()
+      )
+      .catch(() => {})
 
     return updated
   }

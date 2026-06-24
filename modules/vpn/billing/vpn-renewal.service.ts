@@ -2,6 +2,8 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
+import { vpnEmailService } from "@/modules/vpn/email.service"
+import type { VpnEmailService } from "@/modules/vpn/email.service"
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
@@ -63,10 +65,16 @@ type RenewalSubscription = {
 export class VpnRenewalService {
   private readonly prisma: PrismaLike
   private readonly transactions: BillingTransactionService
+  private readonly emailService: VpnEmailService
 
-  constructor(prisma: PrismaLike, transactions: BillingTransactionService) {
+  constructor(
+    prisma: PrismaLike,
+    transactions: BillingTransactionService,
+    emailService?: VpnEmailService
+  ) {
     this.prisma = prisma
     this.transactions = transactions
+    this.emailService = emailService ?? vpnEmailService
   }
 
   async renewDueSubscriptions(
@@ -160,7 +168,16 @@ export class VpnRenewalService {
       if (!charge.alreadyProcessed) {
         try {
           const extended = await this.extendPeriod(subscription.id, now)
-          if (extended) result.renewed++
+          if (extended) {
+            result.renewed++
+            this.emailService
+              .sendRenewalSuccess(
+                subscription.organizationId,
+                undefined,
+                period
+              )
+              .catch(() => {})
+          }
         } catch {
           result.errors++
         }
@@ -179,7 +196,7 @@ export class VpnRenewalService {
    * Day 0-2 → retry, Day 3-6 → suspend, Day 7+ → expire.
    */
   private async applyGrace(
-    subscription: { id: string; renewalFailedAt: Date | null; serverAccounts?: Array<{ id: string }> },
+    subscription: { id: string; organizationId: string; renewalFailedAt: Date | null; serverAccounts?: Array<{ id: string }> },
     now: Date,
     result: VpnRenewalResult
   ): Promise<void> {
@@ -216,6 +233,9 @@ export class VpnRenewalService {
             // Device revocation is best-effort.
           })
         result.expired++
+        this.emailService
+          .sendSubscriptionExpired(subscription.organizationId)
+          .catch(() => {})
       } else if (daysFailed >= SUSPEND_AFTER_DAYS) {
         await this.prisma.vpnSubscription.update({
           where: { id: subscription.id },
@@ -240,6 +260,9 @@ export class VpnRenewalService {
             // Device suspension is best-effort.
           })
         result.suspended++
+        this.emailService
+          .sendSubscriptionSuspended(subscription.organizationId)
+          .catch(() => {})
       } else {
         // Still within the retry window — only record the first failure.
         await this.prisma.vpnSubscription.update({
@@ -247,6 +270,9 @@ export class VpnRenewalService {
           data: { renewalFailedAt: subscription.renewalFailedAt ?? now },
         })
         result.retried++
+        this.emailService
+          .sendRenewalFailed(subscription.organizationId)
+          .catch(() => {})
       }
     } catch {
       result.errors++

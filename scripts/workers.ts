@@ -94,6 +94,7 @@ import {
 import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
 import { vpnReconciliationService } from "@/modules/vpn/provisioning/vpn-reconciliation.service"
 import { vpnHealthService } from "@/modules/vpn/admin/vpn-health.service"
+import { EmailJob } from "@/lib/queue/email"
 
 // ══════════════════════════════════════════════════════════════════════════
 // BullMQ Workers
@@ -429,6 +430,10 @@ const vpnProvisioningWorker = new Worker<VpnProvisioningJobData>(
 )
 allWorkers.push(vpnProvisioningWorker)
 
+// ── Email Queue Worker ──────────────────────────────────────────────
+const emailWorker = EmailJob.createWorker()
+allWorkers.push(emailWorker)
+
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {
   const name = worker.name
@@ -708,7 +713,7 @@ try {
 
 console.info("[workers] unified worker process ready")
 console.info(
-  `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}`
+  `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}, ${EmailJob.queue}`
 )
 console.info(
   "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m), vpn-health (15m)"
