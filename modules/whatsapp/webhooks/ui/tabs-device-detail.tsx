@@ -32,6 +32,18 @@ import {
   TemplateList,
 } from "@/modules/whatsapp/templates/ui/template-list"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
+import {
+  DeliveryLogTable,
+} from "@/modules/whatsapp/webhooks/ui/delivery-log-table"
+import type { WebhookDeliveryLogDTO } from "@/modules/whatsapp/webhooks/webhook-dispatcher.service"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -237,6 +249,7 @@ export function TabsDeviceDetail({
             <TemplateCountBadge deviceId={device.id} />
           </TabsTrigger>
           <TabsTrigger value="webhook-log">Webhook Log</TabsTrigger>
+          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
         </TabsList>
 
@@ -272,6 +285,20 @@ export function TabsDeviceDetail({
           </Card>
         </TabsContent>
 
+        <TabsContent value="webhooks" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Outgoing Webhooks</CardTitle>
+              <CardDescription>
+                Outgoing webhook configurations and delivery logs for this device.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WebhooksTab deviceId={device.id} organizationId={device.organizationId} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="audit-logs" className="mt-6">
           <Card>
             <CardHeader>
@@ -287,6 +314,185 @@ export function TabsDeviceDetail({
         </TabsContent>
       </Tabs>
     </main>
+  )
+}
+
+// ─── Webhooks Tab Content ─────────────────────────────────────────────
+
+function WebhooksTab({
+  deviceId,
+  organizationId,
+}: {
+  deviceId: string
+  organizationId: string
+}) {
+  type WebhooksTabState =
+    | { type: "loading" }
+    | { type: "loaded"; webhooks: Array<{ id: string; webhookUrl: string; authType: string | null; active: boolean }> }
+    | { type: "error"; error: string }
+
+  const [state, setState] = React.useState<WebhooksTabState>({ type: "loading" })
+  const [deliveryLogs, setDeliveryLogs] = React.useState<WebhookDeliveryLogDTO[]>([])
+  const [deliveryMeta, setDeliveryMeta] = React.useState({ total: 0, page: 1, totalPages: 0 })
+  const [selectedWebhookId, setSelectedWebhookId] = React.useState<string | null>(null)
+  const [deliveryPage, setDeliveryPage] = React.useState(1)
+
+  const fetchWebhooks = React.useCallback(async () => {
+    setState({ type: "loading" })
+    try {
+      const { data, error } = await eden.api.whatsapp.webhooks.get({
+        $query: { deviceId, organizationId },
+      })
+      if (error) throw new Error(error.message ?? "Failed to load webhooks")
+      const result = data as unknown as { data: Array<{ id: string; webhookUrl: string; authType: string | null; active: boolean }> }
+      setState({ type: "loaded", webhooks: result.data })
+    } catch (err) {
+      setState({ type: "error", error: err instanceof Error ? err.message : "Unknown error" })
+    }
+  }, [deviceId, organizationId])
+
+  const fetchDeliveries = React.useCallback(
+    async (webhookId: string, page: number) => {
+      try {
+        const { data, error } = await eden.api.whatsapp.webhooks[webhookId].deliveries.get({
+          $query: { page: String(page), limit: "10" },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- eden types don't support dynamic params
+        } as any)
+        if (error) throw new Error(error.message ?? "Failed to load deliveries")
+        const result = data as unknown as { ok: boolean; data: WebhookDeliveryLogDTO[]; meta: { total: number; page: number; totalPages: number } }
+        setDeliveryLogs(result.data)
+        setDeliveryMeta(result.meta)
+      } catch {
+        // delivery fetch failed silently
+      }
+    },
+    []
+  )
+
+  React.useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (cancelled) return
+      await fetchWebhooks()
+    })()
+    return () => { cancelled = true }
+  }, [fetchWebhooks])
+
+  React.useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (cancelled || !selectedWebhookId) return
+      await fetchDeliveries(selectedWebhookId, deliveryPage)
+    })()
+    return () => { cancelled = true }
+  }, [selectedWebhookId, deliveryPage, fetchDeliveries])
+
+  const handleResend = async (deliveryLogId: string) => {
+    if (!selectedWebhookId) return
+    try {
+      await eden.api.whatsapp.webhooks[selectedWebhookId].deliveries[deliveryLogId].resend.post()
+      void fetchDeliveries(selectedWebhookId, deliveryPage)
+    } catch {
+      // silent
+    }
+  }
+
+  if (state.type === "loading") {
+    return <p className="py-4 text-sm text-muted-foreground">Loading webhooks…</p>
+  }
+
+  if (state.type === "error") {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        <p className="mb-2 text-sm text-destructive">{state.error}</p>
+        <Button variant="outline" onClick={() => void fetchWebhooks()}>
+          Retry
+        </Button>
+      </div>
+    )
+  }
+
+  if (state.webhooks.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <p className="text-sm text-muted-foreground">
+          No outgoing webhooks configured for this device.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Webhook list */}
+      <div className="overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>URL</TableHead>
+              <TableHead>Auth</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {state.webhooks.map((wh) => (
+              <TableRow
+                key={wh.id}
+                className={`cursor-pointer ${selectedWebhookId === wh.id ? "bg-muted/50" : ""}`}
+                onClick={() => {
+                  setSelectedWebhookId(wh.id)
+                  setDeliveryPage(1)
+                }}
+              >
+                <TableCell className="max-w-[250px] truncate font-mono text-sm">
+                  {wh.webhookUrl}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{wh.authType ?? "none"}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={wh.active ? "success" : "secondary"}>
+                    {wh.active ? "Active" : "Inactive"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link
+                      href={`/portal/whatsapp/webhooks/${wh.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Detail
+                    </Link>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Delivery logs for selected webhook */}
+      {selectedWebhookId && (
+        <div>
+          <h4 className="mb-2 text-sm font-medium">Delivery Logs</h4>
+          <DeliveryLogTable
+            logs={deliveryLogs}
+            isLoading={false}
+            onResend={handleResend}
+            pagination={
+              deliveryMeta.totalPages > 1
+                ? {
+                    page: deliveryMeta.page,
+                    totalPages: deliveryMeta.totalPages,
+                    onPageChange: setDeliveryPage,
+                  }
+                : undefined
+            }
+          />
+        </div>
+      )}
+    </div>
   )
 }
 

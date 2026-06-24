@@ -5,8 +5,10 @@ import { enqueueOutgoingWebhook } from "@/lib/queue/whatsapp-webhook-outgoing"
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
+type GetPayloadInput = Record<string, unknown>
+
 export type WebhookDeliveryLogDTO = Pick<
-  Prisma.WhatsappWebhookDeliveryLogGetPayload<{}>,
+  Prisma.WhatsappWebhookDeliveryLogGetPayload<GetPayloadInput>,
   | "id"
   | "webhookId"
   | "organizationId"
@@ -16,7 +18,9 @@ export type WebhookDeliveryLogDTO = Pick<
   | "status"
   | "attempt"
   | "maxAttempts"
+  | "requestUrl"
   | "responseStatus"
+  | "responseBody"
   | "errorMessage"
   | "resolvedAt"
   | "startedAt"
@@ -24,10 +28,10 @@ export type WebhookDeliveryLogDTO = Pick<
   | "createdAt"
 >
 
-export type WebhookDeliveryLogDetailDTO = Prisma.WhatsappWebhookDeliveryLogGetPayload<{}>
+export type WebhookDeliveryLogDetailDTO = Prisma.WhatsappWebhookDeliveryLogGetPayload<GetPayloadInput>
 
 export function toDeliveryLogDTO(
-  log: Prisma.WhatsappWebhookDeliveryLogGetPayload<{}>
+  log: Prisma.WhatsappWebhookDeliveryLogGetPayload<GetPayloadInput>
 ): WebhookDeliveryLogDTO {
   return {
     id: log.id,
@@ -39,7 +43,9 @@ export function toDeliveryLogDTO(
     status: log.status,
     attempt: log.attempt,
     maxAttempts: log.maxAttempts,
+    requestUrl: log.requestUrl,
     responseStatus: log.responseStatus,
+    responseBody: log.responseBody,
     errorMessage: log.errorMessage,
     resolvedAt: log.resolvedAt,
     startedAt: log.startedAt,

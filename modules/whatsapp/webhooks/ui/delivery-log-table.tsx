@@ -79,12 +79,13 @@ export function DeliveryLogTable({
     setExpandedRowId((prev) => (prev === logId ? null : logId))
   }, [])
 
-  const formatTimestamp = (iso: string | null | undefined) => {
+  const formatTimestamp = (iso: string | Date | null | undefined): string => {
     if (!iso) return "—"
+    const date = typeof iso === "string" ? new Date(iso) : iso
     try {
-      return new Date(iso).toLocaleString()
+      return date.toLocaleString()
     } catch {
-      return iso
+      return typeof iso === "string" ? iso : iso.toISOString()
     }
   }
 
