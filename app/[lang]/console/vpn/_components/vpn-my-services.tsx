@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   cancelVpnSubscription,
+  reinstateVpnSubscription,
   getVpnProxyCredentials,
   vpnConfigDownloadUrl,
   type VpnServerAccount,
@@ -19,6 +20,17 @@ import {
   DeviceMobileIcon,
   MapPinIcon,
 } from "@phosphor-icons/react"
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 type Props = {
   subscriptions: VpnSubscription[]
@@ -258,6 +270,16 @@ function groupByServer(accounts: VpnServerAccount[]): ServerGroup[] {
 
 export function VpnMyServices({ subscriptions, onChanged }: Props) {
   const [cancelling, setCancelling] = useState<string | null>(null)
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(
+    null,
+  )
+  const [confirmCancelText, setConfirmCancelText] = useState("")
+  const [cancelReason, setCancelReason] = useState("")
+  const [reinstating, setReinstating] = useState<string | null>(null)
+  const [reinstateDialogId, setReinstateDialogId] = useState<
+    string | null
+  >(null)
+  const [reinstateReason, setReinstateReason] = useState("")
   const [devicesBySub, setDevicesBySub] = useState<
     Record<
       string,
@@ -293,27 +315,49 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
   const handleCancel = async (id: string) => {
     setCancelling(id)
     try {
-      await cancelVpnSubscription(id)
+      await cancelVpnSubscription(id, cancelReason)
+      setConfirmCancelId(null)
+      setConfirmCancelText("")
+      setCancelReason("")
       onChanged()
     } finally {
       setCancelling(null)
     }
   }
 
-  return (
-    <div className="space-y-6">
-      {subscriptions.map((sub) => {
-        const groups = groupByServer(sub.serverAccounts)
-        const subDevices = devicesBySub[sub.id] ?? []
+  const handleReinstate = async (id: string) => {
+    setReinstating(id)
+    try {
+      await reinstateVpnSubscription(id, reinstateReason)
+      setReinstateDialogId(null)
+      setReinstateReason("")
+      onChanged()
+    } finally {
+      setReinstating(null)
+    }
+  }
 
-        return (
-          <Card key={sub.id} size="sm">
+  return (
+    <>
+      <div className="space-y-6">
+        {subscriptions.map((sub) => {
+          const groups = groupByServer(sub.serverAccounts)
+          const subDevices = devicesBySub[sub.id] ?? []
+
+          return (
+            <Card key={sub.id} size="sm">
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2 text-base">
                   {sub.packageName}
-                  <Badge variant={STATUS_VARIANT[sub.status]}>
-                    {sub.status}
+                  <Badge
+                    variant={
+                      sub.cancelAtPeriodEnd
+                        ? "secondary"
+                        : STATUS_VARIANT[sub.status]
+                    }
+                  >
+                    {sub.cancelAtPeriodEnd ? "Cancelling" : sub.status}
                   </Badge>
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
@@ -331,22 +375,40 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                   )}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleCancel(sub.id)}
-                disabled={
-                  cancelling === sub.id ||
-                  sub.status !== "ACTIVE" ||
-                  sub.cancelAtPeriodEnd
-                }
-              >
-                {cancelling === sub.id
-                  ? "Cancelling…"
-                  : sub.cancelAtPeriodEnd
-                    ? "Cancelled"
+              {sub.cancelAtPeriodEnd && sub.status === "ACTIVE" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-800/40"
+                  onClick={() => {
+                    setReinstateDialogId(sub.id)
+                    setReinstateReason("")
+                  }}
+                  disabled={reinstating === sub.id}
+                >
+                  {reinstating === sub.id
+                    ? "Reinstating…"
+                    : "Reinstate"}
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setConfirmCancelId(sub.id)
+                    setConfirmCancelText("")
+                    setCancelReason("")
+                  }}
+                  disabled={
+                    cancelling === sub.id ||
+                    sub.status !== "ACTIVE"
+                  }
+                >
+                  {cancelling === sub.id
+                    ? "Cancelling…"
                     : "Cancel"}
-              </Button>
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
@@ -420,8 +482,178 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
               )}
             </CardContent>
           </Card>
-        )
-      })}
+          )
+        })}
     </div>
+
+    {/* Cancel confirmation dialog */}
+    {confirmCancelId &&
+      (() => {
+        const sub = subscriptions.find((s) => s.id === confirmCancelId)
+        if (!sub) return null
+        const isProcessing = cancelling === confirmCancelId
+        const confirmed = confirmCancelText === "CANCEL"
+
+        return (
+          <Dialog
+            open
+            onOpenChange={(open) => {
+              if (!open) {
+                setConfirmCancelId(null)
+                setConfirmCancelText("")
+              }
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Cancel VPN Subscription</DialogTitle>
+                <DialogDescription className="space-y-3 pt-2">
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm">
+                    <p>
+                      You are about to cancel{" "}
+                      <strong>{sub.packageName}</strong>.
+                    </p>
+                    <p className="mt-1">
+                      Your service will continue until{" "}
+                      <strong>{formatDate(sub.currentPeriodEnd)}</strong>,
+                      then expire. No further charges will be made after
+                      cancellation.
+                    </p>
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Why are you cancelling?
+                  </label>
+                  <Textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Tell us why you're cancelling..."
+                    rows={2}
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Type{" "}
+                    <span className="font-bold text-destructive">CANCEL</span>{" "}
+                    to confirm
+                  </label>
+                  <Input
+                    value={confirmCancelText}
+                    onChange={(e) => setConfirmCancelText(e.target.value)}
+                    placeholder='Type "CANCEL" to confirm'
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setConfirmCancelId(null)
+                    setConfirmCancelText("")
+                    setCancelReason("")
+                  }}
+                  disabled={isProcessing}
+                >
+                  Keep subscription
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={!confirmed || isProcessing}
+                  onClick={async () => {
+                    await handleCancel(confirmCancelId)
+                  }}
+                >
+                  {isProcessing ? "Cancelling…" : "Yes, cancel subscription"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )
+      })()}
+
+    {/* Reinstate confirmation dialog */}
+    {reinstateDialogId &&
+      (() => {
+        const sub = subscriptions.find((s) => s.id === reinstateDialogId)
+        if (!sub) return null
+        const isProcessing = reinstating === reinstateDialogId
+        const hasReason = reinstateReason.trim().length > 0
+
+        return (
+          <Dialog
+            open
+            onOpenChange={(open) => {
+              if (!open) {
+                setReinstateDialogId(null)
+                setReinstateReason("")
+              }
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Reinstate Subscription</DialogTitle>
+                <DialogDescription className="space-y-3 pt-2">
+                  <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                    <p>
+                      You are about to reinstate{" "}
+                      <strong>{sub.packageName}</strong>.
+                    </p>
+                    <p className="mt-1">
+                      Normal billing will resume after{" "}
+                      <strong>{formatDate(sub.currentPeriodEnd)}</strong>,
+                      and your subscription will continue as usual.
+                    </p>
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Why did you decide to reinstate?
+                </label>
+                <Textarea
+                  value={reinstateReason}
+                  onChange={(e) => setReinstateReason(e.target.value)}
+                  placeholder="Tell us why you changed your mind..."
+                  rows={3}
+                  autoFocus
+                />
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setReinstateDialogId(null)
+                    setReinstateReason("")
+                  }}
+                  disabled={isProcessing}
+                >
+                  Go back
+                </Button>
+                <Button
+                  disabled={!hasReason || isProcessing}
+                  onClick={async () => {
+                    await handleReinstate(reinstateDialogId)
+                  }}
+                >
+                  {isProcessing
+                    ? "Reinstating…"
+                    : "Yes, reinstate subscription"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )
+      })()}
+    </>
   )
 }
