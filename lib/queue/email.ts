@@ -25,6 +25,7 @@ export class EmailJob extends BaseJob {
   static readonly queue = "email"
   static readonly workerConcurrency = 2
   static readonly attempts = 3
+  static readonly backoff = { type: "fixed" as const, delay: 10_000 }
 
   static async handle(job: { data: EmailJobData }): Promise<void> {
     const { to, subject, html, from } = job.data

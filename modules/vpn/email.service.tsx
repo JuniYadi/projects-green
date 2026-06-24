@@ -1,5 +1,7 @@
 import { render } from "@react-email/components"
 
+import LRUCache from "lru-cache"
+
 import { sendEmail } from "@/lib/queue/email"
 
 import { SubscriptionCreatedEmail } from "./emails/subscription-created"
@@ -19,7 +21,7 @@ import { SubscriptionCancelledEmail } from "./emails/subscription-cancelled"
  */
 
 export class VpnEmailService {
-  private readonly orgEmailCache = new Map<string, string | null>()
+  private readonly orgEmailCache = new LRUCache<string, string[] | null>({ max: 1000 })
 
   async sendSubscriptionCreated(organizationId: string, packageName?: string) {
     const recipients = await this.resolveRecipients(organizationId)
@@ -35,6 +37,7 @@ export class VpnEmailService {
         html,
       })
     }
+    this.markRecipientsResolved(organizationId, recipients)
   }
 
   async sendProvisioningSuccess(organizationId: string, packageName?: string) {
@@ -51,6 +54,7 @@ export class VpnEmailService {
         html,
       })
     }
+    this.markRecipientsResolved(organizationId, recipients)
   }
 
   async sendProvisioningFailed(organizationId: string, packageName?: string) {
@@ -67,6 +71,7 @@ export class VpnEmailService {
         html,
       })
     }
+    this.markRecipientsResolved(organizationId, recipients)
   }
 
   async sendRenewalSuccess(
@@ -87,6 +92,7 @@ export class VpnEmailService {
         html,
       })
     }
+    this.markRecipientsResolved(organizationId, recipients)
   }
 
   async sendRenewalFailed(organizationId: string, packageName?: string) {
@@ -103,6 +109,7 @@ export class VpnEmailService {
         html,
       })
     }
+    this.markRecipientsResolved(organizationId, recipients)
   }
 
   async sendSubscriptionSuspended(
@@ -122,6 +129,7 @@ export class VpnEmailService {
         html,
       })
     }
+    this.markRecipientsResolved(organizationId, recipients)
   }
 
   async sendSubscriptionExpired(organizationId: string, packageName?: string) {
@@ -138,6 +146,7 @@ export class VpnEmailService {
         html,
       })
     }
+    this.markRecipientsResolved(organizationId, recipients)
   }
 
   async sendSubscriptionCancelled(
@@ -161,6 +170,7 @@ export class VpnEmailService {
         html,
       })
     }
+    this.markRecipientsResolved(organizationId, recipients)
   }
 
   // ─── Private ────────────────────────────────────────────────────────
@@ -168,9 +178,9 @@ export class VpnEmailService {
   private async resolveRecipients(
     organizationId: string
   ): Promise<Array<{ email: string; orgName?: string }>> {
-    if (this.orgEmailCache.has(organizationId)) {
-      const email = this.orgEmailCache.get(organizationId)
-      return email ? [{ email }] : []
+    const cached = this.orgEmailCache.get(organizationId)
+    if (cached !== undefined) {
+      return cached ? cached.map((email) => ({ email })) : []
     }
 
     try {
@@ -186,14 +196,12 @@ export class VpnEmailService {
 
       // ponytail: emails every admin member of the org.
       // Add billing-contact resolution if needed later.
-      const emails: string[] = []
-      for (const membership of memberships.data) {
-        const user = await workos.userManagement.getUser(membership.userId)
-        if (user.email) emails.push(user.email)
-      }
+      const users = await Promise.all(
+        memberships.data.map((m) => workos.userManagement.getUser(m.userId))
+      )
+      const emails = users.filter((u) => u.email).map((u) => u.email)
 
-      this.orgEmailCache.set(organizationId, emails[0] ?? null)
-      return emails[0] ? [{ email: emails[0] }] : []
+      return emails.map((email) => ({ email }))
     } catch (error) {
       console.error(
         `[vpn-email] failed to resolve recipients for org=${organizationId}:`,
@@ -201,6 +209,19 @@ export class VpnEmailService {
       )
       return []
     }
+  }
+
+  /**
+   * Cache org recipients ONLY after successful email delivery (no stale cache).
+   */
+  private markRecipientsResolved(
+    organizationId: string,
+    recipients: Array<{ email: string }>
+  ) {
+    this.orgEmailCache.set(
+      organizationId,
+      recipients.length > 0 ? recipients.map((r) => r.email) : null
+    )
   }
 }
 
