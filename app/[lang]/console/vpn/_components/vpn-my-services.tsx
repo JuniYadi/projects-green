@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 import {
   cancelVpnSubscription,
   reinstateVpnSubscription,
@@ -337,7 +338,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
     } catch (err) {
       // Keep dialog open so user can retry
       console.error("[VPN] cancel failed:", err)
-      // TODO: toast.error("Failed to cancel subscription. Please try again.")
+      toast.error("Failed to cancel subscription. Please try again.")
     } finally {
       setCancelling(null)
     }
@@ -357,7 +358,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
     } catch (err) {
       // Keep dialog open so user can retry
       console.error("[VPN] reinstate failed:", err)
-      // TODO: toast.error("Failed to reinstate subscription. Please try again.")
+      toast.error("Failed to reinstate subscription. Please try again.")
     } finally {
       setReinstating(null)
     }
