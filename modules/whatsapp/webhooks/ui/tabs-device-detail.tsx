@@ -293,7 +293,11 @@ export function TabsDeviceDetail({
 // ─── Template Tab Content ────────────────────────────────────────────
 
 function TemplateCountBadge({ deviceId }: { deviceId: string }) {
-  const [count, setCount] = React.useState<number | null>(null)
+  type CountState =
+    | { status: "loading" }
+    | { status: "loaded"; count: number }
+    | { status: "error" }
+  const [state, setState] = React.useState<CountState>({ status: "loading" })
 
   React.useEffect(() => {
     let cancelled = false
@@ -304,19 +308,22 @@ function TemplateCountBadge({ deviceId }: { deviceId: string }) {
         })
         if (!cancelled) {
           const result = data as unknown as { meta: { total: number } }
-          setCount(result?.meta?.total ?? 0)
+          setState({ status: "loaded", count: result?.meta?.total ?? 0 })
         }
       } catch {
-        if (!cancelled) setCount(0)
+        if (!cancelled) setState({ status: "error" })
       }
     })()
     return () => { cancelled = true }
   }, [deviceId])
 
-  if (count === null) {
+  if (state.status === "loading") {
     return <span className="ml-1 inline-block size-3 animate-pulse rounded-full bg-muted-foreground/30 align-middle" />
   }
-  return <span className="ml-1 text-xs text-muted-foreground">({count})</span>
+  if (state.status === "error") {
+    return <span className="ml-1 text-xs text-muted-foreground">(?)</span>
+  }
+  return <span className="ml-1 text-xs text-muted-foreground">({state.count})</span>
 }
 
 function TemplateTabContent({ deviceId }: { deviceId: string }) {
