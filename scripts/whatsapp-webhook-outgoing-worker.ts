@@ -68,6 +68,7 @@ export async function processOutgoingWebhookJob(
       method: "POST",
       headers,
       body,
+      signal: AbortSignal.timeout(10_000),
     })
 
     const responseBody = await response.text()

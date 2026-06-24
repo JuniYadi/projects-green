@@ -149,12 +149,12 @@ export const webhookDispatcher = {
     webhookId: string,
     filters: DeliveryLogFilters
   ): Promise<PaginatedResult<WebhookDeliveryLogDTO>> {
-    const { eventType, status, from, to, page = 1, limit = 20 } = filters
+    const { eventType, from, to, page = 1, limit = 20 } = filters
 
     const where: Prisma.WhatsappWebhookDeliveryLogWhereInput = { webhookId }
 
     if (eventType) where.eventType = eventType
-    if (status) where.status = status as any
+    if (filters.status) where.status = filters.status as any
     if (from || to) {
       where.createdAt = {}
       if (from) where.createdAt.gte = new Date(from)

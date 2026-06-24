@@ -178,7 +178,7 @@ worker.on("failed", async (job, error) => {
     return
   }
 
-  const { eventType, payload, deviceId, organizationId } = job.data
+  const { eventType, deviceId } = job.data
   const attempts = job.attemptsMade ?? 0
   const maxAttempts = job.opts?.attempts ?? 3
 
@@ -190,21 +190,28 @@ worker.on("failed", async (job, error) => {
   // Mark event as dead-lettered when retries exhausted
   if (attempts >= maxAttempts) {
     try {
-      await prisma.whatsappWebhookEvent.updateMany({
+      const event = await prisma.whatsappWebhookEvent.findFirst({
         where: {
           whatsappDeviceId: deviceId,
           processingStatus: "PENDING",
           eventType,
         },
-        data: {
-          processingStatus: "DEAD_LETTERED",
-          errorMessage: toErrorMessage(error),
-          processedAt: new Date(),
-        },
+        orderBy: { createdAt: "desc" },
       })
 
+      if (event) {
+        await prisma.whatsappWebhookEvent.update({
+          where: { id: event.id },
+          data: {
+            processingStatus: "DEAD_LETTERED",
+            errorMessage: toErrorMessage(error),
+            processedAt: new Date(),
+          },
+        })
+      }
+
       console.info(
-        `[whatsapp-webhook-worker] dead-lettered events for device=${deviceId} eventType=${eventType}`
+        `[whatsapp-webhook-worker] dead-lettered event for device=${deviceId} eventType=${eventType}`
       )
     } catch (dlqError) {
       console.error(

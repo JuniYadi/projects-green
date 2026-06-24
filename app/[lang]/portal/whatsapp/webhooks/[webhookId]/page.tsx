@@ -76,8 +76,6 @@ export default async function PortalWebhookDetailPage({
     email: auth.user.email,
   })
 
-  const isSuperAdmin = platformRole === "super_admin"
-
   const webhook = await prisma.whatsappWebhook.findUnique({
     where: { id: webhookId },
     include: { whatsappDevice: { select: { phoneNumber: true } } },
