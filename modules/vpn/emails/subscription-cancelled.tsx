@@ -6,7 +6,6 @@ import {
   Hr,
   Html,
   Preview,
-  Section,
   Text,
 } from "@react-email/components"
 

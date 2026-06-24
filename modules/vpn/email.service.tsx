@@ -28,7 +28,7 @@ export class VpnEmailService {
     const html = await render(
       <SubscriptionCreatedEmail packageName={packageName} />
     )
-    for (const { email, orgName } of recipients) {
+    for (const { email } of recipients) {
       sendEmail({
         to: email,
         subject: "Your VPN subscription is being provisioned",
