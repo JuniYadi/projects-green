@@ -140,14 +140,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
         run: |
-          NEW_CONTENT=$(base64 -w0 < /tmp/task.md)
-          gh api "repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }}" \
-            -X PUT \
-            -f message="task: ${{ inputs.task_id }} plan generated" \
-            -f content="$NEW_CONTENT" \
-            -f sha="${{ steps.task.outputs.task_sha }}" \
-            -f committer.name="JuniYadi" \
-            -f committer.email="${{ env.GIT_EMAIL }}"
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/JuniYadi/ide-projects.git" /tmp/ide
+          cp /tmp/task.md "/tmp/ide/${{ steps.task.outputs.task_path }}"
+          cd /tmp/ide
+          git config user.name "JuniYadi"
+          git config user.email "${{ env.GIT_EMAIL }}"
+          git add -A
+          git commit -m "task: ${{ inputs.task_id }} plan generated" || true
+          git pull --rebase origin main
+          git push
 
   execute:
     if: inputs.mode == 'execute'
@@ -176,7 +177,12 @@ jobs:
 
           gh api "repos/JuniYadi/ide-projects/contents/$TASK_PATH" \
             --jq '.content' | base64 -d > /tmp/task.md
-          echo "$TASK_SHA" > /tmp/task.sha
+
+          # Clone ide-projects for git-based task file updates
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/JuniYadi/ide-projects.git" /tmp/ide
+          git -C /tmp/ide config user.name "JuniYadi"
+          git -C /tmp/ide config user.email "31454084+JuniYadi@users.noreply.github.com"
+          echo "$TASK_PATH" > /tmp/task-path.txt
 
       - name: Checkout projects-green @ branch
         uses: actions/checkout@v7
@@ -279,22 +285,20 @@ jobs:
             git push
             ```
 
-            3c. UPDATE TASK FILE — mark AC done + record commit SHA (via GitHub API, no checkout needed):
+            3c. UPDATE TASK FILE — mark AC done + record commit SHA (via git, no Content API needed):
             ```bash
             COMMIT_SHA=$(cd projects-green && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
             # Mark the first unchecked checkbox as [x] with SHA in LOCAL file
             sed -i "0,/^- \[ \]/{s//- [x] ($COMMIT_SHA)/}" /tmp/task.md
-            # Push via GitHub API — no git operations needed
-            NEW_CONTENT=$(base64 -w0 < /tmp/task.md)
-            CURRENT_SHA=$(cat /tmp/task.sha)
-            gh api repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }} \
-              -X PUT \
-              -f message="task: ${{ inputs.task_id }} — $SHORT_DESC done [sha:$COMMIT_SHA]" \
-              -f content="$NEW_CONTENT" \
-              -f sha="$CURRENT_SHA" \
-              -f committer.name="JuniYadi" \
-              -f committer.email="31454084+JuniYadi@users.noreply.github.com" \
-              --jq '.content.sha' > /tmp/task.sha
+            # Copy updated file to ide-projects clone
+            TASK_PATH=$(cat /tmp/task-path.txt)
+            cp /tmp/task.md "/tmp/ide/$TASK_PATH"
+            # Commit & push via git (handles concurrent writes with pull --rebase)
+            cd /tmp/ide
+            git add -A
+            git commit -m "task: ${{ inputs.task_id }} — $SHORT_DESC done [sha:$COMMIT_SHA]"
+            git pull --rebase origin main
+            git push
             ```
             --- IMPORTANT ---
             After pushing code, a new GHA run may auto-trigger on the branch. Keep working.
@@ -371,19 +375,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
         run: |
-          if [ -f /tmp/task.md ] && [ -f /tmp/task.sha ]; then
-            NEW_CONTENT=$(base64 -w0 < /tmp/task.md)
-            CURRENT_SHA=$(cat /tmp/task.sha)
-            gh api "repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }}" \
-              -X PUT \
-              -f message="task: ${{ inputs.task_id }} implementation done" \
-              -f content="$NEW_CONTENT" \
-              -f sha="$CURRENT_SHA" \
-              -f committer.name="JuniYadi" \
-              -f committer.email="31454084+JuniYadi@users.noreply.github.com"
-            echo "✅ Final task status pushed to ide-projects"
+          if [ -f /tmp/task.md ] && [ -f /tmp/task-path.txt ]; then
+            TASK_PATH=$(cat /tmp/task-path.txt)
+            cp /tmp/task.md "/tmp/ide/$TASK_PATH"
+            cd /tmp/ide
+            git add -A
+            git commit -m "task: ${{ inputs.task_id }} implementation done" || true
+            git pull --rebase origin main
+            git push
+            echo "✅ Final task status pushed to ide-projects via git"
           else
-            echo "⚠️ /tmp/task.md or /tmp/task.sha not found — skipping push"
+            echo "⚠️ /tmp/task.md or task-path.txt not found — skipping push"
           fi
 
   fix:
@@ -532,20 +534,23 @@ jobs:
           GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
         run: |
           if [ -f /tmp/task.md ]; then
-            # Read current content + SHA from API (always get latest)
-            RESPONSE=$(gh api "repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }}")
-            CURRENT_CONTENT=$(echo "$RESPONSE" | jq -r '.content' | base64 -d)
-            CURRENT_SHA=$(echo "$RESPONSE" | jq -r '.sha')
-            # Apply status update
-            echo "$CURRENT_CONTENT" | sed 's/^## Current Status:.*/## Current Status: `review`/' | base64 -w0 > /tmp/new-task.b64
-            gh api "repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }}" \
-              -X PUT \
-              -f message="task: ${{ inputs.task_id }} review fixes applied" \
-              -f content="$(cat /tmp/new-task.b64)" \
-              -f sha="$CURRENT_SHA" \
-              -f committer.name="JuniYadi" \
-              -f committer.email="31454084+JuniYadi@users.noreply.github.com"
-            echo "✅ Task status updated to review in ide-projects"
+            # Clone + update via git instead of Content API
+            if [ ! -d /tmp/ide ]; then
+              git clone "https://x-access-token:${GH_TOKEN}@github.com/JuniYadi/ide-projects.git" /tmp/ide
+              git -C /tmp/ide config user.name "JuniYadi"
+              git -C /tmp/ide config user.email "${{ env.GIT_EMAIL }}"
+            fi
+            TASK_PATH=$(gh api repos/JuniYadi/ide-projects/contents/projects-green/_tasks/active \
+              --jq '.[] | select(.type == "file") | .path' | grep "${{ inputs.task_id }}" | head -1)
+            if [ -n "$TASK_PATH" ]; then
+              cp /tmp/task.md "/tmp/ide/$TASK_PATH"
+              cd /tmp/ide
+              git add -A
+              git commit -m "task: ${{ inputs.task_id }} review fixes applied" || true
+              git pull --rebase origin main
+              git push
+              echo "✅ Task status updated via git"
+            fi
           else
             echo "⚠️ /tmp/task.md not found — skipping status update"
           fi
