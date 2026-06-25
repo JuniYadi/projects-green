@@ -1,7 +1,7 @@
 import "@/test/register"
 import React from "react"
 import { afterEach, expect, mock } from "bun:test"
-import { cleanup } from "@testing-library/react"
+import { cleanup, configure } from "@testing-library/react"
 import * as matchers from "@testing-library/jest-dom/matchers"
 
 // Prevent ioredis from attempting real connections during tests
@@ -130,6 +130,10 @@ mock.module("next/navigation", () => {
 })
 
 expect.extend(matchers)
+
+// Increase default waitFor timeout for async components under coverage mode
+// (single-process CI is 2-3x slower than local parallel mode)
+configure({ asyncUtilTimeout: 5000 })
 
 // Enable act() environment for React 18+ concurrent rendering in tests
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
