@@ -3,6 +3,10 @@
 import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  withAuth: mock(async () => ({ user: null, organizationId: null })),
+}))
+
 const mockEnqueueGithubWebhookEvent = mock(async () => ({
   ok: true as const,
   status: 202,
@@ -78,7 +82,7 @@ describe("githubRoutes", () => {
     expect(webhookResponse.status).toBe(404)
   })
 
-  it("returns not implemented for install start when feature is enabled", async () => {
+  it("returns 401 for install start when feature is enabled but unauthenticated", async () => {
     const app = new Elysia().use(createGithubRoutes(createBaseService(true)))
     const response = await app.handle(
       new Request("http://localhost/integrations/github/install/start")
@@ -88,9 +92,9 @@ describe("githubRoutes", () => {
       error: string
     }
 
-    expect(response.status).toBe(501)
+    expect(response.status).toBe(401)
     expect(body.ok).toBe(false)
-    expect(body.error).toBe("NOT_IMPLEMENTED")
+    expect(body.error).toBe("UNAUTHORIZED")
   })
 
   it("returns 401 when repositories request is unauthenticated", async () => {

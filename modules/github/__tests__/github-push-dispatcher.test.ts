@@ -6,28 +6,31 @@ import {
   verifyGitHubSignature,
 } from "../github-push-dispatcher"
 
-const jenkinsCalls: Array<{
-  jobName: string
-  parameters: Record<string, string | number | boolean>
-}> = []
-let jenkinsShouldReject = false
-let jenkinsRejectError: Error | null = null
+let mockTriggerDeployError: Error | null = null
 
-mock.module("@/modules/jenkins/jenkins.service", () => ({
-  triggerJenkinsJob: mock(
-    (
-      jobName: string,
-      parameters: Record<string, string | number | boolean> = {}
-    ) => {
-      jenkinsCalls.push({ jobName, parameters })
+const mockStacks: Array<{ id: string; slug: string }> = [
+  { id: "stack_1", slug: "my-repo" },
+]
 
-      if (jenkinsShouldReject && jenkinsRejectError) {
-        return Promise.reject(jenkinsRejectError)
-      }
+const mockPrisma = {
+  applicationStack: {
+    findMany: mock(async () => mockStacks),
+  },
+  applicationDeployment: {
+    findFirst: mock(async () => null),
+    count: mock(async () => 0),
+  },
+}
 
-      return Promise.resolve()
-    }
-  ),
+mock.module("@/lib/prisma", () => ({
+  prisma: mockPrisma,
+}))
+
+mock.module("@/modules/deploy/deploy-pipeline.service", () => ({
+  triggerDeploy: mock(async () => {
+    if (mockTriggerDeployError) throw mockTriggerDeployError
+    return { id: "deploy_1" }
+  }),
 }))
 
 const makePayload = (overrides: Record<string, unknown> = {}) => ({
@@ -46,33 +49,31 @@ const makePayload = (overrides: Record<string, unknown> = {}) => ({
 
 describe("createJenkinsPushDispatcher", () => {
   beforeEach(() => {
-    jenkinsCalls.length = 0
-    jenkinsShouldReject = false
-    jenkinsRejectError = null
+    mockTriggerDeployError = null
+    mockPrisma.applicationDeployment.findFirst.mockClear()
+    mockPrisma.applicationDeployment.count.mockClear()
   })
 
-  it("triggers Jenkins job with correct parameters", async () => {
+  it("triggers deploy for matching stack", async () => {
     const dispatcher = createJenkinsPushDispatcher()
 
-    await dispatcher({
+    const result = await dispatcher({
       webhookEventId: "evt_1",
       connectionId: "conn_1",
       branch: "main",
       payload: makePayload(),
     })
 
-    expect(jenkinsCalls).toEqual([
-      {
-        jobName: "deploy-my-repo",
-        parameters: {
-          GIT_REF: "main",
-          GIT_COMMIT: "abc1234def5678",
-          PUSHER: "johndoe",
-          STACK_ID: "conn_1",
-          WEBHOOK_EVENT_ID: "evt_1",
+    expect(result).toEqual({ jobId: expect.stringContaining("my-repo/") })
+
+    expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          repositoryConnectionId: "conn_1",
+          branchName: "main",
         },
-      },
-    ])
+      })
+    )
   })
 
   it("returns a job ID with repo/sha format", async () => {
@@ -115,20 +116,20 @@ describe("createJenkinsPushDispatcher", () => {
     expect(result).toEqual({ jobId: "unknown/abc1234" })
   })
 
-  it("re-throws when Jenkins job trigger fails", async () => {
-    jenkinsShouldReject = true
-    jenkinsRejectError = new Error("Jenkins unreachable")
+  it("handles trigger failure gracefully (no throw)", async () => {
+    mockTriggerDeployError = new Error("Deploy failed")
 
     const dispatcher = createJenkinsPushDispatcher()
 
-    await expect(
-      dispatcher({
-        webhookEventId: "evt_5",
-        connectionId: "conn_5",
-        branch: "main",
-        payload: makePayload(),
-      })
-    ).rejects.toThrow("Jenkins unreachable")
+    const result = await dispatcher({
+      webhookEventId: "evt_5",
+      connectionId: "conn_5",
+      branch: "main",
+      payload: makePayload(),
+    })
+
+    // Dispatcher catches errors in triggerDeploy, returns null jobId
+    expect(result).toEqual({ jobId: null })
   })
 })
 

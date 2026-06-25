@@ -131,6 +131,9 @@ mock.module("next/navigation", () => {
 
 expect.extend(matchers)
 
+// Enable act() environment for React 18+ concurrent rendering in tests
+globalThis.IS_REACT_ACT_ENVIRONMENT = true
+
 if (!window.matchMedia) {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
