@@ -17,9 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
 import { useParams, useRouter } from "next/navigation"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 
 type CatalogProduct = {
@@ -36,10 +34,9 @@ type CatalogProduct = {
 export default function CatalogDetailPage() {
   const params = useParams<{ lang?: string; catalogId: string }>()
   const router = useRouter()
-  const locale = resolveLocaleOrDefault(params?.lang)
   const catalogId = params.catalogId!
 
-  const [catalog, setCatalog] = React.useState<any>(null)
+  const [catalog, setCatalog] = React.useState<Record<string, unknown> | null>(null)
   const [products, setProducts] = React.useState<CatalogProduct[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [syncing, setSyncing] = React.useState(false)
@@ -53,14 +50,16 @@ export default function CatalogDetailPage() {
       ])
       setCatalog(catRes.data)
       setProducts(prodRes.data ?? [])
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to load catalog.")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to load catalog.")
     } finally {
       setIsLoading(false)
     }
   }, [catalogId])
 
-  React.useEffect(() => { load() }, [load])
+  React.useEffect(() => {
+    ;(async () => { await load() })()
+  }, [load])
 
   const handleSync = async () => {
     setSyncing(true)
@@ -68,8 +67,8 @@ export default function CatalogDetailPage() {
       const res = await whatsappClient.catalogs.sync(catalogId)
       toast.success(`Synced ${res.data.synced} products.`)
       await load()
-    } catch (err: any) {
-      toast.error(err.message ?? "Sync failed.")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Sync failed.")
     } finally {
       setSyncing(false)
     }
@@ -103,9 +102,9 @@ export default function CatalogDetailPage() {
           <ArrowLeft className="size-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{catalog.name}</h1>
+          <h1 className="text-2xl font-bold">{catalog.name as string}</h1>
           <p className="text-muted-foreground text-sm">
-            Meta ID: {catalog.metaCatalogId} &middot; {products.length} products
+            Meta ID: {catalog.metaCatalogId as string} &middot; {products.length} products
           </p>
         </div>
         <Button onClick={handleSync} disabled={syncing}>

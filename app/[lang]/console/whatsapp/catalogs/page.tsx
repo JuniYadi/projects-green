@@ -6,7 +6,6 @@ import {
   Plus,
   Trash,
   DotsThreeVertical,
-  ArrowClockwise,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -59,18 +58,19 @@ export default function CatalogsPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const loadCatalogs = React.useCallback(async () => {
-    setIsLoading(true)
     try {
       const res = await whatsappClient.catalogs.list()
       setCatalogs(res.data ?? [])
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to load catalogs")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to load catalogs")
     } finally {
       setIsLoading(false)
     }
   }, [])
 
-  React.useEffect(() => { loadCatalogs() }, [loadCatalogs])
+  React.useEffect(() => {
+    ;(async () => { await loadCatalogs() })()
+  }, [loadCatalogs])
 
   const handleCreate = async () => {
     if (!createForm.name || !createForm.metaCatalogId) {
@@ -79,15 +79,15 @@ export default function CatalogsPage() {
     }
     setIsSubmitting(true)
     try {
-      const input: any = { name: createForm.name, metaCatalogId: createForm.metaCatalogId }
+      const input: { name: string; metaCatalogId: string; deviceId?: string } = { name: createForm.name, metaCatalogId: createForm.metaCatalogId }
       if (createForm.deviceId) input.deviceId = createForm.deviceId
       await whatsappClient.catalogs.create(input)
       toast.success("Catalog created.")
       setCreateOpen(false)
       setCreateForm({ name: "", metaCatalogId: "", deviceId: "" })
       await loadCatalogs()
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to create catalog.")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to create catalog.")
     } finally {
       setIsSubmitting(false)
     }
@@ -98,8 +98,8 @@ export default function CatalogsPage() {
       await whatsappClient.catalogs.delete(id)
       toast.success("Catalog deleted.")
       await loadCatalogs()
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to delete catalog.")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete catalog.")
     }
   }
 

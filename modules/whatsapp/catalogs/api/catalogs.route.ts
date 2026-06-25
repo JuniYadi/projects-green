@@ -92,23 +92,23 @@ export const catalogsRoutes = new Elysia({ prefix: "/catalogs" })
     }
   )
   .get(
-    "/:catalogId/products",
-    async ({ request, params: { catalogId }, set }: { request: any; params: { catalogId: string }; set: any }) => {
+    "/:id/products",
+    async ({ request, params: { id }, set }: { request: any; params: { id: string }; set: any }) => {
       const auth = await resolveAuthContext(request)
       if (!auth) { set.status = 401; return { ok: false, error: "UNAUTHORIZED", message: "Auth required." } }
-      const products = await catalogService.listProducts(catalogId, auth.organizationId!)
+      const products = await catalogService.listProducts(id, auth.organizationId!)
       if (products === null) { set.status = 404; return { ok: false, error: "NOT_FOUND", message: "Catalog not found." } }
       return { ok: true, data: products.map(toWhatsappCatalogProductDTO) }
     }
   )
   .post(
-    "/:catalogId/sync",
-    async ({ request, params: { catalogId }, set }: { request: any; params: { catalogId: string }; set: any }) => {
+    "/:id/sync",
+    async ({ request, params: { id }, set }: { request: any; params: { id: string }; set: any }) => {
       const auth = await resolveAuthContext(request)
       if (!auth) { set.status = 401; return { ok: false, error: "UNAUTHORIZED", message: "Auth required." } }
       // Find device token for Meta API call
       const catalog = await prisma.whatsappCatalog.findFirst({
-        where: { id: catalogId, organizationId: auth.organizationId! },
+        where: { id, organizationId: auth.organizationId! },
         include: { device: true },
       })
       if (!catalog) { set.status = 404; return { ok: false, error: "NOT_FOUND", message: "Catalog not found." } }
@@ -117,14 +117,14 @@ export const catalogsRoutes = new Elysia({ prefix: "/catalogs" })
       // ponytail: decrypt token same as device client
       const { decryptWhatsAppToken } = await import("@/lib/whatsapp/crypto")
       const decrypted = await decryptWhatsAppToken(token)
-      const result = await catalogService.syncFromMeta(catalogId, auth.organizationId!, decrypted)
+      const result = await catalogService.syncFromMeta(id, auth.organizationId!, decrypted)
       logWhatsappAuditEvent({
         action: "CATALOG_SYNCED",
         organizationId: auth.organizationId!,
         deviceId: catalog.deviceId ?? undefined,
         adminId: (auth as any).userId,
         message: `Synced catalog ${catalog.name}`,
-        details: { catalogId, synced: result?.synced },
+        details: { catalogId: id, synced: result?.synced },
       })
       return { ok: true, data: result }
     }
@@ -152,7 +152,7 @@ export const catalogsRoutes = new Elysia({ prefix: "/catalogs" })
         accessToken: token,
         phoneNumberId: device.whatsappPhoneId ?? "",
         wabaId: device.whatsappBusinessAccountId ?? "",
-        organizationId: auth.organizationId,
+        organizationId: auth.organizationId ?? undefined,
       })
       let result
       switch (type) {
