@@ -96,10 +96,11 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         <InvoiceCreatedEmail {...getInvoiceEmailData(invoice)} />
       )
 
-      sendEmail({
+      await sendEmail({
         to: recipientEmail,
         subject: `Invoice ${invoice.invoiceNumber} - Payment Due ${invoice.dueAt}`,
         html,
+        from: "Billing <billing@yourapp.com>",
       })
     } catch (error) {
       console.error("Failed to send invoice created email:", error)
@@ -115,10 +116,11 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         <PaymentReminderEmail {...getInvoiceEmailData(invoice)} />
       )
 
-      sendEmail({
+      await sendEmail({
         to: recipientEmail,
         subject: `Reminder: Invoice ${invoice.invoiceNumber} Due Soon`,
         html,
+        from: "Billing <billing@yourapp.com>",
       })
     } catch (error) {
       console.error("Failed to send payment reminder email:", error)
@@ -134,10 +136,11 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         <InvoicePaidEmail {...getInvoiceEmailData(invoice)} />
       )
 
-      sendEmail({
+      await sendEmail({
         to: recipientEmail,
         subject: `Payment Received - Invoice ${invoice.invoiceNumber}`,
         html,
+        from: "Billing <billing@yourapp.com>",
       })
     } catch (error) {
       console.error("Failed to send invoice paid email:", error)
@@ -153,10 +156,11 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         <InvoiceOverdueEmail {...getInvoiceEmailData(invoice)} />
       )
 
-      sendEmail({
+      await sendEmail({
         to: recipientEmail,
         subject: `OVERDUE: Invoice ${invoice.invoiceNumber} Payment Required`,
         html,
+        from: "Billing <billing@yourapp.com>",
       })
     } catch (error) {
       console.error("Failed to send invoice overdue email:", error)
@@ -175,10 +179,11 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         />
       )
 
-      sendEmail({
+      await sendEmail({
         to: recipientEmail,
         subject: `Invoice ${invoice.invoiceNumber} Has Been Cancelled`,
         html,
+        from: "Billing <billing@yourapp.com>",
       })
     } catch (error) {
       console.error("Failed to send invoice cancelled email:", error)

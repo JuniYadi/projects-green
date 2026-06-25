@@ -33,10 +33,11 @@ export const createEmailService = (): EmailService => ({
     try {
       const html = await render(<TicketCreatedEmail ticket={ticket} />)
 
-      sendEmail({
+      await sendEmail({
         to: requesterEmail,
         subject: `Your support ticket #${ticket.ticketNumber} has been created`,
         html,
+        from: "Support <support@yourapp.com>",
       })
     } catch (error) {
       console.error("Failed to send ticket created email:", error)
@@ -56,10 +57,11 @@ export const createEmailService = (): EmailService => ({
         <TicketRepliedEmail ticket={ticket} reply={reply} />
       )
 
-      sendEmail({
+      await sendEmail({
         to: requesterEmail,
         subject: `Re: Support ticket #${ticket.ticketNumber} - ${ticket.subject}`,
         html,
+        from: "Support <support@yourapp.com>",
       })
     } catch (error) {
       console.error("Failed to send ticket replied email:", error)
@@ -73,10 +75,11 @@ export const createEmailService = (): EmailService => ({
     try {
       const html = await render(<TicketClosedEmail ticket={ticket} />)
 
-      sendEmail({
+      await sendEmail({
         to: requesterEmail,
         subject: `Support ticket #${ticket.ticketNumber} has been ${SUPPORT_TICKET_STATUS_LABELS[ticket.status].toLowerCase()}`,
         html,
+        from: "Support <support@yourapp.com>",
       })
     } catch (error) {
       console.error("Failed to send ticket closed email:", error)

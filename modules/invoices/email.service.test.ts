@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 const mockConsoleError = mock(() => {})
 console.error = mockConsoleError
 
-const mockSendEmail = mock(() => {})
+const mockSendEmail = mock(async () => {})
 
 mock.module("@/lib/queue/email", () => ({
   sendEmail: mockSendEmail,
@@ -187,6 +187,16 @@ describe("invoiceEmailService", () => {
   })
 
   describe("error handling", () => {
+    it("throws InvoiceEmailServiceError when sendEmail fails", async () => {
+      mockSendEmail.mockImplementation(async () => {
+        throw new Error("Queue enqueue failed")
+      })
+
+      await expect(
+        emailService.sendInvoiceCreated(mockInvoice, "user@example.com")
+      ).rejects.toThrow("Failed to send invoice created notification")
+    })
+
     it("throws InvoiceEmailServiceError when render fails", async () => {
       mockRender.mockImplementation(async () => {
         throw new Error("Template rendering failed")
