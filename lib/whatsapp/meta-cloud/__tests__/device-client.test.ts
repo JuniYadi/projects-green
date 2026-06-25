@@ -8,7 +8,7 @@ mock.module("../crypto", () => ({
 const { WhatsAppDeviceClient } = await import("../device-client")
 
 describe("WhatsAppDeviceClient interactive methods", () => {
-  let client: WhatsAppDeviceClient
+  let client: InstanceType<typeof WhatsAppDeviceClient>
   let fetchSpy: ReturnType<typeof mock>
 
   beforeEach(() => {
@@ -18,7 +18,7 @@ describe("WhatsAppDeviceClient interactive methods", () => {
         headers: { "Content-Type": "application/json" },
       })
     )
-    globalThis.fetch = fetchSpy
+    globalThis.fetch = fetchSpy as unknown as typeof fetch
 
     client = new WhatsAppDeviceClient({
       accessToken: "test-token",

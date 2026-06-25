@@ -229,6 +229,18 @@ export const whatsappClient = {
           body: JSON.stringify(input),
         }
       ),
+    sendInteractive: (input: {
+      phoneNumber: string
+      deviceId?: string
+      interactive: unknown
+    }) =>
+      serverFetch<{ ok: boolean; messageId: string; status: string }>(
+        "/api/whatsapp/messages/send-interactive",
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        }
+      ),
   },
 
   conversations: {
