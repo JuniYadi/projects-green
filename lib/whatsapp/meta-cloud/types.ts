@@ -130,35 +130,6 @@ export type InteractiveListPayload = {
 
 export type InteractivePayload = InteractiveButtonPayload | InteractiveListPayload
 
-export type SendInteractivePayload = InteractivePayload
-
-// Convenience input types for sendReplyButtons / sendList / sendCTAUrl
-export type SendInteractiveButtonInput = {
-  to: string
-  header?: { type: string; text: string }
-  body: { text: string }
-  footer?: { text: string }
-  buttons: Array<{ id: string; title: string }>
-}
-
-export type SendInteractiveListInput = {
-  to: string
-  header?: { type: string; text: string }
-  body: { text: string }
-  footer?: { text: string }
-  button: string
-  sections: InteractiveListSection[]
-}
-
-// ponytail: CTA URL is buttons with type "cta_url" — same structure as reply buttons.
-export type SendInteractiveCTAUrlInput = {
-  to: string
-  header?: { type: string; text: string }
-  body: { text: string }
-  footer?: { text: string }
-  buttons: Array<{ display_text: string; url: string; id?: string }>
-}
-
 export type SendReactionPayload = {
   messageId: string
   emoji: string
@@ -175,7 +146,7 @@ export type SendMessageInput = SendMessageInputBase &
     | { type: "document"; payload: SendDocumentPayload }
     | { type: "location"; payload: SendLocationPayload }
     | { type: "contacts"; payload: SendContactsPayload }
-    | { type: "interactive"; payload: SendInteractivePayload }
+    | { type: "interactive"; payload: InteractivePayload }
     | { type: "reaction"; payload: SendReactionPayload }
   )
 
