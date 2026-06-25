@@ -32,6 +32,9 @@ export type WhatsappAuditAction =
   | "WEBHOOK_DELIVERED"
   | "WEBHOOK_FAILED"
   | "WEBHOOK_RETRIED"
+  // Catalog
+  | "CATALOG_SYNCED"
+  | "CATALOG_MESSAGE_SENT"
   // Admin
   | "ADMIN_LOGIN"
 

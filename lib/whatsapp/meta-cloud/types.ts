@@ -289,6 +289,49 @@ export type MessageEvent = {
   context?: { from: string; id: string }
 }
 
+// ─── Catalog / Product Message Types ──────────────────────────────────────
+
+export type CatalogProductAction = {
+  catalog_id: string
+  product_retailer_id: string
+}
+
+export type CatalogMessageAction = {
+  catalog_id: string
+  name: "catalog_message"
+  parameters?: { thumbnail_product_retailer_id?: string }
+}
+
+export type CatalogProductListSection = {
+  title: string
+  product_items: { product_retailer_id: string }[]
+}
+
+export type CatalogProductListAction = {
+  catalog_id: string
+  sections: CatalogProductListSection[]
+}
+
+export type SendCatalogMessagePayload = {
+  type: "catalog_message"
+  body: { text: string }
+  action: CatalogMessageAction
+}
+
+export type SendSingleProductPayload = {
+  type: "product"
+  body?: { text: string }
+  action: CatalogProductAction
+}
+
+export type SendProductListPayload = {
+  type: "product_list"
+  header: { type: "text"; text: string }
+  body: { text: string }
+  footer?: { text: string }
+  action: CatalogProductListAction
+}
+
 export type StatusUpdateEvent = {
   id: string
   status: "sent" | "delivered" | "read" | "failed" | "deleted"

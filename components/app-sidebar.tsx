@@ -34,6 +34,7 @@ import {
   PaperPlaneTiltIcon,
   ReceiptIcon,
   RocketLaunchIcon,
+  ShoppingBagOpen,
   GearSixIcon,
   ShieldCheckIcon,
   TicketIcon,
@@ -432,6 +433,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <BookOpenIcon />,
         isActive: startsWithRoute(path, "/console/whatsapp/contacts"),
+      },
+      {
+        title: "Catalogs",
+        url: localizePathname({
+          pathname: "/console/whatsapp/catalogs",
+          locale,
+        }),
+        icon: <ShoppingBagOpen />,
+        isActive: startsWithRoute(path, "/console/whatsapp/catalogs"),
       },
     ],
   },

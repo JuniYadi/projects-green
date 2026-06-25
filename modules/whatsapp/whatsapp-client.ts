@@ -906,7 +906,142 @@ export const createWhatsAppClient = () => {
         "Unable to remove WhatsApp user."
       )
     },
+
+    // ── Catalogs ──────────────────────────────────────────────────────────
+
+    async listCatalogs() {
+      const payload = await requestJson<ApiSuccess<{ data: Catalog[] }>>(
+        `${API_BASE}/catalogs`,
+        undefined,
+        "Unable to load WhatsApp catalogs."
+      )
+      return payload.data
+    },
+
+    async getCatalog(id: string) {
+      const payload = await requestJson<ApiSuccess<{ data: Catalog }>>(
+        `${API_BASE}/catalogs/${id}`,
+        undefined,
+        "Unable to load WhatsApp catalog."
+      )
+      return payload.data
+    },
+
+    async createCatalog(input: CreateCatalogInput) {
+      const payload = await requestJson<ApiSuccess<{ data: Catalog }>>(
+        `${API_BASE}/catalogs`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input),
+        },
+        "Unable to create WhatsApp catalog."
+      )
+      return payload.data
+    },
+
+    async updateCatalog(id: string, input: UpdateCatalogInput) {
+      const payload = await requestJson<ApiSuccess<{ data: Catalog }>>(
+        `${API_BASE}/catalogs/${id}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input),
+        },
+        "Unable to update WhatsApp catalog."
+      )
+      return payload.data
+    },
+
+    async deleteCatalog(id: string) {
+      await requestJson<ApiSuccess<object>>(
+        `${API_BASE}/catalogs/${id}`,
+        { method: "DELETE" },
+        "Unable to delete WhatsApp catalog."
+      )
+    },
+
+    async syncCatalog(id: string) {
+      const payload = await requestJson<ApiSuccess<{ data: { synced: number } }>>(
+        `${API_BASE}/catalogs/${id}/sync`,
+        { method: "POST" },
+        "Unable to sync WhatsApp catalog."
+      )
+      return payload.data
+    },
+
+    async listCatalogProducts(catalogId: string) {
+      const payload = await requestJson<ApiSuccess<{ data: CatalogProduct[] }>>(
+        `${API_BASE}/catalogs/${catalogId}/products`,
+        undefined,
+        "Unable to load catalog products."
+      )
+      return payload.data
+    },
+
+    async sendCatalogMessage(input: SendCatalogMessageInput) {
+      const payload = await requestJson<ApiSuccess<{ data: { providerMessageId: string } }>>(
+        `${API_BASE}/catalogs/send`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input),
+        },
+        "Unable to send catalog message."
+      )
+      return payload.data
+    },
   }
+}
+
+// ─── Catalog Types ────────────────────────────────────────────────────────
+
+export type Catalog = {
+  id: string
+  organizationId: string
+  name: string
+  metaCatalogId: string
+  deviceId?: string | null
+  productCount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type CatalogProduct = {
+  id: string
+  catalogId: string
+  productRetailerId: string
+  name: string
+  description?: string | null
+  price?: string | null
+  currency?: string | null
+  imageUrl?: string | null
+  url?: string | null
+  createdAt: string
+}
+
+export type CreateCatalogInput = {
+  name: string
+  metaCatalogId: string
+  deviceId?: string
+}
+
+export type UpdateCatalogInput = {
+  name?: string
+  metaCatalogId?: string
+  deviceId?: string | null
+}
+
+export type SendCatalogMessageInput = {
+  to: string
+  catalogId: string
+  type: "product" | "product_list" | "catalog_message"
+  productRetailerId?: string
+  body?: string
+  header?: string
+  footer?: string
+  sections?: { title: string; productItems: string[] }[]
+  thumbnailProductRetailerId?: string
 }
 
 // Singleton for convenience
