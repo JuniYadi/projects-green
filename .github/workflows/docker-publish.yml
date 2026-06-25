@@ -18,12 +18,15 @@ jobs:
       matrix:
         include:
           - file: Dockerfile.web
-            image: ghcr.io/${{ github.repository }}-web
+            suffix: web
           - file: Dockerfile.workers
-            image: ghcr.io/${{ github.repository }}-workers
+            suffix: workers
 
     steps:
       - uses: actions/checkout@v4
+
+      - id: image
+        run: echo "name=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')-${{ matrix.suffix }}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/login-action@v3
         with:
@@ -36,4 +39,4 @@ jobs:
           context: .
           file: ${{ matrix.file }}
           push: true
-          tags: ${{ matrix.image }}:latest
+          tags: ${{ steps.image.outputs.name }}:latest
