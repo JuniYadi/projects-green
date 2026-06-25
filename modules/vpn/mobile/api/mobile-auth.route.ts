@@ -143,7 +143,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
             auth = await exchange(body.authorizationCode)
           } catch (error: unknown) {
             // WorkOS auth-code failures → 401
-            const name = error instanceof Error ? error.constructor.name : ""
+            const name = error instanceof Error ? error.name : ""
             if (name === "AuthenticationException" || name === "UnauthorizedException" || name === "BadRequestException") {
               logAuditEvent({
                 action: "AUTH_CODE_EXCHANGE",
