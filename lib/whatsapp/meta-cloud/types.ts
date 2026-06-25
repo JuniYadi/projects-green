@@ -130,6 +130,8 @@ export type InteractiveListPayload = {
 
 export type InteractivePayload = InteractiveButtonPayload | InteractiveListPayload
 
+export type SendInteractivePayload = InteractivePayload
+
 export type SendReactionPayload = {
   messageId: string
   emoji: string
@@ -146,7 +148,7 @@ export type SendMessageInput = SendMessageInputBase &
     | { type: "document"; payload: SendDocumentPayload }
     | { type: "location"; payload: SendLocationPayload }
     | { type: "contacts"; payload: SendContactsPayload }
-    | { type: "interactive"; payload: InteractivePayload }
+    | { type: "interactive"; payload: SendInteractivePayload }
     | { type: "reaction"; payload: SendReactionPayload }
   )
 
