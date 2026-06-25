@@ -9,6 +9,10 @@ import {
   UploadMediaInput,
   UploadMediaResult,
   PhoneNumberInfo,
+  SendInteractiveButtonInput,
+  SendInteractiveListInput,
+  type InteractiveButtonPayload,
+  type InteractiveListPayload,
 } from "./types"
 import { decryptWhatsAppToken } from "../crypto"
 
@@ -153,6 +157,41 @@ export class WhatsAppDeviceClient {
       providerMessageId: result.messages[0].id,
       accepted: true,
     }
+  }
+
+  // ponytail: thin wrappers — sendMessage() already handles type="interactive"
+  // via [input.type]: input.payload. These just build the correct payload shape.
+
+  async sendReplyButtons(
+    input: SendInteractiveButtonInput
+  ): Promise<SendMessageResult> {
+    const payload: InteractiveButtonPayload = {
+      type: "button",
+      body: { text: input.body.text },
+      ...(input.header && { header: input.header }),
+      ...(input.footer && { footer: { text: input.footer.text } }),
+      action: {
+        buttons: input.buttons.map((b) => ({
+          type: "reply" as const,
+          reply: { id: b.id, title: b.title },
+        })),
+      },
+    }
+    return this.sendMessage({ to: input.to, type: "interactive", payload })
+  }
+
+  async sendList(input: SendInteractiveListInput): Promise<SendMessageResult> {
+    const payload: InteractiveListPayload = {
+      type: "list",
+      body: { text: input.body.text },
+      ...(input.header && { header: input.header }),
+      ...(input.footer && { footer: { text: input.footer.text } }),
+      action: {
+        button: input.button,
+        sections: input.sections,
+      },
+    }
+    return this.sendMessage({ to: input.to, type: "interactive", payload })
   }
 
   async uploadMedia(input: UploadMediaInput): Promise<UploadMediaResult> {

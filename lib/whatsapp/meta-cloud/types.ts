@@ -84,18 +84,70 @@ export type SendContactsPayload = {
   contacts: SendContactInput[]
 }
 
-export type SendInteractivePayload = {
-  interactive: {
-    type: "button" | "list" | "product" | "product_list" | "flow"
-    header?: Record<string, unknown>
-    body?: {
-      text: string
-    }
-    footer?: {
-      text: string
-    }
-    action: Record<string, unknown>
+// ─── Interactive (Reply Buttons / List / CTA URL) ────────────────────────
+
+export type InteractiveReplyButton = {
+  type: "reply"
+  reply: { id: string; title: string }
+}
+
+export type InteractiveCTAUrlButton = {
+  type: "cta_url"
+  cta_url: { id?: string; display_text: string; url: string }
+}
+
+export type InteractiveButtonPayload = {
+  type: "button"
+  header?: { type: string; text: string }
+  body: { text: string }
+  footer?: { text: string }
+  action: {
+    buttons: Array<InteractiveReplyButton | InteractiveCTAUrlButton>
   }
+}
+
+export type InteractiveListSectionRow = {
+  id: string
+  title: string
+  description?: string
+}
+
+export type InteractiveListSection = {
+  title?: string
+  rows: InteractiveListSectionRow[]
+}
+
+export type InteractiveListPayload = {
+  type: "list"
+  header?: { type: string; text: string }
+  body: { text: string }
+  footer?: { text: string }
+  action: {
+    button: string
+    sections: InteractiveListSection[]
+  }
+}
+
+export type InteractivePayload = InteractiveButtonPayload | InteractiveListPayload
+
+export type SendInteractivePayload = InteractivePayload
+
+// Convenience input types for sendReplyButtons / sendList
+export type SendInteractiveButtonInput = {
+  to: string
+  header?: { type: string; text: string }
+  body: { text: string }
+  footer?: { text: string }
+  buttons: Array<{ id: string; title: string }>
+}
+
+export type SendInteractiveListInput = {
+  to: string
+  header?: { type: string; text: string }
+  body: { text: string }
+  footer?: { text: string }
+  button: string
+  sections: InteractiveListSection[]
 }
 
 export type SendReactionPayload = {
