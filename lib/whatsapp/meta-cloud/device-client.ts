@@ -11,6 +11,7 @@ import {
   PhoneNumberInfo,
   SendInteractiveButtonInput,
   SendInteractiveListInput,
+  SendInteractiveCTAUrlInput,
   type InteractiveButtonPayload,
   type InteractiveListPayload,
 } from "./types"
@@ -189,6 +190,25 @@ export class WhatsAppDeviceClient {
       action: {
         button: input.button,
         sections: input.sections,
+      },
+    }
+    return this.sendMessage({ to: input.to, type: "interactive", payload })
+  }
+
+  // ponytail: CTA URLs are just buttons with type "cta_url" — same flow as reply buttons
+  async sendCTAUrl(
+    input: SendInteractiveCTAUrlInput
+  ): Promise<SendMessageResult> {
+    const payload: InteractiveButtonPayload = {
+      type: "button",
+      body: { text: input.body.text },
+      ...(input.header && { header: input.header }),
+      ...(input.footer && { footer: { text: input.footer.text } }),
+      action: {
+        buttons: input.buttons.map((b) => ({
+          type: "cta_url" as const,
+          cta_url: { display_text: b.display_text, url: b.url, ...(b.id && { id: b.id }) },
+        })),
       },
     }
     return this.sendMessage({ to: input.to, type: "interactive", payload })

@@ -437,6 +437,123 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       body: sendSchema,
     }
   )
+  .post(
+    "/send-interactive",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      const { phoneNumber, deviceId, interactive } = body as {
+        phoneNumber: string
+        deviceId?: string
+        interactive: { type: "button" | "list"; [key: string]: unknown }
+      }
+
+      try {
+        const result = await messageService.sendMessage({
+          organizationId: whatsappAuth.organizationId!,
+          phoneNumber,
+          type: "interactive",
+          interactivePayload: interactive as Record<string, unknown>,
+          deviceId,
+        })
+
+        logWhatsappAuditEvent({
+          action: "MESSAGE_SENT",
+          organizationId: whatsappAuth.organizationId!,
+          deviceId: deviceId ?? null,
+          adminId: (whatsappAuth as any).userId,
+          message: `Interactive message sent to ${phoneNumber}`,
+          status: "OK",
+          details: { waMessageId: result.waMessageId, phoneNumber, interactiveType: interactive.type },
+        })
+
+        return {
+          ok: true,
+          jobId: result.jobId,
+          messageId: result.messageId,
+          waMessageId: result.waMessageId,
+          status: result.status,
+        }
+      } catch (error) {
+        logWhatsappAuditEvent({
+          action: "MESSAGE_FAILED",
+          organizationId: whatsappAuth.organizationId!,
+          deviceId: deviceId ?? null,
+          adminId: (whatsappAuth as any).userId,
+          message: "Send interactive message failed",
+          errorMessage: error instanceof Error ? error.message : String(error),
+          status: "FAILED",
+        })
+
+        if (error instanceof InsufficientBalanceError) {
+          set.status = 402
+          return {
+            ok: false,
+            error: "INSUFFICIENT_BALANCE",
+            message: "Insufficient balance for WhatsApp messaging.",
+            balance: error.available.toString(),
+            estimatedCost: error.required.toString(),
+          }
+        }
+
+        if (error instanceof QuotaExceededError) {
+          set.status = 429
+          return {
+            ok: false,
+            error: "MONTHLY_QUOTA_EXCEEDED",
+            message: `Monthly outbound quota exceeded. Limit: ${error.monthlyLimit}, Used: ${error.monthlyUsed}`,
+            resetAt: getMonthlyResetAt(),
+          }
+        }
+
+        if (error instanceof DailyLimitExceededError) {
+          set.status = 429
+          return {
+            ok: false,
+            error: "DAILY_QUOTA_EXCEEDED",
+            message: `Daily limit exceeded. Limit: ${error.dailyLimit}, Used: ${error.dailyUsed}`,
+            resetAt: getDailyResetAt(),
+          }
+        }
+
+        console.error("[messages] send-interactive error:", error)
+        set.status = 500
+        return {
+          ok: false,
+          error: "INTERNAL_ERROR",
+          message: "Failed to send interactive message",
+        }
+      }
+    },
+    {
+      body: t.Object({
+        phoneNumber: t.String({ minLength: 1 }),
+        deviceId: t.Optional(t.String()),
+        interactive: t.Object({
+          type: t.Union([t.Literal("button"), t.Literal("list")]),
+          header: t.Optional(
+            t.Object({
+              type: t.String(),
+              text: t.String({ maxLength: 60 }),
+            })
+          ),
+          body: t.Object({
+            text: t.String({ minLength: 1, maxLength: 1024 }),
+          }),
+          footer: t.Optional(
+            t.Object({
+              text: t.String({ maxLength: 60 }),
+            })
+          ),
+          action: t.Any(),
+        }),
+      }),
+    }
+  )
   .get(
     "/:id/media",
     async ({

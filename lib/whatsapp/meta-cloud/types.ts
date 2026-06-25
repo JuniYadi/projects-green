@@ -150,6 +150,15 @@ export type SendInteractiveListInput = {
   sections: InteractiveListSection[]
 }
 
+// ponytail: CTA URL is buttons with type "cta_url" — same structure as reply buttons.
+export type SendInteractiveCTAUrlInput = {
+  to: string
+  header?: { type: string; text: string }
+  body: { text: string }
+  footer?: { text: string }
+  buttons: Array<{ display_text: string; url: string; id?: string }>
+}
+
 export type SendReactionPayload = {
   messageId: string
   emoji: string
