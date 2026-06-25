@@ -77,6 +77,7 @@ type RouteSet = { status?: number | string }
 
 type Deps = {
   authenticate?: () => Promise<AuthContext>
+  exchangeCode?: (code: string) => Promise<AuthContext>
   deviceService?: VpnMobileDeviceService
   now?: () => Date
   signJwt?: typeof signSessionJwt
@@ -122,16 +123,60 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           return buildRateLimitResponse(rateResult)
         }
 
-        // Authenticate user via WorkOS (or injected auth for tests).
-        const auth = deps.authenticate
-          ? await deps.authenticate()
-          : await (async () => {
-              // Use default WorkOS auth — but we skip importing
-              // withAuth here to keep this side-effect free at
-              // import time. The real auth happens at request time.
-              const { withAuth } = await import("@workos-inc/authkit-nextjs")
-              return withAuth()
-            })()
+        // Resolve auth: code-exchange (mobile) or cookie (web).
+        let auth: AuthContext
+        if (body.authorizationCode) {
+          const exchange = deps.exchangeCode ?? (async (code: string) => {
+            const { createWorkOS } = await import("@workos-inc/node")
+            // ponytail: direct import, lazy at request time — avoids side effects at module load
+            const workos = createWorkOS({
+              apiKey: process.env.WORKOS_API_KEY ?? "",
+              clientId: process.env.WORKOS_CLIENT_ID ?? "",
+            })
+            const result = await workos.userManagement.authenticateWithCode({
+              code,
+              clientId: process.env.WORKOS_CLIENT_ID ?? "",
+            })
+            return { user: result.user, organizationId: result.organizationId ?? null }
+          })
+          try {
+            auth = await exchange(body.authorizationCode)
+          } catch (error: unknown) {
+            // WorkOS auth-code failures → 401
+            const name = error instanceof Error ? error.constructor.name : ""
+            if (name === "AuthenticationException" || name === "UnauthorizedException" || name === "BadRequestException") {
+              logAuditEvent({
+                action: "AUTH_CODE_EXCHANGE",
+                status: "FAILED",
+                message: "Invalid authorization code",
+                errorMessage: error instanceof Error ? error.message : String(error),
+                ip: getClientIp(request),
+                userAgent: request.headers.get("user-agent"),
+              }).catch(() => {})
+              return unauthorized(set)
+            }
+            // Unexpected WorkOS errors → 500
+            logAuditEvent({
+              action: "AUTH_CODE_EXCHANGE",
+              status: "FAILED",
+              message: "WorkOS API error during code exchange",
+              errorMessage: error instanceof Error ? error.message : String(error),
+              ip: getClientIp(request),
+              userAgent: request.headers.get("user-agent"),
+            }).catch(() => {})
+            return serverError(set, "Authentication provider error.")
+          }
+        } else {
+          auth = deps.authenticate
+            ? await deps.authenticate()
+            : await (async () => {
+                // Use default WorkOS auth — but we skip importing
+                // withAuth here to keep this side-effect free at
+                // import time. The real auth happens at request time.
+                const { withAuth } = await import("@workos-inc/authkit-nextjs")
+                return withAuth()
+              })()
+        }
 
         if (!auth.user) return unauthorized(set)
         if (!auth.organizationId) {
@@ -243,6 +288,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
       },
       {
         body: t.Object({
+          authorizationCode: t.Optional(t.String()),
           deviceName: t.String({ minLength: 1 }),
           deviceFingerprint: t.String({ minLength: 1 }),
           platform: t.String({ minLength: 1 }),
