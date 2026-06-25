@@ -332,6 +332,131 @@ describe("messagesRoutes", () => {
     })
   })
 
+  describe("POST /messages/send-interactive", () => {
+    it("returns 200 on successful button interactive send", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-interactive", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            interactive: {
+              type: "button",
+              body: { text: "Do you need help?" },
+              action: {
+                buttons: [
+                  { type: "reply", reply: { id: "btn_help", title: "Help" } },
+                ],
+              },
+            },
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+    })
+
+    it("returns 200 on successful list interactive send", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-interactive", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            interactive: {
+              type: "list",
+              body: { text: "Select one:" },
+              action: {
+                button: "View",
+                sections: [
+                  {
+                    title: "Section 1",
+                    rows: [{ id: "row_1", title: "Row 1" }],
+                  },
+                ],
+              },
+            },
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+    })
+
+    it("rejects missing body text", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-interactive", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            interactive: { type: "button" },
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+    })
+
+    it("rejects invalid interactive type", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-interactive", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            interactive: {
+              type: "flow",
+              body: { text: "test" },
+            },
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+    })
+
+    it("returns 402 on insufficient balance", async () => {
+      const { Prisma } = await import("@prisma/client")
+      const Decimal = Prisma.Decimal
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new InsufficientBalanceError(new Decimal(500), new Decimal(100))
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-interactive", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            interactive: {
+              type: "button",
+              body: { text: "test" },
+              action: {
+                buttons: [
+                  { type: "reply", reply: { id: "b1", title: "OK" } },
+                ],
+              },
+            },
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(402)
+      const body = await res.json()
+      expect(body.error).toBe("INSUFFICIENT_BALANCE")
+    })
+  })
+
   describe("GET /messages/:id/media", () => {
     beforeEach(() => {
       mockPrisma.whatsappMessage.findFirst.mockResolvedValue(null as any)
