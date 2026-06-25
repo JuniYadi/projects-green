@@ -9,8 +9,6 @@ import {
   UploadMediaInput,
   UploadMediaResult,
   PhoneNumberInfo,
-  type InteractiveButtonPayload,
-  type InteractiveListPayload,
 } from "./types"
 import { decryptWhatsAppToken } from "../crypto"
 
