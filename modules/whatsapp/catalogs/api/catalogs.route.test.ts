@@ -70,6 +70,10 @@ mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
   logWhatsappAuditEvent: mockLogAudit,
 }))
 
+mock.module("@/lib/whatsapp/crypto", () => ({
+  decryptWhatsAppToken: mock(async (token: string) => token),
+}))
+
 const { catalogsRoutes } = await import("./catalogs.route")
 
 function createTestApp() {

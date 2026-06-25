@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import { resolveOrgRole } from "@/lib/auth/org-role"
 import { catalogService } from "../catalogs.service"
 import { toWhatsappCatalogDTO, toWhatsappCatalogProductDTO } from "../catalogs.dto"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
@@ -29,8 +30,9 @@ const sendCatalogSchema = t.Object({
     t.Array(
       t.Object({
         title: t.String({ maxLength: 24 }),
-        productItems: t.Array(t.String()),
-      })
+        productItems: t.Array(t.String({ minLength: 1 })),
+      }),
+      { minItems: 1 }
     )
   ),
   thumbnailProductRetailerId: t.Optional(t.String()),
@@ -51,7 +53,12 @@ export const catalogsRoutes = new Elysia({ prefix: "/catalogs" })
     async ({ request, body, set }: { request: any; body: any; set: any }) => {
       const auth = await resolveAuthContext(request)
       if (!auth) { set.status = 401; return { ok: false, error: "UNAUTHORIZED", message: "Auth required." } }
-      const catalog = await catalogService.create({ ...body, organizationId: auth.organizationId! })
+      if (auth.type !== "workos") { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
+      if (!auth.organizationId) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "No organization." } }
+      const { userId, organizationId, orgRole } = auth as { userId: string; organizationId: string; orgRole: string | null }
+      const role = orgRole ?? (await resolveOrgRole(userId, organizationId))
+      if (!role || !["owner", "admin"].includes(role)) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
+      const catalog = await catalogService.create({ ...body, organizationId: auth.organizationId })
       return { ok: true, data: toWhatsappCatalogDTO(catalog) }
     },
     { body: createCatalogSchema }
@@ -71,8 +78,13 @@ export const catalogsRoutes = new Elysia({ prefix: "/catalogs" })
     async ({ request, params: { id }, body, set }: { request: any; params: { id: string }; body: any; set: any }) => {
       const auth = await resolveAuthContext(request)
       if (!auth) { set.status = 401; return { ok: false, error: "UNAUTHORIZED", message: "Auth required." } }
+      if (auth.type !== "workos") { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
+      if (!auth.organizationId) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "No organization." } }
+      const { userId, organizationId, orgRole } = auth as { userId: string; organizationId: string; orgRole: string | null }
+      const role = orgRole ?? (await resolveOrgRole(userId, organizationId))
+      if (!role || !["owner", "admin"].includes(role)) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
       try {
-        const catalog = await catalogService.update(id, auth.organizationId!, body)
+        const catalog = await catalogService.update(id, auth.organizationId, body)
         return { ok: true, data: toWhatsappCatalogDTO(catalog) }
       } catch {
         set.status = 404
@@ -86,7 +98,12 @@ export const catalogsRoutes = new Elysia({ prefix: "/catalogs" })
     async ({ request, params: { id }, set }: { request: any; params: { id: string }; set: any }) => {
       const auth = await resolveAuthContext(request)
       if (!auth) { set.status = 401; return { ok: false, error: "UNAUTHORIZED", message: "Auth required." } }
-      const result = await catalogService.delete(id, auth.organizationId!)
+      if (auth.type !== "workos") { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
+      if (!auth.organizationId) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "No organization." } }
+      const { userId, organizationId, orgRole } = auth as { userId: string; organizationId: string; orgRole: string | null }
+      const role = orgRole ?? (await resolveOrgRole(userId, organizationId))
+      if (!role || !["owner", "admin"].includes(role)) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
+      const result = await catalogService.delete(id, auth.organizationId)
       if (!result) { set.status = 404; return { ok: false, error: "NOT_FOUND", message: "Catalog not found." } }
       return { ok: true, message: "Catalog deleted." }
     }
@@ -106,9 +123,14 @@ export const catalogsRoutes = new Elysia({ prefix: "/catalogs" })
     async ({ request, params: { id }, set }: { request: any; params: { id: string }; set: any }) => {
       const auth = await resolveAuthContext(request)
       if (!auth) { set.status = 401; return { ok: false, error: "UNAUTHORIZED", message: "Auth required." } }
+      if (auth.type !== "workos") { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
+      if (!auth.organizationId) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "No organization." } }
+      const { userId, organizationId, orgRole } = auth as { userId: string; organizationId: string; orgRole: string | null }
+      const role = orgRole ?? (await resolveOrgRole(userId, organizationId))
+      if (!role || !["owner", "admin"].includes(role)) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
       // Find device token for Meta API call
       const catalog = await prisma.whatsappCatalog.findFirst({
-        where: { id, organizationId: auth.organizationId! },
+        where: { id, organizationId: auth.organizationId },
         include: { device: true },
       })
       if (!catalog) { set.status = 404; return { ok: false, error: "NOT_FOUND", message: "Catalog not found." } }
@@ -134,6 +156,11 @@ export const catalogsRoutes = new Elysia({ prefix: "/catalogs" })
     async ({ request, body, set }: { request: any; body: any; set: any }) => {
       const auth = await resolveAuthContext(request)
       if (!auth) { set.status = 401; return { ok: false, error: "UNAUTHORIZED", message: "Auth required." } }
+      if (auth.type !== "workos") { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
+      if (!auth.organizationId) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "No organization." } }
+      const { userId, organizationId, orgRole } = auth as { userId: string; organizationId: string; orgRole: string | null }
+      const role = orgRole ?? (await resolveOrgRole(userId, organizationId))
+      if (!role || !["owner", "admin"].includes(role)) { set.status = 403; return { ok: false, error: "FORBIDDEN", message: "Admin role required." } }
       const { to, catalogId, type, productRetailerId, body: bodyText, header, footer, sections, thumbnailProductRetailerId } = body as any
       // Verify catalog belongs to org
       const catalog = await prisma.whatsappCatalog.findFirst({

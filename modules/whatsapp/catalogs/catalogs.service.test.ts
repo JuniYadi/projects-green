@@ -34,7 +34,7 @@ const mockCreate = mock(async (args: { data: Record<string, unknown>; include: a
 const mockFindFirst = mock(async () => mockCatalog())
 const mockFindMany = mock(async () => [mockCatalog()])
 const mockUpdate = mock(async (args: { where: any; data: any; include: any }) =>
-  mockCatalog(args.data)
+  mockCatalog({ ...args.data, organizationId: args.where?.organizationId })
 )
 const mockDelete = mock(async () => mockCatalog())
 const mockUpsert = mock(async (args: any) => mockProduct(args.create))

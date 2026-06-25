@@ -2131,7 +2131,7 @@ model WhatsappCatalog {
   id              String   @id @default(cuid())
   organizationId  String
   name            String
-  metaCatalogId   String   @unique
+  metaCatalogId   String
   deviceId        String?
   device          WhatsappDevice? @relation(fields: [deviceId], references: [id])
   products        WhatsappCatalogProduct[]
@@ -2139,6 +2139,7 @@ model WhatsappCatalog {
   updatedAt       DateTime @updatedAt
 
   @@index([organizationId])
+  @@unique([organizationId, metaCatalogId])
 }
 
 model WhatsappCatalogProduct {

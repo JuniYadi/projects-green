@@ -43,7 +43,7 @@ export const catalogService = {
 
   async update(id: string, organizationId: string, input: UpdateCatalogInput) {
     return prisma.whatsappCatalog.update({
-      where: { id },
+      where: { id, organizationId },
       data: input,
       include: { _count: { select: { products: true } } },
     })
@@ -54,7 +54,7 @@ export const catalogService = {
       where: { id, organizationId },
     })
     if (!catalog) return null
-    await prisma.whatsappCatalog.delete({ where: { id } })
+    await prisma.whatsappCatalog.delete({ where: { id, organizationId } })
     return catalog
   },
 
