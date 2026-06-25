@@ -182,7 +182,7 @@ const fakePairingService = {
     subscriptionId: SUBSCRIPTION_ID,
     organizationId: "org-1",
   })),
-  getStatus: mock(async () => ({ status: "valid" })),
+  getStatus: mock(async () => ({ status: "valid" as const })),
   validate: mock(() => ({
     sub: SUBSCRIPTION_ID,
     org: "org-1",
@@ -192,7 +192,8 @@ const fakePairingService = {
     typ: "vpn-pairing" as const,
   })),
   expireStale: mock(async () => 0),
-}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any
 
 const authenticate = mock(async () => ({
   user: { id: "user-1" },
@@ -556,6 +557,116 @@ describe("Mobile VPN Integration", () => {
         })
       )
       expect(await res.text()).toContain(SUBSCRIPTION_ID)
+    })
+  })
+
+  describe("Pairing status endpoint", () => {
+    it("returns 'valid' status for an active pairing token", async () => {
+      fakePairingService.getStatus.mockResolvedValueOnce({
+        status: "valid",
+      })
+
+      const app = createPairingApp()
+      const res = await app.handle(
+        new Request(
+          "http://localhost/vpn/mobile/pairing/status/some-token"
+        )
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body).toEqual({ status: "valid" })
+    })
+
+    it("returns 'claimed' status after device claims token", async () => {
+      fakePairingService.getStatus.mockResolvedValueOnce({
+        status: "claimed",
+        claimedAt: NOW.toISOString(),
+      })
+
+      const app = createPairingApp()
+      const res = await app.handle(
+        new Request(
+          "http://localhost/vpn/mobile/pairing/status/some-token"
+        )
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.status).toBe("claimed")
+      expect(body.claimedAt).toBeDefined()
+    })
+
+    it("returns 'expired' for invalid token errors", async () => {
+      const err = new Error("Token not found")
+      err.name = "VpnPairingTokenInvalidError"
+      fakePairingService.getStatus.mockRejectedValueOnce(err)
+
+      const app = createPairingApp()
+      const res = await app.handle(
+        new Request(
+          "http://localhost/vpn/mobile/pairing/status/bad-token"
+        )
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body).toEqual({ status: "expired" })
+    })
+
+    it("returns 'expired' for expired token errors", async () => {
+      const err = new Error("Token expired")
+      err.name = "VpnPairingTokenExpiredError"
+      fakePairingService.getStatus.mockRejectedValueOnce(err)
+
+      const app = createPairingApp()
+      const res = await app.handle(
+        new Request(
+          "http://localhost/vpn/mobile/pairing/status/old-token"
+        )
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body).toEqual({ status: "expired" })
+    })
+
+    it("returns 'error' with message for unexpected failures", async () => {
+      const err = new Error("Database connection lost")
+      err.name = "PrismaClientKnownRequestError"
+      fakePairingService.getStatus.mockRejectedValueOnce(err)
+
+      const app = createPairingApp()
+      const res = await app.handle(
+        new Request(
+          "http://localhost/vpn/mobile/pairing/status/some-token"
+        )
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.status).toBe("error")
+      expect(body.message).toBe("Database connection lost")
+    })
+
+    it("returns 401 when user is not authenticated", async () => {
+      authenticate.mockResolvedValueOnce({
+        user: null as unknown as { id: string },
+        organizationId: null as unknown as string,
+        role: null as unknown as string,
+        roles: null as unknown as string[],
+      })
+
+      const app = createPairingApp()
+      const res = await app.handle(
+        new Request(
+          "http://localhost/vpn/mobile/pairing/status/some-token"
+        )
+      )
+
+      expect(res.status).toBe(401)
+      const body = await res.json()
+      expect(body.error.code).toBe("TOKEN_INVALID")
     })
   })
 

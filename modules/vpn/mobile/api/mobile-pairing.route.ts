@@ -338,17 +338,23 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
           return result
         } catch (error) {
           const err = error as Error & { name?: string }
-          if (err.name === "VpnPairingTokenInvalidError") {
-            set.status = 404
-            return {
-              error: {
-                code: "NOT_FOUND" as const,
-                message: "Pairing token not found.",
-                details: {},
-              },
-            }
+          // Invalid or expired tokens are expected during polling — return
+          // a safe status instead of 500 so the modal can react.
+          if (
+            err.name === "VpnPairingTokenInvalidError" ||
+            err.name === "VpnPairingTokenExpiredError"
+          ) {
+            return { status: "expired" as const }
           }
-          throw error
+          // Log unexpected errors for debugging and return a distinct
+          // status so the UI can differentiate between "token expired" and
+          // "service unavailable" instead of silently masking incidents.
+          console.error(
+            "[PAIRING STATUS] unexpected error:",
+            err.name,
+            err.message
+          )
+          return { status: "error" as const, message: err.message }
         }
       })
   )

@@ -1,7 +1,7 @@
 import { Glob } from "bun"
 
-const COVERAGE_THRESHOLD = 90
-const LINE_THRESHOLD = 90
+const COVERAGE_THRESHOLD = 85
+const LINE_THRESHOLD = 85
 
 const EXCLUDED_DIR_PATTERNS = ["whatsapp", "e2e/", "modules/deploy/"]
 

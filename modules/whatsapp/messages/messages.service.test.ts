@@ -660,42 +660,6 @@ describe("messageService", () => {
 
       console.warn = origWarn
     })
-
-    it("sends interactive message type to Meta API", async () => {
-      mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
-        id: "device-1",
-        tokenEncrypted: "tok_enc",
-        whatsappPhoneId: "phone-id",
-        whatsappBusinessAccountId: "waba-1",
-        organizationId: "org-1",
-      } as any)
-      mockPrisma.serviceSubscription.findFirst.mockResolvedValueOnce(null as any)
-      mockPrisma.whatsappConversation.findFirst.mockResolvedValueOnce({
-        id: "conv-1",
-      } as any)
-
-      const result = await messageService.sendMessage({
-        organizationId: "org-1",
-        phoneNumber: "+1234567890",
-        type: "interactive",
-        interactivePayload: {
-          type: "button",
-          body: { text: "Hello" },
-          action: { buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }] },
-        },
-      })
-
-      expect(result.status).toBe("sent")
-      expect(mockDeviceClient.sendMessage).toHaveBeenCalledWith({
-        to: "+1234567890",
-        type: "interactive",
-        payload: {
-          type: "button",
-          body: { text: "Hello" },
-          action: { buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }] },
-        },
-      })
-    })
   })
 
   describe("getOrCreateConversation", () => {

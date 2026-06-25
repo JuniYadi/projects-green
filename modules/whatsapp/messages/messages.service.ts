@@ -38,7 +38,6 @@ export type SendMessageType =
   | "audio"
   | "video"
   | "location"
-  | "interactive"
 
 export type SendMessageOptions = {
   organizationId: string
@@ -53,8 +52,6 @@ export type SendMessageOptions = {
   name?: string
   address?: string
   deviceId?: string
-  // ponytail: used when type="interactive" — direct payload for sendMessage client
-  interactivePayload?: Record<string, unknown>
 }
 
 export type MessageService = {
@@ -81,7 +78,6 @@ export const messageService: MessageService = {
       longitude,
       name,
       address,
-      interactivePayload,
     } = options
     const jobId = `wa-job-${randomUUID()}`
 
@@ -214,13 +210,7 @@ export const messageService: MessageService = {
                     type: "audio",
                     payload: { link: mediaUrl ?? "" },
                   })
-                : type === "interactive"
-                  ? await client.sendMessage({
-                      to: phoneNumber,
-                      type: "interactive",
-                      payload: (interactivePayload ?? {}) as any,
-                    })
-                  : await client.sendMessage({
+                : await client.sendMessage({
                     to: phoneNumber,
                     type,
                     payload: { link: mediaUrl ?? "", caption },
