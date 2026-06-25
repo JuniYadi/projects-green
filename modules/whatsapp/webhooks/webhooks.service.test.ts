@@ -18,7 +18,7 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const { createWebhookEvent, recordProcessingResult, listWebhookEvents } =
+const { createWebhookEvent, recordProcessingResult, listWebhookEvents, extractMessageBody } =
   await import("./webhooks.service")
 
 // ---------------------------------------------------------------------------
@@ -429,5 +429,66 @@ describe("webhookEventService", () => {
       expect(result.data[0]).toHaveProperty("processingStatus")
       expect(result.data[0]).toHaveProperty("createdAt")
     })
+  })
+})
+
+describe("extractMessageBody", () => {
+  it("extracts button_reply title from interactive payload", () => {
+    const result = extractMessageBody({
+      from: "628123456789",
+      id: "wamid.1",
+      timestamp: "1723456789",
+      type: "interactive",
+      interactive: {
+        type: "button_reply",
+        button_reply: { id: "btn_help", title: "Need Help" },
+      },
+    })
+    expect(result).toBe("Need Help")
+  })
+
+  it("extracts list_reply title from interactive payload", () => {
+    const result = extractMessageBody({
+      from: "628123456789",
+      id: "wamid.2",
+      timestamp: "1723456790",
+      type: "interactive",
+      interactive: {
+        type: "list_reply",
+        list_reply: { id: "svc_k8s", title: "Kubernetes Setup", description: "K8s setup" },
+      },
+    })
+    expect(result).toBe("Kubernetes Setup")
+  })
+
+  it("returns text body for text messages", () => {
+    const result = extractMessageBody({
+      from: "628123456789",
+      id: "wamid.3",
+      timestamp: "1723456791",
+      type: "text",
+      text: { body: "Hello" },
+    })
+    expect(result).toBe("Hello")
+  })
+
+  it("returns null for unsupported message types", () => {
+    const result = extractMessageBody({
+      from: "628123456789",
+      id: "wamid.4",
+      timestamp: "1723456792",
+      type: "unsupported",
+    })
+    expect(result).toBeNull()
+  })
+
+  it("returns null when interactive object is missing", () => {
+    const result = extractMessageBody({
+      from: "628123456789",
+      id: "wamid.5",
+      timestamp: "1723456793",
+      type: "interactive",
+    })
+    expect(result).toBeNull()
   })
 })

@@ -171,7 +171,7 @@ export async function processInboundMessage(
 /**
  * Extract text body from a message payload depending on type.
  */
-function extractMessageBody(payload: ParsedMessagePayload): string | null {
+export function extractMessageBody(payload: ParsedMessagePayload): string | null {
   const msgType = payload.type
 
   if (msgType === "text" && payload.text?.body) {
