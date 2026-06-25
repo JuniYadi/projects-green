@@ -20,9 +20,11 @@ import { usersRoutes } from "@/modules/whatsapp/users/api/users.route"
 import { usageRoutes } from "@/modules/whatsapp/usage/api/usage.route"
 import { rateLimitRoutes } from "@/modules/whatsapp/rate-limit/api/rate-limit.route"
 import { createWhatsappAuditRoutes } from "@/modules/whatsapp/audit/api/whatsapp-audit.route"
+import { catalogsRoutes } from "@/modules/whatsapp/catalogs/api/catalogs.route"
 
 export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(devicesRoutes)
+  .use(catalogsRoutes)
   .use(tokensRoutes)
   .use(templatesRoutes)
   .use(contactsRoutes)
