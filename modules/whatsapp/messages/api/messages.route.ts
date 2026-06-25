@@ -552,13 +552,22 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
             ),
             action: t.Object({
               buttons: t.Array(
-                t.Object({
-                  type: t.Literal("reply"),
-                  reply: t.Object({
-                    id: t.String(),
-                    title: t.String({ maxLength: 20 }),
+                t.Union([
+                  t.Object({
+                    type: t.Literal("reply"),
+                    reply: t.Object({
+                      id: t.String(),
+                      title: t.String({ maxLength: 20 }),
+                    }),
                   }),
-                })
+                  t.Object({
+                    type: t.Literal("cta_url"),
+                    cta_url: t.Object({
+                      url: t.String(),
+                      display_text: t.String(),
+                    }),
+                  }),
+                ])
               ),
             }),
           }),

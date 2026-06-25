@@ -389,6 +389,56 @@ describe("messagesRoutes", () => {
       expect(body.ok).toBe(true)
     })
 
+    it("returns 200 on successful CTA URL button interactive send", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-interactive", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            interactive: {
+              type: "button",
+              body: { text: "Visit our website" },
+              action: {
+                buttons: [
+                  { type: "cta_url", cta_url: { url: "https://example.com", display_text: "Open Website" } },
+                ],
+              },
+            },
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+    })
+
+    it("rejects CTA URL button with missing url", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-interactive", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            interactive: {
+              type: "button",
+              body: { text: "Visit our website" },
+              action: {
+                buttons: [
+                  { type: "cta_url", cta_url: { display_text: "Open Website" } },
+                ],
+              },
+            },
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+    })
+
     it("rejects missing body text", async () => {
       const app = createTestApp()
       const res = await app.handle(
