@@ -51,13 +51,30 @@ async function fetchMobile<T>(url: string, options?: RequestInit): Promise<T> {
     ...options,
   })
 
-  const data = (await response.json()) as T | ApiError
+  // Try JSON first; fall back to text for non-JSON error responses.
+  const contentType = response.headers.get("content-type") ?? ""
+  const isJson = contentType.includes("application/json")
+  const data = isJson
+    ? ((await response.json()) as T | ApiError)
+    : null
 
   if (!response.ok) {
-    const errorData = data as ApiError
-    const message =
-      errorData.error?.message ?? `Mobile API error: ${response.status}`
+    let message: string
+    if (data) {
+      const errorData = data as ApiError
+      message =
+        errorData.error?.message ?? `Mobile API error: ${response.status}`
+    } else {
+      // Non-JSON error — surface the raw body so the user sees the
+      // actual server error instead of a JSON parse failure.
+      const text = await response.text().catch(() => "")
+      message = text.trim() || `Mobile API error: ${response.status}`
+    }
     throw new Error(message)
+  }
+
+  if (!data) {
+    throw new Error(`Mobile API returned non-JSON response for ${url}`)
   }
 
   return data as T
