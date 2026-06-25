@@ -9,9 +9,6 @@ import {
   UploadMediaInput,
   UploadMediaResult,
   PhoneNumberInfo,
-  SendInteractiveButtonInput,
-  SendInteractiveListInput,
-  SendInteractiveCTAUrlInput,
   type InteractiveButtonPayload,
   type InteractiveListPayload,
 } from "./types"
@@ -158,60 +155,6 @@ export class WhatsAppDeviceClient {
       providerMessageId: result.messages[0].id,
       accepted: true,
     }
-  }
-
-  // ponytail: thin wrappers — sendMessage() already handles type="interactive"
-  // via [input.type]: input.payload. These just build the correct payload shape.
-
-  async sendReplyButtons(
-    input: SendInteractiveButtonInput
-  ): Promise<SendMessageResult> {
-    const payload: InteractiveButtonPayload = {
-      type: "button",
-      body: { text: input.body.text },
-      ...(input.header && { header: input.header }),
-      ...(input.footer && { footer: { text: input.footer.text } }),
-      action: {
-        buttons: input.buttons.map((b) => ({
-          type: "reply" as const,
-          reply: { id: b.id, title: b.title },
-        })),
-      },
-    }
-    return this.sendMessage({ to: input.to, type: "interactive", payload })
-  }
-
-  async sendList(input: SendInteractiveListInput): Promise<SendMessageResult> {
-    const payload: InteractiveListPayload = {
-      type: "list",
-      body: { text: input.body.text },
-      ...(input.header && { header: input.header }),
-      ...(input.footer && { footer: { text: input.footer.text } }),
-      action: {
-        button: input.button,
-        sections: input.sections,
-      },
-    }
-    return this.sendMessage({ to: input.to, type: "interactive", payload })
-  }
-
-  // ponytail: CTA URLs are just buttons with type "cta_url" — same flow as reply buttons
-  async sendCTAUrl(
-    input: SendInteractiveCTAUrlInput
-  ): Promise<SendMessageResult> {
-    const payload: InteractiveButtonPayload = {
-      type: "button",
-      body: { text: input.body.text },
-      ...(input.header && { header: input.header }),
-      ...(input.footer && { footer: { text: input.footer.text } }),
-      action: {
-        buttons: input.buttons.map((b) => ({
-          type: "cta_url" as const,
-          cta_url: { display_text: b.display_text, url: b.url, ...(b.id && { id: b.id }) },
-        })),
-      },
-    }
-    return this.sendMessage({ to: input.to, type: "interactive", payload })
   }
 
   async uploadMedia(input: UploadMediaInput): Promise<UploadMediaResult> {

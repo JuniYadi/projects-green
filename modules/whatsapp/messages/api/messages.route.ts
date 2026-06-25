@@ -533,24 +533,68 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       body: t.Object({
         phoneNumber: t.String({ minLength: 1 }),
         deviceId: t.Optional(t.String()),
-        interactive: t.Object({
-          type: t.Union([t.Literal("button"), t.Literal("list")]),
-          header: t.Optional(
-            t.Object({
-              type: t.String(),
-              text: t.String({ maxLength: 60 }),
-            })
-          ),
-          body: t.Object({
-            text: t.String({ minLength: 1, maxLength: 1024 }),
+        interactive: t.Union([
+          t.Object({
+            type: t.Literal("button"),
+            header: t.Optional(
+              t.Object({
+                type: t.String(),
+                text: t.String({ maxLength: 60 }),
+              })
+            ),
+            body: t.Object({
+              text: t.String({ minLength: 1, maxLength: 1024 }),
+            }),
+            footer: t.Optional(
+              t.Object({
+                text: t.String({ maxLength: 60 }),
+              })
+            ),
+            action: t.Object({
+              buttons: t.Array(
+                t.Object({
+                  type: t.Literal("reply"),
+                  reply: t.Object({
+                    id: t.String(),
+                    title: t.String({ maxLength: 20 }),
+                  }),
+                })
+              ),
+            }),
           }),
-          footer: t.Optional(
-            t.Object({
-              text: t.String({ maxLength: 60 }),
-            })
-          ),
-          action: t.Any(),
-        }),
+          t.Object({
+            type: t.Literal("list"),
+            header: t.Optional(
+              t.Object({
+                type: t.String(),
+                text: t.String({ maxLength: 60 }),
+              })
+            ),
+            body: t.Object({
+              text: t.String({ minLength: 1, maxLength: 1024 }),
+            }),
+            footer: t.Optional(
+              t.Object({
+                text: t.String({ maxLength: 60 }),
+              })
+            ),
+            action: t.Object({
+              button: t.String(),
+              sections: t.Array(
+                t.Object({
+                  title: t.Optional(t.String({ maxLength: 24 })),
+                  rows: t.Array(
+                    t.Object({
+                      id: t.String(),
+                      title: t.String({ maxLength: 24 }),
+                      description: t.Optional(t.String()),
+                    })
+                  ),
+                })
+              ),
+            }),
+          }),
+        ]),
       }),
     }
   )
