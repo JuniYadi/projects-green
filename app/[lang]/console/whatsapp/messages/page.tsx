@@ -463,11 +463,15 @@ export default function WhatsAppMessagesPage() {
 
         <InteractiveComposer
           onSend={async ({ phoneNumber, deviceId, interactive }) => {
-            await whatsappClient.messages["send-interactive"].post({
-              phoneNumber,
-              deviceId,
-              interactive,
+            const res = await fetch("/api/whatsapp/messages/send-interactive", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phoneNumber, deviceId, interactive }),
             })
+            if (!res.ok) {
+              const err = await res.json()
+              throw new Error(err.message ?? "Failed to send")
+            }
           }}
           devices={devices as Array<{ id: string; phoneNumber: string; status: string }>}
         />

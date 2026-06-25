@@ -1,35 +1,34 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test"
 
 // Mock decryptWhatsAppToken first — before any imports
 mock.module("../crypto", () => ({
   decryptWhatsAppToken: mock(async (token: string) => token),
 }))
 
-const mockRequest = mock(async () => ({
-  messages: [{ id: "wamid.test123" }],
-}))
-
-mock.module("../client", () => ({
-  MetaCloudHttpClient: mock(() => ({
-    request: mockRequest,
-  })),
-}))
-
 const { WhatsAppDeviceClient } = await import("../device-client")
 
 describe("WhatsAppDeviceClient interactive methods", () => {
-  let client: InstanceType<typeof WhatsAppDeviceClient>
+  let client: WhatsAppDeviceClient
+  let fetchSpy: ReturnType<typeof mock>
 
   beforeEach(() => {
-    mockRequest.mockClear()
-    mockRequest.mockResolvedValue({
-      messages: [{ id: "wamid.test123" }],
-    })
+    fetchSpy = mock(async () =>
+      new Response(JSON.stringify({ messages: [{ id: "wamid.test123" }] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    )
+    globalThis.fetch = fetchSpy
+
     client = new WhatsAppDeviceClient({
       accessToken: "test-token",
       phoneNumberId: "phone-id-1",
       wabaId: "waba-1",
     })
+  })
+
+  afterEach(() => {
+    // restore is handled by bun test worker isolation
   })
 
   describe("sendReplyButtons", () => {
@@ -44,18 +43,16 @@ describe("WhatsAppDeviceClient interactive methods", () => {
       })
 
       expect(result.providerMessageId).toBe("wamid.test123")
-      expect(mockRequest).toHaveBeenCalledTimes(1)
+      expect(fetchSpy).toHaveBeenCalledTimes(1)
 
-      const callArgs = mockRequest.mock.calls[0] as unknown[]
-      const payload = callArgs[3] as Record<string, unknown>
-      const interactive = payload.interactive as Record<string, unknown>
-      const action = interactive.action as Record<string, unknown>
-      const buttons = action.buttons as Array<Record<string, unknown>>
+      const [url, opts] = fetchSpy.mock.calls[0] as [string, { body: string }]
+      const payload = JSON.parse(opts.body)
+      expect(url).toContain("phone-id-1/messages")
       expect(payload.type).toBe("interactive")
-      expect(interactive.type).toBe("button")
-      expect((interactive.body as Record<string, unknown>).text).toBe("Do you need help?")
-      expect(buttons).toHaveLength(2)
-      expect(buttons[0]).toEqual({
+      expect(payload.interactive.type).toBe("button")
+      expect(payload.interactive.body.text).toBe("Do you need help?")
+      expect(payload.interactive.action.buttons).toHaveLength(2)
+      expect(payload.interactive.action.buttons[0]).toEqual({
         type: "reply",
         reply: { id: "btn_help", title: "Need Help" },
       })
@@ -70,14 +67,13 @@ describe("WhatsAppDeviceClient interactive methods", () => {
         buttons: [{ id: "btn_ok", title: "OK" }],
       })
 
-      const callArgs = mockRequest.mock.calls[0] as unknown[]
-      const payload = callArgs[3] as Record<string, unknown>
-      const interactive = payload.interactive as Record<string, unknown>
-      expect(interactive.header).toEqual({
+      const [, opts] = fetchSpy.mock.calls[0] as [string, { body: string }]
+      const payload = JSON.parse(opts.body)
+      expect(payload.interactive.header).toEqual({
         type: "text",
         text: "Order Confirmation",
       })
-      expect(interactive.footer).toEqual({ text: "Reply within 24h" })
+      expect(payload.interactive.footer).toEqual({ text: "Reply within 24h" })
     })
   })
 
@@ -97,17 +93,13 @@ describe("WhatsAppDeviceClient interactive methods", () => {
         ],
       })
 
-      const callArgs = mockRequest.mock.calls[0] as unknown[]
-      const payload = callArgs[3] as Record<string, unknown>
-      const interactive = payload.interactive as Record<string, unknown>
-      const action = interactive.action as Record<string, unknown>
-      const sections = action.sections as Array<Record<string, unknown>>
+      const [, opts] = fetchSpy.mock.calls[0] as [string, { body: string }]
+      const payload = JSON.parse(opts.body)
       expect(payload.type).toBe("interactive")
-      expect(interactive.type).toBe("list")
-      expect(action.button).toBe("View Options")
-      expect(sections).toHaveLength(1)
-      const rows = sections[0].rows as Array<Record<string, unknown>>
-      expect(rows[0].id).toBe("svc_k8s")
+      expect(payload.interactive.type).toBe("list")
+      expect(payload.interactive.action.button).toBe("View Options")
+      expect(payload.interactive.action.sections).toHaveLength(1)
+      expect(payload.interactive.action.sections[0].rows[0].id).toBe("svc_k8s")
     })
   })
 
@@ -119,14 +111,11 @@ describe("WhatsAppDeviceClient interactive methods", () => {
         buttons: [{ display_text: "Open Website", url: "https://example.com" }],
       })
 
-      const callArgs = mockRequest.mock.calls[0] as unknown[]
-      const payload = callArgs[3] as Record<string, unknown>
-      const interactive = payload.interactive as Record<string, unknown>
-      const action = interactive.action as Record<string, unknown>
-      const buttons = action.buttons as Array<Record<string, unknown>>
+      const [, opts] = fetchSpy.mock.calls[0] as [string, { body: string }]
+      const payload = JSON.parse(opts.body)
       expect(payload.type).toBe("interactive")
-      expect(interactive.type).toBe("button")
-      expect(buttons[0]).toEqual({
+      expect(payload.interactive.type).toBe("button")
+      expect(payload.interactive.action.buttons[0]).toEqual({
         type: "cta_url",
         cta_url: { display_text: "Open Website", url: "https://example.com" },
       })
