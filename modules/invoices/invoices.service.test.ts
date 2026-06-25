@@ -328,4 +328,195 @@ describe("invoice service", () => {
       service.cancelInvoice({ organizationId: "org_1", invoiceId: "inv_1" })
     ).rejects.toBeInstanceOf(InvoiceNotFoundError)
   })
+
+  it("allows cancellation for draft invoices", async () => {
+    const draftRecord = { ...detailRecord, status: "DRAFT" as const }
+    let updated = false
+
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [],
+        findByIdForOrganization: async () => {
+          if (updated) return { ...draftRecord, status: "VOID" as const }
+          return draftRecord
+        },
+        updateStatusByIdForOrganization: async () => {
+          updated = true
+        },
+      },
+    })
+
+    const result = await service.cancelInvoice({
+      organizationId: "org_1",
+      invoiceId: "inv_1",
+    })
+    expect(result.status).toBe("canceled")
+  })
+
+  it("throws not found when getPaymentInfo invoice does not exist", async () => {
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [],
+        findByIdForOrganization: async () => null,
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+
+    await expect(
+      service.getPaymentInfo({
+        organizationId: "org_1",
+        invoiceId: "missing",
+      })
+    ).rejects.toBeInstanceOf(InvoiceNotFoundError)
+  })
+
+  it("returns payment info when invoice has payment data", async () => {
+    const recordWithPayment = {
+      ...detailRecord,
+      paymentMethod: "MANUAL_BANK",
+      gateway: null,
+      paymentConfirmations: [],
+    }
+
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [],
+        findByIdForOrganization: async () => recordWithPayment,
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+
+    const payment = await service.getPaymentInfo({
+      organizationId: "org_1",
+      invoiceId: "inv_1",
+    })
+
+    expect(payment).not.toBeNull()
+    expect(payment?.method).toBe("MANUAL_BANK")
+  })
+
+  it("returns null payment info when no payment data", async () => {
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [],
+        findByIdForOrganization: async () => detailRecord,
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+
+    const payment = await service.getPaymentInfo({
+      organizationId: "org_1",
+      invoiceId: "inv_1",
+    })
+
+    expect(payment).toBeNull()
+  })
+
+  it("handles detail with dueDate field instead of dueAt", async () => {
+    const recordWithDueDate = {
+      ...detailRecord,
+      dueAt: undefined as unknown as Date,
+      dueDate: new Date("2026-06-15T00:00:00.000Z"),
+      lines: [],
+    }
+
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [recordWithDueDate],
+        findByIdForOrganization: async () => recordWithDueDate,
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+
+    const list = await service.listInvoices({
+      organizationId: "org_1",
+      query: {},
+    })
+
+    expect(list[0]?.dueAt).toBe("2026-06-15T00:00:00.000Z")
+  })
+
+  it("handles detail with all line types", async () => {
+    const recordWithAllLines = {
+      ...detailRecord,
+      lines: [
+        {
+          ...detailRecord.lines[0]!,
+          lineType: "SUBSCRIPTION" as const,
+          description: "Pro plan",
+        },
+        {
+          ...detailRecord.lines[0]!,
+          id: "line_2",
+          lineType: "METERED" as const,
+          description: "API calls",
+        },
+        {
+          ...detailRecord.lines[0]!,
+          id: "line_3",
+          lineType: "ADJUSTMENT" as const,
+          description: "Credit",
+        },
+        {
+          ...detailRecord.lines[0]!,
+          id: "line_4",
+          lineType: "TAX" as const,
+          description: "",
+        },
+        {
+          ...detailRecord.lines[0]!,
+          id: "line_5",
+          lineType: "CREDIT" as const,
+          description: "",
+        },
+      ],
+    }
+
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [],
+        findByIdForOrganization: async () => recordWithAllLines,
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+
+    const detail = await service.getInvoiceDetail({
+      organizationId: "org_1",
+      invoiceId: "inv_1",
+    })
+
+    expect(detail.lineItems).toHaveLength(5)
+    expect(detail.lineItems[0]?.description).toBe("Pro plan")
+    expect(detail.lineItems[1]?.description).toBe("API calls")
+    expect(detail.lineItems[2]?.description).toBe("Credit")
+    expect(detail.lineItems[3]?.description).toBe("Tax")
+    expect(detail.lineItems[4]?.description).toBe("Credit")
+  })
+
+  it("handles detail with type and paymentMethod set", async () => {
+    const recordWithExtra = {
+      ...detailRecord,
+      type: "SUBSCRIPTION",
+      paymentMethod: "MANUAL_BANK",
+      paidAt: new Date("2026-06-01T00:00:00.000Z"),
+      lines: [],
+    }
+
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async () => [],
+        findByIdForOrganization: async () => recordWithExtra,
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+
+    const detail = await service.getInvoiceDetail({
+      organizationId: "org_1",
+      invoiceId: "inv_1",
+    })
+
+    expect(detail.type).toBe("SUBSCRIPTION")
+    expect(detail.paymentMethod).toBe("MANUAL_BANK")
+    expect(detail.paidAt).toBe("2026-06-01T00:00:00.000Z")
+  })
 })
