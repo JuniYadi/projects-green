@@ -565,6 +565,14 @@ const buildPortalNavMain = (
         }),
         isActive: startsWithRoute(pathname, "/portal/settings/ownership"),
       },
+      {
+        title: "Email Templates",
+        url: localizePathname({
+          pathname: "/portal/settings/emails",
+          locale,
+        }),
+        isActive: startsWithRoute(pathname, "/portal/settings/emails"),
+      },
     ],
   },
   {
