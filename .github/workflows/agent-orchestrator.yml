@@ -42,8 +42,7 @@ jobs:
           # Find task file from directory listing
           TASK_ID="${{ inputs.task_id }}"
           gh api repos/JuniYadi/ide-projects/contents/projects-green/_tasks/active \
-            --jq '.[] | select(.type == "file" and (.name | startswith($task_id))) | "\(.path)|\(.sha)"' \
-            --arg task_id "$TASK_ID" > /tmp/task-entry.txt
+            --jq '.[] | select(.type == "file") | {path, sha, name}' | jq -r --arg task_id "$TASK_ID" 'select(.name | startswith($task_id)) | "\(.path)|\(.sha)"' > /tmp/task-entry.txt
           if [ ! -s /tmp/task-entry.txt ]; then
             echo "::error::Task file not found for ${{ inputs.task_id }} in ide-projects/projects-green/_tasks/active/"
             exit 1
@@ -166,8 +165,7 @@ jobs:
         run: |
           TASK_ID="${{ inputs.task_id }}"
           gh api repos/JuniYadi/ide-projects/contents/projects-green/_tasks/active \
-            --jq '.[] | select(.type == "file" and (.name | startswith($task_id))) | "\(.path)|\(.sha)"' \
-            --arg task_id "$TASK_ID" > /tmp/task-entry.txt
+            --jq '.[] | select(.type == "file") | {path, sha, name}' | jq -r --arg task_id "$TASK_ID" 'select(.name | startswith($task_id)) | "\(.path)|\(.sha)"' > /tmp/task-entry.txt
           if [ ! -s /tmp/task-entry.txt ]; then
             echo "::error::Task file not found for ${{ inputs.task_id }} in ide-projects/projects-green/_tasks/active/"
             exit 1
@@ -407,8 +405,7 @@ jobs:
         run: |
           TASK_ID="${{ inputs.task_id }}"
           gh api repos/JuniYadi/ide-projects/contents/projects-green/_tasks/active \
-            --jq '.[] | select(.type == "file" and (.name | startswith($task_id))) | "\(.path)|\(.sha)"' \
-            --arg task_id "$TASK_ID" > /tmp/task-entry.txt
+            --jq '.[] | select(.type == "file") | {path, sha, name}' | jq -r --arg task_id "$TASK_ID" 'select(.name | startswith($task_id)) | "\(.path)|\(.sha)"' > /tmp/task-entry.txt
           if [ ! -s /tmp/task-entry.txt ]; then
             echo "::error::Task file not found for ${{ inputs.task_id }} in ide-projects/projects-green/_tasks/active/"
             exit 1
