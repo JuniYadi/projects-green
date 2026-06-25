@@ -20,12 +20,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
 
       - name: Show Bun version
         run: |
@@ -44,10 +42,10 @@ jobs:
           done
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: node_modules
-          key: bun-deps-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+          key: bun-deps-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             bun-deps-${{ runner.os }}-
 
@@ -76,7 +74,7 @@ jobs:
           ls -lh coverage/lcov.filtered.info
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           files: coverage/lcov.filtered.info
           flags: unit

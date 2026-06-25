@@ -179,7 +179,7 @@ jobs:
           echo "$TASK_SHA" > /tmp/task.sha
 
       - name: Checkout projects-green @ branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: JuniYadi/projects-green
           token: ${{ secrets.PAT_IDE_PROJECTS }}
@@ -189,8 +189,6 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
 
       - name: Show versions
         run: |
@@ -198,7 +196,6 @@ jobs:
           node --version
           uname -a
           date
-
       - name: Prepare env + install deps
         working-directory: projects-green
         run: |
