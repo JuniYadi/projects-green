@@ -8,7 +8,6 @@ import {
   createInvoiceEmailService,
   type InvoiceEmailService,
 } from "@/modules/invoices/email.service"
-import type { InvoiceListItem } from "@/modules/invoices/invoices.types"
 
 export class PaymentService {
   private billingTransactions: BillingTransactionService
