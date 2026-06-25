@@ -1,13 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import type { Transporter } from "nodemailer"
 
 // Mock console.error to suppress error logging in tests
 const mockConsoleError = mock(() => {})
 console.error = mockConsoleError
 
-const mockSendEmail = mock(async () => {})
+const mockSendMail = mock(async () => ({ messageId: "test-123" }))
+const mockTransporter = {
+  sendMail: mockSendMail,
+} as unknown as Transporter
 
-mock.module("@/lib/queue/email", () => ({
-  sendEmail: mockSendEmail,
+mock.module("nodemailer", () => ({
+  default: {
+    createTransport: () => mockTransporter,
+  },
+  createTransport: () => mockTransporter,
 }))
 
 const mockRender = mock(async () => "<html><body>Test Email</body></html>")
@@ -46,15 +53,21 @@ describe("invoiceEmailService", () => {
   let originalEnv: NodeJS.ProcessEnv
 
   beforeEach(async () => {
-    mockSendEmail.mockClear()
+    mockSendMail.mockClear()
     mockRender.mockClear()
 
     originalEnv = { ...process.env, NODE_ENV: "test" }
+    process.env.SMTP_HOST = "smtp.test.com"
+    process.env.SMTP_PORT = "587"
+    process.env.SMTP_USER = "test@test.com"
+    process.env.SMTP_PASS = "password"
     process.env.EMAIL_FROM = "Billing <billing@test.com>"
     process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3300"
 
     const module = await import("./email.service")
-    emailService = module.createInvoiceEmailService()
+    emailService = module.createInvoiceEmailService({
+      transporter: mockTransporter,
+    })
   })
 
   afterEach(() => {
@@ -65,7 +78,7 @@ describe("invoiceEmailService", () => {
     it("sends email with correct subject and recipient", async () => {
       await emailService.sendInvoiceCreated(mockInvoice, "user@example.com")
 
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
@@ -78,19 +91,29 @@ describe("invoiceEmailService", () => {
 
       expect(mockRender).toHaveBeenCalled()
     })
+
+    it("uses configured from address", async () => {
+      await emailService.sendInvoiceCreated(mockInvoice, "user@example.com")
+
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: "Billing <billing@test.com>",
+        })
+      )
+    })
   })
 
   describe("sendPaymentReminder", () => {
     it("sends reminder email with due date context", async () => {
       await emailService.sendPaymentReminder(mockInvoice, "user@example.com")
 
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("Reminder"),
         })
       )
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         })
@@ -114,13 +137,13 @@ describe("invoiceEmailService", () => {
     it("sends payment confirmation email", async () => {
       await emailService.sendInvoicePaid(paidInvoice, "user@example.com")
 
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("Payment Received"),
         })
       )
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         })
@@ -132,13 +155,13 @@ describe("invoiceEmailService", () => {
     it("sends overdue email with urgent subject", async () => {
       await emailService.sendInvoiceOverdue(mockInvoice, "user@example.com")
 
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("OVERDUE"),
         })
       )
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         })
@@ -158,13 +181,13 @@ describe("invoiceEmailService", () => {
         "user@example.com"
       )
 
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "user@example.com",
           subject: expect.stringContaining("Cancelled"),
         })
       )
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         })
@@ -178,7 +201,8 @@ describe("invoiceEmailService", () => {
         "Test cancellation reason"
       )
 
-      expect(mockSendEmail).toHaveBeenCalledWith(
+      // Verify sendMail was called (reason is passed to template, not render directly)
+      expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "user@example.com",
         })
@@ -187,10 +211,11 @@ describe("invoiceEmailService", () => {
   })
 
   describe("error handling", () => {
-    it("throws InvoiceEmailServiceError when sendEmail fails", async () => {
-      mockSendEmail.mockImplementation(async () => {
-        throw new Error("Queue enqueue failed")
+    it("throws InvoiceEmailServiceError when sendMail fails", async () => {
+      mockSendMail.mockImplementation(async () => {
+        throw new Error("SMTP connection failed")
       })
+      mockRender.mockImplementation(async () => "<html>Test</html>")
 
       await expect(
         emailService.sendInvoiceCreated(mockInvoice, "user@example.com")
@@ -198,6 +223,7 @@ describe("invoiceEmailService", () => {
     })
 
     it("throws InvoiceEmailServiceError when render fails", async () => {
+      mockSendMail.mockImplementation(async () => ({ messageId: "test" }))
       mockRender.mockImplementation(async () => {
         throw new Error("Template rendering failed")
       })
@@ -207,7 +233,19 @@ describe("invoiceEmailService", () => {
       ).rejects.toThrow("Failed to send invoice created notification")
     })
 
+    it("sendPaymentReminder throws on sendMail failure", async () => {
+      mockSendMail.mockImplementation(async () => {
+        throw new Error("SMTP timeout")
+      })
+      mockRender.mockImplementation(async () => "<html>Test</html>")
+
+      await expect(
+        emailService.sendPaymentReminder(mockInvoice, "user@example.com")
+      ).rejects.toThrow("Failed to send payment reminder notification")
+    })
+
     it("sendPaymentReminder throws on render failure", async () => {
+      mockSendMail.mockImplementation(async () => ({ messageId: "test" }))
       mockRender.mockImplementation(async () => {
         throw new Error("Reminder render failed")
       })
@@ -217,7 +255,19 @@ describe("invoiceEmailService", () => {
       ).rejects.toThrow("Failed to send payment reminder notification")
     })
 
+    it("sendInvoicePaid throws on sendMail failure", async () => {
+      mockSendMail.mockImplementation(async () => {
+        throw new Error("SMTP disconnected")
+      })
+      mockRender.mockImplementation(async () => "<html>Paid</html>")
+
+      await expect(
+        emailService.sendInvoicePaid(mockInvoice, "user@example.com")
+      ).rejects.toThrow("Failed to send invoice paid notification")
+    })
+
     it("sendInvoicePaid throws on render failure", async () => {
+      mockSendMail.mockImplementation(async () => ({ messageId: "test" }))
       mockRender.mockImplementation(async () => {
         throw new Error("Paid render failed")
       })
@@ -227,7 +277,19 @@ describe("invoiceEmailService", () => {
       ).rejects.toThrow("Failed to send invoice paid notification")
     })
 
+    it("sendInvoiceOverdue throws on sendMail failure", async () => {
+      mockSendMail.mockImplementation(async () => {
+        throw new Error("SMTP refused")
+      })
+      mockRender.mockImplementation(async () => "<html>Overdue</html>")
+
+      await expect(
+        emailService.sendInvoiceOverdue(mockInvoice, "user@example.com")
+      ).rejects.toThrow("Failed to send invoice overdue notification")
+    })
+
     it("sendInvoiceOverdue throws on render failure", async () => {
+      mockSendMail.mockImplementation(async () => ({ messageId: "test" }))
       mockRender.mockImplementation(async () => {
         throw new Error("Overdue render failed")
       })
@@ -237,7 +299,19 @@ describe("invoiceEmailService", () => {
       ).rejects.toThrow("Failed to send invoice overdue notification")
     })
 
+    it("sendInvoiceCancelled throws on sendMail failure", async () => {
+      mockSendMail.mockImplementation(async () => {
+        throw new Error("SMTP error")
+      })
+      mockRender.mockImplementation(async () => "<html>Cancelled</html>")
+
+      await expect(
+        emailService.sendInvoiceCancelled(mockInvoice, "user@example.com")
+      ).rejects.toThrow("Failed to send invoice cancelled notification")
+    })
+
     it("sendInvoiceCancelled throws on render failure", async () => {
+      mockSendMail.mockImplementation(async () => ({ messageId: "test" }))
       mockRender.mockImplementation(async () => {
         throw new Error("Cancelled render failed")
       })
@@ -245,6 +319,37 @@ describe("invoiceEmailService", () => {
       await expect(
         emailService.sendInvoiceCancelled(mockInvoice, "user@example.com")
       ).rejects.toThrow("Failed to send invoice cancelled notification")
+    })
+  })
+
+  describe("transporter creation", () => {
+    it("creates transporter with env config", async () => {
+      mockRender.mockImplementation(async () => "<html>Test</html>")
+
+      const module = await import("./email.service")
+      const service = module.createInvoiceEmailService()
+
+      await service.sendInvoiceCreated(mockInvoice, "user@example.com")
+
+      expect(mockSendMail).toHaveBeenCalled()
+    })
+
+    it("uses default from address when EMAIL_FROM not set", async () => {
+      mockRender.mockImplementation(async () => "<html>Test</html>")
+      delete process.env.EMAIL_FROM
+
+      const module = await import("./email.service")
+      const service = module.createInvoiceEmailService({
+        transporter: mockTransporter,
+      })
+
+      await service.sendInvoiceCreated(mockInvoice, "user@example.com")
+
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: "Billing <billing@yourapp.com>",
+        })
+      )
     })
   })
 

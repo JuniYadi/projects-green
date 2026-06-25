@@ -25,7 +25,7 @@ async function requireAdmin(): Promise<{ ok: true; orgId: string } | { ok: false
   return { ok: true, orgId: auth.organizationId }
 }
 
-export const wireguardRoutes = new Elysia({ prefix: "/portal/vpn/wireguard" })
+export const wireguardRoutes = new Elysia({ prefix: "/console/wireguard" })
   .get("/peers", async ({ set }) => {
     const auth = await requireAdmin()
     if (!auth.ok) { set.status = auth.status; return auth.body }

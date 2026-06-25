@@ -54,9 +54,11 @@ function createTransporter(): Transporter {
 }
 
 /**
- * Enqueue an email for async delivery.
- * Throws if the enqueue fails so callers can handle the error.
+ * Fire-and-forget: enqueue an email and log instead of throwing.
+ * Never blocks the caller.
  */
-export async function sendEmail(data: EmailJobData): Promise<void> {
-  await EmailJob.enqueue(data)
+export function sendEmail(data: EmailJobData): void {
+  EmailJob.enqueue(data).catch((err) => {
+    console.error(`[email-queue] failed to enqueue email to=${data.to}:`, err)
+  })
 }

@@ -5,21 +5,10 @@ import { useCallback, useEffect, useState, startTransition } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   listMobileDevices,
   revokeMobileDevice,
   type MobileDeviceEntry,
 } from "@/lib/vpn-mobile-client"
-import {
-  listVpnSubscriptions,
-  type VpnSubscription,
-} from "@/lib/vpn-client"
 
 import { VpnDevicesList } from "../_components/vpn-devices-list"
 import { VpnPairingQrModal } from "../_components/vpn-pairing-qr-modal"
@@ -27,36 +16,20 @@ import { DeviceMobileIcon } from "@phosphor-icons/react"
 
 type PageState =
   | { phase: "loading" }
-  | {
-      phase: "ready"
-      devices: MobileDeviceEntry[]
-      subscriptions: VpnSubscription[]
-    }
+  | { phase: "ready"; devices: MobileDeviceEntry[] }
   | { phase: "error"; message: string }
 
 export default function ConsoleVpnDevicesPage() {
   const [state, setState] = useState<PageState>({ phase: "loading" })
   const [revoking, setRevoking] = useState<string | null>(null)
   const [pairOpen, setPairOpen] = useState(false)
-  const [selectedSubId, setSelectedSubId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setState({ phase: "loading" })
     try {
-      const [devices, subscriptions] = await Promise.all([
-        listMobileDevices(),
-        listVpnSubscriptions(),
-      ])
-      const activeSubs = subscriptions.filter((s) => s.status === "ACTIVE")
+      const devices = await listMobileDevices()
       startTransition(() => {
-        setState({ phase: "ready", devices, subscriptions: activeSubs })
-        // Auto-select first subscription if none selected or selected is gone.
-        if (
-          activeSubs.length > 0 &&
-          (!selectedSubId || !activeSubs.some((s) => s.id === selectedSubId))
-        ) {
-          setSelectedSubId(activeSubs[0].id)
-        }
+        setState({ phase: "ready", devices })
       })
     } catch (error) {
       startTransition(() => {
@@ -67,7 +40,6 @@ export default function ConsoleVpnDevicesPage() {
         })
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -121,8 +93,6 @@ export default function ConsoleVpnDevicesPage() {
     )
   }
 
-  const selectedSub = state.subscriptions.find((s) => s.id === selectedSubId)
-
   return (
     <>
       <header className="space-y-1">
@@ -138,49 +108,21 @@ export default function ConsoleVpnDevicesPage() {
         revoking={revoking}
       />
 
-      <div className="flex flex-wrap items-center gap-3">
-        {state.subscriptions.length > 0 && (
-          <Select
-            value={selectedSubId ?? ""}
-            onValueChange={setSelectedSubId}
-          >
-            <SelectTrigger className="min-w-[200px]">
-              <SelectValue placeholder="Select subscription" />
-            </SelectTrigger>
-            <SelectContent>
-              {state.subscriptions.map((sub) => (
-                <SelectItem key={sub.id} value={sub.id}>
-                  {sub.packageName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
+      <div>
         <Button
           onClick={() => setPairOpen(true)}
-          disabled={state.subscriptions.length === 0 || !selectedSubId}
+          disabled={state.devices.length === 0}
         >
           <DeviceMobileIcon className="mr-2 h-4 w-4" />
           Pair New Device
         </Button>
       </div>
 
-      {state.subscriptions.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          You need an active VPN subscription to pair a device.{" "}
-          <a className="underline" href="../subscriptions">
-            View subscriptions
-          </a>
-        </p>
-      )}
-
-      {pairOpen && selectedSub && (
+      {pairOpen && state.devices.length > 0 && (
         <VpnPairingQrModal
           open={pairOpen}
           onOpenChange={setPairOpen}
-          subscriptionId={selectedSub.id}
-          subscriptionName={selectedSub.packageName}
+          subscriptionId={state.devices[0].subscriptionId}
           onPaired={load}
         />
       )}

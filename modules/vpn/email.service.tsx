@@ -31,7 +31,7 @@ export class VpnEmailService {
       <SubscriptionCreatedEmail packageName={packageName} />
     )
     for (const { email } of recipients) {
-      await sendEmail({
+      sendEmail({
         to: email,
         subject: "Your VPN subscription is being provisioned",
         html,
@@ -48,7 +48,7 @@ export class VpnEmailService {
       <ProvisioningSuccessEmail packageName={packageName} />
     )
     for (const { email } of recipients) {
-      await sendEmail({
+      sendEmail({
         to: email,
         subject: "Your VPN account is ready",
         html,
@@ -65,7 +65,7 @@ export class VpnEmailService {
       <ProvisioningFailedEmail packageName={packageName} />
     )
     for (const { email } of recipients) {
-      await sendEmail({
+      sendEmail({
         to: email,
         subject: "VPN provisioning failed — contact support",
         html,
@@ -86,7 +86,7 @@ export class VpnEmailService {
       <RenewalSuccessEmail packageName={packageName} period={period} />
     )
     for (const { email } of recipients) {
-      await sendEmail({
+      sendEmail({
         to: email,
         subject: "VPN subscription renewed",
         html,
@@ -103,7 +103,7 @@ export class VpnEmailService {
       <RenewalFailedEmail packageName={packageName} />
     )
     for (const { email } of recipients) {
-      await sendEmail({
+      sendEmail({
         to: email,
         subject: "VPN renewal payment failed — please top up",
         html,
@@ -123,7 +123,7 @@ export class VpnEmailService {
       <SubscriptionSuspendedEmail packageName={packageName} />
     )
     for (const { email } of recipients) {
-      await sendEmail({
+      sendEmail({
         to: email,
         subject: "VPN subscription suspended due to payment overdue",
         html,
@@ -140,7 +140,7 @@ export class VpnEmailService {
       <SubscriptionExpiredEmail packageName={packageName} />
     )
     for (const { email } of recipients) {
-      await sendEmail({
+      sendEmail({
         to: email,
         subject: "VPN subscription expired",
         html,
@@ -164,7 +164,7 @@ export class VpnEmailService {
       />
     )
     for (const { email } of recipients) {
-      await sendEmail({
+      sendEmail({
         to: email,
         subject: "VPN subscription will be cancelled at period end",
         html,

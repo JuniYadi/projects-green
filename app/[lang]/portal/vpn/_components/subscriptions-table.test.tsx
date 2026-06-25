@@ -2,12 +2,9 @@ import { describe, expect, it, mock } from "bun:test"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import type { VpnSubscriptionItem } from "./vpn-admin-client"
 
-const mockListVpnAdminSubscriptions = mock<(...args: any[]) => Promise<{ data: VpnSubscriptionItem[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>>(
-  async () => ({ data: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 0 } })
-)
+const mockListVpnAdminSubscriptions = mock(async () => ({ data: [], pagination: { page: 1, limit: 25, total: 0, totalPages: 0 } }))
 
 mock.module("./vpn-admin-client", () => ({
-
   listVpnAdminSubscriptions: mockListVpnAdminSubscriptions,
 }))
 

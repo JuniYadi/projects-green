@@ -92,6 +92,7 @@ describe("resolveSidebarMenu", () => {
       "Applications",
       "WhatsApp",
       "VPN",
+      "WireGuard",
     ])
     expect(navMain[0]?.isActive).toBe(false)
   })
@@ -111,6 +112,7 @@ describe("resolveSidebarMenu", () => {
       "Applications",
       "WhatsApp",
       "VPN",
+      "WireGuard",
     ])
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
@@ -169,9 +171,9 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(
-      navMain.find((item) => item.title === "Webhook Logs")?.isActive
-    ).toBe(true)
+    expect(navMain.find((item) => item.title === "Webhook Logs")?.isActive).toBe(
+      true
+    )
   })
 
   it("returns portal-only navigation and projects for portal surface", () => {
@@ -326,24 +328,5 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.find((item) => item.title === "Contacts")?.isActive).toBe(
       true
     )
-  })
-
-  it("includes order package in console vpn context", () => {
-    const { navMain, navMainLabel } = resolveSidebarMenu({
-      surface: "console",
-      pathname: "/console/vpn/order",
-      locale: "en",
-    })
-
-    expect(navMainLabel).toBe("VPN")
-    expect(navMain.map((item) => item.title)).toEqual([
-      "Dashboard",
-      "Order Package",
-      "My Subscriptions",
-      "Devices",
-    ])
-    expect(
-      navMain.find((item) => item.title === "Order Package")?.isActive
-    ).toBe(true)
   })
 })

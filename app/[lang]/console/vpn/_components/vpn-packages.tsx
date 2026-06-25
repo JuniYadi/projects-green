@@ -34,15 +34,11 @@ import {
   type VpnPackageDetail,
   type VpnPackageSummary,
 } from "@/lib/vpn-client"
-import { recommendedPackageId } from "@/lib/vpn-packages"
 import { GlobeIcon } from "@phosphor-icons/react"
 
 type Props = {
   topupUrl: string
   onPurchased: () => void
-  maxItems?: number
-  packages?: VpnPackageSummary[] | null
-  variant?: "compact" | "order"
 }
 
 function formatPrice(price: string, currency: string): string {
@@ -82,16 +78,8 @@ function PriceDisplay({
   )
 }
 
-export function VpnPackages({
-  topupUrl,
-  onPurchased,
-  maxItems,
-  packages: packagesProp,
-  variant = "compact",
-}: Props) {
-  const [loadedPackages, setLoadedPackages] = useState<
-    VpnPackageSummary[] | null
-  >(null)
+export function VpnPackages({ topupUrl, onPurchased }: Props) {
+  const [packages, setPackages] = useState<VpnPackageSummary[] | null>(null)
   const [selected, setSelected] = useState<VpnPackageDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [purchasing, setPurchasing] = useState(false)
@@ -101,22 +89,18 @@ export function VpnPackages({
   } | null>(null)
 
   useEffect(() => {
-    if (packagesProp !== undefined) return
-
     let active = true
     listVpnPackages()
       .then((data) => {
-        if (active) setLoadedPackages(data)
+        if (active) setPackages(data)
       })
       .catch(() => {
-        if (active) setLoadedPackages([])
+        if (active) setPackages([])
       })
     return () => {
       active = false
     }
-  }, [packagesProp])
-
-  const packages = packagesProp ?? loadedPackages
+  }, [])
 
   const openDetail = async (id: string) => {
     setLoadingDetail(true)
@@ -171,17 +155,11 @@ export function VpnPackages({
   return (
     <>
       <div className="grid gap-4 md:grid-cols-3">
-        {packages.slice(0, maxItems).map((pkg) => (
+        {packages.map((pkg) => (
           <Card key={pkg.id} className="flex flex-col">
-            <CardHeader className="flex flex-row items-start justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <GlobeIcon className="h-5 w-5 shrink-0" />
-                <CardTitle className="text-base">{pkg.name}</CardTitle>
-              </div>
-              {variant === "order" &&
-                pkg.id === recommendedPackageId(packages) && (
-                  <Badge variant="secondary">Most coverage</Badge>
-                )}
+            <CardHeader className="flex flex-row items-center gap-2">
+              <GlobeIcon className="h-5 w-5" />
+              <CardTitle className="text-base">{pkg.name}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 space-y-3">
               <p className="text-lg font-semibold">
@@ -196,11 +174,6 @@ export function VpnPackages({
                   / month
                 </span>
               </p>
-              {variant === "order" && pkg.description && (
-                <p className="text-sm text-muted-foreground">
-                  {pkg.description}
-                </p>
-              )}
               <div className="space-y-1 text-sm text-muted-foreground">
                 <p>
                   {pkg.serverCount} server{pkg.serverCount === 1 ? "" : "s"} ·{" "}

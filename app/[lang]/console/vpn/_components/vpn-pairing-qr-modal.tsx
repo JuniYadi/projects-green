@@ -7,7 +7,6 @@ import {
   useState,
   startTransition,
 } from "react"
-import QRCode from "qrcode"
 
 import {
   Dialog,
@@ -26,7 +25,7 @@ type PairingPhase =
   | {
       phase: "ready"
       pairingToken: string
-      qrDataUrl: string
+      qrPayload: string
       expiresAt: string
     }
   | { phase: "claimed" }
@@ -63,17 +62,11 @@ export function VpnPairingQrModal({
     startTransition(() => setState({ phase: "generating" }))
     try {
       const result = await generatePairingToken(subscriptionId)
-      // Render the pairing token as a scannable QR code data URL.
-      const qrDataUrl = await QRCode.toDataURL(result.qrPayload, {
-        width: 256,
-        margin: 2,
-        errorCorrectionLevel: "M",
-      })
       startTransition(() => {
         setState({
           phase: "ready",
           pairingToken: result.pairingToken,
-          qrDataUrl,
+          qrPayload: result.qrPayload,
           expiresAt: result.expiresAt,
         })
         setCountdown(300)
@@ -104,17 +97,6 @@ export function VpnPairingQrModal({
     pollingRef.current = setInterval(async () => {
       try {
         const status = await getPairingStatus(state.pairingToken)
-        if (status.status === "error") {
-          // Server-side unexpected error — stop polling and show it.
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current)
-            pollingRef.current = null
-          }
-          startTransition(() =>
-            setState({ phase: "error", message: status.message })
-          )
-          return
-        }
         if (status.status === "claimed") {
           if (pollingRef.current) {
             clearInterval(pollingRef.current)
@@ -208,16 +190,21 @@ export function VpnPairingQrModal({
 
           {(state.phase === "ready" || state.phase === "expired") && (
             <>
+              {/* QR display — shows the raw payload string as a QR code
+                  container. The mobile app encodes this as a scannable QR. */}
               <div className="flex items-center justify-center rounded-lg border bg-white p-4">
                 {state.phase === "ready" ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- data URL, cannot use next/image
-                  <img
-                    src={state.qrDataUrl}
-                    alt="Scan with mobile app to pair device"
-                    width={256}
-                    height={256}
-                    className="rounded-md"
-                  />
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex h-48 w-48 items-center justify-center rounded-md bg-muted">
+                      <span className="px-2 text-center text-xs text-muted-foreground">
+                        QR Code
+                        <br />
+                        <span className="mt-1 block font-mono text-[10px] break-all">
+                          {state.qrPayload.slice(0, 32)}…
+                        </span>
+                      </span>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex h-48 w-48 items-center justify-center rounded-md bg-muted">
                     <p className="text-sm text-muted-foreground">

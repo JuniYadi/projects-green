@@ -215,15 +215,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         icon: <ListMagnifyingGlassIcon />,
         isActive: startsWithRoute(path, "/portal/vpn/audit-logs"),
       },
-      {
-        title: "WireGuard",
-        url: localizePathname({
-          pathname: "/portal/vpn/wireguard",
-          locale,
-        }),
-        icon: <ShieldCheckIcon />,
-        isActive: startsWithRoute(path, "/portal/vpn/wireguard"),
-      },
     ],
   },
   {
@@ -457,15 +448,6 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/console/vpn/dashboard",
       },
       {
-        title: "Order Package",
-        url: localizePathname({
-          pathname: "/console/vpn/order",
-          locale,
-        }),
-        icon: <PackageIcon />,
-        isActive: startsWithRoute(path, "/console/vpn/order"),
-      },
-      {
         title: "My Subscriptions",
         url: localizePathname({
           pathname: "/console/vpn/subscriptions",
@@ -530,7 +512,12 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       icon: <GlobeIcon />,
       isActive: startsWithRoute(path, "/console/vpn"),
     },
-
+    {
+      title: "WireGuard",
+      url: localizePathname({ pathname: "/console/wireguard", locale }),
+      icon: <ShieldCheckIcon />,
+      isActive: startsWithRoute(path, "/console/wireguard"),
+    },
   ],
 })
 
