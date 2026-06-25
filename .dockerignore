@@ -32,9 +32,6 @@ docker-compose*.yml
 .prettierrc*
 # tsconfig excluded via *.json pattern above, negated per-line
 bunfig.toml
-next.config.mjs
-postcss.config.mjs
-tailwind.config.*
 components.json
 
 # Environment
