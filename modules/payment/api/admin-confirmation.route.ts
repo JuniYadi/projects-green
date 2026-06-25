@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { ConfirmationService } from "../services/confirmation.service"
+import { PaymentService } from "../services/payment.service"
 import { ReviewConfirmationSchema } from "../types/payment.types"
 import { toPaymentConfirmationDTO } from "../dto/payment-confirmation.dto"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
@@ -68,7 +69,30 @@ export const createAdminConfirmationRoutes = () =>
     .post("/:id/approve", async ({ params, set }) => {
       const result = await requireConfirmationAuth(set)
       if (!result.ok) return result
-      await confirmationService.approve(params.id, result.user.id)
+      const approved = await confirmationService.approve(params.id, result.user.id)
+
+      // Fire-and-forget: send invoice paid email
+      const paymentService = new PaymentService()
+      paymentService
+        .sendInvoicePaidEmail(
+          {
+            id: approved.invoiceId,
+            invoiceNumber: approved.invoiceNumber,
+            totalAmount: { toNumber: () => approved.totalAmount },
+            currency: approved.currency,
+            status: "paid",
+            periodStart: new Date(),
+            periodEnd: new Date(),
+          },
+          approved.organizationId
+        )
+        .catch((err) =>
+          console.error(
+            `[Admin] Failed to send paid email for ${approved.invoiceNumber}:`,
+            err
+          )
+        )
+
       return { message: "Payment approved and balance credited" }
     })
 

@@ -80,7 +80,19 @@ export const createWebhookRoutes = () =>
             merchantOrderId
           )
 
-          await paymentService.markInvoiceAsPaid(merchantOrderId)
+          const paidInvoice = await paymentService.markInvoiceAsPaid(
+            merchantOrderId
+          )
+
+          // Fire-and-forget: send invoice paid email
+          paymentService
+            .sendInvoicePaidEmail(paidInvoice, billingAccount.organizationId)
+            .catch((err) =>
+              console.error(
+                `[Webhook] Failed to send paid email for ${merchantOrderId}:`,
+                err
+              )
+            )
 
           await prisma.paymentAuditLog.create({
             data: {

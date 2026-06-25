@@ -83,10 +83,27 @@ export class ConfirmationService {
     })
   }
 
-  async approve(id: string, adminUserId: string) {
+  async approve(
+    id: string,
+    adminUserId: string
+  ): Promise<{
+    invoiceId: string
+    invoiceNumber: string
+    totalAmount: number
+    currency: string
+    organizationId: string
+  }> {
     // Wrap all operations in a single transaction for atomicity.
     // If creditBalance succeeds but the subsequent updates fail, the transaction
     // rolls back entirely — no orphaned credits.
+    let result: {
+      invoiceId: string
+      invoiceNumber: string
+      totalAmount: number
+      currency: string
+      organizationId: string
+    } | null = null
+
     await prisma.$transaction(async (tx) => {
       const confirmation = await tx.paymentConfirmation.findUnique({
         where: { id },
@@ -145,7 +162,17 @@ export class ConfirmationService {
           details: { amount, invoiceId: confirmation.invoiceId },
         },
       })
+
+      result = {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        totalAmount: invoice.totalAmount.toNumber(),
+        currency: invoice.billingAccount.currency,
+        organizationId: invoice.billingAccount.organizationId,
+      }
     })
+
+    return result!
   }
 
   async reject(id: string, adminUserId: string, reason: string) {
