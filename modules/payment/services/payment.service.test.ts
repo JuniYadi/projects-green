@@ -1,4 +1,5 @@
 import type { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import type { InvoiceEmailService } from "@/modules/invoices/email.service"
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 const mockPrisma = {
@@ -74,6 +75,15 @@ const mockBillingTransactions = {
       alreadyProcessed: false,
     })
   ),
+}
+
+// Mock email service to prevent actual email sending during tests
+const mockEmailService = {
+  sendInvoiceCreated: mock(() => Promise.resolve()),
+  sendPaymentReminder: mock(() => Promise.resolve()),
+  sendInvoicePaid: mock(() => Promise.resolve()),
+  sendInvoiceOverdue: mock(() => Promise.resolve()),
+  sendInvoiceCancelled: mock(() => Promise.resolve()),
 }
 
 const { PaymentService } = await import("./payment.service")
@@ -162,7 +172,8 @@ describe("PaymentService", () => {
 
   beforeEach(() => {
     service = new PaymentService(
-      mockBillingTransactions as unknown as BillingTransactionService
+      mockBillingTransactions as unknown as BillingTransactionService,
+      mockEmailService as unknown as InvoiceEmailService
     )
     resetMocks()
   })

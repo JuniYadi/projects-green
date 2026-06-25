@@ -4,14 +4,23 @@ import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { PAYMENT_CONSTANTS } from "../constants"
 import type { InvoiceTypeValue } from "../types/payment.types"
+import {
+  createInvoiceEmailService,
+  type InvoiceEmailService,
+} from "@/modules/invoices/email.service"
 
 export class PaymentService {
   private billingTransactions: BillingTransactionService
+  private emailService: InvoiceEmailService
 
-  constructor(billingTransactions?: BillingTransactionService) {
+  constructor(
+    billingTransactions?: BillingTransactionService,
+    emailService?: InvoiceEmailService
+  ) {
     this.billingTransactions =
       billingTransactions ??
       new BillingTransactionService(prisma as unknown as PrismaClient)
+    this.emailService = emailService ?? createInvoiceEmailService()
   }
 
   /**
@@ -111,6 +120,14 @@ export class PaymentService {
         },
       },
     })
+
+    // Fire-and-forget: send invoice created email
+    this.sendTopupInvoiceEmail(invoice, organizationId).catch((err) =>
+      console.error(
+        `[PaymentService] Failed to send topup invoice email for ${invoiceNumber}:`,
+        err
+      )
+    )
 
     return invoice
   }
@@ -224,6 +241,100 @@ export class PaymentService {
     })
   }
 
+  /**
+   * Resolve invoice email recipients for an organization.
+   * Uses the same logic as InvoiceStatusManager: billing contacts + org admin.
+   */
+  private async resolveInvoiceRecipients(
+    organizationId: string
+  ): Promise<Array<{ email: string }>> {
+    const recipients: Array<{ email: string }> = []
+
+    const account = await prisma.billingAccount.findUnique({
+      where: { organizationId },
+      include: {
+        contacts: {
+          where: { isActive: true, notifyOnInvoice: true },
+        },
+      },
+    })
+
+    if (account?.contacts) {
+      for (const contact of account.contacts) {
+        recipients.push({ email: contact.email })
+      }
+    }
+
+    // Fallback: resolve org admin from WorkOS
+    try {
+      const { createWorkOS } = await import("@workos-inc/node")
+      const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
+
+      const memberships = await workos.userManagement
+        .listOrganizationMemberships({
+          organizationId,
+          statuses: ["active"],
+        })
+        .then((r) => r.autoPagination())
+
+      const admin = memberships.find((m) => {
+        const slug = m.role?.slug?.toLowerCase()
+        return slug === "user_owner" || slug === "user_admin"
+      })
+
+      if (admin?.userId) {
+        const user = await workos.userManagement.getUser(admin.userId)
+        if (user.email && !recipients.some((r) => r.email === user.email)) {
+          recipients.push({ email: user.email })
+        }
+      }
+    } catch (error) {
+      console.error(
+        `[PaymentService] Failed to resolve admin email for org ${organizationId}:`,
+        error
+      )
+    }
+
+    return recipients
+  }
+
+  private async sendTopupInvoiceEmail(
+    invoice: {
+      id: string
+      invoiceNumber: string
+      totalAmount: { toNumber: () => number } | Prisma.Decimal
+      currency: string
+      status: string
+      periodStart: Date
+      periodEnd: Date
+      issuedAt?: Date | null
+      dueDate?: Date | null
+    },
+    organizationId: string
+  ): Promise<void> {
+    const recipients = await this.resolveInvoiceRecipients(organizationId)
+    if (recipients.length === 0) return
+
+    const invoiceListItem = {
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      totalAmount:
+        invoice.totalAmount instanceof Prisma.Decimal
+          ? invoice.totalAmount.toNumber()
+          : invoice.totalAmount.toNumber(),
+      currency: invoice.currency,
+      status: "open" as const,
+      issuedAt: invoice.issuedAt?.toISOString() ?? new Date().toISOString(),
+      dueAt: invoice.dueDate?.toISOString() ?? null,
+    }
+
+    await Promise.allSettled(
+      recipients.map((r) =>
+        this.emailService.sendInvoiceCreated(invoiceListItem, r.email)
+      )
+    )
+  }
+
   async createTopupInvoiceForGap(organizationId: string, gapAmount: number) {
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 7)
@@ -247,7 +358,7 @@ export class PaymentService {
     // Generate invoice number using UUID to avoid race condition
     const invoiceNumber = `TOP-${crypto.randomUUID().split("-")[0].toUpperCase()}`
 
-    return prisma.billingInvoice.create({
+    const invoice = await prisma.billingInvoice.create({
       data: {
         billingAccountId: account.id,
         invoiceNumber,
@@ -271,5 +382,15 @@ export class PaymentService {
         },
       },
     })
+
+    // Fire-and-forget: send invoice created email
+    this.sendTopupInvoiceEmail(invoice, organizationId).catch((err) =>
+      console.error(
+        `[PaymentService] Failed to send gap topup invoice email for ${invoiceNumber}:`,
+        err
+      )
+    )
+
+    return invoice
   }
 }
