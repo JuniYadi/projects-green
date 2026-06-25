@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { eden } from "@/lib/eden"
 import {
   Card,
   CardContent,
@@ -89,9 +88,12 @@ export default function WireGuardPage() {
     setLoading(true)
     setError(null)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const res: any = await eden.api.portal.vpn.wireguard.peers.get()
-      if (res?.data?.peers) setPeers(res.data.peers)
+      const res = await fetch(
+        "/api/portal/vpn/wireguard/peers"
+      )
+      if (!res.ok) throw new Error("Failed to fetch peers")
+      const body = await res.json()
+      if (body?.peers) setPeers(body.peers)
       else setError("Failed to fetch peers")
     } catch {
       setError("Failed to connect to server")
@@ -110,20 +112,23 @@ export default function WireGuardPage() {
     if (!newUsername.trim()) return
     setCreating(true)
     try {
-      const res = await eden.api.portal.vpn.wireguard.peers.post({
-        username: newUsername.trim(),
-      })
+      const res = await fetch(
+        "/api/portal/vpn/wireguard/peers",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ username: newUsername.trim() }),
+        }
+      )
       if (res.status === 201) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: any = res
-        setCreateResult(data.data)
+        const body = await res.json()
+        setCreateResult(body)
         setNewUsername("")
         await fetchPeers()
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: any = res
+        const body = await res.json().catch(() => null)
         alert(
-          (data?.error?.message as string) ?? "Failed to create peer"
+          (body?.error?.message as string) ?? "Failed to create peer"
         )
       }
     } catch {
@@ -150,7 +155,6 @@ export default function WireGuardPage() {
 
   const handleDownload = async (username: string) => {
     try {
-      // ponytail: direct fetch for blob response; eden doesn't support blobs
       // eslint-disable-next-line no-restricted-globals
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${username}/config`

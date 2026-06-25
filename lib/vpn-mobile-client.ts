@@ -73,8 +73,10 @@ async function fetchMobile<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(message)
   }
 
+  // Successful response with no JSON body (e.g., HTTP 204 or 200 with empty body).
+  // Return undefined so callers like revokeMobileDevice (void return) work.
   if (!data) {
-    throw new Error(`Mobile API returned non-JSON response for ${url}`)
+    return undefined as T
   }
 
   return data as T

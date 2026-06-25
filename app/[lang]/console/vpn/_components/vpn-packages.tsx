@@ -34,6 +34,7 @@ import {
   type VpnPackageDetail,
   type VpnPackageSummary,
 } from "@/lib/vpn-client"
+import { recommendedPackageId } from "@/lib/vpn-packages"
 import { GlobeIcon } from "@phosphor-icons/react"
 
 type Props = {
@@ -79,13 +80,6 @@ function PriceDisplay({
       )}
     </span>
   )
-}
-
-function recommendedPackageId(packages: VpnPackageSummary[]): string | null {
-  if (packages.length === 0) return null
-  return packages.reduce((best, pkg) =>
-    pkg.serverCount > best.serverCount ? pkg : best
-  ).id
 }
 
 export function VpnPackages({

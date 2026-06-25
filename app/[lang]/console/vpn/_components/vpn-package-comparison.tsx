@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { VpnPackageSummary } from "@/lib/vpn-client"
+import { recommendedPackageId } from "@/lib/vpn-packages"
 
 type Props = {
   packages: VpnPackageSummary[]
@@ -34,13 +35,6 @@ function bestFor(pkg: VpnPackageSummary): string {
   if (pkg.serverCount >= 10 || pkg.regions.length >= 6) return "Teams"
   if (pkg.serverCount >= 5 || pkg.regions.length >= 3) return "Multi-region"
   return "First VPN"
-}
-
-function recommendedPackageId(packages: VpnPackageSummary[]): string | null {
-  if (packages.length === 0) return null
-  return packages.reduce((best, pkg) =>
-    pkg.serverCount > best.serverCount ? pkg : best
-  ).id
 }
 
 export function VpnPackageComparison({ packages }: Props) {

@@ -346,14 +346,15 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
           ) {
             return { status: "expired" as const }
           }
-          // Log unexpected errors for debugging but still return a safe
-          // response so the polling loop doesn't see raw 500s.
+          // Log unexpected errors for debugging and return a distinct
+          // status so the UI can differentiate between "token expired" and
+          // "service unavailable" instead of silently masking incidents.
           console.error(
             "[PAIRING STATUS] unexpected error:",
             err.name,
             err.message
           )
-          return { status: "expired" as const }
+          return { status: "error" as const, message: err.message }
         }
       })
   )
