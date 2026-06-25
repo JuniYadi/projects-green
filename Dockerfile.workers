@@ -13,6 +13,7 @@ COPY tsconfig.json ./
 
 # Copy Prisma schema and generated client
 COPY prisma ./prisma
+ENV DATABASE_URL=postgresql://localhost:5432/dummy
 RUN bun prisma generate
 
 # Copy source directories needed by workers
