@@ -131,6 +131,11 @@ mock.module("next/navigation", () => {
 
 expect.extend(matchers)
 
+// Increase default waitFor timeout for async components under coverage mode
+// (single-process CI is 2-3x slower than local parallel mode)
+import { configure } from "@testing-library/react"
+configure({ asyncUtilTimeout: 5000 })
+
 // Enable act() environment for React 18+ concurrent rendering in tests
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 

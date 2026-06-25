@@ -40,9 +40,12 @@ describe("ConsoleVpnDashboardPage", () => {
   it("points empty users to the dedicated order page", async () => {
     const view = render(<ConsoleVpnDashboardPage />)
 
-    await waitFor(() => {
-      expect(view.getByText("VPN Dashboard")).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(view.getByText("VPN Dashboard")).toBeInTheDocument()
+      },
+      { timeout: 5000 }
+    )
 
     const orderLink = view.getByRole("link", {
       name: /choose a vpn package/i,
@@ -163,9 +166,12 @@ describe("ConsoleVpnOrderPage", () => {
 
     const view = render(<ConsoleVpnOrderPage />)
 
-    await waitFor(() => {
-      expect(view.getByText("Order VPN Package")).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(view.getByText("Order VPN Package")).toBeInTheDocument()
+      },
+      { timeout: 5000 }
+    )
 
     expect(view.getByText("Recommended for You")).toBeInTheDocument()
     expect(view.getByText("Protocol Benefits")).toBeInTheDocument()

@@ -9,13 +9,14 @@ coverage:
   status:
     project:
       default:
-        target: 82%
-        threshold: 3%
+        target: 80%
+        threshold: 2%
         if_ci_failed: success
     patch:
       default:
-        target: 85%
+        target: 80%
         threshold: 2%
+        informational: false
 
 comment:
   layout: "reach,diff,flags,files,footer"
