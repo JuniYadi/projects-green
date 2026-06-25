@@ -12,6 +12,7 @@ permissions:
 jobs:
   test-coverage:
     name: Test Coverage (Bun + Codecov)
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
