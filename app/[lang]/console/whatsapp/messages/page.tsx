@@ -36,6 +36,7 @@ import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
+import { InteractiveComposer } from "@/modules/whatsapp/messages/ui/interactive-composer"
 
 // ─── Local Types ─────────────────────────────────────────────────────────────
 
@@ -383,8 +384,8 @@ export default function WhatsAppMessagesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
           <p className="text-muted-foreground">
             View and manage your WhatsApp message history.
@@ -459,6 +460,17 @@ export default function WhatsAppMessagesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <InteractiveComposer
+          onSend={async ({ phoneNumber, deviceId, interactive }) => {
+            await whatsappClient.messages["send-interactive"].post({
+              phoneNumber,
+              deviceId,
+              interactive,
+            })
+          }}
+          devices={devices as Array<{ id: string; phoneNumber: string; status: string }>}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

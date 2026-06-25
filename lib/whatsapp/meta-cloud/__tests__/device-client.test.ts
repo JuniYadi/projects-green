@@ -18,7 +18,7 @@ mock.module("../client", () => ({
 const { WhatsAppDeviceClient } = await import("../device-client")
 
 describe("WhatsAppDeviceClient interactive methods", () => {
-  let client: WhatsAppDeviceClient
+  let client: InstanceType<typeof WhatsAppDeviceClient>
 
   beforeEach(() => {
     mockRequest.mockClear()
@@ -46,14 +46,16 @@ describe("WhatsAppDeviceClient interactive methods", () => {
       expect(result.providerMessageId).toBe("wamid.test123")
       expect(mockRequest).toHaveBeenCalledTimes(1)
 
-      const callArgs = mockRequest.mock.calls[0]
-      // args: operation, endpoint, method, payload
-      const payload = callArgs[3]
+      const callArgs = mockRequest.mock.calls[0] as unknown[]
+      const payload = callArgs[3] as Record<string, unknown>
+      const interactive = payload.interactive as Record<string, unknown>
+      const action = interactive.action as Record<string, unknown>
+      const buttons = action.buttons as Array<Record<string, unknown>>
       expect(payload.type).toBe("interactive")
-      expect(payload.interactive.type).toBe("button")
-      expect(payload.interactive.body.text).toBe("Do you need help?")
-      expect(payload.interactive.action.buttons).toHaveLength(2)
-      expect(payload.interactive.action.buttons[0]).toEqual({
+      expect(interactive.type).toBe("button")
+      expect((interactive.body as Record<string, unknown>).text).toBe("Do you need help?")
+      expect(buttons).toHaveLength(2)
+      expect(buttons[0]).toEqual({
         type: "reply",
         reply: { id: "btn_help", title: "Need Help" },
       })
@@ -68,12 +70,14 @@ describe("WhatsAppDeviceClient interactive methods", () => {
         buttons: [{ id: "btn_ok", title: "OK" }],
       })
 
-      const payload = mockRequest.mock.calls[0][3]
-      expect(payload.interactive.header).toEqual({
+      const callArgs = mockRequest.mock.calls[0] as unknown[]
+      const payload = callArgs[3] as Record<string, unknown>
+      const interactive = payload.interactive as Record<string, unknown>
+      expect(interactive.header).toEqual({
         type: "text",
         text: "Order Confirmation",
       })
-      expect(payload.interactive.footer).toEqual({ text: "Reply within 24h" })
+      expect(interactive.footer).toEqual({ text: "Reply within 24h" })
     })
   })
 
@@ -93,12 +97,17 @@ describe("WhatsAppDeviceClient interactive methods", () => {
         ],
       })
 
-      const payload = mockRequest.mock.calls[0][3]
+      const callArgs = mockRequest.mock.calls[0] as unknown[]
+      const payload = callArgs[3] as Record<string, unknown>
+      const interactive = payload.interactive as Record<string, unknown>
+      const action = interactive.action as Record<string, unknown>
+      const sections = action.sections as Array<Record<string, unknown>>
       expect(payload.type).toBe("interactive")
-      expect(payload.interactive.type).toBe("list")
-      expect(payload.interactive.action.button).toBe("View Options")
-      expect(payload.interactive.action.sections).toHaveLength(1)
-      expect(payload.interactive.action.sections[0].rows[0].id).toBe("svc_k8s")
+      expect(interactive.type).toBe("list")
+      expect(action.button).toBe("View Options")
+      expect(sections).toHaveLength(1)
+      const rows = sections[0].rows as Array<Record<string, unknown>>
+      expect(rows[0].id).toBe("svc_k8s")
     })
   })
 
@@ -110,10 +119,14 @@ describe("WhatsAppDeviceClient interactive methods", () => {
         buttons: [{ display_text: "Open Website", url: "https://example.com" }],
       })
 
-      const payload = mockRequest.mock.calls[0][3]
+      const callArgs = mockRequest.mock.calls[0] as unknown[]
+      const payload = callArgs[3] as Record<string, unknown>
+      const interactive = payload.interactive as Record<string, unknown>
+      const action = interactive.action as Record<string, unknown>
+      const buttons = action.buttons as Array<Record<string, unknown>>
       expect(payload.type).toBe("interactive")
-      expect(payload.interactive.type).toBe("button")
-      expect(payload.interactive.action.buttons[0]).toEqual({
+      expect(interactive.type).toBe("button")
+      expect(buttons[0]).toEqual({
         type: "cta_url",
         cta_url: { display_text: "Open Website", url: "https://example.com" },
       })
