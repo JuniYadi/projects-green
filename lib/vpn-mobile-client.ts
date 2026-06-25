@@ -33,10 +33,9 @@ export type PairingGenerateResponse = {
   qrPayload: string
 }
 
-export type PairingStatusResponse = {
-  status: "valid" | "claimed" | "expired"
-  claimedAt?: string
-}
+export type PairingStatusResponse =
+  | { status: "valid" | "claimed" | "expired"; claimedAt?: string }
+  | { status: "error"; message: string }
 
 // ── API helpers ──────────────────────────────────────────────────────────
 

@@ -104,6 +104,17 @@ export function VpnPairingQrModal({
     pollingRef.current = setInterval(async () => {
       try {
         const status = await getPairingStatus(state.pairingToken)
+        if (status.status === "error") {
+          // Server-side unexpected error — stop polling and show it.
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current)
+            pollingRef.current = null
+          }
+          startTransition(() =>
+            setState({ phase: "error", message: status.message })
+          )
+          return
+        }
         if (status.status === "claimed") {
           if (pollingRef.current) {
             clearInterval(pollingRef.current)
