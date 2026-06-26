@@ -167,6 +167,17 @@ jobs:
 
             Senior engineer implementing a feature. Code in WORKDIR, task spec in TASK DIR.
 
+            0. REBASE ONTO LATEST MAIN:
+               Your branch may be behind origin/main if other PRs merged
+               while the draft PR was open. Rebase first to ensure you're
+               working against the latest code. Handle any conflicts.
+               ```
+               cd WORKDIR
+               git config user.name "JuniYadi"
+               git config user.email "31454084+JuniYadi@users.noreply.github.com"
+               git pull --rebase origin main
+               ```
+
             1. READ TASK:
                ```
                TASK_FILE="$(ls "$TASK_DIR"/*${{ inputs.task_id }}*.md | head -1)"
@@ -344,6 +355,17 @@ jobs:
             TASK DIR: ../ide/projects-green/_tasks/active/
 
             Senior engineer applying PR review fixes.
+
+            0. REBASE ONTO LATEST MAIN:
+               Your branch may be behind origin/main if other PRs merged
+               while the draft PR was open. Rebase first so fixes apply
+               against the latest code. Handle any conflicts.
+               ```
+               cd WORKDIR
+               git config user.name "JuniYadi"
+               git config user.email "31454084+JuniYadi@users.noreply.github.com"
+               git pull --rebase origin main
+               ```
 
             1. READ CONTEXT:
                ```
