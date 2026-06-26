@@ -246,6 +246,7 @@ describe("resolveSidebarMenu", () => {
       "Broadcasts",
       "Usage",
       "Contacts",
+      "Catalogs",
     ])
     expect(navMain.find((item) => item.title === "Dashboard")?.isActive).toBe(
       true

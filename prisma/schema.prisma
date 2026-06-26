@@ -1538,6 +1538,7 @@ model WhatsappDevice {
   broadcastRateStates   WhatsappBroadcastRateState[]
   webhooks              WhatsappWebhook[]
   whatsappWebhookEvents WhatsappWebhookEvent[]
+  catalogs              WhatsappCatalog[]
 
   @@index([organizationId])
   @@index([whatsappBusinessAccountId])
@@ -2124,6 +2125,39 @@ model WhatsappAuditLog {
   @@index([deviceId, createdAt(sort: Desc)])
   @@index([action, createdAt(sort: Desc)])
   @@index([adminId, createdAt(sort: Desc)])
+}
+
+model WhatsappCatalog {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String
+  metaCatalogId   String
+  deviceId        String?
+  device          WhatsappDevice? @relation(fields: [deviceId], references: [id])
+  products        WhatsappCatalogProduct[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@unique([organizationId, metaCatalogId])
+}
+
+model WhatsappCatalogProduct {
+  id                String   @id @default(cuid())
+  catalogId         String
+  catalog           WhatsappCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  productRetailerId String
+  name              String
+  description       String?
+  price             String?
+  currency          String?
+  imageUrl          String?
+  url               String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([catalogId, productRetailerId])
+  @@index([catalogId])
 }
 
 model CacheEntry {

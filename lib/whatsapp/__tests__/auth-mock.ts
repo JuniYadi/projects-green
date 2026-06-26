@@ -3,22 +3,24 @@ import { Elysia } from "elysia"
 
 import type { WorkOSScope } from "../auth"
 
+const DEFAULT_AUTH: WorkOSScope = {
+  type: "workos" as const,
+  userId: "user-1",
+  email: "admin@example.com",
+  organizationId: "org-1",
+  orgRole: "admin" as const,
+  platformRole: "none" as const,
+}
+
 export const mockAuthContext = {
-  current: {
-    type: "workos" as const,
-    userId: "user-1",
-    email: "admin@example.com",
-    organizationId: "org-1",
-    orgRole: "admin" as const,
-    platformRole: "none" as const,
-  } as WorkOSScope,
+  current: { ...DEFAULT_AUTH },
 }
 
 export const setMockAuthContext = (overrides: Partial<WorkOSScope> | null) => {
   if (overrides === null) {
     mockAuthContext.current = null as any
   } else {
-    mockAuthContext.current = { ...mockAuthContext.current, ...overrides }
+    mockAuthContext.current = { ...DEFAULT_AUTH, ...overrides }
   }
 }
 

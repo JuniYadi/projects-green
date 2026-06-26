@@ -292,4 +292,120 @@ export class WhatsAppDeviceClient {
 
     return { handle: result.handle }
   }
+
+  async sendSingleProduct(
+    to: string,
+    catalogId: string,
+    productRetailerId: string,
+    body?: { text: string }
+  ): Promise<SendMessageResult> {
+    const payload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "product",
+        ...(body?.text ? { body: { text: body.text } } : {}),
+        action: {
+          catalog_id: catalogId,
+          product_retailer_id: productRetailerId,
+        },
+      },
+    }
+
+    const result = await this.httpClient.request<any>(
+      "SEND_CATALOG_PRODUCT",
+      ENDPOINTS.MESSAGES(this.phoneNumberId),
+      "POST",
+      payload
+    )
+
+    return {
+      providerMessageId: result.messages[0].id,
+      accepted: true,
+    }
+  }
+
+  async sendMultiProductList(
+    to: string,
+    catalogId: string,
+    sections: { title: string; productItems: string[] }[],
+    header?: { text: string },
+    body?: { text: string },
+    footer?: { text: string }
+  ): Promise<SendMessageResult> {
+    const payload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "product_list",
+        header: { type: "text" as const, text: header?.text ?? "" },
+        body: { text: body?.text ?? "" },
+        ...(footer?.text ? { footer: { text: footer.text } } : {}),
+        action: {
+          catalog_id: catalogId,
+          sections: sections.map((s) => ({
+            title: s.title,
+            product_items: s.productItems.map((id) => ({
+              product_retailer_id: id,
+            })),
+          })),
+        },
+      },
+    }
+
+    const result = await this.httpClient.request<any>(
+      "SEND_CATALOG_PRODUCT_LIST",
+      ENDPOINTS.MESSAGES(this.phoneNumberId),
+      "POST",
+      payload
+    )
+
+    return {
+      providerMessageId: result.messages[0].id,
+      accepted: true,
+    }
+  }
+
+  async sendCatalogMessage(
+    to: string,
+    catalogId: string,
+    thumbnailProductRetailerId?: string,
+    body?: { text: string }
+  ): Promise<SendMessageResult> {
+    const payload: Record<string, unknown> = {
+      messaging_product: "whatsapp",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "catalog_message",
+        body: { text: body?.text ?? "Browse our catalog:" },
+        action: {
+          catalog_id: catalogId,
+          name: "catalog_message",
+          ...(thumbnailProductRetailerId
+            ? {
+                parameters: {
+                  thumbnail_product_retailer_id: thumbnailProductRetailerId,
+                },
+              }
+            : {}),
+        },
+      },
+    }
+
+    const result = await this.httpClient.request<any>(
+      "SEND_CATALOG_MESSAGE",
+      ENDPOINTS.MESSAGES(this.phoneNumberId),
+      "POST",
+      payload
+    )
+
+    return {
+      providerMessageId: result.messages[0].id,
+      accepted: true,
+    }
 }
