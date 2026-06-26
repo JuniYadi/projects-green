@@ -125,12 +125,13 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
         // Resolve auth: code-exchange (mobile) or cookie (web).
         let auth: AuthContext
         if (body.authorizationCode) {
+          const apiKey = process.env.WORKOS_API_KEY
+          const clientId = process.env.WORKOS_CLIENT_ID
+          if (!apiKey || !clientId) {
+            // ponytail: explicit check avoids cryptic SDK errors
+            throw new Error("Authentication provider configuration error.")
+          }
           const exchange = deps.exchangeCode ?? (async (code: string) => {
-            const apiKey = process.env.WORKOS_API_KEY
-            const clientId = process.env.WORKOS_CLIENT_ID
-            if (!apiKey || !clientId) {
-              throw new Error("Missing WORKOS_API_KEY or WORKOS_CLIENT_ID")
-            }
             const { createWorkOS } = await import("@workos-inc/node")
             // ponytail: direct import, lazy at request time — avoids side effects at module load
             const workos = createWorkOS({ apiKey, clientId })
@@ -142,6 +143,13 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           })
           try {
             auth = await exchange(body.authorizationCode)
+            logAuditEvent({
+              action: "AUTH_CODE_EXCHANGE",
+              status: "OK",
+              message: "Authorization code exchanged successfully",
+              ip: getClientIp(request),
+              userAgent: request.headers.get("user-agent"),
+            }).catch(() => {})
           } catch (error: unknown) {
             // WorkOS auth-code failures → 401
             const name = error instanceof Error ? error.name : ""
