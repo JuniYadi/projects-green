@@ -239,6 +239,14 @@ export class PaymentService {
       where: { id: invoiceId },
       data: { status: "PAID" },
     })
+
+    // Fire-and-forget: send invoice paid email
+    this.sendInvoicePaidEmail(invoice, organizationId).catch((err) =>
+      console.error(
+        `[PaymentService] Failed to send paid email for ${invoice.invoiceNumber}:`,
+        err
+      )
+    )
   }
 
   /**
@@ -331,6 +339,47 @@ export class PaymentService {
     await Promise.allSettled(
       recipients.map((r) =>
         this.emailService.sendInvoiceCreated(invoiceListItem, r.email)
+      )
+    )
+  }
+
+  /**
+   * Send "Invoice Paid" email to billing contacts + org admin.
+   * Fire-and-forget — never blocks the caller.
+   */
+  async sendInvoicePaidEmail(
+    invoice: {
+      id: string
+      invoiceNumber: string
+      totalAmount: { toNumber: () => number } | Prisma.Decimal
+      currency: string
+      status: string
+      issuedAt?: Date | null
+      dueDate?: Date | null
+      periodStart: Date
+      periodEnd: Date
+    },
+    organizationId: string
+  ): Promise<void> {
+    const recipients = await this.resolveInvoiceRecipients(organizationId)
+    if (recipients.length === 0) return
+
+    const invoiceData = {
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      totalAmount:
+        invoice.totalAmount instanceof Prisma.Decimal
+          ? invoice.totalAmount.toNumber()
+          : invoice.totalAmount.toNumber(),
+      currency: invoice.currency,
+      status: "paid" as const,
+      issuedAt: invoice.issuedAt?.toISOString() ?? new Date().toISOString(),
+      dueAt: invoice.dueDate?.toISOString() ?? null,
+    }
+
+    await Promise.allSettled(
+      recipients.map((r) =>
+        this.emailService.sendInvoicePaid(invoiceData, r.email)
       )
     )
   }
