@@ -11,6 +11,7 @@ import {
   expiryStatus,
   getStoragePath,
 } from "../media.service"
+import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import {
   SUPPORTED_MIME_TYPES,
   MIME_SIZE_LIMITS,
@@ -177,6 +178,17 @@ export const mediaRoutes = new Elysia({ prefix: "/media" })
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
+    const device = await prisma.whatsappDevice.findUniqueOrThrow({
+      where: { id: record.deviceId },
+    })
+    const client = await WhatsAppDeviceClient.fromDevice({
+      accessToken: device.tokenEncrypted ?? "",
+      phoneNumberId: device.whatsappPhoneId ?? "",
+      wabaId: device.whatsappBusinessAccountId ?? "",
+      organizationId: auth.organizationId,
+    })
+    await client.deleteMedia(record.metaMediaId)
+
     await deleteLocal(id)
     return { ok: true }
   })
@@ -207,7 +219,7 @@ export const mediaRoutes = new Elysia({ prefix: "/media" })
     // Try local storage first, fall back to download from Meta
     let storePath = getStoragePath(record)
     if (!storePath) {
-      record = await downloadAndSave(record.deviceId, record.organizationId, id)
+      record = await downloadAndSave(record.deviceId, record.organizationId, record.metaMediaId)
       storePath = getStoragePath(record)
     }
 
