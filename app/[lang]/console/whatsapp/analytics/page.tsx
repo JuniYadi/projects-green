@@ -120,12 +120,12 @@ export default function WhatsAppAnalyticsPage() {
     setSyncResult(null)
     setError("")
     try {
-      const res = await (whatsappClient as Record<string, unknown>).analytics.sync({
+      const res = await whatsappClient.analytics.sync({
         deviceId: selectedDevice,
         startDate,
         endDate,
         granularity: "DAY",
-      }) as SyncResult
+      })
       setSyncResult(res)
       setState("loaded")
     } catch (err) {
@@ -140,11 +140,11 @@ export default function WhatsAppAnalyticsPage() {
     setReportResult(null)
     setError("")
     try {
-      const res = await (whatsappClient as Record<string, unknown>).analytics.report({
+      const res = await whatsappClient.analytics.report({
         deviceId: selectedDevice,
         startDate,
         endDate,
-      }) as ReportResult
+      })
       setReportResult(res)
       setState("loaded")
     } catch (err) {
@@ -159,11 +159,11 @@ export default function WhatsAppAnalyticsPage() {
     setCostResult(null)
     setError("")
     try {
-      const res = await (whatsappClient as Record<string, unknown>).analytics.costReconciliation({
+      const res = await whatsappClient.analytics.costReconciliation({
         deviceId: selectedDevice,
         startDate,
         endDate,
-      }) as CostResult
+      })
       setCostResult(res)
       setState("loaded")
     } catch (err) {
