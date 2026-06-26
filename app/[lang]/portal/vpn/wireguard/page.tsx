@@ -1,5 +1,6 @@
 "use client"
 
+/* eslint-disable no-restricted-globals */
 import { useCallback, useEffect, useState } from "react"
 import {
   Card,
