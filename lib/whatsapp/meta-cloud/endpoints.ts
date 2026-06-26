@@ -17,4 +17,5 @@ export const ENDPOINTS = {
   WEBHOOK_SUBSCRIPTION: (appId: string) =>
     getEndpoint(`${appId}/subscriptions`),
   MEDIA_BY_ID: (mediaId: string) => getEndpoint(mediaId),
+  ANALYTICS: (wabaId: string) => getEndpoint(`${wabaId}/analytics`),
 }
