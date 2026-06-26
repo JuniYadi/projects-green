@@ -5,7 +5,6 @@
  * POST /api/vpn/mobile/auth/refresh — Refresh an expired session token.
  */
 
-import crypto from "node:crypto"
 import { Elysia, t } from "elysia"
 
 import { prisma } from "@/lib/prisma"
@@ -22,10 +21,10 @@ import {
   vpnMobileDeviceService,
 } from "@/modules/vpn/mobile/vpn-mobile-device.service"
 
-const MOBILE_SESSION_SECRET =
-  process.env.MOBILE_SESSION_SECRET ?? process.env.JWT_SECRET ?? ""
-
-const ACCESS_TOKEN_TTL_SECONDS = 604800 // 7 days
+import {
+  ACCESS_TOKEN_TTL_SECONDS,
+  signSessionJwt,
+} from "@/modules/vpn/mobile/lib/vpn-session.lib"
 
 // Rate limiters
 const exchangeRateLimiter = createRateLimiter({
@@ -36,37 +35,6 @@ const refreshRateLimiter = createRateLimiter({
   windowMs: 3600_000,
   max: 30,
 })
-
-/**
- * Sign a mobile session JWT (HS256).
- */
-function signSessionJwt(claims: {
-  sub: string
-  org: string
-  device: string
-  fingerprint: string
-  iat: number
-  exp: number
-}): string {
-  const secret =
-    MOBILE_SESSION_SECRET ||
-    (() => {
-      throw new Error("Missing MOBILE_SESSION_SECRET or JWT_SECRET")
-    })()
-  const header = { alg: "HS256", typ: "JWT" }
-  const headerSegment = Buffer.from(JSON.stringify(header)).toString(
-    "base64url"
-  )
-  const payloadSegment = Buffer.from(JSON.stringify(claims)).toString(
-    "base64url"
-  )
-  const signingInput = `${headerSegment}.${payloadSegment}`
-  const signature = crypto
-    .createHmac("sha256", secret)
-    .update(signingInput)
-    .digest("base64url")
-  return `${signingInput}.${signature}`
-}
 
 type AuthContext = {
   organizationId?: string | null

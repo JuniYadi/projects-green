@@ -28,6 +28,10 @@ import {
 } from "@/modules/vpn/mobile/vpn-mobile-device.service"
 
 import {
+  createSessionToken,
+} from "@/modules/vpn/mobile/lib/vpn-session.lib"
+
+import {
   toPairingClaimResultDTO,
   toPairingGenerateResultDTO,
 } from "@/modules/vpn/mobile/vpn-pairing-token.dto"
@@ -269,10 +273,19 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               userAgent: request.headers.get("user-agent"),
             }).catch(() => {})
 
+            // Generate session JWT so mobile can call downstream endpoints
+            // ponytail: sub=deviceId since there's no WorkOS user on this path
+            const session = createSessionToken({
+              deviceId: result.deviceId,
+              organizationId: result.organizationId,
+              fingerprint: body.deviceFingerprint,
+            })
+
             return toPairingClaimResultDTO(
               result.deviceId,
               subscription,
-              accounts
+              accounts,
+              session
             )
           } catch (error) {
             const err = error as Error & {
