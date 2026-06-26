@@ -79,7 +79,7 @@ describe("AnalyticsService", () => {
             findUnique: mock(async () => mockDevice),
           },
           whatsappDailyCount: {
-            findFirst: mock(async () => null),
+            findMany: mock(async () => []),
             create: mock(async (data: any) => ({ id: "new-id", ...data.data })),
             update: mock(async (data: any) => ({ id: "existing-id" })),
           },
@@ -144,7 +144,7 @@ describe("AnalyticsService", () => {
             findUnique: mock(async () => mockDevice),
           },
           whatsappDailyCount: {
-            findFirst: mock(async () => null),
+            findMany: mock(async () => []),
             create: mock(async (data: any) => ({
               id: "backfilled",
               ...data.data,
