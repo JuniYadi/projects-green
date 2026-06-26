@@ -114,15 +114,15 @@ export async function updateProfile(
   // Fetch fresh profile from Meta after update
   const updatedProfile = await client.getBusinessProfile()
 
-  // Persist to DB
-  if (updatedProfile) {
-    await prisma.whatsappDevice.update({
-      where: { id: deviceId },
-      data: {
-        whatsappProfile: updatedProfile as Prisma.InputJsonValue,
-      },
-    })
-  }
+  if (!updatedProfile) throw new ProfileNotFoundError(deviceId)
 
-  return (updatedProfile ?? data) as BusinessProfileFields
+  // Persist to DB
+  await prisma.whatsappDevice.update({
+    where: { id: deviceId },
+    data: {
+      whatsappProfile: updatedProfile as Prisma.InputJsonValue,
+    },
+  })
+
+  return updatedProfile as BusinessProfileFields
 }

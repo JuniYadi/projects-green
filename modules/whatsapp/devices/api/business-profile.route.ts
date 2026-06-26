@@ -81,6 +81,7 @@ export const businessProfileRoutes = new Elysia({ prefix: "/devices/:id/profile"
       if (e instanceof DeviceNotFoundError) return toNotFound(set, e.message)
       if (e instanceof DeviceNotOwnedError) return toForbidden(set)
       if (e instanceof DeviceNoPhoneIdError) return toConflict(set, e.message)
+      if (e instanceof ProfileNotFoundError) return toNotFound(set, e.message)
       throw e
     }
   })

@@ -34,7 +34,7 @@ describe("WhatsAppDeviceClient business profile", () => {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
-    )
+    ) as unknown as typeof globalThis.fetch
 
     const client = createClient()
     const result = await client.getBusinessProfile()
@@ -57,7 +57,7 @@ describe("WhatsAppDeviceClient business profile", () => {
           headers: { "Content-Type": "application/json" },
         }
       )
-    )
+    ) as unknown as typeof globalThis.fetch
 
     const client = createClient()
     const result = await client.getBusinessProfile()
@@ -72,7 +72,7 @@ describe("WhatsAppDeviceClient business profile", () => {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
-    })
+    }) as unknown as typeof globalThis.fetch
 
     const client = createClient()
     const result = await client.updateBusinessProfile({
@@ -95,7 +95,7 @@ describe("WhatsAppDeviceClient business profile", () => {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
-    )
+    ) as unknown as typeof globalThis.fetch
 
     const client = createClient()
     const result = await client.updateBusinessProfile({
