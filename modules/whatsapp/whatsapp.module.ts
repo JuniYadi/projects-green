@@ -8,6 +8,7 @@
 import { Elysia } from "elysia"
 
 import { devicesRoutes } from "@/modules/whatsapp/devices/api/devices.route"
+import { businessProfileRoutes } from "@/modules/whatsapp/devices/api/business-profile.route"
 import { tokensRoutes } from "@/modules/whatsapp/tokens/api/tokens.route"
 import { templatesRoutes } from "@/modules/whatsapp/templates/api/templates.route"
 import { contactsRoutes } from "@/modules/whatsapp/contacts/api/contacts.route"
@@ -23,6 +24,7 @@ import { createWhatsappAuditRoutes } from "@/modules/whatsapp/audit/api/whatsapp
 
 export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(devicesRoutes)
+  .use(businessProfileRoutes)
   .use(tokensRoutes)
   .use(templatesRoutes)
   .use(contactsRoutes)
