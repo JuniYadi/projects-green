@@ -20,6 +20,12 @@ const eslintConfig = defineConfig([
     ".worktrees/**",
     'coverage/**'
   ]),
+  // Route-group dirs with parens crash no-html-link-for-pages regex
+  {
+    rules: {
+      "@next/next/no-html-link-for-pages": "off",
+    },
+  },
   // Relaxed rules for test files
   {
     files: ["test/**/*.test.ts"],

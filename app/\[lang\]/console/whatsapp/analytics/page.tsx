@@ -87,7 +87,7 @@ function deltaBadgeCost(delta: number) {
 
 export default function WhatsAppAnalyticsPage() {
   const params = useParams<{ lang?: string }>()
-  const _locale = resolveLocaleOrDefault(params?.lang)
+  const locale = params?.lang ?? "en"
 
   const [state, setState] = React.useState<PageState>("idle")
   const [error, setError] = React.useState("")
@@ -95,10 +95,12 @@ export default function WhatsAppAnalyticsPage() {
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [selectedDevice, setSelectedDevice] = React.useState("")
 
-  const today = new Date().toISOString().split("T")[0]
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().split("T")[0]
-  const [startDate, setStartDate] = React.useState(thirtyDaysAgo)
-  const [endDate, setEndDate] = React.useState(today)
+  const [startDate, setStartDate] = React.useState(
+    () => new Date(Date.now() - 30 * 86400_000).toISOString().split("T")[0]
+  )
+  const [endDate, setEndDate] = React.useState(
+    () => new Date().toISOString().split("T")[0]
+  )
 
   const [syncResult, setSyncResult] = React.useState<SyncResult | null>(null)
   const [reportResult, setReportResult] = React.useState<ReportResult | null>(null)
@@ -112,35 +114,22 @@ export default function WhatsAppAnalyticsPage() {
     }).catch(() => {})
   }, [])
 
-  const loadDevices = async () => {
-    try {
-      const res = await whatsappClient.devices.list()
-      setDevices(res.devices)
-      if (!selectedDevice && res.devices.length > 0) {
-        setSelectedDevice(res.devices[0].id)
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  React.useEffect(() => { loadDevices() }, [])
-
   const handleSync = async () => {
     if (!selectedDevice) return
     setState("loading")
     setSyncResult(null)
+    setError("")
     try {
-      const res = await (whatsappClient as any).analytics.sync({
+      const res = await (whatsappClient as Record<string, unknown>).analytics.sync({
         deviceId: selectedDevice,
         startDate,
         endDate,
         granularity: "DAY",
-      })
+      }) as SyncResult
       setSyncResult(res)
       setState("loaded")
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
       setState("error")
     }
   }
@@ -149,16 +138,17 @@ export default function WhatsAppAnalyticsPage() {
     if (!selectedDevice) return
     setState("loading")
     setReportResult(null)
+    setError("")
     try {
-      const res = await (whatsappClient as any).analytics.report({
+      const res = await (whatsappClient as Record<string, unknown>).analytics.report({
         deviceId: selectedDevice,
         startDate,
         endDate,
-      })
+      }) as ReportResult
       setReportResult(res)
       setState("loaded")
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
       setState("error")
     }
   }
@@ -167,16 +157,17 @@ export default function WhatsAppAnalyticsPage() {
     if (!selectedDevice) return
     setState("loading")
     setCostResult(null)
+    setError("")
     try {
-      const res = await (whatsappClient as any).analytics.costReconciliation({
+      const res = await (whatsappClient as Record<string, unknown>).analytics.costReconciliation({
         deviceId: selectedDevice,
         startDate,
         endDate,
-      })
+      }) as CostResult
       setCostResult(res)
       setState("loaded")
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
       setState("error")
     }
   }

@@ -36,7 +36,7 @@ const mockEmptyResponse = {
   paging: { cursors: { before: "empty", after: "empty" } },
 }
 
-let mockRequest = mock(
+const mockRequest = mock(
   async (
     op: string,
     endpoint: string,

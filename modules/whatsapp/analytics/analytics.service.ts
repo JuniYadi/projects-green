@@ -327,9 +327,9 @@ export class AnalyticsService {
         .filter((d) => d.whatsappBusinessAccountId && d.tokenEncrypted)
         .map(async (device) => {
           const client = await WhatsAppDeviceClient.fromDevice({
-            accessToken: device.tokenEncrypted!,
+            accessToken: device.tokenEncrypted ?? "",
             phoneNumberId: device.whatsappPhoneId ?? "",
-            wabaId: device.whatsappBusinessAccountId!,
+            wabaId: device.whatsappBusinessAccountId ?? "",
             organizationId,
           })
 
