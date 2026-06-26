@@ -31,7 +31,8 @@ export async function uploadAndSave(
 
   const dir = path.join(STORAGE_BASE, deviceId, mediaId)
   fs.mkdirSync(dir, { recursive: true })
-  const storePath = path.join(dir, mediaId)
+  const storePath = path.join(dir, `${mediaId}`)
+  // ponytail: store as mediaId (not fileName) so upload/download share one path pattern
   fs.writeFileSync(storePath, Buffer.from(file))
 
   let record
@@ -57,10 +58,15 @@ export async function uploadAndSave(
   return record
 }
 
-export async function getMetadata(id: string) {
-  const record = await prisma.whatsappMedia.findUnique({
-    where: { id },
+export async function getMetadata(mediaId: string) {
+  let record = await prisma.whatsappMedia.findUnique({
+    where: { id: mediaId },
   })
+  if (!record) {
+    record = await prisma.whatsappMedia.findUnique({
+      where: { metaMediaId: mediaId },
+    })
+  }
   return record ?? null
 }
 
@@ -69,9 +75,14 @@ export async function downloadAndSave(
   organizationId: string,
   mediaId: string
 ) {
-  const existing = await prisma.whatsappMedia.findUnique({
-    where: { metaMediaId: mediaId },
+  let existing = await prisma.whatsappMedia.findUnique({
+    where: { id: mediaId },
   })
+  if (!existing) {
+    existing = await prisma.whatsappMedia.findUnique({
+      where: { metaMediaId: mediaId },
+    })
+  }
   if (existing?.storePath && fs.existsSync(existing.storePath)) {
     return existing
   }
@@ -87,20 +98,23 @@ export async function downloadAndSave(
     organizationId,
   })
 
-  const meta = await client.getMedia(mediaId)
-  const binary = await client.downloadMedia(mediaId)
+  const metaMediaId = existing?.metaMediaId ?? mediaId
 
-  const dir = path.join(STORAGE_BASE, deviceId, mediaId)
+  const meta = await client.getMedia(metaMediaId)
+  const binary = await client.downloadMedia(metaMediaId)
+
+  const dir = path.join(STORAGE_BASE, deviceId, metaMediaId)
   fs.mkdirSync(dir, { recursive: true })
-  const storePath = path.join(dir, `${mediaId}`)
+  const storePath = path.join(dir, `${metaMediaId}`)
   fs.writeFileSync(storePath, Buffer.from(binary))
 
+  const key = existing ? { id: existing.id } : { metaMediaId }
   const record = await prisma.whatsappMedia.upsert({
-    where: { metaMediaId: mediaId },
+    where: key,
     create: {
       organizationId,
       deviceId,
-      metaMediaId: mediaId,
+      metaMediaId,
       mimeType: meta.mime_type,
       fileSize: binary.byteLength,
       sha256: meta.sha256,
@@ -121,10 +135,15 @@ export async function downloadAndSave(
   return record
 }
 
-export async function deleteLocal(id: string) {
-  const record = await prisma.whatsappMedia.findUnique({
-    where: { id },
+export async function deleteLocal(mediaId: string) {
+  let record = await prisma.whatsappMedia.findUnique({
+    where: { id: mediaId },
   })
+  if (!record) {
+    record = await prisma.whatsappMedia.findUnique({
+      where: { metaMediaId: mediaId },
+    })
+  }
   if (!record) return
 
   if (record.storePath) {

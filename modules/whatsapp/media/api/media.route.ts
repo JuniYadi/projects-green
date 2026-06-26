@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { toMediaDTO } from "../media.dto"
 import {
   uploadAndSave,
@@ -11,7 +12,6 @@ import {
   expiryStatus,
   getStoragePath,
 } from "../media.service"
-import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import {
   SUPPORTED_MIME_TYPES,
   MIME_SIZE_LIMITS,
