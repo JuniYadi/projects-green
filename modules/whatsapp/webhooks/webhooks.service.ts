@@ -3,6 +3,7 @@ import { Prisma, WhatsappMessageDeliveryStatus } from "@prisma/client"
 
 import { toWebhookEventDTO, type WhatsappWebhookEventDTO } from "./webhooks.dto"
 import { webhookDispatcher } from "./webhook-dispatcher.service"
+import { downloadAndSave } from "@/modules/whatsapp/media/media.service"
 
 export type ParsedMessagePayload = {
   from: string
@@ -161,6 +162,36 @@ export async function processInboundMessage(
       )
     )
 
+  // Fire-and-forget: download media from Meta if this is a media message
+  // ponytail: background download, don't block the webhook response
+  const mediaId = extractMediaMetaId(payload)
+  if (mediaId) {
+    downloadAndSave(deviceId, organizationId, mediaId)
+      .then((record) => {
+        // Update the message metadata with media reference
+        const existingMeta = (whatsappMessage.metadata as Record<string, unknown>) ?? {}
+        existingMeta.whatsappMediaId = record.id
+        existingMeta.mediaDownloaded = true
+
+        prisma.whatsappMessage
+          .update({
+            where: { id: whatsappMessage.id },
+            data: { metadata: existingMeta as Prisma.InputJsonValue, mediaUrl: `__stored:${record.id}` },
+          })
+          .catch((err: unknown) =>
+            console.error(`[webhooks] failed to update message with media ref: ${whatsappMessage.id}`, err)
+          )
+
+        return record
+      })
+      .catch((err: unknown) =>
+        console.error(
+          `[webhooks] background media download failed device=${deviceId} mediaId=${mediaId}`,
+          err
+        )
+      )
+  }
+
   return {
     messageId: whatsappMessage.id,
     conversationId: conversation.id,
@@ -247,6 +278,23 @@ function extractMediaUrl(payload: ParsedMessagePayload): string | null {
     }
   }
 
+  return null
+}
+
+/**
+ * Extract the raw Meta media ID from a media message payload.
+ * Used to trigger background download.
+ */
+function extractMediaMetaId(payload: ParsedMessagePayload): string | null {
+  const msgType = payload.type
+  if (msgType === "image" && payload.image?.id) return payload.image.id
+  if (msgType === "document" && payload.document?.id) return payload.document.id
+  if (msgType === "audio" && payload.audio?.id) return payload.audio.id
+  if (msgType === "video" && payload.video?.id) return payload.video.id
+  if (msgType === "sticker" && typeof payload.sticker === "object") {
+    const sticker = payload.sticker as Record<string, unknown>
+    if (sticker.id) return String(sticker.id)
+  }
   return null
 }
 
