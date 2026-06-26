@@ -48,6 +48,21 @@ export class AnalyticsService {
       metric_types: "CONVERSATION",
     })
 
+    // Pre-fetch all existing rows in one query instead of N+1
+    const startDateObj = new Date(input.startDate)
+    const endDateObj = new Date(input.endDate + "T23:59:59Z")
+    const existingRows = await prisma.whatsappDailyCount.findMany({
+      where: {
+        organizationId: input.organizationId,
+        whatsappDeviceId: input.deviceId,
+        date: { gte: startDateObj, lte: endDateObj },
+      },
+    })
+    const existingByDate = new Map<string, (typeof existingRows)[0]>()
+    for (const row of existingRows) {
+      existingByDate.set(row.date.toISOString().split("T")[0], row)
+    }
+
     const discrepancies: ComparisonRow[] = []
     let syncedCount = 0
 
@@ -59,14 +74,7 @@ export class AnalyticsService {
       const metaInbound = item.message_inbound_count ?? 0
       const metaOutbound = item.message_outbound_count ?? 0
 
-      // Get pre-sync value in one query
-      const existing = await prisma.whatsappDailyCount.findFirst({
-        where: {
-          organizationId: input.organizationId,
-          date: new Date(date),
-          whatsappDeviceId: input.deviceId,
-        },
-      })
+      const existing = existingByDate.get(date)
 
       const preInbound = existing?.messageInboxCount ?? 0
       const preOutbound = existing?.messageOutboxCount ?? 0
@@ -139,9 +147,12 @@ export class AnalyticsService {
     })
     if (!device) throw new Error("WHATSAPP_DEVICE_NOT_FOUND")
     if (device.organizationId !== organizationId) throw new Error("DEVICE_NOT_OWNED")
+    if (!device.tokenEncrypted || !device.whatsappPhoneId || !device.whatsappBusinessAccountId) {
+      throw new Error("WHATSAPP_DEVICE_NOT_CONFIGURED")
+    }
 
     const client = await WhatsAppDeviceClient.fromDevice({
-      accessToken: device.tokenEncrypted ?? "",
+      accessToken: device.tokenEncrypted,
       phoneNumberId: device.whatsappPhoneId ?? "",
       wabaId: device.whatsappBusinessAccountId ?? "",
       organizationId,
@@ -244,9 +255,12 @@ export class AnalyticsService {
       where: { id: deviceId },
     })
     if (!device) throw new Error("WHATSAPP_DEVICE_NOT_FOUND")
+    if (!device.tokenEncrypted || !device.whatsappPhoneId || !device.whatsappBusinessAccountId) {
+      throw new Error("WHATSAPP_DEVICE_NOT_CONFIGURED")
+    }
 
     const client = await WhatsAppDeviceClient.fromDevice({
-      accessToken: device.tokenEncrypted ?? "",
+      accessToken: device.tokenEncrypted,
       phoneNumberId: device.whatsappPhoneId ?? "",
       wabaId: device.whatsappBusinessAccountId ?? "",
       organizationId,
@@ -262,29 +276,37 @@ export class AnalyticsService {
       metric_types: "CONVERSATION",
     })
 
+    // Pre-fetch existence check once instead of N+1 per item
+    const existingForDate = await prisma.whatsappDailyCount.findFirst({
+      where: {
+        organizationId,
+        date: new Date(date),
+        whatsappDeviceId: deviceId,
+      },
+    })
+
     let created = 0
-    for (const item of result.data) {
-      const existing = await prisma.whatsappDailyCount.findFirst({
-        where: {
-          organizationId,
-          date: new Date(date),
-          whatsappDeviceId: deviceId,
-        },
-      })
-      if (existing) continue
+    if (!existingForDate && result.data.length > 0) {
+      // Aggregate counts from all items for this date
+      let totalInbound = 0
+      let totalOutbound = 0
+      for (const item of result.data) {
+        totalInbound += item.message_inbound_count ?? 0
+        totalOutbound += item.message_outbound_count ?? 0
+      }
 
       await prisma.whatsappDailyCount.create({
         data: {
           organizationId,
           date: new Date(date),
           whatsappDeviceId: deviceId,
-          messageInboxCount: item.message_inbound_count ?? 0,
-          messageOutboxCount: item.message_outbound_count ?? 0,
+          messageInboxCount: totalInbound,
+          messageOutboxCount: totalOutbound,
           sessionCount: 0,
           messageFailedCount: 0,
         },
       })
-      created++
+      created = 1
     }
 
     return { created }
