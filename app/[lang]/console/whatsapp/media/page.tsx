@@ -9,7 +9,6 @@ import {
   Upload,
   Trash,
   Download,
-  Clock,
   CheckCircle,
   Warning,
   XCircle,
@@ -140,8 +139,10 @@ export default function WhatsAppMediaPage() {
   }, [])
 
   React.useEffect(() => {
-    void loadMedia()
-  }, [loadMedia])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadMedia()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const filteredMedia = React.useMemo(() => {
     if (!searchQuery.trim()) return media

@@ -3,8 +3,22 @@ import { WhatsAppDeviceClient } from "./device-client"
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
-const mockFetch = mock<(url: string | URL, options?: any) => Promise<Response>>()
-const originalFetch = globalThis.fetch
+let mockResolvedValue: (value: Response) => void
+let mockCalls: Array<{ url: string; options?: RequestInit }>
+
+function createMockFetch() {
+  const mockFn = mock()
+  mockCalls = []
+  mockResolvedValue = (value: Response) => {
+    mockFn.mockImplementation(async (...args: any[]) => {
+      mockCalls.push({ url: String(args[0]), options: args[1] })
+      return value
+    })
+  }
+  return mockFn
+}
+
+let mockFetch: ReturnType<typeof mock>
 
 function mockJsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -31,28 +45,26 @@ function createClient() {
 
 describe("WhatsAppDeviceClient media methods", () => {
   beforeEach(() => {
-    globalThis.fetch = mockFetch
+    mockFetch = createMockFetch()
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch
   })
 
   afterEach(() => {
-    globalThis.fetch = originalFetch
-    mockFetch.mockRestore()
+    mockFetch.mockRestore?.()
   })
 
   describe("completeUploadMedia", () => {
     it("uploads a file and returns mediaId", async () => {
-      mockFetch.mockResolvedValue(mockJsonResponse({ id: "media-12345" }))
+      mockResolvedValue(mockJsonResponse({ id: "media-12345" }))
 
       const client = createClient()
       const file = new ArrayBuffer(10)
       const result = await client.completeUploadMedia(file, "test.jpg", "image/jpeg")
 
       expect(result.mediaId).toBe("media-12345")
-      expect(mockFetch).toHaveBeenCalledTimes(1)
-
-      const call = mockFetch.mock.calls[0]
-      expect(call[1]?.method).toBe("POST")
-      expect(call[1]?.body).toBeInstanceOf(FormData)
+      expect(mockCalls).toHaveLength(1)
+      expect(mockCalls[0].options?.method).toBe("POST")
+      expect(mockCalls[0].options?.body).toBeInstanceOf(FormData)
     })
   })
 
@@ -66,7 +78,7 @@ describe("WhatsAppDeviceClient media methods", () => {
         id: "media-12345",
         messaging_product: "whatsapp",
       }
-      mockFetch.mockResolvedValue(mockJsonResponse(meta))
+      mockResolvedValue(mockJsonResponse(meta))
 
       const client = createClient()
       const result = await client.getMedia("media-12345")
@@ -80,25 +92,25 @@ describe("WhatsAppDeviceClient media methods", () => {
   describe("downloadMedia", () => {
     it("downloads binary with redirect follow", async () => {
       const data = new ArrayBuffer(100)
-      mockFetch.mockResolvedValue(mockArrayBufferResponse(data))
+      mockResolvedValue(mockArrayBufferResponse(data))
 
       const client = createClient()
       const result = await client.downloadMedia("media-12345")
 
       expect(result.byteLength).toBe(100)
-      expect(mockFetch.mock.calls[0][1]?.redirect).toBe("follow")
+      expect(mockCalls[0].options?.redirect).toBe("follow")
     })
   })
 
   describe("deleteMedia", () => {
     it("deletes media and returns success", async () => {
-      mockFetch.mockResolvedValue(mockJsonResponse({ success: true }))
+      mockResolvedValue(mockJsonResponse({ success: true }))
 
       const client = createClient()
       const result = await client.deleteMedia("media-12345")
 
       expect(result.success).toBe(true)
-      expect(mockFetch.mock.calls[0][1]?.method).toBe("DELETE")
+      expect(mockCalls[0].options?.method).toBe("DELETE")
     })
   })
 })

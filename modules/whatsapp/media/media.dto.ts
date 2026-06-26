@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client"
 import type { ExpiryStatus } from "./media.service"
 
 export type MediaDTO = Pick<
-  Prisma.WhatsappMediaGetPayload<{}>,
+  Prisma.WhatsappMediaGetPayload<Record<string, never>>,
   | "id"
   | "organizationId"
   | "deviceId"
@@ -16,7 +16,7 @@ export type MediaDTO = Pick<
 > & { expiryStatus: ExpiryStatus; storePath?: string | null }
 
 export function toMediaDTO(
-  record: Prisma.WhatsappMediaGetPayload<{}>
+  record: Prisma.WhatsappMediaGetPayload<Record<string, never>>
 ): MediaDTO {
   return {
     id: record.id,

@@ -85,3 +85,6 @@ whatsapp-broadcast-worker
 
 # git worktree artifacts — not submodules, break CI checkout cleanup
 .worktrees/
+
+# local file storage (media, uploads)
+/storage/
