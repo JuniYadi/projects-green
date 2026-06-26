@@ -1,11 +1,18 @@
 import { Elysia } from "elysia"
-import { z } from "zod"
 
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { prisma } from "@/lib/prisma"
 import { updateBusinessProfileSchema } from "@/lib/whatsapp/meta-cloud/types/business-profile"
-import { getProfile, updateProfile } from "../business-profile.service"
-import { resolveDeviceAuth, isSuperAdmin } from "./devices.route"
+import {
+  getProfile,
+  updateProfile,
+  DeviceNoPhoneIdError,
+  ProfileNotFoundError,
+} from "../business-profile.service"
+import {
+  DeviceNotFoundError,
+  DeviceNotOwnedError,
+} from "../devices.schemas"
+import { resolveDeviceAuth } from "./devices.route"
 
 type RouteSet = { status?: number | string }
 
@@ -29,31 +36,32 @@ const toBadRequest = (set: RouteSet, message: string) => {
   return { ok: false, error: "BAD_REQUEST", message }
 }
 
+const toConflict = (set: RouteSet, message: string) => {
+  set.status = 409
+  return { ok: false, error: "CONFLICT", message }
+}
+
 export const businessProfileRoutes = new Elysia({ prefix: "/devices/:id/profile" })
   .get("/", async ({ request, params: { id }, set }: any) => {
     const auth = await resolveDeviceAuth(request)
     if (!auth) return toUnauthorized(set)
     if (!auth.organizationId) return toBadRequest(set, "Organization context required.")
 
-    const device = await prisma.whatsappDevice.findUnique({ where: { id } })
-    if (!device) return toNotFound(set, "Device not found.")
-    if (!isSuperAdmin(auth) && device.organizationId !== auth.organizationId) {
-      return toForbidden(set)
+    try {
+      const profile = await getProfile(id, auth.organizationId)
+      return { ok: true, profile }
+    } catch (e) {
+      if (e instanceof DeviceNotFoundError) return toNotFound(set, e.message)
+      if (e instanceof DeviceNotOwnedError) return toForbidden(set)
+      if (e instanceof DeviceNoPhoneIdError) return toConflict(set, e.message)
+      if (e instanceof ProfileNotFoundError) return toNotFound(set, e.message)
+      throw e
     }
-
-    const profile = await getProfile(id, auth.organizationId)
-    return { ok: true, profile }
   })
   .patch("/", async ({ request, params: { id }, body, set }: any) => {
     const auth = await resolveDeviceAuth(request)
     if (!auth) return toUnauthorized(set)
     if (!auth.organizationId) return toBadRequest(set, "Organization context required.")
-
-    const device = await prisma.whatsappDevice.findUnique({ where: { id } })
-    if (!device) return toNotFound(set, "Device not found.")
-    if (!isSuperAdmin(auth) && device.organizationId !== auth.organizationId) {
-      return toForbidden(set)
-    }
 
     const parsed = updateBusinessProfileSchema.safeParse(body)
     if (!parsed.success) {
@@ -66,6 +74,13 @@ export const businessProfileRoutes = new Elysia({ prefix: "/devices/:id/profile"
       }
     }
 
-    const profile = await updateProfile(id, parsed.data, auth.organizationId)
-    return { ok: true, profile }
+    try {
+      const profile = await updateProfile(id, parsed.data, auth.organizationId)
+      return { ok: true, profile }
+    } catch (e) {
+      if (e instanceof DeviceNotFoundError) return toNotFound(set, e.message)
+      if (e instanceof DeviceNotOwnedError) return toForbidden(set)
+      if (e instanceof DeviceNoPhoneIdError) return toConflict(set, e.message)
+      throw e
+    }
   })

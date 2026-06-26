@@ -19,6 +19,14 @@ export class DeviceNoPhoneIdError extends Error {
   }
 }
 
+export class ProfileNotFoundError extends Error {
+  readonly code = "PROFILE_NOT_FOUND" as const
+  constructor(deviceId: string) {
+    super(`Business profile not found for device '${deviceId}'.`)
+    this.name = "ProfileNotFoundError"
+  }
+}
+
 async function getDeviceById(
   deviceId: string,
   organizationId?: string
@@ -47,7 +55,7 @@ function requirePhoneId(
 export async function getProfile(
   deviceId: string,
   organizationId: string
-): Promise<BusinessProfileFields | null> {
+): Promise<BusinessProfileFields> {
   const device = await getDeviceById(deviceId, organizationId)
   const phoneId = requirePhoneId(device)
 
@@ -60,7 +68,7 @@ export async function getProfile(
   })
 
   const profile = await client.getBusinessProfile()
-  if (!profile) return null
+  if (!profile) throw new ProfileNotFoundError(deviceId)
 
   // Merge into local JSON column
   await prisma.whatsappDevice.update({

@@ -47,11 +47,13 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
 // Mock the device client so we don't hit Meta
 mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   WhatsAppDeviceClient: class {
-    static fromDevice = mock(async () => new WhatsAppDeviceClient({}))
-    getBusinessProfile = mock(async () => profileMockData)
-    updateBusinessProfile = mock(
-      async () => ({ success: true })
-    )
+    static fromDevice = mock(async () => {
+      const mocks = {
+        getBusinessProfile: mock(async () => profileMockData),
+        updateBusinessProfile: mock(async () => ({ success: true })),
+      }
+      return mocks
+    })
   },
   __esModule: true,
 }))
