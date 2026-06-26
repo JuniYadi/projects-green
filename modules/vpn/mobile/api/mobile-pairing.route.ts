@@ -28,7 +28,8 @@ import {
 } from "@/modules/vpn/mobile/vpn-mobile-device.service"
 
 import {
-  createSessionToken,
+  signSessionJwt,
+  ACCESS_TOKEN_TTL_SECONDS,
 } from "@/modules/vpn/mobile/lib/vpn-session.lib"
 
 import {
@@ -59,6 +60,8 @@ type Deps = {
   authenticate?: () => Promise<AuthContext>
   pairingService?: VpnPairingTokenService
   deviceService?: VpnMobileDeviceService
+  now?: () => Date
+  signJwt?: typeof signSessionJwt
 }
 
 const unauthorized = (set: RouteSet) => {
@@ -113,6 +116,8 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
   const pairingService = deps.pairingService ?? vpnPairingTokenService
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const deviceService = deps.deviceService ?? vpnMobileDeviceService
+  const now = deps.now ?? (() => new Date())
+  const signJwt = deps.signJwt ?? signSessionJwt
 
   const resolveAuth = async (set: RouteSet) => {
     const auth = await authenticate()
@@ -275,17 +280,22 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
 
             // Generate session JWT so mobile can call downstream endpoints
             // ponytail: sub=deviceId since there's no WorkOS user on this path
-            const session = createSessionToken({
-              deviceId: result.deviceId,
-              organizationId: result.organizationId,
+            const iat = Math.floor(now().getTime() / 1000)
+            const exp = iat + ACCESS_TOKEN_TTL_SECONDS
+            const token = signJwt({
+              sub: result.deviceId,
+              org: result.organizationId ?? "",
+              device: result.deviceId,
               fingerprint: body.deviceFingerprint,
+              iat,
+              exp,
             })
 
             return toPairingClaimResultDTO(
               result.deviceId,
               subscription,
               accounts,
-              session
+              { token, expiresAt: new Date(exp * 1000).toISOString() }
             )
           } catch (error) {
             const err = error as Error & {

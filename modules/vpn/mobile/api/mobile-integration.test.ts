@@ -228,6 +228,8 @@ function createPairingApp() {
     createMobilePairingRoutes({
       authenticate,
       pairingService: fakePairingService as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      now: () => NOW,
+      signJwt: mockSignJwt,
     })
   )
 }
