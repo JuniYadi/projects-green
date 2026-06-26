@@ -10,6 +10,7 @@ import {
   UploadMediaResult,
   PhoneNumberInfo,
 } from "./types"
+import type { MediaMetadata, DeleteMediaResult } from "./types/media"
 import { decryptWhatsAppToken } from "../crypto"
 
 export class WhatsAppDeviceClient {
@@ -173,6 +174,63 @@ export class WhatsAppDeviceClient {
     return {
       mediaId: result.id,
     }
+  }
+
+  async completeUploadMedia(
+    file: ArrayBuffer,
+    fileName: string,
+    mimeType: string
+  ): Promise<{ mediaId: string }> {
+    const formData = new FormData()
+    formData.append("messaging_product", "whatsapp")
+    const blob = new Blob([file], { type: mimeType })
+    formData.append("file", blob, fileName)
+
+    const result = await this.httpClient.request<any>(
+      "UPLOAD_MEDIA",
+      ENDPOINTS.MEDIA(this.phoneNumberId),
+      "POST",
+      formData
+    )
+
+    return { mediaId: result.id }
+  }
+
+  async getMedia(mediaId: string): Promise<MediaMetadata> {
+    return this.httpClient.request<MediaMetadata>(
+      "GET_MEDIA",
+      ENDPOINTS.MEDIA_BY_ID(mediaId),
+      "GET"
+    )
+  }
+
+  async downloadMedia(mediaId: string): Promise<ArrayBuffer> {
+    const endpoint = ENDPOINTS.MEDIA_BY_ID(mediaId)
+    const token = this.httpClient.getAccessToken()
+    const response = await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      redirect: "follow",
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(
+        errorData.error?.message ||
+          `Download failed with status ${response.status}`
+      )
+    }
+
+    return response.arrayBuffer()
+  }
+
+  async deleteMedia(mediaId: string): Promise<DeleteMediaResult> {
+    return this.httpClient.request<DeleteMediaResult>(
+      "DELETE_MEDIA",
+      ENDPOINTS.MEDIA_BY_ID(mediaId),
+      "DELETE"
+    )
   }
 
   async getPhoneInfo(): Promise<PhoneNumberInfo> {

@@ -291,6 +291,11 @@ export const idMessages: AppMessages = {
         unableToSend: "Gagal mengirim pesan.",
         noConversations: "Belum ada percakapan.",
       },
+      media: {
+        heading: "Pustaka Media",
+        description: "Kelola file media yang diunggah dan diterima.",
+        notDownloaded: "Belum diunduh",
+      },
     },
     supportTickets: {
       heading: "Tiket Dukungan",

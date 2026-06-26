@@ -292,6 +292,11 @@ export const enMessages: AppMessages = {
         unableToSend: "Unable to send message.",
         noConversations: "No conversations yet.",
       },
+      media: {
+        heading: "Media Library",
+        description: "Manage uploaded and received media files.",
+        notDownloaded: "Not downloaded",
+      },
     },
     supportTickets: {
       heading: "Support Tickets",

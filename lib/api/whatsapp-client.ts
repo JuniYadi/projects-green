@@ -310,6 +310,35 @@ export const whatsappClient = {
       }),
   },
 
+  media: {
+    list: (params?: { deviceId?: string }) =>
+      serverFetch<{ ok: boolean; media: any[] }>("/api/whatsapp/media", {
+        params,
+      }),
+    get: (id: string) =>
+      serverFetch<{ ok: boolean; media: any }>(`/api/whatsapp/media/${id}`),
+    delete: (id: string) =>
+      serverFetch<{ ok: boolean }>(`/api/whatsapp/media/${id}`, {
+        method: "DELETE",
+      }),
+    upload: async (file: File, deviceId: string) => {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("deviceId", deviceId)
+      const res = await fetch("/api/whatsapp/media", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.message ?? `Upload failed with status ${res.status}`)
+      }
+      return res.json() as Promise<{ ok: boolean; media: any }>
+    },
+    downloadUrl: (id: string) => `/api/whatsapp/media/${id}/download`,
+  },
+
   usage: {
     overview: () =>
       serverFetch<{
