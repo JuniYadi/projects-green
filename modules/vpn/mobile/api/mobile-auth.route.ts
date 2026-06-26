@@ -20,6 +20,9 @@ import {
   VpnMobileDeviceService,
   vpnMobileDeviceService,
 } from "@/modules/vpn/mobile/vpn-mobile-device.service"
+import {
+  VpnMobileDeviceAlreadyRevokedError,
+} from "@/modules/vpn/mobile/vpn-mobile.errors"
 
 import {
   ACCESS_TOKEN_TTL_SECONDS,
@@ -28,6 +31,10 @@ import {
 
 // Rate limiters
 const exchangeRateLimiter = createRateLimiter({
+  windowMs: 3600_000,
+  max: 10,
+})
+const loginRateLimiter = createRateLimiter({
   windowMs: 3600_000,
   max: 10,
 })
@@ -269,6 +276,185 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           deviceName: t.String({ minLength: 1 }),
           deviceFingerprint: t.String({ minLength: 1 }),
           platform: t.String({ minLength: 1 }),
+        }),
+      }
+    )
+    /**
+     * Path B: Subscription ID → Session Token
+     *
+     * POST /vpn/mobile/auth/login
+     * Auth: None (the subscriptionId is the authorization).
+     * Returns same session shape as /pairing/claim.
+     */
+    .post(
+      "/vpn/mobile/auth/login",
+      async ({ body, request, set }) => {
+        // Rate limit: 10/h per IP
+        const rateResult = loginRateLimiter(getClientIp(request))
+        if (!rateResult.allowed) {
+          set.status = 429
+          set.headers = rateLimitHeaders(rateResult)
+          return buildRateLimitResponse(rateResult)
+        }
+
+        // Validate subscription exists.
+        const subscription = await prisma.vpnSubscription.findUnique({
+          where: { id: body.subscriptionId },
+        })
+        if (!subscription) {
+          set.status = 404
+          logAuditEvent({
+            action: "AUTH_MOBILE_LOGIN",
+            status: "FAILED",
+            message: "Subscription not found",
+            subscriptionId: body.subscriptionId,
+            ip: getClientIp(request),
+            userAgent: request.headers.get("user-agent"),
+          }).catch(() => {})
+          return {
+            error: {
+              code: "NOT_FOUND" as const,
+              message: "Subscription not found.",
+              details: {},
+            },
+          }
+        }
+
+        // Validate subscription is active.
+        if (subscription.status !== "ACTIVE") {
+          set.status = 400
+          logAuditEvent({
+            action: "AUTH_MOBILE_LOGIN",
+            status: "FAILED",
+            message: "Subscription not active",
+            subscriptionId: body.subscriptionId,
+            ip: getClientIp(request),
+            userAgent: request.headers.get("user-agent"),
+          }).catch(() => {})
+          return {
+            error: {
+              code: "SUBSCRIPTION_NOT_ACTIVE" as const,
+              message: "Subscription is not active.",
+              details: {},
+            },
+          }
+        }
+
+        // Find or create device.
+        let device: { id: string; status: string }
+        try {
+          device = await deviceService.create({
+            subscriptionId: subscription.id,
+            organizationId: subscription.organizationId,
+            deviceName: body.deviceName,
+            deviceFingerprint: body.deviceFingerprint,
+            platform: body.platform,
+            osVersion: body.osVersion ?? null,
+            appVersion: body.appVersion ?? null,
+            pairedVia: "QR", // ponytail: no SSO on this path, QR is closest generic
+          })
+        } catch (error) {
+          if (error instanceof VpnMobileDeviceAlreadyRevokedError) {
+            set.status = 409
+            logAuditEvent({
+              action: "AUTH_MOBILE_LOGIN",
+              status: "FAILED",
+              message: "Device was previously paired and revoked",
+              subscriptionId: body.subscriptionId,
+              ip: getClientIp(request),
+              userAgent: request.headers.get("user-agent"),
+            }).catch(() => {})
+            return {
+              error: {
+                code: "DEVICE_ALREADY_PAIRED" as const,
+                message:
+                  "This device was previously paired and revoked. Contact support.",
+                details: {},
+              },
+            }
+          }
+          logAuditEvent({
+            action: "AUTH_MOBILE_LOGIN",
+            status: "FAILED",
+            message: "Device registration failed",
+            errorMessage: error instanceof Error ? error.message : String(error),
+            subscriptionId: body.subscriptionId,
+            ip: getClientIp(request),
+            userAgent: request.headers.get("user-agent"),
+          }).catch(() => {})
+          set.status = 500
+          return {
+            error: {
+              code: "INTERNAL_ERROR" as const,
+              message: "Device registration failed.",
+              details: {},
+            },
+          }
+        }
+
+        // Fetch server accounts for profiles.
+        const accounts = await prisma.vpnServerAccount.findMany({
+          where: { subscriptionId: subscription.id },
+          include: {
+            server: {
+              select: {
+                name: true,
+                region: { select: { name: true } },
+              },
+            },
+          },
+        })
+
+        // Generate session JWT.
+        const iat = Math.floor(now().getTime() / 1000)
+        const exp = iat + ACCESS_TOKEN_TTL_SECONDS
+        const token = signJwt({
+          sub: device.id,
+          org: subscription.organizationId,
+          device: device.id,
+          fingerprint: body.deviceFingerprint,
+          iat,
+          exp,
+        })
+
+        // Audit: log success.
+        logAuditEvent({
+          deviceId: device.id,
+          organizationId: subscription.organizationId,
+          subscriptionId: subscription.id,
+          action: "AUTH_MOBILE_LOGIN",
+          status: "OK",
+          message: "Mobile login via subscription ID",
+          details: { deviceName: body.deviceName, platform: body.platform },
+          ip: getClientIp(request),
+          userAgent: request.headers.get("user-agent"),
+        }).catch(() => {})
+
+        return {
+          token,
+          expiresAt: new Date(exp * 1000).toISOString(),
+          subscription: {
+            id: subscription.id,
+            status: subscription.status,
+            currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+          },
+          profiles: accounts.map((account) => ({
+            id: account.id,
+            serverName: account.server.name,
+            protocol: account.protocol,
+            region: account.server.region.name,
+            status: account.provisioningStatus,
+          })),
+        }
+      },
+      {
+        body: t.Object({
+          subscriptionId: t.String({ minLength: 1 }),
+          deviceName: t.String({ minLength: 1 }),
+          deviceFingerprint: t.String({ minLength: 1 }),
+          platform: t.String({ minLength: 1 }),
+          osVersion: t.Optional(t.String()),
+          appVersion: t.Optional(t.String()),
         }),
       }
     )

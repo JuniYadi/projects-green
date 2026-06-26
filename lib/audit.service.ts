@@ -51,6 +51,7 @@ export type AuditAction =
   // ── Auth ──
   | "AUTH_TOKEN_EXCHANGED"
   | "AUTH_CODE_EXCHANGE"
+  | "AUTH_MOBILE_LOGIN"
 
   // ── Sync Protocols ──
   | "SYNC_PROTOCOLS_REQUESTED"
