@@ -438,4 +438,53 @@ export const whatsappClient = {
         }
       ),
   },
+
+  analytics: {
+    sync: (input: {
+      deviceId: string
+      startDate: string
+      endDate: string
+      granularity?: string
+    }) =>
+      serverFetch<{
+        ok: boolean
+        syncedCount: number
+        discrepancies: any[]
+      }>("/api/whatsapp/analytics/sync", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+
+    report: (params: {
+      deviceId: string
+      startDate: string
+      endDate: string
+    }) =>
+      serverFetch<{
+        ok: boolean
+        from: string
+        to: string
+        deviceId: string
+        comparisons: any[]
+        summary: {
+          totalMeta: number
+          totalLocal: number
+          totalDelta: number
+          rowsWithDiscrepancy: number
+        }
+      }>("/api/whatsapp/analytics/report", { params }),
+
+    costReconciliation: (params: {
+      deviceId?: string
+      startDate: string
+      endDate: string
+    }) =>
+      serverFetch<{
+        ok: boolean
+        rows: any[]
+        totalMetaCost: number
+        totalLocalCost: number
+        totalDelta: number
+      }>("/api/whatsapp/analytics/cost-reconciliation", { params }),
+  },
 }
