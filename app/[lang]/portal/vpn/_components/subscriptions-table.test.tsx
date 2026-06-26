@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it, mock } from "bun:test"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import type { VpnSubscriptionItem } from "./vpn-admin-client"

@@ -383,4 +383,59 @@ export const whatsappClient = {
         }[]
       }>("/api/whatsapp/usage/cost", { params }),
   },
+
+  catalogs: {
+    list: () =>
+      serverFetch<{ ok: boolean; data: any[] }>("/api/whatsapp/catalogs"),
+
+    get: (id: string) =>
+      serverFetch<{ ok: boolean; data: any }>(`/api/whatsapp/catalogs/${id}`),
+
+    create: (input: { name: string; metaCatalogId: string; deviceId?: string }) =>
+      serverFetch<{ ok: boolean; data: any }>("/api/whatsapp/catalogs", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+
+    update: (id: string, input: { name?: string; metaCatalogId?: string; deviceId?: string | null }) =>
+      serverFetch<{ ok: boolean; data: any }>(`/api/whatsapp/catalogs/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+
+    delete: (id: string) =>
+      serverFetch<{ ok: boolean }>(`/api/whatsapp/catalogs/${id}`, {
+        method: "DELETE",
+      }),
+
+    sync: (id: string) =>
+      serverFetch<{ ok: boolean; data: { synced: number } }>(
+        `/api/whatsapp/catalogs/${id}/sync`,
+        { method: "POST" }
+      ),
+
+    listProducts: (catalogId: string) =>
+      serverFetch<{ ok: boolean; data: any[] }>(
+        `/api/whatsapp/catalogs/${catalogId}/products`
+      ),
+
+    sendMessage: (input: {
+      to: string
+      catalogId: string
+      type: string
+      productRetailerId?: string
+      body?: string
+      header?: string
+      footer?: string
+      sections?: { title: string; productItems: string[] }[]
+      thumbnailProductRetailerId?: string
+    }) =>
+      serverFetch<{ ok: boolean; data: { providerMessageId: string } }>(
+        "/api/whatsapp/catalogs/send",
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        }
+      ),
+  },
 }

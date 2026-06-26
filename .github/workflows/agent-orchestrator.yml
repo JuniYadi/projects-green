@@ -3,19 +3,19 @@ on:
   workflow_dispatch:
     inputs:
       task_id:
-        description: 'Task ID (e.g., PGREEN-097)'
+        description: "Task ID (e.g., PGREEN-097)"
         required: true
         type: string
       branch:
-        description: 'Branch on projects-green (e.g., feature/PGREEN-097)'
+        description: "Branch on projects-green (e.g., feature/PGREEN-097)"
         required: true
         type: string
       pr_id:
-        description: 'PR number (optional — avoids branch lookup)'
+        description: "PR number (optional — avoids branch lookup)"
         required: false
         type: string
       mode:
-        description: 'plan | execute | fix'
+        description: "plan | execute | fix"
         required: true
         type: choice
         options: [plan, execute, fix]
@@ -34,42 +34,18 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Fetch task file + context via API
-        id: task
-        env:
-          GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
-        run: |
-          # Find task file from directory listing
-          TASK_ID="${{ inputs.task_id }}"
-          gh api repos/JuniYadi/ide-projects/contents/projects-green/_tasks/active \
-            --jq '.[] | select(.type == "file") | {path, sha, name}' | jq -r --arg task_id "$TASK_ID" 'select(.name | startswith($task_id)) | "\(.path)|\(.sha)"' > /tmp/task-entry.txt
-          if [ ! -s /tmp/task-entry.txt ]; then
-            echo "::error::Task file not found for ${{ inputs.task_id }} in ide-projects/projects-green/_tasks/active/"
-            exit 1
-          fi
-          IFS='|' read -r TASK_PATH TASK_SHA < /tmp/task-entry.txt
-          echo "task_path=$TASK_PATH" >> "$GITHUB_OUTPUT"
-          echo "task_sha=$TASK_SHA" >> "$GITHUB_OUTPUT"
-
-          # Download task file content
-          gh api "repos/JuniYadi/ide-projects/contents/$TASK_PATH" \
-            --jq '.content' | base64 -d > /tmp/task.md
-          echo "task_file=/tmp/task.md" >> "$GITHUB_OUTPUT"
-
-          # Also fetch AGENTS.md, RULES.md, FEATURES.md
-          for f in "projects-green/AGENTS.md" "RULES.md" "projects-green/FEATURES.md"; do
-            gh api "repos/JuniYadi/ide-projects/contents/$f" \
-              --jq '.content' 2>/dev/null | base64 -d > "/tmp/$(basename $f)" 2>/dev/null || true
-          done
-
-          echo "task_filename=$(basename "$TASK_PATH")" >> "$GITHUB_OUTPUT"
-          echo "task_dir=/tmp" >> "$GITHUB_OUTPUT"
+      - name: Checkout ide-projects
+        uses: actions/checkout@v7
+        with:
+          repository: JuniYadi/ide-projects
+          token: ${{ secrets.PAT_IDE_PROJECTS }}
+          path: ide
+          fetch-depth: 0
 
       - name: Claude Code — Write Plan
         uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
-          GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           track_progress: false
@@ -81,73 +57,48 @@ jobs:
             --model ${{ secrets.PLAN_ANTHROPIC_MODEL }}
             --max-turns 125
             --dangerously-skip-permissions
-            --allowedTools "Bash(cat*),Bash(git*),Bash(head*),Bash(date*),Bash(sed*),Bash(echo*),Bash(tee*),Bash(ls*),Bash(find*)"
+            --allowedTools "Bash(cat*),Bash(git*),Bash(head*),Bash(date*),Bash(sed*),Bash(echo*),Bash(tee*),Bash(ls*),Bash(find*),Bash(mkdir*)"
           prompt: |
             /ponytail:ponytail
-            REPO: JuniYadi/projects-green (Next.js 16 + TypeScript + strict + Bun)
-            IDE PROJECTS: JuniYadi/ide-projects (private — planning docs)
-            TASK FILE: /tmp/task.md
+            TASK: ${{ inputs.task_id }}
+            TASK DIR: ide/projects-green/_tasks/active/
 
-            YOUR ROLE:
-            You are a senior software engineer writing an implementation plan. You work with files in /tmp/.
-            - /tmp/task.md — read task spec, write plan, save back
-            - You DON'T touch the source code — this is plan-only
+            Senior engineer writing an implementation plan. Plan-only — no source code changes.
 
-            STEP 1 — READ CONTEXT:
-            Read the task file:
-            `cat /tmp/task.md`
+            1. READ CONTEXT:
+               ```
+               ls "$TASK_DIR"/*${{ inputs.task_id }}*.md
+               cat "$TASK_DIR"/*${{ inputs.task_id }}*.md
+               cat ide/projects-green/AGENTS.md
+               cat ide/RULES.md
+               head -200 ide/projects-green/FEATURES.md
+               ```
 
-            Read the project AGENTS.md:
-            `cat /tmp/AGENTS.md`
+            2. WRITE PLAN into task file's `## Plan` section:
+               - ### Approach — self-contained technical description
+               - ### Files to Create / Modify — Action|File|Description table
+               - ### Key Implementation Details — edge cases, code notes
+               - ### Questions / Blockers — or ✅ None
 
-            Read FEATURES.md if the task references a feature area:
-            `head -200 /tmp/FEATURES.md`
+               Format:
+               ```
+               ## Plan
+               > **Status:** ✅ Done
+               > **Generated:** $(date +%Y-%m-%d\ %H:%M)
+               ### Approach
+               ...
+               ```
+               Set `## Current Status:` to `plan`.
 
-            Read RULES.md for git/task conventions:
-            `cat /tmp/RULES.md`
-
-            STEP 2 — UNDERSTAND THE TASK:
-            - What is the goal?
-            - What files need to change (check projects-green/ directory structure)?
-            - What is the technical approach?
-            - What are the acceptance criteria?
-            - Are there existing tests for the affected area?
-
-            STEP 3 — WRITE THE PLAN:
-            Fill the `## Plan` section in /tmp/task.md. The template expects:
-
-            1. ### Approach — self-contained technical description
-            2. ### Files to Create / Modify — table with Action, File, Description
-            3. ### Key Implementation Details — specific code notes, edge cases
-            4. ### Questions / Blockers — or ✅ None
-
-            Use this EXACT format:
-            ```
-            ## Plan
-
-            > **Status:** ✅ Done
-            > **Generated:** $(date +%Y-%m-%d\ %H:%M)
-
-            ### Approach
-            ...
-            ```
-
-            Update `## Current Status:` line to `plan` (it should already be `plan` or `draft`).
-
-            Save the file when done. Do NOT try to git commit, git push, or use gh — just write to /tmp/task.md.
-
-      - name: Push plan back to ide-projects
-        env:
-          GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
-        run: |
-          NEW_CONTENT=$(base64 -w0 < /tmp/task.md)
-          gh api "repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }}" \
-            -X PUT \
-            -f message="task: ${{ inputs.task_id }} plan generated" \
-            -f content="$NEW_CONTENT" \
-            -f sha="${{ steps.task.outputs.task_sha }}" \
-            -f committer.name="JuniYadi" \
-            -f committer.email="${{ env.GIT_EMAIL }}"
+            3. PUSH:
+               ```
+               git -C ide config user.name "JuniYadi"
+               git -C ide config user.email "${{ env.GIT_EMAIL }}"
+               git -C ide add -A
+               git -C ide commit -m "plan: ${{ inputs.task_id }} generated"
+               git -C ide pull --rebase origin main
+               git -C ide push
+               ```
 
   execute:
     if: inputs.mode == 'execute'
@@ -158,25 +109,13 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - name: Fetch task file from ide-projects
-        id: task
-        env:
-          GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
-        run: |
-          TASK_ID="${{ inputs.task_id }}"
-          gh api repos/JuniYadi/ide-projects/contents/projects-green/_tasks/active \
-            --jq '.[] | select(.type == "file") | {path, sha, name}' | jq -r --arg task_id "$TASK_ID" 'select(.name | startswith($task_id)) | "\(.path)|\(.sha)"' > /tmp/task-entry.txt
-          if [ ! -s /tmp/task-entry.txt ]; then
-            echo "::error::Task file not found for ${{ inputs.task_id }} in ide-projects/projects-green/_tasks/active/"
-            exit 1
-          fi
-          IFS='|' read -r TASK_PATH TASK_SHA < /tmp/task-entry.txt
-          echo "task_path=$TASK_PATH" >> "$GITHUB_OUTPUT"
-          echo "task_sha=$TASK_SHA" >> "$GITHUB_OUTPUT"
-
-          gh api "repos/JuniYadi/ide-projects/contents/$TASK_PATH" \
-            --jq '.content' | base64 -d > /tmp/task.md
-          echo "$TASK_SHA" > /tmp/task.sha
+      - name: Checkout ide-projects
+        uses: actions/checkout@v7
+        with:
+          repository: JuniYadi/ide-projects
+          token: ${{ secrets.PAT_IDE_PROJECTS }}
+          path: ide
+          fetch-depth: 0
 
       - name: Checkout projects-green @ branch
         uses: actions/checkout@v7
@@ -192,24 +131,12 @@ jobs:
 
       - name: Show versions
         run: |
-          bun --version
-          node --version
-          uname -a
-          date
+          bun --version && node --version && uname -a && date
+
       - name: Prepare env + install deps
         working-directory: projects-green
         run: |
           cp .env.example .env
-          for line in $(grep -v '^#' .env | grep '='); do
-            key=$(echo "$line" | cut -d'=' -f1)
-            # Skip known secret keys — avoid leaking to logs
-            case "$key" in
-              *DATABASE*|*REDIS*|*SECRET*|*KEY*|*TOKEN*|*PASSWORD*|*WORKOS*|*GITHUB*|*ANTHROPIC*|*AUTH*)
-                continue ;;
-            esac
-            value=$(echo "$line" | cut -d'=' -f2- | sed 's/^"*//;s/"*$//')
-            echo "${key}=${value}" >> "$GITHUB_ENV"
-          done
           bun install --frozen-lockfile
           bun run db:generate
 
@@ -230,160 +157,89 @@ jobs:
             --model ${{ secrets.EXECUTE_ANTHROPIC_MODEL }}
             --max-turns 200
             --dangerously-skip-permissions
-            --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
+            --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*),mcp__github_*"
           prompt: |
             /ponytail:ponytail
-            REPO: JuniYadi/projects-green
-            WORKING DIRECTORY: projects-green/
-            TASK FILE: /tmp/task.md
+            TASK: ${{ inputs.task_id }}
             BRANCH: ${{ inputs.branch }}
+            WORKDIR: projects-green/
+            TASK DIR: ../ide/projects-green/_tasks/active/
 
-            YOUR ROLE:
-            You are a senior software engineer implementing a task. You work with:
-            - /tmp/task.md — the task spec + plan (fetched from ide-projects)
-            - projects-green/ — THIS is where you write code
+            Senior engineer implementing a feature. Code in WORKDIR, task spec in TASK DIR.
 
-            IMPORTANT: All git operations for projects-green happen INSIDE `projects-green/`.
-            Task file is at `/tmp/task.md` — do NOT use git on it, just edit the local file.
+            1. READ TASK:
+               ```
+               TASK_FILE="$(ls "$TASK_DIR"/*${{ inputs.task_id }}*.md | head -1)"
+               cat "$TASK_FILE"
+               cat ../ide/projects-green/AGENTS.md
+               cat WORKDIR/AGENTS.md
+               ls WORKDIR/modules/
+               grep '\- \[ \]' "$TASK_FILE"  # unchecked ACs
+               ```
 
-            STEP 1 — READ CONTEXT:
-            `cat /tmp/task.md` — read the full task + plan
+            2. AC-BY-AC LOOP (one unchecked AC at a time):
 
-            `cat /tmp/AGENTS.md` — project AGENTS.md
+               a. Implement AC in WORKDIR
 
-            `cat projects-green/AGENTS.md` — repo rules (Prisma types, DTO layer, etc.)
+               b. Commit + push code:
+                  ```
+                  cd WORKDIR
+                  git config user.name "JuniYadi"
+                  git config user.email "31454084+JuniYadi@users.noreply.github.com"
+                  SHORT_DESC=$(echo "[AC description]" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | cut -c1-50)
+                  git add -A && git commit -m "feat(${{ inputs.task_id }}): $SHORT_DESC" && git push
+                  ```
 
-            `ls projects-green/modules/` — see all feature modules
+               c. Update task file — mark AC done:
+                  ```
+                  COMMIT_SHA=$(cd WORKDIR && git rev-parse --short HEAD)
+                  sed -i "0,/^- \[ \]/{s//- [x] ($COMMIT_SHA)/}" "$TASK_FILE"
+                  git -C ../ide config user.name "JuniYadi"
+                  git -C ../ide config user.email "31454084+JuniYadi@users.noreply.github.com"
+                  git -C ../ide add -A
+                  git -C ../ide commit -m "task: ${{ inputs.task_id }} — $SHORT_DONE [sha:$COMMIT_SHA]"
+                  git -C ../ide pull --rebase origin main && git -C ../ide push
+                  ```
 
-            STEP 2 — LIST ACCEPTANCE CRITERIA:
-            Parse the task file and list all unchecked AC checkboxes:
-            `grep -- '- \\[ \\]' /tmp/task.md` — these are your ACs.
+               Loop for next unchecked AC.
 
-            STEP 3 — AC-BY-AC LOOP (one AC at a time):
-            For EACH unchecked Acceptance Criteria, in order. Continue until all are marked [x].
+            3. 3 PILLARS (once ALL ACs done, one at a time):
+               Each: fix, amend LAST commit, force-push:
+               ```
+               cd WORKDIR
+               bun run lint
+               bun run typecheck
+               bun run test
+               ```
 
-            3a. IMPLEMENT THIS AC:
-            - Pick ONE AC (e.g. "Add step/status to VpnAuditLog")
-            - Work ONLY on files relevant to this AC
-            - Read current file if modifying, then make the change
-            - Run relevant tests: `cd projects-green && bun test --bail`
+            4. MARK PR READY:
+               ```
+               PR=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number')
+               if [ -n "$PR" ]; then gh pr ready "$PR"; fi
+               ```
 
-            3b. COMMIT + PUSH (progress checkpoint):
-            ```bash
-            cd projects-green
-            git config user.name "JuniYadi"
-            git config user.email "31454084+JuniYadi@users.noreply.github.com"
-            SHORT_DESC=$(echo "[AC description]" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | cut -c1-50)
-            git add -A
-            git commit -m "feat(${{ inputs.task_id }}): $SHORT_DESC"
-            git push
-            ```
+            5. FINALIZE TASK:
+               ```
+               sed -i 's/^## Current Status:.*/## Current Status: `implementation`/' "$TASK_FILE"
+               sed -i 's/> \*\*Status:\*\* .*/> **Status:** ✅ Done/' "$TASK_FILE"
+               sed -i 's/> \*\*Implemented:\*\* .*/> **Implemented:** '"$(date +%Y-%m-%d)"'/' "$TASK_FILE"
+               gh pr view "$PR" --json files --jq '.files[].path' | while read f; do echo "- \`$f\`" >> "$TASK_FILE"; done
+               git -C ../ide add -A
+               git -C ../ide commit -m "task: ${{ inputs.task_id }} implementation done"
+               git -C ../ide pull --rebase origin main && git -C ../ide push
+               ```
 
-            3c. UPDATE TASK FILE — mark AC done + record commit SHA (via GitHub API, no checkout needed):
-            ```bash
-            COMMIT_SHA=$(cd projects-green && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-            # Mark the first unchecked checkbox as [x] with SHA in LOCAL file
-            sed -i "0,/^- \[ \]/{s//- [x] ($COMMIT_SHA)/}" /tmp/task.md
-            # Push via GitHub API — no git operations needed
-            NEW_CONTENT=$(base64 -w0 < /tmp/task.md)
-            CURRENT_SHA=$(cat /tmp/task.sha)
-            gh api repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }} \
-              -X PUT \
-              -f message="task: ${{ inputs.task_id }} — $SHORT_DESC done [sha:$COMMIT_SHA]" \
-              -f content="$NEW_CONTENT" \
-              -f sha="$CURRENT_SHA" \
-              -f committer.name="JuniYadi" \
-              -f committer.email="31454084+JuniYadi@users.noreply.github.com" \
-              --jq '.content.sha' > /tmp/task.sha
-            ```
-            --- IMPORTANT ---
-            After pushing code, a new GHA run may auto-trigger on the branch. Keep working.
-            If you run out of turns partway through, that's OK — pushed code and
-            updated checklist mean the next run picks up where you left off.
-            All done with this AC. Loop back to 3a for the next unchecked one.
-
-            STEP 4 — FINAL 3 PILLARS (once, after ALL ACs done):
-            Run each separately. Fix, amend the LAST commit, and push before moving to the next.
-
-            4a. `cd projects-green && bun run lint` — 0 errors
-            If it fails, fix the lint errors, then:
-            `git add -A && git commit --amend --no-edit && git push --force-with-lease`
-
-            4b. `cd projects-green && bun run typecheck` — 0 errors
-            If it fails, fix the type errors, then:
-            `git add -A && git commit --amend --no-edit && git push --force-with-lease`
-
-            4c. `cd projects-green && bun run test` — all pass
-            If it fails, fix the test failures, then:
-            `git add -A && git commit --amend --no-edit && git push --force-with-lease`
-
-            If any pillar fails and you can't fix it in time, push the fix anyway
-            (even with errors) — the code is already checkpointed per AC.
-
-            STEP 5 — MARK PR READY:
-            ```bash
-            PR_NUMBER=$(gh pr list --head "${{ inputs.branch }}" --json number --jq '.[0].number' 2>/dev/null)
-            if [ -n "$PR_NUMBER" ]; then
-              gh pr ready "$PR_NUMBER"
-              echo "PR #$PR_NUMBER marked as ready for review"
-            else
-              echo "No open PR found for branch ${{ inputs.branch }}"
-            fi
-            ```
-
-            STEP 6 — UPDATE /tmp/task.md WITH FINAL STATUS (the workflow will push it via API):
-            Update the local /tmp/task.md with implementation status. Do NOT use git.
-            ```bash
-            BRANCH_NAME="${{ inputs.branch }}"
-            PR_URL=$(cd projects-green && gh pr list --repo JuniYadi/projects-green --head "$BRANCH_NAME" --json number,url --jq '.[0]' 2>/dev/null || echo "{}")
-            PR_NUMBER=$(echo "$PR_URL" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('number',''))" 2>/dev/null || echo "")
-            TASK_FILE=/tmp/task.md
-
-            # Update overall status
-            sed -i 's/^## Current Status:.*/## Current Status: `implementation`/' "$TASK_FILE"
-
-            # Update Implementation section — status & date
-            sed -i 's/> \*\*Status:\*\* .*/> **Status:** ✅ Done/' "$TASK_FILE"
-            TODAY=$(date +%Y-%m-%d)
-            sed -i 's/> \*\*Implemented:\*\* .*/> **Implemented:** '"$TODAY"'/' "$TASK_FILE"
-
-            # Populate Files Changed from PR
-            if [ -n "$PR_NUMBER" ]; then
-              FILES_LIST=$(cd projects-green && gh pr view "$PR_NUMBER" --json files --jq '.files[].path' 2>/dev/null || true)
-              if [ -n "$FILES_LIST" ]; then
-                sed -i '/^\[To be filled after implementation\]$/d' "$TASK_FILE"
-                echo "$FILES_LIST" | while IFS= read -r f; do
-                  sed -i '/^### Files Changed$/a\- `'"$f"'`' "$TASK_FILE"
-                done
-              fi
-            fi
-
-            # Update PR details
-            sed -i '/^### PR Details$/a\\' "$TASK_FILE"
-            sed -i '/^### PR Details$/a- **PR URL:** https://github.com/JuniYadi/projects-green/pull/'"$PR_NUMBER" "$TASK_FILE"
-            sed -i '/^### PR Details$/a- **Branch:** `'"$BRANCH_NAME"'`' "$TASK_FILE"
-            ```
-
-            DONE — /tmp/task.md now has the final implementation status.
-
-      - name: Push final task status to ide-projects
+      - name: Ensure task status saved
         if: always()
-        env:
-          GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
         run: |
-          if [ -f /tmp/task.md ] && [ -f /tmp/task.sha ]; then
-            NEW_CONTENT=$(base64 -w0 < /tmp/task.md)
-            CURRENT_SHA=$(cat /tmp/task.sha)
-            gh api "repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }}" \
-              -X PUT \
-              -f message="task: ${{ inputs.task_id }} implementation done" \
-              -f content="$NEW_CONTENT" \
-              -f sha="$CURRENT_SHA" \
-              -f committer.name="JuniYadi" \
-              -f committer.email="31454084+JuniYadi@users.noreply.github.com"
-            echo "✅ Final task status pushed to ide-projects"
-          else
-            echo "⚠️ /tmp/task.md or /tmp/task.sha not found — skipping push"
+          TASK_FILE=$(ls ide/projects-green/_tasks/active/*${{ inputs.task_id }}*.md 2>/dev/null | head -1)
+          if [ -n "$TASK_FILE" ]; then
+            git -C ide config user.name "JuniYadi"
+            git -C ide config user.email "${{ env.GIT_EMAIL }}"
+            git -C ide add -A
+            git -C ide commit -m "task: ${{ inputs.task_id }} checkpoint" || true
+            git -C ide pull --rebase origin main
+            git -C ide push
           fi
 
   fix:
@@ -395,28 +251,16 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - name: Fetch task file from ide-projects
-        id: task
-        env:
-          GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
-        run: |
-          TASK_ID="${{ inputs.task_id }}"
-          gh api repos/JuniYadi/ide-projects/contents/projects-green/_tasks/active \
-            --jq '.[] | select(.type == "file") | {path, sha, name}' | jq -r --arg task_id "$TASK_ID" 'select(.name | startswith($task_id)) | "\(.path)|\(.sha)"' > /tmp/task-entry.txt
-          if [ ! -s /tmp/task-entry.txt ]; then
-            echo "::error::Task file not found for ${{ inputs.task_id }} in ide-projects/projects-green/_tasks/active/"
-            exit 1
-          fi
-          IFS='|' read -r TASK_PATH TASK_SHA < /tmp/task-entry.txt
-          echo "task_path=$TASK_PATH" >> "$GITHUB_OUTPUT"
-          echo "task_sha=$TASK_SHA" >> "$GITHUB_OUTPUT"
-
-          gh api "repos/JuniYadi/ide-projects/contents/$TASK_PATH" \
-            --jq '.content' | base64 -d > /tmp/task.md
-          echo "$TASK_SHA" > /tmp/task.sha
+      - name: Checkout ide-projects
+        uses: actions/checkout@v7
+        with:
+          repository: JuniYadi/ide-projects
+          token: ${{ secrets.PAT_IDE_PROJECTS }}
+          path: ide
+          fetch-depth: 0
 
       - name: Checkout projects-green @ branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: JuniYadi/projects-green
           token: ${{ secrets.PAT_IDE_PROJECTS }}
@@ -426,8 +270,6 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
 
       - name: Prepare env + install deps
         working-directory: projects-green
@@ -446,18 +288,33 @@ jobs:
             PR_NUMBER=$(gh pr list --head "${{ inputs.branch }}" --json number --jq '.[0].number' 2>/dev/null || echo "")
           fi
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          if [ -n "$PR_NUMBER" ]; then
-            gh api "repos/JuniYadi/projects-green/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.state == "CHANGES_REQUESTED") | .body' > /tmp/review-body.md 2>&1 || true
-          else
-            echo "" > /tmp/review-body.md
-          fi
-          echo "REVIEW_FILE_SIZE=$(wc -c < /tmp/review-body.md)"
-          echo 'aW1wb3J0IHJlCndpdGggb3BlbignL3RtcC9yZXZpZXctYm9keS5tZCcpIGFzIGY6CiAgICBjID0gZi5yZWFkKCkKbSA9IHJlLnNlYXJjaChyJ0FJIFJlZmFjdG9yaW5nIFByb21wdC4qP2BgYGBtYXJrZG93biguKj8pYGBgYCcsIGMsIHJlLkRPVEFMTCkKaWYgbToKICAgIHdpdGggb3BlbignL3RtcC9maXgtcHJvbXB0Lm1kJywgJ3cnKSBhcyBvdXQ6CiAgICAgICAgb3V0LndyaXRlKG0uZ3JvdXAoMSkuc3RyaXAoKSkKICAgIHByaW50KCd0cnVlJykKZWxpZiBjLnN0cmlwKCk6CiAgICAjIEZhbGxiYWNrOiB1c2UgcmF3IHJldmlldyBib2R5IGFzIGZpeCBwcm9tcHQKICAgIHdpdGggb3BlbignL3RtcC9maXgtcHJvbXB0Lm1kJywgJ3cnKSBhcyBvdXQ6CiAgICAgICAgb3V0LndyaXRlKGMpCiAgICBwcmludCgndHJ1ZScpCmVsc2U6CiAgICBwcmludCgnZmFsc2UnKQo=' | base64 -d > /tmp/extract-fix-prompt.py && FIX_RESULT=$(python3 /tmp/extract-fix-prompt.py 2>&1) && echo "fix_prompt_found=$FIX_RESULT" >> "$GITHUB_OUTPUT" || echo "fix_prompt_found=false" >> "$GITHUB_OUTPUT"
 
-      - name: Show fix prompt status
-        run: |
-          echo "PR #${{ steps.review.outputs.pr_number }}"
-          echo "Fix prompt found: ${{ steps.review.outputs.fix_prompt_found }}"
+          if [ -z "$PR_NUMBER" ]; then
+            echo "fix_prompt_found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Fetch requested-changes review body
+          gh api "repos/JuniYadi/projects-green/pulls/$PR_NUMBER/reviews" \
+            --jq '.[] | select(.state == "CHANGES_REQUESTED") | .body' > /tmp/review-body.md 2>&1 || true
+
+          # Extract AI Refactoring Prompt section (or use full body as fallback)
+          python3 <<-'PYEOF'
+          import re
+          with open('/tmp/review-body.md') as f:
+              content = f.read()
+          # Match ```markdown block under "AI Refactoring Prompt"
+          match = re.search(
+              r'AI Refactoring Prompt.*?\x60\x60\x60\x60markdown\n?(.*?)\x60\x60\x60\x60',
+              content, re.DOTALL
+          )
+          with open('/tmp/fix-prompt.md', 'w') as out:
+              out.write(match.group(1).strip() if match else content)
+          with open('/tmp/fix-found.txt', 'w') as out:
+              out.write('true' if (match or content.strip()) else 'false')
+          PYEOF
+
+          echo "fix_prompt_found=$(cat /tmp/fix-found.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Claude Code — Apply Fixes
         if: steps.review.outputs.fix_prompt_found == 'true'
@@ -477,75 +334,56 @@ jobs:
             --model ${{ secrets.FIX_ANTHROPIC_MODEL }}
             --max-turns 120
             --dangerously-skip-permissions
-            --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*)"
+            --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*),mcp__github_*"
           prompt: |
             /ponytail:ponytail
-            REPO: JuniYadi/projects-green
-            WORKING DIRECTORY: projects-green/
+            TASK: ${{ inputs.task_id }}
             BRANCH: ${{ inputs.branch }}
-            PR NUMBER: ${{ steps.review.outputs.pr_number }}
+            PR: ${{ steps.review.outputs.pr_number }}
+            WORKDIR: projects-green/
+            TASK DIR: ../ide/projects-green/_tasks/active/
 
-            YOUR ROLE:
-            You are applying PR review fixes from Claude Code Review.
-            The review identified issues with the code and requested changes.
+            Senior engineer applying PR review fixes.
 
-            STEP 1 — READ CONTEXT:
-            `cat projects-green/AGENTS.md` — repo rules (DTO layer, Prisma types, etc.)
+            1. READ CONTEXT:
+               ```
+               cat WORKDIR/AGENTS.md
+               cat /tmp/fix-prompt.md
+               cat "$TASK_DIR"/*${{ inputs.task_id }}*.md
+               ```
 
-            STEP 2 — READ THE FIX PROMPT OR REVIEW:
-            `cat /tmp/fix-prompt.md` — this contains either:
-            - An "AI Refactoring Prompt" with exact file paths and code patches (structured format), OR
-            - The raw PR review body with issue descriptions (fallback when no structured prompt exists)
+            2. FIX EACH ISSUE from /tmp/fix-prompt.md.
+               For each: read the affected file, apply the fix.
 
-            STEP 3 — ANALYZE AND FIX EACH ISSUE:
-            - If structured prompt: follow each instruction exactly as specified
-            - If raw review body: parse each issue, identify the files/lines to fix, apply the fix
-            For each issue:
-            1. Read the affected file
-            2. Apply the fix
-            3. Do not leave any issue unfixed
+            3. COMMIT + PUSH:
+               ```
+               cd WORKDIR
+               git config user.name "JuniYadi"
+               git config user.email "31454084+JuniYadi@users.noreply.github.com"
+               git add -A && git commit -m "fix: ${{ inputs.task_id }} address PR review feedback" --allow-empty && git push
+               ```
 
-            STEP 4 — PUSH CODE (safety save):
-            ```bash
-            cd projects-green
-            git config user.name "JuniYadi"
-            git config user.email "31454084+JuniYadi@users.noreply.github.com"
-            git add -A
-            git commit -m "fix: ${{ inputs.task_id }} address PR review feedback" --allow-empty
-            git push
-            ```
-
-            STEP 5 — 3 PILLARS (one at a time, amend + push each):
-            5a. `cd projects-green && bun run lint` — fix then amend commit
-            5b. `cd projects-green && bun run typecheck` — fix then amend commit
-            5c. `cd projects-green && bun run test` — fix then amend commit
+            4. 3 PILLARS (each: fix, amend last commit, force-push):
+               ```
+               bun run lint
+               bun run typecheck
+               bun run test
+               ```
 
       - name: Report if no fix prompt found
         if: steps.review.outputs.fix_prompt_found != 'true'
         run: |
           echo "::warning::No AI Refactoring Prompt found in PR #${{ steps.review.outputs.pr_number }} reviews"
-          echo "Check the reviews manually: gh pr view ${{ steps.review.outputs.pr_number }} --json reviews"
 
-      - name: Update task status in ide-projects
+      - name: Ensure task status saved
         if: always()
-        env:
-          GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
         run: |
-          if [ -f /tmp/task.md ]; then
-            # Read current content + SHA from API (always get latest)
-            RESPONSE=$(gh api "repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }}")
-            CURRENT_CONTENT=$(echo "$RESPONSE" | jq -r '.content' | base64 -d)
-            CURRENT_SHA=$(echo "$RESPONSE" | jq -r '.sha')
-            # Apply status update
-            echo "$CURRENT_CONTENT" | sed 's/^## Current Status:.*/## Current Status: `review`/' | base64 -w0 > /tmp/new-task.b64
-            gh api "repos/JuniYadi/ide-projects/contents/${{ steps.task.outputs.task_path }}" \
-              -X PUT \
-              -f message="task: ${{ inputs.task_id }} review fixes applied" \
-              -f content="$(cat /tmp/new-task.b64)" \
-              -f sha="$CURRENT_SHA" \
-              -f committer.name="JuniYadi" \
-              -f committer.email="31454084+JuniYadi@users.noreply.github.com"
-            echo "✅ Task status updated to review in ide-projects"
-          else
-            echo "⚠️ /tmp/task.md not found — skipping status update"
+          TASK_FILE=$(ls ide/projects-green/_tasks/active/*${{ inputs.task_id }}*.md 2>/dev/null | head -1)
+          if [ -n "$TASK_FILE" ]; then
+            git -C ide config user.name "JuniYadi"
+            git -C ide config user.email "${{ env.GIT_EMAIL }}"
+            git -C ide add -A
+            git -C ide commit -m "fix: ${{ inputs.task_id }} review fix applied" || true
+            git -C ide pull --rebase origin main
+            git -C ide push
           fi

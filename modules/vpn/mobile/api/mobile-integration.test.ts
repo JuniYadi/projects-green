@@ -202,12 +202,20 @@ const authenticate = mock(async () => ({
   roles: ["owner"],
 }))
 
+const exchangeCode = mock(async (code: string) => {
+  if (code === "invalid_code" || code === "expired_code") {
+    throw Object.assign(new Error("Invalid authorization code"), { name: "AuthenticationException", statusCode: 401 })
+  }
+  return { user: { id: "user-1" }, organizationId: "org-1" }
+})
+
 // ── Route factories ─────────────────────────────────────────────────────
 
 function createAuthApp() {
   return new Elysia().use(
     createMobileAuthRoutes({
       authenticate,
+      exchangeCode,
       deviceService: fakeDeviceService,
       now: () => NOW,
       signJwt: mockSignJwt,
@@ -281,6 +289,7 @@ beforeEach(() => {
   setupPrismaDefaults()
   mockSignJwt.mockClear()
   authenticate.mockClear()
+  exchangeCode.mockClear()
   fakeDeviceService.create.mockClear()
   mockGetPlatformRoleForUser.mockClear()
 })
@@ -340,6 +349,66 @@ describe("Mobile VPN Integration", () => {
       expect(res.status).toBe(403)
       const body = await res.json()
       expect(body.error.code).toBe("SUBSCRIPTION_REQUIRED")
+      expect(fakeDeviceService.create).not.toHaveBeenCalled()
+    })
+
+    it("exchanges authorizationCode for session token (code-exchange happy path)", async () => {
+      mockFindFirst.mockResolvedValue(activeSubscription)
+
+      const app = createAuthApp()
+      const res = await app.handle(
+        new Request("http://localhost/vpn/mobile/auth/exchange", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            authorizationCode: "code_abc123",
+            deviceName: "Test Android",
+            deviceFingerprint: "fp-android-42",
+            platform: "android",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body).toHaveProperty("token", "mock-session-token")
+      expect(body).toHaveProperty("expiresAt")
+      expect(body.user.organizationId).toBe("org-1")
+      expect(body.subscription.id).toBe(SUBSCRIPTION_ID)
+
+      // Should have used exchangeCode, not authenticate
+      expect(exchangeCode).toHaveBeenCalledWith("code_abc123")
+      expect(authenticate).not.toHaveBeenCalled()
+
+      // Device was created with correct subscriptionId
+      expect(fakeDeviceService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionId: SUBSCRIPTION_ID,
+          pairedVia: "SSO",
+        })
+      )
+    })
+
+    it("returns 401 for invalid authorization code (code-exchange error path)", async () => {
+      mockFindFirst.mockResolvedValue(activeSubscription)
+
+      const app = createAuthApp()
+      const res = await app.handle(
+        new Request("http://localhost/vpn/mobile/auth/exchange", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            authorizationCode: "invalid_code",
+            deviceName: "Bad Code Device",
+            deviceFingerprint: "fp-bad",
+            platform: "android",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(401)
+      const body = await res.json()
+      expect(body.error.code).toBe("TOKEN_INVALID")
       expect(fakeDeviceService.create).not.toHaveBeenCalled()
     })
   })

@@ -278,4 +278,193 @@ export class WhatsAppDeviceClient {
     // Stub as requested
     return
   }
+
+  // ─── Business Profile ────────────────────────────────────────────────────────────
+
+  async getBusinessProfile(
+    fields?: string[]
+  ): Promise<Record<string, unknown> | null> {
+    const endpoint = new URL(ENDPOINTS.BUSINESS_PROFILE(this.phoneNumberId))
+    endpoint.searchParams.set(
+      "fields",
+      fields?.join(",") ??
+        "messaging_product,about,address,description,email,profile_picture_url,websites,vertical"
+    )
+
+    const result = await this.httpClient.request<{
+      data: Array<{ business_profile: Record<string, unknown> }>
+    }>("GET_BUSINESS_PROFILE", endpoint.toString(), "GET")
+
+    // ponytail: Meta returns empty data[] when no profile exists
+    if (!result.data?.[0]?.business_profile) return null
+    return result.data[0].business_profile
+  }
+
+  async updateBusinessProfile(
+    data: Record<string, unknown>
+  ): Promise<{ success: boolean }> {
+    return this.httpClient.request<{ success: boolean }>(
+      "UPDATE_BUSINESS_PROFILE",
+      ENDPOINTS.BUSINESS_PROFILE(this.phoneNumberId),
+      "POST",
+      data
+    )
+  }
+
+  async uploadProfilePicture(
+    file: { data: ArrayBuffer; mimeType: string; fileName: string }
+  ): Promise<{ handle: string }> {
+    // ponytail: Resumable Upload — single-session for files <16MB.
+    // Meta's Resumable Upload API uses a 3-step flow for large files
+    // but for profile pictures (typically <5MB) single part upload works.
+    const uploadEndpoint = ENDPOINTS.BUSINESS_PROFILE(this.phoneNumberId).replace(
+      "/whatsapp_business_profile",
+      "/uploads"
+    )
+
+    const formData = new FormData()
+    formData.append("file_length", String(file.data.byteLength))
+    formData.append("file_type", file.mimeType)
+    formData.append("file_name", file.fileName)
+    formData.append("messaging_product", "whatsapp")
+
+    const session = await this.httpClient.request<{ id: string }>(
+      "CREATE_UPLOAD_SESSION",
+      uploadEndpoint,
+      "POST",
+      formData
+    )
+
+    // Append file data to the session
+    const blob = new Blob([file.data], { type: file.mimeType })
+    const appendForm = new FormData()
+    appendForm.append("file", blob, file.fileName)
+    appendForm.append("messaging_product", "whatsapp")
+
+    const result = await this.httpClient.request<{ handle: string }>(
+      "UPLOAD_FILE_PART",
+      `${uploadEndpoint}/${session.id}`,
+      "POST",
+      appendForm
+    )
+
+    return { handle: result.handle }
+  }
+
+  async sendSingleProduct(
+    to: string,
+    catalogId: string,
+    productRetailerId: string,
+    body?: { text: string }
+  ): Promise<SendMessageResult> {
+    const payload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "product",
+        ...(body?.text ? { body: { text: body.text } } : {}),
+        action: {
+          catalog_id: catalogId,
+          product_retailer_id: productRetailerId,
+        },
+      },
+    }
+
+    const result = await this.httpClient.request<any>(
+      "SEND_CATALOG_PRODUCT",
+      ENDPOINTS.MESSAGES(this.phoneNumberId),
+      "POST",
+      payload
+    )
+
+    return {
+      providerMessageId: result.messages[0].id,
+      accepted: true,
+    }
+  }
+
+  async sendMultiProductList(
+    to: string,
+    catalogId: string,
+    sections: { title: string; productItems: string[] }[],
+    header?: { text: string },
+    body?: { text: string },
+    footer?: { text: string }
+  ): Promise<SendMessageResult> {
+    const payload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "product_list",
+        header: { type: "text" as const, text: header?.text ?? "" },
+        body: { text: body?.text ?? "" },
+        ...(footer?.text ? { footer: { text: footer.text } } : {}),
+        action: {
+          catalog_id: catalogId,
+          sections: sections.map((s) => ({
+            title: s.title,
+            product_items: s.productItems.map((id) => ({
+              product_retailer_id: id,
+            })),
+          })),
+        },
+      },
+    }
+
+    const result = await this.httpClient.request<any>(
+      "SEND_CATALOG_PRODUCT_LIST",
+      ENDPOINTS.MESSAGES(this.phoneNumberId),
+      "POST",
+      payload
+    )
+
+    return {
+      providerMessageId: result.messages[0].id,
+      accepted: true,
+    }
+  }
+
+  async sendCatalogMessage(
+    to: string,
+    catalogId: string,
+    thumbnailProductRetailerId?: string,
+    body?: { text: string }
+  ): Promise<SendMessageResult> {
+    const payload: Record<string, unknown> = {
+      messaging_product: "whatsapp",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "catalog_message",
+        body: { text: body?.text ?? "Browse our catalog:" },
+        action: {
+          catalog_id: catalogId,
+          name: "catalog_message",
+          ...(thumbnailProductRetailerId
+            ? {
+                parameters: {
+                  thumbnail_product_retailer_id: thumbnailProductRetailerId,
+                },
+              }
+            : {}),
+        },
+      },
+    }
+
+    const result = await this.httpClient.request<any>(
+      "SEND_CATALOG_MESSAGE",
+      ENDPOINTS.MESSAGES(this.phoneNumberId),
+      "POST",
+      payload
+    )
+
+    return {
+      providerMessageId: result.messages[0].id,
+      accepted: true,
+    }
+  }
 }

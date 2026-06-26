@@ -1,4 +1,5 @@
 import type { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import type { InvoiceEmailService } from "@/modules/invoices/email.service"
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 const mockPrisma = {
@@ -74,6 +75,15 @@ const mockBillingTransactions = {
       alreadyProcessed: false,
     })
   ),
+}
+
+// Mock email service to prevent actual email sending during tests
+const mockEmailService = {
+  sendInvoiceCreated: mock(() => Promise.resolve()),
+  sendPaymentReminder: mock(() => Promise.resolve()),
+  sendInvoicePaid: mock(() => Promise.resolve()),
+  sendInvoiceOverdue: mock(() => Promise.resolve()),
+  sendInvoiceCancelled: mock(() => Promise.resolve()),
 }
 
 const { PaymentService } = await import("./payment.service")
@@ -162,7 +172,8 @@ describe("PaymentService", () => {
 
   beforeEach(() => {
     service = new PaymentService(
-      mockBillingTransactions as unknown as BillingTransactionService
+      mockBillingTransactions as unknown as BillingTransactionService,
+      mockEmailService as unknown as InvoiceEmailService
     )
     resetMocks()
   })
@@ -383,6 +394,70 @@ describe("PaymentService", () => {
       await expect(
         service.payWithBalance("inv-123", "org-123")
       ).rejects.toThrow("Insufficient balance")
+    })
+  })
+
+  describe("sendInvoicePaidEmail", () => {
+    it("sends email to billing contacts when present", async () => {
+      ;(
+        mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
+        id: "ba-123",
+        organizationId: "org-123",
+        currency: "IDR",
+        contacts: [
+          { id: "c1", email: "billing@example.com", isActive: true, notifyOnInvoice: true },
+        ],
+      })
+
+      await service.sendInvoicePaidEmail(
+        {
+          id: "inv-123",
+          invoiceNumber: "TOP-ABC123",
+          totalAmount: { toNumber: () => 50000 },
+          currency: "IDR",
+          status: "paid",
+          issuedAt: new Date(),
+          dueDate: new Date(),
+          periodStart: new Date(),
+          periodEnd: new Date(),
+        },
+        "org-123"
+      )
+
+      expect(mockEmailService.sendInvoicePaid).toHaveBeenCalledWith(
+        expect.objectContaining({ invoiceNumber: "TOP-ABC123", status: "paid" }),
+        "billing@example.com"
+      )
+    })
+
+    it("does not throw when WorkOS fails (fire-and-forget resilience)", async () => {
+      // No contacts — falls through to WorkOS which will fail
+      ;(
+        mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>
+      ).mockResolvedValueOnce({
+        id: "ba-123",
+        organizationId: "org-missing",
+        currency: "IDR",
+        contacts: [],
+      })
+
+      await expect(
+        service.sendInvoicePaidEmail(
+          {
+            id: "inv-456",
+            invoiceNumber: "TOP-456",
+            totalAmount: { toNumber: () => 25000 },
+            currency: "IDR",
+            status: "paid",
+            issuedAt: new Date(),
+            dueDate: new Date(),
+            periodStart: new Date(),
+            periodEnd: new Date(),
+          },
+          "org-missing"
+        )
+      ).resolves.toBeUndefined()
     })
   })
 })

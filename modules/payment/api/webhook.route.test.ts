@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { Elysia } from "elysia"
 
 // Mock prisma
 const mockPaymentAuditLog = {
@@ -8,37 +9,32 @@ const mockPaymentAuditLog = {
   create: mock(() => Promise.resolve({})),
 }
 
-const mockInvoice = {
+const mockBillingInvoice = {
   findUnique: mock(() =>
-    Promise.resolve({
-      id: "inv-123",
-      billingAccountId: "ba-123",
-    })
+    Promise.resolve({ id: "inv-123", billingAccountId: "ba-123" })
   ),
   update: mock(() => Promise.resolve({})),
 }
 
 const mockBillingAccount = {
   findUnique: mock(() =>
-    Promise.resolve({
-      id: "ba-123",
-      organizationId: "org-123",
-    })
+    Promise.resolve({ id: "ba-123", organizationId: "org-123" })
   ),
 }
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
     paymentAuditLog: mockPaymentAuditLog,
-    invoice: mockInvoice,
+    billingInvoice: mockBillingInvoice,
     billingAccount: mockBillingAccount,
   },
 }))
 
-// Mock DuitkuService verifyCallback
+// Mock DuitkuService
 const mockVerifyCallback = mock(() => Promise.resolve(true))
 
-mock.module("../../services/duitku.service", () => ({
+// Route imports from "../services/duitku.service" (relative to api/)
+mock.module("../services/duitku.service", () => ({
   DuitkuService: mock(() => ({
     verifyCallback: mockVerifyCallback,
   })),
@@ -47,68 +43,99 @@ mock.module("../../services/duitku.service", () => ({
 // Mock PaymentService
 const mockCreditBalance = mock(() => Promise.resolve({}))
 const mockMarkInvoiceAsPaid = mock(() => Promise.resolve({}))
+const mockSendInvoicePaidEmail = mock(() => Promise.resolve({}))
 
-mock.module("../../services/payment.service", () => ({
+mock.module("../services/payment.service", () => ({
   PaymentService: mock(() => ({
     creditBalance: mockCreditBalance,
     markInvoiceAsPaid: mockMarkInvoiceAsPaid,
+    sendInvoicePaidEmail: mockSendInvoicePaidEmail,
   })),
 }))
+
+const CALLBACK_URL = "http://localhost/duitku/callback"
+const DEFAULT_BODY = {
+  merchantCode: "M123",
+  amount: "50000",
+  merchantOrderId: "inv-123",
+  signature: "valid-sig",
+  resultCode: "00",
+  reference: "REF001",
+}
+
+async function postCallback(body: Record<string, string>) {
+  const { createWebhookRoutes } = await import("./webhook.route")
+  const app = new Elysia().use(createWebhookRoutes())
+  return app.handle(
+    new Request(CALLBACK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  )
+}
 
 describe("Webhook Route - Duitku Callback", () => {
   beforeEach(() => {
     mockPaymentAuditLog.findFirst.mockClear()
     mockPaymentAuditLog.create.mockClear()
-    mockInvoice.findUnique.mockClear()
-    mockInvoice.update.mockClear()
+    mockBillingInvoice.findUnique.mockClear()
+    mockBillingInvoice.update.mockClear()
+    mockBillingAccount.findUnique.mockClear()
     mockCreditBalance.mockClear()
     mockMarkInvoiceAsPaid.mockClear()
+    mockSendInvoicePaidEmail.mockClear()
     mockVerifyCallback.mockClear()
   })
 
-  it("should reject invalid HMAC signature", async () => {
-    mockVerifyCallback.mockResolvedValueOnce(false)
+  it("credits balance and logs on successful callback (resultCode 00)", async () => {
+    const res = await postCallback(DEFAULT_BODY)
+    const body = await res.json()
 
-    const { createWebhookRoutes } = await import("./webhook.route")
-    createWebhookRoutes()
-
-    // The route should return 400 for invalid signature
-    expect(mockVerifyCallback).toBeDefined()
+    expect(res.status).toBe(200)
+    expect(body).toEqual({ ok: true })
+    expect(mockVerifyCallback).toHaveBeenCalledTimes(1)
+    expect(mockPaymentAuditLog.findFirst).toHaveBeenCalledWith({
+      where: { entityId: "inv-123", action: "DUITKU_CALLBACK_RECEIVED" },
+    })
+    expect(mockPaymentAuditLog.create).toHaveBeenCalledTimes(2)
+    expect(mockCreditBalance).toHaveBeenCalledWith("org-123", 50000, "inv-123")
+    expect(mockMarkInvoiceAsPaid).toHaveBeenCalledWith("inv-123")
+    expect(mockSendInvoicePaidEmail).toHaveBeenCalledWith({}, "org-123")
   })
 
-  it("should not double-credit on duplicate callback", async () => {
-    // Simulate existing audit log (already processed)
+  it("returns 400 for invalid signature", async () => {
+    mockVerifyCallback.mockResolvedValueOnce(false)
+
+    const res = await postCallback(DEFAULT_BODY)
+    const body = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(body).toEqual({ ok: false, error: "INVALID_SIGNATURE" })
+    expect(mockCreditBalance).not.toHaveBeenCalled()
+  })
+
+  it("skips processing on duplicate callback", async () => {
     mockPaymentAuditLog.findFirst.mockResolvedValueOnce({
       id: "log-123",
       entityId: "inv-123",
       action: "DUITKU_CALLBACK_RECEIVED",
     })
 
-    const { createWebhookRoutes } = await import("./webhook.route")
-    createWebhookRoutes()
+    const res = await postCallback(DEFAULT_BODY)
+    const body = await res.json()
 
-    // Should return "Already processed" and not call creditBalance
+    expect(res.status).toBe(200)
+    expect(body).toEqual({ ok: true, message: "Already processed" })
     expect(mockCreditBalance).not.toHaveBeenCalled()
   })
 
-  it("should credit balance on successful callback (resultCode 00)", async () => {
-    // No existing audit log
-    mockPaymentAuditLog.findFirst.mockResolvedValueOnce(null)
+  it("does not credit balance when resultCode is not 00", async () => {
+    const res = await postCallback({ ...DEFAULT_BODY, resultCode: "01" })
+    const body = await res.json()
 
-    const { createWebhookRoutes } = await import("./webhook.route")
-    createWebhookRoutes()
-
-    // Verify creditBalance would be called with correct params
-    expect(mockCreditBalance).toBeDefined()
-  })
-
-  it("should not credit balance on failed callback (resultCode != 00)", async () => {
-    mockPaymentAuditLog.findFirst.mockResolvedValueOnce(null)
-
-    const { createWebhookRoutes } = await import("./webhook.route")
-    createWebhookRoutes()
-
-    // resultCode "01" should not trigger creditBalance
-    expect(mockCreditBalance).toBeDefined()
+    expect(res.status).toBe(200)
+    expect(body).toEqual({ ok: true })
+    expect(mockCreditBalance).not.toHaveBeenCalled()
   })
 })
