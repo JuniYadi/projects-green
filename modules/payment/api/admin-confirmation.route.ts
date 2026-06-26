@@ -8,6 +8,7 @@ import { toPaymentConfirmationDTO } from "../dto/payment-confirmation.dto"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 
 const confirmationService = new ConfirmationService()
+const paymentService = new PaymentService()
 
 const requireConfirmationAuth = async (set: {
   status?: number | string
@@ -72,7 +73,6 @@ export const createAdminConfirmationRoutes = () =>
       const approved = await confirmationService.approve(params.id, result.user.id)
 
       // Fire-and-forget: send invoice paid email
-      const paymentService = new PaymentService()
       paymentService
         .sendInvoicePaidEmail(
           {
