@@ -36,6 +36,10 @@ export class MetaCloudHttpClient {
     this.organizationId = config.organizationId
   }
 
+  getAccessToken(): string {
+    return this.accessToken
+  }
+
   async request<T>(
     operation: string,
     endpoint: string,

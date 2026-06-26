@@ -16,4 +16,5 @@ export const ENDPOINTS = {
     getEndpoint(`${wabaId}/phone_numbers`),
   WEBHOOK_SUBSCRIPTION: (appId: string) =>
     getEndpoint(`${appId}/subscriptions`),
+  MEDIA_BY_ID: (mediaId: string) => getEndpoint(mediaId),
 }
