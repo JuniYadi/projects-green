@@ -16,6 +16,7 @@ import { createAdminStatsRoutes } from "./admin/stats.route"
 import { createAdminTopupRoutes } from "./admin/topup.route"
 import { createAdminOrgsRoutes } from "./admin/orgs.route"
 import { createAdminOrgDetailRoutes } from "./admin/org-detail.route"
+import { createAdminBillingContactsRoutes } from "./admin/contacts.route"
 import { createUsageRoutes } from "./usage.route"
 import { UsageLedgerService } from "../usage-ledger.service"
 import { CostingService } from "../costing.service"
@@ -41,4 +42,5 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createAdminTopupRoutes())
   .use(createAdminOrgsRoutes())
   .use(createAdminOrgDetailRoutes())
+  .use(createAdminBillingContactsRoutes())
   .use(createUsageRoutes({ usageLedgerService, costingService }))
