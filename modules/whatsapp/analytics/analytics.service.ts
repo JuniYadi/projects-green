@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
-import type {
-  AnalyticsDataItem,
-  AnalyticsGranularity,
-} from "@/lib/whatsapp/meta-cloud/types/analytics"
+import type { AnalyticsGranularity } from "@/lib/whatsapp/meta-cloud/types/analytics"
 import type {
   SyncAnalyticsInput,
   AnalyticsSyncResult,
@@ -30,11 +27,14 @@ export class AnalyticsService {
     if (device.organizationId !== input.organizationId) {
       throw new Error("DEVICE_NOT_OWNED")
     }
+    if (!device.tokenEncrypted || !device.whatsappPhoneId || !device.whatsappBusinessAccountId) {
+      throw new Error("WHATSAPP_DEVICE_NOT_CONFIGURED")
+    }
 
     const client = await WhatsAppDeviceClient.fromDevice({
-      accessToken: device.tokenEncrypted ?? "",
-      phoneNumberId: device.whatsappPhoneId ?? "",
-      wabaId: device.whatsappBusinessAccountId ?? "",
+      accessToken: device.tokenEncrypted,
+      phoneNumberId: device.whatsappPhoneId,
+      wabaId: device.whatsappBusinessAccountId,
       organizationId: input.organizationId,
     })
 
@@ -60,7 +60,7 @@ export class AnalyticsService {
       const metaInbound = item.message_inbound_count ?? 0
       const metaOutbound = item.message_outbound_count ?? 0
 
-      // Upsert daily count for this date
+      // Get pre-sync value in one query
       const existing = await prisma.whatsappDailyCount.findFirst({
         where: {
           organizationId: input.organizationId,
@@ -69,12 +69,16 @@ export class AnalyticsService {
         },
       })
 
+      const preInbound = existing?.messageInboxCount ?? 0
+      const preOutbound = existing?.messageOutboxCount ?? 0
+
+      // Upsert with new totals (not increment — replace)
       if (existing) {
         await prisma.whatsappDailyCount.update({
           where: { id: existing.id },
           data: {
-            messageInboxCount: { increment: metaInbound },
-            messageOutboxCount: { increment: metaOutbound },
+            messageInboxCount: preInbound + metaInbound,
+            messageOutboxCount: preOutbound + metaOutbound,
           },
         })
       } else {
@@ -91,37 +95,28 @@ export class AnalyticsService {
         })
       }
 
-      const localRow = existing ?? (await prisma.whatsappDailyCount.findFirst({
-        where: {
-          organizationId: input.organizationId,
-          date: new Date(date),
-          whatsappDeviceId: input.deviceId,
-        },
-      }))
-
-      // Check inbound discrepancy
-      if (localRow && Math.abs(metaInbound - localRow.messageInboxCount) / Math.max(metaInbound, 1) > DISCREPANCY_THRESHOLD) {
+      // Check discrepancy against pre-sync values (not post-updated)
+      if (Math.abs(metaInbound - preInbound) / Math.max(metaInbound, 1) > DISCREPANCY_THRESHOLD) {
         discrepancies.push({
           date,
           phoneNumberId: item.phone_number_id,
           metric: "message_inbound",
           metaValue: metaInbound,
-          localValue: localRow.messageInboxCount,
-          delta: metaInbound - localRow.messageInboxCount,
-          deltaPercent: (metaInbound - localRow.messageInboxCount) / Math.max(metaInbound, 1),
+          localValue: preInbound,
+          delta: metaInbound - preInbound,
+          deltaPercent: (metaInbound - preInbound) / Math.max(metaInbound, 1),
         })
       }
 
-      // Check outbound discrepancy
-      if (localRow && Math.abs(metaOutbound - localRow.messageOutboxCount) / Math.max(metaOutbound, 1) > DISCREPANCY_THRESHOLD) {
+      if (Math.abs(metaOutbound - preOutbound) / Math.max(metaOutbound, 1) > DISCREPANCY_THRESHOLD) {
         discrepancies.push({
           date,
           phoneNumberId: item.phone_number_id,
           metric: "message_outbound",
           metaValue: metaOutbound,
-          localValue: localRow.messageOutboxCount,
-          delta: metaOutbound - localRow.messageOutboxCount,
-          deltaPercent: (metaOutbound - localRow.messageOutboxCount) / Math.max(metaOutbound, 1),
+          localValue: preOutbound,
+          delta: metaOutbound - preOutbound,
+          deltaPercent: (metaOutbound - preOutbound) / Math.max(metaOutbound, 1),
         })
       }
 
@@ -327,54 +322,67 @@ export class AnalyticsService {
       },
     })
 
+    const deviceResults = await Promise.all(
+      devices
+        .filter((d) => d.whatsappBusinessAccountId && d.tokenEncrypted)
+        .map(async (device) => {
+          const client = await WhatsAppDeviceClient.fromDevice({
+            accessToken: device.tokenEncrypted!,
+            phoneNumberId: device.whatsappPhoneId ?? "",
+            wabaId: device.whatsappBusinessAccountId!,
+            organizationId,
+          })
+
+          const startTs = Math.floor(new Date(opts.startDate).getTime() / 1000)
+          const endTs = Math.floor(new Date(opts.endDate + "T23:59:59Z").getTime() / 1000)
+
+          const metaResult = await client.getAnalytics({
+            start: startTs,
+            end: endTs,
+            granularity: "DAY",
+            metric_types: "PRICING",
+          })
+
+          const rows: CostReconciliationRow[] = []
+          let deviceMetaCost = 0
+          let deviceLocalCost = 0
+
+          for (const item of metaResult.data) {
+            const date = item.conversation_start
+              ? new Date(item.conversation_start * 1000).toISOString().split("T")[0]
+              : opts.startDate
+
+            const metaCost = item.cost?.amount ?? 0
+            const localForDevice = localLedger
+              .filter((l) => l.whatsappDeviceId === device.id && l.pricingCategory === item.conversation_category)
+              .reduce((sum, l) => sum + Number(l.quotaValue), 0)
+
+            rows.push({
+              phoneNumberId: item.phone_number_id,
+              conversationCategory: item.conversation_category,
+              date,
+              metaCost,
+              localCost: localForDevice,
+              delta: metaCost - localForDevice,
+              currency: item.cost?.currency ?? "USD",
+            })
+
+            deviceMetaCost += metaCost
+            deviceLocalCost += localForDevice
+          }
+
+          return { rows, deviceMetaCost, deviceLocalCost }
+        })
+    )
+
     const rows: CostReconciliationRow[] = []
     let totalMetaCost = 0
     let totalLocalCost = 0
-
-    for (const device of devices) {
-      if (!device.whatsappBusinessAccountId || !device.tokenEncrypted) continue
-
-      const client = await WhatsAppDeviceClient.fromDevice({
-        accessToken: device.tokenEncrypted,
-        phoneNumberId: device.whatsappPhoneId ?? "",
-        wabaId: device.whatsappBusinessAccountId,
-        organizationId,
-      })
-
-      const startTs = Math.floor(new Date(opts.startDate).getTime() / 1000)
-      const endTs = Math.floor(new Date(opts.endDate + "T23:59:59Z").getTime() / 1000)
-
-      const metaResult = await client.getAnalytics({
-        start: startTs,
-        end: endTs,
-        granularity: "DAY",
-        metric_types: "PRICING",
-      })
-
-      for (const item of metaResult.data) {
-        const date = item.conversation_start
-          ? new Date(item.conversation_start * 1000).toISOString().split("T")[0]
-          : opts.startDate
-
-        const metaCost = item.cost?.amount ?? 0
-        const localForDevice = localLedger
-          .filter((l) => l.whatsappDeviceId === device.id && l.pricingCategory === item.conversation_category)
-          .reduce((sum, l) => sum + Number(l.quotaValue), 0)
-
-        const delta = metaCost - localForDevice
-        rows.push({
-          phoneNumberId: item.phone_number_id,
-          conversationCategory: item.conversation_category,
-          date,
-          metaCost,
-          localCost: localForDevice,
-          delta,
-          currency: item.cost?.currency ?? "USD",
-        })
-
-        totalMetaCost += metaCost
-        totalLocalCost += localForDevice
-      }
+    for (const dr of deviceResults) {
+      if (!dr) continue
+      rows.push(...dr.rows)
+      totalMetaCost += dr.deviceMetaCost
+      totalLocalCost += dr.deviceLocalCost
     }
 
     return {
