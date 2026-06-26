@@ -408,4 +408,5 @@ export class WhatsAppDeviceClient {
       providerMessageId: result.messages[0].id,
       accepted: true,
     }
+  }
 }
