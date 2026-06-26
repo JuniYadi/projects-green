@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { expect, describe, it, beforeEach, mock } from "bun:test"
 
 // ── Mocks (leaf dependencies only) ──────────────────────────────────────
