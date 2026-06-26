@@ -1,6 +1,8 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
+import { prisma } from "@/lib/prisma"
+
 import {
   getOrCreateAccountWithContacts,
   addBillingContact,
@@ -81,6 +83,41 @@ export const createBillingRoutes = (deps: Partial<BillingRouteDeps> = {}) => {
             "INTERNAL_ERROR",
             "Unable to load billing account."
           )
+        }
+      })
+
+      // ─── GET /billing/contacts/count ───────────────────────────────────────
+      // Lightweight check — does NOT auto-create contacts or billing accounts.
+      // Single-purpose: guard knows whether to redirect without side effects.
+      .get("/contacts/count", async ({ set }) => {
+        const auth = await authenticate()
+
+        if (!auth.user) {
+          return toError(set, 401, "UNAUTHORIZED", "You must be signed in.")
+        }
+
+        if (!auth.organizationId) {
+          return toError(set, 403, "NO_ORGANIZATION", "No active organization found.")
+        }
+
+        try {
+          const account = await prisma.billingAccount.findUnique({
+            where: { organizationId: auth.organizationId },
+            select: { id: true },
+          })
+
+          if (!account) {
+            return { ok: true as const, count: 0 }
+          }
+
+          const count = await prisma.billingContact.count({
+            where: { billingAccountId: account.id, isActive: true },
+          })
+
+          return { ok: true as const, count }
+        } catch (err) {
+          console.error("[Billing] GET /contacts/count error:", err)
+          return toError(set, 500, "INTERNAL_ERROR", "Unable to check contacts.")
         }
       })
 

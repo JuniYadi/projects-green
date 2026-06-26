@@ -331,6 +331,13 @@ export class InvoiceStatusManager {
       recipients.push({ email: orgAdminEmail })
     }
 
+    // ponytail: log when no recipients found — system-level alert if this proves insufficient
+    if (recipients.length === 0) {
+      console.warn(
+        `[Billing] No invoice recipients resolved for org ${organizationId} — notifications will not be sent`
+      )
+    }
+
     return recipients
   }
 

@@ -638,6 +638,21 @@ export async function getBillingAccount(): Promise<BillingAccountDetail> {
   return fetchBilling<BillingAccountDetail>("/api/billing/account/detail")
 }
 
+export type AdminBillingContactsResponse = {
+  ok: true
+  id: string
+  organizationId: string
+  contacts: BillingContactDTO[]
+}
+
+export async function getAdminBillingContacts(
+  orgId: string
+): Promise<AdminBillingContactsResponse> {
+  return fetchBilling<AdminBillingContactsResponse>(
+    `/api/billing/admin/orgs/${orgId}/contacts`
+  )
+}
+
 export async function addBillingContact(
   input: CreateContactInput
 ): Promise<{ ok: true } & BillingContactDTO> {

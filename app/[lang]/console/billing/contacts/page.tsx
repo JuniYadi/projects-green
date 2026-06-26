@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import { BillingContactsList } from "./billing-contacts-list"
+import { BillingContactsList } from "@/components/billing/billing-contacts-list"
 
 export const metadata: Metadata = {
   title: "Billing Contacts | Console",
