@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
-import type { AnalyticsGranularity } from "@/lib/whatsapp/meta-cloud/types/analytics"
 import type {
   SyncAnalyticsInput,
   AnalyticsSyncResult,
@@ -40,7 +39,7 @@ export class AnalyticsService {
 
     const startTs = Math.floor(new Date(input.startDate).getTime() / 1000)
     const endTs = Math.floor(new Date(input.endDate + "T23:59:59Z").getTime() / 1000)
-    const granularity = (input.granularity ?? "DAY") as AnalyticsGranularity
+    const granularity = input.granularity ?? "DAY"
 
     const result = await client.getAnalytics({
       start: startTs,

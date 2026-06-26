@@ -1,5 +1,3 @@
-import type { AnalyticsDataItem } from "@/lib/whatsapp/meta-cloud/types/analytics"
-
 export type SyncAnalyticsInput = {
   deviceId: string
   organizationId: string
