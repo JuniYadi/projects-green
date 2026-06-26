@@ -1724,6 +1724,25 @@ model WhatsappMessageStatus {
   @@index([messageId, createdAt])
 }
 
+model WhatsappMedia {
+  id              String    @id @default(cuid())
+  organizationId  String
+  deviceId        String
+  metaMediaId     String    @unique
+  mimeType        String
+  fileSize        Int
+  sha256          String?
+  storePath       String?
+  downloadedAt    DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([organizationId])
+  @@index([deviceId])
+  @@index([metaMediaId])
+}
+
 model WhatsappDailyCount {
   id                 String          @id @default(cuid())
   organizationId     String
