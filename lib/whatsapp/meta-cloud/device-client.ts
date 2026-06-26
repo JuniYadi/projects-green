@@ -221,6 +221,78 @@ export class WhatsAppDeviceClient {
     return
   }
 
+  // ─── Business Profile ────────────────────────────────────────────────────────────
+
+  async getBusinessProfile(
+    fields?: string[]
+  ): Promise<Record<string, unknown> | null> {
+    const endpoint = new URL(ENDPOINTS.BUSINESS_PROFILE(this.phoneNumberId))
+    endpoint.searchParams.set(
+      "fields",
+      fields?.join(",") ??
+        "messaging_product,about,address,description,email,profile_picture_url,websites,vertical"
+    )
+
+    const result = await this.httpClient.request<{
+      data: Array<{ business_profile: Record<string, unknown> }>
+    }>("GET_BUSINESS_PROFILE", endpoint.toString(), "GET")
+
+    // ponytail: Meta returns empty data[] when no profile exists
+    if (!result.data?.[0]?.business_profile) return null
+    return result.data[0].business_profile
+  }
+
+  async updateBusinessProfile(
+    data: Record<string, unknown>
+  ): Promise<{ success: boolean }> {
+    return this.httpClient.request<{ success: boolean }>(
+      "UPDATE_BUSINESS_PROFILE",
+      ENDPOINTS.BUSINESS_PROFILE(this.phoneNumberId),
+      "POST",
+      data
+    )
+  }
+
+  async uploadProfilePicture(
+    file: { data: ArrayBuffer; mimeType: string; fileName: string }
+  ): Promise<{ handle: string }> {
+    // ponytail: Resumable Upload — single-session for files <16MB.
+    // Meta's Resumable Upload API uses a 3-step flow for large files
+    // but for profile pictures (typically <5MB) single part upload works.
+    const uploadEndpoint = ENDPOINTS.BUSINESS_PROFILE(this.phoneNumberId).replace(
+      "/whatsapp_business_profile",
+      "/uploads"
+    )
+
+    const formData = new FormData()
+    formData.append("file_length", String(file.data.byteLength))
+    formData.append("file_type", file.mimeType)
+    formData.append("file_name", file.fileName)
+    formData.append("messaging_product", "whatsapp")
+
+    const session = await this.httpClient.request<{ id: string }>(
+      "CREATE_UPLOAD_SESSION",
+      uploadEndpoint,
+      "POST",
+      formData
+    )
+
+    // Append file data to the session
+    const blob = new Blob([file.data], { type: file.mimeType })
+    const appendForm = new FormData()
+    appendForm.append("file", blob, file.fileName)
+    appendForm.append("messaging_product", "whatsapp")
+
+    const result = await this.httpClient.request<{ handle: string }>(
+      "UPLOAD_FILE_PART",
+      `${uploadEndpoint}/${session.id}`,
+      "POST",
+      appendForm
+    )
+
+    return { handle: result.handle }
+  }
+
   async sendSingleProduct(
     to: string,
     catalogId: string,

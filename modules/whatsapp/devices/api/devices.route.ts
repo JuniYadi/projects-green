@@ -22,7 +22,7 @@ type RouteSet = {
   status?: number | string
 }
 
-const isSuperAdmin = (auth: ResolvedAuth) =>
+export const isSuperAdmin = (auth: ResolvedAuth) =>
   auth.type === "workos" && auth.platformRole === "super_admin"
 
 const roleFromWorkOSAuth = (auth: {
@@ -38,7 +38,7 @@ const roleFromWorkOSAuth = (auth: {
   return null
 }
 
-const resolveDeviceAuth = async (
+export const resolveDeviceAuth = async (
   request: Request
 ): Promise<ResolvedAuth | null> => {
   try {
