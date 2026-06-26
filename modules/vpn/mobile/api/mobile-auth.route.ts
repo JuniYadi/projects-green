@@ -20,9 +20,6 @@ import {
   VpnMobileDeviceService,
   vpnMobileDeviceService,
 } from "@/modules/vpn/mobile/vpn-mobile-device.service"
-import {
-  VpnMobileDeviceAlreadyRevokedError,
-} from "@/modules/vpn/mobile/vpn-mobile.errors"
 
 import {
   ACCESS_TOKEN_TTL_SECONDS,

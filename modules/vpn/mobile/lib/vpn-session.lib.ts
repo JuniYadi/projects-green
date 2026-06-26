@@ -20,8 +20,7 @@ const getSecret = (): string =>
 
 /**
  * Sign a mobile session JWT (HS256).
- * Low-level — accepts raw claims. Exists so the WorkOS auth/exchange route
- * can keep using sub=userId@orgId while the simplified paths use sub=deviceId.
+ * Accepts raw claims so callers can inject via DI for testability.
  */
 export function signSessionJwt(claims: {
   sub: string
@@ -41,29 +40,4 @@ export function signSessionJwt(claims: {
     .update(signingInput)
     .digest("base64url")
   return `${signingInput}.${signature}`
-}
-
-/**
- * Build session claims and sign in one call.
- * sub = deviceId (no WorkOS user), org = organizationId.
- * Returns { token, expiresAt } ready for API responses.
- */
-export function createSessionToken(opts: {
-  deviceId: string
-  organizationId: string | null
-  fingerprint: string
-  now?: Date
-}): { token: string; expiresAt: string } {
-  const now = opts.now ?? new Date()
-  const iat = Math.floor(now.getTime() / 1000)
-  const exp = iat + ACCESS_TOKEN_TTL_SECONDS
-  const token = signSessionJwt({
-    sub: opts.deviceId,
-    org: opts.organizationId ?? "",
-    device: opts.deviceId,
-    fingerprint: opts.fingerprint,
-    iat,
-    exp,
-  })
-  return { token, expiresAt: new Date(exp * 1000).toISOString() }
 }
