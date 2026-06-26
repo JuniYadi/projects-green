@@ -23,6 +23,7 @@ import { rateLimitRoutes } from "@/modules/whatsapp/rate-limit/api/rate-limit.ro
 import { createWhatsappAuditRoutes } from "@/modules/whatsapp/audit/api/whatsapp-audit.route"
 import { mediaRoutes } from "@/modules/whatsapp/media/api/media.route"
 import { catalogsRoutes } from "@/modules/whatsapp/catalogs/api/catalogs.route"
+import { analyticsRoutes } from "@/modules/whatsapp/analytics/api/analytics.route"
 
 export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(devicesRoutes)
@@ -41,3 +42,4 @@ export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(rateLimitRoutes)
   .use(createWhatsappAuditRoutes())
   .use(mediaRoutes)
+  .use(analyticsRoutes)

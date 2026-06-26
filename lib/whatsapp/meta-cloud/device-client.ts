@@ -12,6 +12,12 @@ import {
 } from "./types"
 import type { MediaMetadata, DeleteMediaResult } from "./types/media"
 import { decryptWhatsAppToken } from "../crypto"
+import type {
+  AnalyticsQueryParams,
+  AnalyticsResponse,
+  AnalyticsResult,
+  AnalyticsDataItem,
+} from "./types/analytics"
 
 export class WhatsAppDeviceClient {
   private readonly httpClient: MetaCloudHttpClient
@@ -426,6 +432,50 @@ export class WhatsAppDeviceClient {
       providerMessageId: result.messages[0].id,
       accepted: true,
     }
+  }
+
+  /**
+   * Query the WhatsApp Analytics API for a WABA.
+   * Handles cursor-based pagination internally, capped at 10 pages.
+   * ponytail: 10-page cap, raise if reports cover >90d at DAY granularity.
+   */
+  async getAnalytics<T = AnalyticsDataItem>(
+    params: AnalyticsQueryParams
+  ): Promise<AnalyticsResult<T>> {
+    const endpoint = new URL(ENDPOINTS.ANALYTICS(this.wabaId))
+    endpoint.searchParams.set("start", String(params.start))
+    endpoint.searchParams.set("end", String(params.end))
+    endpoint.searchParams.set("granularity", params.granularity)
+
+    if (params.metric_types) {
+      endpoint.searchParams.set("metric_types", params.metric_types)
+    }
+    if (params.phone_numbers?.length) {
+      endpoint.searchParams.set("phone_numbers", params.phone_numbers.join(","))
+    }
+
+    const allData: T[] = []
+    let nextCursor: string | undefined
+    let pageCount = 0
+    const MAX_PAGES = 10
+
+    do {
+      if (nextCursor) {
+        endpoint.searchParams.set("after", nextCursor)
+      }
+      const response = await this.httpClient.request<AnalyticsResponse<T>>(
+        "GET_ANALYTICS",
+        endpoint.toString(),
+        "GET"
+      )
+      allData.push(...response.data)
+      nextCursor = response.paging?.next
+        ? response.paging.cursors?.after
+        : undefined
+      pageCount++
+    } while (nextCursor && pageCount < MAX_PAGES)
+
+    return { data: allData, totalPages: pageCount }
   }
 
   async sendCatalogMessage(
