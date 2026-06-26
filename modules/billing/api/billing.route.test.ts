@@ -10,11 +10,13 @@ const mockTx = {
     findUnique: vi.fn(),
     findUniqueOrThrow: vi.fn(),
     update: vi.fn(),
+    count: vi.fn(),
   },
   billingContact: {
     create: vi.fn(),
     update: vi.fn(),
     findFirst: vi.fn(),
+    count: vi.fn(),
   },
   billingInvoice: {
     count: vi.fn(),
@@ -693,6 +695,104 @@ describe("PATCH /currency", () => {
 describe("auth guard (shared across endpoints)", () => {
   beforeEach(() => {
     resetMocks()
+  })
+
+  it("returns 401 for unauthenticated GET /contacts/count", async () => {
+    const app = new Elysia().use(
+      createBillingRoutes({
+        authenticate: async () => ({ user: null }) as MockAuthContext,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/contacts/count")
+    )
+    expect(response.status).toBe(401)
+  })
+
+  it("returns 403 for no org on GET /contacts/count", async () => {
+    const app = new Elysia().use(
+      createBillingRoutes({
+        authenticate: async () =>
+          ({
+            user: { id: "user_1" },
+            organizationId: null,
+          }) as MockAuthContext,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/contacts/count")
+    )
+    expect(response.status).toBe(403)
+  })
+
+  it("returns count 0 when no billing account exists", async () => {
+    mockTx.billingAccount.findUnique.mockResolvedValue(null)
+
+    const app = new Elysia().use(
+      createBillingRoutes({
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/contacts/count")
+    )
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(body.count).toBe(0)
+  })
+
+  it("returns count of active contacts", async () => {
+    mockTx.billingAccount.findUnique.mockResolvedValue({ id: "ba_1" })
+    mockTx.billingContact.count.mockResolvedValue(3)
+
+    const app = new Elysia().use(
+      createBillingRoutes({
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/contacts/count")
+    )
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(body.count).toBe(3)
+  })
+
+  it("returns 0 when no active contacts", async () => {
+    mockTx.billingAccount.findUnique.mockResolvedValue({ id: "ba_1" })
+    mockTx.billingContact.count.mockResolvedValue(0)
+
+    const app = new Elysia().use(
+      createBillingRoutes({
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/contacts/count")
+    )
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(body.count).toBe(0)
   })
 
   it("returns 401 for unauthenticated POST /contacts", async () => {

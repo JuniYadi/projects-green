@@ -11,8 +11,6 @@ type BillingAuthContext = {
   user: { id: string; email?: string | null } | null
 }
 
-type RouteSet = { status?: number | string }
-
 type AdminContactsDeps = {
   authenticate: () => Promise<BillingAuthContext>
   getPlatformRole: (input: {

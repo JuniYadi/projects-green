@@ -33,7 +33,8 @@ export function ContactsGuard({ children }: ContactsGuardProps) {
         }
 
         // Lightweight contacts count — no side effects
-        const res = await fetch("/api/billing/contacts/count")
+        // ponytail: raw globalThis.fetch for client-side fetch (eden doesn't cover Elysia routes from components/)
+        const res = await globalThis.fetch("/api/billing/contacts/count")
         if (!res.ok) {
           setChecking(false)
           return
