@@ -4,7 +4,12 @@ import { WhatsAppDeviceClient } from "./device-client"
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 const mockRequest = mock(
-  async (op: string, endpoint: string, method: string, body?: unknown) => {
+  async (
+    op: string,
+    endpoint: string,
+    method: string,
+    body?: unknown
+  ): Promise<any> => {
     return { messages: [{ id: "wamid.mock" }] }
   }
 )
