@@ -126,15 +126,17 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
         let auth: AuthContext
         if (body.authorizationCode) {
           const exchange = deps.exchangeCode ?? (async (code: string) => {
+            const apiKey = process.env.WORKOS_API_KEY
+            const clientId = process.env.WORKOS_CLIENT_ID
+            if (!apiKey || !clientId) {
+              throw new Error("Missing WORKOS_API_KEY or WORKOS_CLIENT_ID")
+            }
             const { createWorkOS } = await import("@workos-inc/node")
             // ponytail: direct import, lazy at request time — avoids side effects at module load
-            const workos = createWorkOS({
-              apiKey: process.env.WORKOS_API_KEY ?? "",
-              clientId: process.env.WORKOS_CLIENT_ID ?? "",
-            })
+            const workos = createWorkOS({ apiKey, clientId })
             const result = await workos.userManagement.authenticateWithCode({
               code,
-              clientId: process.env.WORKOS_CLIENT_ID ?? "",
+              clientId,
             })
             return { user: result.user, organizationId: result.organizationId ?? null }
           })
@@ -287,7 +289,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
       },
       {
         body: t.Object({
-          authorizationCode: t.Optional(t.String()),
+          authorizationCode: t.Optional(t.String({ minLength: 10 })),
           deviceName: t.String({ minLength: 1 }),
           deviceFingerprint: t.String({ minLength: 1 }),
           platform: t.String({ minLength: 1 }),
