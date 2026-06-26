@@ -517,6 +517,117 @@ describe("Mobile VPN Integration", () => {
     })
   })
 
+  describe("Subscription ID login (/auth/login)", () => {
+    it("returns token and subscription on valid subscription", async () => {
+      mockFindUnique.mockResolvedValue(activeSubscription)
+      mockFindMany.mockResolvedValue([serverProfile])
+
+      const app = createAuthApp()
+      const res = await app.handle(
+        new Request("http://localhost/vpn/mobile/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscriptionId: SUBSCRIPTION_ID,
+            deviceName: "Test Login Device",
+            deviceFingerprint: "fp-login-1",
+            platform: "android",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body).toHaveProperty("token", "mock-session-token")
+      expect(body).toHaveProperty("expiresAt")
+      expect(body.subscription.id).toBe(SUBSCRIPTION_ID)
+      expect(body.profiles).toHaveLength(1)
+      expect(fakeDeviceService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionId: SUBSCRIPTION_ID,
+        })
+      )
+    })
+
+    it("returns 404 when subscription not found", async () => {
+      mockFindUnique.mockResolvedValue(null)
+
+      const app = createAuthApp()
+      const res = await app.handle(
+        new Request("http://localhost/vpn/mobile/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscriptionId: "missing-sub",
+            deviceName: "Test",
+            deviceFingerprint: "fp",
+            platform: "ios",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.error.code).toBe("NOT_FOUND")
+      expect(fakeDeviceService.create).not.toHaveBeenCalled()
+    })
+
+    it("returns 400 when subscription not ACTIVE", async () => {
+      mockFindUnique.mockImplementation(
+        async (args: { where: { id: string } }) => {
+          if (args?.where?.id === "inactive-sub") return { ...activeSubscription, status: "EXPIRED" }
+          return null
+        }
+      )
+
+      const app = createAuthApp()
+      const res = await app.handle(
+        new Request("http://localhost/vpn/mobile/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscriptionId: "inactive-sub",
+            deviceName: "Test",
+            deviceFingerprint: "fp",
+            platform: "ios",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error.code).toBe("SUBSCRIPTION_NOT_ACTIVE")
+      expect(fakeDeviceService.create).not.toHaveBeenCalled()
+    })
+
+    it("returns 409 when device was previously revoked", async () => {
+      mockFindUnique.mockResolvedValue(activeSubscription)
+      fakeDeviceService.create.mockRejectedValueOnce(
+        Object.assign(new Error("Already revoked"), {
+          name: "VpnMobileDeviceAlreadyRevokedError",
+        })
+      )
+
+      const app = createAuthApp()
+      const res = await app.handle(
+        new Request("http://localhost/vpn/mobile/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscriptionId: SUBSCRIPTION_ID,
+            deviceName: "Revoked Device",
+            deviceFingerprint: "fp-revoked",
+            platform: "ios",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(409)
+      const body = await res.json()
+      expect(body.error.code).toBe("DEVICE_ALREADY_PAIRED")
+    })
+  })
+
   describe("Mobile session fingerprint", () => {
     const validClaims = {
       sub: "user-1",

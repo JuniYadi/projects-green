@@ -354,7 +354,8 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
             pairedVia: "QR", // ponytail: no SSO on this path, QR is closest generic
           })
         } catch (error) {
-          if (error instanceof VpnMobileDeviceAlreadyRevokedError) {
+          const err = error as Error & { name?: string }
+          if (err.name === "VpnMobileDeviceAlreadyRevokedError") {
             set.status = 409
             logAuditEvent({
               action: "AUTH_MOBILE_LOGIN",
