@@ -272,6 +272,11 @@ export type AppMessages = {
         unableToSend: string
         noConversations: string
       }
+      media: {
+        heading: string
+        description: string
+        notDownloaded: string
+      }
     }
     supportTickets: {
       heading: string
