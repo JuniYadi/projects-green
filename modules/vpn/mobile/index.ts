@@ -28,6 +28,7 @@ export type {
 
 export {
   VpnMobileDeviceAlreadyRevokedError,
+  VpnMobileDeviceLimitError,
   VpnMobileDeviceNotFoundError,
   VpnPairingTokenAlreadyUsedError,
   VpnPairingTokenExpiredError,

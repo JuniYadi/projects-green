@@ -9,6 +9,7 @@ import { prisma as defaultPrisma } from "@/lib/prisma"
 
 import {
   VpnMobileDeviceAlreadyRevokedError,
+  VpnMobileDeviceLimitError,
   VpnMobileDeviceNotFoundError,
 } from "./vpn-mobile.errors"
 
@@ -78,6 +79,29 @@ export class VpnMobileDeviceService {
       return this.prisma.vpnMobileDevice.update({
         where: { id: existing.id },
         data: { lastSeenAt: this.now() },
+      })
+    }
+
+    // New device — enforce dynamic limit: active server accounts × 2
+    const serverCount = await this.prisma.vpnServerAccount.count({
+      where: {
+        subscriptionId: input.subscriptionId,
+        provisioningStatus: "ACTIVE",
+      },
+    })
+    const maxDevices = serverCount * 2
+
+    const activeCount = await this.prisma.vpnMobileDevice.count({
+      where: {
+        subscriptionId: input.subscriptionId,
+        status: "ACTIVE",
+      },
+    })
+
+    if (activeCount >= maxDevices) {
+      throw new VpnMobileDeviceLimitError(undefined, {
+        subscriptionId: input.subscriptionId,
+        organizationId: input.organizationId,
       })
     }
 
