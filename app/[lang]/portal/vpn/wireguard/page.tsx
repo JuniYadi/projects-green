@@ -1,6 +1,5 @@
 "use client"
 
-/* eslint-disable no-restricted-globals */
 import { useCallback, useEffect, useState } from "react"
 import {
   Card,
@@ -89,6 +88,7 @@ export default function WireGuardPage() {
     setLoading(true)
     setError(null)
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(
         "/api/portal/vpn/wireguard/peers"
       )
@@ -113,6 +113,7 @@ export default function WireGuardPage() {
     if (!newUsername.trim()) return
     setCreating(true)
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(
         "/api/portal/vpn/wireguard/peers",
         {
@@ -142,6 +143,7 @@ export default function WireGuardPage() {
   const handleDelete = async (username: string) => {
     if (!confirm(`Remove peer "${username}"?`)) return
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${encodeURIComponent(username)}`,
         { method: "DELETE" }
@@ -155,6 +157,7 @@ export default function WireGuardPage() {
 
   const handleDownload = async (username: string) => {
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${username}/config`
       )
@@ -173,6 +176,7 @@ export default function WireGuardPage() {
 
   const handleShowQr = async (username: string) => {
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${username}/qr`
       )

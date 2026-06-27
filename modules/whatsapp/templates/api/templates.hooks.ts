@@ -54,7 +54,6 @@ export function useTemplates(filters?: TemplateFilters) {
 
   React.useEffect(() => {
     let cancelled = false
-
     void (async () => {
       setLoading(true)
       setError(null)
@@ -115,7 +114,6 @@ export function useTemplates(filters?: TemplateFilters) {
 }
 
 
-
 export function useTemplate(id: string) {
   const [template, setTemplate] = React.useState<WhatsAppTemplate | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -123,7 +121,6 @@ export function useTemplate(id: string) {
 
   React.useEffect(() => {
     let cancelled = false
-
     void (async () => {
       setLoading(true)
       setError(null)
