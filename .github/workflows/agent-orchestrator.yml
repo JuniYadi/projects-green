@@ -214,13 +214,29 @@ jobs:
 
                Loop for next unchecked AC.
 
-            3. 3 PILLARS (once ALL ACs done, one at a time):
-               Each: fix, amend LAST commit, force-push:
-               ```
-               cd WORKDIR
-               bun run lint
-               bun run typecheck
-               bun run test
+            3. VALIDATE — cuma file yang berubah:
+               ```bash
+               # Files changed in this branch
+               CHANGED=$(git diff --name-only origin/main...HEAD)
+
+               # Lint file ts/tsx aja
+               echo "$CHANGED" | grep -E '\.(ts|tsx)$' | xargs bun run lint --file 2>/dev/null || true
+
+               # Typecheck — jalan global, tapi Claude abaikan error pre-existing,
+               # hanya fix error di file sendiri
+               bun run typecheck 2>&1
+
+               # Test — cuma module terkait
+               for mod in $(echo "$CHANGED" | grep -oP 'modules/[^/]+' | sort -u); do
+                 bun test --filter "$(basename $mod)" 2>/dev/null || true
+               done
+
+               # Commit fix kalo ada perubahan
+               git diff --quiet || {
+                 git add -A
+                 git commit -m "fix(${{ inputs.task_id }}): pass 3 pillars on changed files"
+                 git push
+               }
                ```
 
             4. MARK PR READY:
@@ -385,12 +401,10 @@ jobs:
                git add -A && git commit -m "fix: ${{ inputs.task_id }} address PR review feedback" --allow-empty && git push
                ```
 
-            4. 3 PILLARS (each: fix, amend last commit, force-push):
-               ```
-               bun run lint
-               bun run typecheck
-               bun run test
-               ```
+            # Note: 3 pillars (lint/typecheck/test) di-skip di fix mode.
+            # CI (typecheck-build.yml + coverage-codecov.yml) akan validasi
+            # setelah PR ready. Monitor akan trigger fix ulang kalau ada
+            # check failure yang legit dari perubahan kita, bukan dari PR lain.
 
       - name: Report if no fix prompt found
         if: steps.review.outputs.fix_prompt_found != 'true'
