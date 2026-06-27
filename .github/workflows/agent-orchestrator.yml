@@ -171,8 +171,8 @@ jobs:
                Your branch may be behind origin/main if other PRs merged
                while the draft PR was open. Rebase first to ensure you're
                working against the latest code. Handle any conflicts.
-               ```
-               cd WORKDIR
+               ```bash
+               cd projects-green
                git config user.name "JuniYadi"
                git config user.email "31454084+JuniYadi@users.noreply.github.com"
                git pull --rebase origin main
