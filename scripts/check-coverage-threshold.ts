@@ -3,7 +3,24 @@ import { Glob } from "bun"
 const COVERAGE_THRESHOLD = 85
 const LINE_THRESHOLD = 85
 
-const EXCLUDED_DIR_PATTERNS = ["whatsapp", "e2e/", "modules/deploy/"]
+const EXCLUDED_DIR_PATTERNS = [
+  "whatsapp",
+  "e2e/",
+  "modules/deploy/",
+  // Email templates — React components rendered by mailer, not unit-testable
+  "emails/",
+  // SSH / infra adapters — require real SSH/network connections
+  "vpn-server-ssh-executor",
+  "wireguard-ssh-adapter",
+  "proxy-ssh-adapter",
+  "vpn-session.lib",
+  // External-SDK adapters — require real third-party credentials
+  "paypal.provider",
+  "docs-embedding.service",
+  // Admin services that wrap external APIs skipped on CI
+  "detector-admin.service",
+  "tenant-workos.service",
+]
 
 export const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "")
 
@@ -72,11 +89,7 @@ export const collectCoverageSummary = (output: string) => {
         const lineCov = Number(columns[2])
         const filename = columns[0]
 
-        if (
-          filename.includes("whatsapp") ||
-          filename.includes("e2e/") ||
-          filename.includes("modules/deploy/")
-        ) {
+        if (EXCLUDED_DIR_PATTERNS.some((p) => filename.includes(p))) {
           continue
         }
 
