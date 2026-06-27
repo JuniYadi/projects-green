@@ -20,6 +20,7 @@ import {
   EyeSlashIcon,
   DeviceMobileIcon,
   MapPinIcon,
+  CopySimpleIcon,
 } from "@phosphor-icons/react"
 
 import {
@@ -447,6 +448,39 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
               )}
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* ponytail: subscription.id already on VpnSubscription type */}
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">ID</Badge>
+                <span className="font-mono text-xs text-muted-foreground" title={sub.id}>
+                  {sub.id.length > 24 ? `${sub.id.slice(0, 24)}…` : sub.id}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(sub.id)
+                      toast.success("Copied!")
+                    } catch {
+                      // ponytail: clipboard requires secure context
+                      const el = document.createElement("textarea")
+                      el.value = sub.id
+                      el.style.position = "fixed"
+                      el.style.opacity = "0"
+                      document.body.appendChild(el)
+                      el.select()
+                      document.execCommand("copy")
+                      document.body.removeChild(el)
+                      toast.success("Copied!")
+                    }
+                  }}
+                  aria-label="Copy subscription ID"
+                >
+                  <CopySimpleIcon className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+
               <div className="space-y-2">
                 {groups.map((group) => (
                   <div

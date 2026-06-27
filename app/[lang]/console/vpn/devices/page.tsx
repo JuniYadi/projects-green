@@ -22,7 +22,7 @@ import {
 } from "@/lib/vpn-client"
 
 import { VpnDevicesList } from "../_components/vpn-devices-list"
-import { VpnPairingQrModal } from "../_components/vpn-pairing-qr-modal"
+import { VpnPairingQrModal } from "@/modules/vpn/_components/vpn-pairing-qr-modal"
 import { DeviceMobileIcon } from "@phosphor-icons/react"
 
 type PageState =
