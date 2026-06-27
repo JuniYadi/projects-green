@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { VpnPairingQrModal } from "@/modules/vpn/_components/vpn-pairing-qr-modal"
 
 type Props = {
   subscriptions: VpnSubscription[]
@@ -294,6 +295,8 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
       Array<{ deviceName: string; platform: string; status: string }>
     >
   >({})
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [pairingSubId, setPairingSubId] = useState<string | null>(null)
 
   // ponytail: inline async, no useCallback wrapper to appease the lint rule
   useEffect(() => {
@@ -318,7 +321,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
     }
     run()
     return () => { cancelled = true }
-  }, [])
+  }, [refreshKey])
 
   const handleCancel = async (id: string) => {
     setCancelling(id)
@@ -371,6 +374,8 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         {subscriptions.map((sub) => {
           const groups = groupByServer(sub.serverAccounts)
           const subDevices = devicesBySub[sub.id] ?? []
+          // ponytail: maxDevices = active server count * 2
+          const maxDevices = sub.serverAccounts.filter((a) => a.provisioningStatus === "ACTIVE").length * 2
 
           return (
             <Card key={sub.id} size="sm">
@@ -519,14 +524,35 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
               </div>
 
               {/* Paired Devices section */}
-              {subDevices.length > 0 && (
-                <div className="mt-4 rounded-md border p-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <DeviceMobileIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">
-                      Devices ({subDevices.length})
+              <div className="mt-4 rounded-md border p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <DeviceMobileIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    Devices ({subDevices.length}/{maxDevices})
+                  </span>
+                  {sub.status === "ACTIVE" && (
+                    <span className="ml-auto">
+                      <span
+                        className="inline-block"
+                        title={
+                          subDevices.length >= maxDevices
+                            ? "Max devices reached"
+                            : "Pair a new device"
+                        }
+                      >
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={subDevices.length >= maxDevices}
+                          onClick={() => setPairingSubId(sub.id)}
+                        >
+                          Pair New Device
+                        </Button>
+                      </span>
                     </span>
-                  </div>
+                  )}
+                </div>
+                {subDevices.length > 0 ? (
                   <div className="space-y-1">
                     {subDevices.map((d, i) => (
                       <p key={i} className="text-sm text-muted-foreground">
@@ -552,13 +578,32 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                       </p>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {sub.status === "ACTIVE"
+                      ? "No devices paired yet."
+                      : "Renew to pair devices."}
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
           )
         })}
     </div>
+
+    {/* Pair modal */}
+    <VpnPairingQrModal
+      open={pairingSubId !== null}
+      onOpenChange={(open) => {
+        if (!open) setPairingSubId(null)
+      }}
+      subscriptionId={pairingSubId ?? ""}
+      onPaired={() => {
+        setPairingSubId(null)
+        setRefreshKey((k) => k + 1)
+      }}
+    />
 
     {/* Cancel confirmation dialog */}
     {confirmCancelId &&
