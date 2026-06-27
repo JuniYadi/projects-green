@@ -173,12 +173,11 @@ function ConfigCell({
   account: VpnServerAccount
   subStatus: VpnSubscription["status"]
 }) {
-  if (subStatus !== "ACTIVE" || account.provisioningStatus === "REVOKED") {
-    return (
-      <span className="text-xs text-muted-foreground">
-        {subStatus !== "ACTIVE" ? "Renew to download" : "Revoked"}
-      </span>
-    )
+  if (account.provisioningStatus === "REVOKED") {
+    return <span className="text-xs text-muted-foreground">Revoked</span>
+  }
+  if (subStatus !== "ACTIVE") {
+    return <span className="text-xs text-muted-foreground">Renew to download</span>
   }
   if (account.protocol === "PROXY") {
     return (

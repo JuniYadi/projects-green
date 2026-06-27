@@ -194,6 +194,26 @@ describe("VPN subscription routes", () => {
       expect(body.error).toBe("ACCOUNT_REVOKED")
     })
 
+    it("returns 404 when subscription not found", async () => {
+      const service = {
+        getForOrganization: mock().mockResolvedValue(null),
+      }
+      const app = new Elysia().use(
+        createVpnSubscriptionRoutes({
+          authenticate: async () => ({
+            organizationId: "org_1",
+            user: { id: "user_1" },
+          }),
+          service: service as unknown as VpnSubscriptionService,
+        })
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config")
+      )
+      expect(response.status).toBe(404)
+    })
+
     it("returns 404 when server account not found", async () => {
       const service = {
         getForOrganization: mock().mockResolvedValue(subscription),
