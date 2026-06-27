@@ -142,7 +142,6 @@ export default function WireGuardPage() {
   const handleDelete = async (username: string) => {
     if (!confirm(`Remove peer "${username}"?`)) return
     try {
-       
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${encodeURIComponent(username)}`,
         { method: "DELETE" }
@@ -156,7 +155,6 @@ export default function WireGuardPage() {
 
   const handleDownload = async (username: string) => {
     try {
-       
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${username}/config`
       )
@@ -175,7 +173,6 @@ export default function WireGuardPage() {
 
   const handleShowQr = async (username: string) => {
     try {
-       
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${username}/qr`
       )
