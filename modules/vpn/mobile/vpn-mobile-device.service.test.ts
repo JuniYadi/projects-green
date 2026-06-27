@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 import {
   VpnMobileDeviceAlreadyRevokedError,
+  VpnMobileDeviceLimitError,
   VpnMobileDeviceNotFoundError,
 } from "./vpn-mobile.errors"
 
@@ -15,6 +16,7 @@ const findUnique = mock<AnyFn>(async () => null)
 const findMany = mock<AnyFn>(async () => [])
 const create = mock<AnyFn>(async () => ({}))
 const update = mock<AnyFn>(async () => ({}))
+const count = mock<AnyFn>(async () => 0)
 
 const mockPrisma = {
   vpnMobileDevice: {
@@ -22,6 +24,10 @@ const mockPrisma = {
     findMany,
     create,
     update,
+    count,
+  },
+  vpnServerAccount: {
+    count,
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any
@@ -40,6 +46,10 @@ const prismaMock = prisma as unknown as {
     findMany: ReturnType<typeof mock>
     create: ReturnType<typeof mock>
     update: ReturnType<typeof mock>
+    count: ReturnType<typeof mock>
+  }
+  vpnServerAccount: {
+    count: ReturnType<typeof mock>
   }
 }
 
@@ -95,17 +105,21 @@ beforeEach(() => {
   findMany.mockClear()
   create.mockClear()
   update.mockClear()
+  count.mockClear()
   // Reset default resolved values.
   findUnique.mockResolvedValue(null)
   findMany.mockResolvedValue([])
   create.mockResolvedValue(activeDevice)
   update.mockResolvedValue(activeDevice)
+  count.mockResolvedValue(0)
 })
 
 describe("VpnMobileDeviceService", () => {
   describe("create", () => {
     it("creates a new device when none exists", async () => {
       findUnique.mockResolvedValue(null)
+      count.mockResolvedValueOnce(3) // serverCount = 3 → limit = 6
+      count.mockResolvedValueOnce(0) // active devices = 0 (below limit)
       create.mockResolvedValue(activeDevice)
 
       const result = await service.create(createInput)
@@ -172,6 +186,65 @@ describe("VpnMobileDeviceService", () => {
         VpnMobileDeviceAlreadyRevokedError
       )
       expect(prismaMock.vpnMobileDevice.update).not.toHaveBeenCalled()
+      expect(prismaMock.vpnMobileDevice.create).not.toHaveBeenCalled()
+    })
+
+    it("creates device when under limit", async () => {
+      findUnique.mockResolvedValue(null)
+      count.mockResolvedValueOnce(2) // serverCount = 2
+      count.mockResolvedValueOnce(1) // active devices = 1 (below 4)
+      create.mockResolvedValue(activeDevice)
+
+      const result = await service.create(createInput)
+
+      expect(result).toEqual(activeDevice)
+      expect(prismaMock.vpnServerAccount.count).toHaveBeenCalledWith({
+        where: {
+          subscriptionId: "sub-1",
+          provisioningStatus: "ACTIVE",
+        },
+      })
+      expect(prismaMock.vpnMobileDevice.count).toHaveBeenCalledWith({
+        where: {
+          subscriptionId: "sub-1",
+          status: "ACTIVE",
+        },
+      })
+      expect(prismaMock.vpnMobileDevice.create).toHaveBeenCalled()
+    })
+
+    it("throws VpnMobileDeviceLimitError when device count >= limit", async () => {
+      findUnique.mockResolvedValue(null)
+      count.mockResolvedValueOnce(1) // serverCount = 1 → limit = 2
+      count.mockResolvedValueOnce(2) // active devices = 2 (at limit)
+
+      await expect(service.create(createInput)).rejects.toThrow(
+        VpnMobileDeviceLimitError
+      )
+      expect(prismaMock.vpnMobileDevice.create).not.toHaveBeenCalled()
+    })
+
+    it("throws VpnMobileDeviceLimitError when serverCount is 0 (limit = 0)", async () => {
+      findUnique.mockResolvedValue(null)
+      count.mockResolvedValueOnce(0) // serverCount = 0 → limit = 0
+      count.mockResolvedValueOnce(0) // active devices = 0 (0 >= 0)
+
+      await expect(service.create(createInput)).rejects.toThrow(
+        VpnMobileDeviceLimitError
+      )
+      expect(prismaMock.vpnMobileDevice.create).not.toHaveBeenCalled()
+    })
+
+    it("bypasses limit check for existing ACTIVE/SUSPENDED devices", async () => {
+      findUnique.mockResolvedValue(activeDevice)
+      update.mockResolvedValue({ ...activeDevice, lastSeenAt: NOW })
+
+      const result = await service.create(createInput)
+
+      expect(result.lastSeenAt).toEqual(NOW)
+      // Should NOT call server count or device count at all
+      expect(prismaMock.vpnServerAccount.count).not.toHaveBeenCalled()
+      expect(prismaMock.vpnMobileDevice.count).not.toHaveBeenCalled()
       expect(prismaMock.vpnMobileDevice.create).not.toHaveBeenCalled()
     })
   })
