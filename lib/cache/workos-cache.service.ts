@@ -40,14 +40,16 @@ export const workosCacheService = {
     return getCachedOrganization(orgId)
   },
 
-  async invalidateUser(): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async invalidateUser(_userId: string): Promise<void> {
     // No-op — Redis cache handles TTL automatically
     console.warn(
       "[workos-cache] invalidateUser is deprecated. Cache invalidation is handled by TTL."
     )
   },
 
-  async invalidateOrg(): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async invalidateOrg(_orgId: string): Promise<void> {
     // No-op — Redis cache handles TTL automatically
     console.warn(
       "[workos-cache] invalidateOrg is deprecated. Cache invalidation is handled by TTL."
