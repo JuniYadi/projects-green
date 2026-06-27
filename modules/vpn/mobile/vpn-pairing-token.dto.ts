@@ -46,6 +46,8 @@ export type PairingClaimProfileDTO = {
  */
 export type PairingClaimResultDTO = {
   deviceId: string
+  token: string
+  expiresAt: string
   subscription: PairingClaimSubscriptionDTO
   profiles: PairingClaimProfileDTO[]
 }
@@ -57,10 +59,13 @@ export type PairingClaimResultDTO = {
 export function toPairingClaimResultDTO(
   deviceId: string,
   subscription: SubscriptionRow,
-  accounts: ServerAccountRow[]
+  accounts: ServerAccountRow[],
+  session: { token: string; expiresAt: string }
 ): PairingClaimResultDTO {
   return {
     deviceId,
+    token: session.token,
+    expiresAt: session.expiresAt,
     subscription: {
       id: subscription.id,
       status: subscription.status,

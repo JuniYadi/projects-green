@@ -28,6 +28,11 @@ import {
 } from "@/modules/vpn/mobile/vpn-mobile-device.service"
 
 import {
+  signSessionJwt,
+  ACCESS_TOKEN_TTL_SECONDS,
+} from "@/modules/vpn/mobile/lib/vpn-session.lib"
+
+import {
   toPairingClaimResultDTO,
   toPairingGenerateResultDTO,
 } from "@/modules/vpn/mobile/vpn-pairing-token.dto"
@@ -55,6 +60,8 @@ type Deps = {
   authenticate?: () => Promise<AuthContext>
   pairingService?: VpnPairingTokenService
   deviceService?: VpnMobileDeviceService
+  now?: () => Date
+  signJwt?: typeof signSessionJwt
 }
 
 const unauthorized = (set: RouteSet) => {
@@ -97,6 +104,7 @@ const badRequest = (set: RouteSet, code: string, message: string) => {
       code: code as
         | "PAIRING_TOKEN_USED"
         | "PAIRING_TOKEN_EXPIRED"
+        | "PAIRING_TOKEN_INVALID"
         | "SUBSCRIPTION_NOT_ACTIVE",
       message,
       details: {},
@@ -109,6 +117,8 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
   const pairingService = deps.pairingService ?? vpnPairingTokenService
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const deviceService = deps.deviceService ?? vpnMobileDeviceService
+  const now = deps.now ?? (() => new Date())
+  const signJwt = deps.signJwt ?? signSessionJwt
 
   const resolveAuth = async (set: RouteSet) => {
     const auth = await authenticate()
@@ -242,6 +252,18 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               }
             }
 
+            // ponytail: data integrity — org must be present
+            if (!result.organizationId) {
+              set.status = 500
+              return {
+                error: {
+                  code: "INTERNAL_ERROR" as const,
+                  message: "Organization not found after claiming pairing token.",
+                  details: {},
+                },
+              }
+            }
+
             const accounts = await prisma.vpnServerAccount.findMany({
               where: {
                 subscriptionId: result.subscriptionId,
@@ -269,10 +291,37 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               userAgent: request.headers.get("user-agent"),
             }).catch(() => {})
 
+            // Audit: log mobile login via QR
+            logAuditEvent({
+              deviceId: result.deviceId,
+              organizationId: result.organizationId,
+              subscriptionId: result.subscriptionId,
+              action: "AUTH_MOBILE_LOGIN",
+              status: "OK",
+              message: "Mobile login via QR code pairing",
+              details: { deviceName: body.deviceName, platform: body.platform },
+              ip: getClientIp(request),
+              userAgent: request.headers.get("user-agent"),
+            }).catch(() => {})
+
+            // Generate session JWT so mobile can call downstream endpoints
+            // ponytail: sub=deviceId since there's no WorkOS user on this path
+            const iat = Math.floor(now().getTime() / 1000)
+            const exp = iat + ACCESS_TOKEN_TTL_SECONDS
+            const token = signJwt({
+              sub: result.deviceId,
+              org: result.organizationId ?? "",
+              device: result.deviceId,
+              fingerprint: body.deviceFingerprint,
+              iat,
+              exp,
+            })
+
             return toPairingClaimResultDTO(
               result.deviceId,
               subscription,
-              accounts
+              accounts,
+              { token, expiresAt: new Date(exp * 1000).toISOString() }
             )
           } catch (error) {
             const err = error as Error & {
@@ -295,7 +344,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
             if (err.name === "VpnPairingTokenInvalidError") {
               return badRequest(
                 set,
-                "PAIRING_TOKEN_USED",
+                "PAIRING_TOKEN_INVALID",
                 "Invalid pairing code."
               )
             }
