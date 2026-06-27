@@ -99,7 +99,10 @@ export class VpnMobileDeviceService {
     })
 
     if (activeCount >= maxDevices) {
-      throw new VpnMobileDeviceLimitError()
+      throw new VpnMobileDeviceLimitError(undefined, {
+        subscriptionId: input.subscriptionId,
+        organizationId: input.organizationId,
+      })
     }
 
     return this.prisma.vpnMobileDevice.create({

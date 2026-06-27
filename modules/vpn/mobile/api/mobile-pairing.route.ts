@@ -17,6 +17,7 @@ import {
   rateLimitHeaders,
 } from "@/lib/rate-limit"
 import { logAuditEvent } from "@/lib/audit.service"
+import { VpnMobileDeviceLimitError } from "@/modules/vpn/mobile/vpn-mobile.errors"
 
 import {
   VpnPairingTokenService,
@@ -361,6 +362,15 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
             }
             if (err.name === "VpnMobileDeviceLimitError") {
               set.status = 403
+              logAuditEvent({
+                action: "AUTH_MOBILE_CLAIM",
+                status: "FAILED",
+                message: "Device limit reached during pairing claim",
+                subscriptionId: (err as VpnMobileDeviceLimitError).subscriptionId,
+                organizationId: (err as VpnMobileDeviceLimitError).organizationId,
+                ip: getClientIp(request),
+                userAgent: request.headers.get("user-agent"),
+              }).catch(() => {})
               return {
                 error: {
                   code: "DEVICE_LIMIT_REACHED" as const,
