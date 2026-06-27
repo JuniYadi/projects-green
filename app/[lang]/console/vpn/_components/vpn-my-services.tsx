@@ -463,16 +463,20 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                       await navigator.clipboard.writeText(sub.id)
                       toast.success("Copied!")
                     } catch {
-                      // ponytail: clipboard requires secure context
-                      const el = document.createElement("textarea")
-                      el.value = sub.id
-                      el.style.position = "fixed"
-                      el.style.opacity = "0"
-                      document.body.appendChild(el)
-                      el.select()
-                      document.execCommand("copy")
-                      document.body.removeChild(el)
-                      toast.success("Copied!")
+                      try {
+                        // ponytail: clipboard requires secure context
+                        const el = document.createElement("textarea")
+                        el.value = sub.id
+                        el.style.position = "fixed"
+                        el.style.opacity = "0"
+                        document.body.appendChild(el)
+                        el.select()
+                        document.execCommand("copy")
+                        document.body.removeChild(el)
+                        toast.success("Copied!")
+                      } catch {
+                        toast.error("Failed to copy — please copy manually")
+                      }
                     }
                   }}
                   aria-label="Copy subscription ID"
