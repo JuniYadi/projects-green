@@ -374,6 +374,8 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         {subscriptions.map((sub) => {
           const groups = groupByServer(sub.serverAccounts)
           const subDevices = devicesBySub[sub.id] ?? []
+          // ponytail: maxDevices = active server count * 2
+          const maxDevices = sub.serverAccounts.filter((a) => a.provisioningStatus === "ACTIVE").length * 2
 
           return (
             <Card key={sub.id} size="sm">
@@ -526,14 +528,14 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                 <div className="mb-2 flex items-center gap-2">
                   <DeviceMobileIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">
-                    Devices ({subDevices.length}/10)
+                    Devices ({subDevices.length}/{maxDevices})
                   </span>
                   {sub.status === "ACTIVE" && (
                     <span className="ml-auto">
                       <span
                         className="inline-block"
                         title={
-                          subDevices.length >= 10
+                          subDevices.length >= maxDevices
                             ? "Max devices reached"
                             : "Pair a new device"
                         }
@@ -541,7 +543,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={subDevices.length >= 10}
+                          disabled={subDevices.length >= maxDevices}
                           onClick={() => setPairingSubId(sub.id)}
                         >
                           Pair New Device
