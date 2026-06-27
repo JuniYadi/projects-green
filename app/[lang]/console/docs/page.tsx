@@ -18,11 +18,6 @@ type DocListing = {
   isGlobal: boolean
 }
 
-type DocsListResponse = {
-  ok: boolean
-  docs: DocListing[]
-}
-
 export default function DocsPage() {
   const [inputValue, setInputValue] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
@@ -34,10 +29,6 @@ export default function DocsPage() {
     }, 300)
     return () => clearTimeout(timer)
   }, [inputValue])
-
-  const endpoint = debouncedSearch
-    ? `/api/docs/search?q=${encodeURIComponent(debouncedSearch)}`
-    : "/api/docs/list"
 
   const { data, isLoading } = useQuery({
     queryKey: ["docs", "list", debouncedSearch],

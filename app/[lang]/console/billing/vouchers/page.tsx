@@ -19,42 +19,6 @@ import {
   Spinner,
 } from "@phosphor-icons/react"
 
-type ApiErrorResponse = {
-  ok: false
-  error: string
-  message: string
-}
-
-type RedeemResponse = {
-  ok: true
-  data: {
-    claimId: string
-    voucherCode: string
-    amount: string
-    currency: string
-    adjustmentId: string | null
-  }
-}
-
-type ClaimResponseData = {
-  id: string
-  voucherId: string
-  workosUserId: string
-  organizationId: string
-  billingAdjustmentId: string | null
-  claimedAt: string
-  voucher: {
-    code: string
-    amount: string
-    currency: string
-  }
-}
-
-type ClaimsResponse = {
-  ok: true
-  data: ClaimResponseData[]
-}
-
 type ClaimRecord = {
   id: string
   voucherCode: string

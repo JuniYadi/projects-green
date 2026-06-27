@@ -195,9 +195,9 @@ export function LogViewer() {
   const [selectedLog, setSelectedLog] = useState<InspectionLog | null>(null)
   const [offset, setOffset] = useState(0)
   const limit = 20
-  const [refreshKey, setRefreshKey] = useState(0)
+  const [refreshKey] = useState(0)
 
-  const _refresh = () => setRefreshKey((k) => k + 1)
+
 
   useEffect(() => {
     const abortController = new AbortController()

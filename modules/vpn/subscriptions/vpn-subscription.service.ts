@@ -109,9 +109,7 @@ function enabledProtocols(server: {
  * username only needs a compact org hint plus random uniqueness.
  */
 export function buildAccountUsername(
-  organizationId: string,
-  _serverId: string,
-  _protocol: VpnProtocol
+  organizationId: string
 ): string {
   const safeOrg = organizationId.replace(/[^A-Za-z0-9]/g, "").toLowerCase()
   const orgHint = safeOrg.slice(-8) || "org"
@@ -315,9 +313,7 @@ export class VpnSubscriptionService {
         serverId: entry.server.id,
         protocol,
         username: buildAccountUsername(
-          input.organizationId,
-          entry.server.id,
-          protocol
+          input.organizationId
         ),
       }))
     )

@@ -1,5 +1,5 @@
 import { SelectOrganizationForm } from "@/components/select-organization-form"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
 
 type SelectOrganizationPageProps = {
   params: Promise<{
@@ -16,8 +16,8 @@ export default async function SelectOrganizationPage({
   searchParams,
   params,
 }: SelectOrganizationPageProps) {
-  const { lang } = await params
-  const locale = resolveLocaleOrDefault(lang)
+  // ponytail: lang unused but kept for type compliance with Next.js params
+  void await params
   const search = await searchParams
   const pendingAuthenticationToken = search?.pendingAuthenticationToken ?? ""
   const email = search?.email

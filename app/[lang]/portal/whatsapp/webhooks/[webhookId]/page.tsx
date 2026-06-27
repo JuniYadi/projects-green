@@ -1,7 +1,6 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import Link from "next/link"
 
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { prisma } from "@/lib/prisma"
 import {
   Card,
@@ -46,10 +45,9 @@ const formatDate = (date: Date | string | null | undefined) => {
 export default async function PortalWebhookDetailPage({
   params,
 }: WebhookDetailPageProps) {
-  const { lang, webhookId } = await params
-  const locale = resolveLocaleOrDefault(lang)
+  const { webhookId } = await params
 
-  const auth = await withAuth({ ensureSignedIn: true })
+  await withAuth({ ensureSignedIn: true })
 
   const webhook = await prisma.whatsappWebhook.findUnique({
     where: { id: webhookId },

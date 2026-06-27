@@ -19,12 +19,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { signupSchema, type SignupInput } from "@/lib/validation"
 
-type ApiErrorPayload = {
-  ok?: false
-  error?: string
-  message?: string
-  fieldErrors?: Record<string, string[]>
-}
 
 const toErrorMessages = (errors: unknown[]) => {
   return errors.flatMap((error) => {

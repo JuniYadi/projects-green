@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { eden } from "@/lib/eden"
 import { useAuth } from "@workos-inc/authkit-nextjs/components"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"

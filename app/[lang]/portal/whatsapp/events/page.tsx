@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useParams } from "next/navigation"
 import { Phone, ArrowsClockwise } from "@phosphor-icons/react"
 
 import {
@@ -21,7 +20,6 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { eden } from "@/lib/eden"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import {
   WebhookEventTable,
@@ -64,8 +62,6 @@ function makeDeviceLabel(device: DeviceListItem): string {
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function PortalWhatsAppWebhookEventsPage() {
-  const params = useParams<{ lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
 
   // Device list
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])

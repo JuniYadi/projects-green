@@ -3,7 +3,6 @@ import { Elysia } from "elysia"
 import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 
 import { createAdminTopupRoutes } from "./topup.route"
-import type { PlatformAccessRole } from "@/lib/platform-role"
 import {
   MockAuthContext,
   defaultAuth,

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -32,7 +32,6 @@ const AUDIT_ACTIONS = [
 const AUDIT_STATUSES = ["OK", "FAILED", "STARTED", "PENDING"]
 
 export default function PortalWhatsAppAuditLogsPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
 
   const [logs, setLogs] = React.useState<AuditLogDTO[]>([])

@@ -49,7 +49,6 @@ import {
 import {
   listVpnAdminSubscriptions,
   type VpnSubscriptionItem,
-  type VpnServerAccountEntry,
   type ProvisioningSummary,
   type VpnAdminSubscriptionsQuery,
   type PaginationMeta,
@@ -346,6 +345,8 @@ export function SubscriptionsTable() {
 
   const columns = useMemo(() => getColumns(), [])
 
+  // ponytail: useReactTable API is incompatible with React Compiler — this is a known TanStack Table limitation
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: subs,
     columns,

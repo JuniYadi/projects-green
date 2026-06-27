@@ -5,21 +5,6 @@ import { GatewayService } from "../services/gateway.service"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { listProviders } from "../providers/registry"
 
-type ProviderOptionDTO = {
-  value: string
-  label: string
-  supportedCurrencies: string[]
-  configFields: Array<{
-    key: string
-    type: "string" | "password" | "url" | "select" | "number"
-    label: string
-    placeholder?: string
-    required: boolean
-    defaultValue?: string
-    options?: { label: string; value: string }[]
-  }>
-}
-
 const gatewayService = new GatewayService()
 
 const requireGatewayAuth = async (set: { status?: number | string }) => {

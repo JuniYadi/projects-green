@@ -1,6 +1,5 @@
 "use client"
 
-/* eslint-disable no-restricted-globals */
 import { useCallback, useEffect, useState } from "react"
 import {
   Card,
@@ -89,6 +88,7 @@ export default function WireGuardPage() {
     setLoading(true)
     setError(null)
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(
         "/api/portal/vpn/wireguard/peers"
       )
@@ -101,10 +101,10 @@ export default function WireGuardPage() {
     } finally {
       setLoading(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [])  // ponytail: intentional — only fetch on mount
 
   useEffect(() => {
+    // ponytail: set-state-in-effect is intentional — fetches once on mount, cascading renders not an issue here
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchPeers()
   }, [fetchPeers])
@@ -113,6 +113,7 @@ export default function WireGuardPage() {
     if (!newUsername.trim()) return
     setCreating(true)
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(
         "/api/portal/vpn/wireguard/peers",
         {

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it, mock } from "bun:test"
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { render, waitFor, fireEvent } from "@testing-library/react"
 import type { VpnSubscriptionItem } from "./vpn-admin-client"
 
 const mockListVpnAdminSubscriptions = mock<(...args: any[]) => Promise<{ data: VpnSubscriptionItem[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>>(

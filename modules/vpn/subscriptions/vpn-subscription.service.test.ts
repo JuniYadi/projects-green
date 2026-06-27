@@ -96,7 +96,7 @@ beforeEach(() => {
 
 describe("buildAccountUsername", () => {
   it("uses a compact org hint plus random suffix", () => {
-    const result = buildAccountUsername("org_01KS2FV9E85ERH10HHT7XT0P0G", "srv1", "OPENVPN")
+    const result = buildAccountUsername("org_01KS2FV9E85ERH10HHT7XT0P0G")
     expect(result).toMatch(/^orgt7xt0p0g-[0-9a-f]{6}$/)
     expect(result.length).toBeLessThanOrEqual(18)
   })

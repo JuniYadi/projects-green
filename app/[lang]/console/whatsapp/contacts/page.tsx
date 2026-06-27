@@ -153,7 +153,7 @@ export default function WhatsAppContactsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [messages.console.whatsapp.contacts.unableToLoad])
 
   const loadGroups = React.useCallback(async () => {
     try {

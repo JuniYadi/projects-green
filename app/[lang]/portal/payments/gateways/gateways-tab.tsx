@@ -185,6 +185,8 @@ export function GatewaysTab() {
         ),
       },
     ],
+    // ponytail: handleToggle is a stable hoisted async function, adding it to deps causes churn
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [togglingId, providers]
   )
 
@@ -263,7 +265,7 @@ export function GatewaysTab() {
         supportedCurrencies: currencies,
         config,
       }
-      const { data, error } = await eden.api.portal.payments.gateways.post(
+      const { error } = await eden.api.portal.payments.gateways.post(
         body as never
       )
 

@@ -28,7 +28,6 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
 })
 
 import {
-  redirect,
   useRouter,
   usePathname,
   useSearchParams,

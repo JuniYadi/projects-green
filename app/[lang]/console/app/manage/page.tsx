@@ -21,21 +21,6 @@ import type {
 } from "@/modules/deploy/deploy-monitor.dto"
 import type { DeployLogScope } from "@/modules/deploy/deploy.types"
 
-type AppsResponse = {
-  ok: boolean
-  data?: StackSummaryDTO[]
-  message?: string
-}
-
-type AppOverviewResponse = {
-  ok: boolean
-  data?: {
-    stack: StackSummaryDTO
-    latestDeployment: DeploymentStatusDTO | null
-  }
-  message?: string
-}
-
 const APP_QUERY_KEY = "app"
 
 const findDefaultSlug = (

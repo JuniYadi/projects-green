@@ -3,13 +3,11 @@ import { render, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-let currentQuery = ""
 const replaceCalls: string[] = []
 
-const updateQueryFromUrl = (url: string) => {
-  const parts = url.split("?")
-  currentQuery = parts[1] ?? ""
-}
+// ponytail: kept for API compatibility
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const updateQueryFromUrl = (_url: string) => {}
 
 const sampleApp = {
   id: "stack-1",
@@ -132,7 +130,6 @@ const installFetch = () => {
 }
 
 const renderPage = async (query = "") => {
-  currentQuery = query
   replaceCalls.splice(0)
   ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
     new URLSearchParams(query)
@@ -158,7 +155,6 @@ const renderPage = async (query = "") => {
 
 describe("ManagePage", () => {
   beforeEach(() => {
-    currentQuery = ""
     replaceCalls.splice(0)
     appsResponse = { ok: true, data: [] }
     installFetch()

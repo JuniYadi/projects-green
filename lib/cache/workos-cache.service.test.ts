@@ -91,10 +91,6 @@ const { workosCacheService } = await import("./workos-cache.service")
 // Helpers
 // ---------------------------------------------------------------------------
 
-function setupRedisHit(key: string, value: unknown) {
-  redisStore.set(key, JSON.stringify(value))
-}
-
 function clearRedis() {
   redisStore.clear()
 }

@@ -562,7 +562,6 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
     setErrorMessage("")
     try {
       // ponytail: audit routes aren't in Eden's type system yet — use raw fetch
-      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(
         `/api/whatsapp/admin/whatsapp/audit/devices/${deviceId}?page=${page}&limit=50`
       )

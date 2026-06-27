@@ -1,5 +1,4 @@
 import { defineConfig, devices, type Project } from "@playwright/test"
-import path from "path"
 import fs from "fs"
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3300"

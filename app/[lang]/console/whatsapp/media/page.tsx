@@ -91,6 +91,8 @@ function ExpiryBadge({ status, expiresAt, messages }: ExpiryBadgeProps) {
 
 function MimeIcon({ mimeType }: { mimeType: string }) {
   if (mimeType.startsWith("image/"))
+    // ponytail: decorative icon — not an <img>, no alt needed
+    // eslint-disable-next-line jsx-a11y/alt-text
     return <Image className="size-5 text-blue-500" weight="fill" />
   if (mimeType.startsWith("video/"))
     return <Video className="size-5 text-purple-500" weight="fill" />
@@ -280,6 +282,8 @@ export default function WhatsAppMediaPage() {
           {/* Empty */}
           {!isLoading && !errorMessage && filteredMedia.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
+              {/* ponytail: decorative icon, not an <img>, no alt needed */}
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image className="mb-3 size-10 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 {searchQuery ? "No media matches your search." : "No media yet."}

@@ -28,11 +28,8 @@ import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 import type { AppSidebarOrganization } from "@/components/app-sidebar"
 import {
   isTenantApiError,
-  type TenantApiError,
   type TenantBillingCurrency,
   type TenantBootstrapMembership,
-  type TenantBootstrapResponse,
-  type TenantOrganizationCreateResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
 
 const resolveOrganizationInitials = (value: string) => {

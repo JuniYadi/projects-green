@@ -52,13 +52,6 @@ export type AdminDeviceEntry = {
   revokedReason: string | null
 }
 
-type AdminDeviceListResponse = {
-  devices: AdminDeviceEntry[]
-  total: number
-  page: number
-  limit: number
-}
-
 type Filters = {
   status: string
   platform: string
