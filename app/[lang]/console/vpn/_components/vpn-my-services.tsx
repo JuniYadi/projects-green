@@ -167,10 +167,18 @@ function ProxyCredentialCell({
 function ConfigCell({
   subscriptionId,
   account,
+  subStatus,
 }: {
   subscriptionId: string
   account: VpnServerAccount
+  subStatus: VpnSubscription["status"]
 }) {
+  if (account.provisioningStatus === "REVOKED") {
+    return <span className="text-xs text-muted-foreground">Revoked</span>
+  }
+  if (subStatus !== "ACTIVE") {
+    return <span className="text-xs text-muted-foreground">Renew to download</span>
+  }
   if (account.protocol === "PROXY") {
     return (
       <ProxyCredentialCell subscriptionId={subscriptionId} account={account} />
@@ -211,9 +219,11 @@ function ProtocolIcon({ protocol }: ProtocolIconProps) {
 function ProtocolControl({
   subscriptionId,
   account,
+  subStatus,
 }: {
   subscriptionId: string
   account: VpnServerAccount
+  subStatus: VpnSubscription["status"]
 }) {
   return (
     <div className="min-w-0 rounded-md border bg-muted/20 px-2.5 py-2">
@@ -224,7 +234,7 @@ function ProtocolControl({
             :{account.port}
           </span>
         )}
-        <ConfigCell subscriptionId={subscriptionId} account={account} />
+        <ConfigCell subscriptionId={subscriptionId} account={account} subStatus={subStatus} />
         <Badge
           variant={PROVISIONING_VARIANT[account.provisioningStatus]}
           className="ml-auto"
@@ -516,6 +526,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                           key={account.id}
                           subscriptionId={sub.id}
                           account={account}
+                          subStatus={sub.status}
                         />
                       ))}
                     </div>
