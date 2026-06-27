@@ -104,6 +104,7 @@ const badRequest = (set: RouteSet, code: string, message: string) => {
       code: code as
         | "PAIRING_TOKEN_USED"
         | "PAIRING_TOKEN_EXPIRED"
+        | "PAIRING_TOKEN_INVALID"
         | "SUBSCRIPTION_NOT_ACTIVE",
       message,
       details: {},
@@ -251,6 +252,18 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               }
             }
 
+            // ponytail: data integrity — org must be present
+            if (!result.organizationId) {
+              set.status = 500
+              return {
+                error: {
+                  code: "INTERNAL_ERROR" as const,
+                  message: "Organization not found after claiming pairing token.",
+                  details: {},
+                },
+              }
+            }
+
             const accounts = await prisma.vpnServerAccount.findMany({
               where: {
                 subscriptionId: result.subscriptionId,
@@ -274,6 +287,19 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               status: "OK",
               message: "Device paired via QR code",
               details: { pairedVia: "QR", deviceName: body.deviceName, platform: body.platform },
+              ip: getClientIp(request),
+              userAgent: request.headers.get("user-agent"),
+            }).catch(() => {})
+
+            // Audit: log mobile login via QR
+            logAuditEvent({
+              deviceId: result.deviceId,
+              organizationId: result.organizationId,
+              subscriptionId: result.subscriptionId,
+              action: "AUTH_MOBILE_LOGIN",
+              status: "OK",
+              message: "Mobile login via QR code pairing",
+              details: { deviceName: body.deviceName, platform: body.platform },
               ip: getClientIp(request),
               userAgent: request.headers.get("user-agent"),
             }).catch(() => {})
@@ -318,7 +344,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
             if (err.name === "VpnPairingTokenInvalidError") {
               return badRequest(
                 set,
-                "PAIRING_TOKEN_USED",
+                "PAIRING_TOKEN_INVALID",
                 "Invalid pairing code."
               )
             }

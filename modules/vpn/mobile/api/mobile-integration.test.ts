@@ -169,6 +169,7 @@ const fakeDeviceService = {
   updateLastSeen: mock(async () => activeDevice),
   updateName: mock(async () => activeDevice),
   findById: mock(async () => activeDevice),
+  findBySubscription: mock(async () => []),
 } as any // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const fakePairingService = {

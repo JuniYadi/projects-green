@@ -337,6 +337,34 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           }
         }
 
+        // Enforce device limit before creating new device.
+        // ponytail: shared limit applies to all subscriptions; per-package
+        // limits go here when VpnPackage gets a maxDevices column.
+        const MAX_DEVICES_PER_SUBSCRIPTION = 10
+        const existingDevices = await deviceService.findBySubscription(
+          subscription.id,
+          { status: "ACTIVE" }
+        )
+        if (existingDevices.length >= MAX_DEVICES_PER_SUBSCRIPTION) {
+          set.status = 403
+          logAuditEvent({
+            action: "AUTH_MOBILE_LOGIN",
+            status: "FAILED",
+            message: "Device limit reached",
+            subscriptionId: body.subscriptionId,
+            ip: getClientIp(request),
+            userAgent: request.headers.get("user-agent"),
+          }).catch(() => {})
+          return {
+            error: {
+              code: "DEVICE_LIMIT_REACHED" as const,
+              message:
+                "The maximum number of devices for this subscription has been reached.",
+              details: {},
+            },
+          }
+        }
+
         // Find or create device.
         let device: { id: string; status: string }
         try {
