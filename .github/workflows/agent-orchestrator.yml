@@ -21,7 +21,7 @@ on:
         options: [plan, execute, fix]
 
 env:
-  CODE_DIR: projects-green
+  CODE_DIR: ${{ github.event.repository.name }}
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
   API_TIMEOUT_MS: "3000000"
   GIT_EMAIL: 31454084+JuniYadi@users.noreply.github.com
