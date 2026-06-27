@@ -39,3 +39,10 @@ export class VpnPairingTokenAlreadyUsedError extends Error {
     this.name = "VpnPairingTokenAlreadyUsedError"
   }
 }
+
+export class VpnMobileDeviceLimitError extends Error {
+  constructor(message = "Device limit reached for this subscription.") {
+    super(message)
+    this.name = "VpnMobileDeviceLimitError"
+  }
+}

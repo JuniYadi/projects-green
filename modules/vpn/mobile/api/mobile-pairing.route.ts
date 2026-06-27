@@ -359,6 +359,17 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
                 },
               }
             }
+            if (err.name === "VpnMobileDeviceLimitError") {
+              set.status = 403
+              return {
+                error: {
+                  code: "DEVICE_LIMIT_REACHED" as const,
+                  message:
+                    "The maximum number of devices for this subscription has been reached.",
+                  details: {},
+                },
+              }
+            }
             throw error
           }
         },

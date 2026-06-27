@@ -495,6 +495,33 @@ describe("Mobile VPN Integration", () => {
         expect(Array.isArray(body.profiles)).toBe(true)
       }
     })
+
+    it("returns 403 when device limit reached during claim", async () => {
+      mockFindUnique.mockResolvedValue(activeSubscription)
+      fakePairingService.claim.mockRejectedValueOnce(
+        Object.assign(new Error("Device limit"), {
+          name: "VpnMobileDeviceLimitError",
+        })
+      )
+
+      const pairingApp = createPairingApp()
+      const claimRes = await pairingApp.handle(
+        new Request("http://localhost/vpn/mobile/pairing/claim", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pairingToken: "mock-pairing-token",
+            deviceName: "Over Limit Device",
+            deviceFingerprint: "fp-overlimit",
+            platform: "android",
+          }),
+        })
+      )
+
+      expect(claimRes.status).toBe(403)
+      const body = await claimRes.json()
+      expect(body.error.code).toBe("DEVICE_LIMIT_REACHED")
+    })
   })
 
   describe("Device management", () => {
@@ -626,6 +653,33 @@ describe("Mobile VPN Integration", () => {
       expect(res.status).toBe(409)
       const body = await res.json()
       expect(body.error.code).toBe("DEVICE_ALREADY_PAIRED")
+    })
+
+    it("returns 403 when device limit is reached", async () => {
+      mockFindUnique.mockResolvedValue(activeSubscription)
+      fakeDeviceService.create.mockRejectedValueOnce(
+        Object.assign(new Error("Device limit"), {
+          name: "VpnMobileDeviceLimitError",
+        })
+      )
+
+      const app = createAuthApp()
+      const res = await app.handle(
+        new Request("http://localhost/vpn/mobile/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscriptionId: SUBSCRIPTION_ID,
+            deviceName: "Over Limit Device",
+            deviceFingerprint: "fp-overlimit",
+            platform: "ios",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(403)
+      const body = await res.json()
+      expect(body.error.code).toBe("DEVICE_LIMIT_REACHED")
     })
   })
 
