@@ -27,6 +27,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { toast } from "sonner"
 
 import {
   getVpnAdminSubscription,
@@ -40,6 +41,7 @@ import {
   type VpnServerAccountEntry,
 } from "../../_components/vpn-admin-client"
 import { ProvisioningAuditModal } from "../../_components/provisioning-audit-modal"
+import { VpnPairingQrModal } from "@/modules/vpn/_components/vpn-pairing-qr-modal"
 
 const STATUS_VARIANT: Record<
   VpnSubscriptionItem["status"],
@@ -139,9 +141,13 @@ function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error("Failed to copy — please copy manually")
+    }
   }
 
   return (
@@ -348,6 +354,7 @@ export default function SubscriptionDetailPage() {
   const [busy, setBusy] = useState<string | null>(null)
   const [auditAccount, setAuditAccount] =
     useState<VpnServerAccountEntry | null>(null)
+  const [pairingOpen, setPairingOpen] = useState(false)
 
   const fetchSubscription = useCallback(async () => {
     setLoading(true)
@@ -623,6 +630,44 @@ export default function SubscriptionDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Mobile Pairing — ponytail: subscription.id on VpnSubscriptionItem, no API change */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Mobile Pairing</CardTitle>
+          <CardDescription>
+            Pair a mobile device or share your subscription ID
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">ID</Badge>
+            <span className="font-mono text-sm text-muted-foreground" title={subscription.id}>
+              {subscription.id.length > 28 ? `${subscription.id.slice(0, 28)}…` : subscription.id}
+            </span>
+            <CopyButton text={subscription.id} />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Scan the QR code or enter this ID in the mobile app to pair a device.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={subscription.status !== "ACTIVE"}
+            onClick={() => setPairingOpen(true)}
+          >
+            <DeviceMobileIcon className="mr-1.5 h-4 w-4" />
+            Pair New Device
+          </Button>
+        </CardContent>
+      </Card>
+
+      <VpnPairingQrModal
+        open={pairingOpen}
+        onOpenChange={setPairingOpen}
+        subscriptionId={subscription.id}
+        subscriptionName={subscription.packageName}
+      />
 
       {/* Provisioning Summary */}
       <Card>

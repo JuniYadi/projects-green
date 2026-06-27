@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import {
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -358,15 +357,13 @@ export default function ConsoleVpnDashboardPage() {
       listMobileDevices(),
     ])
 
-    startTransition(() => {
-      setState({
-        phase: "ready",
-        subscriptions:
-          subscriptionResult.status === "fulfilled"
-            ? subscriptionResult.value
-            : [],
-        devices: deviceResult.status === "fulfilled" ? deviceResult.value : [],
-      })
+    setState({
+      phase: "ready",
+      subscriptions:
+        subscriptionResult.status === "fulfilled"
+          ? subscriptionResult.value
+          : [],
+      devices: deviceResult.status === "fulfilled" ? deviceResult.value : [],
     })
   }, [])
 

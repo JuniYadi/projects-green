@@ -131,9 +131,10 @@ function defaultPrismaFindUnique(
   return Promise.resolve(dbEntry(lookupKey, entry.value, entry.expiresAt))
 }
 
-// ponytail: kept for reference, no longer used by mockImplementation
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function defaultPrismaUpsert(_args: unknown): Promise<Record<string, unknown>> {
+function defaultPrismaUpsert(
+  ...args: unknown[]
+): Promise<Record<string, unknown>> {
+  const _args = args[0]
   const create = (_args as Record<string, unknown>).create as Record<
     string,
     unknown
@@ -145,9 +146,10 @@ function defaultPrismaUpsert(_args: unknown): Promise<Record<string, unknown>> {
   return Promise.resolve({})
 }
 
-// ponytail: kept for reference, no longer used by mockImplementation
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function defaultPrismaDelete(_args: unknown): Promise<Record<string, unknown>> {
+function defaultPrismaDelete(
+  ...args: unknown[]
+): Promise<Record<string, unknown>> {
+  const _args = args[0]
   const lookupKey = (_args as { where: { key: string } }).where?.key
   if (lookupKey) dbStore.delete(lookupKey)
   return Promise.resolve({})
@@ -173,10 +175,9 @@ beforeEach(() => {
   mockRedisGet.mockImplementation(defaultRedisGet)
   mockRedisSet.mockImplementation(defaultRedisSet)
   mockRedisDel.mockImplementation(defaultRedisDel)
-  // ponytail: use mockReturnValue to avoid signature mismatch from adding args
   mockPrismaFindUnique.mockImplementation(async () => null)
-  mockPrismaUpsert.mockImplementation(async () => ({}))
-  mockPrismaDelete.mockImplementation(async () => ({}))
+  mockPrismaUpsert.mockImplementation(defaultPrismaUpsert)
+  mockPrismaDelete.mockImplementation(defaultPrismaDelete)
 })
 
 afterEach(() => {
