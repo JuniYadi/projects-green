@@ -21,6 +21,7 @@ on:
         options: [plan, execute, fix]
 
 env:
+  CODE_DIR: ${{ github.event.repository.name }}
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
   API_TIMEOUT_MS: "3000000"
   GIT_EMAIL: 31454084+JuniYadi@users.noreply.github.com
@@ -123,7 +124,7 @@ jobs:
           repository: JuniYadi/projects-green
           token: ${{ secrets.PAT_IDE_PROJECTS }}
           ref: ${{ inputs.branch }}
-          path: projects-green
+          path: ${{ env.CODE_DIR }}
           fetch-depth: 0
 
       - name: Setup Bun
@@ -134,7 +135,7 @@ jobs:
           bun --version && node --version && uname -a && date
 
       - name: Prepare env + install deps
-        working-directory: projects-green
+        working-directory: ${{ env.CODE_DIR }}
         run: |
           cp .env.example .env
           bun install --frozen-lockfile
@@ -171,8 +172,8 @@ jobs:
                Your branch may be behind origin/main if other PRs merged
                while the draft PR was open. Rebase first to ensure you're
                working against the latest code. Handle any conflicts.
-               ```
-               cd WORKDIR
+               ```bash
+               cd ${{ env.CODE_DIR }}
                git config user.name "JuniYadi"
                git config user.email "31454084+JuniYadi@users.noreply.github.com"
                git pull --rebase origin main
@@ -194,7 +195,7 @@ jobs:
 
                b. Commit + push code:
                   ```
-                  cd WORKDIR
+                  cd ${{ env.CODE_DIR }}
                   git config user.name "JuniYadi"
                   git config user.email "31454084+JuniYadi@users.noreply.github.com"
                   SHORT_DESC=$(echo "[AC description]" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | cut -c1-50)
@@ -203,7 +204,7 @@ jobs:
 
                c. Update task file — mark AC done:
                   ```
-                  COMMIT_SHA=$(cd WORKDIR && git rev-parse --short HEAD)
+                  COMMIT_SHA=$(cd ${{ env.CODE_DIR }} && git rev-parse --short HEAD)
                   sed -i "0,/^- \[ \]/{s//- [x] ($COMMIT_SHA)/}" "$TASK_FILE"
                   git -C ../ide config user.name "JuniYadi"
                   git -C ../ide config user.email "31454084+JuniYadi@users.noreply.github.com"
@@ -292,14 +293,14 @@ jobs:
           repository: JuniYadi/projects-green
           token: ${{ secrets.PAT_IDE_PROJECTS }}
           ref: ${{ inputs.branch }}
-          path: projects-green
+          path: ${{ env.CODE_DIR }}
           fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
       - name: Prepare env + install deps
-        working-directory: projects-green
+        working-directory: ${{ env.CODE_DIR }}
         run: |
           cp .env.example .env
           bun install --frozen-lockfile
@@ -377,7 +378,7 @@ jobs:
                while the draft PR was open. Rebase first so fixes apply
                against the latest code. Handle any conflicts.
                ```
-               cd WORKDIR
+               cd ${{ env.CODE_DIR }}
                git config user.name "JuniYadi"
                git config user.email "31454084+JuniYadi@users.noreply.github.com"
                git pull --rebase origin main
@@ -395,7 +396,7 @@ jobs:
 
             3. COMMIT + PUSH:
                ```
-               cd WORKDIR
+               cd ${{ env.CODE_DIR }}
                git config user.name "JuniYadi"
                git config user.email "31454084+JuniYadi@users.noreply.github.com"
                git add -A && git commit -m "fix: ${{ inputs.task_id }} address PR review feedback" --allow-empty && git push
