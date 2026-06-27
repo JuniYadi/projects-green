@@ -132,7 +132,8 @@ export function BillingDashboard() {
     }
 
     void loadData()
-  }, [])
+  // ponytail: messages is stable (i18n lookup), safe dep
+  }, [messages.console.billing.failedToLoadBalance])
 
   if (isLoading) {
     return (

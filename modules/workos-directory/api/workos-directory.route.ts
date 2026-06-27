@@ -3,8 +3,6 @@ import { z } from "zod"
 
 import { requireSuperAdmin } from "@/modules/admin/api/admin.guards"
 import {
-  getCachedUser,
-  getCachedOrganization,
   getCachedUsers,
   getCachedOrganizations,
 } from "@/lib/workos-directory"

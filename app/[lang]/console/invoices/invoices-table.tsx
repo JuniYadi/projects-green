@@ -4,7 +4,6 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { eden } from "@/lib/eden"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { InvoicesTableSkeleton } from "@/modules/invoices/ui/invoices-table-skeleton"
 import { DataTable } from "@/components/data-table"
@@ -19,7 +18,6 @@ import {
 import type {
   InvoiceErrorResponse,
   InvoiceListItem,
-  InvoiceListSuccessResponse,
 } from "@/modules/invoices/invoices.types"
 import { InvoiceStatusPill } from "@/modules/invoices/ui/invoice-status-pill"
 
@@ -112,8 +110,8 @@ const getErrorMessage = (payload: InvoiceErrorResponse | null) => {
 }
 
 export function InvoicesTable({ lang }: InvoicesTableProps) {
-  const locale = resolveLocaleOrDefault(lang)
-  const messages = getMessages(locale)
+  // ponytail: locale unused but kept for i18n expansion readiness
+  void resolveLocaleOrDefault(lang)
   const [state, setState] = useState<InvoiceListRequestState>({
     status: "loading",
   })

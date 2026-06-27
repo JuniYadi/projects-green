@@ -212,22 +212,6 @@ const parseSignature = (signature: string) => {
   return hash.toLowerCase()
 }
 
-const _toNullableBigInt = (value: unknown) => {
-  if (typeof value === "bigint") {
-    return value
-  }
-
-  if (typeof value === "number" && Number.isInteger(value)) {
-    return BigInt(value)
-  }
-
-  if (typeof value === "string" && /^-?[0-9]+$/.test(value)) {
-    return BigInt(value)
-  }
-
-  return null
-}
-
 const toErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
     return error.message
@@ -489,7 +473,7 @@ export const createGithubWebhookHandler = (deps: GithubWebhookHandlerDeps) => {
 
     const normalizePayload =
       deps.normalizePayload ??
-      ((_p: unknown) => ({
+      (() => ({
         githubInstallationId: null as bigint | null,
         githubRepositoryId: null as bigint | null,
         repositoryFullName: null as string | null,

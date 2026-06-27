@@ -1046,7 +1046,6 @@ describe("supportTicketService", () => {
   })
 
   it("returns plain error when toSafeContentError receives non-encryption error", async () => {
-    const _original = new Error("some random error")
     // We import the service module to access toSafeContentError indirectly
     // by triggering a non-cipher error in createTicket
     const { repository } = createRepositoryStub()
@@ -1417,7 +1416,7 @@ describe("supportTicketService", () => {
       await import("@/modules/support-tickets/support-ticket-content-cipher")
 
     const brokenCipher: SupportTicketContentCipher = {
-      encrypt(_value: unknown) {
+      encrypt() {
         // Return stenc.v1.-prefixed value so isSupportTicketEncryptedPayload triggers decrypt
         return "stenc.v1.iv.authTag.ciphertext"
       },

@@ -28,7 +28,7 @@
  *   }
  */
 
-import { Worker, Queue, type Job, type JobsOptions } from "bullmq"
+import { Worker, Queue, type JobsOptions } from "bullmq"
 import {
   getQueue,
   getQueueRuntimeConfig,
@@ -144,8 +144,7 @@ export abstract class BaseJob {
    * This is the function passed directly to BullMQ Worker.
    * It receives the raw BullMQ Job — access data via `job.data`.
    */
-  static async handle(_job: Job): Promise<void> {
-    // eslint-disable-line @typescript-eslint/no-unused-vars
+  static async handle(): Promise<void> {
     throw new Error(`${this.name}.handle() not implemented`)
   }
 

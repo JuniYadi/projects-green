@@ -212,7 +212,6 @@ export class ManifestBuilder {
     const result: K8sResource[] = []
     if (!container.configMaps) return result
 
-    let idx = 0
     for (const [name, cm] of Object.entries(container.configMaps)) {
       result.push({
         apiVersion: "v1",
@@ -225,7 +224,6 @@ export class ManifestBuilder {
         },
         data: cm.value,
       })
-      idx++
     }
     return result
   }
@@ -234,7 +232,6 @@ export class ManifestBuilder {
     const result: K8sResource[] = []
     if (!container.secrets) return result
 
-    let idx = 0
     for (const [name, secret] of Object.entries(container.secrets)) {
       const encoded: Record<string, string> = {}
       for (const [k, v] of Object.entries(secret.value)) {
@@ -252,7 +249,6 @@ export class ManifestBuilder {
         type: "Opaque",
         data: encoded,
       })
-      idx++
     }
 
     // TLS secrets
@@ -299,7 +295,7 @@ export class ManifestBuilder {
 
   buildIngresses(container: StackContainer): K8sResource[] {
     if (!container.ingresses) return []
-    return container.ingresses.map((ing, idx) => {
+    return container.ingresses.map((ing) => {
       return {
         apiVersion: "networking.k8s.io/v1",
         kind: "Ingress",

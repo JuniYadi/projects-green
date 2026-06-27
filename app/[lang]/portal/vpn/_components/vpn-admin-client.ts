@@ -545,11 +545,6 @@ export type AuditLogPagination = {
   totalPages: number
 }
 
-type AuditListResponse = {
-  data: VpnAuditLogListItem[]
-  pagination: AuditLogPagination
-}
-
 export type AuditLogQuery = {
   page?: number
   limit?: number

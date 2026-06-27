@@ -6,7 +6,7 @@ const pushMock = mock((href: string) => {
   void href
 })
 
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { TopupFormEnhanced } from "./topup-form-enhanced"
 
 const originalFetch = globalThis.fetch

@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma"
-import { Prisma } from "@prisma/client"
 
 const RETENTION_DAYS = 90
 const BATCH_SIZE = 1000

@@ -130,6 +130,8 @@ export function CurrenciesTab() {
         ),
       },
     ],
+    // ponytail: handleToggle is a stable hoisted async function, adding it to deps causes churn
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [isSubmitting]
   )
 

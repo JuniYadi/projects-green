@@ -322,7 +322,7 @@ describe("BankAccountService", () => {
         })
       )
 
-      const result = await service.update("ba_1", {
+      await service.update("ba_1", {
         accountName: "New Name",
         accountNumber: "654321",
       })

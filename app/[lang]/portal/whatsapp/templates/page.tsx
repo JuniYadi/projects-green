@@ -15,7 +15,7 @@ type Props = {
   searchParams: Promise<Record<string, string>>
 }
 
-export default async function PortalTemplatesPage(props: Props) {
+export default async function PortalTemplatesPage({}: Props) {
   const auth = await withAuth({ ensureSignedIn: true })
   const platformRole = await getPlatformRoleForUser({
     id: auth.user.id,

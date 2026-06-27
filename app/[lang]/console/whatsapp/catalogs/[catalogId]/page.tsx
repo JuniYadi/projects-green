@@ -135,12 +135,16 @@ export default function CatalogDetailPage() {
                 <Card key={p.id} className="overflow-hidden">
                   <div className="aspect-video bg-muted flex items-center justify-center">
                     {p.imageUrl ? (
+                      // ponytail: img not Image — external URL, no optimization needed
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={p.imageUrl}
                         alt={p.name}
                         className="size-full object-cover"
                       />
                     ) : (
+                      // ponytail: decorative phosphor icon, no alt needed
+                      // eslint-disable-next-line jsx-a11y/alt-text
                       <Image className="size-8 text-muted-foreground/40" />
                     )}
                   </div>

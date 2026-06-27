@@ -48,16 +48,6 @@ type VoucherClaimDTO = {
   orgName?: string | null
 }
 
-type ApiErrorResponse = {
-  ok: false
-  error: string
-  message: string
-}
-
-type DetailResponse = {
-  ok: true
-  data: VoucherDetail
-}
 
 const STATUS_COLORS: Record<VoucherStatus, string> = {
   ACTIVE:

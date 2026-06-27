@@ -9,7 +9,6 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   type SortingState,
-  type VisibilityState,
   useReactTable,
 } from "@tanstack/react-table"
 

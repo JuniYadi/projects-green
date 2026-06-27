@@ -19,7 +19,6 @@ import {
 import type {
   InvoiceErrorResponse,
   InvoiceListItem,
-  InvoiceListSuccessResponse,
 } from "@/modules/invoices/invoices.types"
 import { InvoiceStatusPill } from "@/modules/invoices/ui/invoice-status-pill"
 

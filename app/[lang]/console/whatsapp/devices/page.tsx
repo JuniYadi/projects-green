@@ -91,6 +91,7 @@ export default function WhatsAppDevicesPage() {
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
+  // ponytail: not wrapped in useCallback — stable enough for effect dep
   const loadDevices = async () => {
     setIsLoading(true)
     setErrorMessage(null)
@@ -113,6 +114,8 @@ export default function WhatsAppDevicesPage() {
     ;(async () => {
       await loadDevices()
     })()
+  // ponytail: loadDevices is stable, only run on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Mutations ─────────────────────────────────────────────────────────────

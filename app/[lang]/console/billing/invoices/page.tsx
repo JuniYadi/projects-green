@@ -32,7 +32,7 @@ export default function InvoicesPage() {
     }
 
     void loadData()
-  }, [])
+  }, [messages.console.billing.failedToLoadInvoices])
 
   if (isLoading) {
     return (

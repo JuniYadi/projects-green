@@ -48,7 +48,7 @@ const mockGetUser = mock(async (userId: string) => ({
   lastName: "User",
 }))
 
-const mockListOrgMemberships = mock(async ({ organizationId }: { organizationId: string }) => ({
+const mockListOrgMemberships = mock(async () => ({
   data: [{ userId: "user-1" }, { userId: "user-2" }],
 }))
 

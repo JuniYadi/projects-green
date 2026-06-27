@@ -21,9 +21,6 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useParams } from "next/navigation"
-import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { AccessRestricted } from "@/modules/whatsapp/ui/access-restricted"
@@ -99,8 +96,6 @@ function formatRelativeTime(dateString: string): string {
 }
 
 export default function WhatsAppDashboardPage() {
-  const params = useParams<{ lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
   const [state, setState] = React.useState<DashboardState>("loading")
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [conversations, setConversations] = React.useState<

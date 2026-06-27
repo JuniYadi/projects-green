@@ -1,8 +1,6 @@
 "use client"
 
 import { eden } from "@/lib/eden"
-import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useCallback, useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -71,8 +69,7 @@ function exportToCSV(data: UsageBreakdown[], filename: string) {
 }
 
 export default function UsagePage() {
-  const params = useParams<{ lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
+  void useParams<{ lang?: string }>()
   const [summary, setSummary] = useState<UsageSummary | null>(null)
   const [trend, setTrend] = useState<DailyTrend[]>([])
   const [loading, setLoading] = useState(true)

@@ -417,7 +417,7 @@ export interface GitHubAppConfig {
 export async function refreshGitHubAppToken(
   config: GitHubAppConfig
 ): Promise<{ token: string; expiresAt: string }> {
-  const jwt = generateAppJWT(config.appId, config.privateKey)
+  const jwt = generateAppJWT(config.appId)
 
   const res = await fetch(
     `https://api.github.com/app/installations/${config.installationId}/access_tokens`,
@@ -440,7 +440,7 @@ export async function refreshGitHubAppToken(
   return { token: data.token, expiresAt: data.expires_at }
 }
 
-function generateAppJWT(appId: string, _privateKey: string): string {
+function generateAppJWT(appId: string): string {
   // Minimal JWT generation without external deps
   // In production, use a proper JWT library (jose, jsonwebtoken)
   const header = Buffer.from(

@@ -57,22 +57,6 @@ type VoucherItem = {
   createdAt: string
 }
 
-type ApiErrorResponse = {
-  ok: false
-  error: string
-  message: string
-}
-
-type ListResponse = {
-  ok: true
-  data: VoucherItem[]
-  total: number
-}
-
-type CreateResponse = {
-  ok: true
-  data: VoucherItem
-}
 
 const STATUS_COLORS: Record<VoucherStatus, string> = {
   ACTIVE:

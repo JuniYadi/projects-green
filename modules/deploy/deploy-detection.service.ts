@@ -78,8 +78,7 @@ const mapEcosystemToLanguage = (
 }
 
 const mapDecisionStatus = (
-  decisionStatus: string | undefined | null,
-  _confidence: number
+  decisionStatus: string | undefined | null
 ): DetectionResult["status"] => {
   if (decisionStatus === "success") return "success"
   if (decisionStatus === "low_confidence") return "low_confidence"
@@ -115,7 +114,7 @@ export const mapDetectionResultDTO = (
     dockerfileDetected,
     buildCommand: deriveBuildCommand(frameworkName),
     confidence: dto.confidence,
-    status: mapDecisionStatus(dto.decision?.status, dto.confidence),
+    status: mapDecisionStatus(dto.decision?.status),
   }
 }
 

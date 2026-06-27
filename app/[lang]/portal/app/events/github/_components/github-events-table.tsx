@@ -55,20 +55,6 @@ type GithubEventDetail = GithubEventRow & {
   payloadJson: unknown
 }
 
-type EventListResponse = {
-  ok: boolean
-  data: {
-    items: GithubEventRow[]
-    total: number
-    page: number
-    pageSize: number
-  }
-}
-
-type EventDetailResponse = {
-  ok: boolean
-  data: GithubEventDetail
-}
 
 const STATUS_BADGE: Record<string, string> = {
   processed: "bg-green-100 text-green-800",

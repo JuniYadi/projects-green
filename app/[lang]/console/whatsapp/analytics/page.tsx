@@ -5,12 +5,9 @@ import {
   ChartLine,
   Funnel,
   Calendar,
-  DownloadSimple,
   ArrowsClockwise,
   WarningCircle,
 } from "@phosphor-icons/react"
-import { useParams } from "next/navigation"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -86,9 +83,6 @@ function deltaBadgeCost(delta: number) {
 }
 
 export default function WhatsAppAnalyticsPage() {
-  const params = useParams<{ lang?: string }>()
-  const locale = params?.lang ?? "en"
-
   const [state, setState] = React.useState<PageState>("idle")
   const [error, setError] = React.useState("")
   const [tab, setTab] = React.useState<"comparison" | "cost">("comparison")

@@ -12,13 +12,12 @@ import {
 } from "@/modules/deploy/deploy.constants"
 import type { DeployWizardState } from "@/modules/deploy/deploy.types"
 
-let currentQuery = ""
 const replaceCalls: string[] = []
 let deployStatusResponse = "running"
 
-const updateQueryFromUrl = (url: string) => {
-  const parts = url.split("?")
-  currentQuery = parts[1] ?? ""
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const updateQueryFromUrl = (_url: string) => {
+  // ponytail: kept for API compatibility
 }
 
 const githubRepositories = [
@@ -92,7 +91,6 @@ const renderWizard = async (
   query = "github=connected",
   persistedState: DeployWizardState | null = null
 ) => {
-  currentQuery = query
   replaceCalls.splice(0)
   ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
     new URLSearchParams(query)
@@ -146,7 +144,6 @@ const selectSourceRepository = async (view: RenderResult) => {
 describe("DeployWizard", () => {
   beforeEach(() => {
     window.sessionStorage.clear()
-    currentQuery = ""
     deployStatusResponse = "running"
     replaceCalls.splice(0)
     ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(

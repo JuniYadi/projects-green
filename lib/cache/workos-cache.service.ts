@@ -40,14 +40,14 @@ export const workosCacheService = {
     return getCachedOrganization(orgId)
   },
 
-  async invalidateUser(_userId: string): Promise<void> {
+  async invalidateUser(): Promise<void> {
     // No-op — Redis cache handles TTL automatically
     console.warn(
       "[workos-cache] invalidateUser is deprecated. Cache invalidation is handled by TTL."
     )
   },
 
-  async invalidateOrg(_orgId: string): Promise<void> {
+  async invalidateOrg(): Promise<void> {
     // No-op — Redis cache handles TTL automatically
     console.warn(
       "[workos-cache] invalidateOrg is deprecated. Cache invalidation is handled by TTL."

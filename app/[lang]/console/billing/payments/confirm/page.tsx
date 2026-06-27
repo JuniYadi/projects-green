@@ -1,8 +1,6 @@
 "use client"
 
 import { eden } from "@/lib/eden"
-import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   useState,
   useEffect,
@@ -680,8 +678,7 @@ function ConfirmationPageContent() {
 }
 
 export default function ConfirmPaymentPage() {
-  const params = useParams<{ lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
+  void useParams<{ lang?: string }>()
   return (
     <Suspense
       fallback={

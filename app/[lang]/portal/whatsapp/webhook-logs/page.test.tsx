@@ -42,7 +42,7 @@ const mockEventsResponse = () =>
 
 // ─── Mock fetch — route by URL path ────────────────────────────────────────────
 
-const mockFetch = mock((input: string | Request, _init?: RequestInit) => {
+const mockFetch = mock((input: string | Request) => {
   const url = typeof input === "string" ? input : input.url
   const pathname = new URL(url, "http://localhost:3300").pathname
   if (pathname.startsWith("/api/whatsapp/devices")) {
@@ -84,7 +84,7 @@ describe("PortalWhatsAppWebhookLogsPage", () => {
   it("shows error state when API call fails", async () => {
     // Simulate network error for events endpoint
     mockFetch.mockImplementation(
-      (input: string | Request, _init?: RequestInit) => {
+      (input: string | Request) => {
         const url = typeof input === "string" ? input : input.url
         const pathname = new URL(url, "http://localhost:3300").pathname
         if (pathname.startsWith("/api/whatsapp/devices")) {

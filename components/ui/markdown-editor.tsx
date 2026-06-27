@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { eden } from "@/lib/eden"
 import { useState, useRef, useImperativeHandle } from "react"
 
 import { Button } from "@/components/ui/button"

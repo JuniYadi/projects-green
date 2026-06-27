@@ -7,16 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { type VpnServerAccountEntry, getVpnProvisioningAudit } from "./vpn-admin-client"
 import { ProvisioningTimeline, type AuditEvent } from "./provisioning-timeline"
 
-type ApiAuditEntry = {
-  id: string
-  serverAccountId: string | null
-  action: string
-  step: string | null
-  status: string | null
-  details: Record<string, unknown> | null
-  createdAt: string
-}
-
 type Props = {
   account: VpnServerAccountEntry
   open: boolean
@@ -61,7 +51,7 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
           }
         })
         if (!cancelled) setEvents(mapped)
-      } catch (e) {
+      } catch {
         if (cancelled) return
         // ponytail: API unavailable — fall back to synthetic timeline from account data
         const synthetic: AuditEvent[] = [

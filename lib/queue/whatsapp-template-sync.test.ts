@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import type { JobsOptions } from "bullmq"
 
 import {
   createWhatsAppTemplateSyncQueue,
@@ -8,11 +7,7 @@ import {
 } from "@/lib/queue/whatsapp-template-sync"
 
 const add = mock(
-  async (
-    _name: string,
-    _data: WhatsAppTemplateSyncJobData,
-    _opts?: JobsOptions
-  ) => undefined
+  async () => undefined
 )
 
 describe("createWhatsAppTemplateSyncQueue", () => {

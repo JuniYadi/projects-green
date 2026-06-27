@@ -101,10 +101,10 @@ export default function WireGuardPage() {
     } finally {
       setLoading(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [])  // ponytail: intentional — only fetch on mount
 
   useEffect(() => {
+    // ponytail: set-state-in-effect is intentional — fetches once on mount, cascading renders not an issue here
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchPeers()
   }, [fetchPeers])
@@ -142,7 +142,7 @@ export default function WireGuardPage() {
   const handleDelete = async (username: string) => {
     if (!confirm(`Remove peer "${username}"?`)) return
     try {
-      // eslint-disable-next-line no-restricted-globals
+       
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${encodeURIComponent(username)}`,
         { method: "DELETE" }
@@ -156,7 +156,7 @@ export default function WireGuardPage() {
 
   const handleDownload = async (username: string) => {
     try {
-      // eslint-disable-next-line no-restricted-globals
+       
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${username}/config`
       )
@@ -175,7 +175,7 @@ export default function WireGuardPage() {
 
   const handleShowQr = async (username: string) => {
     try {
-      // eslint-disable-next-line no-restricted-globals
+       
       const res = await fetch(
         `/api/portal/vpn/wireguard/peers/${username}/qr`
       )

@@ -1,8 +1,6 @@
 "use client"
 
 import { eden } from "@/lib/eden"
-import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
@@ -29,8 +27,7 @@ interface Transaction {
 type FilterStatus = "ALL" | "OPEN" | "PAID" | "VOID"
 
 export default function TransactionsPage() {
-  const params = useParams<{ lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
+  void useParams<{ lang?: string }>()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<FilterStatus>("ALL")

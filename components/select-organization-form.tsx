@@ -14,12 +14,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 
-type ApiErrorPayload = {
-  ok?: false
-  error?: string
-  message?: string
-}
-
 type Organization = {
   id: string
   name: string

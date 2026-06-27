@@ -55,7 +55,7 @@ export function useTemplates(filters?: TemplateFilters) {
   React.useEffect(() => {
     let cancelled = false
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     void (async () => {
       setLoading(true)
       setError(null)
@@ -125,7 +125,7 @@ export function useTemplate(id: string) {
   React.useEffect(() => {
     let cancelled = false
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     void (async () => {
       setLoading(true)
       setError(null)

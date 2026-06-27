@@ -126,7 +126,6 @@ describe("User Bank Account Routes", () => {
     mockBillingAccountFindUnique.mockClear()
     mockBillingAccountFindUnique.mockResolvedValue({ currency: "IDR" })
 
-    const { Elysia } = await import("elysia")
     const { createUserBankAccountRoutes } =
       await import("./user-bank-account.route")
 

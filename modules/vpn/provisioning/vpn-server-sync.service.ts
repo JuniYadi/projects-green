@@ -115,9 +115,7 @@ export class VpnServerSyncService {
 
         for (const protocol of missing) {
           const username = buildAccountUsername(
-            subscription.organizationId,
-            serverId,
-            protocol
+            subscription.organizationId
           )
 
           const account = await prisma.vpnServerAccount.create({

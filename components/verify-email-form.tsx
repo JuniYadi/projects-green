@@ -15,12 +15,6 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
-type ApiErrorPayload = {
-  ok?: false
-  error?: string
-  message?: string
-  fieldErrors?: Record<string, string[]>
-}
 
 type VerifyEmailFormProps = React.ComponentProps<"div"> & {
   email?: string

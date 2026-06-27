@@ -158,6 +158,8 @@ export function BankAccountsTab() {
         ),
       },
     ],
+    // ponytail: handleSetDefault is a stable hoisted async function, adding it to deps causes churn
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [isSubmitting]
   )
 
@@ -204,7 +206,7 @@ export function BankAccountsTab() {
         swiftCode: String(formData.get("swiftCode") || "") || null,
         bankAddress: String(formData.get("bankAddress") || "") || null,
       }
-      const { data, error } = await eden.api.portal.payments[
+      const { error } = await eden.api.portal.payments[
         "bank-accounts"
       ].post(body as never)
 

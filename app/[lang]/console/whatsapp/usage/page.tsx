@@ -9,8 +9,6 @@ import {
   Calendar,
   Funnel,
 } from "@phosphor-icons/react"
-import { useParams } from "next/navigation"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -75,13 +73,6 @@ const dailyChartConfig = {
   },
 } satisfies ChartConfig
 
-const categoryChartConfig = {
-  cost: {
-    label: "Cost",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig
-
 function formatCurrency(amount: number): string {
   return `Rp ${amount.toLocaleString("id-ID")}`
 }
@@ -140,9 +131,6 @@ function StatCardSkeleton() {
 }
 
 export default function WhatsAppUsagePage() {
-  const params = useParams<{ lang?: string }>()
-  const _locale = resolveLocaleOrDefault(params?.lang)
-
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")
   const [overview, setOverview] = React.useState<OverviewData | null>(null)

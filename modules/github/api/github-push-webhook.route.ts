@@ -3,7 +3,6 @@ import {
   verifyGitHubSignature,
   parsePushPayload,
 } from "../github-push-dispatcher"
-import { prisma } from "@/lib/prisma"
 
 const app = new Hono()
 
