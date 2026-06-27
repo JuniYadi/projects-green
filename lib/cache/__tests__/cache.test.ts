@@ -131,7 +131,10 @@ function defaultPrismaFindUnique(
   return Promise.resolve(dbEntry(lookupKey, entry.value, entry.expiresAt))
 }
 
-function defaultPrismaUpsert(_args: unknown): Promise<Record<string, unknown>> {
+function defaultPrismaUpsert(
+  ...args: unknown[]
+): Promise<Record<string, unknown>> {
+  const _args = args[0]
   const create = (_args as Record<string, unknown>).create as Record<
     string,
     unknown
@@ -143,7 +146,10 @@ function defaultPrismaUpsert(_args: unknown): Promise<Record<string, unknown>> {
   return Promise.resolve({})
 }
 
-function defaultPrismaDelete(_args: unknown): Promise<Record<string, unknown>> {
+function defaultPrismaDelete(
+  ...args: unknown[]
+): Promise<Record<string, unknown>> {
+  const _args = args[0]
   const lookupKey = (_args as { where: { key: string } }).where?.key
   if (lookupKey) dbStore.delete(lookupKey)
   return Promise.resolve({})
