@@ -9,6 +9,7 @@ import {
   decryptProxyPassword,
 } from "@/modules/vpn/vpn-crypto"
 
+import { logAuditEvent } from "@/lib/audit.service"
 import {
   VpnBillingAccountNotFoundError,
   VpnDuplicateSubscriptionError,
@@ -136,8 +137,25 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           params.id
         )
         if (!sub) return notFound(set)
+        if (sub.status !== "ACTIVE") {
+          set.status = 403
+          return {
+            ok: false as const,
+            error: "SUBSCRIPTION_NOT_ACTIVE" as const,
+            message:
+              "Config download is only available for active subscriptions.",
+          }
+        }
         const account = sub.serverAccounts.find((a) => a.id === params.saId)
         if (!account || !account.configEncrypted) return notFound(set)
+        if (account.provisioningStatus === "REVOKED") {
+          set.status = 403
+          return {
+            ok: false as const,
+            error: "ACCOUNT_REVOKED" as const,
+            message: "Config download is not available for revoked accounts.",
+          }
+        }
         if (account.protocol === "PROXY") {
           set.status = 400
           return {
@@ -147,6 +165,18 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           }
         }
         const ext = account.protocol === "WIREGUARD" ? "conf" : "ovpn"
+
+        // ponytail: fire-and-forget, never blocks the download
+        logAuditEvent({
+          organizationId: ctx.organizationId,
+          subscriptionId: params.id,
+          serverAccountId: params.saId,
+          userId: ctx.userId,
+          action: "CONFIG_DOWNLOADED",
+          status: "OK",
+          message: `Config downloaded for ${account.username} (${account.protocol})`,
+        }).catch(() => {})
+
         return new Response(decryptVpnConfig(account.configEncrypted), {
           headers: {
             "content-type": "text/plain; charset=utf-8",

@@ -110,4 +110,108 @@ describe("VPN subscription routes", () => {
       select: { id: true, name: true },
     })
   })
+
+  describe("GET /vpn/subscriptions/:id/servers/:saId/config", () => {
+    it("returns config for an active subscription with provisioning ACTIVE account", async () => {
+      // valid encrypted config: {"encrypted":"c7AZT3KoMnKUcZt2xnGQlqjE8w==","iv":"b3EM9sLsx8hJK2Lpm+lzwg==","tag":"VLfxCavUeBS2LiOcCJOLmw=="}
+      const activeSub = {
+        ...subscription,
+        serverAccounts: subscription.serverAccounts.map((sa) => ({
+          ...sa,
+          configEncrypted:
+            '{"encrypted":"c7AZT3KoMnKUcZt2xnGQlqjE8w==","iv":"b3EM9sLsx8hJK2Lpm+lzwg==","tag":"VLfxCavUeBS2LiOcCJOLmw=="}',
+        })),
+      }
+      const service = {
+        getForOrganization: mock().mockResolvedValue(activeSub),
+      }
+      const app = new Elysia().use(
+        createVpnSubscriptionRoutes({
+          authenticate: async () => ({
+            organizationId: "org_1",
+            user: { id: "user_1" },
+          }),
+          service: service as unknown as VpnSubscriptionService,
+        })
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config")
+      )
+      expect(response.status).toBe(200)
+      expect(response.headers.get("content-disposition")).toContain(".ovpn")
+    })
+
+    it("returns 403 when subscription is not ACTIVE", async () => {
+      const nonActiveSub = { ...subscription, status: "SUSPENDED" }
+      const service = {
+        getForOrganization: mock().mockResolvedValue(nonActiveSub),
+      }
+      const app = new Elysia().use(
+        createVpnSubscriptionRoutes({
+          authenticate: async () => ({
+            organizationId: "org_1",
+            user: { id: "user_1" },
+          }),
+          service: service as unknown as VpnSubscriptionService,
+        })
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config")
+      )
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("SUBSCRIPTION_NOT_ACTIVE")
+    })
+
+    it("returns 403 when account is REVOKED", async () => {
+      const revokedSub = {
+        ...subscription,
+        status: "ACTIVE",
+        serverAccounts: [
+          { ...subscription.serverAccounts[0], provisioningStatus: "REVOKED" },
+        ],
+      }
+      const service = {
+        getForOrganization: mock().mockResolvedValue(revokedSub),
+      }
+      const app = new Elysia().use(
+        createVpnSubscriptionRoutes({
+          authenticate: async () => ({
+            organizationId: "org_1",
+            user: { id: "user_1" },
+          }),
+          service: service as unknown as VpnSubscriptionService,
+        })
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config")
+      )
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("ACCOUNT_REVOKED")
+    })
+
+    it("returns 404 when server account not found", async () => {
+      const service = {
+        getForOrganization: mock().mockResolvedValue(subscription),
+      }
+      const app = new Elysia().use(
+        createVpnSubscriptionRoutes({
+          authenticate: async () => ({
+            organizationId: "org_1",
+            user: { id: "user_1" },
+          }),
+          service: service as unknown as VpnSubscriptionService,
+        })
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/vpn/subscriptions/sub_1/servers/nonexistent/config")
+      )
+      expect(response.status).toBe(404)
+    })
+  })
 })
