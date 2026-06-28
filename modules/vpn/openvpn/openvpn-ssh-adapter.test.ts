@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 import type { SshCommandResult, SshTarget } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
-import { VpnServerSshExecutor } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
+import { VpnServerSshExecutor, classifySshError } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 
 import {
   OpenVpnSshAdapter,
@@ -41,6 +41,30 @@ describe("sanitizeOpenVpnClientName", () => {
     expect(() => sanitizeOpenVpnClientName("../secret")).toThrow(
       "Invalid OpenVPN client name"
     )
+  })
+})
+
+describe("classifySshError", () => {
+  const target: SshTarget = { host: "vpn.example.com", user: "root", encryptedPrivateKey: "x", ipAddress: undefined }
+
+  it("detects timeout", () => {
+    expect(classifySshError({ stdout: "", stderr: "SSH exec timed out", exitCode: 1 }, target, "health check"))
+      .toBe("SSH connection to vpn.example.com timed out after 30s during health check")
+  })
+
+  it("detects auth failure", () => {
+    expect(classifySshError({ stdout: "", stderr: "Authentication failed", exitCode: 1 }, target, "connect"))
+      .toBe("SSH key rejected by vpn.example.com during connect")
+  })
+
+  it("detects host unreachable", () => {
+    expect(classifySshError({ stdout: "", stderr: "ENOTFOUND vpn.example.com", exitCode: 1 }, target, "connect"))
+      .toBe("SSH host unreachable: vpn.example.com during connect")
+  })
+
+  it("defaults to command failed for other errors", () => {
+    expect(classifySshError({ stdout: "", stderr: "script not found", exitCode: 1 }, target, "create client"))
+      .toBe("Remote command failed on vpn.example.com during create client: script not found")
   })
 })
 

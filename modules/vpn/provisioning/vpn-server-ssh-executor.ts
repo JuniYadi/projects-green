@@ -141,8 +141,28 @@ export class VpnServerSshExecutor {
   ): Promise<SshCommandResult> {
     const result = await this.exec(target, remoteArgs)
     if (result.exitCode !== 0) {
-      throw new Error(`Failed to ${action}: ${result.stderr.trim()}`)
+      throw new Error(classifySshError(result, target, action))
     }
     return result
   }
+}
+
+export type SshErrorClass = "timeout" | "auth_failure" | "host_unreachable" | "command_failed"
+
+export function classifySshError(
+  result: SshCommandResult,
+  target: SshTarget,
+  action: string
+): string {
+  const { stderr } = result
+  if (stderr === "SSH exec timed out") {
+    return `SSH connection to ${target.host} timed out after 30s during ${action}`
+  }
+  if (stderr.includes("Authentication failed") || stderr.includes("All configured authentication methods failed")) {
+    return `SSH key rejected by ${target.host} during ${action}`
+  }
+  if (stderr.includes("ENOTFOUND") || stderr.includes("EAI_AGAIN")) {
+    return `SSH host unreachable: ${target.host} during ${action}`
+  }
+  return `Remote command failed on ${target.host} during ${action}: ${stderr.trim()}`
 }
