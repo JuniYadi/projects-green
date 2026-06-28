@@ -270,6 +270,61 @@ describe("SupportTicketCreateScreen", () => {
     expect(view.getByText("report.pdf")).toBeTruthy()
   })
 
+  it("rejects invalid file extension (.md) with error message", async () => {
+    const view = renderScreen()
+
+    const mdFile = new File(["some markdown"], "README.md", {
+      type: "text/markdown",
+    })
+    attachFiles(view, [mdFile])
+
+    expect(
+      view.getByText(/README\.md.*not supported/i)
+    ).toBeInTheDocument()
+    expect(view.queryByText("README.md")).toBeNull()
+  })
+
+  it("rejects oversized file exceeding 10MB", async () => {
+    const view = renderScreen()
+
+    const bigFile = new File(["x".repeat(11 * 1024 * 1024)], "big.pdf", {
+      type: "application/pdf",
+    })
+    attachFiles(view, [bigFile])
+
+    expect(
+      view.getByText(/big\.pdf.*10 MB limit/i)
+    ).toBeInTheDocument()
+    expect(view.queryByText("big.pdf")).toBeNull()
+  })
+
+  it("accepts valid files and shows them in the list", async () => {
+    const view = renderScreen()
+
+    const pdfFile = new File(["pdf content"], "report.pdf", {
+      type: "application/pdf",
+    })
+    attachFiles(view, [pdfFile])
+
+    expect(view.getByText("report.pdf")).toBeInTheDocument()
+  })
+
+  it("handles mixed batch — valid files accepted, invalid files show errors", async () => {
+    const view = renderScreen()
+
+    const pdfFile = new File(["pdf content"], "report.pdf", {
+      type: "application/pdf",
+    })
+    const mdFile = new File(["markdown"], "notes.md", {
+      type: "text/markdown",
+    })
+    attachFiles(view, [pdfFile, mdFile])
+
+    expect(view.getByText("report.pdf")).toBeInTheDocument()
+    expect(view.getByText(/notes\.md.*not supported/i)).toBeInTheDocument()
+    expect(view.queryByText("notes.md")).toBeNull()
+  })
+
   it("adds newly selected attachments without replacing existing ones", async () => {
     const view = renderScreen()
 

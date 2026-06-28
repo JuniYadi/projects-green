@@ -27,6 +27,12 @@ import {
   type SupportTicketService,
 } from "@/modules/support-tickets/support-ticket.types"
 import { formatBytes } from "@/lib/utils"
+import {
+  EXTENSION_MIME_ALLOWLIST,
+  S3_ATTACHMENT_ALLOWED_EXTENSIONS,
+  S3_ATTACHMENT_ALLOWED_MIME_TYPES,
+  S3_ATTACHMENT_MAX_SIZE_BYTES,
+} from "@/modules/support-tickets/support-ticket-attachment.validation"
 
 type SupportTicketCreateScreenProps = {
   lang: string
@@ -36,6 +42,8 @@ type FileWithPreview = {
   file: File
   previewUrl?: string
 }
+
+const ACCEPT_MIME_STRING = S3_ATTACHMENT_ALLOWED_MIME_TYPES.join(",")
 
 const apiClient = createSupportTicketsClient()
 
@@ -54,6 +62,9 @@ export function SupportTicketCreateScreen({
   const [priority, setPriority] = useState<SupportTicketPriority>("medium")
   const [service, setService] = useState<SupportTicketService | "none">("none")
   const [files, setFiles] = useState<FileWithPreview[]>([])
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({})
   const [activeTab, setActiveTab] = useState<"message" | "secure">("message")
 
   const subjectRef = useRef<HTMLInputElement>(null)
@@ -92,24 +103,72 @@ export function SupportTicketCreateScreen({
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files ?? [])
-    const nextFiles = selected.map((file) => ({
-      file,
-      previewUrl: file.type.startsWith("image/")
-        ? URL.createObjectURL(file)
-        : undefined,
-    }))
-    setFiles((prev) => [...prev, ...nextFiles])
+    const newErrors: Record<string, string> = {}
+    const validFiles: FileWithPreview[] = []
+
+    for (const file of selected) {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
+
+      if (file.size > S3_ATTACHMENT_MAX_SIZE_BYTES) {
+        newErrors[file.name] = `"${file.name}" exceeds ${formatBytes(S3_ATTACHMENT_MAX_SIZE_BYTES)} limit.`
+        continue
+      }
+
+      if (!S3_ATTACHMENT_ALLOWED_EXTENSIONS.includes(ext)) {
+        newErrors[file.name] = `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
+        continue
+      }
+
+      if (
+        file.type &&
+        file.type !== "" &&
+        !S3_ATTACHMENT_ALLOWED_MIME_TYPES.includes(file.type)
+      ) {
+        newErrors[file.name] = `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
+        continue
+      }
+
+      if (
+        file.type &&
+        ext &&
+        !EXTENSION_MIME_ALLOWLIST[ext]?.includes(file.type)
+      ) {
+        newErrors[file.name] = `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
+        continue
+      }
+
+      validFiles.push({
+        file,
+        previewUrl: file.type.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : undefined,
+      })
+    }
+
+    setFiles((prev) => [...prev, ...validFiles])
+    setValidationErrors((prev) => ({ ...prev, ...newErrors }))
     event.currentTarget.value = ""
   }
 
   const handleRemoveFile = (index: number) => {
+    const target = files[index] // capture before state update
+    const fileName = target?.file.name
+
     setFiles((prev) => {
-      const target = prev[index]
-      if (target?.previewUrl) {
-        URL.revokeObjectURL(target.previewUrl)
+      const toRemove = prev[index]
+      if (toRemove?.previewUrl) {
+        URL.revokeObjectURL(toRemove.previewUrl)
       }
       return prev.filter((_, i) => i !== index)
     })
+
+    if (fileName) {
+      setValidationErrors((prev) => {
+        const next = { ...prev }
+        delete next[fileName]
+        return next
+      })
+    }
   }
 
   const listPath = localizePathname({
@@ -388,10 +447,25 @@ export function SupportTicketCreateScreen({
                     id="ticket-files"
                     type="file"
                     multiple
+                    accept={ACCEPT_MIME_STRING}
                     onChange={handleFileChange}
                     disabled={isSubmitting}
                     className="cursor-pointer border-border bg-background/50 text-foreground file:rounded-md file:border-0 file:bg-primary/10 file:text-foreground"
                   />
+                  {Object.keys(validationErrors).length > 0 && (
+                    <div className="space-y-1">
+                      {Object.entries(validationErrors).map(
+                        ([fileName, message]) => (
+                          <p
+                            key={fileName}
+                            className="text-sm text-destructive"
+                          >
+                            {message}
+                          </p>
+                        )
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {files.length > 0 && (

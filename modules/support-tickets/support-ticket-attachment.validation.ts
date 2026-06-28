@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-const EXTENSION_MIME_ALLOWLIST: Record<string, readonly string[]> = {
+export const EXTENSION_MIME_ALLOWLIST: Record<string, readonly string[]> = {
   csv: ["text/csv", "application/csv"],
   jpeg: ["image/jpeg"],
   jpg: ["image/jpeg"],
@@ -14,6 +14,10 @@ const EXTENSION_MIME_ALLOWLIST: Record<string, readonly string[]> = {
 
 const DEFAULT_ALLOWED_EXTENSIONS = Object.keys(EXTENSION_MIME_ALLOWLIST).sort()
 const DEFAULT_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
+
+export const S3_ATTACHMENT_ALLOWED_MIME_TYPES: readonly string[] = [
+  ...new Set(Object.values(EXTENSION_MIME_ALLOWLIST).flat()),
+]
 
 const parseAllowedExtensions = () => {
   const rawValue = process.env.S3_ATTACHMENT_ALLOWED_EXTENSIONS?.trim()
