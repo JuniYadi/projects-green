@@ -44,6 +44,8 @@ export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
     dailyLimitMessage: device.dailyLimitMessage,
     whatsappBusinessAccountId: device.whatsappBusinessAccountId,
     whatsappPhoneId: device.whatsappPhoneId,
+    lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
+    lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
     createdAt: device.createdAt.toISOString(),
     updatedAt: device.updatedAt.toISOString(),
   }

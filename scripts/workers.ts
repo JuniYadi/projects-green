@@ -16,6 +16,7 @@
  *     - quota-reconciliation (concurrency: 4)
  *     - whatsapp-broadcast (concurrency: 4)
  *     - whatsapp-template-sync (concurrency: 2)
+ *     - whatsapp-health (concurrency: 5)
  *
  *   Interval-based (cron-style):
  *     - deploy-monitor (every 60s)
@@ -102,6 +103,7 @@ import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provision
 import { vpnReconciliationService } from "@/modules/vpn/provisioning/vpn-reconciliation.service"
 import { vpnHealthService } from "@/modules/vpn/admin/vpn-health.service"
 import { EmailJob } from "@/lib/queue/email"
+import { WhatsAppHealthJob } from "@/lib/queue/whatsapp-health"
 
 // ══════════════════════════════════════════════════════════════════════════
 // BullMQ Workers
@@ -453,6 +455,10 @@ const waOutgoingWorker = new Worker<WhatsappOutgoingWebhookJobData>(
 )
 allWorkers.push(waOutgoingWorker)
 
+// ── WhatsApp Health Worker ────────────────────────────────────────────────
+const whatsappHealthWorker = WhatsAppHealthJob.createWorker()
+allWorkers.push(whatsappHealthWorker)
+
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {
   const name = worker.name
@@ -771,6 +777,9 @@ process.on("SIGINT", () => void shutdown("SIGINT"))
 // Register billing repeatable jobs (idempotent — safe to call on every start)
 await registerRepeatableJobs()
 
+// Register WhatsApp health heartbeat cycle
+await WhatsAppHealthJob.registerHeartbeatCycle()
+
 // Run deploy monitor immediately on startup
 try {
   const results = await monitorActiveDeployments()
@@ -785,7 +794,7 @@ try {
 
 console.info("[workers] unified worker process ready")
 console.info(
-  `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}, ${EmailJob.queue}, ${WHATSAPP_WEBHOOK_OUTGOING_QUEUE}`
+  `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}, ${EmailJob.queue}, ${WHATSAPP_WEBHOOK_OUTGOING_QUEUE}, ${WhatsAppHealthJob.queue}`
 )
 console.info(
   "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m), vpn-health (15m)"

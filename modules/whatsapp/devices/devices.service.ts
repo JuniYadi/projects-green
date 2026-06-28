@@ -37,6 +37,8 @@ type PrismaDeviceFields = {
   dailyLimitMessage: number
   whatsappBusinessAccountId: string | null
   whatsappPhoneId: string | null
+  lastHeartbeatAt: Date | null
+  lastDisconnectedAt: Date | null
   createdAt: Date
   updatedAt: Date
   callbackUrl: string | null
@@ -58,6 +60,8 @@ const toDeviceListItem = (d: PrismaDeviceFields): DeviceListItem => ({
   dailyLimitMessage: d.dailyLimitMessage,
   whatsappBusinessAccountId: d.whatsappBusinessAccountId,
   whatsappPhoneId: d.whatsappPhoneId,
+  lastHeartbeatAt: d.lastHeartbeatAt?.toISOString() ?? null,
+  lastDisconnectedAt: d.lastDisconnectedAt?.toISOString() ?? null,
   createdAt: d.createdAt.toISOString(),
   updatedAt: d.updatedAt.toISOString(),
 })
@@ -239,4 +243,65 @@ export const createDeviceService = (
       return _toDeviceDetail(updated as PrismaDeviceFields)
     },
   }
+}
+
+// ─── Standalone health functions (exported for use by job & API routes) ─────
+
+export async function updateLastHeartbeat(
+  deviceId: string
+): Promise<void> {
+  await prisma.whatsappDevice.update({
+    where: { id: deviceId },
+    data: { lastHeartbeatAt: new Date() },
+  })
+}
+
+export async function markDisconnected(
+  deviceId: string
+): Promise<void> {
+  const device = await prisma.whatsappDevice.findUnique({
+    where: { id: deviceId },
+    select: { id: true, organizationId: true, phoneNumber: true },
+  })
+  if (!device) return
+
+  await prisma.whatsappDevice.update({
+    where: { id: deviceId },
+    data: { status: "DISCONNECTED", lastDisconnectedAt: new Date() },
+  })
+
+  // Audit log
+  const { logWhatsappAuditEvent } = await import(
+    "@/modules/whatsapp/audit/whatsapp-audit.service"
+  )
+  await logWhatsappAuditEvent({
+    action: "DEVICE_STATUS_CHANGED",
+    status: "OK",
+    organizationId: device.organizationId,
+    deviceId,
+    message: "Device disconnected after missed health checks",
+    details: { reason: "health_check_failed" },
+  })
+
+  // Email alert — fire-and-forget
+  const { render } = await import("@react-email/components")
+  const { DeviceDisconnectedEmail } = await import(
+    "@/modules/whatsapp/emails/device-disconnected"
+  )
+  const { sendEmail } = await import("@/lib/queue/email")
+  const dashboardUrl = process.env.APP_URL ?? "https://app.projects-green.com"
+  const html = render(
+    DeviceDisconnectedEmail({
+      phoneNumber: device.phoneNumber,
+      deviceId,
+      dashboardUrl,
+    })
+  )
+  sendEmail({
+    to: process.env.ALERT_EMAIL ?? "admin@example.com",
+    subject: `[WhatsApp] Device Disconnected: ${device.phoneNumber}`,
+    html,
+  }).catch((err: unknown) =>
+    console.error(`[whatsapp-health] email failed device=${deviceId}:`, err)
+  )
 }

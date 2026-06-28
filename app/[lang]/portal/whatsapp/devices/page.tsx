@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { StatusBadge, DeviceEmptyState } from "./_components/devices-ui"
+import { StatusBadge, HealthBadge, DeviceEmptyState } from "./_components/devices-ui"
 import { SyncButton } from "./_components/sync-button"
 import { Button } from "@/components/ui/button"
 
@@ -195,6 +195,7 @@ export default async function PortalWhatsAppDevicesPage({
                   <TableRow>
                     <TableHead>Organization Name</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Health</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
                     <TableHead className="text-right">Quota Base</TableHead>
@@ -222,6 +223,12 @@ export default async function PortalWhatsAppDevicesPage({
                         <div className="text-xs text-muted-foreground">
                           {device.phoneNumber}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <HealthBadge
+                          status={device.status}
+                          lastHeartbeatAt={device.lastHeartbeatAt}
+                        />
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={device.status} />

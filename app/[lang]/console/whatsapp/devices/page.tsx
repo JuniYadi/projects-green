@@ -46,13 +46,23 @@ type DeviceStatusBadgeProps = {
   messages: ReturnType<typeof getMessages>
 }
 
+function DeviceHealthBadge({ status }: { status: string }) {
+  if (status === "DISCONNECTED")
+    return <Badge variant="destructive">Disconnected</Badge>
+  if (status === "UNKNOWN")
+    return <Badge variant="secondary">Unknown</Badge>
+  return null // use DeviceStatusBadge for ACTIVE/NON_ACTIVE
+}
+
 function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
-  const variant: Record<DeviceStatus, "success" | "secondary"> = {
+  if (status === "DISCONNECTED" || status === "UNKNOWN") return null
+
+  const variant: Record<string, "success" | "secondary"> = {
     ACTIVE: "success",
     NON_ACTIVE: "secondary",
   }
 
-  const label: Record<DeviceStatus, string> = {
+  const label: Record<string, string> = {
     ACTIVE: messages.console.whatsapp.devices.active,
     NON_ACTIVE: messages.console.whatsapp.devices.inactive,
   }
@@ -304,6 +314,7 @@ export default function WhatsAppDevicesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    <DeviceHealthBadge status={device.status} />
                     <DeviceStatusBadge
                       status={device.status}
                       messages={messages}

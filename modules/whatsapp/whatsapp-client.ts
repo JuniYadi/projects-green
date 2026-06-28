@@ -12,7 +12,7 @@ type ApiResponse<T> = ApiSuccess<T> | ApiError
 
 // ─── Device Types ─────────────────────────────────────────────────────────
 
-export type DeviceStatus = "ACTIVE" | "NON_ACTIVE"
+export type DeviceStatus = "ACTIVE" | "NON_ACTIVE" | "DISCONNECTED" | "UNKNOWN"
 export type Device = {
   id: string
   organizationId: string

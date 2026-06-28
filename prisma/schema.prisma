@@ -1414,6 +1414,8 @@ model VpnAuditLog {
 enum WhatsappDeviceStatus {
   ACTIVE
   NON_ACTIVE
+  DISCONNECTED
+  UNKNOWN
 }
 
 enum WhatsappContactGroupStatus {
@@ -1507,7 +1509,9 @@ model WhatsappDevice {
   quotaBaseOut              Int                  @default(0)
   dailyLimitMessage         Int                  @default(0)
   rates                     String?
-  status                    WhatsappDeviceStatus @default(ACTIVE)
+  status                    WhatsappDeviceStatus @default(UNKNOWN)
+  lastHeartbeatAt           DateTime?
+  lastDisconnectedAt        DateTime?
   token                     String?
   tokenEncrypted            String?
   tokenIv                   String?

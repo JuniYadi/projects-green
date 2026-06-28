@@ -6,6 +6,7 @@ import {
   PaperPlaneTilt,
   ChartLine,
   ChatCircle,
+  Heartbeat,
 } from "@phosphor-icons/react"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -123,9 +124,10 @@ export default function PortalWhatsAppDashboardPage() {
       )}
 
       {/* Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {state === "loading" ? (
           <>
+            <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
@@ -214,6 +216,63 @@ export default function PortalWhatsAppDashboardPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Inbound messages
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Device Health
+                </CardTitle>
+                <Heartbeat
+                  className="size-4 text-muted-foreground"
+                  weight="fill"
+                />
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const connected = devices.filter(
+                    (d) =>
+                      d.status === "ACTIVE" && d.lastHeartbeatAt
+                  ).length
+                  const disconnected = devices.filter(
+                    (d) => d.status === "DISCONNECTED"
+                  ).length
+                  const unknown = devices.filter(
+                    (d) =>
+                      d.status === "UNKNOWN" ||
+                      (d.status === "ACTIVE" && !d.lastHeartbeatAt)
+                  ).length
+                  return (
+                    <div className="text-2xl font-bold">
+                      {connected}{" "}
+                      <span className="text-sm font-normal text-muted-foreground">
+                        Connected
+                      </span>
+                    </div>
+                  )
+                })()}
+                <p className="text-xs text-muted-foreground">
+                  {(() => {
+                    const disconnected = devices.filter(
+                      (d) => d.status === "DISCONNECTED"
+                    ).length
+                    const unknown = devices.filter(
+                      (d) =>
+                        d.status === "UNKNOWN" ||
+                        (d.status === "ACTIVE" && !d.lastHeartbeatAt)
+                    ).length
+                    const parts = [
+                      disconnected > 0
+                        ? `${disconnected} Disconnected`
+                        : null,
+                      unknown > 0 ? `${unknown} Unknown` : null,
+                    ].filter(Boolean)
+                    return parts.length > 0
+                      ? parts.join(" · ")
+                      : "All devices healthy"
+                  })()}
                 </p>
               </CardContent>
             </Card>

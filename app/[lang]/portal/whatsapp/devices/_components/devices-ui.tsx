@@ -5,10 +5,31 @@ import { Badge } from "@/components/ui/badge"
 
 type StatusBadgeProps = {
   status: string
+  lastHeartbeatAt?: string | null
   className?: string
 }
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+export function StatusBadge({
+  status,
+  lastHeartbeatAt,
+  className,
+}: StatusBadgeProps) {
+  if (status === "DISCONNECTED") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-destructive">
+        <span className="size-2 rounded-full bg-destructive" />
+        Disconnected
+      </span>
+    )
+  }
+  if (status === "UNKNOWN") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <span className="size-2 rounded-full bg-muted-foreground" />
+        Unknown
+      </span>
+    )
+  }
   const isActive = status === "ACTIVE"
 
   return (
@@ -19,6 +40,35 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         <XCircle weight="fill" className="mr-1 size-3.5" />
       )}
       {isActive ? "Active" : "Inactive"}
+    </Badge>
+  )
+}
+
+export function HealthBadge({
+  status,
+  lastHeartbeatAt,
+}: {
+  status: string
+  lastHeartbeatAt?: string | null
+}) {
+  if (status === "DISCONNECTED")
+    return (
+      <Badge variant="destructive" className="gap-1">
+        <span className="size-2 rounded-full bg-white" />
+        Disconnected
+      </Badge>
+    )
+  if (status === "UNKNOWN" || (status === "ACTIVE" && !lastHeartbeatAt))
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <span className="size-2 rounded-full bg-muted-foreground" />
+        Unknown
+      </Badge>
+    )
+  return (
+    <Badge variant="success" className="gap-1">
+      <span className="size-2 rounded-full bg-green-500" />
+      Connected
     </Badge>
   )
 }

@@ -50,7 +50,8 @@
     "create:api-key": "bun run scripts/create-api-key.ts",
     "worker:vpn-renewal": "bun run scripts/vpn-renewal-worker.ts",
     "worker:opensearch-ingest": "bun run scripts/opensearch-ingest-worker.ts",
-    "cleanup:webhook-events": "bun run scripts/cleanup-whatsapp-webhook-events.ts"
+    "cleanup:webhook-events": "bun run scripts/cleanup-whatsapp-webhook-events.ts",
+    "worker:whatsapp-health": "bun run scripts/whatsapp-health.worker.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.64",
