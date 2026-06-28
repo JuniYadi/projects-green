@@ -18,6 +18,12 @@ coverage:
         threshold: 2%
         informational: false
 
+ignore:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/integration/**"
+  - "**/_ops/**"
+
 comment:
   layout: "reach,diff,flags,files,footer"
   behavior: default
