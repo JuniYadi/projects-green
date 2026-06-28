@@ -1062,7 +1062,7 @@ export async function checkDeviceHealth(params: {
   const { organizationId, phoneId } = params
 
   const device = await prisma.whatsappDevice.findFirst({
-    where: { id: phoneId, organizationId },
+    where: { whatsappPhoneId: phoneId, organizationId },
     select: {
       whatsappPhoneId: true,
       whatsappBusinessAccountId: true,

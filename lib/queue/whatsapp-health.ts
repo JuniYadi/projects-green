@@ -8,12 +8,15 @@
  * Device heartbeat: `lastHeartbeatAt` on `WhatsappDevice`.
  */
 
+import { render } from "@react-email/components"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { BaseJob } from "@/lib/queue/base-job"
+import { sendEmail } from "@/lib/queue/email"
 import { redis } from "@/lib/redis"
 import { checkDeviceHealth } from "@/modules/whatsapp/whatsapp-client"
 import { devicesService } from "@/modules/whatsapp/devices/devices.service"
+import { DeviceDisconnectedEmail } from "@/modules/whatsapp/emails/device-disconnected"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -55,6 +58,57 @@ async function clearMissCount(deviceId: string): Promise<void> {
 
 // ── Health Check ─────────────────────────────────────────────────────────────
 
+async function sendDisconnectEmail(deviceId: string, orgId: string): Promise<void> {
+  try {
+    const device = await prisma.whatsappDevice.findUnique({
+      where: { id: deviceId },
+      select: {
+        phoneNumber: true,
+        lastHeartbeatAt: true,
+      },
+    })
+    if (!device) return
+
+    const { createWorkOS } = await import("@workos-inc/node")
+    const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
+
+    const org = await workos.organizations.getOrganization(orgId)
+    const memberships = await workos.userManagement.listOrganizationMemberships({
+      organizationId: orgId,
+    })
+
+    const users = await Promise.all(
+      memberships.data.map((m) => workos.userManagement.getUser(m.userId))
+    )
+    const recipients = users.filter((u) => u.email)
+
+    if (!recipients.length) {
+      console.warn(`[whatsapp-health] no recipients for org=${orgId}`)
+      return
+    }
+
+    const html = await render(
+      <DeviceDisconnectedEmail
+        deviceName={device.phoneNumber}
+        phoneNumber={device.phoneNumber}
+        orgName={org.name}
+        lastHeartbeatAt={device.lastHeartbeatAt?.toISOString() ?? "Unknown"}
+        disconnectedAt={new Date().toISOString()}
+        dashboardUrl={`${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.example.com"}/portal/whatsapp/devices`}
+      />
+    )
+
+    const subject = `[${org.name}] WhatsApp Device Disconnected: ${device.phoneNumber}`
+    for (const { email } of recipients) {
+      sendEmail({ to: email, subject, html }).catch((err) =>
+        console.error(`[whatsapp-health] email send failed: ${email}`, err)
+      )
+    }
+  } catch (err) {
+    console.error(`[whatsapp-health] failed to send disconnect email`, err)
+  }
+}
+
 async function checkSingleDevice(deviceId: string): Promise<void> {
   const device = await prisma.whatsappDevice.findUnique({
     where: { id: deviceId },
@@ -83,7 +137,7 @@ async function checkSingleDevice(deviceId: string): Promise<void> {
   // Call Meta API to check device health
   const result = await checkDeviceHealth({
     organizationId: device.organizationId,
-    phoneId: device.id,
+    phoneId: device.whatsappPhoneId,
   })
 
   if (result.ok) {
@@ -107,6 +161,7 @@ async function checkSingleDevice(deviceId: string): Promise<void> {
       await devicesService.markDisconnected(deviceId)
       await clearMissCount(deviceId)
       console.info(`[whatsapp-health] device marked DISCONNECTED: ${deviceId}`)
+      await sendDisconnectEmail(deviceId, device.organizationId)
     }
   }
 }

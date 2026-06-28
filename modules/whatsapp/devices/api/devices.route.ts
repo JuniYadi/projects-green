@@ -253,7 +253,7 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     // Call Meta API to verify device health
     const healthResult = await checkDeviceHealth({
       organizationId: device.organizationId,
-      phoneId: device.id,
+      phoneId: device.whatsappPhoneId,
     })
 
     // Log the health check result
