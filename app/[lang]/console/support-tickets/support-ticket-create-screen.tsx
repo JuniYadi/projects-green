@@ -151,7 +151,7 @@ export function SupportTicketCreateScreen({
   }
 
   const handleRemoveFile = (index: number) => {
-    const target = files[index]
+    const target = files[index] // capture before state update
     const fileName = target?.file.name
 
     setFiles((prev) => {
