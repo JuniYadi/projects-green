@@ -8,6 +8,59 @@ export type SshCommandResult = {
   exitCode: number
 }
 
+/** SSH-layer error classification for better error messages. */
+export type SshErrorType =
+  | { type: "timeout"; host: string }
+  | { type: "auth_failure"; host: string; message: string }
+  | { type: "unreachable"; host: string; message: string }
+  | { type: "command_failed"; host: string; exitCode: number; stderr: string }
+  | { type: "unknown"; message: string }
+
+export function classifySshError(
+  result: SshCommandResult,
+  host: string
+): SshErrorType {
+  // SSH connection timeout
+  if (result.stderr === "SSH exec timed out") {
+    return { type: "timeout", host }
+  }
+  // SSH auth failure
+  if (
+    result.stderr.includes("Authentication failed") ||
+    result.stderr.includes("auth fail")
+  ) {
+    return { type: "auth_failure", host, message: result.stderr }
+  }
+  // DNS/connect failure
+  if (
+    result.stderr.includes("ENOTFOUND") ||
+    result.stderr.includes("EAI_AGAIN") ||
+    result.stderr.includes("ECONNREFUSED")
+  ) {
+    return { type: "unreachable", host, message: result.stderr }
+  }
+  // Remote command failed
+  if (result.exitCode !== 0) {
+    return { type: "command_failed", host, exitCode: result.exitCode, stderr: result.stderr }
+  }
+  return { type: "unknown", message: result.stderr || "Unknown SSH error" }
+}
+
+export function formatSshError(error: SshErrorType, action: string): string {
+  switch (error.type) {
+    case "timeout":
+      return `SSH connection to ${error.host} timed out after 30s while ${action}`
+    case "auth_failure":
+      return `SSH key rejected by ${error.host}: ${error.message}`
+    case "unreachable":
+      return `Cannot reach ${error.host}: ${error.message}`
+    case "command_failed":
+      return `Remote command failed on ${error.host} (exit ${error.exitCode}): ${error.stderr}`
+    case "unknown":
+      return `Failed to ${action}: ${error.message}`
+  }
+}
+
 export type SshTarget = {
   host: string
   /**
@@ -141,7 +194,8 @@ export class VpnServerSshExecutor {
   ): Promise<SshCommandResult> {
     const result = await this.exec(target, remoteArgs)
     if (result.exitCode !== 0) {
-      throw new Error(`Failed to ${action}: ${result.stderr.trim()}`)
+      const classified = classifySshError(result, target.host)
+      throw new Error(formatSshError(classified, action))
     }
     return result
   }

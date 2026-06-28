@@ -94,9 +94,36 @@ describe("OpenVpnSshAdapter", () => {
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
       6, target,
-      ["systemctl", "is-active", "openvpn-server@server"],
+      ["docker", "ps", "--filter", "name=openvpn", "--format", "{{.Names}}"],
       "check OpenVPN health"
     )
+  })
+
+  it("healthCheck returns ok=true when openvpn container is running", async () => {
+    mockExecChecked.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
+    mockExecInternal.mockResolvedValue({ stdout: "openvpn", stderr: "", exitCode: 0 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const result = await adapter.healthCheck(target)
+
+    expect(result.ok).toBe(true)
+    expect(result.output).toBe("openvpn container running")
+  })
+
+  it("healthCheck returns ok=false when container is not running", async () => {
+    mockExecChecked.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const result = await adapter.healthCheck(target)
+
+    expect(result.ok).toBe(false)
   })
 
   it("lists OpenVPN users via root userlist script", async () => {
