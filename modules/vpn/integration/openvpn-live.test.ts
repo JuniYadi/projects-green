@@ -36,7 +36,13 @@ function checkCreds(): void {
   }
 }
 
-describe("OpenVPN live integration", () => {
+const hasEnv = Boolean(
+  process.env.OPENVPN_LIVE_TEST_HOST &&
+  process.env.OPENVPN_LIVE_TEST_USER &&
+  process.env.OPENVPN_LIVE_TEST_KEY,
+)
+
+describe.skipIf(!hasEnv)("OpenVPN live integration", () => {
   const executor = new VpnServerSshExecutor()
   const adapter = new OpenVpnSshAdapter({ executor })
   const clientName = `pgreen-live-${Date.now()}`
