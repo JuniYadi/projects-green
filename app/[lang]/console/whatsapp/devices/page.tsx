@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
 import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -44,14 +45,6 @@ import type {
 type DeviceStatusBadgeProps = {
   status: DeviceStatus
   messages: ReturnType<typeof getMessages>
-}
-
-function DeviceHealthBadge({ status }: { status: string }) {
-  if (status === "DISCONNECTED")
-    return <Badge variant="destructive">Disconnected</Badge>
-  if (status === "UNKNOWN")
-    return <Badge variant="secondary">Unknown</Badge>
-  return null // use DeviceStatusBadge for ACTIVE/NON_ACTIVE
 }
 
 function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
@@ -314,7 +307,7 @@ export default function WhatsAppDevicesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <DeviceHealthBadge status={device.status} />
+                    <DeviceHealthBadge status={device.status} lastHeartbeatAt={device.lastHeartbeatAt} />
                     <DeviceStatusBadge
                       status={device.status}
                       messages={messages}

@@ -75,7 +75,7 @@ export class WhatsAppHealthJob extends BaseJob {
     // Cycle job: enumerate ACTIVE/UNKNOWN/DISCONNECTED devices and fan out
     const devices = await prisma.whatsappDevice.findMany({
       where: {
-        status: { in: ["ACTIVE", "UNKNOWN", "DISCONNECTED"] },
+        status: { in: ["ACTIVE", "UNKNOWN"] },
         whatsappPhoneId: { not: null },
       },
       select: { id: true },
@@ -173,61 +173,21 @@ export async function checkDeviceHealth(deviceId: string): Promise<void> {
 async function recordMiss(deviceId: string): Promise<void> {
   const redis = getRedis()
   const key = missKey(deviceId)
-  const count = await redis.incr(key)
-  if (count === 1) {
-    await redis.expire(key, MISS_TTL)
-  }
+  const pipe = redis.pipeline()
+  pipe.incr(key)
+  pipe.expire(key, MISS_TTL)
+  const [[, count]] = await pipe.exec()
+  const misses = count as number
 
-  if (count >= MISS_THRESHOLD) {
-    console.info(`[whatsapp-health] device=${deviceId} ${count} misses, marking DISCONNECTED`)
+  if (misses >= MISS_THRESHOLD) {
+    console.info(`[whatsapp-health] device=${deviceId} ${misses} misses, marking DISCONNECTED`)
     await markDeviceDisconnected(deviceId)
   }
 }
 
 async function markDeviceDisconnected(deviceId: string): Promise<void> {
-  const device = await prisma.whatsappDevice.findUnique({
-    where: { id: deviceId },
-    select: { id: true, organizationId: true, phoneNumber: true },
-  })
-  if (!device) return
-
-  await prisma.whatsappDevice.update({
-    where: { id: deviceId },
-    data: { status: "DISCONNECTED", lastDisconnectedAt: new Date() },
-  })
-
-  // Audit log
-  const { logWhatsappAuditEvent } = await import(
-    "@/modules/whatsapp/audit/whatsapp-audit.service"
+  const { markDisconnected } = await import(
+    "@/modules/whatsapp/devices/devices.service"
   )
-  await logWhatsappAuditEvent({
-    action: "DEVICE_STATUS_CHANGED",
-    status: "OK",
-    organizationId: device.organizationId,
-    deviceId,
-    message: "Device auto-disconnected after 3 missed health checks",
-    details: { reason: "health_check_failed", threshold: MISS_THRESHOLD },
-  })
-
-  // Email alert — fire-and-forget
-  const { render } = await import("@react-email/components")
-  const { DeviceDisconnectedEmail } = await import(
-    "@/modules/whatsapp/emails/device-disconnected"
-  )
-  const { sendEmail } = await import("@/lib/queue/email")
-  const dashboardUrl = process.env.APP_URL ?? "https://app.projects-green.com"
-  const html = await render(
-    DeviceDisconnectedEmail({
-      phoneNumber: device.phoneNumber,
-      deviceId,
-      dashboardUrl,
-    })
-  )
-  sendEmail({
-    to: process.env.ALERT_EMAIL ?? "admin@example.com",
-    subject: `[WhatsApp] Device Disconnected: ${device.phoneNumber}`,
-    html,
-  }).catch((err: unknown) =>
-    console.error(`[whatsapp-health] email send failed device=${deviceId}:`, err)
-  )
+  await markDisconnected(deviceId)
 }

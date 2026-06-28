@@ -236,9 +236,14 @@ export const createDeviceService = (
         throw new DeviceNotOwnedError()
       }
 
+      // Clear miss counter so device isn't immediately re-marked DISCONNECTED
+      const { getRedis } = await import("@/lib/queue/whatsapp-health")
+      const redis = getRedis()
+      await redis.del(`whatsapp:health:miss:${id}`).catch(() => {})
+
       const updated = await db.whatsappDevice.update({
         where: { id },
-        data: { status: "ACTIVE" },
+        data: { status: "ACTIVE", lastDisconnectedAt: null },
       })
       return _toDeviceDetail(updated as PrismaDeviceFields)
     },
@@ -284,6 +289,13 @@ export async function markDisconnected(
   })
 
   // Email alert — fire-and-forget
+  const alertTo = process.env.ALERT_EMAIL
+  if (!alertTo) {
+    console.error(
+      "[whatsapp-health] ALERT_EMAIL not set, skipping disconnect alert"
+    )
+    return
+  }
   const { render } = await import("@react-email/components")
   const { DeviceDisconnectedEmail } = await import(
     "@/modules/whatsapp/emails/device-disconnected"
@@ -298,7 +310,7 @@ export async function markDisconnected(
     })
   )
   sendEmail({
-    to: process.env.ALERT_EMAIL ?? "admin@example.com",
+    to: alertTo,
     subject: `[WhatsApp] Device Disconnected: ${device.phoneNumber}`,
     html,
   }).catch((err: unknown) =>
