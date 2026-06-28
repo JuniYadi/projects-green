@@ -46,7 +46,7 @@ describe.skipIf(!hasEnv)("OpenVPN live integration", () => {
   const executor = new VpnServerSshExecutor()
   const adapter = new OpenVpnSshAdapter({ executor })
   const clientName = `pgreen-live-${Date.now()}`
-  const target = buildTarget()
+  const target = hasEnv ? buildTarget() : ({} as SshTarget)
 
   it("validateConnection — SSH connection works", async () => {
     checkCreds()
