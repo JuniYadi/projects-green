@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-const EXTENSION_MIME_ALLOWLIST: Record<string, readonly string[]> = {
+export const EXTENSION_MIME_ALLOWLIST: Record<string, readonly string[]> = {
   csv: ["text/csv", "application/csv"],
   jpeg: ["image/jpeg"],
   jpg: ["image/jpeg"],
