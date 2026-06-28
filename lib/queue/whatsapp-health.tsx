@@ -14,7 +14,6 @@ import { prisma } from "@/lib/prisma"
 import { BaseJob } from "@/lib/queue/base-job"
 import { sendEmail } from "@/lib/queue/email"
 import { redis } from "@/lib/redis"
-import { checkDeviceHealth } from "@/modules/whatsapp/whatsapp-client"
 import { devicesService } from "@/modules/whatsapp/devices/devices.service"
 import { DeviceDisconnectedEmail } from "@/modules/whatsapp/emails/device-disconnected"
 
@@ -57,6 +56,63 @@ async function clearMissCount(deviceId: string): Promise<void> {
 }
 
 // ── Health Check ─────────────────────────────────────────────────────────────
+
+type HealthCheckResult =
+  | { ok: true; connected: boolean }
+  | { ok: false; error: string }
+
+export async function checkDeviceHealth(params: {
+  organizationId: string
+  phoneId: string
+}): Promise<HealthCheckResult> {
+  const { organizationId, phoneId } = params
+
+  const device = await prisma.whatsappDevice.findFirst({
+    where: { whatsappPhoneId: phoneId, organizationId },
+    select: {
+      whatsappPhoneId: true,
+      whatsappBusinessAccountId: true,
+      tokenEncrypted: true,
+      tokenIv: true,
+      whatsappVersion: true,
+    },
+  })
+
+  if (!device?.whatsappPhoneId) {
+    return { ok: false, error: "Device not found or missing phoneId" }
+  }
+
+  try {
+    const { decryptWhatsAppToken } = await import("@/lib/whatsapp/crypto")
+    const { MetaCloudHttpClient } = await import(
+      "@/lib/whatsapp/meta-cloud/client"
+    )
+    const { ENDPOINTS } = await import("@/lib/whatsapp/meta-cloud/endpoints")
+
+    if (!device.tokenEncrypted) {
+      return { ok: false, error: "No access token configured" }
+    }
+
+    const accessToken = await decryptWhatsAppToken(device.tokenEncrypted)
+
+    const httpClient = new MetaCloudHttpClient({
+      accessToken,
+      phoneNumberId: device.whatsappPhoneId,
+      organizationId,
+    })
+
+    await httpClient.request(
+      "PHONE_INFO",
+      ENDPOINTS.PHONE_INFO(device.whatsappPhoneId),
+      "GET"
+    )
+
+    return { ok: true, connected: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    return { ok: false, error: message }
+  }
+}
 
 async function sendDisconnectEmail(deviceId: string, orgId: string): Promise<void> {
   try {

@@ -17,7 +17,7 @@ import {
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { toDeviceDetail, toDeviceListItem } from "../devices.dto"
 import { updateDeviceSchema } from "../devices.schemas"
-import { checkDeviceHealth } from "@/modules/whatsapp/whatsapp-client"
+import { checkDeviceHealth } from "@/lib/queue/whatsapp-health"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
 type RouteSet = {
