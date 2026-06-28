@@ -250,6 +250,12 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
+    // Ensure phone ID exists
+    if (!device.whatsappPhoneId) {
+      set.status = 422
+      return { ok: false, error: "VALIDATION_ERROR", message: "Device missing phone ID." }
+    }
+
     // Call Meta API to verify device health
     const healthResult = await checkDeviceHealth({
       organizationId: device.organizationId,
