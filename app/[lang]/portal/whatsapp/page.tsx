@@ -233,47 +233,32 @@ export default function PortalWhatsAppDashboardPage() {
               <CardContent>
                 {(() => {
                   const connected = devices.filter(
-                    (d) =>
-                      d.status === "ACTIVE" && d.lastHeartbeatAt
+                    (d) => d.status === "ACTIVE" && d.lastHeartbeatAt
                   ).length
-                  const disconnected = devices.filter(
+                  const disc = devices.filter(
                     (d) => d.status === "DISCONNECTED"
                   ).length
-                  const unknown = devices.filter(
+                  const unk = devices.filter(
                     (d) =>
                       d.status === "UNKNOWN" ||
                       (d.status === "ACTIVE" && !d.lastHeartbeatAt)
                   ).length
                   return (
-                    <div className="text-2xl font-bold">
-                      {connected}{" "}
-                      <span className="text-sm font-normal text-muted-foreground">
-                        Connected
-                      </span>
-                    </div>
+                    <>
+                      <div className="text-2xl font-bold">
+                        {connected}{" "}
+                        <span className="text-sm font-normal text-muted-foreground">
+                          Connected
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {[disc > 0 ? `${disc} Disconnected` : null, unk > 0 ? `${unk} Unknown` : null]
+                          .filter(Boolean)
+                          .join(" · ") || "All devices healthy"}
+                      </p>
+                    </>
                   )
                 })()}
-                <p className="text-xs text-muted-foreground">
-                  {(() => {
-                    const disconnected = devices.filter(
-                      (d) => d.status === "DISCONNECTED"
-                    ).length
-                    const unknown = devices.filter(
-                      (d) =>
-                        d.status === "UNKNOWN" ||
-                        (d.status === "ACTIVE" && !d.lastHeartbeatAt)
-                    ).length
-                    const parts = [
-                      disconnected > 0
-                        ? `${disconnected} Disconnected`
-                        : null,
-                      unknown > 0 ? `${unknown} Unknown` : null,
-                    ].filter(Boolean)
-                    return parts.length > 0
-                      ? parts.join(" · ")
-                      : "All devices healthy"
-                  })()}
-                </p>
               </CardContent>
             </Card>
           </>

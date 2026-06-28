@@ -13,6 +13,7 @@
  */
 
 import type { Job } from "bullmq"
+import type { ConnectionOptions } from "bullmq"
 import Redis from "ioredis"
 import { BaseJob } from "@/lib/queue/base-job"
 import { getQueueRuntimeConfig } from "@/lib/queue/queue-config"
@@ -31,12 +32,13 @@ let _redis: Redis | null = null
 function getRedis(): Redis {
   if (!_redis) {
     const { connection } = getQueueRuntimeConfig()
+    const cfg = connection as Record<string, unknown>
     _redis = new Redis({
-      host: connection.host,
-      port: connection.port,
-      username: connection.username,
-      password: connection.password,
-      db: (connection as any).db ?? 0,
+      host: cfg.host as string | undefined,
+      port: cfg.port as number | undefined,
+      username: cfg.username as string | undefined,
+      password: cfg.password as string | undefined,
+      db: (cfg.db as number) ?? 0,
       maxRetriesPerRequest: null,
       lazyConnect: true,
     })
@@ -214,7 +216,7 @@ async function markDeviceDisconnected(deviceId: string): Promise<void> {
   )
   const { sendEmail } = await import("@/lib/queue/email")
   const dashboardUrl = process.env.APP_URL ?? "https://app.projects-green.com"
-  const html = render(
+  const html = await render(
     DeviceDisconnectedEmail({
       phoneNumber: device.phoneNumber,
       deviceId,

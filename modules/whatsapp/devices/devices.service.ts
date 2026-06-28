@@ -290,7 +290,7 @@ export async function markDisconnected(
   )
   const { sendEmail } = await import("@/lib/queue/email")
   const dashboardUrl = process.env.APP_URL ?? "https://app.projects-green.com"
-  const html = render(
+  const html = await render(
     DeviceDisconnectedEmail({
       phoneNumber: device.phoneNumber,
       deviceId,

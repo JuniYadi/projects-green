@@ -5,15 +5,10 @@ import { Badge } from "@/components/ui/badge"
 
 type StatusBadgeProps = {
   status: string
-  lastHeartbeatAt?: string | null
   className?: string
 }
 
-export function StatusBadge({
-  status,
-  lastHeartbeatAt,
-  className,
-}: StatusBadgeProps) {
+export function StatusBadge({ status, className }: StatusBadgeProps) {
   if (status === "DISCONNECTED") {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-destructive">
