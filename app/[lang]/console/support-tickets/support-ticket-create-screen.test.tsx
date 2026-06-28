@@ -293,7 +293,7 @@ describe("SupportTicketCreateScreen", () => {
     attachFiles(view, [bigFile])
 
     expect(
-      view.getByText(/big\.pdf.*10MB limit/i)
+      view.getByText(/big\.pdf.*10 MB limit/i)
     ).toBeInTheDocument()
     expect(view.queryByText("big.pdf")).toBeNull()
   })
