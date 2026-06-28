@@ -70,6 +70,11 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
           whatsappMessages: {
             orderBy: { createdAt: "desc" },
             take: 50,
+            include: {
+              statusHistory: {
+                orderBy: { timestamp: "desc" },
+              },
+            },
           },
         },
       })

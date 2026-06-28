@@ -34,10 +34,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { InteractiveComposer } from "@/modules/whatsapp/messages/ui/interactive-composer"
+import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
 
 // ─── Local Types ─────────────────────────────────────────────────────────────
 
 type MessageDirection = "INBOX" | "OUTBOX"
+type DeliveryStatus = "SENT" | "DELIVERED" | "READ" | "FAILED"
+
+type StatusHistory = {
+  status: DeliveryStatus
+  error?: string | null
+}
 
 type ConversationListItem = {
   id: string
@@ -60,6 +67,7 @@ type Message = {
   mediaUrl: string | null
   waMessageId: string | null
   metadata: Record<string, unknown> | null
+  statusHistory?: StatusHistory[]
   createdAt: string
   updatedAt: string
 }
@@ -163,13 +171,15 @@ function MessageBubble({ message }: { message: Message }) {
             </span>
           )}
         </p>
-        <p
-          className={`mt-1 text-right text-[10px] ${
-            isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
-          }`}
-        >
-          {formatTime(message.createdAt)}
-        </p>
+        <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
+          isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
+        }`}>
+          <span>{formatTime(message.createdAt)}</span>
+          <MessageStatusBadge
+            statusHistory={message.statusHistory}
+            direction={message.direction}
+          />
+        </div>
       </div>
     </div>
   )
