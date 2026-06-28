@@ -28,6 +28,7 @@ import {
 } from "@/modules/support-tickets/support-ticket.types"
 import { formatBytes } from "@/lib/utils"
 import {
+  EXTENSION_MIME_ALLOWLIST,
   S3_ATTACHMENT_ALLOWED_EXTENSIONS,
   S3_ATTACHMENT_ALLOWED_MIME_TYPES,
   S3_ATTACHMENT_MAX_SIZE_BYTES,
@@ -109,7 +110,7 @@ export function SupportTicketCreateScreen({
       const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
 
       if (file.size > S3_ATTACHMENT_MAX_SIZE_BYTES) {
-        newErrors[file.name] = `"${file.name}" exceeds 10MB limit.`
+        newErrors[file.name] = `"${file.name}" exceeds ${formatBytes(S3_ATTACHMENT_MAX_SIZE_BYTES)} limit.`
         continue
       }
 
@@ -122,6 +123,15 @@ export function SupportTicketCreateScreen({
         file.type &&
         file.type !== "" &&
         !S3_ATTACHMENT_ALLOWED_MIME_TYPES.includes(file.type)
+      ) {
+        newErrors[file.name] = `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
+        continue
+      }
+
+      if (
+        file.type &&
+        ext &&
+        !EXTENSION_MIME_ALLOWLIST[ext]?.includes(file.type)
       ) {
         newErrors[file.name] = `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
         continue
@@ -141,19 +151,24 @@ export function SupportTicketCreateScreen({
   }
 
   const handleRemoveFile = (index: number) => {
+    const target = files[index]
+    const fileName = target?.file.name
+
     setFiles((prev) => {
-      const target = prev[index]
-      if (target?.previewUrl) {
-        URL.revokeObjectURL(target.previewUrl)
+      const toRemove = prev[index]
+      if (toRemove?.previewUrl) {
+        URL.revokeObjectURL(toRemove.previewUrl)
       }
       return prev.filter((_, i) => i !== index)
     })
-    setValidationErrors((prev) => {
-      const next = { ...prev }
-      const target = files[index]
-      if (target) delete next[target.file.name]
-      return next
-    })
+
+    if (fileName) {
+      setValidationErrors((prev) => {
+        const next = { ...prev }
+        delete next[fileName]
+        return next
+      })
+    }
   }
 
   const listPath = localizePathname({
