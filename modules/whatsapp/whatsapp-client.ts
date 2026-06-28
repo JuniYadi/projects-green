@@ -4,8 +4,6 @@
  * Pattern: factory function returning an object with typed async methods.
  */
 
-import { prisma } from "@/lib/prisma"
-
 // ─── API Response Types ───────────────────────────────────────────────────
 
 type ApiSuccess<T> = { ok: true } & T
@@ -1061,6 +1059,7 @@ export async function checkDeviceHealth(params: {
 }): Promise<HealthCheckResult> {
   const { organizationId, phoneId } = params
 
+  const { prisma } = await import("@/lib/prisma")
   const device = await prisma.whatsappDevice.findFirst({
     where: { whatsappPhoneId: phoneId, organizationId },
     select: {
