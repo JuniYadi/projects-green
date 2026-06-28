@@ -83,6 +83,7 @@ type SupportTicketAttachmentRepository = {
     expiresAt: Date
     registeredAt: Date | null
   } | null>
+  deleteUploadSession: (id: string) => Promise<void>
   markUploadSessionRegistered: (input: {
     checksumSha256?: string | null
     fileName: string
@@ -162,6 +163,10 @@ const createLazyAttachmentRepository =
       async getUploadSessionById(id) {
         const repository = await loadRepository()
         return repository.getUploadSessionById(id)
+      },
+      async deleteUploadSession(id) {
+        const repository = await loadRepository()
+        return repository.deleteUploadSession(id)
       },
       async markUploadSessionRegistered(input) {
         const repository = await loadRepository()
@@ -373,6 +378,9 @@ export const createSupportTicketAttachmentService = (
           uploaderWorkosUserId: input.actor.workosUserId,
         })
       } catch (error) {
+        // Clean up orphaned session on verification failure
+        await repository.deleteUploadSession(input.id)
+
         if (error instanceof SupportTicketAttachmentUploadNotFoundError) {
           throw new SupportTicketAttachmentUploadExpiredError()
         }
