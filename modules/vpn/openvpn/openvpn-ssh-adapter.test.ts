@@ -92,11 +92,34 @@ describe("OpenVpnSshAdapter", () => {
       ["docker", "compose", "-f", "/root/openvpn/docker-compose.yaml", "restart", "openvpn"],
       "restart OpenVPN server"
     )
-    expect(mockExecChecked).toHaveBeenNthCalledWith(
-      6, target,
-      ["systemctl", "is-active", "openvpn-server@server"],
-      "check OpenVPN health"
-    )
+    // healthCheck calls exec (not execChecked) — covered by dedicated healthCheck tests below
+  })
+
+  it("healthCheck returns ok=true when openvpn container is running", async () => {
+    // healthCheck uses exec, not execChecked — no need to mock execChecked here
+    mockExecInternal.mockResolvedValue({ stdout: "openvpn", stderr: "", exitCode: 0 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const result = await adapter.healthCheck(target)
+
+    expect(result.ok).toBe(true)
+    expect(result.output).toBe("openvpn container running")
+  })
+
+  it("healthCheck returns ok=false when container is not running", async () => {
+    // healthCheck uses exec, not execChecked — no need to mock execChecked here
+    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
+
+    const adapter = new OpenVpnSshAdapter({
+      executor: mockExecutor as unknown as VpnServerSshExecutor,
+    })
+
+    const result = await adapter.healthCheck(target)
+
+    expect(result.ok).toBe(false)
   })
 
   it("lists OpenVPN users via root userlist script", async () => {
