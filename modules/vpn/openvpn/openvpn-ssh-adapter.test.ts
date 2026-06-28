@@ -54,7 +54,10 @@ describe("OpenVpnSshAdapter", () => {
       if (args[0] === "cat") return { stdout: "client config", stderr: "", exitCode: 0 }
       return { stdout: "ok", stderr: "", exitCode: 0 }
     })
-    mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
+    mockExecInternal.mockImplementation(async (_target: SshTarget, args: string[]) => {
+      if (args[0] === "docker" && args[1] === "ps") return { stdout: "openvpn", stderr: "", exitCode: 0 }
+      return { stdout: "", stderr: "", exitCode: 0 }
+    })
 
     const adapter = new OpenVpnSshAdapter({
       executor: mockExecutor as unknown as VpnServerSshExecutor,
@@ -92,10 +95,9 @@ describe("OpenVpnSshAdapter", () => {
       ["docker", "compose", "-f", "/root/openvpn/docker-compose.yaml", "restart", "openvpn"],
       "restart OpenVPN server"
     )
-    expect(mockExecChecked).toHaveBeenNthCalledWith(
-      6, target,
-      ["systemctl", "is-active", "openvpn-server@server"],
-      "check OpenVPN health"
+    expect(mockExecInternal).toHaveBeenNthCalledWith(
+      2, target,
+      ["docker", "ps", "--filter", "name=openvpn", "--format", "{{.Names}}"],
     )
   })
 

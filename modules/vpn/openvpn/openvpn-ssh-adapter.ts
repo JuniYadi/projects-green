@@ -300,12 +300,18 @@ export class OpenVpnSshAdapter {
   }
 
   async healthCheck(target: SshTarget): Promise<{ ok: boolean; output: string }> {
-    const result = await this.executor.execChecked(
-      target,
-      ["systemctl", "is-active", "openvpn-server@server"],
-      "check OpenVPN health"
-    )
-
-    return { ok: true, output: result.stdout.trim() }
+    const result = await this.executor.exec(target, [
+      "docker",
+      "ps",
+      "--filter",
+      "name=openvpn",
+      "--format",
+      "{{.Names}}",
+    ])
+    const containerName = result.stdout.trim()
+    return {
+      ok: result.exitCode === 0 && containerName.length > 0,
+      output: containerName || result.stderr.trim() || "(empty)",
+    }
   }
 }
