@@ -102,10 +102,20 @@ describe("OpenVPN live integration", () => {
     checkCreds()
     await adapter.restartServer(target)
     log("restartServer", { status: "restarted" })
+    // Wait for server to come back up
+    let healthy = false
+    for (let i = 0; i < 10; i++) {
+      const hc = await adapter.healthCheck(target)
+      if (hc.ok) { healthy = true; break }
+      await new Promise(r => setTimeout(r, 2000))
+    }
+    expect(healthy).toBe(true)
   })
 
   it("validateClient — profile gone after removal", async () => {
     checkCreds()
+    await adapter.revokeClient(target, clientName)
+    await adapter.removeClient(target, clientName)
     const result = await adapter.validateClient(target, clientName)
     log("validateClient (post-removal)", result)
     expect(result.exists).toBe(false)
