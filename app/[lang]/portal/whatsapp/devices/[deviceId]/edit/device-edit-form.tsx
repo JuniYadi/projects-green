@@ -33,7 +33,7 @@ import { Textarea } from "@/components/ui/textarea"
 type DeviceEditInitialData = {
   id: string
   phoneNumber: string
-  status: "ACTIVE" | "NON_ACTIVE"
+  status: "ACTIVE" | "NON_ACTIVE" | "DISCONNECTED" | "UNKNOWN"
   whatsappBusinessAccountId: string
   whatsappPhoneId: string
   whatsappApplicationId: string

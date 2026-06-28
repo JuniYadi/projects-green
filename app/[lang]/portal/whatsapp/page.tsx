@@ -6,6 +6,7 @@ import {
   PaperPlaneTilt,
   ChartLine,
   ChatCircle,
+  Heartbeat,
 } from "@phosphor-icons/react"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +22,20 @@ interface OverviewData {
   cost: {
     byCategory: { category: string; count: number; totalCost: number }[]
   }
+}
+
+type HealthBreakdown = {
+  connected: number
+  disconnected: number
+  unknown: number
+}
+
+function computeHealth(device: DeviceListItem): "connected" | "disconnected" | "unknown" {
+  if (device.lastHeartbeatAt) {
+    const fifteenMinAgo = Date.now() - 15 * 60 * 1000
+    return new Date(device.lastHeartbeatAt).getTime() > fifteenMinAgo ? "connected" : "disconnected"
+  }
+  return device.status === "DISCONNECTED" ? "disconnected" : "unknown"
 }
 
 function StatCardSkeleton() {
@@ -43,6 +58,17 @@ export default function PortalWhatsAppDashboardPage() {
   const [error, setError] = React.useState("")
   const [overview, setOverview] = React.useState<OverviewData | null>(null)
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
+
+  const health = React.useMemo<HealthBreakdown>(() => {
+    let connected = 0, disconnected = 0, unknown = 0
+    for (const d of devices) {
+      const h = computeHealth(d)
+      if (h === "connected") connected++
+      else if (h === "disconnected") disconnected++
+      else unknown++
+    }
+    return { connected, disconnected, unknown }
+  }, [devices])
 
   const loadData = React.useCallback(() => {
     let cancelled = false
@@ -214,6 +240,28 @@ export default function PortalWhatsAppDashboardPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Inbound messages
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Device Health
+                </CardTitle>
+                <Heartbeat
+                  className="size-4 text-muted-foreground"
+                  weight="fill"
+                />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {health.connected} Connected
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {health.disconnected > 0 && `${health.disconnected} Disconnected · `}
+                  {health.unknown > 0 && `${health.unknown} Unknown`}
+                  {health.disconnected === 0 && health.unknown === 0 && "All devices healthy"}
                 </p>
               </CardContent>
             </Card>

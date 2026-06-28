@@ -17,6 +17,8 @@ import {
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { toDeviceDetail, toDeviceListItem } from "../devices.dto"
 import { updateDeviceSchema } from "../devices.schemas"
+import { checkDeviceHealth } from "@/lib/queue/whatsapp-health"
+import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
 type RouteSet = {
   status?: number | string
@@ -248,12 +250,45 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
-    const updated = await prisma.whatsappDevice.update({
-      where: { id },
-      data: { status: "ACTIVE" },
+    // Ensure phone ID exists
+    if (!device.whatsappPhoneId) {
+      set.status = 422
+      return { ok: false, error: "VALIDATION_ERROR", message: "Device missing phone ID." }
+    }
+
+    // Call Meta API to verify device health
+    const healthResult = await checkDeviceHealth({
+      organizationId: device.organizationId,
+      phoneId: device.whatsappPhoneId,
     })
 
-    return { ok: true, device: toDeviceDetail(updated) }
+    // Log the health check result
+    await logWhatsappAuditEvent({
+      action: "DEVICE_STATUS_CHANGED",
+      status: healthResult.ok ? "OK" : "FAILED",
+      organizationId: device.organizationId,
+      deviceId: device.id,
+      adminId: whatsappAuth.type === "workos" ? whatsappAuth.userId : null,
+      message: healthResult.ok
+        ? "Health check passed — device is connected"
+        : `Health check failed: ${healthResult.error}`,
+    })
+
+    // Update status based on health result
+    const updated = await prisma.whatsappDevice.update({
+      where: { id },
+      data: {
+        status: healthResult.ok ? "ACTIVE" : "DISCONNECTED",
+        lastHeartbeatAt: healthResult.ok ? new Date() : undefined,
+        lastDisconnectedAt: !healthResult.ok ? new Date() : undefined,
+      },
+    })
+
+    return {
+      ok: true,
+      device: toDeviceDetail(updated),
+      health: healthResult,
+    }
   })
   .post("/:id/reconnect", async ({ request, params: { id }, set }: any) => {
     const whatsappAuth = await resolveDeviceAuth(request)

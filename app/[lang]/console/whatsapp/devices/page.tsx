@@ -38,6 +38,7 @@ import type {
   DeviceListItem,
   DeviceStatus,
 } from "@/modules/whatsapp/devices/devices.schemas"
+import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
 
 // ─── Status badge ───────────────────────────────────────────────────────────
 
@@ -47,14 +48,18 @@ type DeviceStatusBadgeProps = {
 }
 
 function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
-  const variant: Record<DeviceStatus, "success" | "secondary"> = {
+  const variant: Record<DeviceStatus, "success" | "secondary" | "destructive"> = {
     ACTIVE: "success",
     NON_ACTIVE: "secondary",
+    DISCONNECTED: "destructive",
+    UNKNOWN: "secondary",
   }
 
   const label: Record<DeviceStatus, string> = {
     ACTIVE: messages.console.whatsapp.devices.active,
     NON_ACTIVE: messages.console.whatsapp.devices.inactive,
+    DISCONNECTED: "Disconnected",
+    UNKNOWN: "Unknown",
   }
 
   return <Badge variant={variant[status]}>{label[status]}</Badge>
@@ -307,6 +312,18 @@ export default function WhatsAppDevicesPage() {
                     <DeviceStatusBadge
                       status={device.status}
                       messages={messages}
+                    />
+                    <DeviceHealthBadge
+                      status={
+                        device.lastHeartbeatAt
+                          ? new Date(device.lastHeartbeatAt) > new Date(Date.now() - 15 * 60 * 1000)
+                            ? "CONNECTED"
+                            : "DISCONNECTED"
+                          : device.status === "DISCONNECTED"
+                            ? "DISCONNECTED"
+                            : "UNKNOWN"
+                      }
+                      lastHeartbeatAt={device.lastHeartbeatAt}
                     />
                     {device.status === "ACTIVE" && (
                       <DropdownMenu>

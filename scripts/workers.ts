@@ -80,6 +80,9 @@ import {
 } from "@/lib/queue/whatsapp-template-sync"
 import { processWhatsAppTemplateSyncJob } from "./whatsapp-template-sync-worker"
 
+// ── WhatsApp Health ────────────────────────────────────────────────────────────
+import { WhatsAppHealthJob } from "@/lib/queue/whatsapp-health"
+
 // ── WhatsApp Outgoing Webhook ──────────────────────────────────────────────
 import {
   WHATSAPP_WEBHOOK_OUTGOING_QUEUE,
@@ -441,6 +444,10 @@ allWorkers.push(vpnProvisioningWorker)
 const emailWorker = EmailJob.createWorker()
 allWorkers.push(emailWorker)
 
+// ── WhatsApp Health Worker ──────────────────────────────────────────────
+const whatsappHealthWorker = WhatsAppHealthJob.createWorker()
+allWorkers.push(whatsappHealthWorker)
+
 // ── WhatsApp Outgoing Webhook Worker ──────────────────────────────────────
 const waOutgoingWorker = new Worker<WhatsappOutgoingWebhookJobData>(
   WHATSAPP_WEBHOOK_OUTGOING_QUEUE,
@@ -770,6 +777,9 @@ process.on("SIGINT", () => void shutdown("SIGINT"))
 
 // Register billing repeatable jobs (idempotent — safe to call on every start)
 await registerRepeatableJobs()
+
+// Register WhatsApp health heartbeat (every 5 min)
+await WhatsAppHealthJob.registerSchedule()
 
 // Run deploy monitor immediately on startup
 try {

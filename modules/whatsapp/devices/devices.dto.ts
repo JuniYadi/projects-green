@@ -30,6 +30,8 @@ const toJsonRecord = (
  *   The `createDeviceSchema` accepts `environment` (default "LIVE") but it is
  *   NOT persisted.
  */
+export type DeviceHealthStatus = "CONNECTED" | "DISCONNECTED" | "UNKNOWN"
+
 export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
   return {
     id: device.id,
@@ -46,7 +48,31 @@ export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
     whatsappPhoneId: device.whatsappPhoneId,
     createdAt: device.createdAt.toISOString(),
     updatedAt: device.updatedAt.toISOString(),
+    lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
+    lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
   }
+}
+
+export type DeviceHealthInfo = {
+  status: DeviceHealthStatus
+  lastHeartbeatAt: string | null
+  lastDisconnectedAt: string | null
+}
+
+export function toDeviceHealthInfo(device: WhatsappDeviceRecord): DeviceHealthInfo {
+  const status = device.status as DeviceStatus
+  if (status === "DISCONNECTED") {
+    return { status: "DISCONNECTED", lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null, lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null }
+  }
+  if (status === "ACTIVE" && device.lastHeartbeatAt) {
+    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000)
+    return {
+      status: device.lastHeartbeatAt > fifteenMinAgo ? "CONNECTED" : "DISCONNECTED",
+      lastHeartbeatAt: device.lastHeartbeatAt.toISOString(),
+      lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
+    }
+  }
+  return { status: "UNKNOWN", lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null, lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null }
 }
 
 export function toDeviceDetail(device: WhatsappDeviceRecord): DeviceDetail {

@@ -225,6 +225,30 @@ export const createDeviceService = (
       return _toDeviceDetail(updated as PrismaDeviceFields)
     },
 
+    async updateLastHeartbeat(deviceId: string): Promise<void> {
+      await db.whatsappDevice.update({
+        where: { id: deviceId },
+        data: { lastHeartbeatAt: new Date() },
+      })
+    },
+
+    async markDisconnected(deviceId: string): Promise<void> {
+      await db.whatsappDevice.update({
+        where: { id: deviceId },
+        data: {
+          status: "DISCONNECTED",
+          lastDisconnectedAt: new Date(),
+        },
+      })
+    },
+
+    async markActive(deviceId: string): Promise<void> {
+      await db.whatsappDevice.update({
+        where: { id: deviceId },
+        data: { status: "ACTIVE" },
+      })
+    },
+
     async reconnect(id, organizationId) {
       const device = await db.whatsappDevice.findUnique({ where: { id } })
       if (!device) throw new DeviceNotFoundError(id)
@@ -240,3 +264,7 @@ export const createDeviceService = (
     },
   }
 }
+
+// ─── Singleton ──────────────────────────────────────────────────────────────
+
+export const devicesService = createDeviceService()
