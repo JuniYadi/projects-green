@@ -19,7 +19,6 @@ import { beforeEach, describe, expect, it } from "bun:test"
 
 import { encryptSshPrivateKey } from "@/modules/vpn/admin/vpn-ssh-key.crypto"
 import { OpenVpnSshAdapter } from "@/modules/vpn/openvpn/openvpn-ssh-adapter"
-import { VpnServerSshExecutor } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 import type { SshTarget } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 
 const HOST = process.env.OPENVPN_LIVE_TEST_HOST
@@ -51,7 +50,6 @@ describe("openvpn-live", () => {
   })
 
   it("runs full lifecycle against live server", async () => {
-    const host = HOST!
     const name = clientName
     const log: string[] = []
 
