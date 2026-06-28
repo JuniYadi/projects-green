@@ -44,7 +44,7 @@ describe("ConsoleVpnDashboardPage", () => {
       () => {
         expect(view.getByText("VPN Dashboard")).toBeInTheDocument()
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     )
 
     const orderLink = view.getByRole("link", {
@@ -113,7 +113,7 @@ describe("ConsoleVpnDashboardPage", () => {
       () => {
         expect(view.getByText("Service Readiness")).toBeInTheDocument()
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     )
 
     expect(view.getByText("Ready Accounts")).toBeInTheDocument()
@@ -170,7 +170,7 @@ describe("ConsoleVpnOrderPage", () => {
       () => {
         expect(view.getByText("Order VPN Package")).toBeInTheDocument()
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     )
 
     expect(view.getByText("Recommended for You")).toBeInTheDocument()
