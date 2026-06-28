@@ -15,20 +15,14 @@ import type { SshTarget } from "@/modules/vpn/provisioning/vpn-server-ssh-execut
 import { VpnServerSshExecutor } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 import { OpenVpnSshAdapter } from "@/modules/vpn/openvpn/openvpn-ssh-adapter"
 
-const host = process.env.OPENVPN_LIVE_TEST_HOST
-const user = process.env.OPENVPN_LIVE_TEST_USER
-const encryptedKey = process.env.OPENVPN_LIVE_TEST_KEY
-
-function skipIfNoCreds() {
-  if (!host || !user || !encryptedKey) {
-    throw new Error(
-      "Skipping: set OPENVPN_LIVE_TEST_HOST, OPENVPN_LIVE_TEST_USER, and OPENVPN_LIVE_TEST_KEY env vars"
-    )
-  }
-}
-
 function buildTarget(): SshTarget {
-  return { host, user, encryptedPrivateKey: encryptedKey! }
+  const host = process.env.OPENVPN_LIVE_TEST_HOST
+  const user = process.env.OPENVPN_LIVE_TEST_USER
+  const encryptedKey = process.env.OPENVPN_LIVE_TEST_KEY
+  if (!host || !user || !encryptedKey) {
+    throw new Error("Missing env vars")
+  }
+  return { host, user, encryptedPrivateKey: encryptedKey }
 }
 
 function log(label: string, data: unknown) {
@@ -36,14 +30,20 @@ function log(label: string, data: unknown) {
   console.log(JSON.stringify(data, null, 2))
 }
 
-describe("OpenVPN live integration", { skip: !host || !user || !encryptedKey }, () => {
+function checkCreds(): void {
+  if (!process.env.OPENVPN_LIVE_TEST_HOST || !process.env.OPENVPN_LIVE_TEST_USER || !process.env.OPENVPN_LIVE_TEST_KEY) {
+    throw new Error("Skipping: set OPENVPN_LIVE_TEST_HOST, OPENVPN_LIVE_TEST_USER, and OPENVPN_LIVE_TEST_KEY env vars")
+  }
+}
+
+describe("OpenVPN live integration", () => {
   const executor = new VpnServerSshExecutor()
   const adapter = new OpenVpnSshAdapter({ executor })
   const clientName = `pgreen-live-${Date.now()}`
   const target = buildTarget()
 
   it("validateConnection — SSH connection works", async () => {
-    skipIfNoCreds()
+    checkCreds()
     const result = await executor.exec(target, ["echo", "alive"])
     log("validateConnection", result)
     expect(result.exitCode).toBe(0)
@@ -51,14 +51,14 @@ describe("OpenVPN live integration", { skip: !host || !user || !encryptedKey }, 
   })
 
   it("createClient — generates .ovpn profile", async () => {
-    skipIfNoCreds()
+    checkCreds()
     await adapter.createClient(target, clientName)
     log("createClient", { clientName, status: "created" })
     expect(clientName).toBeTruthy()
   })
 
   it("fetchConfig — returns valid .ovpn content", async () => {
-    skipIfNoCreds()
+    checkCreds()
     const config = await adapter.fetchConfig(target, clientName)
     log("fetchConfig", { clientName, length: config.length })
     expect(config).toContain("client")
@@ -66,46 +66,46 @@ describe("OpenVPN live integration", { skip: !host || !user || !encryptedKey }, 
   })
 
   it("validateClient — profile exists after creation", async () => {
-    skipIfNoCreds()
+    checkCreds()
     const result = await adapter.validateClient(target, clientName)
     log("validateClient", result)
     expect(result.exists).toBe(true)
   })
 
   it("listClients — includes newly created client", async () => {
-    skipIfNoCreds()
+    checkCreds()
     const clients = await adapter.listClients(target)
     log("listClients", { total: clients.length, clients: clients.map(c => c.clientName) })
     expect(clients.some(c => c.clientName === clientName)).toBe(true)
   })
 
   it("healthCheck — openvpn container is running", async () => {
-    skipIfNoCreds()
+    checkCreds()
     const result = await adapter.healthCheck(target)
     log("healthCheck", result)
     expect(result.ok).toBe(true)
   })
 
   it("revokeClient — removes client certificate", async () => {
-    skipIfNoCreds()
+    checkCreds()
     await adapter.revokeClient(target, clientName)
     log("revokeClient", { clientName, status: "revoked" })
   })
 
   it("removeClient — cleans up .ovpn file", async () => {
-    skipIfNoCreds()
+    checkCreds()
     await adapter.removeClient(target, clientName)
     log("removeClient", { clientName, status: "removed" })
   })
 
   it("restartServer — docker compose restart works", async () => {
-    skipIfNoCreds()
+    checkCreds()
     await adapter.restartServer(target)
     log("restartServer", { status: "restarted" })
   })
 
   it("validateClient — profile gone after removal", async () => {
-    skipIfNoCreds()
+    checkCreds()
     const result = await adapter.validateClient(target, clientName)
     log("validateClient (post-removal)", result)
     expect(result.exists).toBe(false)
