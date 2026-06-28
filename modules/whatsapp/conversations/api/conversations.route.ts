@@ -22,7 +22,7 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      const { contactPhone } = query as any
+      const { contactPhone, status } = query as any
 
       const where: any = {
         organizationId: whatsappAuth.organizationId!,
@@ -30,6 +30,17 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
 
       if (contactPhone) {
         where.contactPhone = { contains: contactPhone }
+      }
+
+      // Filter conversations that have messages with the given status
+      if (status && status !== "all") {
+        where.whatsappMessages = {
+          some: {
+            statusHistory: {
+              some: { status },
+            },
+          },
+        }
       }
 
       const conversations = await prisma.whatsappConversation.findMany({

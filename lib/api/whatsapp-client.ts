@@ -244,7 +244,7 @@ export const whatsappClient = {
   },
 
   conversations: {
-    list: (params?: { contactPhone?: string }) =>
+    list: (params?: { contactPhone?: string; status?: string }) =>
       serverFetch<{ ok: boolean; conversations: any[] }>(
         "/api/whatsapp/conversations",
         {
