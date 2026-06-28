@@ -7,12 +7,11 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
-  ArrowsClockwise,
-  CheckCircle,
   PencilSimple,
   Pause,
   Trash,
   CloudArrowDown,
+  Heartbeat,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -31,7 +30,7 @@ type DeviceActionsProps = {
   editHref: string
 }
 
-type ActionState = "idle" | "verifying" | "reconnecting" | "syncing"
+type ActionState = "idle" | "verifying" | "syncing"
 
 export function DeviceActions({
   deviceId,
@@ -57,7 +56,12 @@ export function DeviceActions({
         )
       }
 
-      toast.success("Device verified successfully")
+      const health = "health" in (data ?? {}) ? (data as { health?: { ok: boolean; error?: string } }).health : null
+      if (health?.ok) {
+        toast.success("Device is connected and healthy")
+      } else {
+        toast.error(`Health check failed: ${health?.error || "Unknown error"}`)
+      }
       router.refresh()
     } catch (error) {
       const message =
@@ -85,31 +89,6 @@ export function DeviceActions({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to sync templates"
-      toast.error(message)
-    } finally {
-      setActionState("idle")
-    }
-  }
-
-  async function handleReconnect() {
-    setActionState("reconnecting")
-
-    try {
-      const { data } =
-        await eden.api.whatsapp.devices[deviceId].reconnect.post()
-
-      if (!data?.ok) {
-        throw new Error(
-          (data as { message?: string })?.message ||
-            "Failed to reconnect device"
-        )
-      }
-
-      toast.success("Device reconnected successfully")
-      router.refresh()
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to reconnect device"
       toast.error(message)
     } finally {
       setActionState("idle")
@@ -176,17 +155,8 @@ export function DeviceActions({
           onClick={handleVerify}
           disabled={actionState !== "idle"}
         >
-          <CheckCircle weight="bold" className="mr-1.5 size-4" />
-          {actionState === "verifying" ? "Verifying..." : "Verify"}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleReconnect}
-          disabled={actionState !== "idle"}
-        >
-          <ArrowsClockwise weight="bold" className="mr-1.5 size-4" />
-          {actionState === "reconnecting" ? "Reconnecting..." : "Reconnect"}
+          <Heartbeat weight="bold" className="mr-1.5 size-4" />
+          {actionState === "verifying" ? "Checking..." : "Health Check"}
         </Button>
         <Button
           size="sm"

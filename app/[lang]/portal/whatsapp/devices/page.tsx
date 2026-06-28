@@ -4,7 +4,7 @@ import Link from "next/link"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
-import { toDeviceListItem } from "@/modules/whatsapp/devices/devices.dto"
+import { toDeviceListItem, toDeviceHealthInfo } from "@/modules/whatsapp/devices/devices.dto"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { getCachedOrganizations } from "@/lib/workos-directory"
 import {
@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { StatusBadge, DeviceEmptyState } from "./_components/devices-ui"
+import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
 import { SyncButton } from "./_components/sync-button"
 import { Button } from "@/components/ui/button"
 
@@ -38,6 +39,7 @@ type DevicesPageProps = {
 type DeviceRow = DeviceListItem & {
   displayName: string
   organizationName: string
+  healthStatus: "CONNECTED" | "DISCONNECTED" | "UNKNOWN"
 }
 
 const formatDate = (date: string) => {
@@ -116,12 +118,14 @@ export default async function PortalWhatsAppDevicesPage({
 
   const devices: DeviceRow[] = deviceRecords.map((record) => {
     const item = toDeviceListItem(record)
+    const health = toDeviceHealthInfo(record)
 
     return {
       ...item,
       displayName: getDisplayName(record.whatsappProfile, item.name),
       organizationName:
         organizations.get(item.organizationId)?.name || item.organizationId,
+      healthStatus: health.status,
     }
   })
 
@@ -196,6 +200,7 @@ export default async function PortalWhatsAppDevicesPage({
                     <TableHead>Organization Name</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Health</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
                     <TableHead className="text-right">Quota Base</TableHead>
                     <TableHead className="text-right">Daily Limit</TableHead>
@@ -225,6 +230,12 @@ export default async function PortalWhatsAppDevicesPage({
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={device.status} />
+                      </TableCell>
+                      <TableCell>
+                        <DeviceHealthBadge
+                          status={device.healthStatus}
+                          lastHeartbeatAt={device.lastHeartbeatAt}
+                        />
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(device.balance)}

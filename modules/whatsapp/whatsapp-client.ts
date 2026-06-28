@@ -4,6 +4,8 @@
  * Pattern: factory function returning an object with typed async methods.
  */
 
+import { prisma } from "@/lib/prisma"
+
 // ─── API Response Types ───────────────────────────────────────────────────
 
 type ApiSuccess<T> = { ok: true } & T
@@ -1046,3 +1048,67 @@ export type SendCatalogMessageInput = {
 
 // Singleton for convenience
 export const whatsappClient = createWhatsAppClient()
+
+// ─── Health Check (server-side only) ─────────────────────────────────────────
+
+type HealthCheckResult =
+  | { ok: true; connected: boolean }
+  | { ok: false; error: string }
+
+export async function checkDeviceHealth(params: {
+  organizationId: string
+  phoneId: string
+}): Promise<HealthCheckResult> {
+  const { organizationId, phoneId } = params
+
+  const device = await prisma.whatsappDevice.findFirst({
+    where: { id: phoneId, organizationId },
+    select: {
+      whatsappPhoneId: true,
+      whatsappBusinessAccountId: true,
+      tokenEncrypted: true,
+      tokenIv: true,
+      whatsappVersion: true,
+    },
+  })
+
+  if (!device?.whatsappPhoneId) {
+    return { ok: false, error: "Device not found or missing phoneId" }
+  }
+
+  // Decrypt token and call Meta API
+  let accessToken: string
+  try {
+    const { decryptWhatsAppToken } = await import("@/lib/whatsapp/crypto")
+    const { WhatsAppDeviceClient } = await import(
+      "@/lib/whatsapp/meta-cloud/device-client"
+    )
+    const { MetaCloudHttpClient } = await import(
+      "@/lib/whatsapp/meta-cloud/client"
+    )
+    const { ENDPOINTS } = await import("@/lib/whatsapp/meta-cloud/endpoints")
+
+    if (!device.tokenEncrypted) {
+      return { ok: false, error: "No access token configured" }
+    }
+
+    accessToken = await decryptWhatsAppToken(device.tokenEncrypted)
+
+    const httpClient = new MetaCloudHttpClient({
+      accessToken,
+      phoneNumberId: device.whatsappPhoneId,
+      organizationId,
+    })
+
+    await httpClient.request(
+      "PHONE_INFO",
+      ENDPOINTS.PHONE_INFO(device.whatsappPhoneId),
+      "GET"
+    )
+
+    return { ok: true, connected: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    return { ok: false, error: message }
+  }
+}

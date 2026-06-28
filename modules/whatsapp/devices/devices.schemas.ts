@@ -12,7 +12,7 @@ export const DEFAULT_QUOTA_BASE = 1000
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export const deviceStatusEnum = z.enum(["ACTIVE", "NON_ACTIVE"])
+export const deviceStatusEnum = z.enum(["ACTIVE", "NON_ACTIVE", "DISCONNECTED", "UNKNOWN"])
 export type DeviceStatus = z.infer<typeof deviceStatusEnum>
 
 export const deviceEnvironmentEnum = z.enum(["SANDBOX", "LIVE"])
@@ -111,6 +111,8 @@ export type DeviceListItem = {
   whatsappPhoneId: string | null
   createdAt: string
   updatedAt: string
+  lastHeartbeatAt?: string | null
+  lastDisconnectedAt?: string | null
 }
 
 export type DeviceDetail = DeviceListItem & {
@@ -184,4 +186,7 @@ export type DeviceService = {
     id: string,
     organizationId: string | null
   ) => Promise<DeviceDetail>
+  updateLastHeartbeat: (deviceId: string) => Promise<void>
+  markDisconnected: (deviceId: string) => Promise<void>
+  markActive: (deviceId: string) => Promise<void>
 }
