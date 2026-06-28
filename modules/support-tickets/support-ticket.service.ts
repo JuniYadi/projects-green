@@ -135,6 +135,10 @@ const createLazyDefaultRepository = (): SupportTicketRepository => {
       const repository = await loadRepository()
       return repository.markUploadSessionRegistered(input)
     },
+    async deleteUploadSession(id) {
+      const repository = await loadRepository()
+      return repository.deleteUploadSession(id)
+    },
     async createTicket(input) {
       const repository = await loadRepository()
       return repository.createTicket(input)

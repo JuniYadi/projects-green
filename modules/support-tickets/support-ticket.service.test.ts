@@ -60,6 +60,7 @@ const createRepositoryStub = () => {
     async markUploadSessionRegistered() {
       throw new Error("not implemented")
     },
+    async deleteUploadSession() {},
     async createTicket(input) {
       const ticket: SupportTicket = {
         id: `ticket_${tickets.size + 1}`,
@@ -468,6 +469,7 @@ describe("supportTicketService", () => {
       async markUploadSessionRegistered() {
         throw new Error("not implemented")
       },
+      async deleteUploadSession() {},
       async createTicket(input) {
         storedSecureTicket = input.secureForm ?? ""
         const ticket: SupportTicket = {
@@ -662,6 +664,7 @@ describe("supportTicketService", () => {
       async markUploadSessionRegistered() {
         throw new Error("not implemented")
       },
+      async deleteUploadSession() {},
       async createTicket() {
         throw new Error("not implemented")
       },
@@ -998,6 +1001,7 @@ describe("supportTicketService", () => {
       async markUploadSessionRegistered() {
         throw new Error("n/a")
       },
+      async deleteUploadSession() {},
       async createTicket() {
         return encryptedTicket
       },
@@ -1101,6 +1105,7 @@ describe("supportTicketService", () => {
       async markUploadSessionRegistered() {
         throw new Error("n/a")
       },
+      async deleteUploadSession() {},
       async createTicket() {
         return baseTicket
       },

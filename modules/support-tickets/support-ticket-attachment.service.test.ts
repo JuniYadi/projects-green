@@ -124,6 +124,9 @@ const createDeps = () => {
 
         return next
       },
+      async deleteUploadSession(id: string) {
+        sessions.delete(id)
+      },
     },
     storage: {
       async createPresignedUpload(input: {
