@@ -339,6 +339,7 @@ export type SupportTicketRepository = {
   getUploadSessionById(
     id: string
   ): Promise<SupportTicketAttachmentUploadSession | null>
+  deleteUploadSession(id: string): Promise<void>
   listTicketsByOrganization(input: {
     organizationId: string
     limit?: number
@@ -454,6 +455,11 @@ export const supportTicketRepository: SupportTicketRepository = {
     })
 
     return mapUploadSessionRecord(record)
+  },
+  async deleteUploadSession(id) {
+    await prisma.supportTicketAttachmentUploadSession.delete({
+      where: { id },
+    })
   },
   async createTicket(input) {
     return prisma.$transaction(async (tx) => {
