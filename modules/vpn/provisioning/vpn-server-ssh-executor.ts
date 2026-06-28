@@ -22,6 +22,8 @@ export type SshTarget = {
 
 /** Timeout for the SSH connection + command exec. */
 const SSH_EXEC_TIMEOUT_MS = 30_000
+// ponytail: user-visible messages reference TIMEOUT_SEC so they stay in sync
+const SSH_EXEC_TIMEOUT_SEC = SSH_EXEC_TIMEOUT_MS / 1000
 
 /**
  * Execute a remote command on a VPN server over SSH using its stored,
@@ -156,7 +158,7 @@ export function classifySshError(
 ): string {
   const { stderr } = result
   if (stderr === "SSH exec timed out") {
-    return `SSH connection to ${target.host} timed out after 30s during ${action}`
+    return `SSH connection to ${target.host} timed out after ${SSH_EXEC_TIMEOUT_SEC}s during ${action}`
   }
   if (stderr.includes("Authentication failed") || stderr.includes("All configured authentication methods failed")) {
     return `SSH key rejected by ${target.host} during ${action}`
