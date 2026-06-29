@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import { checkAndSendQuotaAlerts } from "@/modules/whatsapp/quota-alerts/quota-alert.service"
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -98,11 +99,23 @@ export class WhatsappBillingService {
     if (atomicResult.count > 0) {
       const updatedDevice = await this.prisma.whatsappDevice.findUnique({
         where: { id: input.deviceId },
-        select: { quotaBaseOut: true },
+        select: { quotaBaseOut: true, quotaBase: true },
       })
+      // Check and send quota alerts asynchronously (fire-and-forget)
+      const remaining = updatedDevice?.quotaBaseOut ?? 0
+      const total = updatedDevice?.quotaBase ? Number(updatedDevice.quotaBase) : 0
+      const used = total - remaining
+      void checkAndSendQuotaAlerts(
+        input.organizationId,
+        input.deviceId,
+        used,
+        total,
+        0,
+        "IDR"
+      ).catch((err) => console.error("[quotaAlert] Failed:", err))
       return {
         kind: "ALLOWANCE",
-        remainingAllowance: updatedDevice?.quotaBaseOut ?? 0,
+        remainingAllowance: remaining,
       }
     }
 
@@ -154,6 +167,22 @@ export class WhatsappBillingService {
         data: { quotaBaseOut: 0 },
       })
     }
+
+    // Check and send quota alerts asynchronously (fire-and-forget) — at 100% for overage
+    const quotaBase = device.quotaBase ? Number(device.quotaBase) : 0
+    const currentCount = await this.prisma.whatsappMonthlyCount.findFirst({
+      where: { organizationId: input.organizationId, whatsappDeviceId: input.deviceId },
+      orderBy: { id: "desc" },
+    })
+    const used = (currentCount?.messageOutboxCount ?? 0)
+    void checkAndSendQuotaAlerts(
+      input.organizationId,
+      input.deviceId,
+      used,
+      quotaBase,
+      Number(amount),
+      "IDR"
+    ).catch((err) => console.error("[quotaAlert] Failed:", err))
 
     return {
       kind: "OVERAGE_CHARGED",

@@ -17,6 +17,7 @@ import {
   ChartLineUp,
   WarningIcon,
   PlusIcon,
+  ChatCircle,
 } from "@/components/ui/phosphor-icons"
 import { getAccount, getSubscriptions, getInvoices } from "@/lib/billing-client"
 import type {
@@ -249,6 +250,24 @@ export function BillingDashboard() {
           </p>
         </div>
       )}
+
+      {/* WhatsApp Usage Summary Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">WhatsApp Usage & Costs</CardTitle>
+          <ChatCircle className="size-4 text-muted-foreground" weight="fill" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Track per-device costs, usage forecasts, and quota alerts.
+          </p>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/console/whatsapp/usage">
+              View WhatsApp Usage
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Active Subscriptions */}
       <section className="flex flex-col gap-4">

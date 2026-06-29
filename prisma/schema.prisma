@@ -1824,6 +1824,17 @@ model WhatsappBillingLedger {
   @@index([waMessageId])
 }
 
+model WhatsappQuotaAlert {
+  id        String   @id @default(cuid())
+  deviceId  String
+  threshold Int
+  period    String   // YYYY-MM format
+  createdAt DateTime @default(now())
+
+  @@unique([deviceId, threshold, period])
+  @@map("WhatsappQuotaAlert")
+}
+
 model WhatsappApiCall {
   id              String   @id @default(cuid())
   organizationId  String? // Changed to optional

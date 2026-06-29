@@ -297,6 +297,17 @@ export default function WhatsAppUsagePage() {
         </Card>
       )}
 
+      {/* Quota Alert Banner */}
+      {state === "loaded" && costBreakdown && costBreakdown.byDevice.some((d) => d.quotaBase > 0 && d.quotaPercent >= 70) && (
+        <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
+          <Warning className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+          <div className="text-sm text-yellow-600 dark:text-yellow-400">
+            <strong>Quota Warning:</strong> One or more devices are approaching their monthly limit.
+            <a href="/console/whatsapp/usage" className="ml-1 underline">View details</a>
+          </div>
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {state === "loading" ? (
