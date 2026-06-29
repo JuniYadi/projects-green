@@ -11,6 +11,7 @@ const mockReplyCreate = mock()
 const mockReplyUpdate = mock()
 const mockSessionCreate = mock()
 const mockSessionUpdate = mock()
+const mockSessionDelete = mock()
 const mockSessionFindMany = mock()
 
 // Sample ticket record returned from Prisma
@@ -79,6 +80,7 @@ mock.module("@/lib/prisma", () => ({
       findMany: mockSessionFindMany,
       create: mockSessionCreate,
       update: mockSessionUpdate,
+      delete: mockSessionDelete,
       updateMany: mockUpdateMany,
     },
     $transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => {
@@ -104,6 +106,7 @@ describe("SupportTicketRepository", () => {
     mockReplyUpdate.mockReset()
     mockSessionCreate.mockReset()
     mockSessionUpdate.mockReset()
+    mockSessionDelete.mockReset()
     mockSessionFindMany.mockReset()
   })
 
@@ -368,6 +371,17 @@ describe("SupportTicketRepository", () => {
       expect(result.id).toBe("session_1")
       expect(result.registeredAt).toBeInstanceOf(Date)
       expect(mockSessionUpdate).toHaveBeenCalled()
+    })
+  })
+
+  // ─── deleteUploadSession ───────────────────────────────────────────
+  describe("deleteUploadSession", () => {
+    it("deletes the upload session by id", async () => {
+      mockSessionDelete.mockResolvedValue({})
+
+      await repository.deleteUploadSession("session_1")
+
+      expect(mockSessionDelete).toHaveBeenCalledWith({ where: { id: "session_1" } })
     })
   })
 

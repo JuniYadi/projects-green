@@ -467,6 +467,11 @@ describe("support ticket attachment routes", () => {
         return new Response(null, { status: 500 })
       }) as unknown as typeof fetch
 
+      const originalS3Endpoint = process.env.S3_ENDPOINT
+      const originalS3Bucket = process.env.S3_BUCKET
+      process.env.S3_ENDPOINT = "https://my-s3.example.com"
+      process.env.S3_BUCKET = "my-bucket"
+
       const app = createApp({})
 
       const formData = new FormData()
@@ -488,6 +493,41 @@ describe("support ticket attachment routes", () => {
       expect(await response.json()).toMatchObject({ ok: true })
 
       globalThis.fetch = originalFetch
+      process.env.S3_ENDPOINT = originalS3Endpoint
+      process.env.S3_BUCKET = originalS3Bucket
+    })
+
+    it("returns 403 when uploadUrl does not match configured S3 endpoint", async () => {
+      const originalS3Endpoint = process.env.S3_ENDPOINT
+      const originalS3Bucket = process.env.S3_BUCKET
+      process.env.S3_ENDPOINT = "https://s3.example.com"
+      process.env.S3_BUCKET = "my-bucket"
+
+      const app = createApp({})
+
+      const formData = new FormData()
+      formData.append(
+        "file",
+        new File(["test"], "test.txt", { type: "text/plain" })
+      )
+      formData.append("uploadUrl", "https://evil.com/malicious-key")
+      formData.append("mimeType", "text/plain")
+
+      const response = await app.handle(
+        new Request("http://localhost/support-tickets/attachments/upload", {
+          method: "POST",
+          body: formData,
+        })
+      )
+
+      expect(response.status).toBe(403)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: "FORBIDDEN",
+      })
+
+      process.env.S3_ENDPOINT = originalS3Endpoint
+      process.env.S3_BUCKET = originalS3Bucket
     })
 
     it("returns 401 when user is not authenticated", async () => {
