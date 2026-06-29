@@ -21,11 +21,23 @@ export const webhookDeadLetterRoutes = new Elysia({
   // GET /whatsapp/webhooks/dead-letter — list dead letters (org-scoped)
   .get(
     "/",
-    async ({ query, set }) => {
+    async ({ request, query, set }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      if (!whatsappAuth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Organization required." }
+      }
+
       const page = Math.max(Number(query.page) || 1, 1)
       const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
 
       const result = await listDeadLetters({
+        organizationId: whatsappAuth.organizationId,
         deviceId: query.deviceId,
         eventType: query.eventType,
         replayStatus: query.replayStatus,
@@ -110,7 +122,18 @@ export const webhookDeadLetterRoutes = new Elysia({
   })
 
   // GET /whatsapp/webhooks/dead-letter/:id — get dead letter detail
-  .get("/:id", async ({ params, set }) => {
+  .get("/:id", async ({ request, params, set }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
+
+    if (!whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Organization required." }
+    }
+
     const deadLetter = await getDeadLetterById(params.id)
 
     if (!deadLetter) {
@@ -118,16 +141,37 @@ export const webhookDeadLetterRoutes = new Elysia({
       return { ok: false, error: "NOT_FOUND", message: "Dead letter not found." }
     }
 
+    if (deadLetter.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
     return { ok: true, data: deadLetter }
   })
 
   // POST /whatsapp/webhooks/dead-letter/:id/replay — replay dead letter
-  .post("/:id/replay", async ({ params, set }) => {
+  .post("/:id/replay", async ({ request, params, set }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
+
+    if (!whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Organization required." }
+    }
+
     const deadLetter = await getDeadLetterById(params.id)
 
     if (!deadLetter) {
       set.status = 404
       return { ok: false, error: "NOT_FOUND", message: "Dead letter not found." }
+    }
+
+    if (deadLetter.organizationId !== whatsappAuth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
     }
 
     try {

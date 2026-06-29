@@ -33,6 +33,7 @@ export async function createDeadLetter(
 }
 
 type DeadLetterFilter = {
+  organizationId?: string
   deviceId?: string
   eventType?: string
   replayStatus?: string
@@ -65,9 +66,10 @@ type PaginatedDeadLetters = {
 export async function listDeadLetters(
   filter: DeadLetterFilter
 ): Promise<PaginatedDeadLetters> {
-  const { deviceId, eventType, replayStatus, from, to, page = 1, limit = 20 } = filter
+  const { organizationId, deviceId, eventType, replayStatus, from, to, page = 1, limit = 20 } = filter
 
   const where: Record<string, unknown> = {}
+  if (organizationId) where.organizationId = organizationId
   if (deviceId) where.deviceId = deviceId
   if (eventType) where.eventType = eventType
   if (replayStatus) where.replayStatus = replayStatus

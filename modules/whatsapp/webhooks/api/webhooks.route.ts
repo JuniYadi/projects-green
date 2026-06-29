@@ -51,6 +51,15 @@ function determineEventType(payload: unknown): string {
 
 export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
 
+  // Capture raw body before Elysia's body parser consumes the stream
+  // Required for HMAC signature verification in POST /:id
+  .onRequest(async ({ request, store }: any) => {
+    if (request.method === "POST") {
+      const cloned = request.clone()
+      store.rawBody = await cloned.text()
+    }
+  })
+
   // GET /events — list ALL webhook events across all devices (org-scoped, paginated)
   .get(
     "/events",
@@ -506,7 +515,7 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
 
   // POST /:id — Meta webhook incoming event
   // Verifies HMAC, inserts raw event, enqueues for retry processing
-  .post("/:id", async ({ params, request, body, set }: any) => {
+  .post("/:id", async ({ params, request, body, set, store }: any) => {
     const deviceId = params.id
 
     // Look up device to get organizationId and appSecret for HMAC verification
@@ -523,9 +532,12 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
     // HMAC verification if appSecret is configured
     if (device.appSecret) {
       const signatureHeader = request.headers.get("x-hub-signature-256")
-      // Read raw body for HMAC verification
-      const rawBody = await request.text()
-      // Re-parse body from raw text
+      // Use raw body captured in onRequest before Elysia's body parser consumed the stream
+      const rawBody: string = store.rawBody ?? ""
+      if (!rawBody) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Empty body" }
+      }
       const parsedBody = JSON.parse(rawBody)
 
       const isValid = verifyWebhookSignature(
