@@ -29,6 +29,7 @@ export function signSessionJwt(claims: {
   fingerprint: string
   iat: number
   exp: number
+  typ: "mobile-session"
 }): string {
   const secret = getSecret()
   const header = { alg: "HS256", typ: "JWT" }

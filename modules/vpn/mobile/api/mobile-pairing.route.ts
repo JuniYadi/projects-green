@@ -273,6 +273,8 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
                 server: {
                   select: {
                     name: true,
+                    hostname: true,
+                    ipAddress: true,
                     region: { select: { name: true } },
                   },
                 },
@@ -316,6 +318,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               fingerprint: body.deviceFingerprint,
               iat,
               exp,
+              typ: "mobile-session",
             })
 
             return toPairingClaimResultDTO(

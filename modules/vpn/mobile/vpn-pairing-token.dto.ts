@@ -15,7 +15,7 @@ type SubscriptionRow = Prisma.VpnSubscriptionGetPayload<{}>
 type ServerAccountRow = Prisma.VpnServerAccountGetPayload<{
   include: {
     server: {
-      select: { name: true; region: { select: { name: true } } }
+      select: { name: true; hostname: true; ipAddress: true; region: { select: { name: true } } }
     }
   }
 }>
@@ -36,6 +36,8 @@ export type PairingClaimSubscriptionDTO = {
 export type PairingClaimProfileDTO = {
   id: string
   serverName: string
+  hostname: string
+  serverIp: string | null
   protocol: ServerAccountRow["protocol"]
   region: string
   status: ServerAccountRow["provisioningStatus"]
@@ -74,6 +76,8 @@ export function toPairingClaimResultDTO(
     profiles: accounts.map((account) => ({
       id: account.id,
       serverName: account.server.name,
+      hostname: account.server.hostname,
+      serverIp: account.server.ipAddress,
       protocol: account.protocol,
       region: account.server.region.name,
       status: account.provisioningStatus,
