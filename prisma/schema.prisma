@@ -389,6 +389,8 @@ enum SupportTicketDepartment {
 enum SupportTicketStatus {
   OPEN
   IN_PROGRESS
+  WAITING_RESPONSE
+  ON_HOLD
   RESOLVED
   CLOSED
 }

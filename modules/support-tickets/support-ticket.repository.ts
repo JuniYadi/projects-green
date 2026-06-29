@@ -32,6 +32,8 @@ const DOMAIN_TO_PRISMA_STATUS: Record<
 > = {
   open: "OPEN",
   in_progress: "IN_PROGRESS",
+  waiting_response: "WAITING_RESPONSE",
+  on_hold: "ON_HOLD",
   resolved: "RESOLVED",
   closed: "CLOSED",
 }
@@ -42,6 +44,8 @@ const PRISMA_TO_DOMAIN_STATUS: Record<
 > = {
   OPEN: "open",
   IN_PROGRESS: "in_progress",
+  WAITING_RESPONSE: "waiting_response",
+  ON_HOLD: "on_hold",
   RESOLVED: "resolved",
   CLOSED: "closed",
 }
