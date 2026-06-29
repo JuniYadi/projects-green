@@ -189,4 +189,5 @@ export type DeviceService = {
   updateLastHeartbeat: (deviceId: string) => Promise<void>
   markDisconnected: (deviceId: string) => Promise<void>
   markActive: (deviceId: string) => Promise<void>
+  regenerateSigningSecret: (id: string, organizationId: string | null) => Promise<string>
 }

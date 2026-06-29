@@ -53,42 +53,57 @@ export const webhookDeadLetterRoutes = new Elysia({
   // GET /whatsapp/webhooks/dead-letter/stats — webhook failure stats (last hour)
   .get(
     "/stats",
-    async ({ query, set }) => {
+    async ({ request, query, set }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      if (!whatsappAuth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Organization required." }
+      }
+
       const deviceId = query.deviceId as string | undefined
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+      const orgId = whatsappAuth.organizationId
 
-    const [totalEvents, failedEvents, deadLetters] = await Promise.all([
-      prisma.whatsappWebhookEvent.count({
-        where: {
-          ...(deviceId ? { whatsappDeviceId: deviceId } : {}),
-          createdAt: { gte: oneHourAgo },
-        },
-      }),
-      prisma.whatsappWebhookEvent.count({
-        where: {
-          ...(deviceId ? { whatsappDeviceId: deviceId } : {}),
-          processingStatus: "FAILED",
-          createdAt: { gte: oneHourAgo },
-        },
-      }),
-      prisma.whatsappWebhookDeadLetter.count({
-        where: {
-          ...(deviceId ? { deviceId } : {}),
-          createdAt: { gte: oneHourAgo },
-        },
-      }),
-    ])
+      const [totalEvents, failedEvents, deadLetters] = await Promise.all([
+        prisma.whatsappWebhookEvent.count({
+          where: {
+            organizationId: orgId,
+            ...(deviceId ? { whatsappDeviceId: deviceId } : {}),
+            createdAt: { gte: oneHourAgo },
+          },
+        }),
+        prisma.whatsappWebhookEvent.count({
+          where: {
+            organizationId: orgId,
+            ...(deviceId ? { whatsappDeviceId: deviceId } : {}),
+            processingStatus: "FAILED",
+            createdAt: { gte: oneHourAgo },
+          },
+        }),
+        prisma.whatsappWebhookDeadLetter.count({
+          where: {
+            organizationId: orgId,
+            ...(deviceId ? { deviceId } : {}),
+            createdAt: { gte: oneHourAgo },
+          },
+        }),
+      ])
 
-    const failureRate = totalEvents > 0 ? (failedEvents / totalEvents) * 100 : 0
+      const failureRate = totalEvents > 0 ? (failedEvents / totalEvents) * 100 : 0
 
-    return {
-      ok: true,
-      data: {
-        periodStart: oneHourAgo.toISOString(),
-        periodEnd: new Date().toISOString(),
-        totalEvents,
-        failedEvents,
-        deadLetters,
+      return {
+        ok: true,
+        data: {
+          periodStart: oneHourAgo.toISOString(),
+          periodEnd: new Date().toISOString(),
+          totalEvents,
+          failedEvents,
+          deadLetters,
         failureRate: Math.round(failureRate * 100) / 100,
       },
     }
