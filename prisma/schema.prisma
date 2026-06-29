@@ -1976,6 +1976,20 @@ model WhatsappWebhookDeadLetter {
   @@index([organizationId, failedAt(sort: Desc)])
 }
 
+// ─── WhatsApp Quota Alert ─────────────────────────────────────────────────────
+
+model WhatsappQuotaAlert {
+  id               String   @id @default(cuid())
+  organizationId   String
+  whatsappDeviceId String
+  threshold       Int      // 50, 80, 90, 100
+  sentAt          DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@unique([organizationId, whatsappDeviceId, threshold])
+  @@index([organizationId])
+}
+
 // ─── Payment Models ───────────────────────────────────────────────────────────
 
 model PaymentGateway {

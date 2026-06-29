@@ -22,6 +22,7 @@ import {
   InsufficientBalanceError,
   QuotaExceededError,
 } from "@/modules/billing/types"
+import { quotaAlertService } from "./quota-alert.service"
 
 export type SendMessageResult = {
   jobId: string
@@ -366,6 +367,26 @@ export const messageService: MessageService = {
             },
           }),
         ])
+
+        // Check quota alerts after successful message send
+        // ponytail: fire-and-forget — alert failures shouldn't block message delivery
+        const totalCost = await prisma.whatsappBillingLedger.aggregate({
+          where: {
+            organizationId,
+            whatsappDeviceId: device.id,
+            createdAt: {
+              gte: new Date(`${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`),
+            },
+          },
+          _sum: { quotaValue: true },
+        })
+        const currentCost = Number(totalCost._sum?.quotaValue ?? 0)
+        const quotaBase = Number(device.quotaBase)
+        const quotaPercent = quotaBase > 0 ? (currentCost / quotaBase) * 100 : 0
+
+        quotaAlertService
+          .checkAndSendAlerts(organizationId, device.id, quotaPercent, currentCost, quotaBase)
+          .catch((err) => console.error("[messageService] Quota alert failed:", err))
       }
 
       // NOTE: Balance deduction is handled upfront by
