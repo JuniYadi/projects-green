@@ -320,6 +320,23 @@ export const createSupportTicketRoutes = (
             )
           }
 
+          // Notify staff admin of new ticket
+          const staffEmail =
+            process.env.SUPPORT_STAFF_NOTIFY_EMAIL ?? "admin@yourapp.com"
+          dependencies.emailService
+            .sendNewTicketAlertToStaff(
+              ticket,
+              staffEmail,
+              undefined,
+              requesterEmail
+            )
+            .catch((err) => {
+              console.error(
+                "[Support Ticket] Failed to send admin ticket alert email:",
+                err
+              )
+            })
+
           return {
             ok: true as const,
             ticket,

@@ -143,6 +143,7 @@ const createApp = (service: Partial<SupportTicketService>) => {
         async sendTicketCreated() {},
         async sendTicketReplied() {},
         async sendTicketClosed() {},
+        async sendNewTicketAlertToStaff() {},
       },
     })
   )
@@ -459,7 +460,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
   }
@@ -721,7 +723,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -892,7 +895,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -943,7 +947,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -985,7 +990,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -1061,7 +1067,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -1161,7 +1168,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 

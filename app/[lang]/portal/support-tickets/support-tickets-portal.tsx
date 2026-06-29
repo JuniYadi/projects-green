@@ -62,6 +62,15 @@ const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
       ),
     },
     {
+      accessorKey: "requesterWorkosUserId",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Requester" />
+      ),
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">{row.original.requesterWorkosUserId.slice(-8)}</span>
+      ),
+    },
+    {
       accessorKey: "subject",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Subject" />
