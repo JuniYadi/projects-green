@@ -34,10 +34,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { InteractiveComposer } from "@/modules/whatsapp/messages/ui/interactive-composer"
+import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
 
 // ─── Local Types ─────────────────────────────────────────────────────────────
 
 type MessageDirection = "INBOX" | "OUTBOX"
+type DeliveryStatus = "SENT" | "DELIVERED" | "READ" | "FAILED"
+
+type StatusHistory = {
+  status: DeliveryStatus
+  error: string | null
+}
 
 type ConversationListItem = {
   id: string
@@ -60,6 +67,7 @@ type Message = {
   mediaUrl: string | null
   waMessageId: string | null
   metadata: Record<string, unknown> | null
+  statusHistory?: StatusHistory[]
   createdAt: string
   updatedAt: string
 }
@@ -163,13 +171,15 @@ function MessageBubble({ message }: { message: Message }) {
             </span>
           )}
         </p>
-        <p
-          className={`mt-1 text-right text-[10px] ${
-            isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
-          }`}
-        >
-          {formatTime(message.createdAt)}
-        </p>
+        <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
+          isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
+        }`}>
+          <span>{formatTime(message.createdAt)}</span>
+          <MessageStatusBadge
+            statusHistory={message.statusHistory}
+            direction={message.direction}
+          />
+        </div>
       </div>
     </div>
   )
@@ -199,6 +209,7 @@ export default function WhatsAppMessagesPage() {
   // State - filters
   const [searchQuery, setSearchQuery] = React.useState("")
   const [directionFilter, setDirectionFilter] = React.useState("all")
+  const [statusFilter, setStatusFilter] = React.useState("all")
 
   // State - send message
   const [sendDialogOpen, setSendDialogOpen] = React.useState(false)
@@ -212,7 +223,7 @@ export default function WhatsAppMessagesPage() {
 
   // ── Data fetching ──────────────────────────────────────────────────────
 
-  // Fetch conversations when searchQuery changes
+  // Fetch conversations when filters change
   React.useEffect(() => {
     let cancelled = false
 
@@ -221,10 +232,12 @@ export default function WhatsAppMessagesPage() {
       setConversationsError(null)
     })
 
+    const params: { contactPhone?: string; status?: string } = {}
+    if (searchQuery.trim()) params.contactPhone = searchQuery.trim()
+    if (statusFilter !== "all") params.status = statusFilter
+
     whatsappClient.conversations
-      .list(
-        searchQuery.trim() ? { contactPhone: searchQuery.trim() } : undefined
-      )
+      .list(Object.keys(params).length ? params : undefined)
       .then((payload) => {
         if (cancelled) return
         React.startTransition(() => {
@@ -247,7 +260,7 @@ export default function WhatsAppMessagesPage() {
     return () => {
       cancelled = true
     }
-  }, [searchQuery, refreshKey])
+  }, [searchQuery, statusFilter, refreshKey])
 
   // Fetch conversation details when activeConversationId changes
   React.useEffect(() => {
@@ -495,6 +508,21 @@ export default function WhatsAppMessagesPage() {
                   <SelectItem value="all">All Directions</SelectItem>
                   <SelectItem value="INBOX">Inbox</SelectItem>
                   <SelectItem value="OUTBOX">Outbox</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="SENT">Sent</SelectItem>
+                  <SelectItem value="DELIVERED">Delivered</SelectItem>
+                  <SelectItem value="READ">Read</SelectItem>
+                  <SelectItem value="FAILED">Failed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
