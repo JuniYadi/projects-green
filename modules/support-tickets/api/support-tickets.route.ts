@@ -26,6 +26,7 @@ import {
   createEmailService,
   type EmailService,
 } from "@/modules/support-tickets/email.service"
+import { getCachedUsers } from "@/lib/workos-directory"
 
 type SupportTicketAuthContext = {
   organizationId?: string | null
@@ -707,7 +708,6 @@ export const createSupportTicketRoutes = (
         const requesterIds = [
           ...new Set(tickets.map((t) => t.requesterWorkosUserId).filter(Boolean)),
         ]
-        const { getCachedUsers } = await import("@/lib/workos-directory")
         const users = await getCachedUsers(requesterIds)
 
         const enrichedTickets = tickets.map((ticket) => ({

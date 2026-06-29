@@ -199,7 +199,7 @@ export function SupportTicketAdminDetailScreen({
   const [priority, setPriority] = useState<SupportTicketPriority>("medium")
   const [service, setService] = useState<SupportTicketService | "none">("none")
   const [status, setStatus] = useState<SupportTicketStatus>("open")
-  const [assignedAgentWorkosUserId, setAssignedAgentWorkosUserId] = useState<string | null>(null)
+  const [assignedAgentWorkosUserId, setAssignedAgentWorkosUserId] = useState<string | null | undefined>(undefined)
   const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -369,6 +369,11 @@ export function SupportTicketAdminDetailScreen({
 
   const ticket = thread?.ticket ?? null
   const isClosed = ticket?.status === "closed"
+
+  // ponytail: derive PIC from ticket data until state is explicitly set by save
+  const effectivePIC = assignedAgentWorkosUserId !== undefined
+    ? assignedAgentWorkosUserId
+    : (ticket?.assignedAgentWorkosUserId ?? null)
 
   const replyCountLabel = useMemo(() => {
     const total = thread?.replies.length ?? 0
@@ -1376,7 +1381,7 @@ export function SupportTicketAdminDetailScreen({
                   PIC (Point of Contact)
                 </Label>
                 <Select
-                  value={assignedAgentWorkosUserId ?? "none"}
+                  value={effectivePIC ?? "none"}
                   onValueChange={(nextValue) =>
                     setAssignedAgentWorkosUserId(nextValue === "none" ? null : nextValue)
                   }
