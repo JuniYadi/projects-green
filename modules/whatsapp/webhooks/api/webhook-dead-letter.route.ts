@@ -50,6 +50,50 @@ export const webhookDeadLetterRoutes = new Elysia({
     }
   )
 
+  // GET /whatsapp/webhooks/dead-letter/stats — webhook failure stats (last hour)
+  .get(
+    "/stats",
+    async ({ query, set }) => {
+      const deviceId = query.deviceId as string | undefined
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+
+    const [totalEvents, failedEvents, deadLetters] = await Promise.all([
+      prisma.whatsappWebhookEvent.count({
+        where: {
+          ...(deviceId ? { whatsappDeviceId: deviceId } : {}),
+          createdAt: { gte: oneHourAgo },
+        },
+      }),
+      prisma.whatsappWebhookEvent.count({
+        where: {
+          ...(deviceId ? { whatsappDeviceId: deviceId } : {}),
+          processingStatus: "FAILED",
+          createdAt: { gte: oneHourAgo },
+        },
+      }),
+      prisma.whatsappWebhookDeadLetter.count({
+        where: {
+          ...(deviceId ? { deviceId } : {}),
+          createdAt: { gte: oneHourAgo },
+        },
+      }),
+    ])
+
+    const failureRate = totalEvents > 0 ? (failedEvents / totalEvents) * 100 : 0
+
+    return {
+      ok: true,
+      data: {
+        periodStart: oneHourAgo.toISOString(),
+        periodEnd: new Date().toISOString(),
+        totalEvents,
+        failedEvents,
+        deadLetters,
+        failureRate: Math.round(failureRate * 100) / 100,
+      },
+    }
+  })
+
   // GET /whatsapp/webhooks/dead-letter/:id — get dead letter detail
   .get("/:id", async ({ params, set }) => {
     const deadLetter = await getDeadLetterById(params.id)

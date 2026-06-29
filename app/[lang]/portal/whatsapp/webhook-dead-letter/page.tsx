@@ -62,6 +62,18 @@ type DeadLetterApiResponse = {
   }
 }
 
+type StatsResponse = {
+  ok: boolean
+  data: {
+    periodStart: string
+    periodEnd: string
+    totalEvents: number
+    failedEvents: number
+    deadLetters: number
+    failureRate: number
+  }
+}
+
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const EVENT_TYPES = ["inbound_message", "status_update"]
@@ -86,6 +98,9 @@ export default function PortalWhatsAppWebhookDeadLetterPage() {
     () => new Map(devices.map((d) => [d.id, d])),
     [devices]
   )
+
+  // Stats
+  const [stats, setStats] = React.useState<StatsResponse["data"] | null>(null)
 
   // Dead letters
   const [items, setItems] = React.useState<DeadLetterDTO[]>([])
@@ -155,6 +170,22 @@ export default function PortalWhatsAppWebhookDeadLetterPage() {
     }
   }, [deviceFilter, eventTypeFilter, replayStatusFilter, page])
 
+  // ── Load stats ─────────────────────────────────────────────────────────────
+
+  const loadStats = React.useCallback(async () => {
+    try {
+      const { data } = await eden.api.whatsapp.webhooks["dead-letter"].stats.get()
+      const result = data as unknown as StatsResponse
+      setStats(result.data)
+    } catch (err) {
+      console.error("Failed to load stats:", err)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    void loadStats()
+  }, [loadStats])
+
   React.useEffect(() => {
     void loadDeadLetters()
   }, [loadDeadLetters])
@@ -184,6 +215,38 @@ export default function PortalWhatsAppWebhookDeadLetterPage() {
           Failed webhook payloads that exceeded retry attempts. View details and replay.
         </p>
       </div>
+
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.totalEvents}</div>
+              <p className="text-xs text-muted-foreground">Total Events (1h)</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-destructive">{stats.failedEvents}</div>
+              <p className="text-xs text-muted-foreground">Failed (1h)</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">{stats.deadLetters}</div>
+              <p className="text-xs text-muted-foreground">Dead Letters (1h)</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className={`text-2xl font-bold ${stats.failureRate > 5 ? "text-destructive" : ""}`}>
+                {stats.failureRate}%
+              </div>
+              <p className="text-xs text-muted-foreground">Failure Rate (1h)</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <Card>
