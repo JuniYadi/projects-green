@@ -11,6 +11,8 @@ export type SupportTicketDepartment =
 export const SUPPORT_TICKET_STATUSES = [
   "open",
   "in_progress",
+  "waiting_response",
+  "on_hold",
   "resolved",
   "closed",
 ] as const
@@ -45,6 +47,8 @@ export const SUPPORT_TICKET_STATUS_LABELS: Record<SupportTicketStatus, string> =
   {
     open: "Open",
     in_progress: "In Progress",
+    waiting_response: "Waiting Response",
+    on_hold: "On Hold",
     resolved: "Resolved",
     closed: "Closed",
   }

@@ -284,6 +284,29 @@ const decryptReplyContent = (
   }
 }
 
+/**
+ * Determines the next status based on current status and replier role.
+ * - Admin/agent replies to `open` → `in_progress`
+ * - User replies while `in_progress` → `waiting_response`
+ * - User replies while `waiting_response` → stays (no flip-flop)
+ * - Admin/agent replies to `waiting_response` → `in_progress`
+ */
+const autoTransitionStatus = (
+  currentStatus: SupportTicketStatus,
+  actor: { isSuperAdmin?: boolean; canManageTickets?: boolean }
+): SupportTicketStatus | null => {
+  const isStaff = actor.isSuperAdmin || actor.canManageTickets
+
+  if (isStaff) {
+    if (currentStatus === "open") return "in_progress"
+    if (currentStatus === "waiting_response") return "in_progress"
+  } else {
+    if (currentStatus === "in_progress") return "waiting_response"
+  }
+
+  return null
+}
+
 export const createSupportTicketService = (
   options: CreateSupportTicketServiceOptions = {}
 ): SupportTicketService => {
@@ -413,6 +436,26 @@ export const createSupportTicketService = (
       try {
         const encryptedReply = encryptReplyContent(contentCipher, reply)
         const storedReply = await repository.createReply(encryptedReply)
+
+        // Auto-transition status on reply (non-internal notes only)
+        if (!reply.isInternalNote) {
+          const nextStatus = autoTransitionStatus(ticket.status, actor)
+          if (nextStatus && nextStatus !== ticket.status) {
+            const now = new Date()
+            const timestamps = toTransitionTimestamps(
+              { ...ticket, status: ticket.status },
+              nextStatus,
+              now
+            )
+            await repository.updateTicketStatus({
+              ticketId: reply.ticketId,
+              status: nextStatus,
+              resolvedAt: timestamps.resolvedAt,
+              closedAt: timestamps.closedAt,
+            })
+          }
+        }
+
         return decryptReplyContent(contentCipher, storedReply)
       } catch (error) {
         throw toSafeContentError(error)
