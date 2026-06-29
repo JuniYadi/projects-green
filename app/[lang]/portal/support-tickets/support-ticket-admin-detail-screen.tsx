@@ -357,14 +357,14 @@ export function SupportTicketAdminDetailScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId])
 
-  // Sync categorization form state from loaded thread — no flash on Select
+  // Sync categorization form state from loaded thread
   useEffect(() => {
     if (!thread?.ticket) return
     setDepartment(thread.ticket.department)
     setPriority(thread.ticket.priority)
     setService(thread.ticket.service || "none")
     setStatus(thread.ticket.status)
-    setAssignedAgentWorkosUserId(thread.ticket.assignedAgentWorkosUserId)
+    // ponytail: setAssignedAgentWorkosUserId omitted — effectivePIC derives from ticket directly
   }, [thread])
 
   const ticket = thread?.ticket ?? null
