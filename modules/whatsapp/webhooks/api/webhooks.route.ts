@@ -11,6 +11,8 @@ import {
   webhookDispatcher,
   toDeliveryLogDTO,
 } from "../webhook-dispatcher.service"
+import { verifyWebhookSignature } from "../services/webhook-hmac.service"
+import { WebhookRetryJob } from "../jobs/webhook-retry.job"
 
 /**
  * Infer the webhook event type from the Meta payload structure.
@@ -503,14 +505,14 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   )
 
   // POST /:id — Meta webhook incoming event
-  // Inserts raw event BEFORE processing, then records outcome
-  .post("/:id", async ({ params, body, set }: any) => {
+  // Verifies HMAC, inserts raw event, enqueues for retry processing
+  .post("/:id", async ({ params, request, body, set }: any) => {
     const deviceId = params.id
 
-    // Look up device to get organizationId
+    // Look up device to get organizationId and appSecret for HMAC verification
     const device = await prisma.whatsappDevice.findUnique({
       where: { id: deviceId },
-      select: { organizationId: true },
+      select: { organizationId: true, appSecret: true },
     })
 
     if (!device) {
@@ -518,35 +520,76 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
       return { status: "received" }
     }
 
-    // Determine event type from payload structure
-    const eventType = determineEventType(body)
+    // HMAC verification if appSecret is configured
+    if (device.appSecret) {
+      const signatureHeader = request.headers.get("x-hub-signature-256")
+      // Read raw body for HMAC verification
+      const rawBody = await request.text()
+      // Re-parse body from raw text
+      const parsedBody = JSON.parse(rawBody)
 
-    // 1. Insert raw webhook event BEFORE any processing
-    const eventId = await createWebhookEvent(
-      device.organizationId,
-      deviceId,
-      eventType,
-      body as any
-    )
+      const isValid = verifyWebhookSignature(
+        device.appSecret,
+        rawBody,
+        signatureHeader
+      )
 
-    // 2. Process asynchronously
-    ;(async () => {
-      try {
-        const result = await handleIncomingWebhook(
-          body,
-          deviceId,
-          device.organizationId
-        )
-        await recordProcessingResult(
-          eventId,
-          result.success ? "SUCCESS" : "FAILED",
-          result.success ? undefined : result.error
-        )
-      } catch (e) {
-        console.error("Error processing whatsapp webhook:", e)
-        await recordProcessingResult(eventId, "FAILED", String(e))
+      if (!isValid) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Invalid signature" }
       }
-    })().catch(console.error)
+
+      // Determine event type from payload structure
+      const eventType = determineEventType(parsedBody)
+
+      // Insert raw webhook event BEFORE processing
+      const eventId = await createWebhookEvent(
+        device.organizationId,
+        deviceId,
+        eventType,
+        parsedBody as any
+      )
+
+      // Map event type to job event type
+      const jobEventType = eventType === "inbound_message" ? "message" : "statuses"
+
+      // Enqueue for retry processing
+      await WebhookRetryJob.dispatch({
+        eventId,
+        eventType: jobEventType,
+        deviceId,
+        organizationId: device.organizationId,
+        payload: parsedBody,
+      })
+    } else {
+      // No appSecret configured — process inline (backward compatible)
+      const eventType = determineEventType(body)
+
+      const eventId = await createWebhookEvent(
+        device.organizationId,
+        deviceId,
+        eventType,
+        body as any
+      )
+
+      ;(async () => {
+        try {
+          const result = await handleIncomingWebhook(
+            body,
+            deviceId,
+            device.organizationId
+          )
+          await recordProcessingResult(
+            eventId,
+            result.success ? "SUCCESS" : "FAILED",
+            result.success ? undefined : result.error
+          )
+        } catch (e) {
+          console.error("Error processing whatsapp webhook:", e)
+          await recordProcessingResult(eventId, "FAILED", String(e))
+        }
+      })().catch(console.error)
+    }
 
     set.status = 200
     return { status: "received" }
