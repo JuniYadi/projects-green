@@ -168,7 +168,7 @@ describe("support ticket routes", () => {
     })
   })
 
-  it("creates ticket", async () => {
+  it("creates ticket and sends admin alert", async () => {
     mockSendNewTicketAlertToStaff.mockClear()
     const app = createApp({})
 
