@@ -487,4 +487,19 @@ export const whatsappClient = {
         totalDelta: number
       }>("/api/whatsapp/analytics/cost-reconciliation", { params }),
   },
+
+  webhooks: {
+    stats: (params?: { deviceId?: string }) =>
+      serverFetch<{
+        ok: boolean
+        data: {
+          periodStart: string
+          periodEnd: string
+          totalEvents: number
+          failedEvents: number
+          deadLetters: number
+          failureRate: number
+        }
+      }>("/api/whatsapp/webhooks/dead-letter/stats", { params }),
+  },
 }

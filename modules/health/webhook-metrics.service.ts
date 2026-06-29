@@ -8,8 +8,8 @@
  * Alert thresholds are hardcoded for now; tune via env vars when needed.
  */
 
-const HMAC_FAILURE_WINDOW_MS = 60_000 // 1 minute
-const HMAC_FAILURE_THRESHOLD = 10 // alerts if >10 failures in window
+const FAILURE_RATE_WINDOW_MS = 60 * 60_000 // 1 hour
+const FAILURE_RATE_THRESHOLD = 0.05 // 5%
 
 class WebhookMetricsCollector {
   private totalRequests = 0
@@ -18,18 +18,20 @@ class WebhookMetricsCollector {
   private processingErrors = 0
   private queueDepth = 0
 
-  /** Timestamps of recent HMAC failures for sliding-window alerting. */
-  private hmacFailureTimestamps: number[] = []
+  /** Timestamps of requests and errors for sliding-window rate calculation. */
+  private requestTimestamps: number[] = []
+  private errorTimestamps: number[] = []
 
   // ── Incrementers ──────────────────────────────────────────────
 
   incrementTotalRequests(): void {
     this.totalRequests++
+    this.requestTimestamps.push(Date.now())
   }
 
   incrementHmacFailures(): void {
     this.hmacFailures++
-    this.hmacFailureTimestamps.push(Date.now())
+    this.errorTimestamps.push(Date.now())
   }
 
   incrementDuplicateEvents(): void {
@@ -38,6 +40,7 @@ class WebhookMetricsCollector {
 
   incrementProcessingErrors(): void {
     this.processingErrors++
+    this.errorTimestamps.push(Date.now())
   }
 
   /** Allow external callers (e.g. a periodic poller) to set queue depth. */
@@ -48,33 +51,52 @@ class WebhookMetricsCollector {
   // ── Snapshot ──────────────────────────────────────────────────
 
   getMetrics() {
+    const now = Date.now()
+    const windowStart = now - FAILURE_RATE_WINDOW_MS
+
+    // Prune old timestamps
+    this.requestTimestamps = this.requestTimestamps.filter((ts) => ts >= windowStart)
+    this.errorTimestamps = this.errorTimestamps.filter((ts) => ts >= windowStart)
+
+    const windowRequests = this.requestTimestamps.length
+    const windowErrors = this.errorTimestamps.length
+    const failureRate = windowRequests > 0 ? windowErrors / windowRequests : 0
+
     return {
       totalRequests: this.totalRequests,
       hmacFailures: this.hmacFailures,
       duplicateEvents: this.duplicateEvents,
       processingErrors: this.processingErrors,
       queueDepth: this.queueDepth,
+      failureRate: Math.round(failureRate * 10000) / 100, // percentage with 2 decimals
+      windowRequests,
+      windowErrors,
     }
   }
 
-  // ── Alerts ────────────────────────────────────────────────────
+  // ── Alerts ───────────────────────────────────────────────────
 
   getAlerts(): Array<{ severity: "warn" | "critical"; message: string }> {
     const alerts: Array<{ severity: "warn" | "critical"; message: string }> = []
 
-    // Sliding-window HMAC failure rate
     const now = Date.now()
-    const windowStart = now - HMAC_FAILURE_WINDOW_MS
-    // Prune old timestamps
-    this.hmacFailureTimestamps = this.hmacFailureTimestamps.filter(
-      (ts) => ts >= windowStart
-    )
+    const windowStart = now - FAILURE_RATE_WINDOW_MS
 
-    if (this.hmacFailureTimestamps.length > HMAC_FAILURE_THRESHOLD) {
-      alerts.push({
-        severity: "critical",
-        message: `HMAC signature failures (${this.hmacFailureTimestamps.length}) exceed threshold (${HMAC_FAILURE_THRESHOLD}) in the last 60s`,
-      })
+    // Prune old timestamps
+    this.requestTimestamps = this.requestTimestamps.filter((ts) => ts >= windowStart)
+    this.errorTimestamps = this.errorTimestamps.filter((ts) => ts >= windowStart)
+
+    const windowRequests = this.requestTimestamps.length
+    const windowErrors = this.errorTimestamps.length
+
+    if (windowRequests > 0) {
+      const failureRate = windowErrors / windowRequests
+      if (failureRate > FAILURE_RATE_THRESHOLD) {
+        alerts.push({
+          severity: "critical",
+          message: `Webhook failure rate (${Math.round(failureRate * 100)}%) exceeds threshold (${FAILURE_RATE_THRESHOLD * 100}%) in the last hour`,
+        })
+      }
     }
 
     return alerts
@@ -87,7 +109,8 @@ class WebhookMetricsCollector {
     this.duplicateEvents = 0
     this.processingErrors = 0
     this.queueDepth = 0
-    this.hmacFailureTimestamps = []
+    this.requestTimestamps = []
+    this.errorTimestamps = []
   }
 }
 

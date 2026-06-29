@@ -25,6 +25,15 @@ import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { AccessRestricted } from "@/modules/whatsapp/ui/access-restricted"
 
+type WebhookStats = {
+  periodStart: string
+  periodEnd: string
+  totalEvents: number
+  failedEvents: number
+  deadLetters: number
+  failureRate: number
+}
+
 type DashboardState = "loading" | "error" | "access_denied" | "loaded"
 
 type AccessDeniedInfo = {
@@ -63,6 +72,18 @@ function DeviceStatusBadge({ status }: { status: string }) {
       Disconnected
     </Badge>
   )
+}
+
+function WebhookAlertBadge({ rate }: { rate: number }) {
+  if (rate > 5) {
+    return (
+      <Badge variant="destructive">
+        <Warning className="mr-1 size-3" weight="fill" />
+        Alert
+      </Badge>
+    )
+  }
+  return null
 }
 
 function StatCardSkeleton() {
@@ -104,21 +125,26 @@ export default function WhatsAppDashboardPage() {
   const [errorMessage, setErrorMessage] = React.useState("")
   const [accessDenied, setAccessDenied] =
     React.useState<AccessDeniedInfo | null>(null)
+  const [webhookStats, setWebhookStats] = React.useState<WebhookStats | null>(null)
 
   const loadData = React.useCallback(() => {
     let cancelled = false
 
     const run = async () => {
       try {
-        const [deviceResponse, conversationResponse] = await Promise.all([
+        const [deviceResponse, conversationResponse, webhookResponse] = await Promise.all([
           whatsappClient.devices.list(),
           whatsappClient.conversations.list(),
+          whatsappClient.webhooks.stats().catch(() => null),
         ])
         if (cancelled) return
         setDevices(deviceResponse.devices)
         setConversations(
           conversationResponse.conversations as ConversationListItem[]
         )
+        if (webhookResponse?.data) {
+          setWebhookStats(webhookResponse.data)
+        }
         setState("loaded")
       } catch (err) {
         if (cancelled) return
@@ -345,6 +371,41 @@ export default function WhatsAppDashboardPage() {
                         ? "Low balance — consider topping up"
                         : "Device overage balance"}
                     </p>
+                  </CardContent>
+                </Card>
+
+                <Card className={webhookStats && webhookStats.failureRate > 5 ? "border-destructive" : undefined}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Webhook Reliability
+                    </CardTitle>
+                    <ChartLine
+                      className="size-4 text-muted-foreground"
+                      weight="fill"
+                    />
+                  </CardHeader>
+                  <CardContent>
+                    <div
+                      className={
+                        webhookStats
+                          ? webhookStats.failureRate > 5
+                            ? "text-2xl font-bold text-destructive"
+                            : webhookStats.failureRate > 2
+                              ? "text-2xl font-bold text-orange-500"
+                              : "text-2xl font-bold"
+                          : "text-2xl font-bold"
+                      }
+                    >
+                      {webhookStats ? `${webhookStats.failureRate}%` : "--"}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        {webhookStats
+                          ? `${webhookStats.failedEvents}/${webhookStats.totalEvents} failed (1h)`
+                          : "No webhook data"}
+                      </p>
+                      {webhookStats && <WebhookAlertBadge rate={webhookStats.failureRate} />}
+                    </div>
                   </CardContent>
                 </Card>
               </>

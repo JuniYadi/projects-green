@@ -19,6 +19,7 @@ import { toDeviceDetail, toDeviceListItem } from "../devices.dto"
 import { updateDeviceSchema } from "../devices.schemas"
 import { checkDeviceHealth } from "@/lib/queue/whatsapp-health"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
+import { generateWebhookSigningSecret } from "../devices.service"
 
 type RouteSet = {
   status?: number | string
@@ -429,5 +430,43 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       }
 
       return { ok: true, message: "Sync job enqueued." }
+    }
+  )
+  // POST /:id/regenerate-signing-secret — regenerate webhook HMAC signing secret
+  .post(
+    "/:id/regenerate-signing-secret",
+    async ({ request, params: { id }, set }: any) => {
+      const whatsappAuth = await resolveDeviceAuth(request)
+      if (!whatsappAuth) return toUnauthorized(set)
+
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+        select: { id: true, organizationId: true },
+      })
+
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      }
+
+      if (
+        !isSuperAdmin(whatsappAuth) &&
+        device.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      const newSecret = generateWebhookSigningSecret()
+      await prisma.whatsappDevice.update({
+        where: { id },
+        data: { appSecret: newSecret },
+      })
+
+      return {
+        ok: true,
+        signingSecret: newSecret,
+        message: "Signing secret regenerated. Update your webhook configuration.",
+      }
     }
   )

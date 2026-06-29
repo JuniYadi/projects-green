@@ -7,9 +7,18 @@
  * create/update but not persisted - add that column in a follow-up migration.
  */
 
+import { randomBytes } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { encryptWhatsAppToken } from "@/lib/whatsapp/crypto"
+
+/**
+ * Generate a cryptographically secure signing secret for webhook HMAC verification.
+ * Returns a 32-byte hex string (64 characters).
+ */
+export function generateWebhookSigningSecret(): string {
+  return randomBytes(32).toString("hex")
+}
 
 import {
   DEFAULT_QUOTA_BASE,
@@ -132,6 +141,7 @@ export const createDeviceService = (
                 } as Prisma.InputJsonValue,
               }
             : {}),
+          appSecret: generateWebhookSigningSecret(),
         },
       })
       return _toDeviceDetail(device as PrismaDeviceFields)
@@ -261,6 +271,21 @@ export const createDeviceService = (
         data: { status: "ACTIVE" },
       })
       return _toDeviceDetail(updated as PrismaDeviceFields)
+    },
+
+    async regenerateSigningSecret(id, organizationId) {
+      const device = await db.whatsappDevice.findUnique({ where: { id } })
+      if (!device) throw new DeviceNotFoundError(id)
+      if (organizationId && device.organizationId !== organizationId) {
+        throw new DeviceNotOwnedError()
+      }
+
+      const newSecret = generateWebhookSigningSecret()
+      await db.whatsappDevice.update({
+        where: { id },
+        data: { appSecret: newSecret },
+      })
+      return newSecret
     },
   }
 }

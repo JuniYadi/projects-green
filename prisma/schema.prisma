@@ -1528,6 +1528,8 @@ model WhatsappDevice {
   expiredAt                 DateTime?
   lastHeartbeatAt           DateTime?
   lastDisconnectedAt        DateTime?
+  /// Secret for verifying incoming webhook HMAC signatures (X-Hub-Signature-256)
+  appSecret                 String?
   createdAt                 DateTime             @default(now())
   updatedAt                 DateTime             @updatedAt
 
@@ -1953,6 +1955,25 @@ model WhatsappWebhookEvent {
   @@index([processingStatus, createdAt(sort: Desc)])
   @@index([waMessageId])
   @@index([createdAt(sort: Desc)])
+}
+
+model WhatsappWebhookDeadLetter {
+  id               String    @id @default(cuid())
+  deviceId         String
+  eventType        String
+  rawPayload       Json
+  errorMessage     String
+  attemptCount     Int       @default(0)
+  failedAt         DateTime  @default(now())
+  replayedAt       DateTime?
+  replayStatus     String?   // PENDING, SUCCESS, FAILED
+  organizationId   String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([deviceId, failedAt(sort: Desc)])
+  @@index([replayStatus])
+  @@index([organizationId, failedAt(sort: Desc)])
 }
 
 // ─── Payment Models ───────────────────────────────────────────────────────────
