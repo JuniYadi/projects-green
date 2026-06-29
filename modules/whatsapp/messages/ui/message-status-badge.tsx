@@ -16,7 +16,7 @@ type DeliveryStatus = "SENT" | "DELIVERED" | "READ" | "FAILED"
 
 interface StatusHistory {
   status: DeliveryStatus
-  error?: string | null
+  error: string | null
 }
 
 interface MessageStatusBadgeProps {

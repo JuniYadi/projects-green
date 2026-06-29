@@ -83,7 +83,10 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
             take: 50,
             include: {
               statusHistory: {
-                orderBy: { timestamp: "desc" },
+                orderBy: [
+                  { timestamp: "desc" },
+                  { createdAt: "desc" },
+                ],
               },
             },
           },
