@@ -562,6 +562,25 @@ export function SupportTicketAdminDetailScreen({
     }
   }
 
+  // Handle status change from dropdown
+  const handleStatusChange = async (newStatus: SupportTicketStatus) => {
+    if (!ticket || newStatus === ticket.status) {
+      return
+    }
+
+    try {
+      const updatedTicket = await apiClient.updateAdminTicket(ticket.id, {
+        status: newStatus,
+      })
+      setThread((current) => {
+        if (!current) return current
+        return { ...current, ticket: updatedTicket }
+      })
+    } catch (error) {
+      console.error("Failed to update status:", error)
+    }
+  }
+
   // Delete Ticket (CRUD Delete)
   const deleteTicket = async () => {
     if (!ticket) return
@@ -706,22 +725,41 @@ export function SupportTicketAdminDetailScreen({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Status: {SUPPORT_TICKET_STATUS_LABELS[ticket.status]}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={isClosed || isClosing}
-                    onClick={closeTicket}
-                  >
-                    {isClosing
-                      ? "Closing..."
-                      : isClosed
-                        ? "Closed"
-                        : "Close Ticket"}
-                  </Button>
+                  {!isClosed && (
+                    <>
+                      <Select
+                        value={ticket.status}
+                        onValueChange={handleStatusChange}
+                      >
+                        <SelectTrigger className="w-[160px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SUPPORT_TICKET_STATUS_TRANSITIONS[ticket.status]?.map(
+                            (status) => (
+                              <SelectItem key={status} value={status}>
+                                {SUPPORT_TICKET_STATUS_LABELS[status]}
+                              </SelectItem>
+                            )
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        disabled={isClosing}
+                        onClick={closeTicket}
+                      >
+                        {isClosing ? "Closing..." : "Close Ticket"}
+                      </Button>
+                    </>
+                  )}
+                  {isClosed && (
+                    <span className="rounded-md bg-muted px-2 py-1 text-sm font-medium">
+                      {SUPPORT_TICKET_STATUS_LABELS[ticket.status]}
+                    </span>
+                  )}
                 </div>
               </div>
             </CardHeader>
