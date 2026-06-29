@@ -9,7 +9,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Clock, Check, X, CheckCircle } from "@phosphor-icons/react"
-import type { Prisma } from "@prisma/client"
 
 // ponytail: inline type, add shared type when used in >1 file
 type DeliveryStatus = "SENT" | "DELIVERED" | "READ" | "FAILED"

@@ -43,7 +43,7 @@ type DeliveryStatus = "SENT" | "DELIVERED" | "READ" | "FAILED"
 
 type StatusHistory = {
   status: DeliveryStatus
-  error?: string | null
+  error: string | null
 }
 
 type ConversationListItem = {
