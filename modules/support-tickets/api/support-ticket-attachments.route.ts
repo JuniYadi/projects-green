@@ -249,16 +249,33 @@ export const createSupportTicketAttachmentRoutes = (
         const s3Bucket = (process.env.S3_BUCKET || "").trim()
 
         if (s3Endpoint && s3Bucket) {
-          const expectedPrefix = `${s3Endpoint}/${s3Bucket}`
-          if (
-            !uploadUrl.toLowerCase().startsWith(expectedPrefix.toLowerCase())
-          ) {
-            set.status = 403
-            return {
-              ok: false as const,
-              error: "FORBIDDEN" as const,
-              message: "Upload URL does not match configured storage endpoint.",
+          try {
+            const url = new URL(uploadUrl)
+            const endpointUrl = new URL(s3Endpoint)
+            const endpointHost = endpointUrl.hostname
+
+            // Path-style: https://s3.region.amazonaws.com/bucket/key
+            const isPathStyle =
+              url.hostname === endpointHost &&
+              url.pathname.startsWith(`/${s3Bucket}/`)
+
+            // Virtual-hosted: https://bucket.s3.region.amazonaws.com/key
+            const isVirtualHosted = url.hostname === `${s3Bucket}.${endpointHost}`
+
+            if (!isPathStyle && !isVirtualHosted) {
+              console.error(
+                "[Attachment Upload Proxy] S3 URL validation failed:",
+                { uploadUrl, s3Endpoint, s3Bucket, urlHostname: url.hostname }
+              )
+              set.status = 403
+              return {
+                ok: false as const,
+                error: "FORBIDDEN" as const,
+                message: "Upload URL does not match configured storage endpoint.",
+              }
             }
+          } catch {
+            // Invalid URL format — let it fail naturally at the fetch step
           }
         }
 

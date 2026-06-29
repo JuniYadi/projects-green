@@ -21,6 +21,7 @@ const mockLazySessions = new Map<string, any>()
 const mockSessionCreate = mock()
 const mockSessionFindUnique = mock()
 const mockSessionUpdate = mock()
+const mockSessionDelete = mock()
 const mockTicketFindUnique = mock()
 
 mock.module("@/lib/prisma", () => ({
@@ -29,6 +30,7 @@ mock.module("@/lib/prisma", () => ({
       create: mockSessionCreate,
       findUnique: mockSessionFindUnique,
       update: mockSessionUpdate,
+      delete: mockSessionDelete,
     },
     supportTicket: {
       findUnique: mockTicketFindUnique,
@@ -123,6 +125,9 @@ const createDeps = () => {
         sessions.set(input.id, next)
 
         return next
+      },
+      async deleteUploadSession(id: string) {
+        sessions.delete(id)
       },
     },
     storage: {
@@ -534,6 +539,48 @@ describe("support ticket attachment service", () => {
         storageKey: upload.storageKey,
       })
     ).rejects.toBeInstanceOf(SupportTicketAttachmentValidationError)
+  })
+
+  it("cleans up orphaned sessions on generic verification failure", async () => {
+    const deps = createDeps()
+    const service = createSupportTicketAttachmentService({
+      ...deps,
+      repository: {
+        ...deps.repository,
+        async deleteUploadSession(id: string) {
+          deps.sessions.delete(id)
+        },
+      },
+      storage: {
+        ...deps.storage,
+        async verifyUploadedObject() {
+          throw new Error("Network failure")
+        },
+      },
+    })
+
+    const upload = await service.createPresignedAttachmentUpload({
+      actor: { organizationId: "org_1", workosUserId: "user_requester" },
+      target: "create",
+      fileName: "issue.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 512,
+    })
+
+    await expect(
+      service.registerAttachment({
+        actor: { organizationId: "org_1", workosUserId: "user_requester" },
+        target: "create",
+        id: upload.attachmentId,
+        fileName: "issue.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 512,
+        storageBucket: upload.storageBucket,
+        storageKey: upload.storageKey,
+      })
+    ).rejects.toBeInstanceOf(SupportTicketAttachmentUploadMismatchError)
+
+    expect(deps.sessions.has(upload.attachmentId)).toBe(false)
   })
 
   it("rejects register when upload session is not found", async () => {
