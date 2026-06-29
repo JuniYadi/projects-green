@@ -316,6 +316,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               fingerprint: body.deviceFingerprint,
               iat,
               exp,
+              typ: "mobile-session",
             })
 
             return toPairingClaimResultDTO(

@@ -249,6 +249,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           fingerprint: body.deviceFingerprint,
           iat,
           exp,
+          typ: "mobile-session",
         })
 
         return {
@@ -432,6 +433,7 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           fingerprint: body.deviceFingerprint,
           iat,
           exp,
+          typ: "mobile-session",
         })
 
         // Audit: log success.
