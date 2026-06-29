@@ -54,7 +54,7 @@ const hasOrganizationAccess = (
   return actor.organizationId === ownership.organizationId
 }
 
-const isAssignedAgent = (
+export const isAssignedAgent = (
   actor: SupportTicketActorContext,
   ownership: SupportTicketOwnership
 ) => {

@@ -14,6 +14,7 @@ import {
 import type { SupportTicketRepository } from "@/modules/support-tickets/support-ticket.repository"
 import type {
   SupportTicket,
+  SupportTicketStatus,
   SupportTicketThread,
 } from "@/modules/support-tickets/support-ticket.types"
 
@@ -1565,5 +1566,136 @@ describe("supportTicketService", () => {
     } finally {
       process.env.SUPPORT_TICKET_CONTENT_ENCRYPTION_KEY = originalKey
     }
+  })
+
+  describe("addReply auto-transition tests", () => {
+    const testAutoTransition = async (
+      initialStatus: SupportTicketStatus,
+      actor: any,
+      expectedStatus: SupportTicketStatus | null,
+      isInternalNote = false
+    ) => {
+      const { repository, tickets } = createRepositoryStub()
+      tickets.set("ticket_1", { ...baseTicket, status: initialStatus })
+
+      const service = createSupportTicketService({
+        contentCipher: identityCipher,
+        repository,
+      })
+
+      await service.addReply({
+        actor,
+        reply: {
+          ticketId: "ticket_1",
+          authorWorkosUserId: actor.workosUserId,
+          body: "Test reply",
+          isInternalNote,
+        },
+      })
+
+      const thread = await service.getTicketThread({
+        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        ticketId: "ticket_1",
+      })
+
+      if (expectedStatus) {
+        expect(thread.ticket.status).toBe(expectedStatus)
+      } else {
+        expect(thread.ticket.status).toBe(initialStatus)
+      }
+    }
+
+    it("staff reply to open → transitions to in_progress", async () => {
+      await testAutoTransition("open", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, "in_progress")
+    })
+
+    it("staff reply to waiting_response → transitions to in_progress", async () => {
+      await testAutoTransition("waiting_response", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, "in_progress")
+    })
+
+    it("non-staff reply to in_progress → transitions to waiting_response", async () => {
+      await testAutoTransition("in_progress", { organizationId: "org_1", workosUserId: "user_requester" }, "waiting_response")
+    })
+
+    it("non-staff reply to open → no transition", async () => {
+      await testAutoTransition("open", { organizationId: "org_1", workosUserId: "user_requester" }, null)
+    })
+
+    it("non-staff reply to waiting_response → no transition", async () => {
+      await testAutoTransition("waiting_response", { organizationId: "org_1", workosUserId: "user_requester" }, null)
+    })
+
+    it("non-staff reply to on_hold → no transition", async () => {
+      await testAutoTransition("on_hold", { organizationId: "org_1", workosUserId: "user_requester" }, null)
+    })
+
+    it("staff reply to on_hold → no transition", async () => {
+      await testAutoTransition("on_hold", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, null)
+    })
+
+    it("staff reply to resolved → no transition", async () => {
+      await testAutoTransition("resolved", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, null)
+    })
+
+    it("staff reply to closed → no transition", async () => {
+      await testAutoTransition("closed", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, null)
+    })
+
+    it("internal note never triggers auto-transition", async () => {
+      await testAutoTransition("open", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, null, true)
+    })
+
+    it("assigned agent reply to open → transitions to in_progress via isAssignedAgent", async () => {
+      const { repository, tickets } = createRepositoryStub()
+      tickets.set("ticket_1", { ...baseTicket, status: "open", assignedAgentWorkosUserId: "user_assigned_agent" })
+
+      const service = createSupportTicketService({
+        contentCipher: identityCipher,
+        repository,
+      })
+
+      await service.addReply({
+        actor: { organizationId: "org_1", workosUserId: "user_assigned_agent" },
+        reply: {
+          ticketId: "ticket_1",
+          authorWorkosUserId: "user_assigned_agent",
+          body: "Working on it",
+        },
+      })
+
+      const thread = await service.getTicketThread({
+        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        ticketId: "ticket_1",
+      })
+
+      expect(thread.ticket.status).toBe("in_progress")
+    })
+
+    it("waits for status self-transition guard (from → to, same status is no-op)", async () => {
+      const { repository, tickets } = createRepositoryStub()
+      tickets.set("ticket_1", { ...baseTicket, status: "in_progress" })
+
+      const service = createSupportTicketService({
+        contentCipher: identityCipher,
+        repository,
+      })
+
+      // staff replying to in_progress — should stay in_progress (open→in_progress doesn't apply)
+      await service.addReply({
+        actor: { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" },
+        reply: {
+          ticketId: "ticket_1",
+          authorWorkosUserId: "user_agent",
+          body: "Still working",
+        },
+      })
+
+      const thread = await service.getTicketThread({
+        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        ticketId: "ticket_1",
+      })
+
+      expect(thread.ticket.status).toBe("in_progress")
+    })
   })
 })
