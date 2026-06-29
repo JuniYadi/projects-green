@@ -417,6 +417,8 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
             server: {
               select: {
                 name: true,
+                hostname: true,
+                ipAddress: true,
                 region: { select: { name: true } },
               },
             },
@@ -460,6 +462,8 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           profiles: accounts.map((account) => ({
             id: account.id,
             serverName: account.server.name,
+            hostname: account.server.hostname,
+            serverIp: account.server.ipAddress,
             protocol: account.protocol,
             region: account.server.region.name,
             status: account.provisioningStatus,

@@ -273,6 +273,8 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
                 server: {
                   select: {
                     name: true,
+                    hostname: true,
+                    ipAddress: true,
                     region: { select: { name: true } },
                   },
                 },
