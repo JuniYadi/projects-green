@@ -53,6 +53,8 @@ export const SUPPORT_TICKET_STATUS_LABELS: Record<SupportTicketStatus, string> =
     closed: "Closed",
   }
 
+export { SUPPORT_TICKET_STATUS_TRANSITIONS } from "@/modules/support-tickets/support-ticket.policy"
+
 export const SUPPORT_TICKET_DEPARTMENT_LABELS: Record<
   SupportTicketDepartment,
   string

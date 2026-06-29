@@ -19,6 +19,7 @@ import {
   canCreateSupportTicketReply,
   canReadSupportTicket,
   canUpdateSupportTicketStatus,
+  isSupportTicketStatusTransitionAllowed,
 } from "@/modules/support-tickets/support-ticket.policy"
 import type { SupportTicketRepository } from "@/modules/support-tickets/support-ticket.repository"
 import type {
@@ -284,26 +285,24 @@ const decryptReplyContent = (
   }
 }
 
-/**
- * Determines the next status based on current status and replier role.
- * - Admin/agent replies to `open` → `in_progress`
- * - User replies while `in_progress` → `waiting_response`
- * - User replies while `waiting_response` → stays (no flip-flop)
- * - Admin/agent replies to `waiting_response` → `in_progress`
- */
+// auto-transition rules based on reply:
+// - admin replies to `open` → `in_progress`
+// - user replies while `in_progress` → `waiting_response`
+// - admin replies to `waiting_response` → `in_progress`
+// - everything else → no-op (including `waiting_response` stays if user replies again)
 const autoTransitionStatus = (
   currentStatus: SupportTicketStatus,
-  actor: { isSuperAdmin?: boolean; canManageTickets?: boolean }
+  isAdmin: boolean
 ): SupportTicketStatus | null => {
-  const isStaff = actor.isSuperAdmin || actor.canManageTickets
-
-  if (isStaff) {
-    if (currentStatus === "open") return "in_progress"
-    if (currentStatus === "waiting_response") return "in_progress"
-  } else {
-    if (currentStatus === "in_progress") return "waiting_response"
+  if (currentStatus === "open" && isAdmin) {
+    return "in_progress"
   }
-
+  if (currentStatus === "in_progress" && !isAdmin) {
+    return "waiting_response"
+  }
+  if (currentStatus === "waiting_response" && isAdmin) {
+    return "in_progress"
+  }
   return null
 }
 
@@ -433,22 +432,21 @@ export const createSupportTicketService = (
         throw new SupportTicketAccessDeniedError("add a reply to")
       }
 
+      // Determine if replier is admin (for auto-transition)
+      const isAdmin = actor.isSuperAdmin || actor.canManageTickets
+
       try {
         const encryptedReply = encryptReplyContent(contentCipher, reply)
         const storedReply = await repository.createReply(encryptedReply)
 
-        // Auto-transition status on reply (non-internal notes only)
+        // Auto-transition status based on reply
         if (!reply.isInternalNote) {
-          const nextStatus = autoTransitionStatus(ticket.status, actor)
-          if (nextStatus && nextStatus !== ticket.status) {
+          const nextStatus = autoTransitionStatus(ticket.status, Boolean(isAdmin))
+          if (nextStatus && isSupportTicketStatusTransitionAllowed(ticket.status, nextStatus)) {
             const now = new Date()
-            const timestamps = toTransitionTimestamps(
-              { ...ticket, status: ticket.status },
-              nextStatus,
-              now
-            )
+            const timestamps = toTransitionTimestamps(ticket, nextStatus, now)
             await repository.updateTicketStatus({
-              ticketId: reply.ticketId,
+              ticketId: ticket.id,
               status: nextStatus,
               resolvedAt: timestamps.resolvedAt,
               closedAt: timestamps.closedAt,
