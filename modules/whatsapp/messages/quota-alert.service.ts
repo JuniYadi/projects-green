@@ -42,13 +42,27 @@ export const quotaAlertService: QuotaAlertService = {
     currentCost: number,
     quotaBase: number
   ) {
-    // Find org billing contact email
-    const org = await prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { name: true, billingEmail: true },
+    // Find billing contacts who want low balance alerts + org name
+    const billingContact = await prisma.billingContact.findFirst({
+      where: {
+        billingAccount: { organizationId },
+        notifyOnLowBalance: true,
+        isActive: true,
+      },
+      select: {
+        email: true,
+        billingAccount: {
+          select: {
+            organizationId: true,
+          },
+        },
+      },
     })
 
-    if (!org?.billingEmail) return
+    if (!billingContact?.email) return
+
+    // ponytail: org name lookup requires WorkOS API call — use static name for now
+    const orgName = "Your Organization"
 
     // Get device phone for display
     const device = await prisma.whatsappDevice.findUnique({
@@ -76,8 +90,8 @@ export const quotaAlertService: QuotaAlertService = {
 
         // Send alert email
         await sendQuotaEmail({
-          to: org.billingEmail,
-          orgName: org.name,
+          to: billingContact.email,
+          orgName,
           devicePhone: phoneDisplay,
           threshold,
           currentPercent,

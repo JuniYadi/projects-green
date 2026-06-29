@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
   USAGE_CATEGORY_WHATSAPP_IN,
@@ -260,19 +261,29 @@ export class WhatsappUsageService {
     })
 
     // Fetch ledger entries grouped by device
-    const ledgerRows = await prisma.whatsappBillingLedger.groupBy({
-      by: ["whatsappDeviceId", "category"],
-      where: {
-        organizationId,
-        category: { in: WHATSAPP_CATEGORIES },
-        createdAt: {
-          gte: new Date(`${period}-01`),
-          lt: new Date(`${period}-01`).setMonth(new Date(`${period}-01`).getMonth() + 1) as unknown as Date,
-        },
-      },
-      _sum: { quotaValue: true },
-      _count: true,
-    })
+    // ponytail: using category filter via raw query to avoid Prisma type issues
+    const periodStart = new Date(`${period}-01`)
+    const periodEnd = new Date(periodStart)
+    periodEnd.setMonth(periodEnd.getMonth() + 1)
+
+    const ledgerRows = await prisma.$queryRaw<Array<{
+      whatsappDeviceId: string | null
+      category: string
+      totalAmount: bigint | number
+      entryCount: bigint | number
+    }>>`
+      SELECT
+        "whatsappDeviceId",
+        "category",
+        COALESCE(SUM("quotaValue"), 0) as "totalAmount",
+        COUNT(*) as "entryCount"
+      FROM "WhatsappBillingLedger"
+      WHERE "organizationId" = ${organizationId}
+        AND "category" IN ('WHATSAPP_MESSAGE_IN', 'WHATSAPP_MESSAGE_OUT')
+        AND "createdAt" >= ${periodStart}
+        AND "createdAt" < ${periodEnd}
+      GROUP BY "whatsappDeviceId", "category"
+    `
 
     // Build device cost map
     const deviceCostMap = new Map<string, { total: number; byCat: Map<string, { count: number; total: number }>; messageCount: number }>()
@@ -282,12 +293,13 @@ export class WhatsappUsageService {
         deviceCostMap.set(devId, { total: 0, byCat: new Map(), messageCount: 0 })
       }
       const entry = deviceCostMap.get(devId)!
-      const amount = toNum(row._sum?.quotaValue ?? 0)
+      const amount = Number(row.totalAmount)
+      const count = Number(row.entryCount)
       entry.total += amount
-      entry.messageCount += row._count
+      entry.messageCount += count
       const cat = row.category ?? "UNKNOWN"
       const catEntry = entry.byCat.get(cat) ?? { count: 0, total: 0 }
-      catEntry.count += row._count
+      catEntry.count += count
       catEntry.total += amount
       entry.byCat.set(cat, catEntry)
     }
