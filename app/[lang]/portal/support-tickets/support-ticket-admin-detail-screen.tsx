@@ -736,7 +736,7 @@ export function SupportTicketAdminDetailScreen({
                         </SelectTrigger>
                         <SelectContent>
                           {SUPPORT_TICKET_STATUS_TRANSITIONS[ticket.status]?.map(
-                            (status) => (
+                            (status: SupportTicketStatus) => (
                               <SelectItem key={status} value={status}>
                                 {SUPPORT_TICKET_STATUS_LABELS[status]}
                               </SelectItem>

@@ -433,7 +433,7 @@ export const createSupportTicketService = (
       }
 
       // Determine if replier is admin (for auto-transition)
-      const isAdmin = actor.isSuperAdmin || actor.canManageTickets
+      const isAdmin = Boolean(actor.isSuperAdmin || actor.canManageTickets)
 
       try {
         const encryptedReply = encryptReplyContent(contentCipher, reply)
