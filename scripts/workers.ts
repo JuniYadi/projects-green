@@ -90,6 +90,9 @@ import {
 } from "@/lib/queue/whatsapp-webhook-outgoing"
 import { processOutgoingWebhookJob } from "./whatsapp-webhook-outgoing-worker"
 
+// ── WhatsApp Incoming Webhook Retry ────────────────────────────────────────
+import { WebhookRetryJob } from "@/modules/whatsapp/webhooks/jobs/webhook-retry.job"
+
 // ── Interval-based services ────────────────────────────────────────────────
 import { monitorActiveDeployments } from "@/modules/deploy/deploy-monitor.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
@@ -459,6 +462,10 @@ const waOutgoingWorker = new Worker<WhatsappOutgoingWebhookJobData>(
   }
 )
 allWorkers.push(waOutgoingWorker)
+
+// ── WhatsApp Incoming Webhook Retry Worker ─────────────────────────────────
+const waWebhookRetryWorker = WebhookRetryJob.createWorker()
+allWorkers.push(waWebhookRetryWorker)
 
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {

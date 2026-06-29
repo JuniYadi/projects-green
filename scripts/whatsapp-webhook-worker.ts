@@ -9,6 +9,7 @@ import {
   processInboundMessage,
   processDeliveryStatus,
 } from "@/modules/whatsapp/webhooks/webhooks.service"
+import { createDeadLetter } from "@/modules/whatsapp/webhooks/services/webhook-dead-letter.service"
 import { prisma } from "@/lib/prisma"
 
 const redisConnection = getWhatsAppWebhookRedisConnection()
@@ -187,35 +188,23 @@ worker.on("failed", async (job, error) => {
     error
   )
 
-  // Mark event as dead-lettered when retries exhausted
+  // Store in dead-letter queue when retries exhausted
   if (attempts >= maxAttempts) {
     try {
-      const event = await prisma.whatsappWebhookEvent.findFirst({
-        where: {
-          whatsappDeviceId: deviceId,
-          processingStatus: "PENDING",
-          eventType,
-        },
-        orderBy: { createdAt: "desc" },
+      await createDeadLetter({
+        deviceId,
+        eventType,
+        payload: job.data,
+        errorMessage: toErrorMessage(error),
+        attemptCount: attempts,
       })
 
-      if (event) {
-        await prisma.whatsappWebhookEvent.update({
-          where: { id: event.id },
-          data: {
-            processingStatus: "DEAD_LETTERED",
-            errorMessage: toErrorMessage(error),
-            processedAt: new Date(),
-          },
-        })
-      }
-
       console.info(
-        `[whatsapp-webhook-worker] dead-lettered event for device=${deviceId} eventType=${eventType}`
+        `[whatsapp-webhook-worker] stored dead-letter for device=${deviceId} eventType=${eventType}`
       )
     } catch (dlqError) {
       console.error(
-        `[whatsapp-webhook-worker] failed to update event status for device=${deviceId}:`,
+        `[whatsapp-webhook-worker] failed to create dead-letter for device=${deviceId}:`,
         dlqError
       )
     }
