@@ -8,8 +8,10 @@ export const SUPPORT_TICKET_STATUS_TRANSITIONS: Record<
   SupportTicketStatus,
   SupportTicketStatus[]
 > = {
-  open: ["in_progress", "resolved", "closed"],
-  in_progress: ["resolved", "closed"],
+  open: ["in_progress", "waiting_response", "on_hold", "resolved", "closed"],
+  in_progress: ["waiting_response", "on_hold", "resolved", "closed"],
+  waiting_response: ["in_progress", "on_hold", "resolved", "closed"],
+  on_hold: ["in_progress", "waiting_response", "resolved", "closed"],
   resolved: ["in_progress", "closed"],
   closed: [],
 }
@@ -52,7 +54,7 @@ const hasOrganizationAccess = (
   return actor.organizationId === ownership.organizationId
 }
 
-const isAssignedAgent = (
+export const isAssignedAgent = (
   actor: SupportTicketActorContext,
   ownership: SupportTicketOwnership
 ) => {

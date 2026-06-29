@@ -19,6 +19,8 @@ import {
   canCreateSupportTicketReply,
   canReadSupportTicket,
   canUpdateSupportTicketStatus,
+  isAssignedAgent,
+  isSupportTicketStatusTransitionAllowed,
 } from "@/modules/support-tickets/support-ticket.policy"
 import type { SupportTicketRepository } from "@/modules/support-tickets/support-ticket.repository"
 import type {
@@ -284,6 +286,27 @@ const decryptReplyContent = (
   }
 }
 
+/**
+ * Determines the next status based on current status and replier role.
+ * - Admin/agent replies to `open` → `in_progress`
+ * - User replies while `in_progress` → `waiting_response`
+ * - User replies while `waiting_response` → stays (no flip-flop)
+ * - Admin/agent replies to `waiting_response` → `in_progress`
+ */
+const autoTransitionStatus = (
+  currentStatus: SupportTicketStatus,
+  isStaff: boolean
+): SupportTicketStatus | null => {
+  if (isStaff) {
+    if (currentStatus === "open") return "in_progress"
+    if (currentStatus === "waiting_response") return "in_progress"
+  } else {
+    if (currentStatus === "in_progress") return "waiting_response"
+  }
+
+  return null
+}
+
 export const createSupportTicketService = (
   options: CreateSupportTicketServiceOptions = {}
 ): SupportTicketService => {
@@ -413,6 +436,23 @@ export const createSupportTicketService = (
       try {
         const encryptedReply = encryptReplyContent(contentCipher, reply)
         const storedReply = await repository.createReply(encryptedReply)
+
+        // Auto-transition status based on reply
+        if (!reply.isInternalNote) {
+          const staffRoles = actor.isSuperAdmin || actor.canManageTickets || isAssignedAgent(actor, ticket)
+          const nextStatus = autoTransitionStatus(ticket.status, !!staffRoles)
+          if (nextStatus && isSupportTicketStatusTransitionAllowed(ticket.status, nextStatus)) {
+            const now = new Date()
+            const timestamps = toTransitionTimestamps(ticket, nextStatus, now)
+            await repository.updateTicketStatus({
+              ticketId: ticket.id,
+              status: nextStatus,
+              resolvedAt: timestamps.resolvedAt,
+              closedAt: timestamps.closedAt,
+            })
+          }
+        }
+
         return decryptReplyContent(contentCipher, storedReply)
       } catch (error) {
         throw toSafeContentError(error)
