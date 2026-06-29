@@ -260,9 +260,7 @@ export const createSupportTicketAttachmentRoutes = (
               url.pathname.startsWith(`/${s3Bucket}/`)
 
             // Virtual-hosted: https://bucket.s3.region.amazonaws.com/key
-            const isVirtualHosted =
-              url.hostname === `${s3Bucket}.${endpointHost}` ||
-              url.hostname.startsWith(`${s3Bucket}.${endpointHost}`)
+            const isVirtualHosted = url.hostname === `${s3Bucket}.${endpointHost}`
 
             if (!isPathStyle && !isVirtualHosted) {
               console.error(
