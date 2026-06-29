@@ -703,9 +703,21 @@ export const createSupportTicketRoutes = (
           actor,
         })
 
+        // Resolve requester names for display
+        const requesterIds = [
+          ...new Set(tickets.map((t) => t.requesterWorkosUserId).filter(Boolean)),
+        ]
+        const { getCachedUsers } = await import("@/lib/workos-directory")
+        const users = await getCachedUsers(requesterIds)
+
+        const enrichedTickets = tickets.map((ticket) => ({
+          ...ticket,
+          requesterName: users.get(ticket.requesterWorkosUserId)?.name ?? null,
+        }))
+
         return {
           ok: true as const,
-          tickets,
+          tickets: enrichedTickets,
         }
       })
     )

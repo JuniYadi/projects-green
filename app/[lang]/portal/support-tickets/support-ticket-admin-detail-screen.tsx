@@ -329,13 +329,6 @@ export function SupportTicketAdminDetailScreen({
       const nextThread = await apiClient.getTicketThread(ticketId)
       if (requestSequenceRef.current === requestId) {
         setThread(nextThread)
-        if (nextThread.ticket) {
-          setDepartment(nextThread.ticket.department)
-          setPriority(nextThread.ticket.priority)
-          setService(nextThread.ticket.service || "none")
-          setStatus(nextThread.ticket.status)
-          setAssignedAgentWorkosUserId(nextThread.ticket.assignedAgentWorkosUserId)
-        }
       }
     } catch (error) {
       if (requestSequenceRef.current === requestId) {
@@ -363,6 +356,16 @@ export function SupportTicketAdminDetailScreen({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId])
+
+  // Sync categorization form state from loaded thread — no flash on Select
+  useEffect(() => {
+    if (!thread?.ticket) return
+    setDepartment(thread.ticket.department)
+    setPriority(thread.ticket.priority)
+    setService(thread.ticket.service || "none")
+    setStatus(thread.ticket.status)
+    setAssignedAgentWorkosUserId(thread.ticket.assignedAgentWorkosUserId)
+  }, [thread])
 
   const ticket = thread?.ticket ?? null
   const isClosed = ticket?.status === "closed"

@@ -121,6 +121,7 @@ export type SupportTicket = SupportTicketOwnership & {
   attachmentMetadata: SupportTicketAttachmentMetadata[]
   organizationName?: string | null
   organizationMetadata?: Record<string, string> | null
+  requesterName?: string | null
 }
 
 export type SupportTicketReply = {
