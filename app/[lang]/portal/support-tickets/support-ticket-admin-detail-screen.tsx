@@ -553,6 +553,7 @@ export function SupportTicketAdminDetailScreen({
         }
       })
       setStatus("closed")
+      router.refresh()
       setSuccessMessage(
         "Ticket closed and secure form data wiped successfully."
       )
