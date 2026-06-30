@@ -310,28 +310,22 @@ jobs:
         id: review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
+        run: |-
           PR_NUMBER="${{ inputs.pr_id }}"
           if [ -z "$PR_NUMBER" ]; then
             PR_NUMBER=$(gh pr list --head "${{ inputs.branch }}" --json number --jq '.[0].number' 2>/dev/null || echo "")
           fi
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          [ -z "$PR_NUMBER" ] && { echo "fix_prompt_found=false" >> "$GITHUB_OUTPUT"; exit 0; }
 
-          if [ -z "$PR_NUMBER" ]; then
-            echo "fix_prompt_found=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Fetch requested-changes review body
           gh api "repos/JuniYadi/projects-green/pulls/$PR_NUMBER/reviews" \
             --jq '.[] | select(.state == "CHANGES_REQUESTED") | .body' > /tmp/review-body.md 2>&1 || true
 
-          # Extract AI Refactoring Prompt section (or use full body as fallback)
           python3 <<-'PYEOF'
-          import re
+          import re, json
           with open('/tmp/review-body.md') as f:
               content = f.read()
-          # Match ```markdown block under "AI Refactoring Prompt"
+          # Also save the full review body for the gate step
           match = re.search(
               r'AI Refactoring Prompt.*?\x60\x60\x60\x60markdown\n?(.*?)\x60\x60\x60\x60',
               content, re.DOTALL
@@ -341,11 +335,101 @@ jobs:
           with open('/tmp/fix-found.txt', 'w') as out:
               out.write('true' if (match or content.strip()) else 'false')
           PYEOF
-
           echo "fix_prompt_found=$(cat /tmp/fix-found.txt)" >> "$GITHUB_OUTPUT"
 
-      - name: Claude Code — Apply Fixes
-        if: steps.review.outputs.fix_prompt_found == 'true'
+      - name: PR Gate — check what's actually wrong
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |-
+          PR_NUMBER="${{ steps.review.outputs.pr_number }}"
+          [ -z "$PR_NUMBER" ] && { echo "decision=skip" >> "$GITHUB_OUTPUT"; echo "reason=no-pr" >> "$GITHUB_OUTPUT"; exit 0; }
+
+          python3 <<-'PYEOF'
+          import json, subprocess, sys
+          pr = "${{ steps.review.outputs.pr_number }}"
+          repo = "JuniYadi/projects-green"
+
+          # 1. Get PR check statuses
+          r = subprocess.run(
+              ["gh", "pr", "view", pr, "-R", repo,
+               "--json", "statusCheckRollup,commits,reviews"],
+              capture_output=True, text=True, timeout=30
+          )
+          data = json.loads(r.stdout)
+          checks = data.get("statusCheckRollup", [])
+          commits = data.get("commits", [])
+          reviews = data.get("reviews", [])
+
+          # 2. Identify failing checks
+          failed = [c["name"] for c in checks if c.get("conclusion") in ("FAILURE", "ACTION_REQUIRED", "TIMED_OUT")]
+          passed = [c["name"] for c in checks if c.get("conclusion") == "SUCCESS"]
+
+          # 3. Check if only coverage-related checks are failing
+          coverage_names = {"codecov/patch", "codecov/project", "Test Coverage (Bun + Codecov)"}
+          coverage_only = len(failed) > 0 and all(
+              any(cn in f for cn in coverage_names) for f in failed
+          )
+
+          # 4. Get last commit timestamp on the branch
+          last_commit_at = commits[-1]["committedDate"] if commits else ""
+
+          # 5. Get latest CHANGES_REQUESTED review timestamp
+          cr_reviews = [r for r in reviews if r.get("state") == "CHANGES_REQUESTED"]
+          last_cr_at = cr_reviews[-1]["submittedAt"] if cr_reviews else ""
+
+          # 6. Check review staleness
+          review_stale = bool(last_cr_at and last_commit_at and last_cr_at < last_commit_at)
+
+          # 7. Check if the AI Refactoring Prompt has actionable code snippets
+          has_actionable = False
+          try:
+              with open("/tmp/fix-prompt.md") as f:
+                  prompt = f.read()
+              # Check for code blocks (``` ) or file paths with line ranges
+              has_actionable = bool(
+                  re.search(r'```\w*\n', prompt) or
+                  re.search(r'File:.*\n', prompt) or
+                  re.search(r'line[s]?\s*\d+', prompt, re.IGNORECASE)
+              )
+          except:
+              pass
+
+          # 8. Decision
+          decision = "skip"
+          reasons = []
+
+          if coverage_only:
+              reasons.append("coverage-only — cannot auto-fix")
+          elif review_stale and not failed:
+              reasons.append("stale review, all CI passing — nothing to fix")
+          elif not cr_reviews and not failed:
+              reasons.append("no CHANGES_REQUESTED and no CI failures — nothing to fix")
+          elif failed:
+              ci_names = ", ".join(failed)
+              if has_actionable:
+                  decision = "use-review-prompt"
+                  reasons.append(f"actionable review prompt + CI failures ({ci_names})")
+              else:
+                  decision = "use-ci-prompt"
+                  reasons.append(f"CI failures ({ci_names}) — no actionable review prompt")
+          elif has_actionable:
+              decision = "use-review-prompt"
+              reasons.append("actionable review prompt found")
+          else:
+              reasons.append("no actionable content found")
+
+          with open("/tmp/gate-output", "w") as out:
+              out.write(f"decision={decision}\nreason={'; '.join(reasons)}\n")
+
+          # Print for GITHUB_OUTPUT
+          print(f"decision={decision}")
+          print(f"reason={'; '.join(reasons)}")
+          print(f"failed_checks={' '.join(failed)}" if failed else "")
+          PYEOF
+
+      - name: Claude Code — Apply Fixes (review prompt)
+        if: steps.gate.outputs.decision == 'use-review-prompt'
         uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
@@ -375,7 +459,7 @@ jobs:
 
             0. REBASE ONTO LATEST MAIN:
                Your branch may be behind origin/main if other PRs merged
-               while the draft PR was open. Rebase first so fixes apply
+               while the PR was open. Rebase first so fixes apply
                against the latest code. Handle any conflicts.
                ```
                cd ${{ env.CODE_DIR }}
@@ -394,23 +478,105 @@ jobs:
             2. FIX EACH ISSUE from /tmp/fix-prompt.md.
                For each: read the affected file, apply the fix.
 
-            3. COMMIT + PUSH:
+            3. COMMIT + PUSH only if there's a real diff:
                ```
                cd ${{ env.CODE_DIR }}
                git config user.name "JuniYadi"
                git config user.email "31454084+JuniYadi@users.noreply.github.com"
-               git add -A && git commit -m "fix: ${{ inputs.task_id }} address PR review feedback" --allow-empty && git push
+               if [ -n "$(git status --porcelain)" ]; then
+                 git add -A && git commit -m "fix: ${{ inputs.task_id }} address PR review feedback" && git push
+               else
+                 echo "::warning::Nothing changed — skipping empty commit"
+               fi
                ```
 
             # Note: 3 pillars (lint/typecheck/test) di-skip di fix mode.
-            # CI (typecheck-build.yml + coverage-codecov.yml) akan validasi
-            # setelah PR ready. Monitor akan trigger fix ulang kalau ada
-            # check failure yang legit dari perubahan kita, bukan dari PR lain.
+            # CI (typecheck-build.yml + coverage-codecov.yml) will validate
+            # after PR ready. Monitor will trigger re-fix on legit failures.
 
-      - name: Report if no fix prompt found
-        if: steps.review.outputs.fix_prompt_found != 'true'
+      - name: Claude Code — Fix CI failures
+        if: steps.gate.outputs.decision == 'use-ci-prompt'
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_IDE_PROJECTS }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          track_progress: false
+          show_full_output: false
+          display_report: true
+          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
+          plugins: 'ponytail@ponytail'
+          claude_args: >-
+            --model ${{ secrets.FIX_ANTHROPIC_MODEL }}
+            --max-turns 120
+            --dangerously-skip-permissions
+            --allowedTools "Bash(bun*),Bash(node*),Bash(npx*),Bash(git*),Bash(gh*),Bash(cat*),Bash(find*),Bash(grep*),Bash(ls*),Bash(cp*),Bash(mv*),Bash(rm*),Bash(sed*),Bash(mkdir*),Bash(touch*),Bash(tee*),Bash(date*),Bash(which*),Bash(dirname*),Bash(basename*),Bash(sort*),Bash(uniq*),Bash(wget*),Bash(curl*),mcp__github_*"
+          prompt: |
+            /ponytail:ponytail
+            TASK: ${{ inputs.task_id }}
+            BRANCH: ${{ inputs.branch }}
+            PR: ${{ steps.review.outputs.pr_number }}
+            WORKDIR: projects-green/
+            TASK DIR: ../ide/projects-green/_tasks/active/
+
+            Senior engineer fixing CI failures on a PR. The code changes
+            are already implemented — only fix the specific CI failures.
+
+            CI CHECKS FAILING:
+            ${{ steps.gate.outputs.failed_checks }}
+
+            0. REBASE ONTO LATEST MAIN:
+               ```
+               cd ${{ env.CODE_DIR }}
+               git config user.name "JuniYadi"
+               git config user.email "31454084+JuniYadi@users.noreply.github.com"
+               git pull --rebase origin main
+               ```
+
+            1. READ CONTEXT:
+               ```
+               cat WORKDIR/AGENTS.md
+               cat "$TASK_DIR"/*${{ inputs.task_id }}*.md
+               ```
+
+            2. RUN THE FAILING CHECK to see the actual errors:
+               ```
+               cd ${{ env.CODE_DIR }}
+               # Run typecheck if it's failing
+               bun run typecheck 2>&1 | tail -50 || true
+               # Run build if it's failing
+               bun run build 2>&1 | tail -50 || true
+               # Run lint if it's failing
+               bun run lint 2>&1 | tail -50 || true
+               ```
+
+            3. FIX each error found. Read the affected files, fix them.
+
+            4. COMMIT + PUSH only if there's a real diff:
+               ```
+               cd ${{ env.CODE_DIR }}
+               git config user.name "JuniYadi"
+               git config user.email "31454084+JuniYadi@users.noreply.github.com"
+               if [ -n "$(git status --porcelain)" ]; then
+                 git add -A && git commit -m "fix(${{ inputs.task_id }}): fix CI failures" && git push
+               else
+                 echo "::warning::Nothing changed — CI failure may need manual fix"
+               fi
+               ```
+
+      - name: ⏸️ Gate — skip (nothing actionable)
+        if: steps.gate.outputs.decision == 'skip'
         run: |
-          echo "::warning::No AI Refactoring Prompt found in PR #${{ steps.review.outputs.pr_number }} reviews"
+          echo "::warning::PR Gate: SKIPPED — ${{ steps.gate.outputs.reason }}"
+          echo "PR #${{ steps.review.outputs.pr_number }}: ${{ steps.gate.outputs.reason }}"
+
+      - name: Gate — report decision
+        if: always()
+        run: |
+          echo "Gate decision: ${{ steps.gate.outputs.decision }}"
+          echo "Reason: ${{ steps.gate.outputs.reason }}"
 
       - name: Ensure task status saved
         if: always()
