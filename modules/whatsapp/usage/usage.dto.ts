@@ -60,6 +60,34 @@ export type UsageOverviewDTO = {
   devices: DeviceUsageSummaryDTO[]
 }
 
+// ─── Cost Breakdown DTOs ───────────────────────────────────────────────────────
+
+export type DeviceCostBreakdownDTO = {
+  deviceId: string
+  phoneNumber: string | null
+  totalCost: number
+  byCategory: CategoryBreakdownDTO[]
+  messageCount: number
+  quotaBase: number
+  quotaUsed: number
+  quotaPercent: number
+}
+
+export type CostBreakdownResponseDTO = {
+  period: string
+  totalCost: number
+  projectedCost: number
+  forecast: {
+    daysElapsed: number
+    daysRemaining: number
+    currentCost: number
+    projectedMonthlyCost: number
+  }
+  byDevice: DeviceCostBreakdownDTO[]
+  balance: number | null
+  currency: string
+}
+
 // ─── Mapper Functions ──────────────────────────────────────────────────────────
 
 export function toDailyCountDTO(

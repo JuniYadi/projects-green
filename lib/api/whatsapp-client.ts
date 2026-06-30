@@ -382,6 +382,32 @@ export const whatsappClient = {
           totalCost: number
         }[]
       }>("/api/whatsapp/usage/cost", { params }),
+
+    costBreakdown: (params?: { period?: string; deviceId?: string }) =>
+      serverFetch<{
+        ok: boolean
+        period: string
+        totalCost: number
+        projectedCost: number
+        forecast: {
+          daysElapsed: number
+          daysRemaining: number
+          currentCost: number
+          projectedMonthlyCost: number
+        }
+        byDevice: {
+          deviceId: string
+          phoneNumber: string | null
+          totalCost: number
+          byCategory: { category: string; count: number; totalCost: number }[]
+          messageCount: number
+          quotaBase: number
+          quotaUsed: number
+          quotaPercent: number
+        }[]
+        balance: number | null
+        currency: string
+      }>("/api/whatsapp/usage/cost-breakdown", { params }),
   },
 
   catalogs: {

@@ -20,6 +20,11 @@ const toUnauthorized = (set: RouteSet) => {
   return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
 }
 
+function getCurrentPeriod(): string {
+  const now = new Date()
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
+}
+
 export const usageRoutes = new Elysia({ prefix: "/usage" })
   // GET /usage/overview — current month overview
   .get("/overview", async ({ request, set }: { request: any; set: any }) => {
@@ -118,5 +123,24 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
       )
 
       return { ok: true, ...cost }
+    }
+  )
+  // GET /usage/cost-breakdown — per-device cost breakdown with forecast
+  .get(
+    "/cost-breakdown",
+    async ({ request, set, query }: { request: any; set: any; query: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) return toUnauthorized(set)
+
+      const { period, deviceId } = query as { period?: string; deviceId?: string }
+      const targetPeriod = period ?? getCurrentPeriod()
+
+      const breakdown = await whatsappUsageService.getCostBreakdown(
+        whatsappAuth.organizationId!,
+        targetPeriod,
+        { deviceId }
+      )
+
+      return { ok: true, ...breakdown }
     }
   )

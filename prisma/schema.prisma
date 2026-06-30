@@ -1507,6 +1507,7 @@ model WhatsappDevice {
   phoneNumber               String               @unique
   balance                   Decimal              @default(0) @db.Decimal(12, 2)
   quotaBase                 Decimal              @default(1000) @db.Decimal(12, 2)
+  currentQuotaUsed          Decimal              @default(0) @db.Decimal(12, 2)
   quotaBaseIn               Int                  @default(0)
   quotaBaseOut              Int                  @default(0)
   dailyLimitMessage         Int                  @default(0)
@@ -1974,6 +1975,20 @@ model WhatsappWebhookDeadLetter {
   @@index([deviceId, failedAt(sort: Desc)])
   @@index([replayStatus])
   @@index([organizationId, failedAt(sort: Desc)])
+}
+
+// ─── WhatsApp Quota Alert ─────────────────────────────────────────────────────
+
+model WhatsappQuotaAlert {
+  id               String   @id @default(cuid())
+  organizationId   String
+  whatsappDeviceId String
+  threshold       Int      // 50, 80, 90, 100
+  sentAt          DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@unique([organizationId, whatsappDeviceId, threshold])
+  @@index([organizationId])
 }
 
 // ─── Payment Models ───────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
   USAGE_CATEGORY_WHATSAPP_IN,
@@ -7,6 +8,8 @@ import type {
   CostSummaryDTO,
   CategoryBreakdownDTO,
   DeviceUsageSummaryDTO,
+  CostBreakdownResponseDTO,
+  DeviceCostBreakdownDTO,
 } from "./usage.dto"
 
 const WHATSAPP_CATEGORIES = [
@@ -233,6 +236,125 @@ export class WhatsappUsageService {
     }))
 
     return { month: monthlyCounts, today: todayCounts, cost, devices }
+  }
+
+  /**
+   * Get per-device cost breakdown with forecast for a period.
+   * Forecast: linear extrapolation from current spend.
+   */
+  async getCostBreakdown(
+    organizationId: string,
+    period: string,
+    opts: { deviceId?: string } = {}
+  ): Promise<CostBreakdownResponseDTO> {
+    const now = new Date()
+    const [year, month] = period.split("-").map(Number)
+    const daysInMonth = new Date(year, month, 0).getDate()
+    const today = now.getUTCDate()
+    const isCurrentPeriod = year === now.getUTCFullYear() && month === now.getUTCMonth() + 1
+    const daysElapsed = isCurrentPeriod ? today : daysInMonth
+    const daysRemaining = Math.max(0, daysInMonth - daysElapsed)
+
+    const deviceWhere = opts.deviceId
+      ? { organizationId, id: opts.deviceId }
+      : { organizationId }
+    const devices = await prisma.whatsappDevice.findMany({
+      where: deviceWhere,
+      select: { id: true, phoneNumber: true, quotaBase: true },
+    })
+
+    // ponytail: raw query keeps grouping cheap without adding DTO-shaped plumbing.
+    const periodStart = new Date(Date.UTC(year, month - 1, 1))
+    const periodEnd = new Date(Date.UTC(year, month, 1))
+    const deviceFilter = opts.deviceId
+      ? Prisma.sql`AND "whatsappDeviceId" = ${opts.deviceId}`
+      : Prisma.empty
+
+    const ledgerRows = await prisma.$queryRaw<Array<{
+      whatsappDeviceId: string | null
+      category: string
+      totalAmount: bigint | number
+      entryCount: bigint | number
+    }>>`
+      SELECT
+        "whatsappDeviceId",
+        "category",
+        COALESCE(SUM("quotaValue"), 0) as "totalAmount",
+        COUNT(*) as "entryCount"
+      FROM "WhatsappBillingLedger"
+      WHERE "organizationId" = ${organizationId}
+        AND "category" IN ('WHATSAPP_MESSAGE_IN', 'WHATSAPP_MESSAGE_OUT')
+        AND "createdAt" >= ${periodStart}
+        AND "createdAt" < ${periodEnd}
+        ${deviceFilter}
+      GROUP BY "whatsappDeviceId", "category"
+    `
+
+    // Build device cost map
+    const deviceCostMap = new Map<string, { total: number; byCat: Map<string, { count: number; total: number }>; messageCount: number }>()
+    for (const row of ledgerRows) {
+      const devId = row.whatsappDeviceId ?? "unknown"
+      if (!deviceCostMap.has(devId)) {
+        deviceCostMap.set(devId, { total: 0, byCat: new Map(), messageCount: 0 })
+      }
+      const entry = deviceCostMap.get(devId)!
+      const amount = Number(row.totalAmount)
+      const count = Number(row.entryCount)
+      entry.total += amount
+      entry.messageCount += count
+      const cat = row.category ?? "UNKNOWN"
+      const catEntry = entry.byCat.get(cat) ?? { count: 0, total: 0 }
+      catEntry.count += count
+      catEntry.total += amount
+      entry.byCat.set(cat, catEntry)
+    }
+
+    // Build per-device breakdown
+    const byDevice: DeviceCostBreakdownDTO[] = devices.map((dev) => {
+      const costs = deviceCostMap.get(dev.id) ?? { total: 0, byCat: new Map(), messageCount: 0 }
+      const quotaBase = toNum(dev.quotaBase)
+      const quotaPercent = quotaBase > 0 ? Math.min(100, (costs.total / quotaBase) * 100) : 0
+      return {
+        deviceId: dev.id,
+        phoneNumber: dev.phoneNumber,
+        totalCost: costs.total,
+        byCategory: Array.from(costs.byCat.entries()).map(([category, data]) => ({
+          category,
+          count: data.count,
+          totalCost: data.total,
+        })),
+        messageCount: costs.messageCount,
+        quotaBase,
+        quotaUsed: costs.total,
+        quotaPercent,
+      }
+    })
+
+    const totalCost = byDevice.reduce((s, d) => s + d.totalCost, 0)
+    const projectedCost = isCurrentPeriod && daysElapsed > 0
+      ? (totalCost / daysElapsed) * daysInMonth
+      : totalCost
+
+    // Get billing account for balance
+    const account = await prisma.billingAccount.findUnique({
+      where: { organizationId },
+      select: { balance: true, currency: true },
+    })
+
+    return {
+      period,
+      totalCost,
+      projectedCost: Math.round(projectedCost * 100) / 100,
+      forecast: {
+        daysElapsed,
+        daysRemaining,
+        currentCost: totalCost,
+        projectedMonthlyCost: Math.round(projectedCost * 100) / 100,
+      },
+      byDevice,
+      balance: account ? toNum(account.balance) : null,
+      currency: account?.currency ?? "IDR",
+    }
   }
 }
 

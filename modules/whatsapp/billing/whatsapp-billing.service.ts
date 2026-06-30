@@ -100,9 +100,10 @@ export class WhatsappBillingService {
         where: { id: input.deviceId },
         select: { quotaBaseOut: true },
       })
+      const remaining = updatedDevice?.quotaBaseOut ?? 0
       return {
         kind: "ALLOWANCE",
-        remainingAllowance: updatedDevice?.quotaBaseOut ?? 0,
+        remainingAllowance: remaining,
       }
     }
 
