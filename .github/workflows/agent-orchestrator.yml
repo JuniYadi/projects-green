@@ -346,7 +346,7 @@ jobs:
           [ -z "$PR_NUMBER" ] && { echo "decision=skip" >> "$GITHUB_OUTPUT"; echo "reason=no-pr" >> "$GITHUB_OUTPUT"; exit 0; }
 
           python3 <<-'PYEOF'
-          import json, subprocess, sys
+          import json, subprocess, sys, re
           pr = "${{ steps.review.outputs.pr_number }}"
           repo = "JuniYadi/projects-green"
 
@@ -392,7 +392,7 @@ jobs:
                   re.search(r'File:.*\n', prompt) or
                   re.search(r'line[s]?\s*\d+', prompt, re.IGNORECASE)
               )
-          except:
+          except Exception:
               pass
 
           # 8. Decision
@@ -425,7 +425,7 @@ jobs:
           # Print for GITHUB_OUTPUT
           print(f"decision={decision}")
           print(f"reason={'; '.join(reasons)}")
-          print(f"failed_checks={' '.join(failed)}" if failed else "")
+          print(f"failed_checks={json.dumps(failed)}" if failed else "")
           PYEOF
 
       - name: Claude Code — Apply Fixes (review prompt)
@@ -525,7 +525,7 @@ jobs:
             are already implemented — only fix the specific CI failures.
 
             CI CHECKS FAILING:
-            ${{ steps.gate.outputs.failed_checks }}
+            - ${{ join(fromJson(steps.gate.outputs.failed_checks), '\n- ') }}
 
             0. REBASE ONTO LATEST MAIN:
                ```
