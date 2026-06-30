@@ -6,8 +6,8 @@ import { requireMobileSession } from "@/modules/vpn/mobile/api/mobile-auth.middl
 import {
   vpnMobileSessionService,
   type VpnMobileSessionService,
-} from "../vpn-mobile-session.service"
-import { toSessionDetailDTO, toSessionDTO } from "../vpn-mobile-session.dto"
+} from "./vpn-mobile-session.service"
+import { toSessionDetailDTO } from "./vpn-mobile-session.dto"
 
 type Deps = {
   service?: VpnMobileSessionService
