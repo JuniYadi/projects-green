@@ -139,14 +139,18 @@ export class VpnMobileSessionService {
 
     // Cursor: fetch limit+1 to detect if there's a next page
     const take = limit + 1
-    const cursor = filter.cursor
-      ? { id: filter.cursor }
+    // ponytail: compound cursor {startedAt,id} matches compound orderBy —
+    // prevents Prisma "orderBy mismatch" errors and handles startedAt ties.
+    const cursor: { startedAt: Date; id: string } | undefined = filter.cursor
+      ? JSON.parse(filter.cursor)
       : undefined
 
     const rows = await this.prisma.vpnMobileSession.findMany({
       where,
       take,
-      ...(cursor ? { cursor, skip: 1 } : {}),
+      ...(cursor
+        ? { cursor: { startedAt: new Date(cursor.startedAt), id: cursor.id }, skip: 1 }
+        : {}),
       orderBy: [{ startedAt: "desc" }, { id: "desc" }],
       include: {
         device: { select: { deviceName: true } },
@@ -158,7 +162,10 @@ export class VpnMobileSessionService {
     const hasMore = rows.length > limit
     const sessions = hasMore ? rows.slice(0, limit) : rows
     const nextCursor = hasMore
-      ? sessions[sessions.length - 1].id
+      ? JSON.stringify({
+          startedAt: sessions[sessions.length - 1].startedAt.toISOString(),
+          id: sessions[sessions.length - 1].id,
+        })
       : null
 
     return { sessions, nextCursor, total }
