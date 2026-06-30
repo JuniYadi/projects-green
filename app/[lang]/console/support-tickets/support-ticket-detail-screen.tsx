@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -161,6 +162,7 @@ function AttachmentItem({
 export function SupportTicketDetailScreen({
   ticketId,
 }: SupportTicketDetailScreenProps) {
+  const router = useRouter()
   const [thread, setThread] = useState<SupportTicketThread | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -451,6 +453,7 @@ export function SupportTicketDetailScreen({
           ticket: closedTicket,
         }
       })
+      router.refresh()
     } catch (error) {
       setErrorMessage(
         error instanceof Error
