@@ -26,6 +26,9 @@ mock.module("./emails/ticket-replied", () => ({
 mock.module("./emails/ticket-closed", () => ({
   TicketClosedEmail: () => "<div>Ticket Closed</div>",
 }))
+mock.module("./emails/ticket-new-admin-alert", () => ({
+  TicketNewAdminAlertEmail: () => "<div>New Ticket Admin Alert</div>",
+}))
 
 const mockTicket = {
   id: "ticket-123",
