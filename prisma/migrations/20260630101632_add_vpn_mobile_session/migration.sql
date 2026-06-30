@@ -48,11 +48,11 @@ DROP COLUMN "ticket_number",
 DROP COLUMN "updated_at",
 ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN     "errorMessage" TEXT,
-ADD COLUMN     "recipientEmail" TEXT NOT NULL,
+ADD COLUMN     "recipientEmail" TEXT NOT NULL DEFAULT '',
 ADD COLUMN     "sentAt" TIMESTAMP(3),
 ADD COLUMN     "ticketId" TEXT,
 ADD COLUMN     "ticketNumber" TEXT,
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL;
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
 ALTER TABLE "WhatsappDevice" ADD COLUMN     "appSecret" TEXT;
@@ -135,9 +135,6 @@ CREATE INDEX "WhatsappMedia_organizationId_idx" ON "WhatsappMedia"("organization
 
 -- CreateIndex
 CREATE INDEX "WhatsappMedia_deviceId_idx" ON "WhatsappMedia"("deviceId");
-
--- CreateIndex
-CREATE INDEX "WhatsappMedia_metaMediaId_idx" ON "WhatsappMedia"("metaMediaId");
 
 -- CreateIndex
 CREATE INDEX "WhatsappWebhookDeadLetter_deviceId_failedAt_idx" ON "WhatsappWebhookDeadLetter"("deviceId", "failedAt" DESC);
