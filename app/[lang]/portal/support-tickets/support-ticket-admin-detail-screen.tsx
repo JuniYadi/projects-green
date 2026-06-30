@@ -199,7 +199,7 @@ export function SupportTicketAdminDetailScreen({
   const [priority, setPriority] = useState<SupportTicketPriority>("medium")
   const [service, setService] = useState<SupportTicketService | "none">("none")
   const [status, setStatus] = useState<SupportTicketStatus>("open")
-  const [assignedAgentWorkosUserId, setAssignedAgentWorkosUserId] = useState<string | null | undefined>(undefined)
+  const [assignedAgentWorkosUserId, setAssignedAgentWorkosUserId] = useState<string | null>(null)
   const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -364,16 +364,13 @@ export function SupportTicketAdminDetailScreen({
     setPriority(thread.ticket.priority)
     setService(thread.ticket.service || "none")
     setStatus(thread.ticket.status)
-    // ponytail: setAssignedAgentWorkosUserId omitted — effectivePIC derives from ticket directly
+    setAssignedAgentWorkosUserId(thread.ticket.assignedAgentWorkosUserId)
   }, [thread])
 
   const ticket = thread?.ticket ?? null
   const isClosed = ticket?.status === "closed"
 
-  // ponytail: derive PIC from ticket data until state is explicitly set by save
-  const effectivePIC = assignedAgentWorkosUserId !== undefined
-    ? assignedAgentWorkosUserId
-    : (ticket?.assignedAgentWorkosUserId ?? null)
+  const effectivePIC = assignedAgentWorkosUserId
 
   const replyCountLabel = useMemo(() => {
     const total = thread?.replies.length ?? 0
