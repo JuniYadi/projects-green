@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client"
+import type { Prisma, PrismaClient, VpnMobileSessionStatus } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
 
@@ -126,7 +126,7 @@ export class VpnMobileSessionService {
     const limit = Math.min(filter.limit ?? 20, 100)
     const where: Prisma.VpnMobileSessionWhereInput = {}
 
-    if (filter.status) where.status = filter.status as Prisma.VpnMobileSessionStatus
+    if (filter.status) where.status = filter.status as VpnMobileSessionStatus
     if (filter.serverId) where.serverId = filter.serverId
     if (filter.subscriptionId) where.subscriptionId = filter.subscriptionId
     if (filter.deviceId) where.deviceId = filter.deviceId
@@ -140,7 +140,7 @@ export class VpnMobileSessionService {
     // Cursor: fetch limit+1 to detect if there's a next page
     const take = limit + 1
     const cursor = filter.cursor
-      ? { startedAt: new Date(filter.cursor) }
+      ? { id: filter.cursor }
       : undefined
 
     const rows = await this.prisma.vpnMobileSession.findMany({
@@ -158,7 +158,7 @@ export class VpnMobileSessionService {
     const hasMore = rows.length > limit
     const sessions = hasMore ? rows.slice(0, limit) : rows
     const nextCursor = hasMore
-      ? sessions[sessions.length - 1].startedAt.toISOString()
+      ? sessions[sessions.length - 1].id
       : null
 
     return { sessions, nextCursor, total }
