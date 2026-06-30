@@ -93,7 +93,7 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
         const auth = await requireMobileSession(request, set)
         if (!auth.ok) return auth.error
 
-        const session = await service.findById(params.id)
+        const session = await service.findById(params.id, auth.mobileAuth.organizationId)
         if (!session) {
           set.status = 404
           return {
@@ -145,7 +145,7 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
         const auth = await requireMobileSession(request, set)
         if (!auth.ok) return auth.error
 
-        const session = await service.findById(params.id)
+        const session = await service.findById(params.id, auth.mobileAuth.organizationId)
         if (!session) {
           set.status = 404
           return {
@@ -223,6 +223,7 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
           deviceId: effectiveDeviceId,
           cursor: query.cursor,
           limit: query.limit ?? 20,
+          organizationId: auth.mobileAuth.organizationId,
         })
 
         const sessions = result.sessions.map((s) =>

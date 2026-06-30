@@ -33,19 +33,25 @@ export class VpnMobileSessionService {
   }
 
   async create(input: CreateSessionInput) {
+    const now = this.now()
     return this.prisma.vpnMobileSession.create({
       data: {
         deviceId: input.deviceId,
         subscriptionId: input.subscriptionId,
         serverAccountId: input.serverAccountId,
         serverId: input.serverId,
-        lastPingAt: this.now(),
+        startedAt: now,
+        lastPingAt: now,
       },
     })
   }
 
-  async findById(id: string) {
-    return this.prisma.vpnMobileSession.findUnique({ where: { id } })
+  async findById(id: string, organizationId?: string) {
+    const where: Prisma.VpnMobileSessionWhereInput = { id }
+    if (organizationId) {
+      where.device = { subscription: { organizationId } }
+    }
+    return this.prisma.vpnMobileSession.findFirst({ where })
   }
 
   /**
@@ -55,7 +61,7 @@ export class VpnMobileSessionService {
     const now = this.now()
     try {
       return await this.prisma.vpnMobileSession.update({
-        where: { id },
+        where: { id, status: "ACTIVE" },
         data: { lastPingAt: now },
       })
     } catch {
@@ -79,14 +85,27 @@ export class VpnMobileSessionService {
     })
     if (!existing) return null
 
-    const now = this.now()
-    const isClosed = existing.status === "CLOSED"
+    if (existing.status === "CLOSED") {
+      // Idempotent: accumulate deltas, return existing
+      return this.prisma.vpnMobileSession.update({
+        where: { id },
+        data: {
+          txBytes: traffic?.txBytes
+            ? { increment: BigInt(traffic.txBytes) }
+            : undefined,
+          rxBytes: traffic?.rxBytes
+            ? { increment: BigInt(traffic.rxBytes) }
+            : undefined,
+        },
+      })
+    }
 
+    const now = this.now()
     return this.prisma.vpnMobileSession.update({
-      where: { id },
+      where: { id, status: { in: ["ACTIVE", "STALE"] } },
       data: {
-        status: isClosed ? undefined : "CLOSED",
-        endedAt: isClosed ? undefined : now,
+        status: "CLOSED",
+        endedAt: now,
         txBytes: traffic?.txBytes
           ? { increment: BigInt(traffic.txBytes) }
           : undefined,
@@ -103,7 +122,7 @@ export class VpnMobileSessionService {
    * Default limit 20, max 100. Includes device name + server info.
    * Filters are AND-combined.
    */
-  async list(filter: ListSessionFilter = {}) {
+  async list(filter: ListSessionFilter & { organizationId?: string } = {}) {
     const limit = Math.min(filter.limit ?? 20, 100)
     const where: Prisma.VpnMobileSessionWhereInput = {}
 
@@ -111,6 +130,9 @@ export class VpnMobileSessionService {
     if (filter.serverId) where.serverId = filter.serverId
     if (filter.subscriptionId) where.subscriptionId = filter.subscriptionId
     if (filter.deviceId) where.deviceId = filter.deviceId
+    if (filter.organizationId) {
+      where.device = { subscription: { organizationId: filter.organizationId } }
+    }
 
     // Get total count (no cursor for total)
     const total = await this.prisma.vpnMobileSession.count({ where })
@@ -118,13 +140,13 @@ export class VpnMobileSessionService {
     // Cursor: fetch limit+1 to detect if there's a next page
     const take = limit + 1
     const cursor = filter.cursor
-      ? { id: filter.cursor, startedAt: new Date(filter.cursor) }
+      ? { startedAt: new Date(filter.cursor) }
       : undefined
 
     const rows = await this.prisma.vpnMobileSession.findMany({
       where,
       take,
-      ...(cursor ? { cursor: { id: filter.cursor! }, skip: 1 } : {}),
+      ...(cursor ? { cursor, skip: 1 } : {}),
       orderBy: { startedAt: "desc" },
       include: {
         device: { select: { deviceName: true } },
@@ -135,7 +157,9 @@ export class VpnMobileSessionService {
 
     const hasMore = rows.length > limit
     const sessions = hasMore ? rows.slice(0, limit) : rows
-    const nextCursor = hasMore ? sessions[sessions.length - 1].id : null
+    const nextCursor = hasMore
+      ? sessions[sessions.length - 1].startedAt.toISOString()
+      : null
 
     return { sessions, nextCursor, total }
   }
