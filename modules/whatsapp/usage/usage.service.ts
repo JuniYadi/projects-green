@@ -244,7 +244,8 @@ export class WhatsappUsageService {
    */
   async getCostBreakdown(
     organizationId: string,
-    period: string
+    period: string,
+    opts: { deviceId?: string } = {}
   ): Promise<CostBreakdownResponseDTO> {
     const now = new Date()
     const [year, month] = period.split("-").map(Number)
@@ -254,17 +255,20 @@ export class WhatsappUsageService {
     const daysElapsed = isCurrentPeriod ? today : daysInMonth
     const daysRemaining = Math.max(0, daysInMonth - daysElapsed)
 
-    // Fetch all devices for org
+    const deviceWhere = opts.deviceId
+      ? { organizationId, id: opts.deviceId }
+      : { organizationId }
     const devices = await prisma.whatsappDevice.findMany({
-      where: { organizationId },
-      select: { id: true, phoneNumber: true, quotaBaseOut: true, quotaBase: true },
+      where: deviceWhere,
+      select: { id: true, phoneNumber: true, quotaBase: true },
     })
 
-    // Fetch ledger entries grouped by device
-    // ponytail: using category filter via raw query to avoid Prisma type issues
-    const periodStart = new Date(`${period}-01`)
-    const periodEnd = new Date(periodStart)
-    periodEnd.setMonth(periodEnd.getMonth() + 1)
+    // ponytail: raw query keeps grouping cheap without adding DTO-shaped plumbing.
+    const periodStart = new Date(Date.UTC(year, month - 1, 1))
+    const periodEnd = new Date(Date.UTC(year, month, 1))
+    const deviceFilter = opts.deviceId
+      ? Prisma.sql`AND "whatsappDeviceId" = ${opts.deviceId}`
+      : Prisma.empty
 
     const ledgerRows = await prisma.$queryRaw<Array<{
       whatsappDeviceId: string | null
@@ -282,6 +286,7 @@ export class WhatsappUsageService {
         AND "category" IN ('WHATSAPP_MESSAGE_IN', 'WHATSAPP_MESSAGE_OUT')
         AND "createdAt" >= ${periodStart}
         AND "createdAt" < ${periodEnd}
+        ${deviceFilter}
       GROUP BY "whatsappDeviceId", "category"
     `
 
@@ -307,8 +312,8 @@ export class WhatsappUsageService {
     // Build per-device breakdown
     const byDevice: DeviceCostBreakdownDTO[] = devices.map((dev) => {
       const costs = deviceCostMap.get(dev.id) ?? { total: 0, byCat: new Map(), messageCount: 0 }
-      const quotaBase = toNum(dev.quotaBaseOut)
-      const quotaPercent = quotaBase > 0 ? Math.min(100, (costs.messageCount / quotaBase) * 100) : 0
+      const quotaBase = toNum(dev.quotaBase)
+      const quotaPercent = quotaBase > 0 ? Math.min(100, (costs.total / quotaBase) * 100) : 0
       return {
         deviceId: dev.id,
         phoneNumber: dev.phoneNumber,
@@ -320,7 +325,7 @@ export class WhatsappUsageService {
         })),
         messageCount: costs.messageCount,
         quotaBase,
-        quotaUsed: costs.messageCount,
+        quotaUsed: costs.total,
         quotaPercent,
       }
     })

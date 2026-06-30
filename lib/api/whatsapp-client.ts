@@ -383,7 +383,7 @@ export const whatsappClient = {
         }[]
       }>("/api/whatsapp/usage/cost", { params }),
 
-    costBreakdown: (params?: { period?: string }) =>
+    costBreakdown: (params?: { period?: string; deviceId?: string }) =>
       serverFetch<{
         ok: boolean
         period: string

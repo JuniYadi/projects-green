@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/queue/email"
 
@@ -33,12 +32,18 @@ async function getBillingContactEmails(
  * Check if alert was already sent for this threshold.
  */
 async function wasAlertSent(
+  organizationId: string,
   deviceId: string,
-  threshold: QuotaThreshold,
-  period: string
+  threshold: QuotaThreshold
 ): Promise<boolean> {
-  const existing = await prisma.whatsappQuotaAlert.findFirst({
-    where: { deviceId, threshold, period },
+  const existing = await prisma.whatsappQuotaAlert.findUnique({
+    where: {
+      organizationId_whatsappDeviceId_threshold: {
+        organizationId,
+        whatsappDeviceId: deviceId,
+        threshold,
+      },
+    },
   })
   return !!existing
 }
@@ -47,13 +52,19 @@ async function wasAlertSent(
  * Record that an alert was sent.
  */
 async function recordAlertSent(
+  organizationId: string,
   deviceId: string,
-  threshold: QuotaThreshold,
-  period: string
+  threshold: QuotaThreshold
 ): Promise<void> {
   await prisma.whatsappQuotaAlert.upsert({
-    where: { deviceId_threshold_period: { deviceId, threshold, period } },
-    create: { deviceId, threshold, period },
+    where: {
+      organizationId_whatsappDeviceId_threshold: {
+        organizationId,
+        whatsappDeviceId: deviceId,
+        threshold,
+      },
+    },
+    create: { organizationId, whatsappDeviceId: deviceId, threshold },
     update: {},
   })
 }
@@ -105,7 +116,6 @@ export async function checkAndSendQuotaAlerts(
   if (total <= 0) return []
 
   const percent = (used / total) * 100
-  const period = new Date().toISOString().slice(0, 7) // YYYY-MM
   const results: QuotaAlertResult[] = []
 
   const device = await prisma.whatsappDevice.findUnique({
@@ -116,7 +126,7 @@ export async function checkAndSendQuotaAlerts(
 
   for (const threshold of QUOTA_THRESHOLDS) {
     if (percent >= threshold) {
-      const alreadySent = await wasAlertSent(deviceId, threshold, period)
+      const alreadySent = await wasAlertSent(organizationId, deviceId, threshold)
       if (!alreadySent) {
         const emails = await getBillingContactEmails(organizationId)
         for (const email of emails) {
@@ -126,7 +136,7 @@ export async function checkAndSendQuotaAlerts(
             html: buildAlertEmailHtml(phoneNumber, threshold, used, total, projectedCost, currency),
           })
         }
-        await recordAlertSent(deviceId, threshold, period)
+        await recordAlertSent(organizationId, deviceId, threshold)
         results.push({ deviceId, threshold, sent: true })
       } else {
         results.push({ deviceId, threshold, sent: false })

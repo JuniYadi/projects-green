@@ -5,7 +5,6 @@
  * Tracks sent alerts in WhatsappQuotaAlert table to prevent duplicate sends.
  */
 
-import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/queue/email"
 
@@ -42,24 +41,17 @@ export const quotaAlertService: QuotaAlertService = {
     currentCost: number,
     quotaBase: number
   ) {
-    // Find billing contacts who want low balance alerts + org name
-    const billingContact = await prisma.billingContact.findFirst({
+    const billingContacts = await prisma.billingContact.findMany({
       where: {
         billingAccount: { organizationId },
         notifyOnLowBalance: true,
         isActive: true,
       },
-      select: {
-        email: true,
-        billingAccount: {
-          select: {
-            organizationId: true,
-          },
-        },
-      },
+      select: { email: true },
     })
+    const emails = billingContacts.map((c) => c.email).filter(Boolean)
 
-    if (!billingContact?.email) return
+    if (emails.length === 0) return
 
     // ponytail: org name lookup requires WorkOS API call — use static name for now
     const orgName = "Your Organization"
@@ -72,43 +64,40 @@ export const quotaAlertService: QuotaAlertService = {
 
     const phoneDisplay = device?.phoneNumber ?? deviceId
 
-    // Check each threshold
-    for (const threshold of QUOTA_THRESHOLDS) {
-      if (currentPercent >= threshold) {
-        // Check if already sent
-        const existing = await prisma.whatsappQuotaAlert.findUnique({
-          where: {
-            organizationId_whatsappDeviceId_threshold: {
-              organizationId,
-              whatsappDeviceId: deviceId,
+    const existingAlerts = await prisma.whatsappQuotaAlert.findMany({
+      where: { organizationId, whatsappDeviceId: deviceId },
+      select: { threshold: true },
+    })
+    const sentThresholds = new Set(existingAlerts.map((a) => a.threshold))
+    const crossedThresholds = QUOTA_THRESHOLDS.filter(
+      (threshold) => currentPercent >= threshold && !sentThresholds.has(threshold)
+    )
+
+    await Promise.allSettled(
+      crossedThresholds.map(async (threshold) => {
+        try {
+          await prisma.whatsappQuotaAlert.create({
+            data: { organizationId, whatsappDeviceId: deviceId, threshold },
+          })
+        } catch {
+          return
+        }
+
+        await Promise.allSettled(
+          emails.map((to) =>
+            sendQuotaEmail({
+              to,
+              orgName,
+              devicePhone: phoneDisplay,
               threshold,
-            },
-          },
-        })
-
-        if (existing) continue // Already sent
-
-        // Send alert email
-        await sendQuotaEmail({
-          to: billingContact.email,
-          orgName,
-          devicePhone: phoneDisplay,
-          threshold,
-          currentPercent,
-          currentCost,
-          quotaBase,
-        })
-
-        // Record that we sent it
-        await prisma.whatsappQuotaAlert.create({
-          data: {
-            organizationId,
-            whatsappDeviceId: deviceId,
-            threshold,
-          },
-        })
-      }
-    }
+              currentPercent,
+              currentCost,
+              quotaBase,
+            })
+          )
+        )
+      })
+    )
   },
 }
 

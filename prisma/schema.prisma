@@ -1507,6 +1507,7 @@ model WhatsappDevice {
   phoneNumber               String               @unique
   balance                   Decimal              @default(0) @db.Decimal(12, 2)
   quotaBase                 Decimal              @default(1000) @db.Decimal(12, 2)
+  currentQuotaUsed          Decimal              @default(0) @db.Decimal(12, 2)
   quotaBaseIn               Int                  @default(0)
   quotaBaseOut              Int                  @default(0)
   dailyLimitMessage         Int                  @default(0)
@@ -1822,17 +1823,6 @@ model WhatsappBillingLedger {
 
   @@index([organizationId, createdAt])
   @@index([waMessageId])
-}
-
-model WhatsappQuotaAlert {
-  id        String   @id @default(cuid())
-  deviceId  String
-  threshold Int
-  period    String   // YYYY-MM format
-  createdAt DateTime @default(now())
-
-  @@unique([deviceId, threshold, period])
-  @@map("WhatsappQuotaAlert")
 }
 
 model WhatsappApiCall {

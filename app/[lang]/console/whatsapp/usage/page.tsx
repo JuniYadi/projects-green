@@ -8,7 +8,6 @@ import {
   ChartLine,
   Calendar,
   Funnel,
-  TrendUp,
   Warning,
 } from "@phosphor-icons/react"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
@@ -186,7 +185,7 @@ export default function WhatsAppUsagePage() {
               deviceId,
             }),
             whatsappClient.devices.list(),
-            whatsappClient.usage.costBreakdown(),
+            whatsappClient.usage.costBreakdown({ deviceId }),
             ...last6.map((m) =>
               whatsappClient.usage.monthly({
                 year: m.year,
