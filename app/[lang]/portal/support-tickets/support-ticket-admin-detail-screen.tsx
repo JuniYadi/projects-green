@@ -199,6 +199,7 @@ export function SupportTicketAdminDetailScreen({
   const [priority, setPriority] = useState<SupportTicketPriority>("medium")
   const [service, setService] = useState<SupportTicketService | "none">("none")
   const [status, setStatus] = useState<SupportTicketStatus>("open")
+  const [assignedAgentWorkosUserId, setAssignedAgentWorkosUserId] = useState<string | null>(null)
   const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -328,12 +329,13 @@ export function SupportTicketAdminDetailScreen({
       const nextThread = await apiClient.getTicketThread(ticketId)
       if (requestSequenceRef.current === requestId) {
         setThread(nextThread)
-        if (nextThread.ticket) {
-          setDepartment(nextThread.ticket.department)
-          setPriority(nextThread.ticket.priority)
-          setService(nextThread.ticket.service || "none")
-          setStatus(nextThread.ticket.status)
-        }
+        // ponytail: init form state here, not in a separate useEffect,
+        // to avoid Select flashing defaults before the effect fires
+        setDepartment(nextThread.ticket.department)
+        setPriority(nextThread.ticket.priority)
+        setService(nextThread.ticket.service || "none")
+        setStatus(nextThread.ticket.status)
+        setAssignedAgentWorkosUserId(nextThread.ticket.assignedAgentWorkosUserId)
       }
     } catch (error) {
       if (requestSequenceRef.current === requestId) {
@@ -364,6 +366,8 @@ export function SupportTicketAdminDetailScreen({
 
   const ticket = thread?.ticket ?? null
   const isClosed = ticket?.status === "closed"
+
+  const effectivePIC = assignedAgentWorkosUserId
 
   const replyCountLabel = useMemo(() => {
     const total = thread?.replies.length ?? 0
@@ -498,6 +502,7 @@ export function SupportTicketAdminDetailScreen({
         priority,
         service: service === "none" ? null : service,
         status,
+        assignedAgentWorkosUserId,
       })
       setThread((current) => {
         if (!current) return current
@@ -723,6 +728,23 @@ export function SupportTicketAdminDetailScreen({
                       </span>
                     )}
                   </p>
+                  {thread.users && thread.users[ticket.requesterWorkosUserId] && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Requester:{" "}
+                      <span className="font-semibold text-foreground">
+                        {thread.users[ticket.requesterWorkosUserId].name}
+                      </span>
+                    </p>
+                  )}
+                  {ticket.assignedAgentWorkosUserId && thread.users && thread.users[ticket.assignedAgentWorkosUserId] && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      PIC:{" "}
+                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                        <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
+                        {thread.users[ticket.assignedAgentWorkosUserId].name}
+                      </span>
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {!isClosed && (
@@ -923,7 +945,7 @@ export function SupportTicketAdminDetailScreen({
                                 )}
                               </div>
                               <span className="text-[10px] text-muted-foreground">
-                                {reply.authorWorkosUserId}
+                                {author.name}
                               </span>
                             </div>
                           </div>
@@ -1339,6 +1361,47 @@ export function SupportTicketAdminDetailScreen({
                         className="text-foreground hover:bg-muted"
                       >
                         {SUPPORT_TICKET_PRIORITY_LABELS[priorityValue]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label
+                  htmlFor="ticket-pic"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  PIC (Point of Contact)
+                </Label>
+                <Select
+                  value={effectivePIC ?? "none"}
+                  onValueChange={(nextValue) =>
+                    setAssignedAgentWorkosUserId(nextValue === "none" ? null : nextValue)
+                  }
+                  disabled={isUpdatingMetadata}
+                >
+                  <SelectTrigger
+                    id="ticket-pic"
+                    className="w-full border-border bg-background/50 text-foreground"
+                  >
+                    <SelectValue placeholder="Unassigned" />
+                  </SelectTrigger>
+                  <SelectContent className="border-border bg-popover">
+                    <SelectItem
+                      value="none"
+                      className="text-foreground hover:bg-muted"
+                    >
+                      Unassigned
+                    </SelectItem>
+                    {thread.users && Object.entries(thread.users).map(([userId, user]) => (
+                      <SelectItem
+                        key={userId}
+                        value={userId}
+                        className="text-foreground hover:bg-muted"
+                      >
+                        {user.name}
+                        {user.isStaff && " (Staff)"}
                       </SelectItem>
                     ))}
                   </SelectContent>

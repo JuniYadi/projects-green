@@ -26,6 +26,7 @@ import {
   createEmailService,
   type EmailService,
 } from "@/modules/support-tickets/email.service"
+import { getCachedUsers } from "@/lib/workos-directory"
 
 type SupportTicketAuthContext = {
   organizationId?: string | null
@@ -319,6 +320,23 @@ export const createSupportTicketRoutes = (
               ticket.id
             )
           }
+
+          // Notify staff admin of new ticket
+          const staffEmail =
+            process.env.SUPPORT_STAFF_NOTIFY_EMAIL ?? "admin@yourapp.com"
+          dependencies.emailService
+            .sendNewTicketAlertToStaff(
+              ticket,
+              staffEmail,
+              undefined,
+              requesterEmail
+            )
+            .catch((err) => {
+              console.error(
+                "[Support Ticket] Failed to send admin ticket alert email:",
+                err
+              )
+            })
 
           return {
             ok: true as const,
@@ -686,9 +704,20 @@ export const createSupportTicketRoutes = (
           actor,
         })
 
+        // Resolve requester names for display
+        const requesterIds = [
+          ...new Set(tickets.map((t) => t.requesterWorkosUserId).filter(Boolean)),
+        ]
+        const users = await getCachedUsers(requesterIds)
+
+        const enrichedTickets = tickets.map((ticket) => ({
+          ...ticket,
+          requesterName: users.get(ticket.requesterWorkosUserId)?.name ?? null,
+        }))
+
         return {
           ok: true as const,
-          tickets,
+          tickets: enrichedTickets,
         }
       })
     )

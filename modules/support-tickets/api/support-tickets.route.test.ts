@@ -91,6 +91,8 @@ const baseTicket: SupportTicket = {
   closedAt: null,
 }
 
+const mockSendNewTicketAlertToStaff = mock(async () => {})
+
 const createApp = (service: Partial<SupportTicketService>) => {
   return new Elysia().use(
     createSupportTicketRoutes({
@@ -143,6 +145,7 @@ const createApp = (service: Partial<SupportTicketService>) => {
         async sendTicketCreated() {},
         async sendTicketReplied() {},
         async sendTicketClosed() {},
+        sendNewTicketAlertToStaff: mockSendNewTicketAlertToStaff,
       },
     })
   )
@@ -165,7 +168,8 @@ describe("support ticket routes", () => {
     })
   })
 
-  it("creates ticket", async () => {
+  it("creates ticket and sends admin alert", async () => {
+    mockSendNewTicketAlertToStaff.mockClear()
     const app = createApp({})
 
     const response = await app.handle(
@@ -189,6 +193,7 @@ describe("support ticket routes", () => {
       ok: true,
       ticket: { id: "ticket_1" },
     })
+    expect(mockSendNewTicketAlertToStaff).toHaveBeenCalledTimes(1)
   })
 
   it("returns validation envelope for invalid create payload", async () => {
@@ -459,7 +464,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
   }
@@ -721,7 +727,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -892,7 +899,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -943,7 +951,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -985,7 +994,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -1061,7 +1071,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
@@ -1161,7 +1172,8 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        },
+        async sendNewTicketAlertToStaff() {},
+      },
       })
     )
 
