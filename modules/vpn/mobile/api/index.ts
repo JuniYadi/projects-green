@@ -12,6 +12,7 @@ import { mobilePairingRoutes } from "./mobile-pairing.route"
 import { mobileProfilesRoutes } from "./mobile-profiles.route"
 import { mobileDeviceRoutes } from "./mobile-device.route"
 import { adminDevicesRoutes } from "./admin-devices.route"
+import { mobileSessionRoutes } from "@/modules/vpn/sessions/vpn-mobile-session.route"
 
 /**
  * Mobile VPN routes group.
@@ -23,6 +24,7 @@ import { adminDevicesRoutes } from "./admin-devices.route"
  *   /vpn/mobile/profiles/*
  *   /vpn/mobile/devices/*
  *   /vpn/mobile/admin/devices/*
+ *   /vpn/mobile/sessions/*
  */
 export const mobileVpnRoutes = new Elysia()
   .use(mobileAuthRoutes)
@@ -30,3 +32,4 @@ export const mobileVpnRoutes = new Elysia()
   .use(mobileProfilesRoutes)
   .use(mobileDeviceRoutes)
   .use(adminDevicesRoutes)
+  .use(mobileSessionRoutes)

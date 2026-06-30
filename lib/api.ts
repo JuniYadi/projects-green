@@ -34,6 +34,7 @@ import {
   adminVpnSubscriptionRoutes,
 } from "@/modules/vpn/subscriptions/api"
 import { wireguardRoutes } from "@/modules/wireguard/api/wireguard.route"
+import { startStaleSessionCleanup } from "@/modules/vpn/sessions/stale-cleanup"
 import { voucherRoutes } from "@/modules/vouchers/api"
 import { healthRoutes } from "@/modules/health/api/health.route"
 import { markStartupComplete } from "@/modules/health/health.service"
@@ -209,6 +210,9 @@ export const app = new Elysia({ prefix: "/api" })
       }),
     }
   )
+
+// Start stale VPN session cleanup timer.
+startStaleSessionCleanup()
 
 // Mark startup complete immediately — app is ready to serve requests.
 markStartupComplete()

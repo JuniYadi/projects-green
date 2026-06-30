@@ -1158,32 +1158,33 @@ model VpnSshKey {
 }
 
 model VpnServer {
-  id            String          @id @default(cuid())
-  name          String          @unique
-  regionId      String
-  hostname      String
-  ipAddress     String?
-  sshPort       Int             @default(22)
-  sshKeyId      String
-  sshUser       String          @default("root")
-  hasOpenVpn    Boolean         @default(false)
-  openVpnPort   Int?
-  hasWireGuard      Boolean         @default(false)
-  wireGuardPort     Int?
+  id                 String          @id @default(cuid())
+  name               String          @unique
+  regionId           String
+  hostname           String
+  ipAddress          String?
+  sshPort            Int             @default(22)
+  sshKeyId           String
+  sshUser            String          @default("root")
+  hasOpenVpn         Boolean         @default(false)
+  openVpnPort        Int?
+  hasWireGuard       Boolean         @default(false)
+  wireGuardPort      Int?
   wireGuardPublicKey String?
-  wireGuardSubnet   String?
-  hasProxy          Boolean         @default(false)
-  proxyPort     Int?
-  health        VpnServerHealth @default(UNKNOWN)
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  wireGuardSubnet    String?
+  hasProxy           Boolean         @default(false)
+  proxyPort          Int?
+  health             VpnServerHealth @default(UNKNOWN)
+  isActive           Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   region VpnRegion @relation(fields: [regionId], references: [id])
   sshKey VpnSshKey @relation(fields: [sshKeyId], references: [id])
 
-  packages       VpnPackageServer[]
-  serverAccounts VpnServerAccount[]
+  packages          VpnPackageServer[]
+  serverAccounts    VpnServerAccount[]
+  vpnMobileSessions VpnMobileSession[]
 
   @@index([regionId])
   @@index([sshKeyId])
@@ -1268,10 +1269,10 @@ model VpnSubscription {
   currency           String                @default("IDR")
   // Original package price at purchase time (before any currency conversion).
   // Null for subscriptions created before multi-currency support.
-  originalPrice    Decimal?              @db.Decimal(12, 2)
-  originalCurrency String?
+  originalPrice      Decimal?              @db.Decimal(12, 2)
+  originalCurrency   String?
   // Exchange rate used at purchase time (units of originalCurrency per 1 base unit).
-  exchangeRate     Decimal?              @db.Decimal(18, 6)
+  exchangeRate       Decimal?              @db.Decimal(18, 6)
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
   // First timestamp a renewal failed for insufficient balance. Drives the
@@ -1281,9 +1282,10 @@ model VpnSubscription {
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
-  serverAccounts VpnServerAccount[]
-  mobileDevices  VpnMobileDevice[]
-  pairingTokens  VpnPairingToken[]
+  serverAccounts    VpnServerAccount[]
+  mobileDevices     VpnMobileDevice[]
+  pairingTokens     VpnPairingToken[]
+  vpnMobileSessions VpnMobileSession[]
 
   @@index([organizationId, status])
   @@index([packageId])
@@ -1303,8 +1305,9 @@ model VpnServerAccount {
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
-  subscription VpnSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  server       VpnServer       @relation(fields: [serverId], references: [id])
+  subscription      VpnSubscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  server            VpnServer          @relation(fields: [serverId], references: [id])
+  vpnMobileSessions VpnMobileSession[]
 
   @@unique([serverId, protocol, username])
   @@index([subscriptionId])
@@ -1344,13 +1347,49 @@ model VpnMobileDevice {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-  subscription VpnSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscription      VpnSubscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  vpnMobileSessions VpnMobileSession[]
 
   @@unique([subscriptionId, deviceFingerprint])
   @@index([organizationId, status])
   @@index([subscriptionId])
   @@index([userId])
   @@index([status])
+}
+
+// ─── VPN Mobile Session Tracking ──────────────────────────────────────────────
+
+enum VpnMobileSessionStatus {
+  ACTIVE
+  STALE
+  CLOSED
+}
+
+model VpnMobileSession {
+  id              String                 @id @default(cuid())
+  deviceId        String
+  subscriptionId  String
+  serverAccountId String
+  serverId        String
+  status          VpnMobileSessionStatus @default(ACTIVE)
+  startedAt       DateTime               @default(now())
+  lastPingAt      DateTime               @default(now())
+  endedAt         DateTime?
+  txBytes         BigInt                 @default(0)
+  rxBytes         BigInt                 @default(0)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  device        VpnMobileDevice  @relation(fields: [deviceId], references: [id])
+  subscription  VpnSubscription  @relation(fields: [subscriptionId], references: [id])
+  serverAccount VpnServerAccount @relation(fields: [serverAccountId], references: [id])
+  server        VpnServer        @relation(fields: [serverId], references: [id])
+
+  @@index([deviceId])
+  @@index([subscriptionId])
+  @@index([serverId])
+  @@index([status])
+  @@index([startedAt])
 }
 
 model VpnPairingToken {
@@ -1370,40 +1409,39 @@ model VpnPairingToken {
 }
 
 model VpnAuditLog {
-  id               String    @id @default(cuid())
+  id              String  @id @default(cuid())
   // NEW linkage columns
-  organizationId   String?
-  subscriptionId   String?
-  serverId         String?
-  correlationId    String?
+  organizationId  String?
+  subscriptionId  String?
+  serverId        String?
+  correlationId   String?
   // NEW event columns
-  message          String?
-  errorMessage     String?
+  message         String?
+  errorMessage    String?
   // NEW payload columns
-  requestPayload   Json?
-  responsePayload  Json?
+  requestPayload  Json?
+  responsePayload Json?
   // NEW performance column
-  durationMs       Int?
+  durationMs      Int?
 
   // Existing columns (unchanged)
-  serverAccountId  String?   // FK to VpnServerAccount for provisioning events
-  deviceId         String?
-  userId           String?
-  adminId          String?   // populated for manual admin actions (retries, revokes)
-  action           String    // REGISTERED, REVOKED, CONFIG_DOWNLOADED | PROVISIONING_STARTED, SUCCESS, FAILED, RETRIED | PROVISIONING_STEP
-  step             String?   // step name for PROVISIONING_STEP entries (ssh_connecting, creating_client, etc.)
-  status           String?   // "OK" | "FAILED" for PROVISIONING_STEP entries
-  details          Json?     // action-specific payload
-  ip               String?
-  userAgent        String?
-  createdAt        DateTime  @default(now())
+  serverAccountId String? // FK to VpnServerAccount for provisioning events
+  deviceId        String?
+  userId          String?
+  adminId         String? // populated for manual admin actions (retries, revokes)
+  action          String // REGISTERED, REVOKED, CONFIG_DOWNLOADED | PROVISIONING_STARTED, SUCCESS, FAILED, RETRIED | PROVISIONING_STEP
+  step            String? // step name for PROVISIONING_STEP entries (ssh_connecting, creating_client, etc.)
+  status          String? // "OK" | "FAILED" for PROVISIONING_STEP entries
+  details         Json? // action-specific payload
+  ip              String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
 
   // NEW indexes
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([subscriptionId, createdAt(sort: Desc)])
   @@index([serverId, createdAt(sort: Desc)])
   @@index([correlationId])
-
   // Existing indexes (unchanged)
   @@index([serverAccountId, createdAt(sort: Desc)])
   @@index([deviceId, createdAt(sort: Desc)])
@@ -1735,18 +1773,18 @@ model WhatsappMessageStatus {
 }
 
 model WhatsappMedia {
-  id              String    @id @default(cuid())
-  organizationId  String
-  deviceId        String
-  metaMediaId     String    @unique
-  mimeType        String
-  fileSize        Int
-  sha256          String?
-  storePath       String?
-  downloadedAt    DateTime?
-  expiresAt       DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  organizationId String
+  deviceId       String
+  metaMediaId    String    @unique
+  mimeType       String
+  fileSize       Int
+  sha256         String?
+  storePath      String?
+  downloadedAt   DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([organizationId])
   @@index([deviceId])
@@ -1826,18 +1864,19 @@ model WhatsappBillingLedger {
 }
 
 model WhatsappApiCall {
-  id              String   @id @default(cuid())
-  organizationId  String? // Changed to optional
-  operation       String
-  phoneNumberId   String? // Changed to optional
-  status          Int
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  organizationId String? // Changed to optional
+  operation      String
+  phoneNumberId  String? // Changed to optional
+  status         Int
+  createdAt      DateTime @default(now())
 
   @@index([phoneNumberId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
   @@index([phoneNumberId, status, createdAt(sort: Desc)])
   @@map("WhatsappApiCall")
 }
+
 model WhatsappAttachment {
   id               String          @id @default(cuid())
   organizationId   String
@@ -1959,18 +1998,18 @@ model WhatsappWebhookEvent {
 }
 
 model WhatsappWebhookDeadLetter {
-  id               String    @id @default(cuid())
-  deviceId         String
-  eventType        String
-  rawPayload       Json
-  errorMessage     String
-  attemptCount     Int       @default(0)
-  failedAt         DateTime  @default(now())
-  replayedAt       DateTime?
-  replayStatus     String?   // PENDING, SUCCESS, FAILED
-  organizationId   String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  deviceId       String
+  eventType      String
+  rawPayload     Json
+  errorMessage   String
+  attemptCount   Int       @default(0)
+  failedAt       DateTime  @default(now())
+  replayedAt     DateTime?
+  replayStatus   String? // PENDING, SUCCESS, FAILED
+  organizationId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([deviceId, failedAt(sort: Desc)])
   @@index([replayStatus])
@@ -1983,9 +2022,9 @@ model WhatsappQuotaAlert {
   id               String   @id @default(cuid())
   organizationId   String
   whatsappDeviceId String
-  threshold       Int      // 50, 80, 90, 100
-  sentAt          DateTime @default(now())
-  createdAt       DateTime @default(now())
+  threshold        Int // 50, 80, 90, 100
+  sentAt           DateTime @default(now())
+  createdAt        DateTime @default(now())
 
   @@unique([organizationId, whatsappDeviceId, threshold])
   @@index([organizationId])
@@ -2010,18 +2049,18 @@ enum EmailLogStatus {
 }
 
 model EmailLog {
-  id            String         @id @default(cuid())
-  ticketId      String?
-  ticketNumber  String?
+  id             String         @id @default(cuid())
+  ticketId       String?
+  ticketNumber   String?
   recipientEmail String
-  type          EmailLogType
-  subject       String
-  status        EmailLogStatus @default(QUEUED)
-  errorMessage  String?
-  attempts      Int            @default(0)
-  sentAt        DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  type           EmailLogType
+  subject        String
+  status         EmailLogStatus @default(QUEUED)
+  errorMessage   String?
+  attempts       Int            @default(0)
+  sentAt         DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@index([ticketId])
   @@index([ticketNumber])
@@ -2207,7 +2246,7 @@ model VoucherClaim {
 }
 
 model WhatsappAuditLog {
-  id             String    @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   deviceId       String?
   adminId        String?
@@ -2220,7 +2259,7 @@ model WhatsappAuditLog {
   durationMs     Int?
   ip             String?
   userAgent      String?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime @default(now())
 
   @@index([organizationId, createdAt(sort: Desc)])
   @@index([deviceId, createdAt(sort: Desc)])
@@ -2229,22 +2268,22 @@ model WhatsappAuditLog {
 }
 
 model WhatsappCatalog {
-  id              String   @id @default(cuid())
-  organizationId  String
-  name            String
-  metaCatalogId   String
-  deviceId        String?
-  device          WhatsappDevice? @relation(fields: [deviceId], references: [id])
-  products        WhatsappCatalogProduct[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String                   @id @default(cuid())
+  organizationId String
+  name           String
+  metaCatalogId  String
+  deviceId       String?
+  device         WhatsappDevice?          @relation(fields: [deviceId], references: [id])
+  products       WhatsappCatalogProduct[]
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
 
-  @@index([organizationId])
   @@unique([organizationId, metaCatalogId])
+  @@index([organizationId])
 }
 
 model WhatsappCatalogProduct {
-  id                String   @id @default(cuid())
+  id                String          @id @default(cuid())
   catalogId         String
   catalog           WhatsappCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
   productRetailerId String
@@ -2254,8 +2293,8 @@ model WhatsappCatalogProduct {
   currency          String?
   imageUrl          String?
   url               String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   @@unique([catalogId, productRetailerId])
   @@index([catalogId])
