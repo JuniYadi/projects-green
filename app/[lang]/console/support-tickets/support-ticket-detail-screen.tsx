@@ -802,206 +802,215 @@ export function SupportTicketDetailScreen({
         </CardContent>
       </Card>
 
-      <Card className="border-border bg-card text-card-foreground">
-        <CardHeader className="border-b border-border/50 pb-3">
-          <h3
-            className="font-heading text-base font-semibold"
-            data-slot="card-title"
-          >
-            Reply
-          </h3>
-        </CardHeader>
-        <CardContent className="space-y-6 pt-5">
-          {/* Tabbed Editor Container */}
-          <div className="space-y-4">
-            {/* Tabs list */}
-            <div className="flex border-b border-border">
-              <button
-                type="button"
-                onClick={() => setActiveTab("message")}
-                disabled={isClosed}
-                className={`-mb-[1px] border-b-2 px-4 py-2 text-sm font-medium transition-all ${
-                  activeTab === "message"
-                    ? "border-primary font-semibold text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground disabled:opacity-50"
-                }`}
-              >
-                General Message
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("secure")}
-                disabled={isClosed}
-                className={`-mb-[1px] flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-all ${
-                  activeTab === "secure"
-                    ? "border-yellow-500 font-semibold text-yellow-500"
-                    : "border-transparent text-muted-foreground hover:text-foreground disabled:opacity-50"
-                }`}
-              >
-                <span className="relative flex h-2 w-2">
-                  {activeTab === "secure" && (
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75"></span>
-                  )}
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
-                </span>
-                Secure details
-              </button>
-            </div>
-
-            {/* General Message Tab */}
-            <div className={activeTab === "message" ? "space-y-2" : "hidden"}>
-              <Label
-                htmlFor="reply-body"
-                className="text-xs font-semibold text-muted-foreground"
-              >
-                Message
-              </Label>
-              <MarkdownEditor
-                id="reply-body"
-                ref={replyBodyRef}
-                rows={4}
-                placeholder="Write your reply"
-                disabled={isClosed || isSubmittingReply}
-              />
-            </div>
-
-            {/* Secure Details Tab */}
-            <div className={activeTab === "secure" ? "space-y-4" : "hidden"}>
-              <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
-                    Encrypted
+      {isClosed ? (
+        <Card className="border-border bg-card text-card-foreground">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              This ticket is closed. If you have a new issue, please open a
+              new ticket.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-border bg-card text-card-foreground">
+          <CardHeader className="border-b border-border/50 pb-3">
+            <h3
+              className="font-heading text-base font-semibold"
+              data-slot="card-title"
+            >
+              Reply
+            </h3>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-5">
+            {/* Tabbed Editor Container */}
+            <div className="space-y-4">
+              {/* Tabs list */}
+              <div className="flex border-b border-border">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("message")}
+                  className={`-mb-[1px] border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                    activeTab === "message"
+                      ? "border-primary font-semibold text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  }`}
+                >
+                  General Message
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("secure")}
+                  className={`-mb-[1px] flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                    activeTab === "secure"
+                      ? "border-yellow-500 font-semibold text-yellow-500"
+                      : "border-transparent text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  }`}
+                >
+                  <span className="relative flex h-2 w-2">
+                    {activeTab === "secure" && (
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75"></span>
+                    )}
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
                   </span>
-                  <span className="flex items-center gap-1 text-xs font-medium text-yellow-500/90">
-                    <svg
-                      className="h-3.5 w-3.5 text-yellow-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2.5"
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      ></path>
-                    </svg>
-                    End-to-End Secure Channel
-                  </span>
-                </div>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Details entered here are encrypted end-to-end and only visible
-                  to engineers assigned to your ticket. Use this section for
-                  passwords, tokens, API keys, or sensitive credentials.
-                </p>
+                  Secure details
+                </button>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="reply-secure-form" className="sr-only">
-                  Secure Form (encrypted)
+
+              {/* General Message Tab */}
+              <div className={activeTab === "message" ? "space-y-2" : "hidden"}>
+                <Label
+                  htmlFor="reply-body"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  Message
                 </Label>
                 <MarkdownEditor
-                  id="reply-secure-form"
-                  ref={replySecureFormRef}
+                  id="reply-body"
+                  ref={replyBodyRef}
                   rows={4}
-                  placeholder="Sensitive credentials, configurations, or secrets only"
-                  disabled={isClosed || isSubmittingReply}
+                  placeholder="Write your reply"
+                  disabled={isSubmittingReply}
                 />
               </div>
-            </div>
-          </div>
 
-          {/* Divider */}
-          <div className="my-4 border-t border-border" />
-
-          {/* Attachments Section */}
-          <div className="space-y-4">
-            <div className="flex flex-col gap-2">
-              <Label
-                htmlFor="reply-files"
-                className="text-xs font-semibold text-muted-foreground"
-              >
-                Attachments (optional)
-              </Label>
-              <Input
-                id="reply-files"
-                type="file"
-                multiple
-                onChange={handleFileChange}
-                disabled={isClosed || isSubmittingReply}
-                className="cursor-pointer border-border bg-background/50 text-foreground file:rounded-md file:border-0 file:bg-primary/10 file:text-foreground"
-              />
-            </div>
-
-            {files.length > 0 && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {files.map((item, idx) => {
-                  const isImage = item.file.type.startsWith("image/")
-                  return (
-                    <div
-                      key={idx}
-                      className="group relative flex items-center gap-3 rounded-lg border border-border bg-card/50 p-2"
-                    >
-                      {isImage && item.previewUrl ? (
-                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.previewUrl}
-                            alt={item.file.name}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground">
-                          <svg
-                            className="h-5 w-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-foreground">
-                          {item.file.name}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {formatBytes(item.file.size)}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFile(idx)}
-                        className="absolute -top-1.5 -right-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-[10px] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-foreground focus:opacity-100"
+              {/* Secure Details Tab */}
+              <div className={activeTab === "secure" ? "space-y-4" : "hidden"}>
+                <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
+                      Encrypted
+                    </span>
+                    <span className="flex items-center gap-1 text-xs font-medium text-yellow-500/90">
+                      <svg
+                        className="h-3.5 w-3.5 text-yellow-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
                       >
-                        ✕
-                      </button>
-                    </div>
-                  )
-                })}
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2.5"
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        ></path>
+                      </svg>
+                      End-to-End Secure Channel
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Details entered here are encrypted end-to-end and only visible
+                    to engineers assigned to your ticket. Use this section for
+                    passwords, tokens, API keys, or sensitive credentials.
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="reply-secure-form" className="sr-only">
+                    Secure Form (encrypted)
+                  </Label>
+                  <MarkdownEditor
+                    id="reply-secure-form"
+                    ref={replySecureFormRef}
+                    rows={4}
+                    placeholder="Sensitive credentials, configurations, or secrets only"
+                    disabled={isSubmittingReply}
+                  />
+                </div>
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="flex justify-end pt-2">
-            <Button
-              type="button"
-              onClick={submitReply}
-              disabled={isClosed || isSubmittingReply}
-            >
-              {isSubmittingReply ? "Sending..." : "Send Reply"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            {/* Divider */}
+            <div className="my-4 border-t border-border" />
+
+            {/* Attachments Section */}
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2">
+                <Label
+                  htmlFor="reply-files"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  Attachments (optional)
+                </Label>
+                <Input
+                  id="reply-files"
+                  type="file"
+                  multiple
+                  onChange={handleFileChange}
+                  disabled={isSubmittingReply}
+                  className="cursor-pointer border-border bg-background/50 text-foreground file:rounded-md file:border-0 file:bg-primary/10 file:text-foreground"
+                />
+              </div>
+
+              {files.length > 0 && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {files.map((item, idx) => {
+                    const isImage = item.file.type.startsWith("image/")
+                    return (
+                      <div
+                        key={idx}
+                        className="group relative flex items-center gap-3 rounded-lg border border-border bg-card/50 p-2"
+                      >
+                        {isImage && item.previewUrl ? (
+                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={item.previewUrl}
+                              alt={item.file.name}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground">
+                            <svg
+                              className="h-5 w-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium text-foreground">
+                            {item.file.name}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {formatBytes(item.file.size)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(idx)}
+                          className="absolute -top-1.5 -right-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-[10px] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-foreground focus:opacity-100"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                type="button"
+                onClick={submitReply}
+                disabled={isSubmittingReply}
+              >
+                {isSubmittingReply ? "Sending..." : "Send Reply"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {activePreview && (
         <div

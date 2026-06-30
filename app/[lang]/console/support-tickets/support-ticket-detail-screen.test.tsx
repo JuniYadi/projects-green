@@ -124,6 +124,53 @@ const fetchMock = mock<
   return jsonResponse({ ok: false, message: "Unhandled request" }, 500)
 })
 
+const createClosedThread = (
+  ticketId: string,
+  ticketNumber: string,
+  overrides: {
+    attachmentMetadata?: ReturnType<typeof createAttachment>[]
+    replies?: Array<{
+      id: string
+      authorWorkosUserId: string
+      body: string
+      bodyHtml?: string
+      isInternalNote: boolean
+      secureForm?: string | null
+      attachmentMetadata?: ReturnType<typeof createAttachment>[]
+    }>
+    users?: Record<
+      string,
+      { name: string; avatarUrl: string | null; isStaff: boolean }
+    >
+  } = {}
+) => ({
+  ok: true,
+  thread: {
+    ticket: {
+      id: ticketId,
+      ticketNumber,
+      organizationId: "org_1",
+      requesterWorkosUserId: "user_1",
+      assignedAgentWorkosUserId: null,
+      department: "technical",
+      priority: "medium",
+      service: "deploy",
+      status: "closed",
+      subject: "Deployment issue",
+      description: "Pipeline failed",
+      descriptionHtml: null,
+      secureForm: null,
+      attachmentMetadata: overrides.attachmentMetadata ?? [],
+      createdAt: "2026-05-21T00:00:00.000Z",
+      updatedAt: "2026-05-21T00:00:00.000Z",
+      resolvedAt: "2026-05-22T00:00:00.000Z",
+      closedAt: "2026-05-22T00:00:00.000Z",
+    },
+    replies: overrides.replies ?? [],
+    users: overrides.users,
+  },
+})
+
 describe("SupportTicketDetailScreen", () => {
   beforeEach(() => {
     fetchMock.mockReset()
@@ -263,6 +310,86 @@ describe("SupportTicketDetailScreen", () => {
     await waitFor(() =>
       expect(view.queryByRole("heading", { name: "TCK-1001" })).toBeNull()
     )
+  })
+
+  describe("Closed Ticket", () => {
+    it("renders closed notice and warning when ticket status is closed", async () => {
+      const closedThread = createClosedThread(
+        "ticket_closed",
+        "TCK-3003"
+      )
+
+      fetchMock.mockImplementationOnce(async () =>
+        jsonResponse(closedThread)
+      )
+
+      const view = render(
+        <SupportTicketDetailScreen ticketId="ticket_closed" />
+      )
+
+      await waitFor(() =>
+        expect(
+          view.getByRole("heading", { name: "TCK-3003" })
+        ).toBeInTheDocument()
+      )
+
+      // Closed warning banner is shown
+      expect(
+        view.getByText("Secure Details Permanently Wiped")
+      ).toBeInTheDocument()
+
+      // Closed notice card replaces reply section
+      expect(
+        view.getByText(
+          "This ticket is closed. If you have a new issue, please open a new ticket."
+        )
+      ).toBeInTheDocument()
+
+      // Reply section is not rendered
+      expect(view.queryByText("Reply")).toBeNull()
+      expect(
+        view.queryByRole("button", { name: "Send Reply" })
+      ).toBeNull()
+
+      // Close button shows "Closed" and is disabled
+      const closeButton = view.getByRole("button", { name: "Closed" })
+      expect(closeButton).toBeDisabled()
+    })
+
+    it("shows closed UI after closing a ticket via close button", async () => {
+      const confirmSpy = mock(() => true)
+      ;(
+        window as unknown as { confirm: typeof confirm }
+      ).confirm = confirmSpy as unknown as typeof confirm
+
+      const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
+      await waitFor(() =>
+        expect(
+          view.getByRole("heading", { name: "TCK-1001" })
+        ).toBeInTheDocument()
+      )
+
+      // Reply section is shown before closing
+      expect(view.getByText("Reply")).toBeInTheDocument()
+
+      fireEvent.click(view.getByRole("button", { name: "Close Ticket" }))
+
+      await waitFor(() => {
+        // After close resolves, closed notice appears
+        expect(
+          view.getByText(
+            "This ticket is closed. If you have a new issue, please open a new ticket."
+          )
+        ).toBeInTheDocument()
+
+        // Reply section is gone
+        expect(view.queryByText("Reply")).toBeNull()
+
+        // Button shows "Closed" and is disabled
+        const closedButton = view.getByRole("button", { name: "Closed" })
+        expect(closedButton).toBeDisabled()
+      })
+    })
   })
 
   describe("Attachment Preview", () => {
