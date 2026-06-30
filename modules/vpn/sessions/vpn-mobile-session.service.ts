@@ -147,7 +147,7 @@ export class VpnMobileSessionService {
       where,
       take,
       ...(cursor ? { cursor, skip: 1 } : {}),
-      orderBy: { startedAt: "desc" },
+      orderBy: [{ startedAt: "desc" }, { id: "desc" }],
       include: {
         device: { select: { deviceName: true } },
         server: { select: { name: true, region: { select: { name: true } } } },

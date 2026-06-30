@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client"
+import type { Prisma, VpnMobileSessionStatus } from "@prisma/client"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 type SessionPayload = Prisma.VpnMobileSessionGetPayload<{}>
@@ -11,7 +11,7 @@ export type VpnMobileSessionDTO = {
   subscriptionId: string
   serverAccountId: string
   serverId: string
-  status: string
+  status: VpnMobileSessionStatus
   startedAt: Date
   lastPingAt: Date
   endedAt: Date | null
