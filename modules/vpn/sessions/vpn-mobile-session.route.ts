@@ -233,7 +233,7 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
         // Only return stats when listing without device filter (dashboard view)
         const stats =
           !query.deviceId && !effectiveDeviceId
-            ? await service.getStats()
+            ? await service.getStats(auth.mobileAuth.organizationId)
             : undefined
 
         return { sessions, nextCursor: result.nextCursor, total: result.total, stats }
@@ -261,7 +261,7 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
         const auth = await requireMobileSession(request, set)
         if (!auth.ok) return auth.error
 
-        return await service.getStats()
+        return await service.getStats(auth.mobileAuth.organizationId)
       }
     )
 }

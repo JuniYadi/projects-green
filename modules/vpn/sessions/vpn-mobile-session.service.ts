@@ -126,7 +126,7 @@ export class VpnMobileSessionService {
     const limit = Math.min(filter.limit ?? 20, 100)
     const where: Prisma.VpnMobileSessionWhereInput = {}
 
-    if (filter.status) where.status = filter.status as never
+    if (filter.status) where.status = filter.status as Prisma.VpnMobileSessionStatus
     if (filter.serverId) where.serverId = filter.serverId
     if (filter.subscriptionId) where.subscriptionId = filter.subscriptionId
     if (filter.deviceId) where.deviceId = filter.deviceId
@@ -186,17 +186,22 @@ export class VpnMobileSessionService {
   /**
    * Aggregate active sessions by server and subscription.
    */
-  async getStats() {
+  async getStats(organizationId?: string) {
     // ponytail: two GROUP BY queries, no N+1. Add caching when dashboard sees load.
+    const where: Prisma.VpnMobileSessionWhereInput = { status: "ACTIVE" }
+    if (organizationId) {
+      where.device = { subscription: { organizationId } }
+    }
+
     const byServer = await this.prisma.vpnMobileSession.groupBy({
       by: ["serverId"],
-      where: { status: "ACTIVE" },
+      where,
       _count: { id: true },
     })
 
     const bySubscription = await this.prisma.vpnMobileSession.groupBy({
       by: ["subscriptionId"],
-      where: { status: "ACTIVE" },
+      where,
       _count: { id: true },
     })
 
