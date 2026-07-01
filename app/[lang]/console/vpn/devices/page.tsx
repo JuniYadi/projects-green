@@ -136,9 +136,9 @@ export default function ConsoleVpnDevicesPage() {
   }
 
   const selectedSub = state.subscriptions.find((s) => s.id === selectedSubId)
-  const displayedDevices = selectedSubId
-    ? state.devices.filter((d) => d.subscriptionId === selectedSubId)
-    : state.devices
+  const displayedDevices = selectedSub
+    ? state.devices.filter((d) => d.subscriptionId === selectedSub.id)
+    : []
 
   return (
     <>

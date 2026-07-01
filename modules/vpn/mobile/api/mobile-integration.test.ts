@@ -650,8 +650,12 @@ describe("Mobile VPN Integration", () => {
       )
 
       expect(res.status).toBe(200)
-      const body = await res.json()
-      expect(body.profiles).toBeDefined()
+      expect(fakeDeviceService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionId: SUBSCRIPTION_ID,
+          deviceFingerprint: "fp-revoked",
+        })
+      )
     })
 
     it("returns 403 when device limit is reached", async () => {
