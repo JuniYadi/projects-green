@@ -133,19 +133,15 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
       set.status = 500
       return {
         error: {
-          error: {
-            code: "AUTH_SERVICE_ERROR" as const,
-            message: "Authentication service unavailable.",
-            details: {},
-          },
+          code: "AUTH_SERVICE_ERROR" as const,
+          message: "Authentication service unavailable.",
+          details: {},
         },
       }
     }
-    if (!auth.user) return { error: unauthorized(set) }
+    if (!auth.user) return unauthorized(set)
     if (!auth.organizationId) {
-      return {
-        error: forbidden(set, "No active organization found."),
-      }
+      return forbidden(set, "No active organization found.")
     }
     return { auth }
   }
@@ -167,7 +163,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
         "/vpn/mobile/pairing/generate",
         async ({ body, set }) => {
           const ctx = await resolveAuth(set)
-          if ("error" in ctx) return ctx.error
+          if ("error" in ctx) return ctx
 
           // Rate limit: 30/h per user (user is guaranteed non-null after resolveAuth)
           const rateResult = generateRateLimiter(ctx.auth.user!.id)
@@ -422,7 +418,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
        */
       .get("/vpn/mobile/pairing/status/:token", async ({ params, set }) => {
         const ctx = await resolveAuth(set)
-        if ("error" in ctx) return ctx.error
+        if ("error" in ctx) return ctx
 
         try {
           const result = await pairingService.getStatus(params.token)
