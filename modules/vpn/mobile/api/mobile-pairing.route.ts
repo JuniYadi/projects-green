@@ -366,17 +366,6 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
                 "Invalid pairing code."
               )
             }
-            if (err.name === "VpnMobileDeviceAlreadyRevokedError") {
-              set.status = 409
-              return {
-                error: {
-                  code: "DEVICE_ALREADY_PAIRED" as const,
-                  message:
-                    "This device was previously paired and revoked. Contact support.",
-                  details: {},
-                },
-              }
-            }
             if (err.name === "VpnMobileDeviceLimitError") {
               set.status = 403
               logAuditEvent({

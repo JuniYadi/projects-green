@@ -79,9 +79,23 @@ export default function ConsoleVpnDevicesPage() {
       setRevoking(deviceId)
       try {
         await revokeMobileDevice(deviceId)
-        await load()
+        setState((prev) =>
+          prev.phase === "ready"
+            ? {
+                ...prev,
+                devices: prev.devices.map((d) =>
+                  d.id === deviceId
+                    ? {
+                        ...d,
+                        status: "REVOKED" as const,
+                        revokedAt: new Date().toISOString(),
+                      }
+                    : d
+                ),
+              }
+            : prev
+        )
       } catch {
-        // Refresh anyway to show current state.
         await load()
       } finally {
         setRevoking(null)
@@ -122,6 +136,9 @@ export default function ConsoleVpnDevicesPage() {
   }
 
   const selectedSub = state.subscriptions.find((s) => s.id === selectedSubId)
+  const displayedDevices = selectedSub
+    ? state.devices.filter((d) => d.subscriptionId === selectedSub.id)
+    : []
 
   return (
     <>
@@ -131,12 +148,6 @@ export default function ConsoleVpnDevicesPage() {
           View and manage devices paired to your VPN subscriptions.
         </p>
       </header>
-
-      <VpnDevicesList
-        devices={state.devices}
-        onRevoke={handleRevoke}
-        revoking={revoking}
-      />
 
       <div className="flex flex-wrap items-center gap-3">
         {state.subscriptions.length > 0 && (
@@ -174,6 +185,12 @@ export default function ConsoleVpnDevicesPage() {
           </a>
         </p>
       )}
+
+      <VpnDevicesList
+        devices={displayedDevices}
+        onRevoke={handleRevoke}
+        revoking={revoking}
+      />
 
       {pairOpen && selectedSub && (
         <VpnPairingQrModal

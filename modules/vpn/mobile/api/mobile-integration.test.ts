@@ -628,13 +628,12 @@ describe("Mobile VPN Integration", () => {
       expect(fakeDeviceService.create).not.toHaveBeenCalled()
     })
 
-    it("returns 409 when device was previously revoked", async () => {
+    it("reactivates a previously revoked device on re-login", async () => {
       mockFindUnique.mockResolvedValue(activeSubscription)
-      fakeDeviceService.create.mockRejectedValueOnce(
-        Object.assign(new Error("Already revoked"), {
-          name: "VpnMobileDeviceAlreadyRevokedError",
-        })
-      )
+      fakeDeviceService.create.mockResolvedValueOnce({
+        id: DEVICE_ID,
+        status: "ACTIVE",
+      })
 
       const app = createAuthApp()
       const res = await app.handle(
@@ -650,9 +649,13 @@ describe("Mobile VPN Integration", () => {
         })
       )
 
-      expect(res.status).toBe(409)
-      const body = await res.json()
-      expect(body.error.code).toBe("DEVICE_ALREADY_PAIRED")
+      expect(res.status).toBe(200)
+      expect(fakeDeviceService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionId: SUBSCRIPTION_ID,
+          deviceFingerprint: "fp-revoked",
+        })
+      )
     })
 
     it("returns 403 when device limit is reached", async () => {

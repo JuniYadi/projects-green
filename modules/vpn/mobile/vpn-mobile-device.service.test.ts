@@ -179,13 +179,43 @@ describe("VpnMobileDeviceService", () => {
       })
     })
 
-    it("throws VpnMobileDeviceAlreadyRevokedError when device is REVOKED", async () => {
+    it("reactivates REVOKED device and clears revoke fields", async () => {
       findUnique.mockResolvedValue(revokedDevice)
+      const reactivated = {
+        ...revokedDevice,
+        status: "ACTIVE",
+        revokedAt: null,
+        revokedBy: null,
+        revokedReason: null,
+        deviceName: createInput.deviceName,
+        platform: createInput.platform,
+        osVersion: createInput.osVersion,
+        appVersion: createInput.appVersion,
+        lastSeenAt: NOW,
+      }
+      update.mockResolvedValue(reactivated)
 
-      await expect(service.create(createInput)).rejects.toThrow(
-        VpnMobileDeviceAlreadyRevokedError
-      )
-      expect(prismaMock.vpnMobileDevice.update).not.toHaveBeenCalled()
+      const result = await service.create(createInput)
+
+      expect(result.status).toBe("ACTIVE")
+      expect(result.revokedAt).toBeNull()
+      expect(result.revokedBy).toBeNull()
+      expect(result.revokedReason).toBeNull()
+      expect(result.deviceName).toBe(createInput.deviceName)
+      expect(prismaMock.vpnMobileDevice.update).toHaveBeenCalledWith({
+        where: { id: revokedDevice.id },
+        data: {
+          status: "ACTIVE",
+          revokedAt: null,
+          revokedBy: null,
+          revokedReason: null,
+          deviceName: createInput.deviceName,
+          platform: createInput.platform,
+          osVersion: createInput.osVersion ?? null,
+          appVersion: createInput.appVersion ?? null,
+          lastSeenAt: NOW,
+        },
+      })
       expect(prismaMock.vpnMobileDevice.create).not.toHaveBeenCalled()
     })
 

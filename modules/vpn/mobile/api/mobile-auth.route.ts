@@ -353,25 +353,6 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           })
         } catch (error) {
           const err = error as Error & { name?: string }
-          if (err.name === "VpnMobileDeviceAlreadyRevokedError") {
-            set.status = 409
-            logAuditEvent({
-              action: "AUTH_MOBILE_LOGIN",
-              status: "FAILED",
-              message: "Device was previously paired and revoked",
-              subscriptionId: body.subscriptionId,
-              ip: getClientIp(request),
-              userAgent: request.headers.get("user-agent"),
-            }).catch(() => {})
-            return {
-              error: {
-                code: "DEVICE_ALREADY_PAIRED" as const,
-                message:
-                  "This device was previously paired and revoked. Contact support.",
-                details: {},
-              },
-            }
-          }
           if (err.name === "VpnMobileDeviceLimitError") {
             set.status = 403
             logAuditEvent({
