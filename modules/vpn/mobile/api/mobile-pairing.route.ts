@@ -122,12 +122,26 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
   const signJwt = deps.signJwt ?? signSessionJwt
 
   const resolveAuth = async (set: RouteSet) => {
-    const auth = await authenticate()
-    if (!auth.user) return { error: unauthorized(set) }
-    if (!auth.organizationId) {
+    let auth: AuthContext
+    try {
+      auth = await authenticate()
+    } catch (error) {
+      console.error(
+        "[AUTH ERROR] withAuth threw — middleware header mismatch?",
+        error instanceof Error ? error.stack ?? error.message : String(error)
+      )
+      set.status = 500
       return {
-        error: forbidden(set, "No active organization found."),
+        error: {
+          code: "AUTH_SERVICE_ERROR" as const,
+          message: "Authentication service unavailable.",
+          details: {},
+        },
       }
+    }
+    if (!auth.user) return unauthorized(set)
+    if (!auth.organizationId) {
+      return forbidden(set, "No active organization found.")
     }
     return { auth }
   }
@@ -149,7 +163,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
         "/vpn/mobile/pairing/generate",
         async ({ body, set }) => {
           const ctx = await resolveAuth(set)
-          if ("error" in ctx) return ctx.error
+          if ("error" in ctx) return ctx
 
           // Rate limit: 30/h per user (user is guaranteed non-null after resolveAuth)
           const rateResult = generateRateLimiter(ctx.auth.user!.id)
@@ -404,7 +418,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
        */
       .get("/vpn/mobile/pairing/status/:token", async ({ params, set }) => {
         const ctx = await resolveAuth(set)
-        if ("error" in ctx) return ctx.error
+        if ("error" in ctx) return ctx
 
         try {
           const result = await pairingService.getStatus(params.token)

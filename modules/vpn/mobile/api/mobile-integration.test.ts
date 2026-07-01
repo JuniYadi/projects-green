@@ -905,6 +905,43 @@ describe("Mobile VPN Integration", () => {
       const body = await res.json()
       expect(body.error.code).toBe("TOKEN_INVALID")
     })
+
+    it("returns 500 AUTH_SERVICE_ERROR when auth throws", async () => {
+      authenticate.mockRejectedValueOnce(new Error("WorkOS down"))
+
+      const app = createPairingApp()
+      const res = await app.handle(
+        new Request(
+          "http://localhost/vpn/mobile/pairing/status/some-token"
+        )
+      )
+
+      expect(res.status).toBe(500)
+      const body = await res.json()
+      expect(body.error.code).toBe("AUTH_SERVICE_ERROR")
+      expect(body.error.message).toBe("Authentication service unavailable.")
+    })
+
+    it("returns 403 when user has no organization", async () => {
+      authenticate.mockResolvedValueOnce({
+        user: { id: "user-1" },
+        organizationId: null as unknown as string,
+        role: null as unknown as string,
+        roles: null as unknown as string[],
+      })
+
+      const app = createPairingApp()
+      const res = await app.handle(
+        new Request(
+          "http://localhost/vpn/mobile/pairing/status/some-token"
+        )
+      )
+
+      expect(res.status).toBe(403)
+      const body = await res.json()
+      expect(body.error.code).toBe("FORBIDDEN")
+      expect(body.error.message).toBe("No active organization found.")
+    })
   })
 
   describe("Auth refresh endpoint", () => {

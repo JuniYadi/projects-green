@@ -253,6 +253,6 @@ export const config = {
      * Run AuthKit middleware for all app routes so `withAuth` calls from
      * AuthKitProvider are always covered.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.[^/]+$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.[a-zA-Z0-9]{1,6}$).*)",
   ],
 }
