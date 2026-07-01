@@ -131,13 +131,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
         error instanceof Error ? error.stack ?? error.message : String(error)
       )
       set.status = 500
-      return {
-        error: {
-          code: "AUTH_SERVICE_ERROR" as const,
-          message: "Authentication service unavailable.",
-          details: {},
-        },
-      }
+      return unauthorized(set)
     }
     if (!auth.user) return unauthorized(set)
     if (!auth.organizationId) {
