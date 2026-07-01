@@ -59,7 +59,8 @@ export class VpnMobileDeviceService {
    *
    * - New → create with status=ACTIVE.
    * - Existing ACTIVE/SUSPENDED → refresh lastSeenAt, return row.
-   * - Existing REVOKED → throw VpnMobileDeviceAlreadyRevokedError.
+   * - Existing REVOKED → reactivate: set ACTIVE, clear revoke fields,
+   *   update device metadata (name, platform, osVersion, appVersion).
    */
   async create(input: CreateMobileDeviceInput) {
     const existing = await this.prisma.vpnMobileDevice.findUnique({
@@ -73,7 +74,20 @@ export class VpnMobileDeviceService {
 
     if (existing) {
       if (existing.status === "REVOKED") {
-        throw new VpnMobileDeviceAlreadyRevokedError()
+        return this.prisma.vpnMobileDevice.update({
+          where: { id: existing.id },
+          data: {
+            status: "ACTIVE",
+            revokedAt: null,
+            revokedBy: null,
+            revokedReason: null,
+            deviceName: input.deviceName,
+            platform: input.platform,
+            osVersion: input.osVersion ?? null,
+            appVersion: input.appVersion ?? null,
+            lastSeenAt: this.now(),
+          },
+        })
       }
       // ACTIVE or SUSPENDED — refresh lastSeenAt and return.
       return this.prisma.vpnMobileDevice.update({
