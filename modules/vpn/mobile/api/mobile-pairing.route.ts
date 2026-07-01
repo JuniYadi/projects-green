@@ -122,7 +122,23 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
   const signJwt = deps.signJwt ?? signSessionJwt
 
   const resolveAuth = async (set: RouteSet) => {
-    const auth = await authenticate()
+    let auth: AuthContext
+    try {
+      auth = await authenticate()
+    } catch (error) {
+      console.error(
+        "[AUTH ERROR] withAuth threw — middleware header mismatch?",
+        error instanceof Error ? error.stack ?? error.message : String(error)
+      )
+      set.status = 500
+      return {
+        error: {
+          code: "AUTH_SERVICE_ERROR" as const,
+          message: "Authentication service unavailable.",
+          details: {},
+        },
+      }
+    }
     if (!auth.user) return { error: unauthorized(set) }
     if (!auth.organizationId) {
       return {

@@ -158,6 +158,11 @@ export const app = new Elysia({ prefix: "/api" })
 
     const errorTag = detailCode ? ` [${detailCode}]` : ""
 
+    // Visible banner so errors are impossible to miss in development.
+    console.log(
+      `\n⚠️  API ERROR — ${request.method} ${path}${errorTag}\n`
+    )
+
     // Always log with a grep-friendly prefix so errors are easy to find.
     console.error(
       `[API ERROR] ${request.method} ${path} — INTERNAL_SERVER_ERROR${errorTag}`,
