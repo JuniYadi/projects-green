@@ -1,5 +1,5 @@
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components"
-import { Geist, JetBrains_Mono } from "next/font/google"
+import { JetBrains_Mono, Space_Mono } from "next/font/google"
 import { cookies } from "next/headers"
 
 import "./globals.css"
@@ -9,8 +9,9 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-const fontSans = Geist({
+const fontSans = Space_Mono({
   subsets: ["latin"],
+  weight: ["400", "700"],
   variable: "--font-sans",
 })
 
