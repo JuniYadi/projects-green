@@ -164,10 +164,11 @@ async function processMonthlyBilling(): Promise<{
     usageLedger,
     invoiceEmailService
   )
+  const finalized = await billingCycle.finalizeServiceInvoices()
   const result = await billingCycle.processMonthlyBilling()
 
   console.info(
-    `[billing-cron] monthly billing: processed=${result.processed} skipped=${result.skipped} invoices=${result.invoices.length}`
+    `[billing-cron] monthly billing: finalized=${finalized.finalized} processed=${result.processed} skipped=${result.skipped} invoices=${result.invoices.length}`
   )
 
   return { processed: result.processed, skipped: result.skipped }
