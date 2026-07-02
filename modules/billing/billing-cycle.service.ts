@@ -332,17 +332,9 @@ export class BillingCycleService {
     // Subsequent cron runs skip already-PAID invoices, so retries rely on
     // the admin to manually re-send if needed.
     if (this.emailService && organizationId) {
-      this.resolveOrgAdminEmail(organizationId)
-        .then(async (adminEmail) => {
-          if (!adminEmail) {
-            console.warn(
-              "[BillingCycle] No admin email found for org",
-              organizationId
-            )
-            return
-          }
+      this.resolveInvoiceRecipients(organizationId)
+        .then(async (recipients) => {
           try {
-            // Build invoice data from transaction result (no re-fetch needed)
             const invoiceData = {
               id: result.invoiceId,
               invoiceNumber: `INV-${period}-${subscription.id.slice(0, 8)}-${billingRunId.slice(0, 8)}`,
@@ -363,13 +355,17 @@ export class BillingCycleService {
               ).toISOString(),
             }
 
-            await this.emailService!.sendInvoiceCreated(invoiceData, adminEmail)
+            await Promise.allSettled(
+              recipients.map((r) =>
+                this.emailService!.sendInvoiceCreated(invoiceData, r.email)
+              )
+            )
           } catch (err) {
             console.error("[BillingCycle] Failed to send invoice email:", err)
           }
         })
         .catch((err) => {
-          console.error("[BillingCycle] Failed to resolve admin email:", err)
+          console.error("[BillingCycle] Failed to resolve invoice recipients:", err)
         })
     }
 
@@ -383,6 +379,31 @@ export class BillingCycleService {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
+  private async resolveInvoiceRecipients(
+    organizationId: string
+  ): Promise<Array<{ email: string }>> {
+    const account = await this.prisma.billingAccount.findUnique({
+      where: { organizationId },
+      include: {
+        contacts: { where: { isActive: true, notifyOnInvoice: true } },
+      },
+    })
+    const recipients = account?.contacts?.map((c) => ({ email: c.email })) ?? []
+    const adminEmail = await this.resolveOrgAdminEmail(organizationId)
+
+    if (adminEmail && !recipients.some((r) => r.email === adminEmail)) {
+      recipients.push({ email: adminEmail })
+    }
+
+    if (recipients.length === 0) {
+      console.warn(
+        `[BillingCycle] No invoice recipients found for org ${organizationId}`
+      )
+    }
+
+    return recipients
+  }
+
   private async resolveOrgAdminEmail(
     organizationId: string
   ): Promise<string | null> {
@@ -394,17 +415,11 @@ export class BillingCycleService {
           organizationId,
           statuses: ["active"],
         })
-      // Only send billing emails to actual admin/owner roles — never fallback to random members
       const admin = memberships.data.find(
         (m) => m.role?.slug === "user_owner" || m.role?.slug === "user_admin"
       )
-      if (!admin) {
-        console.warn(
-          "[BillingCycle] No admin/owner found for org",
-          organizationId
-        )
-        return null
-      }
+      if (!admin) return null
+
       const user = await workos.userManagement.getUser(admin.userId)
       return user.email ?? null
     } catch {
@@ -465,24 +480,27 @@ export class BillingCycleService {
           })
           if (!account?.organizationId) continue
 
-          const adminEmail = await this.resolveOrgAdminEmail(
+          const recipients = await this.resolveInvoiceRecipients(
             account.organizationId
           )
-          if (!adminEmail) continue
 
-          await this.emailService.sendInvoiceCreated(
-            {
-              id: invoice.id,
-              invoiceNumber: invoice.invoiceNumber,
-              totalAmount: Number(invoice.totalAmount.toString()),
-              currency: invoice.currency,
-              status: "paid",
-              periodStart: invoice.periodStart.toISOString(),
-              periodEnd: invoice.periodEnd.toISOString(),
-              issuedAt: nowDate.toISOString(),
-              dueAt: null,
-            },
-            adminEmail
+          await Promise.allSettled(
+            recipients.map((r) =>
+              this.emailService!.sendInvoiceCreated(
+                {
+                  id: invoice.id,
+                  invoiceNumber: invoice.invoiceNumber,
+                  totalAmount: Number(invoice.totalAmount.toString()),
+                  currency: invoice.currency,
+                  status: "paid",
+                  periodStart: invoice.periodStart.toISOString(),
+                  periodEnd: invoice.periodEnd.toISOString(),
+                  issuedAt: nowDate.toISOString(),
+                  dueAt: null,
+                },
+                r.email
+              )
+            )
           )
         } catch (err) {
           console.error(

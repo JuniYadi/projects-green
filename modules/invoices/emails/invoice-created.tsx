@@ -26,6 +26,7 @@ export const InvoiceCreatedEmail = ({
   invoiceNumber,
   amount,
   dueAt,
+  status,
 }: InvoiceCreatedEmailProps) => {
   const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/console/invoices/${invoiceNumber}`
 
