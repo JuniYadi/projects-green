@@ -1176,6 +1176,8 @@ model VpnServer {
   proxyPort          Int?
   health             VpnServerHealth @default(UNKNOWN)
   isActive           Boolean         @default(true)
+  latitude           Float?
+  longitude          Float?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 

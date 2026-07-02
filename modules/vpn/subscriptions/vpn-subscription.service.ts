@@ -276,17 +276,24 @@ export class VpnSubscriptionService {
     const accountCurrency = account.currency
 
     let chargePrice: Prisma.Decimal
+    let monthlyPrice: Prisma.Decimal
     let exchangeRate: Prisma.Decimal
 
     if (pkg.currency === accountCurrency) {
       // Same currency — no conversion needed.
       chargePrice = chargeAmount
+      monthlyPrice = pkg.price
       exchangeRate = new Prisma.Decimal(1)
     } else {
       // Cross-currency — convert package price to billing account currency.
       try {
         chargePrice = await this.currency.convert(
           chargeAmount,
+          pkg.currency,
+          accountCurrency
+        )
+        monthlyPrice = await this.currency.convert(
+          pkg.price,
           pkg.currency,
           accountCurrency
         )
@@ -324,7 +331,7 @@ export class VpnSubscriptionService {
         organizationId: input.organizationId,
         packageId: input.packageId,
         status: "SUSPENDED",
-        priceLocked: chargePrice,
+        priceLocked: monthlyPrice,
         currency: accountCurrency,
         originalPrice: pkg.price,
         originalCurrency: pkg.currency,
@@ -366,7 +373,7 @@ export class VpnSubscriptionService {
             ? `VPN package "${pkg.name}" — ${period}`
             : `VPN package "${pkg.name}" — ${daysRemaining}/${daysInMonth} month (${period})`,
           quantity: chargeQuantity,
-          unitPrice: chargePrice,
+          unitPrice: monthlyPrice,
           lineType: "SUBSCRIPTION",
           category: "vpn",
         },
