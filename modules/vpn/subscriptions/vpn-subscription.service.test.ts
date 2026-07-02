@@ -169,7 +169,11 @@ describe("VpnSubscriptionService.purchase", () => {
     const { amount, line } = debitServiceBalance.mock.calls[0][0]
     expect(amount.toString()).toBe("100000")
     expect(line.quantity.toString()).toBe("1")
+    expect(line.unitPrice.toString()).toBe("100000")
     expect(line.description).toBe('VPN package "Global Bundle" — 2026-06')
+
+    const createArgs = subCreate.mock.calls[0][0].data
+    expect(createArgs.priceLocked.toString()).toBe("100000")
   })
 
   it("charges pro-rated amount for mid-month purchase", async () => {
@@ -189,7 +193,12 @@ describe("VpnSubscriptionService.purchase", () => {
     expect(line.description).toBe(
       'VPN package "Global Bundle" — 17/30 month (2026-06)'
     )
-    expect(line.unitPrice.toString()).toBe("56666.66")
+    expect(line.quantity.toNumber()).toBeCloseTo(17 / 30, 5)
+    // unitPrice is the full monthly price; quantity × unitPrice ≈ amount
+    expect(line.unitPrice.toString()).toBe("100000")
+
+    const createArgs = subCreate.mock.calls[0][0].data
+    expect(createArgs.priceLocked.toString()).toBe("100000")
   })
 
   it("charges pro-rated amount for end-of-month purchase", async () => {
@@ -208,6 +217,11 @@ describe("VpnSubscriptionService.purchase", () => {
     expect(line.description).toBe(
       'VPN package "Global Bundle" — 1/30 month (2026-06)'
     )
+    expect(line.quantity.toNumber()).toBeCloseTo(1 / 30, 5)
+    expect(line.unitPrice.toString()).toBe("100000")
+
+    const createArgs = subCreate.mock.calls[0][0].data
+    expect(createArgs.priceLocked.toString()).toBe("100000")
   })
 
   it("subscription period aligns to calendar month end", async () => {
@@ -222,6 +236,24 @@ describe("VpnSubscriptionService.purchase", () => {
     const createdData = subCreate.mock.calls[0][0].data
     const expectedEnd = new Date(Date.UTC(2026, 6, 0, 23, 59, 59, 999))
     expect(createdData.currentPeriodEnd.getTime()).toBe(expectedEnd.getTime())
+    expect(createdData.priceLocked.toString()).toBe("100000")
+  })
+
+  it("locks the full monthly price even when first charge is pro-rated", async () => {
+    // Regression guard for the reported bug: June 14 purchase should lock
+    // the full monthly price so July renewal charges the full month.
+    const june14 = new Date("2026-06-14T00:00:00Z")
+    await service.purchase({
+      organizationId: "org-1",
+      packageId: "pkg-1",
+      now: june14,
+    })
+
+    const createdData = subCreate.mock.calls[0][0].data
+    expect(createdData.priceLocked.toString()).toBe("100000")
+
+    const { amount } = debitServiceBalance.mock.calls[0][0]
+    expect(amount.toString()).toBe("56666.66")
   })
 })
 
@@ -253,12 +285,17 @@ describe("VpnSubscriptionService.purchase — cross-currency", () => {
       currency: mockCurrencyService as any,
     })
 
-    await svc.purchase({ organizationId: "org-1", packageId: "pkg-1" })
+    await svc.purchase({
+      organizationId: "org-1",
+      packageId: "pkg-1",
+      now: new Date("2026-06-01T00:00:00Z"),
+    })
 
     // Should debit in IDR (account currency), not USD
     const debitArgs = debitServiceBalance.mock.calls[0][0]
     expect(debitArgs.currency).toBe("IDR")
     expect(debitArgs.amount.toString()).toBe("8000")
+    expect(debitArgs.line.unitPrice.toString()).toBe("8000")
 
     // Subscription should lock IDR price, store original USD
     const createArgs = subCreate.mock.calls[0][0].data
@@ -298,5 +335,6 @@ describe("VpnSubscriptionService.purchase — cross-currency", () => {
     expect(createArgs.originalPrice.toString()).toBe("100000")
     expect(createArgs.originalCurrency).toBe("IDR")
     expect(createArgs.exchangeRate.toString()).toBe("1")
+    expect(createArgs.priceLocked.toString()).toBe("100000")
   })
 })
