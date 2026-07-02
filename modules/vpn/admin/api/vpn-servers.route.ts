@@ -64,7 +64,7 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
     })
     .post(
       "/admin/vpn/servers",
-      async ({ body, set }) => {
+      async ({ body, set, request, path }) => {
         const actor = await guard(set)
         if ("ok" in actor && !actor.ok) return actor as AdminApiError
 
@@ -73,14 +73,17 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
           set.status = 201
           return { ok: true, data: toVpnServerDTO(server) }
         } catch (error) {
-          return toServerError(set, error)
+          return toServerError(set, error, {
+            method: request.method,
+            path,
+          })
         }
       },
       { body: createVpnServerSchema }
     )
     .put(
       "/admin/vpn/servers/:id",
-      async ({ params, body, set }) => {
+      async ({ params, body, set, request, path }) => {
         const actor = await guard(set)
         if ("ok" in actor && !actor.ok) return actor as AdminApiError
 
@@ -88,23 +91,32 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
           const server = await service.update(params.id, body)
           return { ok: true, data: toVpnServerDTO(server) }
         } catch (error) {
-          return toServerError(set, error)
+          return toServerError(set, error, {
+            method: request.method,
+            path,
+          })
         }
       },
       { body: updateVpnServerSchema }
     )
-    .delete("/admin/vpn/servers/:id", async ({ params, set }) => {
-      const actor = await guard(set)
-      if ("ok" in actor && !actor.ok) return actor as AdminApiError
+    .delete(
+      "/admin/vpn/servers/:id",
+      async ({ params, set, request, path }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
 
-      try {
-        await service.remove(params.id)
-        return { ok: true }
-      } catch (error) {
-        return toServerError(set, error)
+        try {
+          await service.remove(params.id)
+          return { ok: true }
+        } catch (error) {
+          return toServerError(set, error, {
+            method: request.method,
+            path,
+          })
+        }
       }
-    })
-    .get("/admin/vpn/servers/:id", async ({ params, set }) => {
+    )
+    .get("/admin/vpn/servers/:id", async ({ params, set, request, path }) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
 
@@ -112,7 +124,10 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
         const server = await service.getById(params.id)
         return { ok: true, data: toVpnServerDTO(server) }
       } catch (error) {
-        return toServerError(set, error)
+        return toServerError(set, error, {
+          method: request.method,
+          path,
+        })
       }
     })
     .get("/admin/vpn/servers/:id/metrics", async ({ params, set }) => {
@@ -127,7 +142,15 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
 
       const target = toSshTarget(server)
       const executor = new VpnServerSshExecutor()
-      const [uptime, daily, monthly, topCpu, topMemory, cpuSummary, memorySummary] = await Promise.all([
+      const [
+        uptime,
+        daily,
+        monthly,
+        topCpu,
+        topMemory,
+        cpuSummary,
+        memorySummary,
+      ] = await Promise.all([
         execText(executor, target, ["uptime", "-p"]),
         execJson(executor, target, ["vnstat", "-d", "--json"]),
         execJson(executor, target, ["vnstat", "-m", "--json"]),
@@ -163,8 +186,7 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
           resources: {
             cpu: parseCpuSummary(cpuSummary),
             memory: parseMemorySummary(memorySummary),
-            currentMonthBandwidth:
-              monthlyTraffic.at(-1)?.total ?? 0,
+            currentMonthBandwidth: monthlyTraffic.at(-1)?.total ?? 0,
           },
           traffic: {
             daily: parseVnstatTraffic(daily, "day"),
@@ -217,35 +239,41 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
 
       return { ok: true, queued, correlationId: jobId }
     })
-    .post("/admin/vpn/servers/:id/test", async ({ params, set }) => {
-      const actor = await guard(set)
-      if ("ok" in actor && !actor.ok) return actor as AdminApiError
+    .post(
+      "/admin/vpn/servers/:id/test",
+      async ({ params, set, request, path }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
 
-      const current = now()
-      const previous = lastTestAt.get(params.id)
-      if (previous !== undefined && current - previous < TEST_RATE_LIMIT_MS) {
-        const retryAfterSec = Math.ceil(
-          (TEST_RATE_LIMIT_MS - (current - previous)) / 1000
-        )
-        set.status = 429
-        return {
-          ok: false,
-          error: "RATE_LIMITED",
-          message: `Please wait ${retryAfterSec}s before testing this server again.`,
+        const current = now()
+        const previous = lastTestAt.get(params.id)
+        if (previous !== undefined && current - previous < TEST_RATE_LIMIT_MS) {
+          const retryAfterSec = Math.ceil(
+            (TEST_RATE_LIMIT_MS - (current - previous)) / 1000
+          )
+          set.status = 429
+          return {
+            ok: false,
+            error: "RATE_LIMITED",
+            message: `Please wait ${retryAfterSec}s before testing this server again.`,
+          }
+        }
+
+        try {
+          const server = await service.getById(params.id)
+          lastTestAt.set(params.id, current)
+          const result = deps.scanConnection
+            ? await deps.scanConnection(server)
+            : await vpnHealthService.checkServerById(params.id)
+          return { ok: true, data: result }
+        } catch (error) {
+          return toServerError(set, error, {
+            method: request.method,
+            path,
+          })
         }
       }
-
-      try {
-        const server = await service.getById(params.id)
-        lastTestAt.set(params.id, current)
-        const result = deps.scanConnection
-          ? await deps.scanConnection(server)
-          : await vpnHealthService.checkServerById(params.id)
-        return { ok: true, data: result }
-      } catch (error) {
-        return toServerError(set, error)
-      }
-    })
+    )
 }
 
 type ServerWithPrivateKey = {
@@ -301,9 +329,14 @@ type VnstatEntry = {
 function parseVnstatTraffic(payload: unknown, bucket: "day" | "month") {
   const interfaces =
     payload && typeof payload === "object" && "interfaces" in payload
-      ? (payload.interfaces as Array<{ traffic?: Record<string, VnstatEntry[]> }>)
+      ? (payload.interfaces as Array<{
+          traffic?: Record<string, VnstatEntry[]>
+        }>)
       : []
-  const byLabel = new Map<string, { label: string; rx: number; tx: number; total: number }>()
+  const byLabel = new Map<
+    string,
+    { label: string; rx: number; tx: number; total: number }
+  >()
 
   for (const iface of interfaces) {
     for (const entry of iface.traffic?.[bucket] ?? []) {
@@ -319,9 +352,13 @@ function parseVnstatTraffic(payload: unknown, bucket: "day" | "month") {
   return Array.from(byLabel.values()).slice(-12)
 }
 
-function formatVnstatDate(date: VnstatDate | undefined, bucket: "day" | "month") {
+function formatVnstatDate(
+  date: VnstatDate | undefined,
+  bucket: "day" | "month"
+) {
   if (!date?.year || !date.month) return "unknown"
-  if (bucket === "month") return `${date.year}-${String(date.month).padStart(2, "0")}`
+  if (bucket === "month")
+    return `${date.year}-${String(date.month).padStart(2, "0")}`
   return `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day ?? 1).padStart(2, "0")}`
 }
 
@@ -330,7 +367,10 @@ function parseCpuSummary(output: string | null) {
   const [coresLine, statLine] = output.split("\n")
   const totalCores = Number(coresLine)
   const values = statLine?.trim().split(/\s+/).slice(1).map(Number) ?? []
-  const total = values.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0)
+  const total = values.reduce(
+    (sum, value) => sum + (Number.isFinite(value) ? value : 0),
+    0
+  )
   const idle = (values[3] ?? 0) + (values[4] ?? 0)
   const usedPercent =
     total > 0
@@ -372,7 +412,11 @@ function parseProcessList(output: string | null) {
     }))
 }
 
-function toServerError(set: RouteSet, error: unknown): AdminApiError {
+function toServerError(
+  set: RouteSet,
+  error: unknown,
+  context?: { method: string; path: string }
+): AdminApiError {
   if (error instanceof VpnServerNotFoundError) {
     set.status = 404
     return { ok: false, error: "NOT_FOUND", message: error.message }
@@ -385,10 +429,20 @@ function toServerError(set: RouteSet, error: unknown): AdminApiError {
     set.status = 409
     return { ok: false, error: "CONFLICT", message: error.message }
   }
+
+  const location = context ? ` on ${context.method} ${context.path}` : ""
+  console.error(
+    `[admin:vpn:servers] unexpected error${location}:`,
+    error instanceof Error ? (error.stack ?? error.message) : String(error)
+  )
+
+  const isDev = process.env.NODE_ENV !== "production"
   set.status = 500
   return {
     ok: false,
     error: "INTERNAL_ERROR",
-    message: "Something went wrong while processing the server.",
+    message: isDev
+      ? `Internal error${location}: ${error instanceof Error ? error.message : String(error)}`
+      : "Something went wrong while processing the server.",
   }
 }

@@ -144,9 +144,11 @@ export function ServerForm({
     }
   }
 
-  const selectLocation = (
-    loc: { lat: string; lon: string; display_name: string }
-  ) => {
+  const selectLocation = (loc: {
+    lat: string
+    lon: string
+    display_name: string
+  }) => {
     setLatitude(Number(loc.lat))
     setLongitude(Number(loc.lon))
     setLocationSearch("")
@@ -194,8 +196,8 @@ export function ServerForm({
         sshKeyId,
         sshUser,
         isActive,
-        latitude: latitude ?? undefined,
-        longitude: longitude ?? undefined,
+        latitude: latitude === null ? undefined : latitude,
+        longitude: longitude === null ? undefined : longitude,
         openVpnPort: protocols.openVpn.enabled
           ? protocols.openVpn.port
           : undefined,
@@ -214,7 +216,8 @@ export function ServerForm({
         const createBody = { ...body, isActive: false }
         const created = await createVpnServer(createBody)
         const serverId = created.data?.id
-        if (!serverId) throw new Error("Server creation failed: invalid response")
+        if (!serverId)
+          throw new Error("Server creation failed: invalid response")
 
         // Run connection test
         setSaving(false)
@@ -435,12 +438,10 @@ export function ServerForm({
                     <li key={i}>
                       <button
                         type="button"
-                        className="w-full px-3 py-2 text-left hover:bg-muted cursor-pointer"
+                        className="w-full cursor-pointer px-3 py-2 text-left hover:bg-muted"
                         onClick={() => selectLocation(loc)}
                       >
-                        <span className="line-clamp-1">
-                          {loc.display_name}
-                        </span>
+                        <span className="line-clamp-1">{loc.display_name}</span>
                         <span className="text-xs text-muted-foreground">
                           {Number(loc.lat).toFixed(4)},{" "}
                           {Number(loc.lon).toFixed(4)}
@@ -484,7 +485,7 @@ export function ServerForm({
               </div>
             </div>
             {latitude !== null && longitude !== null && (
-              <div className="overflow-hidden rounded-md border h-48">
+              <div className="h-48 overflow-hidden rounded-md border">
                 <iframe
                   title="Server location"
                   src={`https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.02},${latitude - 0.02},${longitude + 0.02},${latitude + 0.02}&layer=mapnik&marker=${latitude},${longitude}`}
@@ -554,11 +555,7 @@ export function ServerForm({
             </Button>
           )}
           <Button onClick={submit} disabled={saving || testing}>
-            {saving
-              ? "Saving..."
-              : testing
-                ? "Testing connection..."
-                : "Save"}
+            {saving ? "Saving..." : testing ? "Testing connection..." : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>
