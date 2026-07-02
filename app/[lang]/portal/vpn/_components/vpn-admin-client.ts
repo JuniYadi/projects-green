@@ -130,6 +130,8 @@ export type VpnServerItem = {
   sshUser: string
   isActive: boolean
   health: "HEALTHY" | "WARNING" | "DOWN" | "UNKNOWN"
+  latitude: number | null
+  longitude: number | null
   region: { id: string; name: string; slug: string; countryCode: string }
   sshKey: { id: string; name: string; fingerprint: string }
   protocols: {

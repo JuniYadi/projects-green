@@ -232,20 +232,21 @@ export function ServersTable() {
               <TableHead>Proxy</TableHead>
               <TableHead>Health</TableHead>
               <TableHead>Active</TableHead>
+              <TableHead className="text-center">📍</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={10}>
+                <TableCell colSpan={11}>
                   <Skeleton className="h-8 w-full" />
                 </TableCell>
               </TableRow>
             ) : servers.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={10}
+                  colSpan={11}
                   className="text-center text-sm text-muted-foreground"
                 >
                   No servers yet.
@@ -299,6 +300,9 @@ export function ServersTable() {
                     <Badge variant={server.isActive ? "default" : "secondary"}>
                       {server.isActive ? "Active" : "Inactive"}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-center" title={server.latitude && server.longitude ? `${server.latitude}, ${server.longitude}` : undefined}>
+                    {server.latitude && server.longitude ? "📍" : "—"}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

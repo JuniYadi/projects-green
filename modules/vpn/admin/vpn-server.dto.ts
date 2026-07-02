@@ -13,6 +13,8 @@ export type VpnServerDTO = {
   sshUser: string
   isActive: boolean
   health: VpnServerHealth
+  latitude: number | null
+  longitude: number | null
   region: { id: string; name: string; slug: string; countryCode: string }
   sshKey: { id: string; name: string; fingerprint: string }
   protocols: {
@@ -41,6 +43,8 @@ export function toVpnServerDTO(server: VpnServerWithRelations): VpnServerDTO {
     sshUser: server.sshUser,
     isActive: server.isActive,
     health: server.health,
+    latitude: server.latitude,
+    longitude: server.longitude,
     region: {
       id: server.region.id,
       name: server.region.name,

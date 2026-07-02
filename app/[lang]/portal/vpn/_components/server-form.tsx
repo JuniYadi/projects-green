@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -101,6 +101,18 @@ export function ServerForm({
   const [protocols, setProtocols] = useState<ProtoState>(
     initialProtocols(copySource)
   )
+  const [latitude, setLatitude] = useState<number | null>(
+    editing?.latitude ?? null
+  )
+  const [longitude, setLongitude] = useState<number | null>(
+    editing?.longitude ?? null
+  )
+  const [locationSearch, setLocationSearch] = useState("")
+  const [searchResults, setSearchResults] = useState<
+    { lat: string; lon: string; display_name: string }[]
+  >([])
+  const [searching, setSearching] = useState(false)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
@@ -109,6 +121,38 @@ export function ServerForm({
 
   // Any field change invalidates a prior connection-test result.
   const clearTestResult = () => setScanResult(null)
+
+  const searchNominatim = async (q: string) => {
+    if (!q.trim() || q.length < 2) {
+      setSearchResults([])
+      return
+    }
+    setSearching(true)
+    try {
+      // eslint-disable-next-line no-restricted-globals -- Nominatim is an external public API, not our internal API
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`,
+        { headers: { "User-Agent": "ProjectsGreen/1.0" } }
+      )
+      if (!res.ok) return
+      const data = await res.json()
+      setSearchResults(data)
+    } catch {
+      // silently ignore search failures
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const selectLocation = (
+    loc: { lat: string; lon: string; display_name: string }
+  ) => {
+    setLatitude(Number(loc.lat))
+    setLongitude(Number(loc.lon))
+    setLocationSearch("")
+    setSearchResults([])
+    clearTestResult()
+  }
 
   const setProtocol = (
     key: ProtocolKey,
@@ -150,6 +194,8 @@ export function ServerForm({
         sshKeyId,
         sshUser,
         isActive,
+        latitude: latitude ?? undefined,
+        longitude: longitude ?? undefined,
         openVpnPort: protocols.openVpn.enabled
           ? protocols.openVpn.port
           : undefined,
@@ -357,6 +403,97 @@ export function ServerForm({
                 placeholder="root"
               />
             </div>
+          </div>
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <Label>Location (for map pin)</Label>
+            <div className="space-y-2">
+              <div className="relative">
+                <Input
+                  value={locationSearch}
+                  onChange={(e) => {
+                    setLocationSearch(e.target.value)
+                    if (searchTimeoutRef.current)
+                      clearTimeout(searchTimeoutRef.current)
+                    searchTimeoutRef.current = setTimeout(
+                      () => searchNominatim(e.target.value),
+                      400
+                    )
+                  }}
+                  placeholder="Search city… Jakarta, Singapore"
+                  aria-label="Search location"
+                />
+                {searching && (
+                  <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground">
+                    …
+                  </span>
+                )}
+              </div>
+              {searchResults.length > 0 && (
+                <ul className="max-h-40 overflow-y-auto rounded-md border text-sm">
+                  {searchResults.map((loc, i) => (
+                    <li key={i}>
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2 text-left hover:bg-muted cursor-pointer"
+                        onClick={() => selectLocation(loc)}
+                      >
+                        <span className="line-clamp-1">
+                          {loc.display_name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {Number(loc.lat).toFixed(4)},{" "}
+                          {Number(loc.lon).toFixed(4)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="server-lat">Latitude</Label>
+                <Input
+                  id="server-lat"
+                  type="number"
+                  step="any"
+                  value={latitude ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setLatitude(val === "" ? null : Number(val))
+                    clearTestResult()
+                  }}
+                  placeholder="-6.2088"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="server-lng">Longitude</Label>
+                <Input
+                  id="server-lng"
+                  type="number"
+                  step="any"
+                  value={longitude ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setLongitude(val === "" ? null : Number(val))
+                    clearTestResult()
+                  }}
+                  placeholder="106.8456"
+                />
+              </div>
+            </div>
+            {latitude !== null && longitude !== null && (
+              <div className="overflow-hidden rounded-md border h-48">
+                <iframe
+                  title="Server location"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.02},${latitude - 0.02},${longitude + 0.02},${latitude + 0.02}&layer=mapnik&marker=${latitude},${longitude}`}
+                  className="h-full w-full border-0"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
