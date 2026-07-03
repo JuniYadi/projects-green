@@ -44,19 +44,14 @@ const mockQrToDataURL = mock<(text: string, opts?: object) => Promise<string>>(
 // is imported, so the component captures our mocks instead of the real functions.
 const intervalRegistry: Array<{ fn: () => void; ms: number }> = []
 
-const mockSetInterval = mock<(fn: () => void, ms: number) => number>((fn, ms) => {
-  intervalRegistry.push({ fn, ms })
+const mockSetInterval = mock<(handler: any, ms?: number) => number>((fn, ms) => {
+  intervalRegistry.push({ fn: fn as () => void, ms: ms ?? 1000 })
   return intervalRegistry.length
 })
 
 const mockClearInterval = mock<(id: number) => void>(() => {})
-
-type GlobalWithMocks = typeof globalThis & {
-  setInterval: typeof mockSetInterval
-  clearInterval: typeof mockClearInterval
-}
-;(globalThis as GlobalWithMocks).setInterval = mockSetInterval
-;(globalThis as GlobalWithMocks).clearInterval = mockClearInterval
+;(globalThis.setInterval as any) = mockSetInterval
+;(globalThis.clearInterval as any) = mockClearInterval
 
 mock.module("@/lib/vpn-mobile-client", () => ({
   generatePairingToken: mockGeneratePairingToken,

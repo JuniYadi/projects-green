@@ -4,8 +4,7 @@ import type { PrismaClient } from "@prisma/client"
 
 import { createAdminVpnServersRoutes, TEST_RATE_LIMIT_MS } from "./vpn-servers.route"
 import { VpnServerService } from "../vpn-server.service"
-import type { VpnServerScanner } from "../vpn-health.service"
-import type { ScanResult } from "../vpn-connection-scanner"
+import type { VpnServerScanner, ScanResult } from "../vpn-connection-scanner"
 
 // ---------------------------------------------------------------------------
 // Shared server factory — produces a fully-populated server record.
@@ -24,6 +23,8 @@ const makeServer = (over: Record<string, unknown> = {}) => ({
   openVpnPort: 1194,
   hasWireGuard: false,
   wireGuardPort: null,
+  wireGuardPublicKey: null,
+  wireGuardSubnet: null,
   hasProxy: false,
   proxyPort: null,
   health: "UNKNOWN" as const,
@@ -313,7 +314,7 @@ describe("createAdminVpnServersRoutes", () => {
         // @ts-ignore
         undefined as unknown as PrismaClient
       )
-      svc.create = mock<() => Promise<unknown>>(async () => makeServer({ id: "srv-new" }))
+      svc.create = mock(async () => makeServer({ id: "srv-new" }))
 
       const app = new Elysia().use(
         createAdminVpnServersRoutes({
@@ -744,10 +745,11 @@ describe("createAdminVpnServersRoutes", () => {
     it("runs the connection scan and returns the result", async () => {
       // Fresh mock per test to avoid shared call-index state
       let scanCallIndex = 0
-      const scanMock = mock<() => Promise<ScanResult>>(async () => {
-        scanCallIndex++
-        return { healthy: true, latencyMs: 42 } as ScanResult
-      })
+      const scanMock = mock<() => Promise<any>>(async () => ({
+        healthy: true, latencyMs: 42, status: "completed",
+        startedAt: "2026-01-01T00:00:00Z", completedAt: "2026-01-01T00:00:01Z",
+        results: [], summary: { passed: 1, failed: 0, total: 1 },
+      }))
 
       const app = createApp({
         scanConnection: scanMock as unknown as VpnServerScanner,
@@ -770,9 +772,13 @@ describe("createAdminVpnServersRoutes", () => {
       let nowValue = 1_000_000
       const now = mock<() => number>(() => nowValue)
       let scanCallIndex = 0
-      const scanMock = mock<() => Promise<ScanResult>>(async () => {
+      const scanMock = mock<() => Promise<any>>(async () => {
         scanCallIndex++
-        return { healthy: true, latencyMs: 10 } as ScanResult
+        return {
+          healthy: true, latencyMs: 10, status: "completed",
+          startedAt: "2026-01-01T00:00:00Z", completedAt: "2026-01-01T00:00:01Z",
+          results: [], summary: { passed: 1, failed: 0, total: 1 },
+        }
       })
 
       const app = createApp({
@@ -802,9 +808,13 @@ describe("createAdminVpnServersRoutes", () => {
       let nowValue = 1_000_000
       const now = mock<() => number>(() => nowValue)
       let scanCallIndex = 0
-      const scanMock = mock<() => Promise<ScanResult>>(async () => {
+      const scanMock = mock<() => Promise<any>>(async () => {
         scanCallIndex++
-        return { healthy: true, latencyMs: scanCallIndex } as ScanResult
+        return {
+          healthy: true, latencyMs: scanCallIndex, status: "completed",
+          startedAt: "2026-01-01T00:00:00Z", completedAt: "2026-01-01T00:00:01Z",
+          results: [], summary: { passed: 1, failed: 0, total: 1 },
+        }
       })
 
       const app = createApp({

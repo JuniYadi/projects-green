@@ -206,10 +206,11 @@ beforeEach(() => {
   mockDecryptVpnConfig.mockReturnValue("decrypted-wireguard-config")
   mockLogAuditEvent.mockReset()
   mockLogAuditEvent.mockResolvedValue(undefined)
-  mockCreateRateLimiter.mockReset()
-  mockCreateRateLimiter.mockImplementation(
-    () => () => ({ allowed: true, remaining: 59, resetAt: Date.now() + 60_000 })
-  )
+  // Use mockClear (not mockReset) for mockCreateRateLimiter — mockReset
+  // clears the mockImplementation set at module-import time, causing
+  // configRateLimiter = createRateLimiter(...) to return undefined.
+  // mockClear only resets call history, preserving the implementation.
+  mockCreateRateLimiter.mockClear()
   mockGetClientIp.mockReset()
   mockGetClientIp.mockReturnValue("127.0.0.1")
   mockBuildRateLimitResponse.mockReset()
