@@ -212,6 +212,25 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
             pairedVia: "SSO",
           })
         } catch (error) {
+          const err = error as Error & { name?: string }
+          if (err.name === "VpnMobileDeviceLimitError") {
+            set.status = 403
+            logAuditEvent({
+              action: "AUTH_CODE_EXCHANGE",
+              status: "FAILED",
+              message: "Device limit reached",
+              ip: getClientIp(request),
+              userAgent: request.headers.get("user-agent"),
+            }).catch(() => {})
+            return {
+              error: {
+                code: "DEVICE_LIMIT_REACHED" as const,
+                message:
+                  "The maximum number of devices for this subscription has been reached. Please remove an existing device before adding a new one.",
+                details: {},
+              },
+            }
+          }
           console.error(
             "[MobileAuth] Device registration failed:",
             error instanceof Error ? error.message : String(error)

@@ -97,6 +97,11 @@ import { createMobileProfilesRoutes } from "./mobile-profiles.route"
 import { createMobileDeviceRoutes } from "./mobile-device.route"
 import { createAdminDevicesRoutes } from "./admin-devices.route"
 import { requireMobileSession } from "./mobile-auth.middleware"
+import type { VpnMobileDeviceService } from "../vpn-mobile-device.service"
+import type {
+  VpnPairingTokenService,
+  PairingStatusResult,
+} from "../vpn-pairing-token.service"
 
 // ── Test Data ───────────────────────────────────────────────────────────
 
@@ -163,16 +168,20 @@ const NOW = new Date("2026-06-16T12:00:00Z")
 
 const mockSignJwt = mock(() => "mock-session-token")
 
-const fakeDeviceService = {
+const fakeDeviceServiceMocks = {
   create: mock(async () => ({ id: DEVICE_ID, status: "ACTIVE" })),
+  replace: mock(async () => ({ ...activeDevice, id: "dev-replaced" })),
   revoke: mock(async () => ({ ...activeDevice, status: "REVOKED" })),
   updateLastSeen: mock(async () => activeDevice),
   updateName: mock(async () => activeDevice),
   findById: mock(async () => activeDevice),
   findBySubscription: mock(async () => []),
-} as any // eslint-disable-line @typescript-eslint/no-explicit-any
+}
 
-const fakePairingService = {
+const fakeDeviceService =
+  fakeDeviceServiceMocks as unknown as VpnMobileDeviceService // test seam: only methods used by routes are implemented
+
+const fakePairingServiceMocks = {
   generate: mock(async () => ({
     pairingToken: "mock-pairing-token",
     expiresAt: new Date(NOW.getTime() + 300000),
@@ -183,7 +192,9 @@ const fakePairingService = {
     subscriptionId: SUBSCRIPTION_ID,
     organizationId: "org-1",
   })),
-  getStatus: mock(async () => ({ status: "valid" as const })),
+  getStatus: mock<() => Promise<PairingStatusResult>>(async () => ({
+    status: "valid",
+  })),
   validate: mock(() => ({
     sub: SUBSCRIPTION_ID,
     org: "org-1",
@@ -193,8 +204,10 @@ const fakePairingService = {
     typ: "vpn-pairing" as const,
   })),
   expireStale: mock(async () => 0),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-} as any
+}
+
+const fakePairingService =
+  fakePairingServiceMocks as unknown as VpnPairingTokenService // test seam: only methods used by routes are implemented
 
 const authenticate = mock(async () => ({
   user: { id: "user-1" },
@@ -228,7 +241,7 @@ function createPairingApp() {
   return new Elysia().use(
     createMobilePairingRoutes({
       authenticate,
-      pairingService: fakePairingService as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      pairingService: fakePairingService,
       now: () => NOW,
       signJwt: mockSignJwt,
     })
@@ -293,7 +306,9 @@ beforeEach(() => {
   mockSignJwt.mockClear()
   authenticate.mockClear()
   exchangeCode.mockClear()
-  fakeDeviceService.create.mockClear()
+  fakeDeviceServiceMocks.create.mockClear()
+  fakeDeviceServiceMocks.replace.mockClear()
+  fakeDeviceServiceMocks.revoke.mockClear()
   mockGetPlatformRoleForUser.mockClear()
 })
 
@@ -324,8 +339,8 @@ describe("Mobile VPN Integration", () => {
       expect(body.user.organizationId).toBe("org-1")
       expect(body.subscription.id).toBe(SUBSCRIPTION_ID)
 
-      // Verify device was created with correct subscriptionId
-      expect(fakeDeviceService.create).toHaveBeenCalledWith(
+      // Device was created with correct subscriptionId
+      expect(fakeDeviceServiceMocks.create).toHaveBeenCalledWith(
         expect.objectContaining({
           subscriptionId: SUBSCRIPTION_ID,
           pairedVia: "SSO",
@@ -352,7 +367,7 @@ describe("Mobile VPN Integration", () => {
       expect(res.status).toBe(403)
       const body = await res.json()
       expect(body.error.code).toBe("SUBSCRIPTION_REQUIRED")
-      expect(fakeDeviceService.create).not.toHaveBeenCalled()
+      expect(fakeDeviceServiceMocks.create).not.toHaveBeenCalled()
     })
 
     it("exchanges authorizationCode for session token (code-exchange happy path)", async () => {
@@ -384,7 +399,7 @@ describe("Mobile VPN Integration", () => {
       expect(authenticate).not.toHaveBeenCalled()
 
       // Device was created with correct subscriptionId
-      expect(fakeDeviceService.create).toHaveBeenCalledWith(
+      expect(fakeDeviceServiceMocks.create).toHaveBeenCalledWith(
         expect.objectContaining({
           subscriptionId: SUBSCRIPTION_ID,
           pairedVia: "SSO",
@@ -412,7 +427,7 @@ describe("Mobile VPN Integration", () => {
       expect(res.status).toBe(401)
       const body = await res.json()
       expect(body.error.code).toBe("TOKEN_INVALID")
-      expect(fakeDeviceService.create).not.toHaveBeenCalled()
+      expect(fakeDeviceServiceMocks.create).not.toHaveBeenCalled()
     })
   })
 
@@ -420,7 +435,7 @@ describe("Mobile VPN Integration", () => {
     it("generates a token, claims it, then lists profiles", async () => {
       // Step 1: Generate
       mockFindUnique.mockResolvedValue(activeSubscription)
-      fakePairingService.generate.mockResolvedValue({
+      fakePairingServiceMocks.generate.mockResolvedValue({
         pairingToken: "mock-pairing-token",
         expiresAt: new Date(NOW.getTime() + 300000),
         qrPayload: "mock-pairing-token",
@@ -440,7 +455,7 @@ describe("Mobile VPN Integration", () => {
       expect(genBody).toHaveProperty("qrPayload")
 
       // Step 2: Claim
-      fakePairingService.claim.mockResolvedValue({
+      fakePairingServiceMocks.claim.mockResolvedValue({
         deviceId: DEVICE_ID,
         subscriptionId: SUBSCRIPTION_ID,
         organizationId: "org-1",
@@ -498,7 +513,7 @@ describe("Mobile VPN Integration", () => {
 
     it("returns 403 when device limit reached during claim", async () => {
       mockFindUnique.mockResolvedValue(activeSubscription)
-      fakePairingService.claim.mockRejectedValueOnce(
+      fakePairingServiceMocks.claim.mockRejectedValueOnce(
         Object.assign(new Error("Device limit"), {
           name: "VpnMobileDeviceLimitError",
         })
@@ -525,9 +540,31 @@ describe("Mobile VPN Integration", () => {
   })
 
   describe("Device management", () => {
+    it("lists devices from the database for the user's organization", async () => {
+      mockFindMany.mockResolvedValue([activeDevice])
+
+      const app = createDeviceApp()
+      const res = await app.handle(
+        new Request("http://localhost/vpn/mobile/devices")
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.devices).toHaveLength(1)
+      expect(body.devices[0]).toMatchObject({
+        id: activeDevice.id,
+        deviceName: activeDevice.deviceName,
+        platform: activeDevice.platform,
+        status: activeDevice.status,
+        pairedVia: activeDevice.pairedVia,
+        lastSeenAt: activeDevice.lastSeenAt.toISOString(),
+        pairedAt: activeDevice.createdAt.toISOString(),
+      })
+    })
+
     it("user can revoke their own device", async () => {
       mockFindUnique.mockResolvedValue(activeDevice)
-      fakeDeviceService.revoke.mockResolvedValue({
+      fakeDeviceServiceMocks.revoke.mockResolvedValue({
         ...activeDevice,
         status: "REVOKED",
       })
@@ -542,6 +579,58 @@ describe("Mobile VPN Integration", () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body).toEqual({ ok: true })
+    })
+
+    it("user can replace their own device", async () => {
+      mockFindUnique.mockResolvedValue(activeDevice)
+      fakeDeviceServiceMocks.replace.mockResolvedValue({
+        ...activeDevice,
+        id: "dev-replaced",
+        deviceFingerprint: "fp-replaced",
+      })
+
+      const app = createDeviceApp()
+      const res = await app.handle(
+        new Request(
+          `http://localhost/vpn/mobile/devices/${DEVICE_ID}/replace`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              deviceName: "New iPhone",
+              deviceFingerprint: "fp-replaced",
+              platform: "ios",
+            }),
+          }
+        )
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.device.id).toBe("dev-replaced")
+    })
+
+    it("returns 404 when replacing a non-existent device", async () => {
+      mockFindUnique.mockResolvedValue(null)
+
+      const app = createDeviceApp()
+      const res = await app.handle(
+        new Request(
+          `http://localhost/vpn/mobile/devices/missing/replace`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              deviceName: "New iPhone",
+              deviceFingerprint: "fp-replaced",
+              platform: "ios",
+            }),
+          }
+        )
+      )
+
+      expect(res.status).toBe(404)
     })
   })
 
@@ -570,7 +659,7 @@ describe("Mobile VPN Integration", () => {
       expect(body).toHaveProperty("expiresAt")
       expect(body.subscription.id).toBe(SUBSCRIPTION_ID)
       expect(body.profiles).toHaveLength(1)
-      expect(fakeDeviceService.create).toHaveBeenCalledWith(
+      expect(fakeDeviceServiceMocks.create).toHaveBeenCalledWith(
         expect.objectContaining({
           subscriptionId: SUBSCRIPTION_ID,
         })
@@ -597,7 +686,7 @@ describe("Mobile VPN Integration", () => {
       expect(res.status).toBe(404)
       const body = await res.json()
       expect(body.error.code).toBe("NOT_FOUND")
-      expect(fakeDeviceService.create).not.toHaveBeenCalled()
+      expect(fakeDeviceServiceMocks.create).not.toHaveBeenCalled()
     })
 
     it("returns 400 when subscription not ACTIVE", async () => {
@@ -625,12 +714,12 @@ describe("Mobile VPN Integration", () => {
       expect(res.status).toBe(400)
       const body = await res.json()
       expect(body.error.code).toBe("SUBSCRIPTION_NOT_ACTIVE")
-      expect(fakeDeviceService.create).not.toHaveBeenCalled()
+      expect(fakeDeviceServiceMocks.create).not.toHaveBeenCalled()
     })
 
     it("reactivates a previously revoked device on re-login", async () => {
       mockFindUnique.mockResolvedValue(activeSubscription)
-      fakeDeviceService.create.mockResolvedValueOnce({
+      fakeDeviceServiceMocks.create.mockResolvedValueOnce({
         id: DEVICE_ID,
         status: "ACTIVE",
       })
@@ -650,7 +739,7 @@ describe("Mobile VPN Integration", () => {
       )
 
       expect(res.status).toBe(200)
-      expect(fakeDeviceService.create).toHaveBeenCalledWith(
+      expect(fakeDeviceServiceMocks.create).toHaveBeenCalledWith(
         expect.objectContaining({
           subscriptionId: SUBSCRIPTION_ID,
           deviceFingerprint: "fp-revoked",
@@ -660,7 +749,7 @@ describe("Mobile VPN Integration", () => {
 
     it("returns 403 when device limit is reached", async () => {
       mockFindUnique.mockResolvedValue(activeSubscription)
-      fakeDeviceService.create.mockRejectedValueOnce(
+      fakeDeviceServiceMocks.create.mockRejectedValueOnce(
         Object.assign(new Error("Device limit"), {
           name: "VpnMobileDeviceLimitError",
         })
@@ -802,7 +891,7 @@ describe("Mobile VPN Integration", () => {
 
   describe("Pairing status endpoint", () => {
     it("returns 'valid' status for an active pairing token", async () => {
-      fakePairingService.getStatus.mockResolvedValueOnce({
+      fakePairingServiceMocks.getStatus.mockResolvedValueOnce({
         status: "valid",
       })
 
@@ -819,9 +908,9 @@ describe("Mobile VPN Integration", () => {
     })
 
     it("returns 'claimed' status after device claims token", async () => {
-      fakePairingService.getStatus.mockResolvedValueOnce({
+      fakePairingServiceMocks.getStatus.mockResolvedValueOnce({
         status: "claimed",
-        claimedAt: NOW.toISOString(),
+        claimedAt: NOW,
       })
 
       const app = createPairingApp()
@@ -840,7 +929,7 @@ describe("Mobile VPN Integration", () => {
     it("returns 'expired' for invalid token errors", async () => {
       const err = new Error("Token not found")
       err.name = "VpnPairingTokenInvalidError"
-      fakePairingService.getStatus.mockRejectedValueOnce(err)
+      fakePairingServiceMocks.getStatus.mockRejectedValueOnce(err)
 
       const app = createPairingApp()
       const res = await app.handle(
@@ -857,7 +946,7 @@ describe("Mobile VPN Integration", () => {
     it("returns 'expired' for expired token errors", async () => {
       const err = new Error("Token expired")
       err.name = "VpnPairingTokenExpiredError"
-      fakePairingService.getStatus.mockRejectedValueOnce(err)
+      fakePairingServiceMocks.getStatus.mockRejectedValueOnce(err)
 
       const app = createPairingApp()
       const res = await app.handle(
@@ -874,7 +963,7 @@ describe("Mobile VPN Integration", () => {
     it("returns 'error' with message for unexpected failures", async () => {
       const err = new Error("Database connection lost")
       err.name = "PrismaClientKnownRequestError"
-      fakePairingService.getStatus.mockRejectedValueOnce(err)
+      fakePairingServiceMocks.getStatus.mockRejectedValueOnce(err)
 
       const app = createPairingApp()
       const res = await app.handle(

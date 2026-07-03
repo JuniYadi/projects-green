@@ -58,6 +58,7 @@ type DataTableProps<TData> = {
   data: TData[]
   emptyMessage?: string
   facetFilters?: DataTableFacetFilter[]
+  initialColumnFilters?: ColumnFiltersState
   initialSorting?: SortingState
   searchableColumns: string[]
   searchPlaceholder: string
@@ -69,6 +70,7 @@ export function DataTable<TData>({
   data,
   emptyMessage = "No results found.",
   facetFilters = [],
+  initialColumnFilters = [],
   initialSorting = [],
   searchableColumns,
   searchPlaceholder,
@@ -76,9 +78,8 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
+  const [columnFilters, setColumnFilters] =
+    React.useState<ColumnFiltersState>(initialColumnFilters)
   const [columnVisibility, setColumnVisibility] =
     usePersistedColumnVisibility(tableId)
 

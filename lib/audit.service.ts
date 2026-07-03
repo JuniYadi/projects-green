@@ -12,6 +12,7 @@ export type AuditAction =
   // ── Device lifecycle ──
   | "DEVICE_REGISTERED"
   | "DEVICE_REVOKED"
+  | "DEVICE_REPLACED"
   | "DEVICE_RENAMED"
   | "DEVICE_HEARTBEAT"
   | "DEVICE_EXPORTED"

@@ -220,142 +220,165 @@ export function ServersTable() {
       )}
 
       <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Region</TableHead>
-              <TableHead>Host</TableHead>
-              <TableHead>IP</TableHead>
-              <TableHead>OpenVPN</TableHead>
-              <TableHead>WG</TableHead>
-              <TableHead>Proxy</TableHead>
-              <TableHead>Health</TableHead>
-              <TableHead>Active</TableHead>
-              <TableHead className="text-center">📍</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={11}>
-                  <Skeleton className="h-8 w-full" />
-                </TableCell>
+                <TableHead className="min-w-[140px]">Name</TableHead>
+                <TableHead className="min-w-[140px]">Region</TableHead>
+                <TableHead className="min-w-[140px]">Host</TableHead>
+                <TableHead className="min-w-[120px]">IP</TableHead>
+                <TableHead className="min-w-[80px]">OVPN</TableHead>
+                <TableHead className="min-w-[80px]">WG</TableHead>
+                <TableHead className="min-w-[80px]">Proxy</TableHead>
+                <TableHead className="min-w-[80px]">Health</TableHead>
+                <TableHead className="min-w-[90px]">Active</TableHead>
+                <TableHead className="min-w-[60px] text-center">📍</TableHead>
+                <TableHead className="min-w-[180px] text-right">
+                  Actions
+                </TableHead>
               </TableRow>
-            ) : servers.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={11}
-                  className="text-center text-sm text-muted-foreground"
-                >
-                  No servers yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              servers.map((server) => (
-                <TableRow key={server.id}>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/portal/vpn/servers/${server.id}`}
-                      className="underline-offset-4 hover:underline"
-                    >
-                      {server.name}
-                    </Link>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={11}>
+                    <Skeleton className="h-8 w-full" />
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {server.region.countryCode.toUpperCase()} —{" "}
-                    {server.region.name}
+                </TableRow>
+              ) : servers.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={11}
+                    className="text-center text-sm text-muted-foreground"
+                  >
+                    No servers yet.
                   </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {server.hostname}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {server.ipAddress ?? (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <ProtocolCell
-                      enabled={server.protocols.openVpn.enabled}
-                      port={server.protocols.openVpn.port}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <ProtocolCell
-                      enabled={server.protocols.wireGuard.enabled}
-                      port={server.protocols.wireGuard.port}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <ProtocolCell
-                      enabled={server.protocols.proxy.enabled}
-                      port={server.protocols.proxy.port}
-                    />
-                  </TableCell>
-                  <TableCell title={server.health}>
-                    {HEALTH_ICON[server.health]}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={server.isActive ? "default" : "secondary"}>
-                      {server.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center" title={server.latitude && server.longitude ? `${server.latitude}, ${server.longitude}` : undefined}>
-                    {server.latitude && server.longitude ? "📍" : "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link
-                          href={`/portal/vpn/servers/${server.id}`}
-                          aria-label={`View details for ${server.name}`}
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => testConnection(server)}
-                        disabled={testingId === server.id}
-                        aria-label={`Test connection to ${server.name}`}
+                </TableRow>
+              ) : (
+                servers.map((server) => (
+                  <TableRow key={server.id}>
+                    <TableCell className="max-w-[180px] truncate font-medium">
+                      <Link
+                        href={`/portal/vpn/servers/${server.id}`}
+                        className="underline-offset-4 hover:underline"
+                        title={server.name}
                       >
-                        <PlugIcon className="h-4 w-4" />
-                      </Button>
-                      {server.isActive && (
+                        {server.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell
+                      className="max-w-[160px] truncate whitespace-nowrap"
+                      title={`${server.region.countryCode.toUpperCase()} — ${server.region.name}`}
+                    >
+                      {server.region.countryCode.toUpperCase()} —{" "}
+                      {server.region.name}
+                    </TableCell>
+                    <TableCell
+                      className="max-w-[160px] truncate font-mono text-xs"
+                      title={server.hostname}
+                    >
+                      {server.hostname}
+                    </TableCell>
+                    <TableCell
+                      className="max-w-[140px] truncate font-mono text-xs"
+                      title={server.ipAddress ?? undefined}
+                    >
+                      {server.ipAddress ?? (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <ProtocolCell
+                        enabled={server.protocols.openVpn.enabled}
+                        port={server.protocols.openVpn.port}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <ProtocolCell
+                        enabled={server.protocols.wireGuard.enabled}
+                        port={server.protocols.wireGuard.port}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <ProtocolCell
+                        enabled={server.protocols.proxy.enabled}
+                        port={server.protocols.proxy.port}
+                      />
+                    </TableCell>
+                    <TableCell title={server.health}>
+                      {HEALTH_ICON[server.health]}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={server.isActive ? "default" : "secondary"}
+                      >
+                        {server.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell
+                      className="text-center"
+                      title={
+                        server.latitude && server.longitude
+                          ? `${server.latitude}, ${server.longitude}`
+                          : undefined
+                      }
+                    >
+                      {server.latitude && server.longitude ? "📍" : "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-nowrap justify-end gap-1">
+                        <Button variant="ghost" size="icon" asChild>
+                          <Link
+                            href={`/portal/vpn/servers/${server.id}`}
+                            aria-label={`View details for ${server.name}`}
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </Link>
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openDuplicate(server)}
-                          aria-label={`Duplicate ${server.name}`}
+                          onClick={() => testConnection(server)}
+                          disabled={testingId === server.id}
+                          aria-label={`Test connection to ${server.name}`}
                         >
-                          <CopyIcon className="h-4 w-4" />
+                          <PlugIcon className="h-4 w-4" />
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(server)}
-                        aria-label={`Edit ${server.name}`}
-                      >
-                        <PencilSimpleIcon className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => remove(server)}
-                        aria-label={`Delete ${server.name}`}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                        {server.isActive && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openDuplicate(server)}
+                            aria-label={`Duplicate ${server.name}`}
+                          >
+                            <CopyIcon className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEdit(server)}
+                          aria-label={`Edit ${server.name}`}
+                        >
+                          <PencilSimpleIcon className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => remove(server)}
+                          aria-label={`Delete ${server.name}`}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {formOpen && (
