@@ -415,7 +415,7 @@ describe("BillingCycleService", () => {
         data: [
           {
             userId: "user-admin-1",
-            role: { slug: "user_admin" },
+            role: { slug: "admin" },
           },
         ],
       })
@@ -567,7 +567,7 @@ describe("BillingCycleService", () => {
         data: [
           {
             userId: "user-admin-1",
-            role: { slug: "user_admin" },
+            role: { slug: "admin" },
           },
         ],
       })

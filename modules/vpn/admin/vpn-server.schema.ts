@@ -99,6 +99,19 @@ function refineServer<T extends z.ZodTypeAny>(schema: T) {
       }
       seen.add(port)
     }
+
+    // Coordinates must be both present or both absent
+    const lat = value.latitude
+    const lng = value.longitude
+    const hasLat = lat !== undefined && lat !== null
+    const hasLng = lng !== undefined && lng !== null
+    if (hasLat !== hasLng) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Both latitude and longitude must be provided together.",
+        path: hasLat ? ["longitude"] : ["latitude"],
+      })
+    }
   })
 }
 

@@ -416,7 +416,7 @@ export class BillingCycleService {
           statuses: ["active"],
         })
       const admin = memberships.data.find(
-        (m) => m.role?.slug === "user_owner" || m.role?.slug === "user_admin"
+        (m) => m.role?.slug === "owner" || m.role?.slug === "admin"
       )
       if (!admin) return null
 
