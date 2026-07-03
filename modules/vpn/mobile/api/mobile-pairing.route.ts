@@ -120,6 +120,13 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
   const deviceService = deps.deviceService ?? vpnMobileDeviceService
   const now = deps.now ?? (() => new Date())
   const signJwt = deps.signJwt ?? signSessionJwt
+  const errorResponse = t.Object({
+    error: t.Object({
+      code: t.String(),
+      message: t.String(),
+      details: t.Object({}, { additionalProperties: true }),
+    }),
+  })
 
   const resolveAuth = async (set: RouteSet) => {
     let auth: AuthContext
@@ -220,11 +227,18 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
           )
         },
         {
+          detail: {
+            tags: ["VPN Mobile Pairing"],
+            summary: "Generate QR pairing token",
+            description: "Generate a short-lived JWT-based QR pairing token for mobile device pairing. Requires Bearer auth (user must own the subscription or be org admin).",
+            security: [{ bearerAuth: [] }],
+          },
           body: t.Object({
             subscriptionId: t.String({ minLength: 1 }),
           }),
         }
       )
+
 
       /**
        * Claim a QR pairing token from the mobile app.
@@ -390,6 +404,11 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
           }
         },
         {
+          detail: {
+            tags: ["VPN Mobile Pairing"],
+            summary: "Claim pairing token from mobile app",
+            description: "Claim a QR pairing token from the mobile app. The pairing token itself acts as the authorization credential.",
+          },
           body: t.Object({
             pairingToken: t.String({ minLength: 1 }),
             deviceName: t.String({ minLength: 1 }),
@@ -398,6 +417,33 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
             osVersion: t.Optional(t.String()),
             appVersion: t.Optional(t.String()),
           }),
+          response: {
+            200: t.Object({
+              deviceId: t.String(),
+              token: t.String(),
+              expiresAt: t.String(),
+              subscription: t.Object({
+                id: t.String(),
+                status: t.String(),
+                currentPeriodEnd: t.String(),
+              }),
+              profiles: t.Array(
+                t.Object({
+                  id: t.String(),
+                  serverName: t.String(),
+                  hostname: t.String(),
+                  serverIp: t.Nullable(t.String()),
+                  protocol: t.String(),
+                  region: t.String(),
+                  status: t.String(),
+                })
+              ),
+            }),
+            400: errorResponse,
+            403: errorResponse,
+            404: errorResponse,
+            429: errorResponse,
+          },
         }
       )
 
@@ -432,6 +478,13 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
           )
           return { status: "error" as const, message: err.message }
         }
+      },
+      {
+        detail: {
+          tags: ["VPN Mobile Pairing"],
+          summary: "Poll pairing token status",
+          description: "Check the current status of a QR pairing token for the portal QR polling UI.",
+        },
       })
   )
 }

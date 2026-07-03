@@ -81,6 +81,13 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
   const deviceService = deps.deviceService ?? vpnMobileDeviceService
   const now = deps.now ?? (() => new Date())
   const signJwt = deps.signJwt ?? signSessionJwt
+  const errorResponse = t.Object({
+    error: t.Object({
+      code: t.String(),
+      message: t.String(),
+      details: t.Object({}, { additionalProperties: true }),
+    }),
+  })
 
   return new Elysia()
     .post(
@@ -288,12 +295,37 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
         }
       },
       {
+        detail: {
+          tags: ["VPN Mobile Auth"],
+          summary: "Authenticate via SSO authorization code",
+          description: "Exchange WorkOS OAuth authorization code for a mobile session JWT token. Returns user info, subscription status, and device registration.",
+        },
         body: t.Object({
           authorizationCode: t.Optional(t.String({ minLength: 10 })),
           deviceName: t.String({ minLength: 1 }),
           deviceFingerprint: t.String({ minLength: 1 }),
           platform: t.String({ minLength: 1 }),
         }),
+        response: {
+          200: t.Object({
+            token: t.String(),
+            expiresAt: t.String(),
+            user: t.Object({
+              id: t.String(),
+              organizationId: t.String(),
+            }),
+            subscription: t.Nullable(
+              t.Object({
+                id: t.String(),
+                status: t.String(),
+                currentPeriodEnd: t.String(),
+              })
+            ),
+          }),
+          401: errorResponse,
+          403: errorResponse,
+          429: errorResponse,
+        },
       }
     )
     /**
@@ -471,6 +503,11 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
         }
       },
       {
+        detail: {
+          tags: ["VPN Mobile Auth"],
+          summary: "Login with subscription ID",
+          description: "Authenticate using a subscription ID directly (paired via QR flow). Returns session token, subscription info, and available VPN profiles.",
+        },
         body: t.Object({
           subscriptionId: t.String({ minLength: 1 }),
           deviceName: t.String({ minLength: 1 }),
@@ -479,6 +516,32 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
           osVersion: t.Optional(t.String()),
           appVersion: t.Optional(t.String()),
         }),
+        response: {
+          200: t.Object({
+            token: t.String(),
+            expiresAt: t.String(),
+            subscription: t.Object({
+              id: t.String(),
+              status: t.String(),
+              currentPeriodEnd: t.String(),
+            }),
+            profiles: t.Array(
+              t.Object({
+                id: t.String(),
+                serverName: t.String(),
+                hostname: t.String(),
+                serverIp: t.Nullable(t.String()),
+                protocol: t.String(),
+                region: t.String(),
+                status: t.String(),
+              })
+            ),
+          }),
+          400: errorResponse,
+          403: errorResponse,
+          404: errorResponse,
+          429: errorResponse,
+        },
       }
     )
     .post(
@@ -510,9 +573,17 @@ export const createMobileAuthRoutes = (deps: Deps = {}) => {
         }
       },
       {
+        detail: {
+          tags: ["VPN Mobile Auth"],
+          summary: "Refresh session token (deprecated)",
+          description: "Deprecated. Returns 410 Gone — obtain a fresh token via POST /vpn/mobile/auth/exchange.",
+        },
         body: t.Object({
           refreshToken: t.String({ minLength: 1 }),
         }),
+        response: {
+          410: errorResponse,
+        },
       }
     )
 }
