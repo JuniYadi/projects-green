@@ -5,13 +5,6 @@ import { useCallback, useEffect, useState, startTransition } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   listMobileDevices,
   revokeMobileDevice,
   type MobileDeviceEntry,
@@ -38,7 +31,6 @@ export default function ConsoleVpnDevicesPage() {
   const [state, setState] = useState<PageState>({ phase: "loading" })
   const [revoking, setRevoking] = useState<string | null>(null)
   const [pairOpen, setPairOpen] = useState(false)
-  const [selectedSubId, setSelectedSubId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setState({ phase: "loading" })
@@ -50,13 +42,6 @@ export default function ConsoleVpnDevicesPage() {
       const activeSubs = subscriptions.filter((s) => s.status === "ACTIVE")
       startTransition(() => {
         setState({ phase: "ready", devices, subscriptions: activeSubs })
-        // Auto-select first subscription if none selected or selected is gone.
-        if (
-          activeSubs.length > 0 &&
-          (!selectedSubId || !activeSubs.some((s) => s.id === selectedSubId))
-        ) {
-          setSelectedSubId(activeSubs[0].id)
-        }
       })
     } catch (error) {
       startTransition(() => {
@@ -67,7 +52,6 @@ export default function ConsoleVpnDevicesPage() {
         })
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -106,19 +90,19 @@ export default function ConsoleVpnDevicesPage() {
 
   if (state.phase === "loading") {
     return (
-      <>
+      <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <header className="space-y-1">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-64" />
         </header>
         <Skeleton className="h-64" />
-      </>
+      </main>
     )
   }
 
   if (state.phase === "error") {
     return (
-      <>
+      <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold">My VPN Devices</h1>
           <p className="text-sm text-muted-foreground">
@@ -131,17 +115,12 @@ export default function ConsoleVpnDevicesPage() {
             Retry
           </Button>
         </div>
-      </>
+      </main>
     )
   }
 
-  const selectedSub = state.subscriptions.find((s) => s.id === selectedSubId)
-  const displayedDevices = selectedSub
-    ? state.devices.filter((d) => d.subscriptionId === selectedSub.id)
-    : []
-
   return (
-    <>
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">My VPN Devices</h1>
         <p className="text-sm text-muted-foreground">
@@ -150,27 +129,9 @@ export default function ConsoleVpnDevicesPage() {
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
-        {state.subscriptions.length > 0 && (
-          <Select
-            value={selectedSubId ?? ""}
-            onValueChange={setSelectedSubId}
-          >
-            <SelectTrigger className="min-w-[200px]">
-              <SelectValue placeholder="Select subscription" />
-            </SelectTrigger>
-            <SelectContent>
-              {state.subscriptions.map((sub) => (
-                <SelectItem key={sub.id} value={sub.id}>
-                  {sub.packageName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
         <Button
           onClick={() => setPairOpen(true)}
-          disabled={state.subscriptions.length === 0 || !selectedSubId}
+          disabled={state.subscriptions.length === 0}
         >
           <DeviceMobileIcon className="mr-2 h-4 w-4" />
           Pair New Device
@@ -187,20 +148,21 @@ export default function ConsoleVpnDevicesPage() {
       )}
 
       <VpnDevicesList
-        devices={displayedDevices}
+        devices={state.devices}
         onRevoke={handleRevoke}
         revoking={revoking}
       />
 
-      {pairOpen && selectedSub && (
+      {pairOpen && state.subscriptions.length > 0 && (
         <VpnPairingQrModal
           open={pairOpen}
           onOpenChange={setPairOpen}
-          subscriptionId={selectedSub.id}
-          subscriptionName={selectedSub.packageName}
+          subscriptionId={state.subscriptions[0].id}
+          subscriptionName={state.subscriptions[0].packageName}
+          availableSubscriptions={state.subscriptions}
           onPaired={load}
         />
       )}
-    </>
+    </main>
   )
 }

@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { ArrowLeft, ArrowClockwise } from "@phosphor-icons/react"
+import {
+  ArrowLeft,
+  ArrowClockwise,
+  PencilSimpleIcon,
+} from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,19 +25,27 @@ import {
   getVpnServer,
   getVpnServerMetrics,
   listOpenVpnUsers,
+  listVpnRegions,
+  listVpnSshKeys,
   syncVpnServerProtocols,
   testVpnServer,
   type OpenVpnUserItem,
+  type VpnRegionItem,
   type VpnServerItem,
   type VpnServerMetrics,
   type VpnServerProcessItem,
   type VpnServerTrafficPoint,
+  type VpnSshKeyItem,
 } from "../../_components/vpn-admin-client"
+import { ServerForm } from "../../_components/server-form"
 
 function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B"
   const units = ["B", "KB", "MB", "GB", "TB"]
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  const index = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1
+  )
   return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
 }
 
@@ -61,31 +73,48 @@ function TrafficList({ rows }: { rows: VpnServerTrafficPoint[] }) {
   }
   return (
     <div className="space-y-2">
-      {rows.slice(-6).reverse().map((row) => (
-        <div key={row.label} className="flex items-center justify-between gap-3 text-sm">
-          <span className="font-mono text-xs text-muted-foreground">{row.label}</span>
-          <span className="text-right font-medium">
-            {formatBytes(row.total)}
-            <span className="ml-2 text-xs text-muted-foreground">
-              ↓ {formatBytes(row.rx)} ↑ {formatBytes(row.tx)}
+      {rows
+        .slice(-6)
+        .reverse()
+        .map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between gap-3 text-sm"
+          >
+            <span className="font-mono text-xs text-muted-foreground">
+              {row.label}
             </span>
-          </span>
-        </div>
-      ))}
+            <span className="text-right font-medium">
+              {formatBytes(row.total)}
+              <span className="ml-2 text-xs text-muted-foreground">
+                ↓ {formatBytes(row.rx)} ↑ {formatBytes(row.tx)}
+              </span>
+            </span>
+          </div>
+        ))}
     </div>
   )
 }
 
-function ProcessList({ rows, metric }: { rows: VpnServerProcessItem[]; metric: "cpu" | "memory" }) {
+function ProcessList({
+  rows,
+  metric,
+}: {
+  rows: VpnServerProcessItem[]
+  metric: "cpu" | "memory"
+}) {
   if (rows.length === 0) {
     return <div className="text-sm text-muted-foreground">No process data.</div>
   }
   return (
     <div className="space-y-2">
       {rows.map((process) => (
-        <div key={`${metric}:${process.pid}:${process.command}`} className="flex items-center justify-between gap-3 text-sm">
+        <div
+          key={`${metric}:${process.pid}:${process.command}`}
+          className="flex items-center justify-between gap-3 text-sm"
+        >
           <span className="truncate font-mono text-xs">{process.command}</span>
-          <span className="whitespace-nowrap text-xs text-muted-foreground">
+          <span className="text-xs whitespace-nowrap text-muted-foreground">
             pid {process.pid} · CPU {process.cpu}% · MEM {process.memory}%
           </span>
         </div>
@@ -107,6 +136,9 @@ export default function VpnServerDetailPage() {
   const [healthChecking, setHealthChecking] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [regions, setRegions] = useState<VpnRegionItem[]>([])
+  const [sshKeys, setSshKeys] = useState<VpnSshKeyItem[]>([])
+  const [formOpen, setFormOpen] = useState(false)
 
   const loadServer = useCallback(async () => {
     setLoading(true)
@@ -160,16 +192,21 @@ export default function VpnServerDetailPage() {
   const runSyncProtocols = useCallback(async () => {
     if (
       !window.confirm(
-        "Sync protocols will create missing VpnServerAccounts for all ACTIVE subscriptions linked to this server. Continue?",
+        "Sync protocols will create missing VpnServerAccounts for all ACTIVE subscriptions linked to this server. Continue?"
       )
-    ) return
+    )
+      return
     setSyncing(true)
     try {
       const res = await syncVpnServerProtocols(serverId)
       if (res.data.queued) {
-        window.alert("Sync protocols job queued. Accounts will be created in the background.")
+        window.alert(
+          "Sync protocols job queued. Accounts will be created in the background."
+        )
       } else {
-        window.alert("A sync is already in progress. Please wait for it to complete.")
+        window.alert(
+          "A sync is already in progress. Please wait for it to complete."
+        )
       }
     } catch (err) {
       window.alert((err as Error).message)
@@ -186,6 +223,22 @@ export default function VpnServerDetailPage() {
     void loadUsers()
   }, [loadServer, loadMetrics, loadUsers])
 
+  useEffect(() => {
+    async function loadRefs() {
+      try {
+        const [regionsRes, keysRes] = await Promise.all([
+          listVpnRegions(),
+          listVpnSshKeys(),
+        ])
+        setRegions(regionsRes.data)
+        setSshKeys(keysRes.data)
+      } catch {
+        // Refs failure shows as empty selects in the form.
+      }
+    }
+    void loadRefs()
+  }, [])
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div>
@@ -195,15 +248,28 @@ export default function VpnServerDetailPage() {
             Back to servers
           </Link>
         </Button>
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold">
-            {server
-              ? `${server.name} (${server.ipAddress ?? server.hostname})`
-              : "VPN Server"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Realtime VPN server details, resource metrics, traffic usage, processes, and OpenVPN users.
-          </p>
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold">
+              {server
+                ? `${server.name} (${server.ipAddress ?? server.hostname})`
+                : "VPN Server"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Realtime VPN server details, resource metrics, traffic usage,
+              processes, and OpenVPN users.
+            </p>
+          </div>
+          {server && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFormOpen(true)}
+            >
+              <PencilSimpleIcon className="mr-2 h-4 w-4" />
+              Edit Server
+            </Button>
+          )}
         </header>
       </div>
 
@@ -236,7 +302,8 @@ export default function VpnServerDetailPage() {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {server.region.countryCode.toUpperCase()} — {server.region.name}
+                  {server.region.countryCode.toUpperCase()} —{" "}
+                  {server.region.name}
                 </p>
               </div>
               <Button
@@ -251,7 +318,7 @@ export default function VpnServerDetailPage() {
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div>
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                   Public endpoint
                 </div>
                 <div className="mt-1 font-mono text-sm font-medium">
@@ -262,7 +329,7 @@ export default function VpnServerDetailPage() {
                 </div>
               </div>
               <div>
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                   SSH access
                 </div>
                 <div className="mt-1 font-mono text-sm font-medium">
@@ -275,15 +342,18 @@ export default function VpnServerDetailPage() {
             </div>
 
             <div className="mt-5 rounded-md bg-muted/40 p-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 SSH key
               </div>
-              <div className="mt-1 text-sm font-medium">{server.sshKey.name}</div>
+              <div className="mt-1 text-sm font-medium">
+                {server.sshKey.name}
+              </div>
               <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
                 {server.sshKey.fingerprint}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Private key material is hidden. Only key name and fingerprint are shown.
+                Private key material is hidden. Only key name and fingerprint
+                are shown.
               </p>
             </div>
           </div>
@@ -308,7 +378,8 @@ export default function VpnServerDetailPage() {
                   <div>
                     <div className="text-sm font-medium">{label as string}</div>
                     <div className="font-mono text-xs text-muted-foreground">
-                      {(protocol as { enabled: boolean; port: number | null }).enabled
+                      {(protocol as { enabled: boolean; port: number | null })
+                        .enabled
                         ? `:${(protocol as { port: number | null }).port ?? "?"}`
                         : "No port configured"}
                     </div>
@@ -339,12 +410,25 @@ export default function VpnServerDetailPage() {
                 {syncing ? "Syncing..." : "Sync Protocols to Subscriptions"}
               </Button>
               <p className="mt-2 text-xs text-muted-foreground">
-                Creates server accounts for all ACTIVE subscriptions based on enabled protocols.
+                Creates server accounts for all ACTIVE subscriptions based on
+                enabled protocols.
               </p>
             </div>
           </div>
         </section>
       ) : null}
+
+      {server && (
+        <ServerForm
+          key={server.id}
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          editing={server}
+          regions={regions}
+          sshKeys={sshKeys}
+          onSaved={loadServer}
+        />
+      )}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -410,11 +494,15 @@ export default function VpnServerDetailPage() {
                 <TrafficList rows={metrics.traffic.monthly} />
               </div>
               <div className="rounded-lg border p-4">
-                <h3 className="mb-3 text-sm font-semibold">Top CPU processes</h3>
+                <h3 className="mb-3 text-sm font-semibold">
+                  Top CPU processes
+                </h3>
                 <ProcessList rows={metrics.processes.cpu} metric="cpu" />
               </div>
               <div className="rounded-lg border p-4">
-                <h3 className="mb-3 text-sm font-semibold">Top memory processes</h3>
+                <h3 className="mb-3 text-sm font-semibold">
+                  Top memory processes
+                </h3>
                 <ProcessList rows={metrics.processes.memory} metric="memory" />
               </div>
             </div>
@@ -434,7 +522,12 @@ export default function VpnServerDetailPage() {
               Realtime list from the server, not from database.
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={loadUsers} disabled={usersLoading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadUsers}
+            disabled={usersLoading}
+          >
             <ArrowClockwise className="mr-2 h-4 w-4" />
             {usersLoading ? "Refreshing..." : "Refresh"}
           </Button>
@@ -510,7 +603,10 @@ export default function VpnServerDetailPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={9}
+                    className="h-24 text-center text-muted-foreground"
+                  >
                     No OpenVPN users returned by server.
                   </TableCell>
                 </TableRow>

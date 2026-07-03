@@ -23,6 +23,12 @@ mock.module("@/lib/queue/vpn-provisioning", () => ({
     dispatch: mock().mockResolvedValue(undefined),
   },
 }))
+mock.module("@/lib/encryption", () => ({
+  encrypt: mock(() => ({ encrypted: "fake", iv: "fake", tag: "fake" })),
+  decrypt: mock(() => "test openvpn config"),
+  parseEncryptedField: mock((v: string) => JSON.parse(v)),
+  serializeEncryptedField: mock((v: unknown) => JSON.stringify(v)),
+}))
 
 const { createVpnSubscriptionRoutes } = await import(
   "./vpn-subscriptions.route"

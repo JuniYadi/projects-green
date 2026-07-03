@@ -18,10 +18,18 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { generatePairingToken, getPairingStatus } from "@/lib/vpn-mobile-client"
 
 type PairingPhase =
   | { phase: "idle" }
+  | { phase: "selecting" }
   | { phase: "generating" }
   | {
       phase: "ready"
@@ -33,11 +41,17 @@ type PairingPhase =
   | { phase: "expired" }
   | { phase: "error"; message: string }
 
+type SubscriptionOption = {
+  id: string
+  packageName: string
+}
+
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   subscriptionId: string
   subscriptionName?: string
+  availableSubscriptions?: SubscriptionOption[]
   onPaired?: () => void
 }
 
@@ -52,44 +66,57 @@ export function VpnPairingQrModal({
   onOpenChange,
   subscriptionId,
   subscriptionName,
+  availableSubscriptions,
   onPaired,
 }: Props) {
   const [state, setState] = useState<PairingPhase>({ phase: "idle" })
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [countdown, setCountdown] = useState(300)
+  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<
+    string | null
+  >(null)
 
-  const generate = useCallback(async () => {
-    startTransition(() => setState({ phase: "generating" }))
-    try {
-      const result = await generatePairingToken(subscriptionId)
-      // Render the pairing token as a scannable QR code data URL.
-      const qrDataUrl = await QRCode.toDataURL(result.qrPayload, {
-        width: 256,
-        margin: 2,
-        errorCorrectionLevel: "M",
-      })
-      startTransition(() => {
-        setState({
-          phase: "ready",
-          pairingToken: result.pairingToken,
-          qrDataUrl,
-          expiresAt: result.expiresAt,
+  const hasMultipleSubscriptions =
+    availableSubscriptions !== undefined && availableSubscriptions.length > 1
+
+  const generate = useCallback(
+    async (overrideSubId?: string) => {
+      const subId = overrideSubId ?? subscriptionId
+      if (!subId) return
+
+      startTransition(() => setState({ phase: "generating" }))
+      try {
+        const result = await generatePairingToken(subId)
+        // Render the pairing token as a scannable QR code data URL.
+        const qrDataUrl = await QRCode.toDataURL(result.qrPayload, {
+          width: 256,
+          margin: 2,
+          errorCorrectionLevel: "M",
         })
-        setCountdown(300)
-      })
-    } catch (error) {
-      startTransition(() => {
-        setState({
-          phase: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Failed to generate pairing code.",
+        startTransition(() => {
+          setState({
+            phase: "ready",
+            pairingToken: result.pairingToken,
+            qrDataUrl,
+            expiresAt: result.expiresAt,
+          })
+          setCountdown(300)
         })
-      })
-    }
-  }, [subscriptionId])
+      } catch (error) {
+        startTransition(() => {
+          setState({
+            phase: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Failed to generate pairing code.",
+          })
+        })
+      }
+    },
+    [subscriptionId]
+  )
 
   // Poll pairing status when ready.
   useEffect(() => {
@@ -176,15 +203,25 @@ export function VpnPairingQrModal({
     }
   }, [state.phase])
 
-  // Generate token on open.
+  // Generate token on open (or show subscription picker when required).
   useEffect(() => {
     if (open) {
-      generate()
+      if (hasMultipleSubscriptions) {
+        setState({ phase: "selecting" })
+        setSelectedSubscriptionId(null)
+      } else {
+        generate()
+      }
     } else {
       setState({ phase: "idle" })
       setCountdown(300)
+      setSelectedSubscriptionId(null)
     }
-  }, [open, generate])
+  }, [open, generate, hasMultipleSubscriptions])
+
+  const activeSubscriptionName =
+    availableSubscriptions?.find((s) => s.id === selectedSubscriptionId)
+      ?.packageName ?? subscriptionName
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -192,13 +229,41 @@ export function VpnPairingQrModal({
         <DialogHeader>
           <DialogTitle>Pair a mobile device</DialogTitle>
           <DialogDescription>
-            {subscriptionName
-              ? `Scan this code with the mobile app to pair a device to ${subscriptionName}.`
-              : "Scan this code with the mobile app to pair a device."}
+            {state.phase === "selecting"
+              ? "Select the subscription you want to pair a device to."
+              : activeSubscriptionName
+                ? `Scan this code with the mobile app to pair a device to ${activeSubscriptionName}.`
+                : "Scan this code with the mobile app to pair a device."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-4 py-4">
+          {state.phase === "selecting" && (
+            <div className="flex w-full flex-col gap-4">
+              <Select
+                value={selectedSubscriptionId ?? ""}
+                onValueChange={setSelectedSubscriptionId}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select subscription" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSubscriptions?.map((sub) => (
+                    <SelectItem key={sub.id} value={sub.id}>
+                      {sub.packageName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() => generate(selectedSubscriptionId!)}
+                disabled={!selectedSubscriptionId}
+              >
+                Continue
+              </Button>
+            </div>
+          )}
+
           {state.phase === "generating" && (
             <div className="flex flex-col items-center gap-3">
               <Skeleton className="h-48 w-48" />
@@ -265,7 +330,9 @@ export function VpnPairingQrModal({
 
         {(state.phase === "expired" || state.phase === "error") && (
           <div className="flex justify-center">
-            <Button onClick={generate}>Regenerate</Button>
+            <Button onClick={() => generate(selectedSubscriptionId ?? undefined)}>
+              Regenerate
+            </Button>
           </div>
         )}
       </DialogContent>

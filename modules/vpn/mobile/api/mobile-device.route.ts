@@ -68,6 +68,13 @@ const notFound = (set: RouteSet) => {
 export const createMobileDeviceRoutes = (deps: Deps = {}) => {
   const authenticate = deps.authenticate ?? (() => withAuth())
   const deviceService = deps.deviceService ?? vpnMobileDeviceService
+  const errorResponse = t.Object({
+    error: t.Object({
+      code: t.String(),
+      message: t.String(),
+      details: t.Object({}, { additionalProperties: true }),
+    }),
+  })
 
   const resolveOrg = async (set: RouteSet) => {
     const auth = await authenticate()
@@ -118,6 +125,13 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
             revokedReason: device.revokedReason,
           })),
         }
+      }, {
+        detail: {
+          tags: ["VPN Mobile Devices"],
+          summary: "List paired devices",
+          description: "List all devices paired to the current user's subscriptions.",
+          security: [{ bearerAuth: [] }],
+        },
       })
 
       /**
@@ -129,7 +143,7 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
         "/vpn/mobile/devices/:deviceId",
         async ({ request, params, set }) => {
           const ctx = await resolveOrg(set)
-          if ("error" in ctx) return ctx.error
+        if ("error" in ctx) return ctx.error
 
           // Fetch the device to check ownership.
           const device = await prisma.vpnMobileDevice.findUnique({
@@ -185,6 +199,142 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
           }).catch(() => {})
 
           return { ok: true as const }
+        },
+        {
+          detail: {
+            tags: ["VPN Mobile Devices"],
+            summary: "Revoke a device",
+            description: "Revoke a paired device by device ID. User can revoke their own device; admin can revoke any device in their org.",
+            security: [{ bearerAuth: [] }],
+          },
+        }
+      )
+
+      /**
+       * Replace an active device with a new fingerprint.
+       * Auth: Bearer (session token — device owner or org admin).
+       *
+       * Use case: app reinstall, lost phone, or new device without manually
+       * revoking and re-pairing. The old device is revoked with reason
+       * REPLACED_BY_NEW_DEVICE and a new device row is created.
+       */
+      .post(
+        "/vpn/mobile/devices/:deviceId/replace",
+        async ({ request, params, body, set }) => {
+          const ctx = await resolveOrg(set)
+        if ("error" in ctx) return ctx.error
+
+          // Fetch device to check ownership and subscription.
+          const device = await prisma.vpnMobileDevice.findUnique({
+            where: { id: params.deviceId },
+            select: {
+              id: true,
+              userId: true,
+              organizationId: true,
+              subscriptionId: true,
+              status: true,
+            },
+          })
+
+          if (!device) return notFound(set)
+
+          const isOwner = device.userId === ctx.userId
+          const isOrgAdmin = isAdmin(ctx.auth)
+
+          if (!isOwner && !isOrgAdmin) {
+            return forbidden(
+              set,
+              "You do not have permission to replace this device."
+            )
+          }
+
+          if (device.status === "REVOKED") {
+            set.status = 400
+            return {
+              error: {
+                code: "DEVICE_ALREADY_REVOKED" as const,
+                message: "This device has already been revoked.",
+                details: {},
+              },
+            }
+          }
+
+          let newDevice
+          try {
+            newDevice = await deviceService.replace({
+              oldDeviceId: device.id,
+              subscriptionId: device.subscriptionId,
+              organizationId: device.organizationId,
+              userId: device.userId,
+              deviceName: body.deviceName,
+              deviceFingerprint: body.deviceFingerprint,
+              platform: body.platform,
+              osVersion: body.osVersion ?? null,
+              appVersion: body.appVersion ?? null,
+              pairedVia: device.userId ? "SSO" : "QR",
+              replacedBy: ctx.userId,
+              reason: "REPLACED_BY_NEW_DEVICE",
+            })
+          } catch (error) {
+            const err = error as Error & { name?: string }
+            if (err.name === "VpnMobileDeviceNotFoundError") {
+              return notFound(set)
+            }
+            if (err.name === "VpnMobileDeviceAlreadyRevokedError") {
+              set.status = 400
+              return {
+                error: {
+                  code: "DEVICE_ALREADY_REVOKED" as const,
+                  message: "This device has already been revoked.",
+                  details: {},
+                },
+              }
+            }
+            throw error
+          }
+
+          // Audit: log device replacement
+          logAuditEvent({
+            deviceId: newDevice.id,
+            userId: ctx.userId,
+            organizationId: ctx.organizationId,
+            subscriptionId: device.subscriptionId,
+            action: "DEVICE_REPLACED",
+            status: "OK",
+            message: "Device replaced with new fingerprint",
+            details: {
+              oldDeviceId: device.id,
+              reason: "REPLACED_BY_NEW_DEVICE",
+            },
+            ip: getClientIp(request),
+            userAgent: request.headers.get("user-agent"),
+          }).catch(() => {})
+
+          return {
+            ok: true as const,
+            device: {
+              id: newDevice.id,
+              deviceName: newDevice.deviceName,
+              platform: newDevice.platform,
+              status: newDevice.status,
+              pairedAt: newDevice.createdAt.toISOString(),
+            },
+          }
+        },
+        {
+          detail: {
+            tags: ["VPN Mobile Devices"],
+            summary: "Replace device with new fingerprint",
+            description: "Replace an active device with a new fingerprint. Use case: app reinstall, lost phone, or new device without manually revoking and re-pairing. The old device is revoked with reason REPLACED_BY_NEW_DEVICE.",
+            security: [{ bearerAuth: [] }],
+          },
+          body: t.Object({
+            deviceName: t.String({ minLength: 1, maxLength: 100 }),
+            deviceFingerprint: t.String({ minLength: 1 }),
+            platform: t.String({ minLength: 1 }),
+            osVersion: t.Optional(t.String()),
+            appVersion: t.Optional(t.String()),
+          }),
         }
       )
 
@@ -196,7 +346,7 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
         "/vpn/mobile/devices/:deviceId",
         async ({ params, body, set }) => {
           const ctx = await resolveOrg(set)
-          if ("error" in ctx) return ctx.error
+        if ("error" in ctx) return ctx.error
 
           // Fetch device to check ownership.
           const device = await prisma.vpnMobileDevice.findUnique({
@@ -233,6 +383,12 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
           return { ok: true as const }
         },
         {
+          detail: {
+            tags: ["VPN Mobile Devices"],
+            summary: "Update device name",
+            description: "Update the display name of a paired device. Only the device owner or org admin can rename.",
+            security: [{ bearerAuth: [] }],
+          },
           body: t.Object({
             deviceName: t.String({ minLength: 1, maxLength: 100 }),
           }),

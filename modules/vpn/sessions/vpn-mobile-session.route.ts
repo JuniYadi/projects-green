@@ -17,6 +17,13 @@ type Deps = {
 export const createMobileSessionRoutes = (deps: Deps = {}) => {
   const service = deps.service ?? vpnMobileSessionService
 
+  const errorResponse = t.Object({
+    error: t.Object({
+      code: t.String(),
+      message: t.String(),
+      details: t.Object({}, { additionalProperties: true }),
+    }),
+  })
   return new Elysia()
 
     /**
@@ -29,7 +36,7 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
       "/vpn/mobile/sessions",
       async ({ body, request, set }) => {
         const auth = await requireMobileSession(request, set)
-        if (!auth.ok) return auth.error
+        if (!auth.ok) return { error: auth.error }
 
         // Validate server account
         const serverAccount = await prisma.vpnServerAccount.findUnique({
@@ -76,9 +83,24 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
         }
       },
       {
+        detail: {
+          tags: ["VPN Mobile Sessions"],
+          summary: "Start VPN session",
+          description: "Create a new VPN session when the mobile device connects to a server.",
+          security: [{ bearerAuth: [] }],
+        },
         body: t.Object({
           serverAccountId: t.String({ minLength: 1 }),
         }),
+        response: {
+          200: t.Object({
+            sessionId: t.String(),
+            startedAt: t.String(),
+          }),
+          401: errorResponse,
+          403: errorResponse,
+          404: errorResponse,
+        },
       }
     )
 
@@ -91,7 +113,7 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
       "/vpn/mobile/sessions/:id/ping",
       async ({ params, request, set }) => {
         const auth = await requireMobileSession(request, set)
-        if (!auth.ok) return auth.error
+        if (!auth.ok) return { error: auth.error }
 
         const session = await service.findById(params.id, auth.mobileAuth.organizationId)
         if (!session) {
@@ -131,7 +153,21 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
         return { lastPingAt: updated.lastPingAt.toISOString() }
       },
       {
+        detail: {
+          tags: ["VPN Mobile Sessions"],
+          summary: "Send session heartbeat",
+          description: "Send a heartbeat ping for an active VPN session. Updates lastPingAt timestamp.",
+          security: [{ bearerAuth: [] }],
+        },
         params: t.Object({ id: t.String({ minLength: 1 }) }),
+        response: {
+          200: t.Object({
+            lastPingAt: t.String(),
+          }),
+          401: errorResponse,
+          403: errorResponse,
+          404: errorResponse,
+        },
       }
     )
 
@@ -143,7 +179,7 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
       "/vpn/mobile/sessions/:id",
       async ({ params, body, request, set }) => {
         const auth = await requireMobileSession(request, set)
-        if (!auth.ok) return auth.error
+        if (!auth.ok) return { error: auth.error }
 
         const session = await service.findById(params.id, auth.mobileAuth.organizationId)
         if (!session) {
@@ -192,11 +228,29 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
         }
       },
       {
+        detail: {
+          tags: ["VPN Mobile Sessions"],
+          summary: "Close session",
+          description: "Close a VPN session and submit traffic data on disconnect.",
+          security: [{ bearerAuth: [] }],
+        },
         params: t.Object({ id: t.String({ minLength: 1 }) }),
         body: t.Object({
           txBytes: t.Optional(t.Number({ minimum: 0 })),
           rxBytes: t.Optional(t.Number({ minimum: 0 })),
         }),
+        response: {
+          200: t.Object({
+            id: t.String(),
+            status: t.String(),
+            endedAt: t.Nullable(t.String()),
+            txBytes: t.Number(),
+            rxBytes: t.Number(),
+          }),
+          401: errorResponse,
+          403: errorResponse,
+          404: errorResponse,
+        },
       }
     )
 
@@ -210,7 +264,7 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
       "/vpn/mobile/sessions",
       async ({ query, request, set }) => {
         const auth = await requireMobileSession(request, set)
-        if (!auth.ok) return auth.error
+        if (!auth.ok) return { error: auth.error }
 
         // Non-admin mobile users can only see their own device's sessions
         const effectiveDeviceId =
@@ -239,6 +293,12 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
         return { sessions, nextCursor: result.nextCursor, total: result.total, stats }
       },
       {
+        detail: {
+          tags: ["VPN Mobile Sessions"],
+          summary: "List sessions",
+          description: "List VPN sessions with optional filters by status, server, or device. Supports cursor-based pagination.",
+          security: [{ bearerAuth: [] }],
+        },
         query: t.Object({
           status: t.Optional(t.String()),
           serverId: t.Optional(t.String()),
@@ -259,9 +319,25 @@ export const createMobileSessionRoutes = (deps: Deps = {}) => {
       "/vpn/mobile/sessions/stats",
       async ({ request, set }) => {
         const auth = await requireMobileSession(request, set)
-        if (!auth.ok) return auth.error
+        if (!auth.ok) return { error: auth.error }
 
         return await service.getStats(auth.mobileAuth.organizationId)
+      },
+      {
+        detail: {
+          tags: ["VPN Mobile Sessions"],
+          summary: "Dashboard session stats",
+          description: "Get dashboard session statistics grouped by server and subscription.",
+          security: [{ bearerAuth: [] }],
+        },
+        response: {
+          200: t.Object({
+            totalActive: t.Number(),
+            byServer: t.Record(t.String(), t.Number()),
+            bySubscription: t.Record(t.String(), t.Number()),
+          }),
+          401: errorResponse,
+        },
       }
     )
 }

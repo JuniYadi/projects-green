@@ -1,15 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { DataTable } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -28,6 +22,7 @@ type Props = {
   onRevoke: (deviceId: string) => void
   onRename?: (deviceId: string, name: string) => void
   revoking: string | null
+  defaultStatusFilter?: string
 }
 
 const STATUS_VARIANT: Record<
@@ -72,11 +67,7 @@ function RevokeButton({
   const [open, setOpen] = useState(false)
 
   if (device.status === "REVOKED") {
-    return (
-      <Badge variant="outline" className="text-xs">
-        Revoked
-      </Badge>
-    )
+    return null
   }
 
   return (
@@ -119,70 +110,97 @@ function RevokeButton({
   )
 }
 
-export function VpnDevicesList({ devices, onRevoke, revoking }: Props) {
-  if (devices.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-        <p className="text-sm text-muted-foreground">No devices paired yet.</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pair a device from the My Subscriptions page or use the mobile app QR
-          scan.
-        </p>
-      </div>
-    )
-  }
+export function VpnDevicesList({
+  devices,
+  onRevoke,
+  revoking,
+  defaultStatusFilter = "ACTIVE",
+}: Props) {
+  const columns = useMemo<ColumnDef<MobileDeviceEntry, unknown>[]>(
+    () => [
+      {
+        accessorKey: "deviceName",
+        header: "Device Name",
+      },
+      {
+        accessorKey: "platform",
+        header: "Platform",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1.5">
+            <PlatformBadge platform={row.original.platform} />
+            {row.original.osVersion && (
+              <span className="text-xs text-muted-foreground">
+                {row.original.osVersion}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <Badge variant={STATUS_VARIANT[row.original.status] ?? "outline"}>
+            {row.original.status}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "pairedVia",
+        header: "Paired Via",
+      },
+      {
+        accessorKey: "lastSeenAt",
+        header: "Last Seen",
+        cell: ({ row }) => formatDate(row.original.lastSeenAt),
+      },
+      {
+        accessorKey: "pairedAt",
+        header: "Paired At",
+        cell: ({ row }) => formatDate(row.original.pairedAt),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="text-right">
+            <RevokeButton
+              device={row.original}
+              onRevoke={onRevoke}
+              revoking={revoking}
+            />
+          </div>
+        ),
+      },
+    ],
+    [onRevoke, revoking]
+  )
+
+  const initialColumnFilters =
+    defaultStatusFilter === "all"
+      ? []
+      : [{ id: "status", value: defaultStatusFilter }]
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Device Name</TableHead>
-            <TableHead>Platform</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Paired Via</TableHead>
-            <TableHead>Last Seen</TableHead>
-            <TableHead>Paired At</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {devices.map((device) => (
-            <TableRow key={device.id}>
-              <TableCell className="font-medium">{device.deviceName}</TableCell>
-              <TableCell>
-                <PlatformBadge platform={device.platform} />
-                {device.osVersion && (
-                  <span className="ml-1.5 text-xs text-muted-foreground">
-                    {device.osVersion}
-                  </span>
-                )}
-              </TableCell>
-              <TableCell>
-                <Badge variant={STATUS_VARIANT[device.status] ?? "outline"}>
-                  {device.status}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                {device.pairedVia}
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                {formatDate(device.lastSeenAt)}
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                {formatDate(device.pairedAt)}
-              </TableCell>
-              <TableCell className="text-right">
-                <RevokeButton
-                  device={device}
-                  onRevoke={onRevoke}
-                  revoking={revoking}
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={devices}
+      tableId="console-vpn-devices"
+      searchPlaceholder="Search devices..."
+      searchableColumns={["deviceName", "platform", "pairedVia"]}
+      initialColumnFilters={initialColumnFilters}
+      facetFilters={[
+        {
+          columnId: "status",
+          label: "Status",
+          options: [
+            { label: "Active", value: "ACTIVE" },
+            { label: "Suspended", value: "SUSPENDED" },
+            { label: "Revoked", value: "REVOKED" },
+          ],
+        },
+      ]}
+      emptyMessage="No devices found."
+    />
   )
 }

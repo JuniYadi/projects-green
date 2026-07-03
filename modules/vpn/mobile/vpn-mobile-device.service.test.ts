@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach, mock, type Mock } from "bun:test"
+import type { PrismaClient } from "@prisma/client"
 
 import {
   VpnMobileDeviceAlreadyRevokedError,
@@ -9,53 +10,44 @@ import {
 // ─── Mocks ──────────────────────────────────────────────────────────────
 // Mock @/lib/prisma only (leaf dependency). NEVER mock sibling services.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyFn = (...args: any[]) => any
+type MockFn = (args: unknown) => Promise<unknown>
 
-const findUnique = mock<AnyFn>(async () => null)
-const findMany = mock<AnyFn>(async () => [])
-const create = mock<AnyFn>(async () => ({}))
-const update = mock<AnyFn>(async () => ({}))
-const count = mock<AnyFn>(async () => 0)
-
-const mockPrisma = {
+type MockPrismaClient = {
   vpnMobileDevice: {
-    findUnique,
-    findMany,
-    create,
-    update,
-    count,
-  },
-  vpnServerAccount: {
-    count,
-  },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-} as any
+    findUnique: Mock<MockFn>
+    findMany: Mock<MockFn>
+    findFirst: Mock<MockFn>
+    create: Mock<MockFn>
+    update: Mock<MockFn>
+    count: Mock<MockFn>
+  }
+  vpnServerAccount: { count: Mock<MockFn> }
+}
+
+const findUnique = mock<MockFn>(async () => null as unknown)
+const findMany = mock<MockFn>(async () => [] as unknown)
+const findFirst = mock<MockFn>(async () => null as unknown)
+const create = mock<MockFn>(async () => ({}) as unknown)
+const update = mock<MockFn>(async () => ({}) as unknown)
+const count = mock<MockFn>(async () => 0 as unknown)
+
+const mockPrisma: MockPrismaClient = {
+  vpnMobileDevice: { findUnique, findMany, findFirst, create, update, count },
+  vpnServerAccount: { count },
+}
 
 mock.module("@/lib/prisma", () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  prisma: mockPrisma as any,
+  prisma: mockPrisma as unknown as PrismaClient,
 }))
 
 import { prisma } from "@/lib/prisma"
 import { VpnMobileDeviceService } from "./vpn-mobile-device.service"
 
-const prismaMock = prisma as unknown as {
-  vpnMobileDevice: {
-    findUnique: ReturnType<typeof mock>
-    findMany: ReturnType<typeof mock>
-    create: ReturnType<typeof mock>
-    update: ReturnType<typeof mock>
-    count: ReturnType<typeof mock>
-  }
-  vpnServerAccount: {
-    count: ReturnType<typeof mock>
-  }
-}
+const prismaMock = prisma as unknown as MockPrismaClient
 
 const NOW = new Date("2026-06-16T12:00:00Z")
 const service = new VpnMobileDeviceService(
-  prismaMock as unknown as import("@prisma/client").PrismaClient,
+  prismaMock as unknown as PrismaClient,
   { now: () => NOW }
 )
 
@@ -101,14 +93,17 @@ const createInput = {
 }
 
 beforeEach(() => {
-  findUnique.mockClear()
-  findMany.mockClear()
-  create.mockClear()
-  update.mockClear()
-  count.mockClear()
+  // Reset both call history and any queued mockResolvedValueOnce overrides.
+  findUnique.mockReset()
+  findMany.mockReset()
+  findFirst.mockReset()
+  create.mockReset()
+  update.mockReset()
+  count.mockReset()
   // Reset default resolved values.
   findUnique.mockResolvedValue(null)
   findMany.mockResolvedValue([])
+  findFirst.mockResolvedValue(null)
   create.mockResolvedValue(activeDevice)
   update.mockResolvedValue(activeDevice)
   count.mockResolvedValue(0)
@@ -254,6 +249,21 @@ describe("VpnMobileDeviceService", () => {
       expect(prismaMock.vpnMobileDevice.create).not.toHaveBeenCalled()
     })
 
+    it("throws VpnMobileDeviceLimitError when QR path hits limit", async () => {
+      findUnique.mockResolvedValue(null)
+      count.mockResolvedValueOnce(1) // serverCount = 1 → limit = 2
+      count.mockResolvedValueOnce(2) // active devices = 2 (at limit)
+
+      await expect(
+        service.create({
+          ...createInput,
+          userId: null,
+          pairedVia: "QR",
+        })
+      ).rejects.toThrow(VpnMobileDeviceLimitError)
+      expect(prismaMock.vpnMobileDevice.create).not.toHaveBeenCalled()
+    })
+
     it("throws VpnMobileDeviceLimitError when serverCount is 0 (limit = 0)", async () => {
       findUnique.mockResolvedValue(null)
       count.mockResolvedValueOnce(0) // serverCount = 0 → limit = 0
@@ -377,6 +387,161 @@ describe("VpnMobileDeviceService", () => {
         where: { organizationId: "org-1" },
         orderBy: { createdAt: "desc" },
       })
+    })
+  })
+
+  describe("replace", () => {
+    it("revokes old device and creates a new one with new fingerprint", async () => {
+      const oldDevice = { ...activeDevice, id: "dev-old" }
+      const newDevice = {
+        ...activeDevice,
+        id: "dev-new",
+        deviceFingerprint: "fp-new",
+      }
+
+      findUnique
+        .mockResolvedValueOnce(oldDevice) // old device lookup
+        .mockResolvedValueOnce(null) // fingerprint lookup
+        .mockResolvedValueOnce(oldDevice) // revoke's lookup
+      update.mockResolvedValueOnce({
+        ...oldDevice,
+        status: "REVOKED",
+        revokedAt: NOW,
+        revokedBy: "user-1",
+        revokedReason: "REPLACED_BY_NEW_DEVICE",
+      })
+      create.mockResolvedValueOnce(newDevice)
+
+      const result = await service.replace({
+        oldDeviceId: "dev-old",
+        subscriptionId: "sub-1",
+        organizationId: "org-1",
+        userId: "user-1",
+        deviceName: "iPhone 15 Pro",
+        deviceFingerprint: "fp-new",
+        platform: "ios",
+        osVersion: "18.2.1",
+        appVersion: "1.0.0",
+        pairedVia: "SSO",
+      })
+
+      expect(result).toEqual(newDevice)
+      expect(prismaMock.vpnMobileDevice.update).toHaveBeenCalledWith({
+        where: { id: "dev-old" },
+        data: {
+          status: "REVOKED",
+          revokedAt: NOW,
+          revokedBy: "user-1",
+          revokedReason: "REPLACED_BY_NEW_DEVICE",
+        },
+      })
+      expect(prismaMock.vpnMobileDevice.create).toHaveBeenCalledWith({
+        data: {
+          organizationId: "org-1",
+          subscriptionId: "sub-1",
+          userId: "user-1",
+          deviceName: "iPhone 15 Pro",
+          deviceFingerprint: "fp-new",
+          platform: "ios",
+          osVersion: "18.2.1",
+          appVersion: "1.0.0",
+          pairedVia: "SSO",
+          status: "ACTIVE",
+          lastSeenAt: NOW,
+        },
+      })
+    })
+
+    it("reactivates target fingerprint if it already maps to a revoked device", async () => {
+      const oldDevice = { ...activeDevice, id: "dev-old" }
+      const existingNew = {
+        ...activeDevice,
+        id: "dev-existing",
+        status: "REVOKED" as const,
+      }
+
+      findUnique
+        .mockResolvedValueOnce(oldDevice) // old device lookup
+        .mockResolvedValueOnce(existingNew) // fingerprint lookup
+        .mockResolvedValueOnce(existingNew) // reactivate's lookup
+        .mockResolvedValueOnce(oldDevice) // revoke's lookup
+      update
+        .mockResolvedValueOnce({
+          ...existingNew,
+          status: "ACTIVE",
+          revokedAt: null,
+          revokedBy: null,
+          revokedReason: null,
+        })
+        .mockResolvedValueOnce({
+          ...oldDevice,
+          status: "REVOKED",
+          revokedAt: NOW,
+          revokedBy: "user-1",
+          revokedReason: "REPLACED_BY_NEW_DEVICE",
+        })
+
+      const result = await service.replace({
+        oldDeviceId: "dev-old",
+        subscriptionId: "sub-1",
+        organizationId: "org-1",
+        userId: "user-1",
+        deviceName: "iPhone 15 Pro",
+        deviceFingerprint: "fp-existing",
+        platform: "ios",
+        pairedVia: "SSO",
+      })
+
+      expect(result.status).toBe("ACTIVE")
+      expect(prismaMock.vpnMobileDevice.create).not.toHaveBeenCalled()
+    })
+
+    it("throws when old device does not exist", async () => {
+      findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.replace({
+          oldDeviceId: "missing",
+          subscriptionId: "sub-1",
+          organizationId: "org-1",
+          deviceName: "iPhone",
+          deviceFingerprint: "fp-new",
+          platform: "ios",
+          pairedVia: "SSO",
+        })
+      ).rejects.toThrow(VpnMobileDeviceNotFoundError)
+    })
+
+    it("throws when old device is already revoked", async () => {
+      findUnique.mockResolvedValue(revokedDevice)
+
+      await expect(
+        service.replace({
+          oldDeviceId: "dev-revoked",
+          subscriptionId: "sub-1",
+          organizationId: "org-1",
+          deviceName: "iPhone",
+          deviceFingerprint: "fp-new",
+          platform: "ios",
+          pairedVia: "SSO",
+        })
+      ).rejects.toThrow(VpnMobileDeviceAlreadyRevokedError)
+    })
+
+    it("throws when old device belongs to a different subscription", async () => {
+      findUnique.mockResolvedValue({ ...activeDevice, subscriptionId: "sub-2" })
+
+      await expect(
+        service.replace({
+          oldDeviceId: "dev-1",
+          subscriptionId: "sub-1",
+          organizationId: "org-1",
+          deviceName: "iPhone",
+          deviceFingerprint: "fp-new",
+          platform: "ios",
+          pairedVia: "SSO",
+        })
+      ).rejects.toThrow(VpnMobileDeviceNotFoundError)
     })
   })
 

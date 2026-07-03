@@ -25,6 +25,8 @@ export type CreateMobileDeviceInput = {
   osVersion?: string | null
   appVersion?: string | null
   pairedVia: VpnPairingMethod
+  // ponytail: removed "replace-oldest-active" — device limit always rejects,
+  // user must manually revoke via the devices endpoint.
 }
 
 export type ListMobileDeviceFilter = {
@@ -61,6 +63,10 @@ export class VpnMobileDeviceService {
    * - Existing ACTIVE/SUSPENDED → refresh lastSeenAt, return row.
    * - Existing REVOKED → reactivate: set ACTIVE, clear revoke fields,
    *   update device metadata (name, platform, osVersion, appVersion).
+   *
+   * When the active-device limit is reached, throws
+   * {@link VpnMobileDeviceLimitError}. Caller must explicitly revoke
+   * or replace a device before registering a new one.
    */
   async create(input: CreateMobileDeviceInput) {
     const existing = await this.prisma.vpnMobileDevice.findUnique({
@@ -118,6 +124,104 @@ export class VpnMobileDeviceService {
         organizationId: input.organizationId,
       })
     }
+
+    return this.prisma.vpnMobileDevice.create({
+      data: {
+        organizationId: input.organizationId,
+        subscriptionId: input.subscriptionId,
+        userId: input.userId ?? null,
+        deviceName: input.deviceName,
+        deviceFingerprint: input.deviceFingerprint,
+        platform: input.platform,
+        osVersion: input.osVersion ?? null,
+        appVersion: input.appVersion ?? null,
+        pairedVia: input.pairedVia,
+        status: "ACTIVE",
+        lastSeenAt: this.now(),
+      },
+    })
+  }
+
+  /**
+   * Explicitly replace one active device with a new fingerprint.
+   *
+   * Use case: a console user or an authenticated mobile app wants to swap
+   * an old device (e.g. lost phone, reinstalled app) for a new one without
+   * manually revoking and re-pairing.
+   *
+   * The old device is revoked with reason `REPLACED_BY_NEW_DEVICE`. If the
+   * new fingerprint already maps to another row, that row is reactivated or
+   * refreshed instead of creating a duplicate.
+   */
+  async replace(input: {
+    oldDeviceId: string
+    subscriptionId: string
+    organizationId: string
+    userId?: string | null
+    deviceName: string
+    deviceFingerprint: string
+    platform: string
+    osVersion?: string | null
+    appVersion?: string | null
+    pairedVia: VpnPairingMethod
+    replacedBy?: string | null
+    reason?: string | null
+  }) {
+    const old = await this.prisma.vpnMobileDevice.findUnique({
+      where: { id: input.oldDeviceId },
+    })
+    if (!old) throw new VpnMobileDeviceNotFoundError()
+    if (old.status === "REVOKED") {
+      throw new VpnMobileDeviceAlreadyRevokedError()
+    }
+    if (
+      old.subscriptionId !== input.subscriptionId ||
+      old.organizationId !== input.organizationId
+    ) {
+      throw new VpnMobileDeviceNotFoundError()
+    }
+
+    const reason = input.reason ?? "REPLACED_BY_NEW_DEVICE"
+
+    // If the target fingerprint already exists, reactivate/refresh it and
+    // just revoke the old one. This prevents duplicates.
+    const existingByFingerprint =
+      await this.prisma.vpnMobileDevice.findUnique({
+        where: {
+          subscriptionId_deviceFingerprint: {
+            subscriptionId: input.subscriptionId,
+            deviceFingerprint: input.deviceFingerprint,
+          },
+        },
+      })
+
+    if (existingByFingerprint && existingByFingerprint.id !== old.id) {
+      if (existingByFingerprint.status !== "ACTIVE") {
+        await this.reactivate(existingByFingerprint.id)
+      }
+      await this.revoke({
+        deviceId: old.id,
+        revokedBy: input.replacedBy ?? input.userId,
+        reason,
+      })
+      return this.prisma.vpnMobileDevice.update({
+        where: { id: existingByFingerprint.id },
+        data: {
+          deviceName: input.deviceName,
+          platform: input.platform,
+          osVersion: input.osVersion ?? null,
+          appVersion: input.appVersion ?? null,
+          lastSeenAt: this.now(),
+        },
+      })
+    }
+
+    // Otherwise revoke the old device and create the new one.
+    await this.revoke({
+      deviceId: old.id,
+      revokedBy: input.replacedBy ?? input.userId,
+      reason,
+    })
 
     return this.prisma.vpnMobileDevice.create({
       data: {

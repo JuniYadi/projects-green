@@ -97,7 +97,45 @@ const toFieldErrors = (
 }
 
 export const app = new Elysia({ prefix: "/api" })
-  .use(openapi())
+  .use(openapi({
+    documentation: {
+      info: {
+        title: "PFNApp API Documentation",
+        version: "1.0.0",
+      },
+      tags: [
+        {
+          name: "VPN Mobile Auth",
+          description: "Device authentication and session token exchange",
+        },
+        {
+          name: "VPN Mobile Pairing",
+          description: "QR-code pairing flow",
+        },
+        {
+          name: "VPN Mobile Profiles",
+          description: "VPN profile listing and config download",
+        },
+        {
+          name: "VPN Mobile Devices",
+          description: "Device management",
+        },
+        {
+          name: "VPN Mobile Sessions",
+          description: "Active session tracking and heartbeats",
+        },
+      ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: "http",
+            scheme: "bearer",
+            bearerFormat: "JWT",
+          },
+        },
+      },
+    },
+  }))
   .use(webhookRoutes)
   .use(docsRoutes)
   .use(docsConsoleRoutes)
