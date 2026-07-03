@@ -158,6 +158,7 @@ const serverProfile = {
     id: "srv-1",
     name: "Singapore-01",
     hostname: "sg-01.example.com",
+    ipAddress: null,
     region: { name: "Singapore" },
   },
 }
