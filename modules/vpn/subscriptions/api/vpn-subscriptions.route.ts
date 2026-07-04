@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
@@ -18,7 +19,11 @@ import {
   VpnSubscriptionNotFoundError,
   VpnSubscriptionService,
 } from "../vpn-subscription.service"
-import { toVpnSubscriptionDTO } from "../vpn-subscription.dto"
+import {
+  toVpnSubscriptionDTO,
+  toVpnSubscriptionPaymentDTO,
+  type VpnSubscriptionPaymentDTO,
+} from "../vpn-subscription.dto"
 
 type AuthContext = {
   organizationId?: string | null
@@ -79,6 +84,55 @@ async function resolvePackageNames(packageIds: string[]) {
   return new Map(packages.map((pkg) => [pkg.id, pkg.name]))
 }
 
+function jsonObject(value: Prisma.JsonValue | null): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+async function resolveFirstPayments(
+  organizationId: string,
+  subscriptionIds: string[],
+): Promise<Map<string, VpnSubscriptionPaymentDTO>> {
+  const ids = new Set(subscriptionIds)
+  if (ids.size === 0) return new Map()
+
+  const account = await prisma.billingAccount.findUnique({
+    where: { organizationId },
+    select: { id: true },
+  })
+  if (!account) return new Map()
+
+  const adjustments = await prisma.billingAdjustment.findMany({
+    where: {
+      billingAccountId: account.id,
+      adjustmentType: "DEBIT",
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      amount: true,
+      currency: true,
+      appliedAt: true,
+      reason: true,
+      metadataJson: true,
+      createdAt: true,
+    },
+  })
+
+  const payments = new Map<string, VpnSubscriptionPaymentDTO>()
+  for (const adjustment of adjustments) {
+    const metadata = jsonObject(adjustment.metadataJson)
+    if (metadata?.source !== "VPN") continue
+
+    const subscriptionId = metadata.vpnSubscriptionId
+    if (typeof subscriptionId !== "string" || !ids.has(subscriptionId)) continue
+    if (!payments.has(subscriptionId)) {
+      payments.set(subscriptionId, toVpnSubscriptionPaymentDTO(adjustment))
+    }
+  }
+  return payments
+}
+
 export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
   const authenticate = deps.authenticate ?? (() => withAuth())
   const service = deps.service ?? defaultService()
@@ -98,13 +152,18 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
       const packageNames = await resolvePackageNames(
         subs.map((sub) => sub.packageId)
       )
+      const firstPayments = await resolveFirstPayments(
+        ctx.organizationId,
+        subs.map((sub) => sub.id),
+      )
       return {
         ok: true as const,
         data: subs.map((sub) =>
           toVpnSubscriptionDTO(
             sub,
             null,
-            packageNames.get(sub.packageId) ?? null
+            packageNames.get(sub.packageId) ?? null,
+            { billing: { firstPayment: firstPayments.get(sub.id) ?? null } },
           )
         ),
       }
@@ -118,12 +177,14 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
       )
       if (!sub) return notFound(set)
       const packageNames = await resolvePackageNames([sub.packageId])
+      const firstPayments = await resolveFirstPayments(ctx.organizationId, [sub.id])
       return {
         ok: true as const,
         data: toVpnSubscriptionDTO(
           sub,
           null,
-          packageNames.get(sub.packageId) ?? null
+          packageNames.get(sub.packageId) ?? null,
+          { billing: { firstPayment: firstPayments.get(sub.id) ?? null } },
         ),
       }
     })

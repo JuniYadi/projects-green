@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import type { ColumnDef } from "@tanstack/react-table"
 
 import { DataTable } from "@/components/data-table"
@@ -48,7 +49,7 @@ type Props = {
   onChanged: () => void
 }
 
-function formatDate(value: string): string {
+export function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "short",
@@ -295,7 +296,7 @@ function billingStatus(sub: VpnSubscription): BillingStatus {
   return sub.cancelAtPeriodEnd ? "CANCELLING" : sub.status
 }
 
-function subscriptionPriceLabel(sub: VpnSubscription): string {
+export function subscriptionPriceLabel(sub: VpnSubscription): string {
   const base = sub.originalPrice
     ? `${sub.originalPrice} ${sub.originalCurrency}`
     : `${sub.priceLocked} ${sub.currency}`
@@ -411,6 +412,46 @@ function ServerSummaryCell({
   )
 }
 
+export function VpnServerAccountsDetail({
+  subscription,
+}: {
+  subscription: VpnSubscription
+}) {
+  return (
+    <div className="space-y-2">
+      {groupByServer(subscription.serverAccounts).map((group) => (
+        <div
+          key={group.serverId}
+          className="grid gap-3 rounded-lg border px-3 py-2.5 lg:grid-cols-[minmax(220px,320px)_1fr] lg:items-center"
+        >
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold">{group.serverName}</span>
+              <RegionBadge region={group.region} />
+            </div>
+            <p className="truncate text-xs text-muted-foreground">
+              {group.hostname || "—"}
+              <span className="mx-1">·</span>
+              {group.ipAddress || "—"}
+            </p>
+          </div>
+
+          <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {group.accounts.map((account) => (
+              <ProtocolControl
+                key={account.id}
+                subscriptionId={subscription.id}
+                account={account}
+                subStatus={subscription.status}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function VpnMyServices({ subscriptions, onChanged }: Props) {
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(
@@ -437,7 +478,6 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
   >({})
   const [refreshKey, setRefreshKey] = useState(0)
   const [pairingSubId, setPairingSubId] = useState<string | null>(null)
-  const [serverDialogId, setServerDialogId] = useState<string | null>(null)
 
   // ponytail: inline async, no useCallback wrapper to appease the lint rule
   useEffect(() => {
@@ -543,13 +583,10 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
           return (
             <div className="min-w-[200px] space-y-1">
               <div className="font-medium">{sub.packageName}</div>
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs"
-                onClick={() => setServerDialogId(sub.id)}
-              >
-                View details
+              <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
+                <Link href={`/console/vpn/subscriptions/${sub.id}`}>
+                  View details
+                </Link>
               </Button>
               <div className="flex items-center gap-2">
                 <span
@@ -594,17 +631,54 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         ),
       },
       {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="First buy" />
+        ),
+        sortingFn: "datetime",
+        cell: ({ row }) => formatDate(row.original.createdAt),
+      },
+      {
+        id: "firstPayment",
+        accessorFn: (sub) => sub.firstPayment?.amount ?? "",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="First payment" />
+        ),
+        cell: ({ row }) => {
+          const payment = row.original.firstPayment
+          if (!payment) return <span className="text-muted-foreground">—</span>
+          return (
+            <div className="space-y-1 text-sm">
+              <div>{payment.amount} {payment.currency}</div>
+              {payment.paidAt && (
+                <div className="text-xs text-muted-foreground">
+                  {formatDate(payment.paidAt)}
+                </div>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "renewPrice",
+        accessorFn: (sub) => `${sub.priceLocked} ${sub.currency}`,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Renew price" />
+        ),
+        cell: ({ row }) => subscriptionPriceLabel(row.original),
+      },
+      {
         accessorKey: "currentPeriodEnd",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Next bill" />
+          <DataTableColumnHeader column={column} title="Next payment" />
         ),
         sortingFn: "datetime",
         cell: ({ row }) => (
           <div className="space-y-1 text-sm">
             <div>{formatDate(row.original.currentPeriodEnd)}</div>
-            <div className="text-xs text-muted-foreground">
-              {subscriptionPriceLabel(row.original)}
-            </div>
+            {row.original.cancelAtPeriodEnd && (
+              <div className="text-xs text-muted-foreground">Cancels after this date</div>
+            )}
           </div>
         ),
       },
@@ -628,8 +702,10 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setServerDialogId(sub.id)}>
-                    View details
+                  <DropdownMenuItem asChild>
+                    <Link href={`/console/vpn/subscriptions/${sub.id}`}>
+                      View details
+                    </Link>
                   </DropdownMenuItem>
                   {sub.status === "ACTIVE" && (
                     <DropdownMenuItem
@@ -687,7 +763,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         tableId="console-vpn-subscriptions"
         columns={columns}
         data={subscriptions}
-        defaultColumnVisibility={{ currentPeriodEnd: false }}
+        defaultColumnVisibility={{}}
         searchPlaceholder="Search subscriptions..."
         searchableColumns={["packageName", "billingStatus", "servers"]}
         facetFilters={[
@@ -712,66 +788,6 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         emptyMessage="No VPN subscriptions found."
       />
 
-      {serverDialogId !== null &&
-        (() => {
-          const serverDialogSub = subscriptions.find(
-            (sub) => sub.id === serverDialogId,
-          )
-          if (!serverDialogSub) return null
-
-          return (
-            <Dialog
-              open={serverDialogId !== null}
-              onOpenChange={(open) => {
-                if (!open) setServerDialogId(null)
-              }}
-            >
-              <DialogContent className="sm:max-w-5xl">
-                <DialogHeader>
-                  <DialogTitle>{serverDialogSub.packageName} details</DialogTitle>
-                  <DialogDescription>
-                    Review subscription servers, download configs, view proxy
-                    credentials, and check provisioning status.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-2">
-                  {groupByServer(serverDialogSub.serverAccounts).map((group) => (
-                    <div
-                      key={group.serverId}
-                      className="grid gap-3 rounded-lg border px-3 py-2.5 lg:grid-cols-[minmax(220px,320px)_1fr] lg:items-center"
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold">
-                            {group.serverName}
-                          </span>
-                          <RegionBadge region={group.region} />
-                        </div>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {group.hostname || "—"}
-                          <span className="mx-1">·</span>
-                          {group.ipAddress || "—"}
-                        </p>
-                      </div>
-
-                      <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-3">
-                        {group.accounts.map((account) => (
-                          <ProtocolControl
-                            key={account.id}
-                            subscriptionId={serverDialogSub.id}
-                            account={account}
-                            subStatus={serverDialogSub.status}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-          )
-        })()}
 
       {/* Pair modal */}
       <VpnPairingQrModal

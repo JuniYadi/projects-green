@@ -118,6 +118,13 @@ export type VpnSubscription = {
   originalPrice: string | null
   originalCurrency: string | null
   exchangeRate: number | null
+  firstPayment: {
+    id: string
+    amount: string
+    currency: string
+    paidAt: string | null
+    reason: string | null
+  } | null
   deviceCount: number
   serverAccounts: VpnServerAccount[]
   provisioningSummary: ProvisioningSummary
@@ -215,6 +222,13 @@ export async function purchaseVpnPackage(id: string): Promise<VpnSubscription> {
 export async function listVpnSubscriptions(): Promise<VpnSubscription[]> {
   const res = await fetchVpn<{ ok: true; data: VpnSubscription[] }>(
     "/api/vpn/subscriptions"
+  )
+  return res.data
+}
+
+export async function getVpnSubscription(id: string): Promise<VpnSubscription> {
+  const res = await fetchVpn<{ ok: true; data: VpnSubscription }>(
+    `/api/vpn/subscriptions/${id}`
   )
   return res.data
 }

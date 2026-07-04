@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { act, render, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
-import { VpnMyServices } from "./vpn-my-services"
+import { VpnMyServices, VpnServerAccountsDetail } from "./vpn-my-services"
 import type { VpnServerAccount, VpnSubscription } from "@/lib/vpn-client"
 
 // ponytail: mock leaf dependencies (HTTP fetch), not services
@@ -58,6 +58,7 @@ const subscription = (
   deviceCount: 0,
   provisioningSummary: { active: 2, pending: 0, failed: 0, revoked: 0, total: 2 },
   cancelAtPeriodEnd: false,
+  firstPayment: null,
   serverAccounts: [
     serverAccount(),
     serverAccount({
@@ -113,7 +114,7 @@ describe("VpnMyServices", () => {
     expect(badges.length).toBeGreaterThanOrEqual(1)
   })
 
-  it("keeps many servers collapsed until subscription details opens", async () => {
+  it("links each subscription to a dedicated detail page", async () => {
     const view = renderAsync(
       <VpnMyServices
         subscriptions={[manyServerSubscription(10)]}
@@ -124,20 +125,12 @@ describe("VpnMyServices", () => {
     expect(within(view.container).getAllByRole("row").length).toBe(2)
     expect(view.getByText("Pro VPN - SG Standard")).toBeInTheDocument()
     expect(view.getByText("10 servers · 10 accounts")).toBeInTheDocument()
-    expect(view.queryByText("SG01")).toBeNull()
 
-    act(() => {
-      view.getByRole("button", { name: "View details" }).click()
-    })
-
-    const dialog = view.getByRole("dialog")
-    expect(within(dialog).getByText("SG01")).toBeInTheDocument()
-    expect(within(dialog).getByText(/sg01\.vpn\.com/)).toBeInTheDocument()
-    expect(within(dialog).getAllByText("OVPN").length).toBeGreaterThan(0)
-    expect(within(dialog).getAllByText(":1194").length).toBeGreaterThan(0)
+    const detailsLink = view.getByRole("link", { name: "View details" })
+    expect(detailsLink).toHaveAttribute("href", "/console/vpn/subscriptions/sub-1")
   })
 
-  it("groups server accounts by serverId inside subscription details", async () => {
+  it("groups server accounts by serverId in the detail component", () => {
     const multiServer = subscription({
       serverAccounts: [
         serverAccount(),
@@ -155,57 +148,29 @@ describe("VpnMyServices", () => {
       ],
     })
 
-    const view = renderAsync(
-      <VpnMyServices subscriptions={[multiServer]} onChanged={() => {}} />,
-    )
-    act(() => {
-      view.getByRole("button", { name: "View details" }).click()
-    })
-
-    const dialog = view.getByRole("dialog")
-    expect(within(dialog).getByText("SG01")).toBeInTheDocument()
-    expect(within(dialog).getByText("US01")).toBeInTheDocument()
-    expect(within(dialog).getByText(/sg01\.vpn\.com/)).toBeInTheDocument()
-    expect(within(dialog).getByText(/us01\.vpn\.com/)).toBeInTheDocument()
+    const view = render(<VpnServerAccountsDetail subscription={multiServer} />)
+    expect(view.getByText("SG01")).toBeInTheDocument()
+    expect(view.getByText("US01")).toBeInTheDocument()
+    expect(view.getByText(/sg01\.vpn\.com/)).toBeInTheDocument()
+    expect(view.getByText(/us01\.vpn\.com/)).toBeInTheDocument()
   })
 
-  it("shows protocol labels for each account inside subscription details", async () => {
-    const view = renderAsync(
-      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />,
-    )
-    act(() => {
-      view.getByRole("button", { name: "View details" }).click()
-    })
-
-    const dialog = view.getByRole("dialog")
-    expect(within(dialog).getByText("OVPN")).toBeInTheDocument()
-    expect(within(dialog).getByText("WG")).toBeInTheDocument()
+  it("shows protocol labels for each account in the detail component", () => {
+    const view = render(<VpnServerAccountsDetail subscription={subscription()} />)
+    expect(view.getByText("OVPN")).toBeInTheDocument()
+    expect(view.getByText("WG")).toBeInTheDocument()
   })
 
-  it("shows port numbers per protocol inside subscription details", async () => {
-    const view = renderAsync(
-      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />,
-    )
-    act(() => {
-      view.getByRole("button", { name: "View details" }).click()
-    })
-
-    const dialog = view.getByRole("dialog")
-    expect(within(dialog).getByText(":1194")).toBeInTheDocument()
-    expect(within(dialog).getByText(":51820")).toBeInTheDocument()
+  it("shows port numbers per protocol in the detail component", () => {
+    const view = render(<VpnServerAccountsDetail subscription={subscription()} />)
+    expect(view.getByText(":1194")).toBeInTheDocument()
+    expect(view.getByText(":51820")).toBeInTheDocument()
   })
 
-  it("shows failure reason for FAILED protocols inside subscription details", async () => {
-    const view = renderAsync(
-      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />,
-    )
-    act(() => {
-      view.getByRole("button", { name: "View details" }).click()
-    })
-
-    const dialog = view.getByRole("dialog")
+  it("shows failure reason for FAILED protocols in the detail component", () => {
+    const view = render(<VpnServerAccountsDetail subscription={subscription()} />)
     expect(
-      within(dialog).getByText("SSH key mismatch on server"),
+      view.getByText("SSH key mismatch on server"),
     ).toBeInTheDocument()
   })
 
@@ -253,7 +218,7 @@ describe("VpnMyServices", () => {
     )
   })
 
-  it("shows — for missing hostname/IP inside subscription details", async () => {
+  it("shows — for missing hostname/IP in the detail component", () => {
     const noHostSub = subscription({
       serverAccounts: [
         serverAccount({
@@ -263,15 +228,8 @@ describe("VpnMyServices", () => {
       ],
     })
 
-    const view = renderAsync(
-      <VpnMyServices subscriptions={[noHostSub]} onChanged={() => {}} />,
-    )
-    act(() => {
-      view.getByRole("button", { name: "View details" }).click()
-    })
-
-    const dialog = view.getByRole("dialog")
-    expect(within(dialog).getByText(/—/)).toBeInTheDocument()
+    const view = render(<VpnServerAccountsDetail subscription={noHostSub} />)
+    expect(view.getByText(/—/)).toBeInTheDocument()
   })
 
   it("filters subscription rows by global search", async () => {

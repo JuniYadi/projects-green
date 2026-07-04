@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { act, render, waitFor, within } from "@testing-library/react"
+import { render, waitFor } from "@testing-library/react"
 import type { VpnPackageSummary, VpnSubscription } from "@/lib/vpn-client"
 import type { MobileDeviceEntry } from "@/lib/vpn-mobile-client"
 
@@ -64,6 +64,7 @@ describe("ConsoleVpnSubscriptionsPage", () => {
           revoked: 0,
           total: 2,
         },
+        firstPayment: null,
         createdAt: "2026-06-01T00:00:00.000Z",
         updatedAt: "2026-06-01T00:00:00.000Z",
         serverAccounts: [
@@ -126,15 +127,9 @@ describe("ConsoleVpnSubscriptionsPage", () => {
     expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
     expect(view.getByText("VPN Standard")).toBeInTheDocument()
     expect(view.getByText("2 servers · 2 accounts")).toBeInTheDocument()
-    expect(within(view.container).queryByText("ID-01")).toBeNull()
-
-    act(() => {
-      view.getByRole("button", { name: "View details" }).click()
-    })
-
-    const dialog = view.getByRole("dialog")
-    expect(within(dialog).getByText("ID-01")).toBeInTheDocument()
-    expect(within(dialog).getByText("SG-01")).toBeInTheDocument()
+    expect(
+      view.getByRole("link", { name: "View details" }),
+    ).toHaveAttribute("href", "/console/vpn/subscriptions/sub_1")
   })
 })
 describe("ConsoleVpnDashboardPage", () => {
@@ -186,6 +181,7 @@ describe("ConsoleVpnDashboardPage", () => {
           revoked: 0,
           total: 1,
         },
+        firstPayment: null,
         createdAt: "2026-06-01T00:00:00.000Z",
         updatedAt: "2026-06-01T00:00:00.000Z",
         serverAccounts: [
