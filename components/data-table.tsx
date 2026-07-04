@@ -53,6 +53,8 @@ type DataTableFacetFilter = {
   options: DataTableFilterOption[]
 }
 
+export type { DataTableFilterOption, DataTableFacetFilter }
+
 type DataTableProps<TData> = {
   columns: ColumnDef<TData, unknown>[]
   data: TData[]
@@ -63,6 +65,11 @@ type DataTableProps<TData> = {
   searchableColumns: string[]
   searchPlaceholder: string
   tableId?: string
+  /**
+   * Columns to hide by default. These can be toggled on via the Columns dropdown.
+   * The persistence layer will override this once the user has interacted with column visibility.
+   */
+  defaultColumnVisibility?: Record<string, boolean>
 }
 
 export function DataTable<TData>({
@@ -75,13 +82,14 @@ export function DataTable<TData>({
   searchableColumns,
   searchPlaceholder,
   tableId,
+  defaultColumnVisibility = {},
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
   const [columnFilters, setColumnFilters] =
     React.useState<ColumnFiltersState>(initialColumnFilters)
   const [columnVisibility, setColumnVisibility] =
-    usePersistedColumnVisibility(tableId)
+    usePersistedColumnVisibility(tableId, defaultColumnVisibility)
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({

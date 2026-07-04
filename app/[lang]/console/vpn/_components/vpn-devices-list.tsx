@@ -200,6 +200,7 @@ export function VpnDevicesList({
           ],
         },
       ]}
+      defaultColumnVisibility={{ pairedAt: false, lastSeenAt: false }}
       emptyMessage="No devices found."
     />
   )

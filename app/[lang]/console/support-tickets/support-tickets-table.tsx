@@ -120,6 +120,10 @@ export function SupportTicketsTable() {
       tableId="console-support-tickets"
       columns={supportTicketColumns(messages)}
       data={supportTicketRows}
+      defaultColumnVisibility={{
+        department: false,
+        priority: false,
+      }}
       searchPlaceholder={messages.console.supportTickets.searchPlaceholder}
       searchableColumns={["ticketId", "title"]}
       facetFilters={[

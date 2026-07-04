@@ -1,6 +1,4 @@
-"use client"
-
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,6 +10,9 @@ import {
   type AdminInvoiceListItem,
 } from "@/lib/billing-client"
 import { eden } from "@/lib/eden"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
 
 type InvoicesTabProps = {
   orgId: string
@@ -90,6 +91,94 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
       setActionLoading(null)
     }
   }
+  const invoiceColumns = useMemo<ColumnDef<AdminInvoiceListItem>[]>(() => [
+    {
+      accessorKey: "invoiceNumber",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Invoice #" />
+      ),
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.invoiceNumber}</span>
+      ),
+    },
+    {
+      accessorKey: "issuedAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Issued" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {formatDate(row.original.issuedAt ?? row.original.createdAt)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "dueAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Due" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {formatDate(row.original.dueAt)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "totalAmountIdr",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Amount" />
+      ),
+      cell: ({ row }) => (
+        <span className="font-medium">
+          {formatCurrency(row.original.totalAmountIdr)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => (
+        <InvoiceStatusBadge status={row.original.status} />
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <span className="sr-only">Actions</span>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-1">
+          {row.original.status === "DRAFT" && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={actionLoading === row.original.id}
+              onClick={() =>
+                handleStatusChange(row.original.id, "ISSUED")
+              }
+            >
+              {actionLoading === row.original.id ? "..." : "Issue"}
+            </Button>
+          )}
+          {(row.original.status === "DRAFT" ||
+            row.original.status === "ISSUED") && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={actionLoading === row.original.id}
+              onClick={() =>
+                handleStatusChange(row.original.id, "CANCELLED")
+              }
+            >
+              {actionLoading === row.original.id ? "..." : "Cancel"}
+            </Button>
+          )}
+        </div>
+      ),
+      enableHiding: false,
+    },
+  ], [actionLoading, handleStatusChange])
+
 
   if (isLoading) {
     return <Skeleton className="h-64" />
@@ -104,95 +193,17 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
       </Card>
     )
   }
-
   return (
     <Card>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium">
-                  Invoice #
-                </th>
-                <th className="px-4 py-3 text-left font-medium">Issued</th>
-                <th className="px-4 py-3 text-left font-medium">Due</th>
-                <th className="px-4 py-3 text-right font-medium">Amount</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-8 text-center text-muted-foreground"
-                  >
-                    No invoices found for this organization.
-                  </td>
-                </tr>
-              ) : (
-                invoices.map((invoice) => (
-                  <tr key={invoice.id} className="border-b last:border-b-0">
-                    <td className="px-4 py-3 font-medium">
-                      {invoice.invoiceNumber}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {formatDate(
-                        invoice.issuedAt ?? invoice.createdAt
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {formatDate(invoice.dueAt)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      {formatCurrency(invoice.totalAmountIdr)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <InvoiceStatusBadge status={invoice.status} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {invoice.status === "DRAFT" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={actionLoading === invoice.id}
-                            onClick={() =>
-                              handleStatusChange(invoice.id, "ISSUED")
-                            }
-                          >
-                            {actionLoading === invoice.id
-                              ? "..."
-                              : "Issue"}
-                          </Button>
-                        )}
-                        {(invoice.status === "DRAFT" ||
-                          invoice.status === "ISSUED") && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={actionLoading === invoice.id}
-                            onClick={() =>
-                              handleStatusChange(invoice.id, "CANCELLED")
-                            }
-                          >
-                            {actionLoading === invoice.id
-                              ? "..."
-                              : "Cancel"}
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          tableId="portal-billing-org-invoices"
+          columns={invoiceColumns}
+          data={invoices}
+          searchPlaceholder="Search invoices..."
+          searchableColumns={["invoiceNumber"]}
+          defaultColumnVisibility={{ dueAt: false }}
+        />
       </CardContent>
     </Card>
   )

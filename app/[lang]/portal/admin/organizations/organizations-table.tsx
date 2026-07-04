@@ -1,25 +1,17 @@
-"use client"
-
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
 import {
   MagnifyingGlassIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
 } from "@phosphor-icons/react"
-
 type Organization = {
   id: string
   name: string
@@ -131,6 +123,52 @@ export function OrganizationsTable() {
     }
   }
 
+  const columns = useMemo<ColumnDef<Organization>[]>(() => [
+    {
+      accessorKey: "name",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Organization" />
+      ),
+      cell: ({ row }) => (
+        <span
+          className="cursor-pointer font-medium hover:bg-muted/50"
+          onClick={() => router.push(`/portal/admin/organizations/${row.original.id}`)}
+        >
+          {row.original.name}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "id",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="ID" />
+      ),
+      cell: ({ row }) => (
+        <span className="font-mono text-xs text-muted-foreground">
+          {row.original.id}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "memberCount",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Members" />
+      ),
+      cell: ({ row }) => (
+        <span>{memberCounts[row.original.id] ?? "..."}</span>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      cell: ({ row }) => (
+        <span>{new Date(row.original.createdAt).toLocaleDateString()}</span>
+      ),
+    },
+  ], [router, memberCounts])
+
   if (isLoading && organizations.length === 0) {
     return (
       <div className="space-y-4">
@@ -159,53 +197,14 @@ export function OrganizationsTable() {
           />
         </div>
       </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">#</TableHead>
-              <TableHead>Organization</TableHead>
-              <TableHead>ID</TableHead>
-              <TableHead>Members</TableHead>
-              <TableHead>Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {organizations.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No organizations found
-                </TableCell>
-              </TableRow>
-            ) : (
-              organizations.map((org, index) => (
-                <TableRow
-                  key={org.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() =>
-                    router.push(`/portal/admin/organizations/${org.id}`)
-                  }
-                >
-                  <TableCell className="text-muted-foreground">
-                    {index + 1}
-                  </TableCell>
-                  <TableCell className="font-medium">{org.name}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {org.id}
-                  </TableCell>
-                  <TableCell>{memberCounts[org.id] ?? "..."}</TableCell>
-                  <TableCell>
-                    {new Date(org.createdAt).toLocaleDateString()}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        tableId="portal-admin-organizations"
+        columns={columns}
+        data={organizations}
+        searchPlaceholder="Search organizations..."
+        searchableColumns={["name", "id"]}
+        defaultColumnVisibility={{ id: false, createdAt: false }}
+      />
       <div className="flex items-center justify-between">
         <Button
           variant="outline"

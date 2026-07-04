@@ -1,13 +1,26 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
-import { Prisma, BillingInvoiceStatus } from "@prisma/client"
+import { Prisma } from "@prisma/client"
+import type { BillingInvoiceStatus } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
+import {
+  invoiceEmailService,
+  type InvoiceEmailService,
+} from "@/modules/invoices/email.service"
+import type {
+  InvoiceListItem,
+  InvoiceStatus,
+} from "@/modules/invoices/invoices.types"
+import {
+  resolveInvoiceEmailRecipients,
+  type BillingEmailRecipient,
+} from "@/modules/billing/email-recipients"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -30,11 +43,27 @@ type AdminInvoiceRouteDeps = {
     platformRole: PlatformAccessRole
     tenantRole: string | null | undefined
   }) => boolean
+  emailService: InvoiceEmailService
+  getOrganizationIdByBillingAccount: (
+    billingAccountId: string
+  ) => Promise<string | null>
+  resolveInvoiceRecipients?: (
+    organizationId: string
+  ) => Promise<BillingEmailRecipient[]>
 }
 
 const defaultDeps: AdminInvoiceRouteDeps = {
   authenticate: () => withAuth(),
   getPlatformRole: getPlatformRoleForUser,
+  emailService: invoiceEmailService,
+  getOrganizationIdByBillingAccount: async (billingAccountId) => {
+    const billingAccount = await prisma.billingAccount.findUnique({
+      where: { id: billingAccountId },
+      select: { organizationId: true },
+    })
+    return billingAccount?.organizationId ?? null
+  },
+  resolveInvoiceRecipients: resolveInvoiceEmailRecipients,
   isAdmin: (actor) => {
     if (actor.platformRole === "super_admin") return true
     return actor.tenantRole === "admin" || actor.tenantRole === "owner"
@@ -130,13 +159,60 @@ function formatInvoiceResponse(invoice: {
   }
 }
 
+const toEmailStatus = (status: BillingInvoiceStatus): InvoiceStatus => {
+  if (status === "PAID") return "paid"
+  if (status === "CANCELLED" || status === "VOID") return "canceled"
+  if (status === "UNCOLLECTIBLE") return "uncollectible"
+  return status === "DRAFT" ? "draft" : "open"
+}
+
+const toInvoiceEmailItem = (invoice: {
+  id: string
+  invoiceNumber: string
+  status: BillingInvoiceStatus
+  totalAmount: Decimal
+  currency: string
+  issuedAt: Date | null
+  dueAt: Date | null
+  createdAt: Date
+}): InvoiceListItem => ({
+  id: invoice.id,
+  invoiceNumber: invoice.invoiceNumber,
+  status: toEmailStatus(invoice.status),
+  totalAmount: invoice.totalAmount.toNumber(),
+  currency: invoice.currency,
+  issuedAt: invoice.issuedAt?.toISOString() ?? invoice.createdAt.toISOString(),
+  dueAt: invoice.dueAt?.toISOString() ?? null,
+})
+
+async function notifyInvoiceRecipients(input: {
+  deps: AdminInvoiceRouteDeps
+  invoice: { billingAccountId?: string | null }
+  send: (recipient: BillingEmailRecipient) => Promise<void>
+}) {
+  if (!input.invoice.billingAccountId) return
+
+  const organizationId = await input.deps.getOrganizationIdByBillingAccount(
+    input.invoice.billingAccountId
+  )
+
+  if (!organizationId) return
+
+  const recipients = await (
+    input.deps.resolveInvoiceRecipients ?? (async () => [])
+  )(organizationId)
+
+  await Promise.allSettled(recipients.map(input.send))
+}
+
 export const createAdminInvoiceRoutes = (
   deps: Partial<AdminInvoiceRouteDeps> = {}
 ) => {
-  const { authenticate, getPlatformRole, isAdmin } = {
+  const routeDeps = {
     ...defaultDeps,
     ...deps,
   }
+  const { authenticate, getPlatformRole, isAdmin, emailService } = routeDeps
 
   return (
     new Elysia()
@@ -219,6 +295,27 @@ export const createAdminInvoiceRoutes = (
           const updatedInvoice = await prisma.billingInvoice.update({
             where: { id },
             data: updateData,
+          })
+
+          const invoiceEmailItem = toInvoiceEmailItem(updatedInvoice)
+          notifyInvoiceRecipients({
+            deps: routeDeps,
+            invoice: updatedInvoice,
+            send: (recipient) =>
+              targetStatus === "ISSUED"
+                ? emailService.sendInvoiceCreated(
+                    invoiceEmailItem,
+                    recipient.email
+                  )
+                : emailService.sendInvoiceCancelled(
+                    invoiceEmailItem,
+                    recipient.email
+                  ),
+          }).catch((err) => {
+            console.error(
+              "[AdminInvoiceUpdate] Failed to send invoice status email:",
+              err
+            )
           })
 
           return {

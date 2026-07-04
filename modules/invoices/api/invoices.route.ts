@@ -30,8 +30,13 @@ import {
   createInvoiceEmailService,
   type InvoiceEmailService,
 } from "@/modules/invoices/email.service"
+import {
+  resolveInvoiceEmailRecipients,
+  type BillingEmailRecipient,
+} from "@/modules/billing/email-recipients"
+import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { prisma } from "@/lib/prisma"
 import { getTenantOrganizationById } from "@/modules/tenants/services/tenant-workos.service"
-// prisma imported dynamically in routes below
 
 const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
@@ -88,24 +93,24 @@ type InvoiceRouteDependencies = {
   getOrganizationIdByBillingAccount: (
     billingAccountId: string
   ) => Promise<string | null>
+  resolveInvoiceRecipients?: (
+    organizationId: string
+  ) => Promise<BillingEmailRecipient[]>
 }
 
 const createDefaultDependencies = (): InvoiceRouteDependencies => ({
   authenticate: () => withAuth(),
-  getPlatformRole: async (input) => {
-    const platformRoleModule = await import("@/lib/platform-role")
-    return platformRoleModule.getPlatformRoleForUser(input)
-  },
+  getPlatformRole: getPlatformRoleForUser,
   service: createInvoiceService(),
   emailService: createInvoiceEmailService(),
   getOrganizationIdByBillingAccount: async (billingAccountId) => {
-    const { prisma } = await import("@/lib/prisma")
     const billingAccount = await prisma.billingAccount.findUnique({
       where: { id: billingAccountId },
       select: { organizationId: true },
     })
     return billingAccount?.organizationId ?? null
   },
+  resolveInvoiceRecipients: resolveInvoiceEmailRecipients,
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -190,6 +195,35 @@ const toActorRoles = async ({
 
 const isCancelableStatus = (status: InvoiceStatus) => {
   return status !== "paid" && status !== "canceled"
+}
+
+async function notifyInvoiceRecipients(input: {
+  dependencies: InvoiceRouteDependencies
+  invoice: { billingAccountId?: string }
+  fallbackEmail?: string | null
+  send: (recipient: BillingEmailRecipient) => Promise<void>
+}) {
+  const fallbackRecipients = input.fallbackEmail
+    ? [{ email: input.fallbackEmail }]
+    : []
+
+  if (!input.invoice.billingAccountId) {
+    await Promise.allSettled(fallbackRecipients.map(input.send))
+    return
+  }
+
+  const organizationId =
+    await input.dependencies.getOrganizationIdByBillingAccount(
+      input.invoice.billingAccountId
+    )
+  const recipients = organizationId
+    ? await (
+        input.dependencies.resolveInvoiceRecipients ??
+        (async () => fallbackRecipients)
+      )(organizationId)
+    : fallbackRecipients
+
+  await Promise.allSettled(recipients.map(input.send))
 }
 
 export const createInvoicesRoutes = (
@@ -429,17 +463,21 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
-        // Send cancellation notification email
-        if (auth.user?.email) {
-          dependencies.emailService
-            .sendInvoiceCancelled(invoice, auth.user.email)
-            .catch((err) => {
-              console.error(
-                "[Invoices] Failed to send invoice cancelled email:",
-                err
-              )
-            })
-        }
+        notifyInvoiceRecipients({
+          dependencies,
+          invoice,
+          fallbackEmail: auth.user.email,
+          send: (recipient) =>
+            dependencies.emailService.sendInvoiceCancelled(
+              invoice,
+              recipient.email
+            ),
+        }).catch((err) => {
+          console.error(
+            "[Invoices] Failed to send invoice cancelled email:",
+            err
+          )
+        })
 
         return {
           ok: true as const,
@@ -871,6 +909,16 @@ export const createInvoicesRoutes = (
           paymentMethod: parsedBody.data.paymentMethod,
           referenceNumber: parsedBody.data.referenceNumber,
           notes: parsedBody.data.notes,
+        })
+
+        notifyInvoiceRecipients({
+          dependencies,
+          invoice,
+          fallbackEmail: auth.user.email,
+          send: (recipient) =>
+            dependencies.emailService.sendInvoicePaid(invoice, recipient.email),
+        }).catch((err) => {
+          console.error("[Invoices] Failed to send invoice paid email:", err)
         })
 
         return {

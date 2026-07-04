@@ -1,15 +1,5 @@
-"use client"
-
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +21,9 @@ import {
   PaperPlaneTiltIcon,
 } from "@phosphor-icons/react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
 import type {
   TenantInvitationSummary,
   TenantAuthorizationResponse,
@@ -131,6 +124,84 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
       setError("An unexpected error occurred")
     }
   }
+  const columns = useMemo<ColumnDef<TenantInvitationSummary>[]>(() => [
+    {
+      accessorKey: "email",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Email" />
+      ),
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.email}</span>
+      ),
+    },
+    {
+      accessorKey: "roleSlug",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Role" />
+      ),
+      cell: ({ row }) => (
+        <span className="capitalize">
+          {row.original.roleSlug || "Member"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "expiresAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Expires" />
+      ),
+      cell: ({ row }) => (
+        <span>
+          {new Date(row.original.expiresAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => null,
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <DotsThreeVerticalIcon className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() =>
+                handleAction(
+                  eden.api.tenants[organizationId].invitations[
+                    row.original.id
+                  ].resend.post()
+                )
+              }
+            >
+              Resend
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => {
+                if (
+                  confirm(
+                    "Are you sure you want to revoke this invitation?"
+                  )
+                ) {
+                  handleAction(
+                    eden.api.tenants[organizationId].invitations[
+                      row.original.id
+                    ].revoke.post()
+                  )
+                }
+              }}
+            >
+              Revoke
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+      enableHiding: false,
+    },
+  ], [organizationId, handleAction])
 
   if (isLoading) {
     return (
@@ -197,85 +268,14 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
           </CardContent>
         </Card>
       )}
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Expires</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invitations.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No pending invitations
-                </TableCell>
-              </TableRow>
-            ) : (
-              invitations.map((invitation) => (
-                <TableRow key={invitation.id}>
-                  <TableCell className="font-medium">
-                    {invitation.email}
-                  </TableCell>
-                  <TableCell className="capitalize">
-                    {invitation.roleSlug || "Member"}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(invitation.expiresAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <DotsThreeVerticalIcon className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() =>
-                            handleAction(
-                              eden.api.tenants[organizationId].invitations[
-                                invitation.id
-                              ].resend.post()
-                            )
-                          }
-                        >
-                          Resend
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                "Are you sure you want to revoke this invitation?"
-                              )
-                            ) {
-                              handleAction(
-                                eden.api.tenants[organizationId].invitations[
-                                  invitation.id
-                                ].revoke.post()
-                              )
-                            }
-                          }}
-                        >
-                          Revoke
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        tableId="portal-settings-invitations"
+        columns={columns}
+        data={invitations}
+        searchPlaceholder="Search invitations..."
+        searchableColumns={["email"]}
+        defaultColumnVisibility={{ actions: false }}
+      />
     </div>
   )
 }

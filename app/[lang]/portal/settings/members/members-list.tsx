@@ -1,15 +1,5 @@
-"use client"
-
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +10,9 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DotsThreeVerticalIcon } from "@phosphor-icons/react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
 import type {
   TenantMembershipSummary,
   TenantAuthorizationResponse,
@@ -104,6 +97,35 @@ export function MembersList({ organizationId }: MembersListProps) {
     }
   }
 
+  const allowedActions = new Set(
+    (authorization?.allowedActions as TenantAction[]) || []
+  )
+
+  const columns = useMemo<ColumnDef<TenantMembershipSummary>[]>(() => [
+    {
+      id: "member",
+      accessorKey: "displayName",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Member" />
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={row.original.avatarUrl ?? undefined} />
+            <AvatarFallback>
+              {toMemberInitials(row.original.displayName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">
+              {row.original.email}
+            </span>
+          </div>
+        </div>
+      ),
+    },
+  ], [organizationId, allowedActions, pendingActionId, handleAction])
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -113,11 +135,6 @@ export function MembersList({ organizationId }: MembersListProps) {
       </div>
     )
   }
-
-  const allowedActions = new Set(
-    (authorization?.allowedActions as TenantAction[]) || []
-  )
-
   return (
     <div className="space-y-4">
       {error && (
@@ -125,111 +142,14 @@ export function MembersList({ organizationId }: MembersListProps) {
           {error}
         </div>
       )}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Member</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {members.map((member) => (
-              <TableRow key={member.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={member.avatarUrl ?? undefined} />
-                      <AvatarFallback>
-                        {toMemberInitials(member.displayName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{member.displayName}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {member.email}
-                      </span>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="capitalize">
-                  {member.role || "Member"}
-                </TableCell>
-                <TableCell className="capitalize">{member.status}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={!!pendingActionId}
-                      >
-                        <DotsThreeVerticalIcon className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {member.role === "member" &&
-                        allowedActions.has("promote_member") && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              handleAction(
-                                `promote-${member.id}`,
-                                eden.api.tenants[organizationId].members[
-                                  member.id
-                                ].promote.post({ targetRole: "admin" })
-                              )
-                            }
-                          >
-                            Make Admin
-                          </DropdownMenuItem>
-                        )}
-                      {member.role === "admin" &&
-                        allowedActions.has("demote_admin") && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              handleAction(
-                                `demote-${member.id}`,
-                                eden.api.tenants[organizationId].members[
-                                  member.id
-                                ].demote.post()
-                              )
-                            }
-                          >
-                            Demote to Member
-                          </DropdownMenuItem>
-                        )}
-                      {allowedActions.has("manage_tenant") && (
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                "Are you sure you want to remove this member?"
-                              )
-                            ) {
-                              handleAction(
-                                `remove-${member.id}`,
-                                eden.api.tenants[organizationId].members[
-                                  member.id
-                                ].remove.post()
-                              )
-                            }
-                          }}
-                        >
-                          Remove
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        tableId="portal-settings-members"
+        columns={columns}
+        data={members}
+        searchPlaceholder="Search members..."
+        searchableColumns={["displayName", "email"]}
+        defaultColumnVisibility={{ actions: false }}
+      />
     </div>
   )
 }

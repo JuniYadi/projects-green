@@ -1,20 +1,13 @@
-"use client"
-
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
 import { DocumentationForm } from "@/modules/docs/ui/documentation-form"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { TrashIcon } from "@phosphor-icons/react"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
 
 type DocEntry = {
   id: string
@@ -88,6 +81,65 @@ export default function PortalDocumentationsPage() {
       doc.path.toLowerCase().includes(search.toLowerCase())
   )
 
+  const columns = useMemo<ColumnDef<DocEntry>[]>(() => [
+    {
+      accessorKey: "title",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Title" />
+      ),
+      cell: ({ row }) => (
+        <span
+          className={`font-medium ${selectedDoc?.id === row.original.id ? "bg-muted" : ""} cursor-pointer hover:bg-muted/50`}
+          onClick={() => setSelectedDoc(row.original)}
+        >
+          {row.original.title}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "path",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Path" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.path}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "updatedAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Updated" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.updatedAt}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => null,
+      cell: ({ row }) => (
+        <Button
+          aria-label={`Delete ${row.original.title}`}
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-destructive"
+          disabled={isDeleting}
+          onClick={(e) => {
+            e.stopPropagation()
+            void handleDelete(row.original)
+          }}
+        >
+          <TrashIcon className="h-4 w-4" />
+        </Button>
+      ),
+      enableHiding: false,
+    },
+  ], [isDeleting, handleDelete, selectedDoc])
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
@@ -117,57 +169,15 @@ export default function PortalDocumentationsPage() {
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
           </div>
-        ) : filteredDocs.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            {search
-              ? "No docs match your search."
-              : "No documentation entries yet. Create one below."}
-          </p>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Path</TableHead>
-                  <TableHead>Updated</TableHead>
-                  <TableHead className="w-[60px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDocs.map((doc) => (
-                  <TableRow
-                    key={doc.id}
-                    className={`cursor-pointer ${selectedDoc?.id === doc.id ? "bg-muted" : ""}`}
-                    onClick={() => setSelectedDoc(doc)}
-                  >
-                    <TableCell className="font-medium">{doc.title}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {doc.path}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {doc.updatedAt}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        aria-label={`Delete ${doc.title}`}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        disabled={isDeleting}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void handleDelete(doc)
-                        }}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+        <DataTable
+          tableId="portal-documentations"
+          columns={columns}
+          data={filteredDocs}
+          searchPlaceholder="Search by title or path..."
+          searchableColumns={["title", "path"]}
+          defaultColumnVisibility={{ actions: false }}
+        />
         )}
       </section>
 

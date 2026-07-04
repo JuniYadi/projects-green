@@ -1,16 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -32,6 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -56,7 +51,6 @@ type VoucherItem = {
   createdByWorkosUserId: string
   createdAt: string
 }
-
 
 const STATUS_COLORS: Record<VoucherStatus, string> = {
   ACTIVE:
@@ -135,12 +129,12 @@ export function VoucherManagementTable() {
     setOffset(0)
   }
 
-  function copyCode(code: string, e: React.MouseEvent) {
+  const copyCode = useCallback((code: string, e: React.MouseEvent) => {
     e.stopPropagation()
     navigator.clipboard.writeText(code).then(() => {
       // brief visual feedback could be added later
     })
-  }
+  }, [])
 
   function handlePrevPage() {
     setOffset(Math.max(0, offset - PAGE_SIZE))
@@ -202,6 +196,98 @@ export function VoucherManagementTable() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1
+
+  const voucherColumns = useMemo<ColumnDef<VoucherItem>[]>(() => [
+    {
+      accessorKey: "code",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Code" />
+      ),
+      cell: ({ row }) => (
+        <span className="flex items-center gap-1.5 font-mono text-xs font-medium">
+          <span
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => router.push(`/portal/billing/voucher/${row.original.id}`)}
+          >
+            {row.original.code}
+          </span>
+          <button
+            onClick={(e) => copyCode(row.original.code, e)}
+            className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Copy to clipboard"
+          >
+            <CopySimpleIcon className="h-3.5 w-3.5" />
+          </button>
+        </span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => (
+        <Badge variant="secondary" className={STATUS_COLORS[row.original.status] ?? ""}>
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "amount",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Amount" />
+      ),
+      cell: ({ row }) => (
+        <span>{row.original.currency} {Number(row.original.amount).toLocaleString()}</span>
+      ),
+    },
+    {
+      accessorKey: "claimedCount",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Claims" />
+      ),
+      cell: ({ row }) => (
+        <span>{row.original.claimedCount}/{row.original.maxClaims}</span>
+      ),
+    },
+    {
+      accessorKey: "expiresAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Expires At" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(row.original.expiresAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "targetWorkosUserId",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Target" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.targetWorkosUserId
+            ? "Specific user"
+            : row.original.targetOrganizationId
+              ? "Specific org"
+              : "Anyone"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(row.original.createdAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+  ], [copyCode, router])
 
   if (isLoading && vouchers.length === 0) {
     return (
@@ -307,7 +393,7 @@ export function VoucherManagementTable() {
 
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="maxClaims" className="text-right">
-                  Max Claims *
+                  Max Claims
                 </Label>
                 <Input
                   id="maxClaims"
@@ -317,6 +403,7 @@ export function VoucherManagementTable() {
                   onChange={(e) =>
                     setCreateForm({ ...createForm, maxClaims: e.target.value })
                   }
+                  placeholder="1"
                   className="col-span-3"
                 />
               </div>
@@ -337,11 +424,11 @@ export function VoucherManagementTable() {
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="targetUserId" className="text-right">
+                <Label htmlFor="targetWorkosUserId" className="text-right">
                   Target User ID
                 </Label>
                 <Input
-                  id="targetUserId"
+                  id="targetWorkosUserId"
                   value={createForm.targetWorkosUserId}
                   onChange={(e) =>
                     setCreateForm({
@@ -349,17 +436,17 @@ export function VoucherManagementTable() {
                       targetWorkosUserId: e.target.value,
                     })
                   }
-                  placeholder="Leave empty for anyone"
+                  placeholder="Leave empty for any user"
                   className="col-span-3"
                 />
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="targetOrgId" className="text-right">
+                <Label htmlFor="targetOrganizationId" className="text-right">
                   Target Org ID
                 </Label>
                 <Input
-                  id="targetOrgId"
+                  id="targetOrganizationId"
                   value={createForm.targetOrganizationId}
                   onChange={(e) =>
                     setCreateForm({
@@ -400,83 +487,19 @@ export function VoucherManagementTable() {
         </Dialog>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Claims</TableHead>
-              <TableHead>Expires At</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead>Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {vouchers.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No vouchers found
-                </TableCell>
-              </TableRow>
-            ) : (
-              vouchers.map((voucher) => (
-                <TableRow
-                  key={voucher.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() =>
-                    router.push(`/portal/billing/voucher/${voucher.id}`)
-                  }
-                >
-                  <TableCell className="font-mono text-xs font-medium">
-                    <span className="flex items-center gap-1.5">
-                      {voucher.code}
-                      <button
-                        onClick={(e) => copyCode(voucher.code, e)}
-                        className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        title="Copy to clipboard"
-                      >
-                        <CopySimpleIcon className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={STATUS_COLORS[voucher.status] ?? ""}
-                    >
-                      {voucher.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {voucher.currency} {Number(voucher.amount).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    {voucher.claimedCount}/{voucher.maxClaims}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(voucher.expiresAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {voucher.targetWorkosUserId
-                      ? "Specific user"
-                      : voucher.targetOrganizationId
-                        ? "Specific org"
-                        : "Anyone"}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(voucher.createdAt).toLocaleDateString()}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        tableId="portal-billing-vouchers"
+        columns={voucherColumns}
+        data={vouchers}
+        searchPlaceholder="Search vouchers..."
+        searchableColumns={["code"]}
+        defaultColumnVisibility={{
+          claimedCount: false,
+          expiresAt: false,
+          targetWorkosUserId: false,
+          createdAt: false,
+        }}
+      />
 
       {total > 0 && (
         <div className="flex items-center justify-between">

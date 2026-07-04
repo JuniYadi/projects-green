@@ -194,6 +194,9 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
       tableId="portal-invoices"
       columns={invoiceColumns}
       data={state.data}
+      defaultColumnVisibility={{
+        dueAt: false,
+      }}
       searchPlaceholder="Filter by Invoice ID..."
       searchableColumns={["invoiceNumber"]}
       facetFilters={[

@@ -364,5 +364,138 @@ describe("AdminInvoiceRoute", () => {
       const body = await response.json()
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
     })
+    it("sends invoice created email to resolved recipients on DRAFT→ISSUED", async () => {
+      const mockInvoice = {
+        id: "inv-1",
+        invoiceNumber: "INV-2026-05-001",
+        status: "DRAFT",
+        subtotalAmount: new Decimal("100000.00"),
+        taxAmount: new Decimal("0.00"),
+        discountAmount: new Decimal("0.00"),
+        totalAmount: new Decimal("100000.00"),
+        currency: "IDR",
+        issuedAt: null,
+        dueAt: new Date("2026-06-15"),
+        paidAt: null,
+        createdAt: new Date("2026-06-01"),
+        billingAccountId: "ba-1",
+      }
+
+      const mockUpdated = {
+        ...mockInvoice,
+        status: "ISSUED",
+        issuedAt: new Date(),
+      }
+
+      mockFindUnique.mockResolvedValueOnce(mockInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
+
+      const mockSendInvoiceCreated = mock(async () => {})
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+            emailService: {
+              sendInvoiceCreated: mockSendInvoiceCreated,
+              sendPaymentReminder: mock(async () => {}),
+              sendInvoicePaid: mock(async () => {}),
+              sendInvoiceOverdue: mock(async () => {}),
+              sendInvoiceCancelled: mock(async () => {}),
+            },
+            getOrganizationIdByBillingAccount: async () => "org-1",
+            resolveInvoiceRecipients: async () => [
+              { email: "recip1@example.com" },
+              { email: "recip2@example.com" },
+            ],
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "ISSUED" }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockSendInvoiceCreated).toHaveBeenCalledTimes(2)
+      expect(mockSendInvoiceCreated).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "inv-1" }),
+        "recip1@example.com"
+      )
+      expect(mockSendInvoiceCreated).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "inv-1" }),
+        "recip2@example.com"
+      )
+    })
+
+    it("sends invoice cancelled email to resolved recipients on DRAFT→CANCELLED", async () => {
+      const mockInvoice = {
+        id: "inv-1",
+        invoiceNumber: "INV-2026-05-001",
+        status: "DRAFT",
+        subtotalAmount: new Decimal("100000.00"),
+        taxAmount: new Decimal("0.00"),
+        discountAmount: new Decimal("0.00"),
+        totalAmount: new Decimal("100000.00"),
+        currency: "IDR",
+        issuedAt: null,
+        dueAt: new Date("2026-06-15"),
+        paidAt: null,
+        createdAt: new Date("2026-06-01"),
+        billingAccountId: "ba-1",
+      }
+
+      const mockUpdated = {
+        ...mockInvoice,
+        status: "CANCELLED",
+      }
+
+      mockFindUnique.mockResolvedValueOnce(mockInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
+
+      const mockSendInvoiceCancelled = mock(async () => {})
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+            emailService: {
+              sendInvoiceCreated: mock(async () => {}),
+              sendPaymentReminder: mock(async () => {}),
+              sendInvoicePaid: mock(async () => {}),
+              sendInvoiceOverdue: mock(async () => {}),
+              sendInvoiceCancelled: mockSendInvoiceCancelled,
+            },
+            getOrganizationIdByBillingAccount: async () => "org-1",
+            resolveInvoiceRecipients: async () => [
+              { email: "recip1@example.com" },
+            ],
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "CANCELLED" }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockSendInvoiceCancelled).toHaveBeenCalledTimes(1)
+      expect(mockSendInvoiceCancelled).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "inv-1" }),
+        "recip1@example.com"
+      )
+    })
   })
 })

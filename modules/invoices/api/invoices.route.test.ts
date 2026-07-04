@@ -84,6 +84,9 @@ const createApp = (input: {
   getOrganizationIdByBillingAccount?: (
     billingAccountId: string
   ) => Promise<string | null>
+  resolveInvoiceRecipients?: (
+    organizationId: string
+  ) => Promise<Array<{ email: string }>>
 }) => {
   const service = input.service ?? createService()
 
@@ -109,6 +112,9 @@ const createApp = (input: {
       emailService: mockEmailService,
       getOrganizationIdByBillingAccount:
         input.getOrganizationIdByBillingAccount ?? (async () => "org_1"),
+      resolveInvoiceRecipients:
+        input.resolveInvoiceRecipients ??
+        (async () => [{ email: "billing@example.com" }]),
     })
   )
 }
@@ -1061,5 +1067,91 @@ describe("invoices routes", () => {
     )
 
     expect(response.status).toBe(422)
+  })
+
+  it("POST cancel sends invoice cancelled email to resolved recipients", async () => {
+    const mockRecipients = [
+      { email: "billing1@example.com" },
+      { email: "billing2@example.com" },
+    ]
+    const mockSendInvoiceCancelled = mock(async () => {})
+
+    const service = createService()
+    service.cancelInvoice = mock(async () => ({
+      ...invoiceDetail,
+      status: "canceled" as const,
+      billingAccountId: "ba_1",
+    }))
+
+    const app = createApp({
+      service,
+      resolveInvoiceRecipients: async () => mockRecipients,
+      emailService: {
+        sendInvoiceCreated: mock(async () => {}),
+        sendPaymentReminder: mock(async () => {}),
+        sendInvoicePaid: mock(async () => {}),
+        sendInvoiceOverdue: mock(async () => {}),
+        sendInvoiceCancelled: mockSendInvoiceCancelled,
+      },
+      platformRole: "super_admin",
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/cancel", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockSendInvoiceCancelled).toHaveBeenCalledTimes(2)
+    expect(mockSendInvoiceCancelled).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "inv_1" }),
+      "billing1@example.com"
+    )
+    expect(mockSendInvoiceCancelled).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "inv_1" }),
+      "billing2@example.com"
+    )
+  })
+
+  it("POST mark-paid sends invoice paid email to resolved recipients", async () => {
+    const mockRecipients = [{ email: "owner@example.com" }]
+    const mockSendInvoicePaid = mock(async () => {})
+
+    const service = createService()
+    service.markInvoiceAsPaid = mock(async () => ({
+      ...invoiceDetail,
+      status: "paid" as const,
+      billingAccountId: "ba_1",
+    }))
+
+    const app = createApp({
+      service,
+      resolveInvoiceRecipients: async () => mockRecipients,
+      emailService: {
+        sendInvoiceCreated: mock(async () => {}),
+        sendPaymentReminder: mock(async () => {}),
+        sendInvoicePaid: mockSendInvoicePaid,
+        sendInvoiceOverdue: mock(async () => {}),
+        sendInvoiceCancelled: mock(async () => {}),
+      },
+      platformRole: "super_admin",
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/mark-paid", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ paymentMethod: "MANUAL_BANK" }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockSendInvoicePaid).toHaveBeenCalledTimes(1)
+    expect(mockSendInvoicePaid).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "inv_1" }),
+      "owner@example.com"
+    )
   })
 })
