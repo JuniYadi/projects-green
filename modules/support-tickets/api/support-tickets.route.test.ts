@@ -55,7 +55,10 @@ import {
   SupportTicketNotFoundError,
   type SupportTicketService,
 } from "@/modules/support-tickets/support-ticket.service"
-import type { SupportTicket } from "@/modules/support-tickets/support-ticket.types"
+import type {
+  SupportTicket,
+  SupportTicketReply,
+} from "@/modules/support-tickets/support-ticket.types"
 
 type SupportTicketThreadResponse = {
   ok: true
@@ -238,7 +241,9 @@ describe("support ticket routes", () => {
 
     expect(response.status).toBe(201)
     expect(mockSendTicketReplyAlertToStaff).toHaveBeenCalledTimes(2)
-    const calls = mockSendTicketReplyAlertToStaff.mock.calls
+    const calls = mockSendTicketReplyAlertToStaff.mock.calls as unknown as Array<
+      [SupportTicket, SupportTicketReply, string, string]
+    >
     expect(calls[0]![0].id).toBe("ticket_1")
     expect(calls[0]![1].id).toBe("reply_2")
     expect(calls[0]![2]).toBe("admin1@example.com")
@@ -555,6 +560,7 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
+          async sendTicketReplyAlertToStaff() {},
           async sendNewTicketAlertToStaff() {},
         },
       })
@@ -818,6 +824,7 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
+          async sendTicketReplyAlertToStaff() {},
           async sendNewTicketAlertToStaff() {},
         },
       })
@@ -990,6 +997,7 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
+          async sendTicketReplyAlertToStaff() {},
           async sendNewTicketAlertToStaff() {},
         },
       })
@@ -1042,6 +1050,7 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
+          async sendTicketReplyAlertToStaff() {},
           async sendNewTicketAlertToStaff() {},
         },
       })
@@ -1085,6 +1094,7 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
+          async sendTicketReplyAlertToStaff() {},
           async sendNewTicketAlertToStaff() {},
         },
       })
@@ -1162,6 +1172,7 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
+          async sendTicketReplyAlertToStaff() {},
           async sendNewTicketAlertToStaff() {},
         },
       })
@@ -1263,6 +1274,7 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
+          async sendTicketReplyAlertToStaff() {},
           async sendNewTicketAlertToStaff() {},
         },
       })

@@ -176,7 +176,7 @@ export default function PortalDocumentationsPage() {
           data={filteredDocs}
           searchPlaceholder="Search by title or path..."
           searchableColumns={["title", "path"]}
-          defaultColumnVisibility={{ actions: false }}
+          defaultColumnVisibility={{}}
         />
         )}
       </section>
