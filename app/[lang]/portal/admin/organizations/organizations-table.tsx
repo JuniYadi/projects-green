@@ -1,3 +1,5 @@
+"use client"
+
 import { useEffect, useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
