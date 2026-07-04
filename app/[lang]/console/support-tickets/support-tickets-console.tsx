@@ -176,6 +176,13 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
               tableId="console-support-tickets-listing"
               columns={columns}
               data={tickets}
+              defaultColumnVisibility={{
+                department: false,
+                priority: false,
+                service: false,
+                organizationId: false,
+                requesterWorkosUserId: false,
+              }}
               searchPlaceholder="Filter by Ticket ID or Subject..."
               searchableColumns={["ticketNumber", "subject"]}
               facetFilters={[

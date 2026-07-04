@@ -1,18 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Select,
   SelectContent,
@@ -26,6 +18,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
 
 type GithubEventRow = {
   id: string
@@ -54,7 +49,6 @@ type GithubEventRow = {
 type GithubEventDetail = GithubEventRow & {
   payloadJson: unknown
 }
-
 
 const STATUS_BADGE: Record<string, string> = {
   processed: "bg-green-100 text-green-800",
@@ -124,7 +118,7 @@ export function GithubEventsTable() {
     void loadEvents()
   }, [loadEvents])
 
-  const handleViewJson = async (event: GithubEventRow) => {
+  const handleViewJson = useCallback(async (event: GithubEventRow) => {
     setIsLoadingDetail(true)
     setJsonModalOpen(true)
     try {
@@ -140,9 +134,121 @@ export function GithubEventsTable() {
     } finally {
       setIsLoadingDetail(false)
     }
-  }
+  }, [])
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const columns = useMemo<ColumnDef<GithubEventRow>[]>(() => [
+    {
+      accessorKey: "receivedAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Received" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(row.original.receivedAt).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "eventName",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Event" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs font-medium">
+          {row.original.eventName}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "repositoryFullName",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Repository" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs">{row.original.repositoryFullName}</span>
+      ),
+    },
+    {
+      accessorKey: "branch",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Branch" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.branch}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "commitSha",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Commit SHA" />
+      ),
+      cell: ({ row }) => (
+        <span className="font-mono text-xs text-muted-foreground">
+          {truncate(row.original.commitSha, 8)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "commitMessage",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Message" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {truncate(row.original.commitMessage, 40)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "senderLogin",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Sender" />
+      ),
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.senderLogin}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "processStatus",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => (
+        <div className="space-y-1">
+          <span
+            className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[row.original.processStatus ?? ""] ?? "bg-gray-100 text-gray-800"}`}
+          >
+            {row.original.processStatus}
+          </span>
+          {row.original.ignoreReason ? (
+            <div className="text-xs text-muted-foreground">
+              {row.original.ignoreReason}
+            </div>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => null,
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => void handleViewJson(row.original)}
+        >
+          JSON
+        </Button>
+      ),
+      enableHiding: false,
+    },
+  ], [handleViewJson])
 
   return (
     <>
@@ -231,75 +337,19 @@ export function GithubEventsTable() {
           </p>
         ) : (
           <>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[160px]">Received</TableHead>
-                    <TableHead className="w-[90px]">Event</TableHead>
-                    <TableHead>Repository</TableHead>
-                    <TableHead className="w-[100px]">Branch</TableHead>
-                    <TableHead className="w-[120px]">Commit SHA</TableHead>
-                    <TableHead className="w-[200px]">Message</TableHead>
-                    <TableHead className="w-[100px]">Sender</TableHead>
-                    <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="w-[80px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {events.map((event) => (
-                    <TableRow key={event.id}>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(event.receivedAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-xs font-medium">
-                        {event.eventName}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {event.repositoryFullName}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {event.branch}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {truncate(event.commitSha, 8)}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {truncate(event.commitMessage, 40)}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {event.senderLogin}
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <span
-                            className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[event.processStatus ?? ""] ?? "bg-gray-100 text-gray-800"}`}
-                          >
-                            {event.processStatus}
-                          </span>
-                          {event.ignoreReason ? (
-                            <div className="text-xs text-muted-foreground">
-                              {event.ignoreReason}
-                            </div>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => void handleViewJson(event)}
-                        >
-                          JSON
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
+            <DataTable
+              tableId="portal-github-events"
+              columns={columns}
+              data={events}
+              searchPlaceholder="Search events..."
+              searchableColumns={["eventName", "repositoryFullName", "senderLogin"]}
+              defaultColumnVisibility={{
+                branch: false,
+                commitSha: false,
+                commitMessage: false,
+                senderLogin: false,
+              }}
+            />
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
                 Showing {events.length} of {total} events

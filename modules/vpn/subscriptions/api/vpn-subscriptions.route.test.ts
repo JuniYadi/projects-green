@@ -5,11 +5,19 @@ import { Prisma } from "@prisma/client"
 import type { VpnSubscriptionService } from "../vpn-subscription.service"
 
 const mockPackageFindMany = mock()
+const mockBillingAccountFindUnique = mock()
+const mockBillingAdjustmentFindMany = mock()
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
     vpnPackage: {
       findMany: mockPackageFindMany,
+    },
+    billingAccount: {
+      findUnique: mockBillingAccountFindUnique,
+    },
+    billingAdjustment: {
+      findMany: mockBillingAdjustmentFindMany,
     },
   },
 }))
@@ -87,6 +95,10 @@ describe("VPN subscription routes", () => {
   beforeEach(() => {
     mockPackageFindMany.mockClear()
     mockPackageFindMany.mockResolvedValue([{ id: "pkg_1", name: "VPN SG" }])
+    mockBillingAccountFindUnique.mockClear()
+    mockBillingAccountFindUnique.mockResolvedValue({ id: "ba_1" })
+    mockBillingAdjustmentFindMany.mockClear()
+    mockBillingAdjustmentFindMany.mockResolvedValue([])
   })
 
   it("returns package names for customer subscriptions", async () => {

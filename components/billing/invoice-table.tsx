@@ -141,6 +141,9 @@ export function InvoiceTable({
       tableId={tableId}
       columns={columns}
       data={invoices}
+      defaultColumnVisibility={{
+        dueAt: false,
+      }}
       searchableColumns={["invoiceNumber"]}
       searchPlaceholder="Search invoices..."
       facetFilters={[

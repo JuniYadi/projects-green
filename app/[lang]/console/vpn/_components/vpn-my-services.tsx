@@ -1,8 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import type { ColumnDef } from "@tanstack/react-table"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -18,9 +21,9 @@ import {
   DownloadIcon,
   EyeIcon,
   EyeSlashIcon,
-  DeviceMobileIcon,
   MapPinIcon,
   CopySimpleIcon,
+  DotsThreeVertical,
 } from "@phosphor-icons/react"
 
 import {
@@ -34,13 +37,19 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { VpnPairingQrModal } from "@/modules/vpn/_components/vpn-pairing-qr-modal"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 type Props = {
   subscriptions: VpnSubscription[]
   onChanged: () => void
 }
 
-function formatDate(value: string): string {
+export function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "short",
@@ -281,6 +290,168 @@ function groupByServer(accounts: VpnServerAccount[]): ServerGroup[] {
   return [...map.values()]
 }
 
+type BillingStatus = "ACTIVE" | "CANCELLING" | "SUSPENDED" | "EXPIRED"
+
+function billingStatus(sub: VpnSubscription): BillingStatus {
+  return sub.cancelAtPeriodEnd ? "CANCELLING" : sub.status
+}
+
+export function subscriptionPriceLabel(sub: VpnSubscription): string {
+  const base = sub.originalPrice
+    ? `${sub.originalPrice} ${sub.originalCurrency}`
+    : `${sub.priceLocked} ${sub.currency}`
+  if (sub.exchangeRate && sub.originalCurrency !== sub.currency) {
+    return `${base} (${sub.priceLocked} ${sub.currency})`
+  }
+  return base
+}
+
+function subscriptionSearchText(sub: VpnSubscription): string {
+  return sub.serverAccounts
+    .flatMap((account) => [
+      account.serverName,
+      account.hostname,
+      account.ipAddress ?? "",
+      account.region?.name ?? "",
+      account.region?.slug ?? "",
+      account.protocol,
+      account.username,
+    ])
+    .filter(Boolean)
+    .join(" ")
+}
+
+function regionFilterValue(sub: VpnSubscription): string {
+  return [
+    ...new Set(
+      sub.serverAccounts
+        .map((account) => account.region?.slug)
+        .filter((slug): slug is string => Boolean(slug)),
+    ),
+  ].join("|")
+}
+
+async function copySubscriptionId(id: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(id)
+    toast.success("Copied!")
+  } catch {
+    try {
+      // ponytail: clipboard requires secure context
+      const el = document.createElement("textarea")
+      el.value = id
+      el.style.position = "fixed"
+      el.style.opacity = "0"
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand("copy")
+      document.body.removeChild(el)
+      toast.success("Copied!")
+    } catch {
+      toast.error("Failed to copy — please copy manually")
+    }
+  }
+}
+
+function uniqueRegionNames(sub: VpnSubscription): string[] {
+  return [
+    ...new Set(
+      sub.serverAccounts
+        .map((account) => account.region?.name)
+        .filter((name): name is string => Boolean(name)),
+    ),
+  ]
+}
+
+function RegionSummary({ sub }: { sub: VpnSubscription }) {
+  const regions = uniqueRegionNames(sub)
+  const visible = regions.slice(0, 2).join(", ") || "No regions"
+  const more = regions.length > 2 ? ` +${regions.length - 2} more` : ""
+
+  return (
+    <p className="max-w-[220px] truncate text-xs text-muted-foreground">
+      {visible}{more}
+    </p>
+  )
+}
+
+function SubscriptionStatusBadge({ sub }: { sub: VpnSubscription }) {
+  const status = billingStatus(sub)
+
+  return (
+    <Badge
+      variant={status === "CANCELLING" ? "secondary" : STATUS_VARIANT[sub.status]}
+    >
+      {status === "CANCELLING" ? "Cancelling" : sub.status}
+    </Badge>
+  )
+}
+
+function ServerSummaryCell({
+  sub,
+  devices,
+}: {
+  sub: VpnSubscription
+  devices: Array<{ deviceName: string; platform: string; status: string }>
+}) {
+  const groups = groupByServer(sub.serverAccounts)
+  const maxDevices =
+    sub.serverAccounts.filter((account) => account.provisioningStatus === "ACTIVE")
+      .length * 2
+
+  return (
+    <div className="min-w-[220px] space-y-1">
+      <div className="text-sm font-medium">
+        {groups.length} servers · {sub.serverAccounts.length} accounts
+      </div>
+      <div className="text-xs text-muted-foreground">
+        Devices {devices.length}/{maxDevices}
+      </div>
+      <RegionSummary sub={sub} />
+    </div>
+  )
+}
+
+export function VpnServerAccountsDetail({
+  subscription,
+}: {
+  subscription: VpnSubscription
+}) {
+  return (
+    <div className="space-y-2">
+      {groupByServer(subscription.serverAccounts).map((group) => (
+        <div
+          key={group.serverId}
+          className="grid gap-3 rounded-lg border px-3 py-2.5 lg:grid-cols-[minmax(220px,320px)_1fr] lg:items-center"
+        >
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold">{group.serverName}</span>
+              <RegionBadge region={group.region} />
+            </div>
+            <p className="truncate text-xs text-muted-foreground">
+              {group.hostname || "—"}
+              <span className="mx-1">·</span>
+              {group.ipAddress || "—"}
+            </p>
+          </div>
+
+          <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {group.accounts.map((account) => (
+              <ProtocolControl
+                key={account.id}
+                subscriptionId={subscription.id}
+                account={account}
+                subStatus={subscription.status}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function VpnMyServices({ subscriptions, onChanged }: Props) {
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(
@@ -330,8 +501,27 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
       }
     }
     run()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [refreshKey])
+
+  const regionOptions = useMemo(() => {
+    const regions = new Map<string, string>()
+    for (const sub of subscriptions) {
+      for (const account of sub.serverAccounts) {
+        if (account.region) {
+          regions.set(
+            account.region.slug,
+            `${account.region.name} (${account.region.countryCode})`,
+          )
+        }
+      }
+    }
+    return [...regions.entries()]
+      .map(([value, label]) => ({ label, value }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [subscriptions])
 
   const handleCancel = async (id: string) => {
     setCancelling(id)
@@ -378,458 +568,454 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
     }
   }
 
-  return (
-    <>
-      <div className="space-y-6">
-        {subscriptions.map((sub) => {
-          const groups = groupByServer(sub.serverAccounts)
-          const subDevices = devicesBySub[sub.id] ?? []
-          // ponytail: maxDevices = active server count * 2
-          const maxDevices = sub.serverAccounts.filter((a) => a.provisioningStatus === "ACTIVE").length * 2
+  const columns = useMemo<ColumnDef<VpnSubscription, unknown>[]>(
+    () => [
+      {
+        accessorKey: "packageName",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Package" />
+        ),
+        cell: ({ row }) => {
+          const sub = row.original
+          const displayId =
+            sub.id.length > 24 ? `${sub.id.slice(0, 24)}…` : sub.id
 
           return (
-            <Card key={sub.id} size="sm">
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  {sub.packageName}
-                  <Badge
-                    variant={
-                      sub.cancelAtPeriodEnd
-                        ? "secondary"
-                        : STATUS_VARIANT[sub.status]
-                    }
-                  >
-                    {sub.cancelAtPeriodEnd ? "Cancelling" : sub.status}
-                  </Badge>
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Next bill: {formatDate(sub.currentPeriodEnd)}
-                  {sub.originalPrice && (
-                    <>
-                      <span className="mx-1">·</span>
-                      {sub.originalPrice} {sub.originalCurrency}
-                      {sub.exchangeRate && sub.originalCurrency !== sub.currency && (
-                        <span className="text-xs">
-                          {" "}({sub.priceLocked} {sub.currency})
-                        </span>
-                      )}
-                    </>
-                  )}
-                </p>
-              </div>
-              {sub.cancelAtPeriodEnd && sub.status === "ACTIVE" ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-800/40"
-                  onClick={() => {
-                    setReinstateDialogId(sub.id)
-                    setReinstateReasons((prev) => ({
-                      ...prev,
-                      [sub.id]: "",
-                    }))
-                  }}
-                  disabled={reinstating === sub.id}
-                >
-                  {reinstating === sub.id
-                    ? "Reinstating…"
-                    : "Reinstate"}
-                </Button>
-              ) : (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => {
-                    setConfirmCancelId(sub.id)
-                    setConfirmCancelTexts((prev) => ({
-                      ...prev,
-                      [sub.id]: "",
-                    }))
-                    setCancelReasons((prev) => ({
-                      ...prev,
-                      [sub.id]: "",
-                    }))
-                  }}
-                  disabled={
-                    cancelling === sub.id ||
-                    sub.status !== "ACTIVE"
-                  }
-                >
-                  {cancelling === sub.id
-                    ? "Cancelling…"
-                    : "Cancel"}
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {/* ponytail: subscription.id already on VpnSubscription type */}
+            <div className="min-w-[200px] space-y-1">
+              <div className="font-medium">{sub.packageName}</div>
+              <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
+                <Link href={`/console/vpn/subscriptions/${sub.id}`}>
+                  View details
+                </Link>
+              </Button>
               <div className="flex items-center gap-2">
-                <Badge variant="outline">ID</Badge>
-                <span className="font-mono text-xs text-muted-foreground" title={sub.id}>
-                  {sub.id.length > 24 ? `${sub.id.slice(0, 24)}…` : sub.id}
+                <span
+                  className="font-mono text-xs text-muted-foreground"
+                  title={sub.id}
+                >
+                  {displayId}
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-6 px-1.5"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(sub.id)
-                      toast.success("Copied!")
-                    } catch {
-                      try {
-                        // ponytail: clipboard requires secure context
-                        const el = document.createElement("textarea")
-                        el.value = sub.id
-                        el.style.position = "fixed"
-                        el.style.opacity = "0"
-                        document.body.appendChild(el)
-                        el.select()
-                        document.execCommand("copy")
-                        document.body.removeChild(el)
-                        toast.success("Copied!")
-                      } catch {
-                        toast.error("Failed to copy — please copy manually")
-                      }
-                    }
-                  }}
+                  onClick={() => void copySubscriptionId(sub.id)}
                   aria-label="Copy subscription ID"
                 >
                   <CopySimpleIcon className="h-3.5 w-3.5" />
                 </Button>
               </div>
-
-              <div className="space-y-2">
-                {groups.map((group) => (
-                  <div
-                    key={group.serverId}
-                    className="grid gap-3 rounded-lg border px-3 py-2.5 lg:grid-cols-[minmax(220px,320px)_1fr] lg:items-center"
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold">
-                          {group.serverName}
-                        </span>
-                        <RegionBadge region={group.region} />
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {group.hostname || "—"}
-                        <span className="mx-1">·</span>
-                        {group.ipAddress || "—"}
-                      </p>
-                    </div>
-
-                    <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-3">
-                      {group.accounts.map((account) => (
-                        <ProtocolControl
-                          key={account.id}
-                          subscriptionId={sub.id}
-                          account={account}
-                          subStatus={sub.status}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Paired Devices section */}
-              <div className="mt-4 rounded-md border p-3">
-                <div className="mb-2 flex items-center gap-2">
-                  <DeviceMobileIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">
-                    Devices ({subDevices.length}/{maxDevices})
-                  </span>
-                  {sub.status === "ACTIVE" && (
-                    <span className="ml-auto">
-                      <span
-                        className="inline-block"
-                        title={
-                          subDevices.length >= maxDevices
-                            ? "Max devices reached"
-                            : "Pair a new device"
-                        }
-                      >
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={subDevices.length >= maxDevices}
-                          onClick={() => setPairingSubId(sub.id)}
-                        >
-                          Pair New Device
-                        </Button>
-                      </span>
-                    </span>
-                  )}
-                </div>
-                {subDevices.length > 0 ? (
-                  <div className="space-y-1">
-                    {subDevices.map((d, i) => (
-                      <p key={i} className="text-sm text-muted-foreground">
-                        {d.deviceName}
-                        <span className="mx-1">·</span>
-                        {d.platform === "ios"
-                          ? "iOS"
-                          : d.platform === "android"
-                            ? "Android"
-                            : d.platform}
-                        <span className="mx-1">·</span>
-                        <span
-                          className={
-                            d.status === "ACTIVE"
-                              ? "text-green-600"
-                              : d.status === "REVOKED"
-                                ? "text-destructive"
-                                : "text-muted-foreground"
-                          }
-                        >
-                          {d.status}
-                        </span>
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {sub.status === "ACTIVE"
-                      ? "No devices paired yet."
-                      : "Renew to pair devices."}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            </div>
           )
-        })}
-    </div>
+        },
+      },
+      {
+        id: "billingStatus",
+        accessorFn: billingStatus,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => <SubscriptionStatusBadge sub={row.original} />,
+      },
+      {
+        id: "servers",
+        accessorFn: subscriptionSearchText,
+        header: "Service",
+        filterFn: (row, _columnId, value) =>
+          regionFilterValue(row.original).split("|").includes(String(value)),
+        cell: ({ row }) => (
+          <ServerSummaryCell
+            sub={row.original}
+            devices={devicesBySub[row.original.id] ?? []}
+          />
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="First buy" />
+        ),
+        sortingFn: "datetime",
+        cell: ({ row }) => formatDate(row.original.createdAt),
+      },
+      {
+        id: "firstPayment",
+        accessorFn: (sub) => sub.firstPayment?.amount ?? "",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="First payment" />
+        ),
+        cell: ({ row }) => {
+          const payment = row.original.firstPayment
+          if (!payment) return <span className="text-muted-foreground">—</span>
+          return (
+            <div className="space-y-1 text-sm">
+              <div>{payment.amount} {payment.currency}</div>
+              {payment.paidAt && (
+                <div className="text-xs text-muted-foreground">
+                  {formatDate(payment.paidAt)}
+                </div>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "renewPrice",
+        accessorFn: (sub) => `${sub.priceLocked} ${sub.currency}`,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Renew price" />
+        ),
+        cell: ({ row }) => subscriptionPriceLabel(row.original),
+      },
+      {
+        accessorKey: "currentPeriodEnd",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Next payment" />
+        ),
+        sortingFn: "datetime",
+        cell: ({ row }) => (
+          <div className="space-y-1 text-sm">
+            <div>{formatDate(row.original.currentPeriodEnd)}</div>
+            {row.original.cancelAtPeriodEnd && (
+              <div className="text-xs text-muted-foreground">Cancels after this date</div>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const sub = row.original
+          const subDevices = devicesBySub[sub.id] ?? []
+          const maxDevices =
+            sub.serverAccounts.filter(
+              (account) => account.provisioningStatus === "ACTIVE",
+            ).length * 2
 
-    {/* Pair modal */}
-    <VpnPairingQrModal
-      open={pairingSubId !== null}
-      onOpenChange={(open) => {
-        if (!open) setPairingSubId(null)
-      }}
-      subscriptionId={pairingSubId ?? ""}
-      onPaired={() => {
-        setPairingSubId(null)
-        setRefreshKey((k) => k + 1)
-      }}
-    />
+          return (
+            <div className="flex justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" aria-label="Actions">
+                    <DotsThreeVertical className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/console/vpn/subscriptions/${sub.id}`}>
+                      View details
+                    </Link>
+                  </DropdownMenuItem>
+                  {sub.status === "ACTIVE" && (
+                    <DropdownMenuItem
+                      disabled={subDevices.length >= maxDevices}
+                      onClick={() => setPairingSubId(sub.id)}
+                    >
+                      Pair device
+                    </DropdownMenuItem>
+                  )}
+                  {sub.cancelAtPeriodEnd && sub.status === "ACTIVE" ? (
+                    <DropdownMenuItem
+                      disabled={reinstating === sub.id}
+                      onClick={() => {
+                        setReinstateDialogId(sub.id)
+                        setReinstateReasons((prev) => ({
+                          ...prev,
+                          [sub.id]: "",
+                        }))
+                      }}
+                    >
+                      {reinstating === sub.id ? "Reinstating…" : "Reinstate"}
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      disabled={cancelling === sub.id || sub.status !== "ACTIVE"}
+                      onClick={() => {
+                        setConfirmCancelId(sub.id)
+                        setConfirmCancelTexts((prev) => ({
+                          ...prev,
+                          [sub.id]: "",
+                        }))
+                        setCancelReasons((prev) => ({
+                          ...prev,
+                          [sub.id]: "",
+                        }))
+                      }}
+                    >
+                      {cancelling === sub.id ? "Cancelling…" : "Cancel"}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )
+        },
+      }
+    ],
+    [devicesBySub, cancelling, reinstating],
+  )
 
-    {/* Cancel confirmation dialog */}
-    {confirmCancelId &&
-      (() => {
-        const sub = subscriptions.find((s) => s.id === confirmCancelId)
-        if (!sub) return null
-        const isProcessing = cancelling === confirmCancelId
-        const confirmed =
-          (confirmCancelTexts[confirmCancelId] ?? "") === "CANCEL"
+  return (
+    <>
+      <DataTable
+        tableId="console-vpn-subscriptions"
+        columns={columns}
+        data={subscriptions}
+        defaultColumnVisibility={{}}
+        searchPlaceholder="Search subscriptions..."
+        searchableColumns={["packageName", "billingStatus", "servers"]}
+        facetFilters={[
+          {
+            columnId: "billingStatus",
+            label: "Status",
+            allLabel: "All status",
+            options: [
+              { label: "Active", value: "ACTIVE" },
+              { label: "Cancelling", value: "CANCELLING" },
+              { label: "Suspended", value: "SUSPENDED" },
+              { label: "Expired", value: "EXPIRED" },
+            ],
+          },
+          {
+            columnId: "servers",
+            label: "Region",
+            allLabel: "All regions",
+            options: regionOptions,
+          },
+        ]}
+        emptyMessage="No VPN subscriptions found."
+      />
 
-        return (
-          <Dialog
-            open
-            onOpenChange={(open) => {
-              if (!open) {
-                const id = confirmCancelId
-                setConfirmCancelId(null)
-                setConfirmCancelTexts((prev) => {
-                  const next = { ...prev }
-                  if (id) delete next[id]
-                  return next
-                })
-                setCancelReasons((prev) => {
-                  const next = { ...prev }
-                  if (id) delete next[id]
-                  return next
-                })
-              }
-            }}
-          >
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Cancel VPN Subscription</DialogTitle>
-                <DialogDescription className="space-y-3 pt-2">
-                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm">
-                    <p>
-                      You are about to cancel{" "}
-                      <strong>{sub.packageName}</strong>.
-                    </p>
-                    <p className="mt-1">
-                      Your service will continue until{" "}
-                      <strong>{formatDate(sub.currentPeriodEnd)}</strong>,
-                      then expire. No further charges will be made after
-                      cancellation.
-                    </p>
+
+      {/* Pair modal */}
+      <VpnPairingQrModal
+        open={pairingSubId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPairingSubId(null)
+        }}
+        subscriptionId={pairingSubId ?? ""}
+        onPaired={() => {
+          setPairingSubId(null)
+          setRefreshKey((k) => k + 1)
+        }}
+      />
+
+      {/* Cancel confirmation dialog */}
+      {confirmCancelId &&
+        (() => {
+          const sub = subscriptions.find((s) => s.id === confirmCancelId)
+          if (!sub) return null
+          const isProcessing = cancelling === confirmCancelId
+          const confirmed =
+            (confirmCancelTexts[confirmCancelId] ?? "") === "CANCEL"
+
+          return (
+            <Dialog
+              open
+              onOpenChange={(open) => {
+                if (!open) {
+                  const id = confirmCancelId
+                  setConfirmCancelId(null)
+                  setConfirmCancelTexts((prev) => {
+                    const next = { ...prev }
+                    if (id) delete next[id]
+                    return next
+                  })
+                  setCancelReasons((prev) => {
+                    const next = { ...prev }
+                    if (id) delete next[id]
+                    return next
+                  })
+                }
+              }}
+            >
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Cancel VPN Subscription</DialogTitle>
+                  <DialogDescription className="space-y-3 pt-2">
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm">
+                      <p>
+                        You are about to cancel{" "}
+                        <strong>{sub.packageName}</strong>.
+                      </p>
+                      <p className="mt-1">
+                        Your service will continue until{" "}
+                        <strong>{formatDate(sub.currentPeriodEnd)}</strong>,
+                        then expire. No further charges will be made after
+                        cancellation.
+                      </p>
+                    </div>
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Why are you cancelling?
+                    </label>
+                    <Textarea
+                      value={cancelReasons[confirmCancelId] ?? ""}
+                      onChange={(e) =>
+                        setCancelReasons((prev) => ({
+                          ...prev,
+                          [confirmCancelId]: e.target.value,
+                        }))
+                      }
+                      placeholder="Tell us why you're cancelling..."
+                      rows={2}
+                      autoFocus
+                    />
                   </div>
-                </DialogDescription>
-              </DialogHeader>
 
-              <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Type{" "}
+                      <span className="font-bold text-destructive">CANCEL</span>{" "}
+                      to confirm
+                    </label>
+                    <Input
+                      value={confirmCancelTexts[confirmCancelId] ?? ""}
+                      onChange={(e) =>
+                        setConfirmCancelTexts((prev) => ({
+                          ...prev,
+                          [confirmCancelId]: e.target.value,
+                        }))
+                      }
+                      placeholder='Type "CANCEL" to confirm'
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const id = confirmCancelId
+                      setConfirmCancelId(null)
+                      setConfirmCancelTexts((prev) => {
+                        const next = { ...prev }
+                        if (id) delete next[id]
+                        return next
+                      })
+                      setCancelReasons((prev) => {
+                        const next = { ...prev }
+                        if (id) delete next[id]
+                        return next
+                      })
+                    }}
+                    disabled={isProcessing}
+                  >
+                    Keep subscription
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={!confirmed || isProcessing}
+                    onClick={async () => {
+                      await handleCancel(confirmCancelId)
+                    }}
+                  >
+                    {isProcessing ? "Cancelling…" : "Yes, cancel subscription"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )
+        })()}
+
+      {/* Reinstate confirmation dialog */}
+      {reinstateDialogId &&
+        (() => {
+          const sub = subscriptions.find((s) => s.id === reinstateDialogId)
+          if (!sub) return null
+          const isProcessing = reinstating === reinstateDialogId
+          const hasReason =
+            (reinstateReasons[reinstateDialogId] ?? "").trim().length > 0
+
+          return (
+            <Dialog
+              open
+              onOpenChange={(open) => {
+                if (!open) {
+                  const id = reinstateDialogId
+                  setReinstateDialogId(null)
+                  setReinstateReasons((prev) => {
+                    const next = { ...prev }
+                    if (id) delete next[id]
+                    return next
+                  })
+                }
+              }}
+            >
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Reinstate Subscription</DialogTitle>
+                  <DialogDescription className="space-y-3 pt-2">
+                    <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                      <p>
+                        You are about to reinstate{" "}
+                        <strong>{sub.packageName}</strong>.
+                      </p>
+                      <p className="mt-1">
+                        Normal billing will resume after{" "}
+                        <strong>{formatDate(sub.currentPeriodEnd)}</strong>,
+                        and your subscription will continue as usual.
+                      </p>
+                    </div>
+                  </DialogDescription>
+                </DialogHeader>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
-                    Why are you cancelling?
+                    Why did you decide to reinstate?
                   </label>
                   <Textarea
-                    value={cancelReasons[confirmCancelId] ?? ""}
+                    value={reinstateReasons[reinstateDialogId] ?? ""}
                     onChange={(e) =>
-                      setCancelReasons((prev) => ({
+                      setReinstateReasons((prev) => ({
                         ...prev,
-                        [confirmCancelId]: e.target.value,
+                        [reinstateDialogId]: e.target.value,
                       }))
                     }
-                    placeholder="Tell us why you're cancelling..."
-                    rows={2}
+                    placeholder="Tell us why you changed your mind..."
+                    rows={3}
                     autoFocus
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Type{" "}
-                    <span className="font-bold text-destructive">CANCEL</span>{" "}
-                    to confirm
-                  </label>
-                  <Input
-                    value={confirmCancelTexts[confirmCancelId] ?? ""}
-                    onChange={(e) =>
-                      setConfirmCancelTexts((prev) => ({
-                        ...prev,
-                        [confirmCancelId]: e.target.value,
-                      }))
-                    }
-                    placeholder='Type "CANCEL" to confirm'
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const id = confirmCancelId
-                    setConfirmCancelId(null)
-                    setConfirmCancelTexts((prev) => {
-                      const next = { ...prev }
-                      if (id) delete next[id]
-                      return next
-                    })
-                    setCancelReasons((prev) => {
-                      const next = { ...prev }
-                      if (id) delete next[id]
-                      return next
-                    })
-                  }}
-                  disabled={isProcessing}
-                >
-                  Keep subscription
-                </Button>
-                <Button
-                  variant="destructive"
-                  disabled={!confirmed || isProcessing}
-                  onClick={async () => {
-                    await handleCancel(confirmCancelId)
-                  }}
-                >
-                  {isProcessing ? "Cancelling…" : "Yes, cancel subscription"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )
-      })()}
-
-    {/* Reinstate confirmation dialog */}
-    {reinstateDialogId &&
-      (() => {
-        const sub = subscriptions.find((s) => s.id === reinstateDialogId)
-        if (!sub) return null
-        const isProcessing = reinstating === reinstateDialogId
-        const hasReason =
-          (reinstateReasons[reinstateDialogId] ?? "").trim().length > 0
-
-        return (
-          <Dialog
-            open
-            onOpenChange={(open) => {
-              if (!open) {
-                const id = reinstateDialogId
-                setReinstateDialogId(null)
-                setReinstateReasons((prev) => {
-                  const next = { ...prev }
-                  if (id) delete next[id]
-                  return next
-                })
-              }
-            }}
-          >
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Reinstate Subscription</DialogTitle>
-                <DialogDescription className="space-y-3 pt-2">
-                  <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                    <p>
-                      You are about to reinstate{" "}
-                      <strong>{sub.packageName}</strong>.
-                    </p>
-                    <p className="mt-1">
-                      Normal billing will resume after{" "}
-                      <strong>{formatDate(sub.currentPeriodEnd)}</strong>,
-                      and your subscription will continue as usual.
-                    </p>
-                  </div>
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Why did you decide to reinstate?
-                </label>
-                <Textarea
-                  value={reinstateReasons[reinstateDialogId] ?? ""}
-                  onChange={(e) =>
-                    setReinstateReasons((prev) => ({
-                      ...prev,
-                      [reinstateDialogId]: e.target.value,
-                    }))
-                  }
-                  placeholder="Tell us why you changed your mind..."
-                  rows={3}
-                  autoFocus
-                />
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const id = reinstateDialogId
-                    setReinstateDialogId(null)
-                    setReinstateReasons((prev) => {
-                      const next = { ...prev }
-                      if (id) delete next[id]
-                      return next
-                    })
-                  }}
-                  disabled={isProcessing}
-                >
-                  Go back
-                </Button>
-                <Button
-                  disabled={!hasReason || isProcessing}
-                  onClick={async () => {
-                    await handleReinstate(reinstateDialogId)
-                  }}
-                >
-                  {isProcessing
-                    ? "Reinstating…"
-                    : "Yes, reinstate subscription"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )
-      })()}
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const id = reinstateDialogId
+                      setReinstateDialogId(null)
+                      setReinstateReasons((prev) => {
+                        const next = { ...prev }
+                        if (id) delete next[id]
+                        return next
+                      })
+                    }}
+                    disabled={isProcessing}
+                  >
+                    Go back
+                  </Button>
+                  <Button
+                    disabled={!hasReason || isProcessing}
+                    onClick={async () => {
+                      await handleReinstate(reinstateDialogId)
+                    }}
+                  >
+                    {isProcessing
+                      ? "Reinstating…"
+                      : "Yes, reinstate subscription"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )
+        })()}
     </>
   )
 }

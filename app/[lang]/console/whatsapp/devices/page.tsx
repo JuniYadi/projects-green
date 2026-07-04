@@ -316,7 +316,8 @@ export default function WhatsAppDevicesPage() {
                     <DeviceHealthBadge
                       status={
                         device.lastHeartbeatAt
-                          ? new Date(device.lastHeartbeatAt) > new Date(Date.now() - 15 * 60 * 1000)
+                          ? // eslint-disable-next-line react-hooks/purity
+                            new Date(device.lastHeartbeatAt) > new Date(Date.now() - 15 * 60 * 1000)
                             ? "CONNECTED"
                             : "DISCONNECTED"
                           : device.status === "DISCONNECTED"

@@ -1,18 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useMemo } from "react"
 import { eden } from "@/lib/eden"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import { type ColumnDef } from "@tanstack/react-table"
 
 type Membership = {
   id: string
@@ -97,6 +92,88 @@ export function MembersTable({ organizationId }: MembersTableProps) {
     void loadData()
   }, [loadData])
 
+  const memberColumns = useMemo<ColumnDef<Membership>[]>(() => {
+    return [
+      {
+        id: "name",
+        accessorFn: (row) => `${row.firstName ?? ""} ${row.lastName ?? ""}`.trim(),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Name" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">
+            {row.original.firstName} {row.original.lastName}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "email",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Email" />
+        ),
+        cell: ({ row }) => <span>{row.original.email}</span>,
+      },
+      {
+        accessorKey: "roleSlug",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Role" />
+        ),
+        cell: ({ row }) => (
+          <Badge variant="secondary">{row.original.roleSlug}</Badge>
+        ),
+      },
+      {
+        accessorKey: "joinedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Joined" />
+        ),
+        cell: ({ row }) => (
+          <span>{new Date(row.original.joinedAt).toLocaleDateString()}</span>
+        ),
+      },
+    ]
+  }, [])
+
+  const invitationColumns = useMemo<ColumnDef<PendingInvitation>[]>(() => {
+    return [
+      {
+        accessorKey: "email",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Email" />
+        ),
+        cell: ({ row }) => <span>{row.original.email}</span>,
+      },
+      {
+        accessorKey: "roleSlug",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Role" />
+        ),
+        cell: ({ row }) => (
+          <Badge variant="secondary">{row.original.roleSlug}</Badge>
+        ),
+      },
+      {
+        id: "createdAt",
+        accessorFn: (row) => row.createdAt,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Sent" />
+        ),
+        cell: ({ row }) => (
+          <span>{formatRelativeTime(row.original.createdAt)}</span>
+        ),
+      },
+      {
+        accessorKey: "expiresAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Expires" />
+        ),
+        cell: ({ row }) => (
+          <span>{formatExpiresAt(row.original.expiresAt)}</span>
+        ),
+      },
+    ]
+  }, [])
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -124,94 +201,31 @@ export function MembersTable({ organizationId }: MembersTableProps) {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="members">
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {memberships.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No active members
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  memberships.map((member, index) => (
-                    <TableRow key={member.id}>
-                      <TableCell className="text-muted-foreground">
-                        {index + 1}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {member.firstName} {member.lastName}
-                      </TableCell>
-                      <TableCell>{member.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{member.roleSlug}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(member.joinedAt).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            tableId="portal-org-members"
+            columns={memberColumns}
+            data={memberships}
+            searchableColumns={["firstName", "lastName", "email"]}
+            searchPlaceholder="Search members..."
+            defaultColumnVisibility={{
+              email: false,
+              joinedAt: false,
+            }}
+            emptyMessage="No active members"
+          />
         </TabsContent>
         <TabsContent value="invitations">
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Invited</TableHead>
-                  <TableHead>Expires</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingInvitations.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No pending invitations
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  pendingInvitations.map((invitation, index) => (
-                    <TableRow key={invitation.id}>
-                      <TableCell className="text-muted-foreground">
-                        {index + 1}
-                      </TableCell>
-                      <TableCell>{invitation.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{invitation.roleSlug}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {formatRelativeTime(invitation.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        {formatExpiresAt(invitation.expiresAt)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            tableId="portal-org-invitations"
+            columns={invitationColumns}
+            data={pendingInvitations}
+            searchableColumns={["email"]}
+            searchPlaceholder="Search invitations..."
+            defaultColumnVisibility={{
+              createdAt: false,
+            }}
+            emptyMessage="No pending invitations"
+          />
         </TabsContent>
       </Tabs>
     </div>

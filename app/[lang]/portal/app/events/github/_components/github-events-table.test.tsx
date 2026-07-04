@@ -55,7 +55,7 @@ describe("GithubEventsTable", () => {
     await waitFor(() => {
       expect(view.getByText("acme/api")).toBeTruthy()
     }, { timeout: 5000 })
-    expect(view.getByText("feat: webhook logs")).toBeTruthy()
+    expect(view.getByText("processed")).toBeTruthy()
 
     fireEvent.click(view.getByRole("button", { name: /json/i }))
 

@@ -304,6 +304,10 @@ export function ConfirmationsTab() {
             tableId="portal-payments-confirmations"
             columns={confirmationColumns}
             data={confirmations}
+            defaultColumnVisibility={{
+              notes: false,
+              submittedAt: false,
+            }}
             searchPlaceholder="Filter confirmations..."
             searchableColumns={["bankAccount", "notes", "status"]}
             facetFilters={[

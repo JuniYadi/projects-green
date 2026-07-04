@@ -14,14 +14,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import { type ColumnDef } from "@tanstack/react-table"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   whatsappClient,
@@ -97,6 +92,93 @@ export default function WhatsAppBroadcastsPage() {
     }
   }
 
+  const columns = React.useMemo<ColumnDef<Broadcast>[]>(() => {
+    return [
+      {
+        id: "templateName",
+        accessorFn: (row) => row.templateName,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Template" />
+        ),
+        cell: ({ row }) => (
+          <div>
+            <div className="font-medium">{row.original.templateName}</div>
+            <div className="text-xs text-muted-foreground">
+              {row.original.templateLanguage}
+            </div>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => (
+          <Badge variant={statusVariant(row.original.status)}>
+            {row.original.status.replaceAll("_", " ")}
+          </Badge>
+        ),
+      },
+      {
+        id: "progress",
+        accessorFn: (row) => row.sent,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Progress" />
+        ),
+        cell: ({ row }) => (
+          <span>
+            {row.original.sent} sent / {row.original.failed} failed /{" "}
+            {row.original.total} total
+          </span>
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Created" />
+        ),
+        cell: ({ row }) => <span>{formatDate(row.original.createdAt)}</span>,
+      },
+      {
+        id: "actions",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Actions" />
+        ),
+        cell: ({ row }) => (
+          <div className="flex justify-end space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => router.push(`${basePath}/${row.original.id}`)}
+            >
+              <Eye className="mr-1 size-4" />
+              View
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={row.original.status !== "QUEUED"}
+              onClick={() => void handleSend(row.original)}
+            >
+              <PaperPlaneTilt className="mr-1 size-4" />
+              Send
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => void handleDelete(row.original)}
+            >
+              <Trash className="mr-1 size-4" />
+              Delete
+            </Button>
+          </div>
+        ),
+        enableHiding: false,
+      },
+    ]
+  }, [basePath, handleSend, handleDelete, router])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -120,80 +202,23 @@ export default function WhatsAppBroadcastsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Template</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Progress</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5}>Loading broadcasts…</TableCell>
-                </TableRow>
-              ) : broadcasts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5}>No broadcasts yet.</TableCell>
-                </TableRow>
-              ) : (
-                broadcasts.map((broadcast) => (
-                  <TableRow key={broadcast.id}>
-                    <TableCell>
-                      <div className="font-medium">
-                        {broadcast.templateName}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {broadcast.templateLanguage}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(broadcast.status)}>
-                        {broadcast.status.replaceAll("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {broadcast.sent} sent / {broadcast.failed} failed /{" "}
-                      {broadcast.total} total
-                    </TableCell>
-                    <TableCell>{formatDate(broadcast.createdAt)}</TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          router.push(`${basePath}/${broadcast.id}`)
-                        }
-                      >
-                        <Eye className="mr-1 size-4" />
-                        View
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={broadcast.status !== "QUEUED"}
-                        onClick={() => void handleSend(broadcast)}
-                      >
-                        <PaperPlaneTilt className="mr-1 size-4" />
-                        Send
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => void handleDelete(broadcast)}
-                      >
-                        <Trash className="mr-1 size-4" />
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          {loading ? (
+            <div className="py-12 text-center text-muted-foreground">
+              Loading broadcasts…
+            </div>
+          ) : (
+            <DataTable
+              tableId="console-whatsapp-broadcasts"
+              columns={columns}
+              data={broadcasts}
+              searchableColumns={["templateName"]}
+              searchPlaceholder="Search broadcasts..."
+              defaultColumnVisibility={{
+                createdAt: false,
+              }}
+              emptyMessage="No broadcasts yet."
+            />
+          )}
         </CardContent>
       </Card>
     </div>

@@ -16,7 +16,11 @@ export class EmailServiceError extends Error {
   }
 }
 
-type EmailLogType = "TICKET_CREATED" | "TICKET_REPLIED" | "TICKET_CLOSED" | "TICKET_ADMIN_ALERT"
+type EmailLogType =
+  | "TICKET_CREATED"
+  | "TICKET_REPLIED"
+  | "TICKET_CLOSED"
+  | "TICKET_ADMIN_ALERT"
 
 async function createEmailLog(
   ticketId: string | null,
@@ -60,6 +64,12 @@ export type EmailService = {
     requesterName?: string,
     requesterEmail?: string
   ): Promise<void>
+  sendTicketReplyAlertToStaff(
+    ticket: SupportTicket,
+    reply: SupportTicketReply,
+    adminEmail: string,
+    requesterEmail?: string
+  ): Promise<void>
 }
 
 // ponytail: no more nodemailer transporter — queue worker handles SMTP
@@ -68,7 +78,13 @@ export const createEmailService = (): EmailService => ({
     try {
       const html = await render(<TicketCreatedEmail ticket={ticket} />)
       const subject = `Your support ticket #${ticket.ticketNumber} has been created`
-      const emailLogId = await createEmailLog(ticket.id, ticket.ticketNumber, requesterEmail, "TICKET_CREATED", subject)
+      const emailLogId = await createEmailLog(
+        ticket.id,
+        ticket.ticketNumber,
+        requesterEmail,
+        "TICKET_CREATED",
+        subject
+      )
 
       await sendEmail({
         to: requesterEmail,
@@ -96,7 +112,13 @@ export const createEmailService = (): EmailService => ({
         <TicketRepliedEmail ticket={ticket} reply={reply} />
       )
       const subject = `Re: Support ticket #${ticket.ticketNumber} - ${ticket.subject}`
-      const emailLogId = await createEmailLog(ticket.id, ticket.ticketNumber, requesterEmail, "TICKET_REPLIED", subject)
+      const emailLogId = await createEmailLog(
+        ticket.id,
+        ticket.ticketNumber,
+        requesterEmail,
+        "TICKET_REPLIED",
+        subject
+      )
 
       await sendEmail({
         to: requesterEmail,
@@ -118,7 +140,13 @@ export const createEmailService = (): EmailService => ({
     try {
       const html = await render(<TicketClosedEmail ticket={ticket} />)
       const subject = `Support ticket #${ticket.ticketNumber} has been ${SUPPORT_TICKET_STATUS_LABELS[ticket.status].toLowerCase()}`
-      const emailLogId = await createEmailLog(ticket.id, ticket.ticketNumber, requesterEmail, "TICKET_CLOSED", subject)
+      const emailLogId = await createEmailLog(
+        ticket.id,
+        ticket.ticketNumber,
+        requesterEmail,
+        "TICKET_CLOSED",
+        subject
+      )
 
       await sendEmail({
         to: requesterEmail,
@@ -151,7 +179,13 @@ export const createEmailService = (): EmailService => ({
         />
       )
       const subject = `[Action Required] New support ticket #${ticket.ticketNumber} - ${ticket.subject}`
-      const emailLogId = await createEmailLog(ticket.id, ticket.ticketNumber, adminEmail, "TICKET_ADMIN_ALERT", subject)
+      const emailLogId = await createEmailLog(
+        ticket.id,
+        ticket.ticketNumber,
+        adminEmail,
+        "TICKET_ADMIN_ALERT",
+        subject
+      )
 
       await sendEmail({
         to: adminEmail,
@@ -165,6 +199,46 @@ export const createEmailService = (): EmailService => ({
       console.error("Failed to send admin ticket alert email:", error)
       throw new EmailServiceError(
         `Failed to send admin ticket alert: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+  },
+
+  async sendTicketReplyAlertToStaff(
+    ticket: SupportTicket,
+    reply: SupportTicketReply,
+    adminEmail: string,
+    requesterEmail?: string
+  ) {
+    try {
+      const html = await render(
+        <TicketNewAdminAlertEmail
+          ticket={ticket}
+          requesterEmail={requesterEmail}
+          variant="reply"
+          reply={reply}
+        />
+      )
+      const subject = `[Action Required] New reply on support ticket #${ticket.ticketNumber} - ${ticket.subject}`
+      const emailLogId = await createEmailLog(
+        ticket.id,
+        ticket.ticketNumber,
+        adminEmail,
+        "TICKET_ADMIN_ALERT",
+        subject
+      )
+
+      await sendEmail({
+        to: adminEmail,
+        subject,
+        html,
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        emailLogId: emailLogId ?? undefined,
+      })
+    } catch (error) {
+      console.error("Failed to send admin ticket reply alert email:", error)
+      throw new EmailServiceError(
+        `Failed to send admin ticket reply alert: ${error instanceof Error ? error.message : String(error)}`
       )
     }
   },

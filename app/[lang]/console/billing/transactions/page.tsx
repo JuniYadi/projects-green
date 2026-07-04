@@ -1,8 +1,11 @@
 "use client"
 
-import { eden } from "@/lib/eden"
-import { useEffect, useState } from "react"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import { type ColumnDef } from "@tanstack/react-table"
+import { useEffect, useState, useMemo } from "react"
 import { useParams } from "next/navigation"
+import { eden } from "@/lib/eden"
 import Link from "next/link"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,7 +33,7 @@ export default function TransactionsPage() {
   void useParams<{ lang?: string }>()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [filter, setFilter] = useState<FilterStatus>("ALL")
+  const [filter] = useState<FilterStatus>("ALL")
 
   useEffect(() => {
     let cancelled = false
@@ -58,11 +61,6 @@ export default function TransactionsPage() {
       cancelled = true
     }
   }, [])
-
-  const filtered =
-    filter === "ALL"
-      ? transactions
-      : transactions.filter((t) => t.status === filter)
 
   function formatCurrency(amount: number): string {
     return new Intl.NumberFormat("id-ID", {
@@ -97,12 +95,73 @@ export default function TransactionsPage() {
     }
   }
 
-  const FILTERS: { value: FilterStatus; label: string }[] = [
-    { value: "ALL", label: "All" },
-    { value: "OPEN", label: "Open" },
-    { value: "PAID", label: "Paid" },
-    { value: "VOID", label: "Void" },
-  ]
+  const columns = useMemo<ColumnDef<Transaction>[]>(() => {
+    return [
+      {
+        accessorKey: "invoiceNumber",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Invoice" />
+        ),
+        cell: ({ row }) => (
+          <div>
+            <Link
+              href={`/console/billing/invoices/${row.original.id}`}
+              className="font-medium text-primary hover:underline"
+            >
+              {row.original.invoiceNumber}
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              {row.original.type === "TOP_UP" ? "Top Up" : row.original.type}
+            </p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => (
+          <InvoiceStatusBadge
+            status={row.original.status as "OPEN" | "PAID" | "VOID"}
+          />
+        ),
+      },
+      {
+        accessorKey: "paymentMethod",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Method" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm">
+            {formatPaymentMethod(row.original.paymentMethod)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "totalAmount",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Amount" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-right text-sm font-medium">
+            {formatCurrency(row.original.totalAmount)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Date" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-right text-xs text-muted-foreground">
+            {formatDate(row.original.createdAt)}
+          </span>
+        ),
+      },
+    ]
+  }, [])
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -122,21 +181,7 @@ export default function TransactionsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Transactions</CardTitle>
-            <div className="flex gap-1">
-              {FILTERS.map((f) => (
-                <Button
-                  key={f.value}
-                  variant={filter === f.value ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setFilter(f.value)}
-                >
-                  {f.label}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <CardTitle className="text-base">Transactions</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -145,72 +190,36 @@ export default function TransactionsPage() {
                 <Skeleton key={i} className="h-12" />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="rounded-lg border p-6 text-center">
-              <p className="text-muted-foreground">
-                {filter === "ALL"
-                  ? "No transactions found"
-                  : `No ${filter.toLowerCase()} transactions`}
-              </p>
-            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left text-sm font-medium">
-                      Invoice
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">
-                      Method
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">
-                      Amount
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      className="border-b last:border-b-0 hover:bg-muted/30"
-                    >
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/console/billing/invoices/${tx.id}`}
-                          className="font-medium text-primary hover:underline"
-                        >
-                          {tx.invoiceNumber}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">
-                          {tx.type === "TOP_UP" ? "Top Up" : tx.type}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <InvoiceStatusBadge
-                          status={tx.status as "OPEN" | "PAID" | "VOID"}
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {formatPaymentMethod(tx.paymentMethod)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-medium">
-                        {formatCurrency(tx.totalAmount)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                        {formatDate(tx.createdAt)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              tableId="console-billing-transactions"
+              columns={columns}
+              data={transactions}
+              searchableColumns={["invoiceNumber"]}
+              searchPlaceholder="Search invoices..."
+              facetFilters={[
+                {
+                  columnId: "status",
+                  label: "Status",
+                  allLabel: "All status",
+                  options: [
+                    { label: "All", value: "ALL" },
+                    { label: "Open", value: "OPEN" },
+                    { label: "Paid", value: "PAID" },
+                    { label: "Void", value: "VOID" },
+                  ],
+                },
+              ]}
+              defaultColumnVisibility={{
+                paymentMethod: false,
+                createdAt: false,
+              }}
+              emptyMessage={
+                filter === "ALL"
+                  ? "No transactions found"
+                  : `No ${filter.toLowerCase()} transactions`
+              }
+            />
           )}
         </CardContent>
       </Card>

@@ -45,7 +45,7 @@ describe("Billing InvoicesPage", () => {
     expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
   })
 
-  it("shows separate issued and due date columns", async () => {
+  it("shows issued date column and hides due date by default", async () => {
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)
 
@@ -79,8 +79,8 @@ describe("Billing InvoicesPage", () => {
     )
 
     expect(
-      view.getByRole("columnheader", { name: /due date/i })
-    ).toBeInTheDocument()
+      view.queryByRole("columnheader", { name: /due date/i })
+    ).not.toBeInTheDocument()
     expect(
       view.queryByRole("columnheader", { name: /period/i })
     ).not.toBeInTheDocument()

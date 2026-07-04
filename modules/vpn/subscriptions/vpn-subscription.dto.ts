@@ -26,6 +26,40 @@ type SubscriptionPayload = Prisma.VpnSubscriptionGetPayload<{
 
 type ServerAccount = SubscriptionPayload["serverAccounts"][number]
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+type BillingAdjustmentPayload = Prisma.BillingAdjustmentGetPayload<{}>
+
+export type VpnSubscriptionPaymentDTO = {
+  id: BillingAdjustmentPayload["id"]
+  amount: string
+  currency: BillingAdjustmentPayload["currency"]
+  paidAt: string | null
+  reason: BillingAdjustmentPayload["reason"]
+}
+
+export function toVpnSubscriptionPaymentDTO(
+  payment: Pick<
+    BillingAdjustmentPayload,
+    "id" | "amount" | "currency" | "appliedAt" | "reason"
+  >,
+): VpnSubscriptionPaymentDTO {
+  return {
+    id: payment.id,
+    amount: payment.amount.toString(),
+    currency: payment.currency,
+    paidAt: payment.appliedAt?.toISOString() ?? null,
+    reason: payment.reason,
+  }
+}
+
+type VpnSubscriptionBillingDTO = {
+  firstPayment: VpnSubscriptionPaymentDTO | null
+}
+
+type VpnSubscriptionDTOOptions = {
+  billing?: Partial<VpnSubscriptionBillingDTO>
+}
+
 /**
  * Server-account DTO. Never exposes the stored config or password material —
  * those are downloaded through dedicated, scoped endpoints.
@@ -75,6 +109,7 @@ export type VpnSubscriptionDTO = {
   originalPrice: string | null
   originalCurrency: string | null
   exchangeRate: number | null
+  firstPayment: VpnSubscriptionPaymentDTO | null
   createdAt: string
   updatedAt: string
 }
@@ -148,7 +183,8 @@ export function computeProvisioningSummary(
 export function toVpnSubscriptionDTO(
   subscription: SubscriptionPayload,
   orgName: string | null = null,
-  packageName: string | null = null
+  packageName: string | null = null,
+  options: VpnSubscriptionDTOOptions = {},
 ): VpnSubscriptionDTO {
   const accounts = subscription.serverAccounts.map(toServerAccountDTO)
   return {
@@ -171,6 +207,7 @@ export function toVpnSubscriptionDTO(
     exchangeRate: subscription.exchangeRate
       ? Number(subscription.exchangeRate)
       : null,
+    firstPayment: options.billing?.firstPayment ?? null,
     createdAt: subscription.createdAt.toISOString(),
     updatedAt: subscription.updatedAt.toISOString(),
   }
@@ -182,7 +219,8 @@ export type VpnSubscriptionListDTO = Omit<VpnSubscriptionDTO, "serverAccounts">
 export function toVpnSubscriptionListDTO(
   subscription: SubscriptionPayload,
   orgName: string | null = null,
-  packageName: string | null = null
+  packageName: string | null = null,
+  options: VpnSubscriptionDTOOptions = {},
 ): VpnSubscriptionListDTO {
   const accounts = subscription.serverAccounts.map(toServerAccountDTO)
   return {
@@ -204,6 +242,7 @@ export function toVpnSubscriptionListDTO(
     exchangeRate: subscription.exchangeRate
       ? Number(subscription.exchangeRate)
       : null,
+    firstPayment: options.billing?.firstPayment ?? null,
     createdAt: subscription.createdAt.toISOString(),
     updatedAt: subscription.updatedAt.toISOString(),
   }

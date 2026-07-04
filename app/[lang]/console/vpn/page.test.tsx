@@ -30,6 +30,108 @@ mock.module("@/lib/vpn-mobile-client", () => ({
 import ConsoleVpnDashboardPage from "./dashboard/page"
 import ConsoleVpnOrderPage from "./order/page"
 
+import ConsoleVpnSubscriptionsPage from "./subscriptions/page"
+
+describe("ConsoleVpnSubscriptionsPage", () => {
+  beforeEach(() => {
+    mockListVpnSubscriptions.mockResolvedValue([])
+    mockListVpnPackages.mockResolvedValue([])
+    mockListMobileDevices.mockRejectedValue(new Error("devices unavailable"))
+    localStorage.clear()
+  })
+
+  it("renders subscriptions as a table with server details on demand", async () => {
+    mockListVpnSubscriptions.mockResolvedValue([
+      {
+        id: "sub_1",
+        organizationId: "org_1",
+        packageId: "pkg_1",
+        packageName: "VPN Standard",
+        status: "ACTIVE",
+        currentPeriodStart: "2026-06-01T00:00:00.000Z",
+        currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+        priceLocked: "10.00",
+        currency: "USD",
+        originalPrice: null,
+        originalCurrency: null,
+        exchangeRate: null,
+        cancelAtPeriodEnd: false,
+        deviceCount: 0,
+        provisioningSummary: {
+          active: 2,
+          pending: 0,
+          failed: 0,
+          revoked: 0,
+          total: 2,
+        },
+        firstPayment: null,
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+        serverAccounts: [
+          {
+            id: "sa_1",
+            serverId: "srv_1",
+            serverName: "ID-01",
+            protocol: "OPENVPN",
+            username: "vpn-org1-srv1-openvpn",
+            provisioningStatus: "ACTIVE",
+            failureReason: null,
+            hasConfig: true,
+            hasCredentials: false,
+            hostname: "id01.vpn.com",
+            ipAddress: "203.0.113.1",
+            region: {
+              name: "Indonesia",
+              slug: "indonesia",
+              countryCode: "ID",
+            },
+            port: 1194,
+            createdAt: "2026-06-01T00:00:00.000Z",
+            updatedAt: "2026-06-01T00:00:00.000Z",
+          },
+          {
+            id: "sa_2",
+            serverId: "srv_2",
+            serverName: "SG-01",
+            protocol: "WIREGUARD",
+            username: "vpn-org1-srv2-wireguard",
+            provisioningStatus: "ACTIVE",
+            failureReason: null,
+            hasConfig: true,
+            hasCredentials: false,
+            hostname: "sg01.vpn.com",
+            ipAddress: "203.0.113.2",
+            region: {
+              name: "Singapore",
+              slug: "singapore",
+              countryCode: "SG",
+            },
+            port: 51820,
+            createdAt: "2026-06-01T00:00:00.000Z",
+            updatedAt: "2026-06-01T00:00:00.000Z",
+          },
+        ],
+      },
+    ])
+
+    const view = render(<ConsoleVpnSubscriptionsPage />)
+
+    await waitFor(
+      () => {
+        expect(view.getByText("My VPN Subscriptions")).toBeInTheDocument()
+      },
+      { timeout: 10000 },
+    )
+
+    expect(view.getByPlaceholderText("Search subscriptions...")).toBeInTheDocument()
+    expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
+    expect(view.getByText("VPN Standard")).toBeInTheDocument()
+    expect(view.getByText("2 servers · 2 accounts")).toBeInTheDocument()
+    expect(
+      view.getByRole("link", { name: "View details" }),
+    ).toHaveAttribute("href", "/console/vpn/subscriptions/sub_1")
+  })
+})
 describe("ConsoleVpnDashboardPage", () => {
   beforeEach(() => {
     mockListVpnSubscriptions.mockResolvedValue([])
@@ -79,6 +181,7 @@ describe("ConsoleVpnDashboardPage", () => {
           revoked: 0,
           total: 1,
         },
+        firstPayment: null,
         createdAt: "2026-06-01T00:00:00.000Z",
         updatedAt: "2026-06-01T00:00:00.000Z",
         serverAccounts: [

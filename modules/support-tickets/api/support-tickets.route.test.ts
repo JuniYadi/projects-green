@@ -55,7 +55,10 @@ import {
   SupportTicketNotFoundError,
   type SupportTicketService,
 } from "@/modules/support-tickets/support-ticket.service"
-import type { SupportTicket } from "@/modules/support-tickets/support-ticket.types"
+import type {
+  SupportTicket,
+  SupportTicketReply,
+} from "@/modules/support-tickets/support-ticket.types"
 
 type SupportTicketThreadResponse = {
   ok: true
@@ -91,6 +94,7 @@ const baseTicket: SupportTicket = {
   closedAt: null,
 }
 
+const mockSendTicketReplyAlertToStaff = mock(async () => {})
 const mockSendNewTicketAlertToStaff = mock(async () => {})
 
 const createApp = (service: Partial<SupportTicketService>) => {
@@ -106,6 +110,10 @@ const createApp = (service: Partial<SupportTicketService>) => {
         },
       }),
       getPlatformRole: async () => "none",
+      resolveSupportRecipients: async () => [
+        { email: "admin1@example.com" },
+        { email: "admin2@example.com" },
+      ],
       service: {
         async listTickets() {
           return [baseTicket]
@@ -146,6 +154,7 @@ const createApp = (service: Partial<SupportTicketService>) => {
         async sendTicketReplied() {},
         async sendTicketClosed() {},
         sendNewTicketAlertToStaff: mockSendNewTicketAlertToStaff,
+        sendTicketReplyAlertToStaff: mockSendTicketReplyAlertToStaff,
       },
     })
   )
@@ -193,7 +202,94 @@ describe("support ticket routes", () => {
       ok: true,
       ticket: { id: "ticket_1" },
     })
-    expect(mockSendNewTicketAlertToStaff).toHaveBeenCalledTimes(1)
+    expect(mockSendNewTicketAlertToStaff).toHaveBeenCalledTimes(2)
+  })
+
+  it("sends staff reply alert when requester self-replies to their own ticket", async () => {
+    mockSendTicketReplyAlertToStaff.mockClear()
+    mockSendNewTicketAlertToStaff.mockClear()
+
+    const app = createApp({
+      async getTicketThread() {
+        return {
+          ticket: baseTicket,
+          replies: [],
+        }
+      },
+      async addReply() {
+        return {
+          id: "reply_2",
+          ticketId: "ticket_1",
+          authorWorkosUserId: "user_1",
+          body: "Thanks for the update",
+          secureForm: null,
+          isInternalNote: false,
+          attachmentMetadata: [],
+          createdAt: new Date("2026-05-21T02:00:00.000Z"),
+          updatedAt: new Date("2026-05-21T02:00:00.000Z"),
+        }
+      },
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1/replies", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body: "Thanks for the update" }),
+      })
+    )
+
+    expect(response.status).toBe(201)
+    expect(mockSendTicketReplyAlertToStaff).toHaveBeenCalledTimes(2)
+    const calls = mockSendTicketReplyAlertToStaff.mock.calls as unknown as Array<
+      [SupportTicket, SupportTicketReply, string, string]
+    >
+    expect(calls[0]![0].id).toBe("ticket_1")
+    expect(calls[0]![1].id).toBe("reply_2")
+    expect(calls[0]![2]).toBe("admin1@example.com")
+    expect(calls[0]![3]).toBe("user@example.com")
+    expect(calls[1]![2]).toBe("admin2@example.com")
+  })
+
+  it("does not send staff reply alert when adding an internal note", async () => {
+    mockSendTicketReplyAlertToStaff.mockClear()
+    mockSendNewTicketAlertToStaff.mockClear()
+
+    const app = createApp({
+      async getTicketThread() {
+        return {
+          ticket: baseTicket,
+          replies: [],
+        }
+      },
+      async addReply() {
+        return {
+          id: "reply_3",
+          ticketId: "ticket_1",
+          authorWorkosUserId: "user_1",
+          body: "Internal note for support team",
+          secureForm: null,
+          isInternalNote: true,
+          attachmentMetadata: [],
+          createdAt: new Date("2026-05-21T03:00:00.000Z"),
+          updatedAt: new Date("2026-05-21T03:00:00.000Z"),
+        }
+      },
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1/replies", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          body: "Internal note for support team",
+          isInternalNote: true,
+        }),
+      })
+    )
+
+    expect(response.status).toBe(201)
+    expect(mockSendTicketReplyAlertToStaff).not.toHaveBeenCalled()
   })
 
   it("returns validation envelope for invalid create payload", async () => {
@@ -464,8 +560,9 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        async sendNewTicketAlertToStaff() {},
-      },
+          async sendTicketReplyAlertToStaff() {},
+          async sendNewTicketAlertToStaff() {},
+        },
       })
     )
   }
@@ -727,8 +824,9 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        async sendNewTicketAlertToStaff() {},
-      },
+          async sendTicketReplyAlertToStaff() {},
+          async sendNewTicketAlertToStaff() {},
+        },
       })
     )
 
@@ -899,8 +997,9 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        async sendNewTicketAlertToStaff() {},
-      },
+          async sendTicketReplyAlertToStaff() {},
+          async sendNewTicketAlertToStaff() {},
+        },
       })
     )
 
@@ -951,8 +1050,9 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        async sendNewTicketAlertToStaff() {},
-      },
+          async sendTicketReplyAlertToStaff() {},
+          async sendNewTicketAlertToStaff() {},
+        },
       })
     )
 
@@ -994,8 +1094,9 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        async sendNewTicketAlertToStaff() {},
-      },
+          async sendTicketReplyAlertToStaff() {},
+          async sendNewTicketAlertToStaff() {},
+        },
       })
     )
 
@@ -1071,8 +1172,9 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        async sendNewTicketAlertToStaff() {},
-      },
+          async sendTicketReplyAlertToStaff() {},
+          async sendNewTicketAlertToStaff() {},
+        },
       })
     )
 
@@ -1172,8 +1274,9 @@ describe("support ticket routes", () => {
           async sendTicketCreated() {},
           async sendTicketReplied() {},
           async sendTicketClosed() {},
-        async sendNewTicketAlertToStaff() {},
-      },
+          async sendTicketReplyAlertToStaff() {},
+          async sendNewTicketAlertToStaff() {},
+        },
       })
     )
 

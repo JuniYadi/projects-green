@@ -10,7 +10,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
-import type { SupportTicket } from "../support-ticket.types"
+import type { SupportTicket, SupportTicketReply } from "../support-ticket.types"
 import { SUPPORT_TICKET_DEPARTMENT_LABELS } from "../support-ticket.types"
 import { SUPPORT_TICKET_PRIORITY_LABELS } from "../support-ticket.types"
 
@@ -18,30 +18,39 @@ interface TicketNewAdminAlertEmailProps {
   ticket: SupportTicket
   requesterName?: string
   requesterEmail?: string
+  variant?: "created" | "reply"
+  reply?: SupportTicketReply
 }
 
 export const TicketNewAdminAlertEmail = ({
   ticket,
   requesterName,
   requesterEmail,
+  variant = "created",
+  reply,
 }: TicketNewAdminAlertEmailProps) => {
   const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/portal/support-tickets/${ticket.id}`
+  const isReply = variant === "reply"
 
   return (
     <Html>
       <Head />
       <Preview>
-        New support ticket #{ticket.ticketNumber} - {ticket.subject}
+        {isReply ? "New reply on" : "New support ticket"} #{ticket.ticketNumber}{" "}
+        - {ticket.subject}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Heading style={styles.heading}>
-            New Support Ticket #{ticket.ticketNumber}
+            {isReply ? "New Reply on" : "New Support Ticket"} #
+            {ticket.ticketNumber}
           </Heading>
 
           <Section style={styles.alertBox}>
             <Text style={styles.alertText}>
-              A new support ticket has been submitted and requires attention.
+              {isReply
+                ? "A requester replied to a support ticket and needs staff attention."
+                : "A new support ticket has been submitted and requires attention."}
             </Text>
           </Section>
 
@@ -78,14 +87,21 @@ export const TicketNewAdminAlertEmail = ({
             )}
           </Section>
 
-          {ticket.description && (
+          {isReply && reply ? (
+            <Section style={styles.description}>
+              <Text style={styles.descriptionLabel}>
+                <strong>Latest reply:</strong>
+              </Text>
+              <Text style={styles.descriptionText}>{reply.body}</Text>
+            </Section>
+          ) : ticket.description ? (
             <Section style={styles.description}>
               <Text style={styles.descriptionLabel}>
                 <strong>Description:</strong>
               </Text>
               <Text style={styles.descriptionText}>{ticket.description}</Text>
             </Section>
-          )}
+          ) : null}
 
           <Hr style={styles.divider} />
 
