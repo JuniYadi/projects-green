@@ -192,17 +192,22 @@ async function notifyInvoiceRecipients(input: {
 }) {
   if (!input.invoice.billingAccountId) return
 
-  const organizationId = await input.deps.getOrganizationIdByBillingAccount(
-    input.invoice.billingAccountId
-  )
+  try {
+    const organizationId = await input.deps.getOrganizationIdByBillingAccount(
+      input.invoice.billingAccountId
+    )
 
-  if (!organizationId) return
+    if (!organizationId) return
 
-  const recipients = await (
-    input.deps.resolveInvoiceRecipients ?? (async () => [])
-  )(organizationId)
+    const recipients = await (
+      input.deps.resolveInvoiceRecipients ?? (async () => [])
+    )(organizationId)
 
-  await Promise.allSettled(recipients.map(input.send))
+    await Promise.allSettled(recipients.map(input.send))
+  } catch (err) {
+    console.error("[AdminInvoiceRoute] Failed to resolve invoice recipients:", err)
+    // Don't rethrow — callers handle gracefully via their own .catch
+  }
 }
 
 export const createAdminInvoiceRoutes = (

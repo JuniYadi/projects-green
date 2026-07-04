@@ -212,18 +212,23 @@ async function notifyInvoiceRecipients(input: {
     return
   }
 
-  const organizationId =
-    await input.dependencies.getOrganizationIdByBillingAccount(
-      input.invoice.billingAccountId
-    )
-  const recipients = organizationId
-    ? await (
-        input.dependencies.resolveInvoiceRecipients ??
-        (async () => fallbackRecipients)
-      )(organizationId)
-    : fallbackRecipients
+  try {
+    const organizationId =
+      await input.dependencies.getOrganizationIdByBillingAccount(
+        input.invoice.billingAccountId
+      )
+    const recipients = organizationId
+      ? await (
+          input.dependencies.resolveInvoiceRecipients ??
+          (async () => fallbackRecipients)
+        )(organizationId)
+      : fallbackRecipients
 
-  await Promise.allSettled(recipients.map(input.send))
+    await Promise.allSettled(recipients.map(input.send))
+  } catch (err) {
+    console.error("[Invoices] Failed to resolve invoice recipients:", err)
+    // Don't rethrow — callers handle gracefully via their own .catch
+  }
 }
 
 export const createInvoicesRoutes = (
