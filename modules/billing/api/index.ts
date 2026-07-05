@@ -1,5 +1,6 @@
 import { Elysia } from "elysia"
 
+import { createAdminAuditLogRoutes } from "./admin/audit-log.route"
 import { createBillingAccountRoutes } from "./account.route"
 import { createBillingRoutes } from "./billing.route"
 import { createBillingTopupRoutes } from "./topup.route"
@@ -44,3 +45,4 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createAdminOrgDetailRoutes())
   .use(createAdminBillingContactsRoutes())
   .use(createUsageRoutes({ usageLedgerService, costingService }))
+  .use(createAdminAuditLogRoutes())

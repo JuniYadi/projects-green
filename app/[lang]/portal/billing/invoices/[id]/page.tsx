@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import { getInvoice } from "@/lib/billing-client"
 import { InvoiceActions } from "@/components/billing/admin/invoice-actions"
+import { ConfirmPaymentButton } from "@/components/billing/admin/confirm-payment-button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -70,18 +71,32 @@ export default async function InvoiceDetailPage({
               Issued {formatDate(invoice.issuedAt)}
             </p>
           </div>
-          <InvoiceActions
-            invoiceId={invoice.id}
-            invoiceStatus={
-              invoice.status as
-                | "DRAFT"
-                | "OPEN"
-                | "PAID"
-                | "VOID"
-                | "UNCOLLECTIBLE"
-            }
-            createdAt={invoice.issuedAt || new Date().toISOString()}
-          />
+          <div className="flex items-center gap-2">
+            <InvoiceActions
+              invoiceId={invoice.id}
+              invoiceStatus={
+                invoice.status as
+                  | "DRAFT"
+                  | "OPEN"
+                  | "PAID"
+                  | "VOID"
+                  | "UNCOLLECTIBLE"
+              }
+              createdAt={invoice.issuedAt || new Date().toISOString()}
+            />
+            <ConfirmPaymentButton
+              invoiceId={invoice.id}
+              invoiceStatus={
+                invoice.status as
+                  | "DRAFT"
+                  | "OPEN"
+                  | "OVERDUE"
+                  | "PAID"
+                  | "VOID"
+                  | "UNCOLLECTIBLE"
+              }
+            />
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">

@@ -22,6 +22,8 @@ import {
   type BillingEmailRecipient,
 } from "@/modules/billing/email-recipients"
 
+import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
+
 type BillingAuthContext = {
   organizationId?: string | null
   role?: string | null
@@ -73,9 +75,8 @@ const defaultDeps: AdminInvoiceRouteDeps = {
 const invoiceParamsSchema = z.object({
   id: z.string().min(1),
 })
-
 const patchInvoiceSchema = z.object({
-  status: z.enum(["ISSUED", "CANCELLED"]),
+  status: z.enum(["ISSUED", "CANCELLED", "PAID"]),
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -273,12 +274,14 @@ export const createAdminInvoiceRoutes = (
             return toNotFound(set, "Invoice not found.")
           }
 
+
           // Validate status transitions
           const validTransitions: Record<string, string[]> = {
             DRAFT: ["ISSUED", "CANCELLED"],
             ISSUED: ["CANCELLED"],
+            OPEN: ["PAID", "CANCELLED"],
+            OVERDUE: ["PAID", "CANCELLED"],
           }
-
           const allowed = validTransitions[invoice.status] ?? []
           if (!allowed.includes(targetStatus)) {
             set.status = 422
@@ -297,10 +300,57 @@ export const createAdminInvoiceRoutes = (
             updateData.issuedAt = new Date()
           }
 
+          if (targetStatus === "PAID") {
+            updateData.paidAt = new Date()
+          }
+
           const updatedInvoice = await prisma.billingInvoice.update({
             where: { id },
             data: updateData,
           })
+
+          // Update billing account balance for PAID invoices
+          if (targetStatus === "PAID" && invoice.billingAccountId) {
+            try {
+              await prisma.billingAccount.update({
+                where: { id: invoice.billingAccountId },
+                data: { balance: { increment: invoice.totalAmount } },
+              })
+            } catch (balErr) {
+              console.error("[AdminInvoiceUpdate] Failed to update balance:", balErr)
+            }
+          }
+
+          // Audit logging
+          if (targetStatus === "PAID") {
+            emitBillingAudit({
+              billingAccountId: invoice.billingAccountId ?? undefined,
+              entityType: "Invoice",
+              entityId: invoice.id,
+              action: "PAYMENT_CONFIRMED",
+              actorId: auth.user?.id,
+              context: {
+                invoiceNumber: invoice.invoiceNumber,
+                fromStatus: invoice.status,
+                toStatus: targetStatus,
+                totalAmount: invoice.totalAmount.toFixed(2),
+                currency: invoice.currency,
+              },
+            })
+          } else {
+            emitBillingAudit({
+              billingAccountId: invoice.billingAccountId ?? undefined,
+              entityType: "Invoice",
+              entityId: invoice.id,
+              action: "UPDATED",
+              actorId: auth.user?.id,
+              context: {
+                invoiceNumber: invoice.invoiceNumber,
+                fromStatus: invoice.status,
+                toStatus: targetStatus,
+              },
+            })
+          }
 
           const invoiceEmailItem = toInvoiceEmailItem(updatedInvoice)
           notifyInvoiceRecipients({
@@ -312,10 +362,15 @@ export const createAdminInvoiceRoutes = (
                     invoiceEmailItem,
                     recipient.email
                   )
-                : emailService.sendInvoiceCancelled(
-                    invoiceEmailItem,
-                    recipient.email
-                  ),
+                : targetStatus === "PAID"
+                  ? emailService.sendInvoicePaid(
+                      invoiceEmailItem,
+                      recipient.email
+                    )
+                  : emailService.sendInvoiceCancelled(
+                      invoiceEmailItem,
+                      recipient.email
+                    ),
           }).catch((err) => {
             console.error(
               "[AdminInvoiceUpdate] Failed to send invoice status email:",

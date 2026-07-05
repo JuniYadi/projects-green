@@ -374,6 +374,51 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/whatsapp/templates"),
       },
       {
+        title: "Messages",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/messages",
+          locale,
+        }),
+        icon: <PaperPlaneTiltIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/messages"),
+      },
+      {
+        title: "Broadcasts",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/broadcasts",
+          locale,
+        }),
+        icon: <RocketLaunchIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/broadcasts"),
+      },
+      {
+        title: "Usage",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/usage",
+          locale,
+        }),
+        icon: <ChartLineIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/usage"),
+      },
+      {
+        title: "Contacts",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/contacts",
+          locale,
+        }),
+        icon: <BookOpenIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/contacts"),
+      },
+      {
+        title: "Catalogs",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/catalogs",
+          locale,
+        }),
+        icon: <ShoppingBagOpen />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/catalogs"),
+      },
+      {
         title: "Webhook Logs",
         url: localizePathname({
           pathname: "/portal/whatsapp/webhook-logs",

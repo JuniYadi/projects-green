@@ -45,7 +45,7 @@ export default function NewWhatsAppBroadcastPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const basePath = localizePathname({
-    pathname: "/console/whatsapp/broadcasts",
+    pathname: "/portal/whatsapp/broadcasts",
     locale,
   })
   const [templates, setTemplates] = React.useState<Template[]>([])

@@ -8,6 +8,7 @@ import {
   ChartLine,
   Calendar,
   Funnel,
+  Warning,
 } from "@phosphor-icons/react"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +22,7 @@ import {
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import type { ChartConfig } from "@/components/ui/chart"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
+import { QuotaProgressBar } from "@/components/whatsapp/quota-progress-bar"
 
 type PageState = "loading" | "error" | "loaded"
 
@@ -60,6 +62,30 @@ interface OverviewData {
     sessionCount: number
     messageFailedCount: number
   }[]
+}
+
+interface CostBreakdownData {
+  period: string
+  totalCost: number
+  projectedCost: number
+  forecast: {
+    daysElapsed: number
+    daysRemaining: number
+    currentCost: number
+    projectedMonthlyCost: number
+  }
+  byDevice: {
+    deviceId: string
+    phoneNumber: string | null
+    totalCost: number
+    byCategory: { category: string; count: number; totalCost: number }[]
+    messageCount: number
+    quotaBase: number
+    quotaUsed: number
+    quotaPercent: number
+  }[]
+  balance: number | null
+  currency: string
 }
 
 const dailyChartConfig = {
@@ -131,10 +157,10 @@ function StatCardSkeleton() {
 }
 
 export default function PortalWhatsAppUsagePage() {
-
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")
   const [overview, setOverview] = React.useState<OverviewData | null>(null)
+  const [costBreakdown, setCostBreakdown] = React.useState<CostBreakdownData | null>(null)
   const [dailyCounts, setDailyCounts] = React.useState<DailyCount[]>([])
   const [monthlyCounts, setMonthlyCounts] = React.useState<MonthlyCount[]>([])
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
@@ -150,7 +176,7 @@ export default function PortalWhatsAppUsagePage() {
       try {
         const last6 = getLast6Months()
 
-        const [overviewRes, dailyRes, deviceRes, ...monthlyResults] =
+        const [overviewRes, dailyRes, deviceRes, costBreakdownRes, ...monthlyResults] =
           await Promise.all([
             whatsappClient.usage.overview(),
             whatsappClient.usage.daily({
@@ -159,6 +185,7 @@ export default function PortalWhatsAppUsagePage() {
               deviceId,
             }),
             whatsappClient.devices.list(),
+            whatsappClient.usage.costBreakdown({ deviceId }),
             ...last6.map((m) =>
               whatsappClient.usage.monthly({
                 year: m.year,
@@ -171,6 +198,7 @@ export default function PortalWhatsAppUsagePage() {
         if (cancelled) return
 
         setOverview(overviewRes as unknown as OverviewData)
+        setCostBreakdown(costBreakdownRes as unknown as CostBreakdownData)
         setDailyCounts(
           (dailyRes.counts as unknown as DailyCount[]).map((c) => ({
             date: c.date,
@@ -268,6 +296,17 @@ export default function PortalWhatsAppUsagePage() {
         </Card>
       )}
 
+      {/* Quota Alert Banner */}
+      {state === "loaded" && costBreakdown && costBreakdown.byDevice.some((d) => d.quotaBase > 0 && d.quotaPercent >= 70) && (
+        <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
+          <Warning className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+          <div className="text-sm text-yellow-600 dark:text-yellow-400">
+            <strong>Quota Warning:</strong> One or more devices are approaching their monthly limit.
+            <a href="/portal/whatsapp/usage" className="ml-1 underline">View details</a>
+          </div>
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {state === "loading" ? (
@@ -357,6 +396,73 @@ export default function PortalWhatsAppUsagePage() {
           </>
         )}
       </div>
+
+      {/* Per-Device Cost Breakdown */}
+      {state === "loaded" && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Cost Breakdown by Device</CardTitle>
+              {costBreakdown && (
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-muted-foreground">
+                    Projected: {formatCurrency(costBreakdown.projectedCost)}
+                  </span>
+                  {costBreakdown.balance !== null && (
+                    <span className="text-muted-foreground">
+                      Balance: {formatCurrency(costBreakdown.balance)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!costBreakdown || costBreakdown.byDevice.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No cost data available for this period.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {costBreakdown.byDevice.map((dev) => (
+                  <div key={dev.deviceId} className="space-y-2 rounded-lg border p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">
+                          {dev.phoneNumber ?? dev.deviceId}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {dev.messageCount.toLocaleString()} messages
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold">
+                          {formatCurrency(dev.totalCost)}
+                        </p>
+                        {dev.byCategory.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {dev.byCategory.map((c) => c.category.replace("WHATSAPP_MESSAGE_", "")).join(", ")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {dev.quotaBase > 0 && (
+                      <QuotaProgressBar
+                        used={dev.quotaUsed}
+                        total={dev.quotaBase}
+                      />
+                    )}
+                  </div>
+                ))}
+                <div className="flex justify-between rounded-lg bg-muted p-4 font-semibold">
+                  <span>Total</span>
+                  <span>{formatCurrency(costBreakdown.totalCost)}</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Daily Trend Chart */}
       <Card>
