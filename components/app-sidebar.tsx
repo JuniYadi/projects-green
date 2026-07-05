@@ -208,6 +208,12 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         icon: <Lightning />,
         isActive: startsWithRoute(path, "/portal/billing/alerts"),
       },
+      {
+        title: "Audit Logs",
+        url: localizePathname({ pathname: "/portal/billing/audit-logs", locale }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/audit-logs"),
+      },
     ],
   },
   {
