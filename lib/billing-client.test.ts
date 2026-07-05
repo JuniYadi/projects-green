@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 const mockFetch = mock()
-globalThis.fetch = mockFetch as typeof fetch
+// @ts-expect-error — mock replaces global fetch for testing
+globalThis.fetch = mockFetch
 
 import { getAdminAuditLogs } from "./billing-client"
 
