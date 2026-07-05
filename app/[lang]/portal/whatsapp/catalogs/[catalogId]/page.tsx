@@ -96,7 +96,7 @@ export default function CatalogDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="size-5" />
@@ -170,6 +170,6 @@ export default function CatalogDetailPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }

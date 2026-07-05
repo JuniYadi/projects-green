@@ -180,7 +180,7 @@ export default function WhatsAppBroadcastsPage() {
   }, [basePath, handleSend, handleDelete, router])
 
   return (
-    <div className="space-y-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Broadcasts</h1>
@@ -221,6 +221,6 @@ export default function WhatsAppBroadcastsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }

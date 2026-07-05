@@ -408,7 +408,7 @@ export default function WhatsAppContactsPage() {
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
@@ -985,6 +985,6 @@ export default function WhatsAppContactsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </main>
   )
 }

@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function PortalWhatsAppUsageLoading() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-96" />
@@ -21,6 +21,6 @@ export default function PortalWhatsAppUsageLoading() {
         <Skeleton className="h-64" />
         <Skeleton className="h-64" />
       </div>
-    </div>
+    </main>
   )
 }

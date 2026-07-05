@@ -258,7 +258,7 @@ export default function PortalWhatsAppUsagePage() {
     totalMessages > 0 || dailyCounts.length > 0 || monthlyCounts.length > 0
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <div className="flex items-center justify-between">
           <div>
@@ -688,6 +688,6 @@ export default function PortalWhatsAppUsagePage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </main>
   )
 }

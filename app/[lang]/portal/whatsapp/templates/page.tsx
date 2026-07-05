@@ -24,7 +24,7 @@ export default async function PortalTemplatesPage({}: Props) {
   const isSuperAdmin = platformRole === "super_admin"
 
   return (
-    <div className="space-y-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
         <p className="text-muted-foreground">
@@ -43,6 +43,6 @@ export default async function PortalTemplatesPage({}: Props) {
           <TemplatesPageClient isSuperAdmin={isSuperAdmin} />
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }

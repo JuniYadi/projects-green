@@ -104,7 +104,7 @@ export default function CatalogsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Catalogs</h1>
@@ -210,6 +210,6 @@ export default function CatalogsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </main>
   )
 }

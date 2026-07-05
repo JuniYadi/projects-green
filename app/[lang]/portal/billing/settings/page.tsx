@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { GearIcon, BuildingsIcon, ArrowRightIcon } from "@phosphor-icons/react"
+import { GearSixIcon, BuildingsIcon, ArrowRightIcon } from "@/components/ui/phosphor-icons"
 import Link from "next/link"
 
 export default function BillingSettingsPage() {
@@ -38,7 +38,7 @@ export default function BillingSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <GearIcon className="h-5 w-5 text-muted-foreground" />
+              <GearSixIcon className="h-5 w-5 text-muted-foreground" />
               Per-Org Settings
             </CardTitle>
           </CardHeader>

@@ -42,7 +42,7 @@ export default function PortalNewTemplatePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div>
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
           <Link href="./">
@@ -69,6 +69,6 @@ export default function PortalNewTemplatePage() {
           <TemplateForm submitting={creating} onSubmit={handleSubmit} />
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }

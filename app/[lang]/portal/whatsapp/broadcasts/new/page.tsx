@@ -163,9 +163,9 @@ export default function NewWhatsAppBroadcastPage() {
       setIsSubmitting(false)
     }
   }
-
   return (
-    <div className="space-y-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">New broadcast</h1>
         <p className="text-muted-foreground">
@@ -346,6 +346,6 @@ export default function NewWhatsAppBroadcastPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }

@@ -79,7 +79,7 @@ export default function PortalTemplateDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between">
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
           <Link href="../">
@@ -147,6 +147,6 @@ export default function PortalTemplateDetailPage() {
         deleting={deleting}
         onConfirm={() => void handleDelete()}
       />
-    </div>
+    </main>
   )
 }

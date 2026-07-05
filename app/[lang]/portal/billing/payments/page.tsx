@@ -1,8 +1,8 @@
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CreditCardIcon, BankIcon, CheckCircleIcon } from "@phosphor-icons/react"
+import { CreditCardIcon, Bank, CheckCircleIcon } from "@/components/ui/phosphor-icons"
 
-export default async function PortalBillingPaymentsPage() {
+export default function PortalBillingPaymentsPage() {
 	return (
 		<main className="flex flex-1 flex-col gap-6 p-6 pt-0">
 			<header>
@@ -44,7 +44,7 @@ export default async function PortalBillingPaymentsPage() {
 				<Link href="/portal/payments/bank-accounts" className="block">
 					<Card className="h-full transition-colors hover:border-primary">
 						<CardHeader className="flex flex-row items-center gap-3">
-							<BankIcon className="h-8 w-8 text-primary" />
+							<Bank className="h-8 w-8 text-primary" />
 							<CardTitle>Bank Accounts</CardTitle>
 						</CardHeader>
 						<CardContent>

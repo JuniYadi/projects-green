@@ -293,6 +293,11 @@ describe("resolveSidebarMenu", () => {
       "Dashboard",
       "Devices",
       "Templates",
+      "Messages",
+      "Broadcasts",
+      "Usage",
+      "Contacts",
+      "Catalogs",
       "Webhook Logs",
       "Audit Logs",
     ])
