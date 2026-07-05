@@ -179,6 +179,12 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/billing/subscription"),
       },
       {
+        title: "Create Order",
+        url: localizePathname({ pathname: "/portal/billing/subscription/create", locale }),
+        icon: <PackageIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/subscription/create"),
+      },
+      {
         title: "Top Up",
         url: localizePathname({ pathname: "/portal/billing/topup", locale }),
         icon: <CrosshairIcon />,
