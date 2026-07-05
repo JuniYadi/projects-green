@@ -497,5 +497,31 @@ describe("AdminInvoiceRoute", () => {
         "recip1@example.com"
       )
     })
+    it("returns 422 when trying ISSUED→ISSUED (same status)", async () => {
+      const mockInvoice = {
+        id: "inv-same",
+        status: "ISSUED",
+        billingAccountId: null,
+        organizationId: "org-1",
+      }
+      mockFindUnique.mockResolvedValue(mockInvoice)
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+      const res = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-same", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "ISSUED" }),
+        })
+      )
+      expect(res.status).toBe(422)
   })
+})
 })
