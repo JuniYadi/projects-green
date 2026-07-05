@@ -36,7 +36,11 @@ export class EmailJob extends BaseJob {
     const transporter = createTransporter()
     const fromAddress = from ?? process.env.EMAIL_FROM ?? "noreply@yourapp.com"
 
-    if (fromAddress.includes("yourapp.com")) {
+    // Extract domain from "Name <email>" or bare "email" format
+    const emailMatch = fromAddress.match(/<([^>]+)>/) ?? [null, fromAddress]
+    const email = (emailMatch[1] ?? fromAddress).trim()
+    const domain = email.split("@").pop() ?? ""
+    if (domain === "yourapp.com" || domain.endsWith(".yourapp.com")) {
       throw new Error(
         "EMAIL_FROM is not configured or still contains the placeholder domain 'yourapp.com'. " +
           "Set EMAIL_FROM in your environment to a validated domain."
