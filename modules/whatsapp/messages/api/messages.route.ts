@@ -36,6 +36,13 @@ const messageBodySchema = t.Object({
   waMessageId: t.Optional(t.Nullable(t.String())),
   metadata: t.Optional(t.Nullable(t.Any())),
 })
+const sendTemplateSchema = t.Object({
+  phoneNumber: t.String({ minLength: 1 }),
+  templateId: t.String({ minLength: 1 }),
+  templateLanguage: t.String({ minLength: 1 }),
+  fields: t.Optional(t.Array(t.String())),
+  deviceId: t.Optional(t.String()),
+})
 
 const sendSchema = t.Object({
   phoneNumber: t.String(),
@@ -435,6 +442,169 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     },
     {
       body: sendSchema,
+    }
+  )
+  .post(
+    "/send-template",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      const { phoneNumber, templateId, templateLanguage, fields, deviceId } = body as {
+        phoneNumber: string
+        templateId: string
+        templateLanguage: string
+        fields?: string[]
+        deviceId?: string
+      }
+
+      // Load template and verify ownership
+      const template = await prisma.whatsappTemplate.findFirst({
+        where: { id: templateId, organizationId: whatsappAuth.organizationId! },
+        include: { languages: true },
+      })
+
+      if (!template) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+      }
+
+      // Find the requested language
+      const language = template.languages.find((l) => l.lang === templateLanguage)
+      if (!language) {
+        set.status = 422
+        return { ok: false, error: "VALIDATION_ERROR", message: "Template language not found." }
+      }
+
+      // Extract placeholders from body and validate required fields
+      const placeholderRegex = /{{\s*(\d+)\s*}}/g
+      const indexes: number[] = []
+      let match
+      while ((match = placeholderRegex.exec(language.body ?? "")) !== null) {
+        const idx = parseInt(match[1], 10)
+        if (!indexes.includes(idx)) indexes.push(idx)
+      }
+      indexes.sort((a, b) => a - b)
+
+      for (const index of indexes) {
+        if (!fields || !fields[index - 1]?.trim()) {
+          set.status = 422
+          return { ok: false, error: "VALIDATION_ERROR", message: `Template field {{${index}}} is required.` }
+        }
+      }
+
+      // Compute rendered body
+      let renderedBody: string | null = language.body ?? null
+      if (renderedBody && fields) {
+        for (let i = 0; i < indexes.length; i++) {
+          const idx = indexes[i]
+          const val = fields[i] ?? ""
+          renderedBody = renderedBody.replace(new RegExp(`{{\\s*${idx}\\s*}}`, "g"), val)
+        }
+      }
+
+      try {
+        const result = await messageService.sendTemplateMessage({
+          organizationId: whatsappAuth.organizationId!,
+          phoneNumber,
+          deviceId,
+          templateName: template.name,
+          templateLanguage,
+          fields,
+          renderedBody,
+        })
+
+        logWhatsappAuditEvent({
+          action: "MESSAGE_SENT",
+          organizationId: whatsappAuth.organizationId!,
+          deviceId: deviceId ?? null,
+          adminId: (whatsappAuth as any).userId,
+          message: `Template message sent to ${phoneNumber}`,
+          status: "OK",
+          details: { waMessageId: result.waMessageId, phoneNumber, templateName: template.name, templateLanguage },
+        })
+
+        return {
+          ok: true,
+          jobId: result.jobId,
+          messageId: result.messageId,
+          waMessageId: result.waMessageId,
+          status: result.status,
+        }
+      } catch (error) {
+        logWhatsappAuditEvent({
+          action: "MESSAGE_FAILED",
+          organizationId: whatsappAuth.organizationId!,
+          deviceId: deviceId ?? null,
+          adminId: (whatsappAuth as any).userId,
+          message: "Send template message failed",
+          errorMessage: error instanceof Error ? error.message : String(error),
+          status: "FAILED",
+        })
+
+        if (error instanceof InsufficientBalanceError) {
+          set.status = 402
+          return {
+            ok: false,
+            error: "INSUFFICIENT_BALANCE",
+            message: "Insufficient balance for WhatsApp messaging.",
+            balance: error.available.toString(),
+            estimatedCost: error.required.toString(),
+          }
+        }
+
+        if (error instanceof QuotaExceededError) {
+          set.status = 429
+          return {
+            ok: false,
+            error: "MONTHLY_QUOTA_EXCEEDED",
+            message: `Monthly outbound quota exceeded. Limit: ${error.monthlyLimit}, Used: ${error.monthlyUsed}`,
+            resetAt: getMonthlyResetAt(),
+          }
+        }
+
+        if (error instanceof DailyLimitExceededError) {
+          set.status = 429
+          return {
+            ok: false,
+            error: "DAILY_QUOTA_EXCEEDED",
+            message: `Daily limit exceeded.`,
+            resetAt: getDailyResetAt(),
+          }
+        }
+
+        if (error instanceof Error && error.message === "NO_BILLING_ACCOUNT") {
+          set.status = 400
+          return {
+            ok: false,
+            error: "BILLING_NOT_CONFIGURED",
+            message: "No billing account configured for this organization.",
+          }
+        }
+
+        if (error instanceof InsufficientQuotaError) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "INSUFFICIENT_QUOTA",
+            message: error.message,
+          }
+        }
+
+        console.error("[messages] send-template error:", error)
+        set.status = 500
+        return {
+          ok: false,
+          error: "INTERNAL_ERROR",
+          message: "Failed to send template message",
+        }
+      }
+    },
+    {
+      body: sendTemplateSchema,
     }
   )
   .post(

@@ -1,7 +1,8 @@
 "use client"
 
-import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { Plus, ArrowsClockwise, Funnel } from "@phosphor-icons/react"
+import { Plus, ArrowsClockwise } from "@phosphor-icons/react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -12,31 +13,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import {
   useTemplates,
   useSyncTemplate,
 } from "@/modules/whatsapp/templates/api/templates.hooks"
-import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
+import {
+  MetaStatusBadge,
+  TemplateList,
+  TemplateStatusBadge,
+} from "@/modules/whatsapp/templates/ui/template-list"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 
 export default function ConsoleTemplatesPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
-  const searchParams = useSearchParams()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
   const templatesBasePath = localizePathname({
     pathname: "/console/whatsapp/templates",
     locale,
   })
-  const organizationId = searchParams.get("organizationId") ?? undefined
-  const whatsappDeviceId = searchParams.get("whatsappDeviceId") ?? undefined
-  const { templates, loading, error, reload } = useTemplates({
-    organizationId,
-    whatsappDeviceId,
-  })
+
+  const { templates, loading, error, reload } = useTemplates()
   const { sync, syncing } = useSyncTemplate()
 
   const handleSyncAll = async () => {
@@ -83,12 +85,82 @@ export default function ConsoleTemplatesPage() {
     (t) => t.syncStatus === "NOT_SYNCED"
   ).length
 
-  const updateFilter = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (value) params.set(key, value)
-    else params.delete(key)
-    router.replace(`?${params.toString()}`)
-  }
+  const columns: ColumnDef<WhatsAppTemplate>[] = [
+    {
+      accessorKey: "name",
+      header: "Template",
+      cell: ({ row }) => (
+        <div>
+          <Button
+            variant="ghost"
+            className="h-auto p-0 font-medium hover:underline"
+            onClick={() => router.push(`${templatesBasePath}/${row.original.id}`)}
+          >
+            {row.original.name}
+          </Button>
+          <p className="text-xs text-muted-foreground">{row.original.slug}</p>
+        </div>
+      ),
+    },
+    {
+      accessorFn: (row) => row.syncStatus ?? "NOT_SYNCED",
+      id: "syncStatus",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Sync" />
+      ),
+      cell: ({ row }) => <TemplateStatusBadge status={row.original.syncStatus ?? "NOT_SYNCED"} />,
+    },
+    {
+      accessorFn: (row) => row.metaStatus ?? "UNKNOWN",
+      id: "metaStatus",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Meta Status" />
+      ),
+      cell: ({ row }) => {
+        const status = row.original.metaStatus ?? "UNKNOWN"
+        if (status === "UNKNOWN") return "—"
+        return <MetaStatusBadge status={status} />
+      },
+    },
+    {
+      accessorFn: (row) => row.languages?.map((l) => l.lang).join(", ") ?? "",
+      id: "languages",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Languages" />
+      ),
+    },
+    {
+      accessorFn: (row) => row.whatsappDeviceId ?? "",
+      id: "whatsappDeviceId",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Device" />
+      ),
+      cell: ({ row }) =>
+        row.original.whatsappDeviceId ? row.original.whatsappDeviceId : "Any device",
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      cell: ({ row }) =>
+        new Date(row.original.createdAt).toLocaleString(),
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      header: "Actions",
+      cell: ({ row }) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push(`${templatesBasePath}/${row.original.id}`)}
+        >
+          View
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <div className="space-y-6">
@@ -99,25 +171,6 @@ export default function ConsoleTemplatesPage() {
         <p className="text-muted-foreground">
           {messages.console.whatsapp.templates.description}
         </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Funnel className="size-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Filters:</span>
-        </div>
-        <Input
-          placeholder="Organization ID"
-          value={organizationId ?? ""}
-          onChange={(e) => updateFilter("organizationId", e.target.value)}
-          className="max-w-[200px]"
-        />
-        <Input
-          placeholder="Device ID"
-          value={whatsappDeviceId ?? ""}
-          onChange={(e) => updateFilter("whatsappDeviceId", e.target.value)}
-          className="max-w-[200px]"
-        />
       </div>
 
       <Card>
@@ -173,14 +226,54 @@ export default function ConsoleTemplatesPage() {
             </div>
           </div>
 
-          <TemplateList
-            templates={templates}
-            loading={loading}
-            error={error}
-            onRetry={() => void reload()}
-            onCreate={() => router.push(`${templatesBasePath}/new`)}
-            onSelect={(id) => router.push(`${templatesBasePath}/${id}`)}
-          />
+          {loading || error ? (
+            <TemplateList
+              templates={[]}
+              loading={loading}
+              error={error}
+              onRetry={() => void reload()}
+              onCreate={() => router.push(`${templatesBasePath}/new`)}
+              onSelect={(id) => router.push(`${templatesBasePath}/${id}`)}
+            />
+          ) : (
+            <DataTable
+              columns={columns}
+              data={templates}
+              tableId="console-whatsapp-templates"
+              searchableColumns={[
+                "name",
+                "syncStatus",
+                "metaStatus",
+                "languages",
+                "whatsappDeviceId",
+              ]}
+              searchPlaceholder="Search templates..."
+              initialSorting={[{ id: "createdAt", desc: true }]}
+              pageSize={10}
+              defaultColumnVisibility={{ createdAt: false, whatsappDeviceId: false }}
+              emptyMessage="No templates configured yet."
+              facetFilters={[
+                {
+                  columnId: "syncStatus",
+                  label: "Sync",
+                  options: [
+                    { label: "Synced", value: "SYNCED" },
+                    { label: "Not Synced", value: "NOT_SYNCED" },
+                    { label: "Not in Meta", value: "NOT_IN_META" },
+                  ],
+                },
+                {
+                  columnId: "metaStatus",
+                  label: "Meta Status",
+                  options: [
+                    { label: "Approved", value: "APPROVED" },
+                    { label: "Pending", value: "PENDING" },
+                    { label: "Rejected", value: "REJECTED" },
+                  ],
+                },
+              ]}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

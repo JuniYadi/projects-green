@@ -16,9 +16,9 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 
-type SyncStatus = "NOT_SYNCED" | "SYNCING" | "SYNCED" | "FAILED"
+type SyncStatus = "NOT_SYNCED" | "NOT_IN_META" | "SYNCING" | "SYNCED" | "FAILED"
 
-function MetaStatusBadge({ status }: { status?: string | null }) {
+export function MetaStatusBadge({ status }: { status?: string | null }) {
   const config: Record<string, { label: string; className: string }> = {
     APPROVED: {
       label: "Approved",
@@ -46,10 +46,14 @@ function MetaStatusBadge({ status }: { status?: string | null }) {
   )
 }
 
-function TemplateStatusBadge({ status }: { status: string }) {
+export function TemplateStatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; className: string }> = {
     NOT_SYNCED: {
       label: "Not Synced",
+      className: "text-gray-500 bg-gray-50 dark:bg-gray-900/20",
+    },
+    NOT_IN_META: {
+      label: "Not in Meta",
       className: "text-gray-500 bg-gray-50 dark:bg-gray-900/20",
     },
     SYNCING: {

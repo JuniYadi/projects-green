@@ -276,11 +276,11 @@ describe("resolveSidebarMenu", () => {
     expect(navMainLabel).toBe("WhatsApp")
     expect(navMain.map((item) => item.title)).toEqual([
       "Dashboard",
+      "Usage",
       "Devices",
       "Templates",
       "Messages",
       "Broadcasts",
-      "Usage",
       "Contacts",
       "Catalogs",
     ])

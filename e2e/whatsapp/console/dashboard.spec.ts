@@ -18,29 +18,29 @@ test.describe("WhatsApp Dashboard (authenticated)", () => {
     ).toBeVisible()
   })
 
-  test("shows stat cards (quota, devices, balance)", async ({ page }) => {
-    // Stat cards render either with data or placeholder "--"
-    await expect(page.getByText("Monthly Quota")).toBeVisible()
-    await expect(page.getByText("Remaining Quota")).toBeVisible()
-    await expect(page.getByText("Active Devices")).toBeVisible()
-    await expect(page.getByText("Balance")).toBeVisible()
+  test("shows global stat cards", async ({ page }) => {
+    // Global stat cards render with aggregate totals
+    await expect(page.getByText("Total Devices")).toBeVisible()
+    await expect(page.getByText("Messages In")).toBeVisible()
+    await expect(page.getByText("Messages Out")).toBeVisible()
+    await expect(page.getByText("Broadcasts")).toBeVisible()
   })
 
   test("shows quick action cards", async ({ page }) => {
     // These are always visible regardless of API data
-    await expect(page.getByText("Send a Message")).toBeVisible()
-    await expect(page.getByText("Use a Template")).toBeVisible()
+    await expect(page.getByText("Send Template Message")).toBeVisible()
+    await expect(page.getByText("Manage Templates")).toBeVisible()
     await expect(page.getByText("View Contacts")).toBeVisible()
   })
 
-  test("has Manage Devices and Send Message buttons in header", async ({
+  test("has Manage Devices and Send Template Message buttons in header", async ({
     page,
   }) => {
     await expect(
       page.getByRole("link", { name: /Manage Devices/i })
     ).toBeVisible()
     await expect(
-      page.getByRole("link", { name: /Send Message/i })
+      page.getByRole("link", { name: /Send Template Message/i })
     ).toBeVisible()
   })
 
@@ -51,20 +51,20 @@ test.describe("WhatsApp Dashboard (authenticated)", () => {
     await expect(page).toHaveURL(/\/console\/whatsapp\/devices/)
   })
 
-  test("navigates to messages page via Send Message header button", async ({
+  test("navigates to messages page via Send Template Message header button", async ({
     page,
   }) => {
     await page
-      .getByRole("link", { name: /Send Message/i })
+      .getByRole("link", { name: /Send Template Message/i })
       .first()
       .click()
     await expect(page).toHaveURL(/\/console\/whatsapp\/messages/)
   })
 
-  test("navigates to templates page via Use a Template card", async ({
+  test("navigates to templates page via Manage Templates card", async ({
     page,
   }) => {
-    await page.getByText("Use a Template").click()
+    await page.getByText("Manage Templates").click()
     await expect(page).toHaveURL(/\/console\/whatsapp\/templates/)
   })
 

@@ -119,6 +119,7 @@ const mockPrisma = {
 
 const mockDeviceClient = {
   sendMessage: mock(async () => ({ providerMessageId: "wa-msg-123" })),
+  sendTemplateMessage: mock(async () => ({ providerMessageId: "wa-tmpl-123" })),
 }
 
 const mockEnqueue = mock(async () => {})
@@ -202,6 +203,7 @@ describe("messageService", () => {
     mockTx.billingInvoice.update.mockClear()
     mockTx.billingInvoiceLine.create.mockClear()
     mockDeviceClient.sendMessage.mockClear()
+    mockDeviceClient.sendTemplateMessage.mockClear()
     mockEnqueue.mockClear()
 
     // Re-apply prisma mock so other test files cannot pollute the module cache.
@@ -310,6 +312,9 @@ describe("messageService", () => {
 
     mockDeviceClient.sendMessage.mockResolvedValue({
       providerMessageId: "wa-msg-123",
+    })
+    mockDeviceClient.sendTemplateMessage.mockResolvedValue({
+      providerMessageId: "wa-tmpl-123",
     })
     mockEnqueue.mockResolvedValue(undefined)
   })
@@ -695,6 +700,70 @@ describe("messageService", () => {
           action: { buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }] },
         },
       })
+    })
+  })
+
+  describe("sendTemplateMessage", () => {
+    it("sends template message via Meta API", async () => {
+      await messageService.sendTemplateMessage({
+        organizationId: "org-1",
+        phoneNumber: "+1234567890",
+        templateName: "hello_world",
+        templateLanguage: "en",
+        fields: ["John"],
+        renderedBody: "Hello John",
+      })
+
+      expect(mockDeviceClient.sendTemplateMessage).toHaveBeenCalledWith({
+        to: "+1234567890",
+        templateName: "hello_world",
+        templateLanguage: "en",
+        fields: ["John"],
+      })
+    })
+
+    it("creates message with messageType template", async () => {
+      await messageService.sendTemplateMessage({
+        organizationId: "org-1",
+        phoneNumber: "+1234567890",
+        templateName: "hello_world",
+        templateLanguage: "en",
+        fields: ["John"],
+        renderedBody: "Hello John",
+      })
+
+      expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            direction: "OUTBOX",
+            messageType: "template",
+            body: "Hello John",
+          }),
+        })
+      )
+    })
+
+    it("stores template metadata", async () => {
+      await messageService.sendTemplateMessage({
+        organizationId: "org-1",
+        phoneNumber: "+1234567890",
+        templateName: "hello_world",
+        templateLanguage: "en",
+        fields: ["John", "Doe"],
+        renderedBody: "Hello John Doe",
+      })
+
+      expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            metadata: expect.objectContaining({
+              templateName: "hello_world",
+              templateLanguage: "en",
+              fields: ["John", "Doe"],
+            }),
+          }),
+        })
+      )
     })
   })
 
