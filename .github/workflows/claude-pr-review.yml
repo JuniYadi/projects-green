@@ -72,9 +72,9 @@ jobs:
           show_full_output: false
           display_report: true
           use_sticky_comment: true
-          allowed_bots: 'github-actions,claude'
-          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
-          plugins: 'ponytail@ponytail'
+          allowed_bots: "github-actions,claude"
+          plugin_marketplaces: "https://github.com/DietrichGebert/ponytail.git"
+          plugins: "ponytail@ponytail"
           claude_args: >-
             --model ${{ secrets.ANTHROPIC_MODEL }}
             --max-turns 200
@@ -145,14 +145,26 @@ jobs:
             CRITICAL: Every finding SHOULD have an inline comment when the target file and line exist in the PR diff. If the MCP tool fails or the target cannot be resolved, add the finding to review_body.md instead. The review MUST always be submitted regardless.
 
             IMPORTANT: After resolving all outdated threads, re-scan the code for NEW issues. An outdated thread may mean the code was rewritten and a NEW issue now exists at that location. Remember: only review files that appear in the PR diff — do not comment on files outside this PR.
+            BLOCKING ISSUE TRACKING:
+            Maintain a single mental list named "blocking_issues". Add ONE item to blocking_issues for each of the following:
+              - Every 🆕 NEW ISSUE you identify during the re-scan.
+              - Every ❌ PERSISTENT issue that remains unresolved.
+              - Every finding that could not be posted as an inline comment (MCP tool failure or missing from diff).
+              - Any review-blocking tool or data failure (e.g., cannot read the PR diff or review threads).
+            Inline comments are evidence, not a verdict. If blocking_issues has any item, the final action MUST be a request-changes review. If blocking_issues is empty, the final action MUST be an approval.
+
 
             REVIEW SUBMISSION LOGIC:
-            You MUST submit your final review using `gh pr review`. Do NOT post a separate `gh pr comment` — the review body is the single source of truth.
+            You MUST end every successful workflow run by submitting exactly one formal PR review verdict with `gh pr review`: either `--request-changes` or `--approve`. Never finish with only inline comments, sticky comments, or `gh pr comment`.
 
-            If there are NO unresolved issues (all threads resolved/fixed and no new issues):
-              Execute: `gh pr review --approve --body "LGTM! All issues have been addressed."`
+            DECISION PATH:
 
-            If there are ANY "🆕 NEW" or "❌ PERSISTENT" issues OR if findings exist from failed inline comments:
+            PATH A — CLEAN (no blocking issues):
+            If blocking_issues is empty after thread reconciliation and the new scan:
+              Execute: `gh pr review ${{ github.event.pull_request.number }} --approve --body "LGTM! All issues have been addressed."`
+
+            PATH B — BLOCKING ISSUES EXIST:
+            If blocking_issues has any item:
               STEP 1: Create or update `review_body.md`.
 
               --- START OF review_body.md TEMPLATE ---
@@ -194,5 +206,14 @@ jobs:
               </details>
               --- END OF review_body.md TEMPLATE ---
 
-              STEP 2: Submit the review using the file you just created:
-              `gh pr review --request-changes -F review_body.md`
+              STEP 2: Execute: `gh pr review ${{ github.event.pull_request.number }} --request-changes -F review_body.md`
+
+            PATH C — REVIEW FAILURE:
+            If the review cannot be completed because required data or tools fail (e.g., cannot read PR diff, cannot fetch review threads):
+              Create `review_body.md` with a ## PR Review Summary section, a short failure reason, and whatever actionable command/log detail is available.
+              Then execute: `gh pr review ${{ github.event.pull_request.number }} --request-changes -F review_body.md`
+
+            POST-SUBMIT VERIFICATION:
+            After `gh pr review` exits successfully, run:
+              `gh pr view ${{ github.event.pull_request.number }} --json reviews --jq '.reviews[-1].state'`
+            Confirm the printed state is "APPROVED" or "CHANGES_REQUESTED". If `gh pr review` exits nonzero, retry the same verdict command once. If the retry fails or the verified state is missing/any other value, print a clear error message to the workflow log rather than posting a PR comment.
