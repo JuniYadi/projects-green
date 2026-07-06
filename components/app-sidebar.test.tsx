@@ -283,6 +283,8 @@ describe("resolveSidebarMenu", () => {
       "Broadcasts",
       "Contacts",
       "Catalogs",
+      "Webhook Logs",
+      "Audit Logs",
     ])
     expect(navMain.find((item) => item.title === "Dashboard")?.isActive).toBe(
       true
@@ -368,6 +370,30 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.find((item) => item.title === "Contacts")?.isActive).toBe(
       true
     )
+  })
+
+  it("marks Webhook Logs active for its route", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/webhook-logs",
+      locale: "en",
+    })
+
+    expect(
+      navMain.find((item) => item.title === "Webhook Logs")?.isActive
+    ).toBe(true)
+  })
+
+  it("marks Audit Logs active for its route", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/audit-logs",
+      locale: "en",
+    })
+
+    expect(
+      navMain.find((item) => item.title === "Audit Logs")?.isActive
+    ).toBe(true)
   })
 
   it("includes order package in console vpn context", () => {

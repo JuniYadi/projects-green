@@ -563,6 +563,24 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         icon: <ShoppingBagOpen />,
         isActive: startsWithRoute(path, "/console/whatsapp/catalogs"),
       },
+      {
+        title: "Webhook Logs",
+        url: localizePathname({
+          pathname: "/console/whatsapp/webhook-logs",
+          locale,
+        }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/webhook-logs"),
+      },
+      {
+        title: "Audit Logs",
+        url: localizePathname({
+          pathname: "/console/whatsapp/audit-logs",
+          locale,
+        }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/audit-logs"),
+      },
     ],
   },
   {
