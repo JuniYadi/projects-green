@@ -5,14 +5,17 @@ import type { App } from "@/lib/api"
 const DEV_FALLBACK_BASE_URL = "http://localhost:3300"
 
 export const getApiBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin
+    if (origin && origin !== "null") {
+      return origin.replace(/\/+$/, "")
+    }
+  }
+
   const envBaseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
 
   if (envBaseUrl) {
     return envBaseUrl.replace(/\/+$/, "")
-  }
-
-  if (typeof window !== "undefined") {
-    return window.location.origin
   }
 
   return DEV_FALLBACK_BASE_URL

@@ -1,3 +1,4 @@
+import { AuthPageShell } from "@/components/auth-page-shell"
 import { LoginForm } from "@/components/login-form"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
@@ -32,16 +33,12 @@ export default async function LoginPage({
   )
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
-      <div className="flex w-full max-w-md flex-col gap-6 lg:max-w-lg">
-        <a href="#" className="flex items-center gap-2 self-center font-medium">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <span className="text-xs">A</span>
-          </div>
-          Acme Inc.
-        </a>
-        <LoginForm nextPath={next} errorMessage={search?.error} />
-      </div>
-    </div>
+    <AuthPageShell
+      badge="Console access"
+      panelTitle="Welcome back"
+      panelDescription="Sign in to manage deployments, billing, support tickets, VPN services, and WhatsApp operations from the PFNApp console."
+    >
+      <LoginForm nextPath={next} errorMessage={search?.error} />
+    </AuthPageShell>
   )
 }

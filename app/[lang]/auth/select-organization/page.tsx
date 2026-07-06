@@ -1,3 +1,5 @@
+import { AuthPageShell } from "@/components/auth-page-shell"
+
 import { SelectOrganizationForm } from "@/components/select-organization-form"
 
 
@@ -36,14 +38,17 @@ export default async function SelectOrganizationPage({
   }
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
-      <div className="w-full max-w-md lg:max-w-lg">
-        <SelectOrganizationForm
-          email={email}
-          organizations={organizations}
-          pendingAuthenticationToken={pendingAuthenticationToken}
-        />
-      </div>
-    </div>
+    <AuthPageShell
+      badge="Organization access"
+      panelTitle="Select your workspace"
+      panelDescription="Select the PFNApp organization you want to manage before entering the console."
+      className="lg:max-w-lg"
+    >
+      <SelectOrganizationForm
+        email={email}
+        organizations={organizations}
+        pendingAuthenticationToken={pendingAuthenticationToken}
+      />
+    </AuthPageShell>
   )
 }
