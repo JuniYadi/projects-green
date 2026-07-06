@@ -7,7 +7,8 @@ import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
-import { adminSubscriptionUpdateSchema } from "../billing.schemas"
+import { adminSubscriptionUpdateSchema, adminSubscriptionCreateSchema } from "../billing.schemas"
+import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -202,6 +203,152 @@ export const createAdminSubscriptionRoutes = (
           return toServerError(set, "Unable to load subscriptions.")
         }
       })
+      // POST /billing/admin/subscriptions — Create subscription on behalf of org
+      .post("/admin/subscriptions", async ({ body, set }) => {
+        const auth = await authenticate()
+
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(
+            set,
+            "Only administrators can create subscriptions."
+          )
+        }
+
+        const parsed = adminSubscriptionCreateSchema.safeParse(body)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          }
+        }
+
+        const {
+          organizationId,
+          packageId,
+          planId,
+          pricingId,
+          type,
+          billingMode,
+          currentPeriodStart,
+          currentPeriodEnd,
+          allocatedConfig,
+          metadata,
+        } = parsed.data
+
+        try {
+          // Validate that package, plan, and pricing exist
+          const [servicePackage, servicePlan, pricing] = await Promise.all([
+            prisma.servicePackage.findUnique({ where: { id: packageId } }),
+            prisma.servicePlan.findUnique({ where: { id: planId } }),
+            prisma.servicePricing.findUnique({ where: { id: pricingId } }),
+          ])
+
+          if (!servicePackage) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VALIDATION_ERROR" as const,
+              message: "Package not found.",
+            }
+          }
+
+          if (!servicePlan) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VALIDATION_ERROR" as const,
+              message: "Plan not found.",
+            }
+          }
+
+          if (!pricing) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VALIDATION_ERROR" as const,
+              message: "Pricing not found.",
+            }
+          }
+
+          // Check for existing subscription with same package+plan for this org
+          const existing = await prisma.serviceSubscription.findFirst({
+            where: {
+              organizationId,
+              packageId,
+              planId,
+              status: { not: "CANCELLED" },
+            },
+          })
+
+          if (existing) {
+            set.status = 409
+            return {
+              ok: false as const,
+              error: "CONFLICT" as const,
+              message: "An active subscription already exists for this package and plan.",
+            }
+          }
+
+          const subscription = await prisma.serviceSubscription.create({
+            data: {
+              organizationId,
+              packageId,
+              planId,
+              pricingId,
+              type,
+              billingMode,
+              status: "ACTIVE",
+              currentPeriodStart,
+              currentPeriodEnd,
+              allocatedConfig: (allocatedConfig ?? null) as Prisma.InputJsonValue,
+              metadata: (metadata ?? null) as Prisma.InputJsonValue,
+            },
+          })
+
+          // Audit logging
+          emitBillingAudit({
+            entityType: "ServiceSubscription",
+            entityId: subscription.id,
+            action: "ORDER_CREATED",
+            actorId: auth.user?.id,
+            context: {
+              organizationId,
+              packageId,
+              planId,
+              pricingId,
+              type,
+              billingMode,
+            },
+          })
+
+          return {
+            ok: true as const,
+            subscription: {
+              id: subscription.id,
+              organizationId: subscription.organizationId,
+              packageId: subscription.packageId,
+              planId: subscription.planId,
+              pricingId: subscription.pricingId,
+              type: subscription.type,
+              billingMode: subscription.billingMode,
+              status: subscription.status,
+              currentPeriodStart: subscription.currentPeriodStart.toISOString(),
+              currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+            },
+          }
+        } catch (error) {
+          console.error("[AdminSubscriptionCreate] Error:", error)
+          return toServerError(set, "Unable to create subscription.")
+        }
+      })
       // PATCH /billing/admin/subscriptions/:id — Update subscription
       .patch("/admin/subscriptions/:id", async ({ params, body, set }) => {
         const auth = await authenticate()
@@ -248,7 +395,7 @@ export const createAdminSubscriptionRoutes = (
           // Check subscription exists
           const existing = await prisma.serviceSubscription.findUnique({
             where: { id },
-            select: { id: true },
+            select: { id: true, organizationId: true, status: true },
           })
 
           if (!existing) {
@@ -356,6 +503,19 @@ export const createAdminSubscriptionRoutes = (
           if (!updated) {
             return toNotFound(set, "Subscription not found after update.")
           }
+
+          // Audit logging
+          emitBillingAudit({
+            entityType: "ServiceSubscription",
+            entityId: updated.id,
+            action: "UPDATED",
+            actorId: auth.user?.id,
+            context: {
+              previousStatus: existing.status,
+              newStatus: (dataToUpdate.status as string) ?? existing.status,
+              changes: Object.keys(dataToUpdate),
+            },
+          })
 
           // Format response
           const formatted = {

@@ -217,6 +217,42 @@ describe("resolveSidebarMenu", () => {
       "WhatsApp",
     ])
   })
+  it("returns portal billing context with Overview as first item for /portal/billing", () => {
+    const { navMain, projects, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/billing",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("Billing")
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Overview",
+      "Invoices",
+      "Transactions",
+      "Vouchers",
+      "Usage",
+      "Payments",
+      "Subscription",
+      "Create Order",
+      "Top Up",
+      "Settings",
+      "Payment Methods",
+      "Contacts",
+      "Alerts",
+      "Audit Logs",
+    ])
+    expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
+  })
+
+  it("marks invoices active for its routes in portal billing context", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/billing/invoices",
+      locale: "en",
+    })
+    expect(navMain.find((item) => item.title === "Invoices")?.isActive).toBe(true)
+    expect(navMain.find((item) => item.title === "Overview")?.isActive).toBe(false)
+  })
 
   it("includes thunder AI help trigger link for console sidebar secondary links", () => {
     const items = resolveSidebarSecondaryLinks({
@@ -293,6 +329,11 @@ describe("resolveSidebarMenu", () => {
       "Dashboard",
       "Devices",
       "Templates",
+      "Messages",
+      "Broadcasts",
+      "Usage",
+      "Contacts",
+      "Catalogs",
       "Webhook Logs",
       "Audit Logs",
     ])

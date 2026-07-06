@@ -137,13 +137,88 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     ],
     getNavMain: (path, locale) => [
       {
+        title: "Overview",
+        url: localizePathname({ pathname: "/portal/billing", locale }),
+        icon: <GaugeIcon />,
+        isActive: path === localizePathname({ pathname: "/portal/billing", locale }),
+      },
+      {
+        title: "Invoices",
+        url: localizePathname({ pathname: "/portal/billing/invoices", locale }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/invoices"),
+      },
+      {
+        title: "Transactions",
+        url: localizePathname({ pathname: "/portal/billing/transactions", locale }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/transactions"),
+      },
+      {
         title: "Vouchers",
-        url: localizePathname({
-          pathname: "/portal/billing/voucher",
-          locale,
-        }),
+        url: localizePathname({ pathname: "/portal/billing/voucher", locale }),
         icon: <TicketIcon />,
         isActive: startsWithRoute(path, "/portal/billing/voucher"),
+      },
+      {
+        title: "Usage",
+        url: localizePathname({ pathname: "/portal/billing/usage", locale }),
+        icon: <ChartLineIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/usage"),
+      },
+      {
+        title: "Payments",
+        url: localizePathname({ pathname: "/portal/billing/payments", locale }),
+        icon: <CreditCardIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/payments"),
+      },
+      {
+        title: "Subscription",
+        url: localizePathname({ pathname: "/portal/billing/subscription", locale }),
+        icon: <WalletIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/subscription"),
+      },
+      {
+        title: "Create Order",
+        url: localizePathname({ pathname: "/portal/billing/subscription/create", locale }),
+        icon: <PackageIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/subscription/create"),
+      },
+      {
+        title: "Top Up",
+        url: localizePathname({ pathname: "/portal/billing/topup", locale }),
+        icon: <CrosshairIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/topup"),
+      },
+      {
+        title: "Settings",
+        url: localizePathname({ pathname: "/portal/billing/settings", locale }),
+        icon: <GearSixIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/settings"),
+      },
+      {
+        title: "Payment Methods",
+        url: localizePathname({ pathname: "/portal/billing/payment-methods", locale }),
+        icon: <ShieldCheckIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/payment-methods"),
+      },
+      {
+        title: "Contacts",
+        url: localizePathname({ pathname: "/portal/billing/contacts", locale }),
+        icon: <BookOpenIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/contacts"),
+      },
+      {
+        title: "Alerts",
+        url: localizePathname({ pathname: "/portal/billing/alerts", locale }),
+        icon: <Lightning />,
+        isActive: startsWithRoute(path, "/portal/billing/alerts"),
+      },
+      {
+        title: "Audit Logs",
+        url: localizePathname({ pathname: "/portal/billing/audit-logs", locale }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/portal/billing/audit-logs"),
       },
     ],
   },
@@ -309,6 +384,51 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <Lightning />,
         isActive: startsWithRoute(path, "/portal/whatsapp/templates"),
+      },
+      {
+        title: "Messages",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/messages",
+          locale,
+        }),
+        icon: <PaperPlaneTiltIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/messages"),
+      },
+      {
+        title: "Broadcasts",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/broadcasts",
+          locale,
+        }),
+        icon: <RocketLaunchIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/broadcasts"),
+      },
+      {
+        title: "Usage",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/usage",
+          locale,
+        }),
+        icon: <ChartLineIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/usage"),
+      },
+      {
+        title: "Contacts",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/contacts",
+          locale,
+        }),
+        icon: <BookOpenIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/contacts"),
+      },
+      {
+        title: "Catalogs",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/catalogs",
+          locale,
+        }),
+        icon: <ShoppingBagOpen />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/catalogs"),
       },
       {
         title: "Webhook Logs",

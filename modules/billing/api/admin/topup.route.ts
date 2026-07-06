@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
+import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
 const MAX_BALANCE = new Decimal("999999999.99")
 
@@ -156,6 +157,22 @@ export const createAdminTopupRoutes = (
         ])
 
         return { updatedAccount, adjustment }
+      })
+
+      // Audit logging
+      emitBillingAudit({
+        billingAccountId: result.updatedAccount.id,
+        entityType: "BillingAccount",
+        entityId: result.updatedAccount.id,
+        action: "TOPUP_PERFORMED",
+        actorId: actingUserId,
+        context: {
+          orgId,
+          amountIdr: amount.toString(),
+          adjustmentId: result.adjustment.id,
+          newBalanceIdr: result.updatedAccount.balance.toFixed(2),
+          reason,
+        },
       })
 
       return {

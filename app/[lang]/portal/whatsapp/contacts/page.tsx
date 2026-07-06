@@ -1,0 +1,990 @@
+"use client"
+
+import * as React from "react"
+import {
+  User,
+  MagnifyingGlass,
+  PencilSimple,
+  Trash,
+  UserPlus,
+  CheckCircle,
+  XCircle,
+  DotsThreeVertical,
+  Upload,
+} from "@phosphor-icons/react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import {
+  whatsappClient,
+  type Contact,
+  type ContactGroup,
+  type ContactStatus,
+} from "@/modules/whatsapp/whatsapp-client"
+
+// ─── Contact Status Badge ─────────────────────────────────────────────────
+
+function ContactStatusBadge({
+  status,
+  isWhatsapp,
+}: {
+  status: ContactStatus
+  isWhatsapp: boolean
+}) {
+  const isActive = status === "ACTIVE"
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+        isActive
+          ? "bg-green-50 text-green-600 dark:bg-green-900/20"
+          : "bg-gray-50 text-gray-500 dark:bg-gray-900/20"
+      }`}
+    >
+      {isActive ? (
+        <CheckCircle weight="fill" className="size-3.5" />
+      ) : (
+        <XCircle weight="fill" className="size-3.5" />
+      )}
+      {isActive ? "Active" : "Inactive"}
+      {isWhatsapp && (
+        <svg className="ml-0.5 size-3" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+        </svg>
+      )}
+    </span>
+  )
+}
+
+// ─── Form Data Type ───────────────────────────────────────────────────────
+
+type ContactFormData = {
+  phoneNumber: string
+  name: string
+  email: string
+  contactGroupId: string
+  status: ContactStatus
+}
+
+const emptyFormData: ContactFormData = {
+  phoneNumber: "",
+  name: "",
+  email: "",
+  contactGroupId: "",
+  status: "ACTIVE",
+}
+
+// ─── Page Component ───────────────────────────────────────────────────────
+
+export default function WhatsAppContactsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  // ── Data state ──────────────────────────────────────────────────────────
+
+  const [contacts, setContacts] = React.useState<Contact[]>([])
+  const [groups, setGroups] = React.useState<ContactGroup[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState("")
+
+  // ── Dialog state ────────────────────────────────────────────────────────
+
+  const [addDialogOpen, setAddDialogOpen] = React.useState(false)
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [editingContact, setEditingContact] = React.useState<Contact | null>(
+    null
+  )
+  const [deletingContact, setDeletingContact] = React.useState<Contact | null>(
+    null
+  )
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [formData, setFormData] = React.useState<ContactFormData>(emptyFormData)
+
+  // ── CSV Import state ─────────────────────────────────────────────────────
+  const [importDialogOpen, setImportDialogOpen] = React.useState(false)
+  const [parsedContacts, setParsedContacts] = React.useState<
+    Array<{ phone: string; name: string; email: string; group: string }>
+  >([])
+  const [importProgress, setImportProgress] = React.useState({ current: 0, total: 0 })
+  const [isImporting, setIsImporting] = React.useState(false)
+
+  // ── Data fetching ───────────────────────────────────────────────────────
+
+  const loadContacts = React.useCallback(async () => {
+    setIsLoading(true)
+    setErrorMessage(null)
+    try {
+      const items = await whatsappClient.listContacts()
+      setContacts(items)
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : messages.console.whatsapp.contacts.unableToLoad
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }, [messages.console.whatsapp.contacts.unableToLoad])
+
+  const loadGroups = React.useCallback(async () => {
+    try {
+      const items = await whatsappClient.listGroups()
+      setGroups(items)
+    } catch {
+      // Groups are secondary; silently fail
+    }
+  }, [])
+
+  React.useEffect(() => {
+    ;(async () => {
+      await loadContacts()
+      await loadGroups()
+    })()
+  }, [loadContacts, loadGroups])
+
+  // ── Filtered contacts (client-side search) ──────────────────────────────
+
+  const filteredContacts = React.useMemo(() => {
+    if (!searchQuery.trim()) return contacts
+    const query = searchQuery.trim().toLowerCase()
+    return contacts.filter(
+      (c) =>
+        c.phoneNumber.toLowerCase().includes(query) ||
+        c.name.toLowerCase().includes(query) ||
+        c.email.toLowerCase().includes(query)
+    )
+  }, [contacts, searchQuery])
+
+  // ── Mutations ───────────────────────────────────────────────────────────
+
+  const handleAdd = async () => {
+    if (!formData.phoneNumber.trim()) {
+      toast.error(messages.console.whatsapp.contacts.phoneNumberRequired)
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await whatsappClient.createContact({
+        phoneNumber: formData.phoneNumber,
+        name: formData.name,
+        email: formData.email,
+        contactGroupId: formData.contactGroupId || undefined,
+        status: formData.status,
+      })
+      toast.success(messages.console.whatsapp.contacts.contactCreated)
+      setAddDialogOpen(false)
+      setFormData(emptyFormData)
+      void loadContacts()
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : messages.console.whatsapp.contacts.unableToCreate
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleEdit = async () => {
+    if (!editingContact) return
+    if (!formData.phoneNumber.trim()) {
+      toast.error(messages.console.whatsapp.contacts.phoneNumberRequired)
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await whatsappClient.updateContact(editingContact.id, {
+        phoneNumber: formData.phoneNumber,
+        name: formData.name,
+        email: formData.email,
+        contactGroupId: formData.contactGroupId || undefined,
+        status: formData.status,
+      })
+      toast.success(messages.console.whatsapp.contacts.contactUpdated)
+      setEditDialogOpen(false)
+      setEditingContact(null)
+      void loadContacts()
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : messages.console.whatsapp.contacts.unableToUpdate
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deletingContact) return
+
+    setIsSubmitting(true)
+    try {
+      await whatsappClient.deleteContact(deletingContact.id)
+      toast.success(messages.console.whatsapp.contacts.contactDeleted)
+      setDeleteDialogOpen(false)
+      setDeletingContact(null)
+      void loadContacts()
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : messages.console.whatsapp.contacts.unableToDelete
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ── CSV Import ───────────────────────────────────────────────────────────
+
+  const openImportDialog = () => {
+    setParsedContacts([])
+    setImportProgress({ current: 0, total: 0 })
+    setImportDialogOpen(true)
+  }
+
+  const parseCSV = (text: string) => {
+    const lines = text.trim().split("\n")
+    if (lines.length < 2) return []
+    const header = lines[0].split(",").map((h) => h.trim().toLowerCase())
+    const phoneIdx = header.indexOf("phone")
+    const nameIdx = header.indexOf("name")
+    const emailIdx = header.indexOf("email")
+    const groupIdx = header.indexOf("group")
+    if (phoneIdx === -1) return []
+    const rows: Array<{ phone: string; name: string; email: string; group: string }> = []
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",").map((c) => c.trim())
+      const phone = cols[phoneIdx] ?? ""
+      if (!phone) continue
+      rows.push({
+        phone,
+        name: nameIdx !== -1 ? (cols[nameIdx] ?? "") : "",
+        email: emailIdx !== -1 ? (cols[emailIdx] ?? "") : "",
+        group: groupIdx !== -1 ? (cols[groupIdx] ?? "") : "",
+      })
+    }
+    return rows
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.name.endsWith(".csv")) {
+      toast.error("Please select a .csv file")
+      e.target.value = ""
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const text = event.target?.result as string
+      const parsed = parseCSV(text)
+      if (parsed.length === 0) {
+        toast.error("No valid contacts found. Ensure CSV has a 'phone' column.")
+        return
+      }
+      setParsedContacts(parsed)
+    }
+    reader.readAsText(file)
+    e.target.value = ""
+  }
+
+  const handleImport = async () => {
+    if (parsedContacts.length === 0) return
+    setIsImporting(true)
+    setImportProgress({ current: 0, total: parsedContacts.length })
+    let successCount = 0
+    let errorCount = 0
+    for (let i = 0; i < parsedContacts.length; i++) {
+      const row = parsedContacts[i]
+      setImportProgress({ current: i + 1, total: parsedContacts.length })
+      // Resolve group name to id
+      let contactGroupId: string | undefined
+      if (row.group) {
+        const matched = groups.find(
+          (g) => g.name.toLowerCase() === row.group.toLowerCase()
+        )
+        contactGroupId = matched?.id
+      }
+      try {
+        await whatsappClient.createContact({
+          phoneNumber: row.phone,
+          name: row.name,
+          email: row.email,
+          contactGroupId,
+        })
+        successCount++
+      } catch {
+        errorCount++
+      }
+    }
+    setIsImporting(false)
+    setImportDialogOpen(false)
+    setParsedContacts([])
+    if (successCount > 0) {
+      toast.success(`Imported ${successCount} contact${successCount !== 1 ? "s" : ""}`)
+    }
+    if (errorCount > 0) {
+      toast.error(`${errorCount} contact${errorCount !== 1 ? "s" : ""} failed to import`)
+    }
+    void loadContacts()
+  }
+
+  // ── Opening dialogs ─────────────────────────────────────────────────────
+
+  const openAddDialog = () => {
+    setFormData(emptyFormData)
+    setAddDialogOpen(true)
+  }
+
+  const openEditDialog = (contact: Contact) => {
+    setEditingContact(contact)
+    setFormData({
+      phoneNumber: contact.phoneNumber,
+      name: contact.name,
+      email: contact.email,
+      contactGroupId: contact.contactGroupId,
+      status: contact.status,
+    })
+    setEditDialogOpen(true)
+  }
+
+  const openDeleteDialog = (contact: Contact) => {
+    setDeletingContact(contact)
+    setDeleteDialogOpen(true)
+  }
+
+  // ── Groups lookup ───────────────────────────────────────────────────────
+
+  const groupMap = React.useMemo(() => {
+    const map = new Map<string, string>()
+    for (const g of groups) {
+      map.set(g.id, g.name)
+    }
+    return map
+  }, [groups])
+
+  // ── Render ──────────────────────────────────────────────────────────────
+
+  return (
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      {/* ── Header ────────────────────────────────────────────────────── */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {messages.console.whatsapp.contacts.heading}
+        </h1>
+        <p className="text-muted-foreground">
+          {messages.console.whatsapp.contacts.description}
+        </p>
+      </div>
+
+      {/* ── Main Card ──────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>
+              {messages.console.whatsapp.contacts.cardTitle}
+            </CardTitle>
+            <CardDescription>
+              {messages.console.whatsapp.contacts.cardDescription}
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={openImportDialog}>
+              <Upload weight="bold" className="mr-2 size-4" />
+              Import CSV
+            </Button>
+            <Button onClick={openAddDialog}>
+              <UserPlus weight="bold" className="mr-2 size-4" />
+              {messages.console.whatsapp.contacts.addContact}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* ── Search ─────────────────────────────────────────────────── */}
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={
+                  messages.console.whatsapp.contacts.searchPlaceholder
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          {/* ── Stats ──────────────────────────────────────────────────── */}
+          <div className="mb-6 grid grid-cols-3 gap-4">
+            <div className="rounded-lg border p-4 text-center">
+              <p className="text-2xl font-bold">{contacts.length}</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.console.whatsapp.contacts.totalContacts}
+              </p>
+            </div>
+            <div className="rounded-lg border p-4 text-center">
+              <p className="text-2xl font-bold text-green-600">
+                {contacts.filter((c) => c.status === "ACTIVE").length}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {messages.console.whatsapp.contacts.activeLabel}
+              </p>
+            </div>
+            <div className="rounded-lg border p-4 text-center">
+              <p className="text-2xl font-bold text-blue-600">
+                {contacts.filter((c) => c.isWhatsapp).length}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {messages.console.whatsapp.contacts.hasWhatsApp}
+              </p>
+            </div>
+          </div>
+
+          {/* ── Loading ────────────────────────────────────────────────── */}
+          {isLoading && (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between rounded-lg border p-4"
+                >
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="size-10 rounded-full" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Error ──────────────────────────────────────────────────── */}
+          {!isLoading && errorMessage && (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <XCircle
+                className="mb-3 size-10 text-destructive"
+                weight="fill"
+              />
+              <p className="text-sm text-destructive">{errorMessage}</p>
+              <Button
+                variant="outline"
+                className="mt-3"
+                onClick={() => void loadContacts()}
+              >
+                {messages.console.whatsapp.contacts.retry}
+              </Button>
+            </div>
+          )}
+
+          {/* ── Empty ──────────────────────────────────────────────────── */}
+          {!isLoading && !errorMessage && filteredContacts.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <User className="mb-3 size-10 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {searchQuery
+                  ? messages.console.whatsapp.contacts.noContactsMatch
+                  : messages.console.whatsapp.contacts.noContactsYet}
+              </p>
+              {!searchQuery && (
+                <Button
+                  variant="outline"
+                  className="mt-3"
+                  onClick={openAddDialog}
+                >
+                  {messages.console.whatsapp.contacts.addFirstContact}
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* ── Contact List ───────────────────────────────────────────── */}
+          {!isLoading && !errorMessage && filteredContacts.length > 0 && (
+            <div className="space-y-3">
+              {filteredContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="flex items-center justify-between rounded-lg border p-4"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+                      <User className="size-5 text-primary" weight="fill" />
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {contact.name || contact.phoneNumber}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {contact.phoneNumber}
+                      </p>
+                      {contact.contactGroupId &&
+                        groupMap.has(contact.contactGroupId) && (
+                          <p className="text-xs text-muted-foreground">
+                            {groupMap.get(contact.contactGroupId)}
+                          </p>
+                        )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <ContactStatusBadge
+                      status={contact.status}
+                      isWhatsapp={contact.isWhatsapp}
+                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-sm">
+                          <span className="sr-only">Open menu</span>
+                          <DotsThreeVertical weight="bold" className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => openEditDialog(contact)}
+                        >
+                          <PencilSimple className="mr-2 size-4" />
+                          {messages.console.whatsapp.contacts.edit}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => openDeleteDialog(contact)}
+                        >
+                          <Trash className="mr-2 size-4" />
+                          {messages.console.whatsapp.contacts.delete}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Add Contact Dialog ──────────────────────────────────────────── */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {messages.console.whatsapp.contacts.addDialogTitle}
+            </DialogTitle>
+            <DialogDescription>
+              {messages.console.whatsapp.contacts.addDialogDescription}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="add-phone">
+                {messages.console.whatsapp.contacts.phoneNumber}{" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="add-phone"
+                value={formData.phoneNumber}
+                onChange={(e) =>
+                  setFormData({ ...formData, phoneNumber: e.target.value })
+                }
+                placeholder="+1234567890"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="add-name">
+                {messages.console.whatsapp.contacts.name}
+              </Label>
+              <Input
+                id="add-name"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="John Doe"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="add-email">
+                {messages.console.whatsapp.contacts.email}
+              </Label>
+              <Input
+                id="add-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder="john@example.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="add-group">
+                {messages.console.whatsapp.contacts.audience}
+              </Label>
+              <Select
+                value={formData.contactGroupId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, contactGroupId: value })
+                }
+              >
+                <SelectTrigger id="add-group" className="w-full">
+                  <SelectValue placeholder="Default audience" />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="add-status">
+                {messages.console.whatsapp.contacts.status}
+              </Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    status: value as ContactStatus,
+                  })
+                }
+              >
+                <SelectTrigger id="add-status" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">
+                    {messages.console.whatsapp.contacts.activeStatus}
+                  </SelectItem>
+                  <SelectItem value="INACTIVE">
+                    {messages.console.whatsapp.contacts.inactiveStatus}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAddDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              {messages.console.whatsapp.contacts.cancel}
+            </Button>
+            <Button onClick={() => void handleAdd()} disabled={isSubmitting}>
+              {isSubmitting
+                ? messages.console.whatsapp.contacts.adding
+                : messages.console.whatsapp.contacts.addContact}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Contact Dialog ─────────────────────────────────────────── */}
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setEditingContact(null)
+          setEditDialogOpen(open)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {messages.console.whatsapp.contacts.editDialogTitle}
+            </DialogTitle>
+            <DialogDescription>
+              {messages.console.whatsapp.contacts.editDialogDescription}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-phone">
+                {messages.console.whatsapp.contacts.phoneNumber}{" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="edit-phone"
+                value={formData.phoneNumber}
+                onChange={(e) =>
+                  setFormData({ ...formData, phoneNumber: e.target.value })
+                }
+                placeholder="+1234567890"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">
+                {messages.console.whatsapp.contacts.name}
+              </Label>
+              <Input
+                id="edit-name"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="John Doe"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-email">
+                {messages.console.whatsapp.contacts.email}
+              </Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder="john@example.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-group">
+                {messages.console.whatsapp.contacts.audience}
+              </Label>
+              <Select
+                value={formData.contactGroupId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, contactGroupId: value })
+                }
+              >
+                <SelectTrigger id="edit-group" className="w-full">
+                  <SelectValue placeholder="Default audience" />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-status">
+                {messages.console.whatsapp.contacts.status}
+              </Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    status: value as ContactStatus,
+                  })
+                }
+              >
+                <SelectTrigger id="edit-status" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">
+                    {messages.console.whatsapp.contacts.activeStatus}
+                  </SelectItem>
+                  <SelectItem value="INACTIVE">
+                    {messages.console.whatsapp.contacts.inactiveStatus}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              {messages.console.whatsapp.contacts.cancel}
+            </Button>
+            <Button onClick={() => void handleEdit()} disabled={isSubmitting}>
+              {isSubmitting
+                ? messages.console.whatsapp.contacts.saving
+                : messages.console.whatsapp.contacts.saveChanges}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation Dialog ──────────────────────────────────── */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {messages.console.whatsapp.contacts.deleteDialogTitle}
+            </DialogTitle>
+            <DialogDescription>
+              {messages.console.whatsapp.contacts.deleteDialogDescription.replace(
+                "{name}",
+                deletingContact?.name || deletingContact?.phoneNumber || ""
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              {messages.console.whatsapp.contacts.cancel}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleDelete()}
+              disabled={isSubmitting}
+            >
+              {isSubmitting
+                ? messages.console.whatsapp.contacts.deleting
+                : messages.console.whatsapp.contacts.delete}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Import CSV Dialog ─────────────────────────────────────────────── */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import Contacts from CSV</DialogTitle>
+            <DialogDescription>
+              Upload a CSV file with columns: phone, name, email, group (optional).
+              The first row must be a header row.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* File input */}
+            <div className="grid gap-2">
+              <Label htmlFor="csv-upload">CSV File</Label>
+              <input
+                id="csv-upload"
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <Button asChild variant="outline">
+                <label htmlFor="csv-upload" className="cursor-pointer">
+                  <Upload weight="bold" className="mr-2 size-4" />
+                  Choose CSV File
+                </label>
+              </Button>
+            </div>
+
+            {/* Preview table */}
+            {parsedContacts.length > 0 && (
+              <div className="grid gap-2">
+                <Label>
+                  Preview ({parsedContacts.length} contact{parsedContacts.length !== 1 ? "s" : ""})
+                </Label>
+                <div className="max-h-64 overflow-auto rounded-md border">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted sticky top-0">
+                      <tr>
+                        <th className="px-2 py-1.5 text-left font-medium">Phone</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Name</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Email</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Group</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedContacts.map((row, i) => (
+                        <tr key={i} className="border-t">
+                          <td className="px-2 py-1.5">{row.phone}</td>
+                          <td className="px-2 py-1.5">{row.name || "—"}</td>
+                          <td className="px-2 py-1.5">{row.email || "—"}</td>
+                          <td className="px-2 py-1.5">{row.group || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Progress */}
+            {isImporting && (
+              <div className="grid gap-2">
+                <Label>
+                  Importing {importProgress.current} of {importProgress.total}…
+                </Label>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary transition-all duration-200"
+                    style={{
+                      width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setImportDialogOpen(false)
+                setParsedContacts([])
+              }}
+              disabled={isImporting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleImport()}
+              disabled={isImporting || parsedContacts.length === 0}
+            >
+              {isImporting
+                ? `Importing ${importProgress.current}/${importProgress.total}…`
+                : `Import ${parsedContacts.length} Contact${parsedContacts.length !== 1 ? "s" : ""}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </main>
+  )
+}

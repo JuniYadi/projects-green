@@ -9,6 +9,7 @@ import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 import { adminAdjustSchema } from "../billing.schemas"
 import { NegativeBalanceError } from "../../types"
+import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
 const MAX_BALANCE = new Decimal("999999999.99")
 
@@ -178,6 +179,20 @@ export const createAdminBillingRoutes = (
             ])
 
             return { updatedAccount, adjustment }
+          })
+          emitBillingAudit({
+            billingAccountId: result.adjustment.billingAccountId,
+            entityType: "BillingAdjustment",
+            entityId: result.adjustment.id,
+            action: "BALANCE_ADJUSTED" as const,
+            actorId: auth.user?.id,
+            context: {
+              adjustmentType: type,
+              amount: amount.toString(),
+              reason,
+              organizationId,
+              newBalanceIdr: result.updatedAccount.balance.toFixed(2),
+            },
           })
 
           return {

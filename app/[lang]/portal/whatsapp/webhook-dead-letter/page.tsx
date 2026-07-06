@@ -231,7 +231,7 @@ export default function WebhookDeadLetterPage({
   }
 
   return (
-    <div className="space-y-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Webhook Dead Letters</h1>
@@ -255,6 +255,6 @@ export default function WebhookDeadLetterPage({
         initialSorting={[{ id: "failedAt", desc: true }]}
         emptyMessage="No dead letters found."
       />
-    </div>
+    </main>
   )
 }

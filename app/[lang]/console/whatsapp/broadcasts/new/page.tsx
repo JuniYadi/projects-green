@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -24,9 +25,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   whatsappClient,
+  type Contact,
   type Device,
   type Template,
 } from "@/modules/whatsapp/whatsapp-client"
+
+type RecipientSource = "contacts" | "manual"
 
 function parseRecipients(value: string) {
   return value
@@ -46,21 +50,27 @@ export default function NewWhatsAppBroadcastPage() {
   })
   const [templates, setTemplates] = React.useState<Template[]>([])
   const [devices, setDevices] = React.useState<Device[]>([])
+  const [contacts, setContacts] = React.useState<Contact[]>([])
   const [templateId, setTemplateId] = React.useState("")
   const [templateLanguage, setTemplateLanguage] = React.useState("")
   const [deviceId, setDeviceId] = React.useState("")
-  const [recipients, setRecipients] = React.useState("")
+  const [recipientSource, setRecipientSource] =
+    React.useState<RecipientSource>("manual")
+  const [selectedContactIds, setSelectedContactIds] = React.useState<Set<string>>(new Set())
+  const [manualRecipients, setManualRecipients] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   React.useEffect(() => {
     ;(async () => {
       try {
-        const [templateItems, deviceItems] = await Promise.all([
+        const [templateItems, deviceItems, contactItems] = await Promise.all([
           whatsappClient.listTemplates(),
           whatsappClient.listDevices(),
+          whatsappClient.listContacts(),
         ])
         setTemplates(templateItems)
         setDevices(deviceItems)
+        setContacts(contactItems)
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Unable to load form data"
@@ -77,6 +87,34 @@ export default function NewWhatsAppBroadcastPage() {
     [selectedTemplate]
   )
 
+  const selectedContactPhones = React.useMemo(() => {
+    return contacts
+      .filter((c) => selectedContactIds.has(c.id))
+      .map((c) => c.phoneNumber)
+  }, [contacts, selectedContactIds])
+
+  const allContactsSelected = contacts.length > 0 && selectedContactIds.size === contacts.length
+
+  function toggleContact(id: string) {
+    setSelectedContactIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function toggleAllContacts() {
+    if (allContactsSelected) {
+      setSelectedContactIds(new Set())
+    } else {
+      setSelectedContactIds(new Set(contacts.map((c) => c.id)))
+    }
+  }
+
   const handleTemplateChange = (value: string) => {
     setTemplateId(value)
     const template = templates.find((item) => item.id === value)
@@ -85,7 +123,12 @@ export default function NewWhatsAppBroadcastPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const parsedRecipients = parseRecipients(recipients)
+
+    const manualPhoneNumbers = parseRecipients(manualRecipients)
+    const contactPhoneNumbers = selectedContactPhones.map((phoneNumber) => ({
+      phoneNumber,
+    }))
+    const allRecipients = [...contactPhoneNumbers, ...manualPhoneNumbers]
 
     if (!selectedTemplate) {
       toast.error("Template is required")
@@ -97,7 +140,7 @@ export default function NewWhatsAppBroadcastPage() {
       return
     }
 
-    if (parsedRecipients.length === 0) {
+    if (allRecipients.length === 0) {
       toast.error("At least one recipient is required")
       return
     }
@@ -108,7 +151,7 @@ export default function NewWhatsAppBroadcastPage() {
         templateName: selectedTemplate.name,
         templateLanguage,
         whatsappDeviceId: deviceId || selectedTemplate.whatsappDeviceId,
-        recipients: parsedRecipients,
+        recipients: allRecipients,
       })
       toast.success("Broadcast created")
       router.push(`${basePath}/${broadcast.id}`)
@@ -195,18 +238,98 @@ export default function NewWhatsAppBroadcastPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="recipients">Recipients</Label>
-              <Textarea
-                id="recipients"
-                rows={8}
-                value={recipients}
-                onChange={(event) => setRecipients(event.target.value)}
-                placeholder="6281234567890\n6289876543210"
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter one phone number per line or comma-separated.
-              </p>
+              <Label htmlFor="recipient-source">Recipient source</Label>
+              <Select
+                value={recipientSource}
+                onValueChange={(value) =>
+                  setRecipientSource(value as RecipientSource)
+                }
+              >
+                <SelectTrigger id="recipient-source">
+                  <SelectValue placeholder="Select recipient source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contacts">From contacts</SelectItem>
+                  <SelectItem value="manual">Manual entry</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {recipientSource === "contacts" && (
+              <div className="grid gap-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">
+                    Select contacts{" "}
+                    {selectedContactIds.size > 0 && (
+                      <span className="text-muted-foreground font-normal">
+                        ({selectedContactIds.size} selected)
+                      </span>
+                    )}
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleAllContacts}
+                    className="h-auto p-0 text-xs"
+                  >
+                    {allContactsSelected ? "Deselect all" : "Select all"}
+                  </Button>
+                </div>
+                <div className="rounded-md border max-h-64 overflow-y-auto">
+                  {contacts.length === 0 ? (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                      No contacts available.
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {contacts.map((contact) => (
+                        <label
+                          key={contact.id}
+                          className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors"
+                        >
+                          <Checkbox
+                            checked={selectedContactIds.has(contact.id)}
+                            onCheckedChange={() => toggleContact(contact.id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">
+                              {contact.name || "Unnamed contact"}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {contact.phoneNumber}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {selectedContactIds.size > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedContactIds.size} contact
+                    {selectedContactIds.size !== 1 ? "s" : ""} selected from
+                    contacts
+                  </p>
+                )}
+              </div>
+            )}
+
+            {recipientSource === "manual" && (
+              <div className="grid gap-2">
+                <Label htmlFor="recipients">Phone numbers</Label>
+                <Textarea
+                  id="recipients"
+                  rows={8}
+                  value={manualRecipients}
+                  onChange={(event) => setManualRecipients(event.target.value)}
+                  placeholder="6281234567890\n6289876543210"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter one phone number per line or comma-separated.
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2">
               <Button

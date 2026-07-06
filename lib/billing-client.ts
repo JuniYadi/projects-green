@@ -708,3 +708,45 @@ export async function updateBillingAlerts(
     body: JSON.stringify(input),
   })
 }
+// ─── Admin Audit Logs ─────────────────────────────────────────────────────────
+
+export type AdminAuditLogItem = {
+  id: string
+  billingAccountId: string | null
+  billingRunId: string | null
+  entityType: string
+  entityId: string
+  action: string
+  actorType: string
+  actorId: string | null
+  contextJson: Record<string, unknown> | null
+  createdAt: string
+}
+
+export type AdminAuditLogsResponse = {
+  ok: true
+  logs: AdminAuditLogItem[]
+  pagination: { page: number; limit: number; total: number; totalPages: number }
+}
+
+export async function getAdminAuditLogs(params?: {
+  page?: number
+  limit?: number
+  entityType?: string
+  entityId?: string
+  billingAccountId?: string
+}): Promise<AdminAuditLogsResponse> {
+  const searchParams = new URLSearchParams()
+  if (params?.page) searchParams.set("page", String(params.page))
+  if (params?.limit) searchParams.set("limit", String(params.limit))
+  if (params?.entityType) searchParams.set("entityType", params.entityType)
+  if (params?.entityId) searchParams.set("entityId", params.entityId)
+  if (params?.billingAccountId)
+    searchParams.set("billingAccountId", params.billingAccountId)
+
+  const endpoint = searchParams.toString()
+    ? `/api/billing/admin/billing-audit/logs?${searchParams.toString()}`
+    : "/api/billing/admin/billing-audit/logs"
+
+  return fetchBilling<AdminAuditLogsResponse>(endpoint)
+}

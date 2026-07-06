@@ -14,11 +14,15 @@ import {
 
 const mockFindUnique = mock()
 const mockUpdate = mock()
+const mockBalanceUpdate = mock()
 
 const mockPrismaClient = {
   billingInvoice: {
     findUnique: mockFindUnique,
     update: mockUpdate,
+  },
+  billingAccount: {
+    update: mockBalanceUpdate,
   },
 }
 
@@ -497,5 +501,116 @@ describe("AdminInvoiceRoute", () => {
         "recip1@example.com"
       )
     })
+    it("returns 422 when trying ISSUED→ISSUED (same status)", async () => {
+      const mockInvoice = {
+        id: "inv-same",
+        status: "ISSUED",
+        billingAccountId: null,
+        organizationId: "org-1",
+      }
+      mockFindUnique.mockResolvedValue(mockInvoice)
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+      const res = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-same", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "ISSUED" }),
+        })
+      )
+      expect(res.status).toBe(422)
   })
+    it("returns 200 when OPEN→PAID transition succeeds", async () => {
+      const mockInvoice = {
+        id: "inv-paid",
+        status: "OPEN",
+        billingAccountId: "ba-1",
+        organizationId: "org-1",
+        subtotalAmount: new Decimal(900),
+        taxAmount: new Decimal(50),
+        discountAmount: new Decimal(0),
+        totalAmount: new Decimal(1000),
+        currency: "USD",
+        invoiceNumber: "INV-001",
+        createdAt: new Date("2026-01-01"),
+        issuedAt: null,
+        dueAt: null,
+      }
+      mockFindUnique.mockResolvedValue(mockInvoice)
+      mockUpdate.mockResolvedValue({ ...mockInvoice, status: "PAID", paidAt: new Date(), issuedAt: null, dueAt: null })
+      mockBalanceUpdate.mockResolvedValue({})
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+      const res = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-paid", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "PAID" }),
+        })
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.invoice.status).toBe("PAID")
+      expect(mockBalanceUpdate).toHaveBeenCalledWith({
+        where: { id: "ba-1" },
+        data: { balance: { increment: mockInvoice.totalAmount } },
+      })
+    })
+
+    it("returns 200 when OVERDUE→PAID transition succeeds", async () => {
+      const mockInvoice = {
+        id: "inv-overdue-paid",
+        status: "OVERDUE",
+        billingAccountId: "ba-2",
+        organizationId: "org-2",
+        subtotalAmount: new Decimal(1800),
+        taxAmount: new Decimal(100),
+        discountAmount: new Decimal(0),
+        totalAmount: new Decimal(2000),
+        currency: "IDR",
+        invoiceNumber: "INV-002",
+        createdAt: new Date("2026-01-01"),
+        issuedAt: null,
+        dueAt: null,
+      }
+      mockFindUnique.mockResolvedValue(mockInvoice)
+      mockUpdate.mockResolvedValue({ ...mockInvoice, status: "PAID", paidAt: new Date() })
+      mockBalanceUpdate.mockResolvedValue({})
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+      const res = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-overdue-paid", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "PAID" }),
+        })
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.invoice.status).toBe("PAID")
+    })
+})
 })

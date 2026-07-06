@@ -132,7 +132,7 @@ export default function PortalWhatsAppDashboardPage() {
     deviceCount > 0 || totalMonthlyOutbound > 0 || totalMonthlyInbound > 0
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">WhatsApp Dashboard</h1>
         <p className="text-sm text-muted-foreground">
@@ -330,6 +330,6 @@ export default function PortalWhatsAppDashboardPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </main>
   )
 }

@@ -10,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
   DotsThreeVertical,
+  Upload,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -133,8 +134,15 @@ export default function WhatsAppContactsPage() {
     null
   )
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-
   const [formData, setFormData] = React.useState<ContactFormData>(emptyFormData)
+
+  // ── CSV Import state ─────────────────────────────────────────────────────
+  const [importDialogOpen, setImportDialogOpen] = React.useState(false)
+  const [parsedContacts, setParsedContacts] = React.useState<
+    Array<{ phone: string; name: string; email: string; group: string }>
+  >([])
+  const [importProgress, setImportProgress] = React.useState({ current: 0, total: 0 })
+  const [isImporting, setIsImporting] = React.useState(false)
 
   // ── Data fetching ───────────────────────────────────────────────────────
 
@@ -268,6 +276,101 @@ export default function WhatsAppContactsPage() {
     }
   }
 
+  // ── CSV Import ───────────────────────────────────────────────────────────
+
+  const openImportDialog = () => {
+    setParsedContacts([])
+    setImportProgress({ current: 0, total: 0 })
+    setImportDialogOpen(true)
+  }
+
+  const parseCSV = (text: string) => {
+    const lines = text.trim().split("\n")
+    if (lines.length < 2) return []
+    const header = lines[0].split(",").map((h) => h.trim().toLowerCase())
+    const phoneIdx = header.indexOf("phone")
+    const nameIdx = header.indexOf("name")
+    const emailIdx = header.indexOf("email")
+    const groupIdx = header.indexOf("group")
+    if (phoneIdx === -1) return []
+    const rows: Array<{ phone: string; name: string; email: string; group: string }> = []
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",").map((c) => c.trim())
+      const phone = cols[phoneIdx] ?? ""
+      if (!phone) continue
+      rows.push({
+        phone,
+        name: nameIdx !== -1 ? (cols[nameIdx] ?? "") : "",
+        email: emailIdx !== -1 ? (cols[emailIdx] ?? "") : "",
+        group: groupIdx !== -1 ? (cols[groupIdx] ?? "") : "",
+      })
+    }
+    return rows
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.name.endsWith(".csv")) {
+      toast.error("Please select a .csv file")
+      e.target.value = ""
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const text = event.target?.result as string
+      const parsed = parseCSV(text)
+      if (parsed.length === 0) {
+        toast.error("No valid contacts found. Ensure CSV has a 'phone' column.")
+        return
+      }
+      setParsedContacts(parsed)
+    }
+    reader.readAsText(file)
+    e.target.value = ""
+  }
+
+  const handleImport = async () => {
+    if (parsedContacts.length === 0) return
+    setIsImporting(true)
+    setImportProgress({ current: 0, total: parsedContacts.length })
+    let successCount = 0
+    let errorCount = 0
+    for (let i = 0; i < parsedContacts.length; i++) {
+      const row = parsedContacts[i]
+      setImportProgress({ current: i + 1, total: parsedContacts.length })
+      // Resolve group name to id
+      let contactGroupId: string | undefined
+      if (row.group) {
+        const matched = groups.find(
+          (g) => g.name.toLowerCase() === row.group.toLowerCase()
+        )
+        contactGroupId = matched?.id
+      }
+      try {
+        await whatsappClient.createContact({
+          phoneNumber: row.phone,
+          name: row.name,
+          email: row.email,
+          contactGroupId,
+        })
+        successCount++
+      } catch {
+        errorCount++
+      }
+    }
+    setIsImporting(false)
+    setImportDialogOpen(false)
+    setParsedContacts([])
+    if (successCount > 0) {
+      toast.success(`Imported ${successCount} contact${successCount !== 1 ? "s" : ""}`)
+    }
+    if (errorCount > 0) {
+      toast.error(`${errorCount} contact${errorCount !== 1 ? "s" : ""} failed to import`)
+    }
+    void loadContacts()
+  }
+
   // ── Opening dialogs ─────────────────────────────────────────────────────
 
   const openAddDialog = () => {
@@ -327,10 +430,16 @@ export default function WhatsAppContactsPage() {
               {messages.console.whatsapp.contacts.cardDescription}
             </CardDescription>
           </div>
-          <Button onClick={openAddDialog}>
-            <UserPlus weight="bold" className="mr-2 size-4" />
-            {messages.console.whatsapp.contacts.addContact}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={openImportDialog}>
+              <Upload weight="bold" className="mr-2 size-4" />
+              Import CSV
+            </Button>
+            <Button onClick={openAddDialog}>
+              <UserPlus weight="bold" className="mr-2 size-4" />
+              {messages.console.whatsapp.contacts.addContact}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {/* ── Search ─────────────────────────────────────────────────── */}
@@ -772,6 +881,106 @@ export default function WhatsAppContactsPage() {
               {isSubmitting
                 ? messages.console.whatsapp.contacts.deleting
                 : messages.console.whatsapp.contacts.delete}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Import CSV Dialog ─────────────────────────────────────────────── */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import Contacts from CSV</DialogTitle>
+            <DialogDescription>
+              Upload a CSV file with columns: phone, name, email, group (optional).
+              The first row must be a header row.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* File input */}
+            <div className="grid gap-2">
+              <Label htmlFor="csv-upload">CSV File</Label>
+              <input
+                id="csv-upload"
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <Button asChild variant="outline">
+                <label htmlFor="csv-upload" className="cursor-pointer">
+                  <Upload weight="bold" className="mr-2 size-4" />
+                  Choose CSV File
+                </label>
+              </Button>
+            </div>
+
+            {/* Preview table */}
+            {parsedContacts.length > 0 && (
+              <div className="grid gap-2">
+                <Label>
+                  Preview ({parsedContacts.length} contact{parsedContacts.length !== 1 ? "s" : ""})
+                </Label>
+                <div className="max-h-64 overflow-auto rounded-md border">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted sticky top-0">
+                      <tr>
+                        <th className="px-2 py-1.5 text-left font-medium">Phone</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Name</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Email</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Group</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedContacts.map((row, i) => (
+                        <tr key={i} className="border-t">
+                          <td className="px-2 py-1.5">{row.phone}</td>
+                          <td className="px-2 py-1.5">{row.name || "—"}</td>
+                          <td className="px-2 py-1.5">{row.email || "—"}</td>
+                          <td className="px-2 py-1.5">{row.group || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Progress */}
+            {isImporting && (
+              <div className="grid gap-2">
+                <Label>
+                  Importing {importProgress.current} of {importProgress.total}…
+                </Label>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary transition-all duration-200"
+                    style={{
+                      width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setImportDialogOpen(false)
+                setParsedContacts([])
+              }}
+              disabled={isImporting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleImport()}
+              disabled={isImporting || parsedContacts.length === 0}
+            >
+              {isImporting
+                ? `Importing ${importProgress.current}/${importProgress.total}…`
+                : `Import ${parsedContacts.length} Contact${parsedContacts.length !== 1 ? "s" : ""}`}
             </Button>
           </DialogFooter>
         </DialogContent>
