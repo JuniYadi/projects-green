@@ -561,9 +561,8 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
     setPageState("loading")
     setErrorMessage("")
     try {
-      // ponytail: audit routes aren't in Eden's type system yet — use raw fetch
       const res = await fetch(
-        `/api/whatsapp/admin/whatsapp/audit/devices/${deviceId}?page=${page}&limit=50`
+        `/api/whatsapp/audit/devices/${deviceId}?page=${page}&limit=50`
       )
       const result = await res.json() as {
         ok: boolean
