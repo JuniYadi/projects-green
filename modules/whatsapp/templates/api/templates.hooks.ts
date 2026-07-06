@@ -34,6 +34,7 @@ type TemplateFilters = {
   whatsappDeviceId?: string
   syncStatus?: string
   sort?: string
+  enabled?: boolean
 }
 
 type TemplatesListResponse = {
@@ -47,12 +48,14 @@ export function useTemplates(filters?: TemplateFilters) {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
+  const enabled = filters?.enabled !== false
   const orgId = filters?.organizationId
   const deviceId = filters?.whatsappDeviceId
   const syncStatus = filters?.syncStatus
   const sort = filters?.sort
 
   React.useEffect(() => {
+    if (!enabled) return
     let cancelled = false
 
     void (async () => {
@@ -85,9 +88,10 @@ export function useTemplates(filters?: TemplateFilters) {
     return () => {
       cancelled = true
     }
-  }, [orgId, deviceId, syncStatus, sort])
+  }, [enabled, orgId, deviceId, syncStatus, sort])
 
   const reload = React.useCallback(async () => {
+    if (!enabled) return
     setLoading(true)
     setError(null)
     try {
@@ -109,7 +113,11 @@ export function useTemplates(filters?: TemplateFilters) {
     } finally {
       setLoading(false)
     }
-  }, [orgId, deviceId, syncStatus, sort])
+  }, [enabled, orgId, deviceId, syncStatus, sort])
+
+  if (!enabled) {
+    return { templates: [], loading: false, error: null, reload: async () => {} }
+  }
 
   return { templates, loading, error, reload }
 }
