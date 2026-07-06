@@ -3,7 +3,7 @@ import {
   type DeviceDetail,
   updateDeviceSchema,
 } from "@/modules/whatsapp/devices/devices.schemas"
-import { eden } from "@/lib/eden"
+import { eden, getApiBaseUrl } from "@/lib/eden"
 import { z } from "zod"
 
 // --- Response Types for other entities (inferred from routes until schemas are extracted) ---
@@ -73,7 +73,7 @@ async function serverFetch<T>(
 ): Promise<T> {
   const url = new URL(
     path,
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3300"
+    getApiBaseUrl()
   )
   if (options?.params) {
     for (const [k, v] of Object.entries(options.params)) {

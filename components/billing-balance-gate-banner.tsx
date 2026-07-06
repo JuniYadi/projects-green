@@ -1,13 +1,18 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { FiAlertTriangle } from "react-icons/fi"
+import { FiAlertTriangle, FiArrowUpCircle, FiX } from "react-icons/fi"
 
 import {
   Alert,
-  AlertAction,
   AlertDescription,
   AlertTitle,
+  AlertAction,
 } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+
+const DISMISSED_KEY = "billing-balance-banner-dismissed"
 
 type BillingBalanceGateBannerProps = {
   /** Formatted balance, e.g. "IDR 0.00". */
@@ -19,15 +24,44 @@ type BillingBalanceGateBannerProps = {
 }
 
 /**
- * Persistent console banner shown when an organization's billing balance is
- * zero or below the low-balance warning threshold. Prompts the user to top up
- * before attempting a purchase. Rendered server-side from the console layout.
+ * Console banner shown when balance is zero or below the low-balance threshold.
+ * User can dismiss it — preference is stored in localStorage.
  */
 export function BillingBalanceGateBanner({
   formattedBalance,
   topupUrl,
   isZero,
 }: BillingBalanceGateBannerProps) {
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem(DISMISSED_KEY) === "true"
+      } catch {
+        return false
+      }
+    }
+    return true
+  })
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
+
+  const handleDismiss = () => {
+    setDismissed(true)
+
+    try {
+      localStorage.setItem(DISMISSED_KEY, "true")
+    } catch {
+      // Storage may be unavailable; in-memory dismissal still applies.
+    }
+  }
+
+
+  if (!mounted || dismissed) return null
+
   return (
     <div className="px-6 pb-4">
       <Alert variant="destructive">
@@ -39,9 +73,30 @@ export function BillingBalanceGateBanner({
           Your balance is {formattedBalance}. Top up before purchasing a package
           or your purchase will be declined.
         </AlertDescription>
-        <AlertAction>
-          <Button asChild size="sm">
-            <Link href={topupUrl}>Top up</Link>
+        <AlertAction className="!right-3 flex flex-col items-end gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            onClick={handleDismiss}
+            className="text-destructive/70 hover:bg-destructive/15 hover:text-destructive"
+            aria-label="Dismiss alert"
+            title="Dismiss"
+          >
+            <FiX className="size-3.5" />
+          </Button>
+          <Button
+            asChild
+            variant="default"
+            size="sm"
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+            aria-label="Top up balance"
+            title="Top up balance"
+          >
+            <Link href={topupUrl}>
+              <FiArrowUpCircle className="size-4" />
+              Top up
+            </Link>
           </Button>
         </AlertAction>
       </Alert>

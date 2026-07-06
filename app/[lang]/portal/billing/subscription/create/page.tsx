@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card"
 import { toast } from "sonner"
 import { ArrowLeftIcon } from "@phosphor-icons/react"
+import { eden } from "@/lib/eden"
 
 type SubscriptionType = "PAYG" | "BUNDLE" | "CUSTOM"
 type BillingMode = "PACKAGE" | "PAYG" | "CUSTOM"
@@ -112,16 +113,14 @@ export default function CreateSubscriptionPage() {
           : undefined,
       }
 
-      const res = await fetch("/api/billing/admin/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
+      const { data: result, error } = await eden.api.billing.admin.subscriptions.post(
+        body as never
+      )
 
-      const result = await res.json()
-
-      if (!res.ok || !result.ok) {
-        throw new Error(result.message || "Failed to create subscription")
+      if (error || !result?.ok) {
+        throw new Error(
+          result?.message ?? error?.message ?? "Failed to create subscription"
+        )
       }
 
       toast.success("Subscription created successfully")
