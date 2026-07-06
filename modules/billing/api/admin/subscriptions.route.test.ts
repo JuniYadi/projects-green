@@ -16,14 +16,27 @@ import {
 const mockFindUnique = mock()
 const mockUpdate = mock()
 const mockFindMany = mock()
+const mockFindFirst = mock()
+const mockCreate = mock()
 const mockCount = mock()
 
 const mockPrismaClient = {
   serviceSubscription: {
     findUnique: mockFindUnique,
+    findFirst: mockFindFirst,
+    create: mockCreate,
     update: mockUpdate,
     findMany: mockFindMany,
     count: mockCount,
+  },
+  servicePackage: {
+    findUnique: mockFindUnique,
+  },
+  servicePlan: {
+    findUnique: mockFindUnique,
+  },
+  servicePricing: {
+    findUnique: mockFindUnique,
   },
   pricing: {
     findUnique: mockFindUnique,
@@ -717,6 +730,354 @@ describe("AdminSubscriptionRoute", () => {
       const body = await response.json()
       expect(body.ok).toBe(false)
       expect(body.error).toBe("VALIDATION_ERROR")
+    })
+  })
+  describe("POST /admin/subscriptions", () => {
+    it("returns 401 when no auth", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => ({ user: null }) as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-1",
+            packageId: "pkg-1",
+            planId: "plan-1",
+            pricingId: "price-1",
+            type: "PAYG",
+            billingMode: "PAYG",
+            currentPeriodStart: "2026-01-01",
+            currentPeriodEnd: "2026-02-01",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(401)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not admin", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth,
+            getPlatformRole: mockPlatformRoleNone,
+            isAdmin: () => false,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-1",
+            packageId: "pkg-1",
+            planId: "plan-1",
+            pricingId: "price-1",
+            type: "PAYG",
+            billingMode: "PAYG",
+            currentPeriodStart: "2026-01-01",
+            currentPeriodEnd: "2026-02-01",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 422 when validation fails", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "",
+            packageId: "",
+            planId: "",
+            pricingId: "",
+            type: "INVALID",
+            billingMode: "INVALID",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(422)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+    })
+
+    it("returns 422 when package not found", async () => {
+      mockFindUnique.mockResolvedValueOnce(null) // package not found
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-1",
+            packageId: "pkg-1",
+            planId: "plan-1",
+            pricingId: "price-1",
+            type: "PAYG",
+            billingMode: "PAYG",
+            currentPeriodStart: "2026-01-01",
+            currentPeriodEnd: "2026-02-01",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(422)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toContain("Package not found")
+    })
+
+    it("returns 422 when plan not found", async () => {
+      mockFindUnique
+        .mockResolvedValueOnce({ id: "pkg-1" }) // package found
+        .mockResolvedValueOnce(null) // plan not found
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-1",
+            packageId: "pkg-1",
+            planId: "plan-1",
+            pricingId: "price-1",
+            type: "PAYG",
+            billingMode: "PAYG",
+            currentPeriodStart: "2026-01-01",
+            currentPeriodEnd: "2026-02-01",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(422)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toContain("Plan not found")
+    })
+
+    it("returns 422 when pricing not found", async () => {
+      mockFindUnique
+        .mockResolvedValueOnce({ id: "pkg-1" }) // package found
+        .mockResolvedValueOnce({ id: "plan-1" }) // plan found
+        .mockResolvedValueOnce(null) // pricing not found
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-1",
+            packageId: "pkg-1",
+            planId: "plan-1",
+            pricingId: "price-1",
+            type: "PAYG",
+            billingMode: "PAYG",
+            currentPeriodStart: "2026-01-01",
+            currentPeriodEnd: "2026-02-01",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(422)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toContain("Pricing not found")
+    })
+
+    it("returns 409 when existing active subscription exists", async () => {
+      mockFindUnique
+        .mockResolvedValueOnce({ id: "pkg-1" }) // package found
+        .mockResolvedValueOnce({ id: "plan-1" }) // plan found
+        .mockResolvedValueOnce({ id: "price-1" }) // pricing found
+      mockFindFirst.mockResolvedValueOnce({ id: "existing-sub" }) // existing subscription
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-1",
+            packageId: "pkg-1",
+            planId: "plan-1",
+            pricingId: "price-1",
+            type: "PAYG",
+            billingMode: "PAYG",
+            currentPeriodStart: "2026-01-01",
+            currentPeriodEnd: "2026-02-01",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(409)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("CONFLICT")
+      expect(body.message).toContain("active subscription already exists")
+    })
+
+    it("creates subscription successfully", async () => {
+      mockFindUnique
+        .mockResolvedValueOnce({ id: "pkg-1" }) // package found
+        .mockResolvedValueOnce({ id: "plan-1" }) // plan found
+        .mockResolvedValueOnce({ id: "price-1" }) // pricing found
+      mockFindFirst.mockResolvedValueOnce(null) // no existing subscription
+      mockCreate.mockResolvedValueOnce({
+        id: "sub-new",
+        organizationId: "org-1",
+        packageId: "pkg-1",
+        planId: "plan-1",
+        pricingId: "price-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        status: "ACTIVE",
+        currentPeriodStart: new Date("2026-01-01"),
+        currentPeriodEnd: new Date("2026-02-01"),
+      })
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-1",
+            packageId: "pkg-1",
+            planId: "plan-1",
+            pricingId: "price-1",
+            type: "PAYG",
+            billingMode: "PAYG",
+            currentPeriodStart: "2026-01-01",
+            currentPeriodEnd: "2026-02-01",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.subscription.id).toBe("sub-new")
+      expect(body.subscription.organizationId).toBe("org-1")
+      expect(body.subscription.status).toBe("ACTIVE")
+    })
+
+    it("returns 500 on database error", async () => {
+      mockFindUnique.mockRejectedValueOnce(new Error("Database error"))
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-1",
+            packageId: "pkg-1",
+            planId: "plan-1",
+            pricingId: "price-1",
+            type: "PAYG",
+            billingMode: "PAYG",
+            currentPeriodStart: "2026-01-01",
+            currentPeriodEnd: "2026-02-01",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(500)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
     })
   })
 })
