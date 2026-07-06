@@ -178,6 +178,17 @@ export const whatsappClient = {
         message: res.data.message ?? "Sync job enqueued.",
       }
     },
+    profile: {
+      get: (id: string) =>
+        serverFetch<{ ok: boolean; profile: Record<string, unknown> }>(
+          `/api/whatsapp/devices/${id}/profile`
+        ),
+      update: (id: string, input: Record<string, unknown>) =>
+        serverFetch<{ ok: boolean; profile: Record<string, unknown> }>(
+          `/api/whatsapp/devices/${id}/profile`,
+          { method: "PATCH", body: JSON.stringify(input) }
+        ),
+    },
   },
 
   // templates: migrated to Eden (@/modules/whatsapp/templates/api/templates.hooks.ts)
@@ -247,7 +258,7 @@ export const whatsappClient = {
       templateId: string
       templateLanguage: string
       fields?: string[]
-      deviceId?: string
+      deviceId: string
     }) =>
       serverFetch<{
         ok: boolean
