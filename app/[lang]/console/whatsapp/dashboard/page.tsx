@@ -6,7 +6,6 @@ import {
   ChatCircle,
   PaperPlaneTilt,
   ChartLine,
-  Lightning,
   CheckCircle,
   Warning,
 } from "@phosphor-icons/react"
@@ -126,16 +125,21 @@ export default function WhatsAppDashboardPage() {
   const [accessDenied, setAccessDenied] =
     React.useState<AccessDeniedInfo | null>(null)
   const [webhookStats, setWebhookStats] = React.useState<WebhookStats | null>(null)
+  const [broadcastTotal, setBroadcastTotal] = React.useState(0)
+  const [overview, setOverview] = React.useState<{
+    month: { messageInboxCount: number; messageOutboxCount: number }[]
+  } | null>(null)
 
   const loadData = React.useCallback(() => {
     let cancelled = false
 
     const run = async () => {
       try {
-        const [deviceResponse, conversationResponse, webhookResponse] = await Promise.all([
+        const [deviceResponse, conversationResponse, webhookResponse, overviewResponse] = await Promise.all([
           whatsappClient.devices.list(),
           whatsappClient.conversations.list(),
           whatsappClient.webhooks.stats().catch(() => null),
+          whatsappClient.usage.overview().catch(() => null),
         ])
         if (cancelled) return
         setDevices(deviceResponse.devices)
@@ -144,6 +148,20 @@ export default function WhatsAppDashboardPage() {
         )
         if (webhookResponse?.data) {
           setWebhookStats(webhookResponse.data)
+        }
+        if (overviewResponse?.ok) {
+          setOverview(overviewResponse as { month: { messageInboxCount: number; messageOutboxCount: number }[] })
+        }
+        // Try broadcasts summary if available
+        try {
+          if (whatsappClient.broadcasts?.summary) {
+            const broadcastResponse = await whatsappClient.broadcasts.summary()
+            if (broadcastResponse?.total !== undefined) {
+              setBroadcastTotal(broadcastResponse.total)
+            }
+          }
+        } catch {
+          // broadcasts not available yet
         }
         setState("loaded")
       } catch (err) {
@@ -197,26 +215,8 @@ export default function WhatsAppDashboardPage() {
     return loadData()
   }, [loadData])
 
-  const activeDevices = React.useMemo(
-    () => devices.filter((d) => d.status === "ACTIVE"),
-    [devices]
-  )
-
-  const totalBalance = React.useMemo(
-    () => devices.reduce((sum, d) => sum + Number(d.balance), 0),
-    [devices]
-  )
-
-  const quotaInfo = React.useMemo(() => {
-    const totalBase = devices.reduce((sum, d) => sum + d.quotaBase, 0)
-    const totalRemaining = devices.reduce((sum, d) => sum + d.quotaBaseOut, 0)
-    const totalUsed = Math.max(0, totalBase - totalRemaining)
-    const percent =
-      totalBase > 0 ? Math.round((totalUsed / totalBase) * 100) : 0
-    return { totalBase, totalRemaining, totalUsed, percent }
-  }, [devices])
-
-  const hasLowBalance = totalBalance > 0 && totalBalance < 10000
+  const messageInTotal = overview?.month?.reduce((sum, m) => sum + m.messageInboxCount, 0) ?? 0
+  const messageOutTotal = overview?.month?.reduce((sum, m) => sum + m.messageOutboxCount, 0) ?? 0
 
   const recentConversations = React.useMemo(
     () => conversations.slice(0, 5),
@@ -244,7 +244,7 @@ export default function WhatsAppDashboardPage() {
           <Button asChild>
             <Link href="/console/whatsapp/messages">
               <PaperPlaneTilt className="mr-2 size-4" />
-              Send Message
+              Send Template Message
             </Link>
           </Button>
         </div>
@@ -270,6 +270,7 @@ export default function WhatsAppDashboardPage() {
 
       {state !== "error" && (
         <>
+          {/* Global Stat Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {state === "loading" ? (
               <>
@@ -283,51 +284,7 @@ export default function WhatsAppDashboardPage() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Monthly Quota
-                    </CardTitle>
-                    <ChartLine
-                      className="size-4 text-muted-foreground"
-                      weight="fill"
-                    />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {devices.length > 0 ? `${quotaInfo.percent}%` : "--"}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {devices.length > 0
-                        ? `${quotaInfo.totalUsed.toLocaleString()} / ${quotaInfo.totalBase.toLocaleString()} messages`
-                        : "No devices configured"}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Remaining Quota
-                    </CardTitle>
-                    <ChatCircle
-                      className="size-4 text-muted-foreground"
-                      weight="fill"
-                    />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {devices.length > 0
-                        ? quotaInfo.totalRemaining.toLocaleString()
-                        : "--"}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Messages remaining this period
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Active Devices
+                      Total Devices
                     </CardTitle>
                     <Phone
                       className="size-4 text-muted-foreground"
@@ -336,7 +293,7 @@ export default function WhatsAppDashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {activeDevices.length} / {devices.length}
+                      {devices.length}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Connected devices
@@ -344,40 +301,50 @@ export default function WhatsAppDashboardPage() {
                   </CardContent>
                 </Card>
 
-                <Card className={hasLowBalance ? "border-warning" : undefined}>
+                <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Balance
+                      Messages In
                     </CardTitle>
-                    <Lightning
+                    <ChatCircle
                       className="size-4 text-muted-foreground"
                       weight="fill"
                     />
                   </CardHeader>
                   <CardContent>
-                    <div
-                      className={
-                        hasLowBalance
-                          ? "text-2xl font-bold text-orange-600"
-                          : "text-2xl font-bold text-green-600"
-                      }
-                    >
-                      {devices.length > 0
-                        ? `Rp${totalBalance.toLocaleString("id-ID")}`
-                        : "--"}
+                    <div className="text-2xl font-bold">
+                      {messageInTotal.toLocaleString()}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {hasLowBalance
-                        ? "Low balance — consider topping up"
-                        : "Device overage balance"}
+                      This month
                     </p>
                   </CardContent>
                 </Card>
 
-                <Card className={webhookStats && webhookStats.failureRate > 5 ? "border-destructive" : undefined}>
+                <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Webhook Reliability
+                      Messages Out
+                    </CardTitle>
+                    <PaperPlaneTilt
+                      className="size-4 text-muted-foreground"
+                      weight="fill"
+                    />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {messageOutTotal.toLocaleString()}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      This month
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Broadcasts
                     </CardTitle>
                     <ChartLine
                       className="size-4 text-muted-foreground"
@@ -385,33 +352,19 @@ export default function WhatsAppDashboardPage() {
                     />
                   </CardHeader>
                   <CardContent>
-                    <div
-                      className={
-                        webhookStats
-                          ? webhookStats.failureRate > 5
-                            ? "text-2xl font-bold text-destructive"
-                            : webhookStats.failureRate > 2
-                              ? "text-2xl font-bold text-orange-500"
-                              : "text-2xl font-bold"
-                          : "text-2xl font-bold"
-                      }
-                    >
-                      {webhookStats ? `${webhookStats.failureRate}%` : "--"}
+                    <div className="text-2xl font-bold">
+                      {broadcastTotal}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-muted-foreground">
-                        {webhookStats
-                          ? `${webhookStats.failedEvents}/${webhookStats.totalEvents} failed (1h)`
-                          : "No webhook data"}
-                      </p>
-                      {webhookStats && <WebhookAlertBadge rate={webhookStats.failureRate} />}
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Total campaigns
+                    </p>
                   </CardContent>
                 </Card>
               </>
             )}
           </div>
 
+          {/* Quick Action Cards */}
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="cursor-pointer transition-colors hover:bg-muted/50">
               <Link href="/console/whatsapp/messages" className="block">
@@ -420,9 +373,9 @@ export default function WhatsAppDashboardPage() {
                     className="mb-2 size-8 text-primary"
                     weight="fill"
                   />
-                  <CardTitle>Send a Message</CardTitle>
+                  <CardTitle>Send Template Message</CardTitle>
                   <CardDescription>
-                    Send a direct message to a contact
+                    Send a template message to a contact
                   </CardDescription>
                 </CardHeader>
               </Link>
@@ -431,13 +384,13 @@ export default function WhatsAppDashboardPage() {
             <Card className="cursor-pointer transition-colors hover:bg-muted/50">
               <Link href="/console/whatsapp/templates" className="block">
                 <CardHeader>
-                  <Lightning
+                  <ChartLine
                     className="mb-2 size-8 text-yellow-600"
                     weight="fill"
                   />
-                  <CardTitle>Use a Template</CardTitle>
+                  <CardTitle>Manage Templates</CardTitle>
                   <CardDescription>
-                    Send a pre-approved template message
+                    Review and sync approved WhatsApp templates
                   </CardDescription>
                 </CardHeader>
               </Link>
@@ -446,7 +399,7 @@ export default function WhatsAppDashboardPage() {
             <Card className="cursor-pointer transition-colors hover:bg-muted/50">
               <Link href="/console/whatsapp/contacts" className="block">
                 <CardHeader>
-                  <ChartLine
+                  <ChatCircle
                     className="mb-2 size-8 text-blue-600"
                     weight="fill"
                   />
@@ -459,76 +412,43 @@ export default function WhatsAppDashboardPage() {
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Device Status</CardTitle>
-              <CardDescription>
-                {state === "loading"
-                  ? "Loading devices..."
-                  : "Your connected WhatsApp Business devices"}
-              </CardDescription>
+          {/* Operational Health Card */}
+          <Card className={webhookStats && webhookStats.failureRate > 5 ? "border-destructive" : undefined}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Operational Health
+              </CardTitle>
+              <ChartLine
+                className="size-4 text-muted-foreground"
+                weight="fill"
+              />
             </CardHeader>
             <CardContent>
-              {state === "loading" ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                </div>
-              ) : devices.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <Phone className="mb-3 size-10 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    No devices assigned yet. Contact an admin to add a WhatsApp
-                    device from the portal.
-                  </p>
-                  <Button className="mt-3" variant="outline" asChild>
-                    <Link href="/console/whatsapp/devices">View devices</Link>
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {devices.slice(0, 10).map((device) => (
-                    <Link
-                      key={device.id}
-                      href="/console/whatsapp/devices"
-                      className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-9 items-center justify-center rounded-full bg-primary/10">
-                          <Phone
-                            className="size-4 text-primary"
-                            weight="fill"
-                          />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {device.phoneNumber}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Quota: {device.quotaBaseOut} / {device.quotaBase}{" "}
-                            remaining
-                            {device.dailyLimitMessage > 0 &&
-                              ` · ${device.dailyLimitMessage} msg/day`}
-                            {Number(device.balance) > 0 &&
-                              ` · Rp${Number(device.balance).toLocaleString("id-ID")}`}
-                          </p>
-                        </div>
-                      </div>
-                      <DeviceStatusBadge status={device.status} />
-                    </Link>
-                  ))}
-                  {devices.length > 10 && (
-                    <Button variant="link" asChild className="w-full">
-                      <Link href="/console/whatsapp/devices">
-                        View all {devices.length} devices
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-              )}
+              <div
+                className={
+                  webhookStats
+                    ? webhookStats.failureRate > 5
+                      ? "text-2xl font-bold text-destructive"
+                      : webhookStats.failureRate > 2
+                        ? "text-2xl font-bold text-orange-500"
+                        : "text-2xl font-bold"
+                    : "text-2xl font-bold"
+                }
+              >
+                {webhookStats ? `${webhookStats.failureRate}%` : "--"}
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {webhookStats
+                    ? `${webhookStats.failedEvents}/${webhookStats.totalEvents} failed (1h)`
+                    : "No webhook data"}
+                </p>
+                {webhookStats && <WebhookAlertBadge rate={webhookStats.failureRate} />}
+              </div>
             </CardContent>
           </Card>
 
+          {/* Recent Conversations */}
           <Card>
             <CardHeader>
               <CardTitle>Recent Conversations</CardTitle>

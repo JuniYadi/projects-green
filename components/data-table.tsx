@@ -7,7 +7,9 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
+  type PaginationState,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table"
@@ -53,8 +55,6 @@ type DataTableFacetFilter = {
   options: DataTableFilterOption[]
 }
 
-export type { DataTableFilterOption, DataTableFacetFilter }
-
 type DataTableProps<TData> = {
   columns: ColumnDef<TData, unknown>[]
   data: TData[]
@@ -70,6 +70,10 @@ type DataTableProps<TData> = {
    * The persistence layer will override this once the user has interacted with column visibility.
    */
   defaultColumnVisibility?: Record<string, boolean>
+  /**
+   * When set, enables client-side pagination with the given page size.
+   */
+  pageSize?: number
 }
 
 export function DataTable<TData>({
@@ -83,6 +87,7 @@ export function DataTable<TData>({
   searchPlaceholder,
   tableId,
   defaultColumnVisibility = {},
+  pageSize,
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
@@ -90,6 +95,18 @@ export function DataTable<TData>({
     React.useState<ColumnFiltersState>(initialColumnFilters)
   const [columnVisibility, setColumnVisibility] =
     usePersistedColumnVisibility(tableId, defaultColumnVisibility)
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: pageSize ?? 10,
+  })
+
+  // Reset to page 1 when filters or search change
+  React.useEffect(() => {
+    if (pageSize) {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    }
+  }, [globalFilter, columnFilters, pageSize])
+
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -100,6 +117,7 @@ export function DataTable<TData>({
       sorting,
       columnFilters,
       columnVisibility,
+      ...(pageSize ? { pagination } : {}),
     },
     globalFilterFn: (row, _, filterValue) => {
       const searchValue = String(filterValue ?? "")
@@ -121,6 +139,12 @@ export function DataTable<TData>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
+    ...(pageSize
+      ? {
+          onPaginationChange: setPagination,
+          getPaginationRowModel: getPaginationRowModel(),
+        }
+      : {}),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -238,6 +262,40 @@ export function DataTable<TData>({
           )}
         </TableBody>
       </Table>
+      {pageSize && table.getPageCount() > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {table.getFilteredRowModel().rows.length > 0
+              ? `Showing ${table.getState().pagination.pageIndex * pageSize + 1}-${Math.min(
+                  (table.getState().pagination.pageIndex + 1) * pageSize,
+                  table.getFilteredRowModel().rows.length
+                )} of ${table.getFilteredRowModel().rows.length} results`
+              : "Showing 0 results"}
+          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              Page {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount()}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

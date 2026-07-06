@@ -17,6 +17,9 @@ const mockPrisma = {
   whatsappConversation: {
     findFirst: mock(async () => ({ id: "conv-1", organizationId: "org-1" })),
   },
+  whatsappTemplate: {
+    findFirst: mock(async () => null),
+  },
 }
 
 // Mock message service
@@ -25,6 +28,11 @@ const mockMessageService = {
     jobId: "job-1",
     messageId: "msg-1",
     waMessageId: "wa-123",
+    status: "sent",
+  })),
+  sendTemplateMessage: mock(async () => ({
+    ok: true,
+    messageId: "mock-id",
     status: "sent",
   })),
 }
@@ -96,6 +104,8 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappMessage.update.mockClear()
     mockPrisma.whatsappMessage.delete.mockClear()
     mockPrisma.whatsappConversation.findFirst.mockClear()
+    mockPrisma.whatsappTemplate.findFirst.mockClear()
+    mockMessageService.sendTemplateMessage.mockClear()
     mockMessageService.sendMessage.mockClear()
 
     mockPrisma.whatsappMessage.count.mockResolvedValue(1)
@@ -123,6 +133,12 @@ describe("messagesRoutes", () => {
       jobId: "job-1",
       messageId: "msg-1",
       waMessageId: "wa-123",
+      status: "sent",
+    })
+    mockPrisma.whatsappTemplate.findFirst.mockResolvedValue(null)
+    mockMessageService.sendTemplateMessage.mockResolvedValue({
+      ok: true,
+      messageId: "mock-id",
       status: "sent",
     })
   })
@@ -504,6 +520,146 @@ describe("messagesRoutes", () => {
       expect(res.status).toBe(402)
       const body = await res.json()
       expect(body.error).toBe("INSUFFICIENT_BALANCE")
+    })
+  })
+
+  describe("POST /send-template", () => {
+    const mockTemplate = {
+      id: "tpl-1",
+      organizationId: "org-1",
+      name: "hello_world",
+      slug: "hello-world",
+      syncStatus: "SYNCED",
+      metaStatus: "APPROVED",
+      whatsappDeviceId: "device-1",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      languages: [
+        {
+          id: "lang-1",
+          lang: "en",
+          status: "APPROVED",
+          metaStatus: "APPROVED",
+          header: null,
+          body: "Hello {{1}}, welcome to {{2}}!",
+          footer: null,
+          buttons: null,
+          example: null,
+          templateId: "tpl-1",
+        },
+      ],
+    }
+
+    it("sends template message successfully", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-template", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            templateId: "tpl-1",
+            templateLanguage: "en",
+            fields: ["John", "Acme Corp"],
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.messageId).toBe("mock-id")
+      expect(body.status).toBe("sent")
+      expect(mockPrisma.whatsappTemplate.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ id: "tpl-1" }) })
+      )
+      expect(mockMessageService.sendTemplateMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-1",
+          phoneNumber: "+1234567890",
+          templateName: "hello_world",
+          templateLanguage: "en",
+          fields: ["John", "Acme Corp"],
+        })
+      )
+    })
+
+    it("returns 404 for non-existent template", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(null as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-template", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            templateId: "non-existent",
+            templateLanguage: "en",
+            fields: ["John"],
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("returns 422 for non-existent language", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
+        ...mockTemplate,
+        languages: [
+          {
+            ...mockTemplate.languages[0],
+            lang: "es",
+          },
+        ],
+      } as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-template", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            templateId: "tpl-1",
+            templateLanguage: "en",
+            fields: ["John"],
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toBe("Template language not found.")
+    })
+
+    it("returns 422 for missing required field", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-template", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            templateId: "tpl-1",
+            templateLanguage: "en",
+            fields: [],
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toBe("Template field {{1}} is required.")
     })
   })
 

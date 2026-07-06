@@ -501,6 +501,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/console/whatsapp/dashboard"),
       },
       {
+        title: "Usage",
+        url: localizePathname({
+          pathname: "/console/whatsapp/usage",
+          locale,
+        }),
+        icon: <ChartLineIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/usage"),
+      },
+      {
         title: "Devices",
         url: localizePathname({
           pathname: "/console/whatsapp/devices",
@@ -535,15 +544,6 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <RocketLaunchIcon />,
         isActive: startsWithRoute(path, "/console/whatsapp/broadcasts"),
-      },
-      {
-        title: "Usage",
-        url: localizePathname({
-          pathname: "/console/whatsapp/usage",
-          locale,
-        }),
-        icon: <ChartLineIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/usage"),
       },
       {
         title: "Contacts",

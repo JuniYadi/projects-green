@@ -33,7 +33,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
-import { InteractiveComposer } from "@/modules/whatsapp/messages/ui/interactive-composer"
+import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
 
 // ─── Local Types ─────────────────────────────────────────────────────────────
@@ -215,9 +215,11 @@ export default function WhatsAppMessagesPage() {
   const [sendDialogOpen, setSendDialogOpen] = React.useState(false)
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [sendPhone, setSendPhone] = React.useState("")
-  const [sendText, setSendText] = React.useState("")
   const [sendDeviceId, setSendDeviceId] = React.useState("")
   const [sending, setSending] = React.useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState("")
+  const [selectedTemplateLanguage, setSelectedTemplateLanguage] = React.useState("")
+  const [templateFieldValues, setTemplateFieldValues] = React.useState<Record<number, string>>({})
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
@@ -325,6 +327,30 @@ export default function WhatsAppMessagesPage() {
     [devices]
   )
 
+  const { templates: allTemplates } = useTemplates()
+
+  // ── Template helpers ─────────────────────────────────────────────────
+
+  function getTemplateFieldIndexes(body?: string | null): number[] {
+    if (!body) return []
+    const matches = body.match(/{{\s*(\d+)\s*}}/g)
+    if (!matches) return []
+    const indexes = new Set<number>()
+    for (const match of matches) {
+      const num = parseInt(match.replace(/[{}]/g, "").trim(), 10)
+      if (!isNaN(num) && num > 0) indexes.add(num)
+    }
+    return Array.from(indexes).sort((a, b) => a - b)
+  }
+
+  function renderTemplatePreview(body: string | null | undefined, values: Record<number, string>): string {
+    if (!body) return ""
+    return body.replace(/{{\s*(\d+)\s*}}/g, (_, num) => {
+      const index = parseInt(num, 10)
+      return values[index] || `{{${index}}}`
+    })
+  }
+
   // ── Derived state ──────────────────────────────────────────────────────
 
   const filteredConversations = React.useMemo(() => {
@@ -355,20 +381,46 @@ export default function WhatsAppMessagesPage() {
   }
 
   const handleSendMessage = async () => {
-    if (!sendPhone.trim() || !sendText.trim()) {
-      toast.error("Phone number and message are required")
+    const trimmedPhone = sendPhone.trim()
+    if (!trimmedPhone) {
+      toast.error("Phone number is required")
       return
+    }
+
+    if (!selectedTemplateId) {
+      toast.error("Please select a template")
+      return
+    }
+
+    if (!selectedTemplateLanguage) {
+      toast.error("Please select a language")
+      return
+    }
+
+    const selectedTemplate = allTemplates.find((t) => t.id === selectedTemplateId)
+    const selectedLang = selectedTemplate?.languages.find(
+      (l) => l.lang === selectedTemplateLanguage
+    )
+    const placeholderIndexes = getTemplateFieldIndexes(selectedLang?.body)
+
+    for (const index of placeholderIndexes) {
+      if (!templateFieldValues[index]?.trim()) {
+        toast.error(`Template field {{${index}}} is required`)
+        return
+      }
     }
 
     setSending(true)
     try {
-      await whatsappClient.messages.send({
-        phoneNumber: sendPhone.trim(),
-        message: sendText.trim(),
+      await whatsappClient.messages.sendTemplate({
+        phoneNumber: trimmedPhone,
+        templateId: selectedTemplateId,
+        templateLanguage: selectedTemplateLanguage,
+        fields: placeholderIndexes.map((index) => templateFieldValues[index].trim()),
         deviceId: sendDeviceId || undefined,
       })
 
-      toast.success("Message queued for delivery")
+      toast.success("Template message queued for delivery")
       // Refresh conversations list
       whatsappClient.conversations
         .list()
@@ -379,8 +431,10 @@ export default function WhatsAppMessagesPage() {
 
       setSendDialogOpen(false)
       setSendPhone("")
-      setSendText("")
       setSendDeviceId("")
+      setSelectedTemplateId("")
+      setSelectedTemplateLanguage("")
+      setTemplateFieldValues({})
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to send message")
     } finally {
@@ -406,14 +460,120 @@ export default function WhatsAppMessagesPage() {
               New Message
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Send a Message</DialogTitle>
+              <DialogTitle>Send Template Message</DialogTitle>
               <DialogDescription>
-                Send a new WhatsApp message to a phone number.
+                Select an approved WhatsApp template, fill required fields, then send it to a phone number.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {/* Template Selection */}
+              <div className="grid gap-2">
+                <Label htmlFor="send-template">Template *</Label>
+                <Select
+                  value={selectedTemplateId}
+                  onValueChange={(value) => {
+                    setSelectedTemplateId(value)
+                    setSelectedTemplateLanguage("")
+                    setTemplateFieldValues({})
+                    const tpl = allTemplates.find((t) => t.id === value)
+                    if (tpl) {
+                      const approvedLang = tpl.languages.find(
+                        (l) => l.isApproved || l.metaStatus === "APPROVED"
+                      )
+                      setSelectedTemplateLanguage(approvedLang?.lang ?? tpl.languages[0]?.lang ?? "")
+                    }
+                  }}
+                >
+                  <SelectTrigger id="send-template">
+                    <SelectValue placeholder="Select a template..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allTemplates.filter((t) => t.metaStatus === "APPROVED").length === 0 ? (
+                      <SelectItem value="__none" disabled>
+                        No approved templates available
+                      </SelectItem>
+                    ) : (
+                      allTemplates
+                        .filter((t) => t.metaStatus === "APPROVED")
+                        .map((tpl) => (
+                          <SelectItem key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Language Selection */}
+              {selectedTemplateId && (() => {
+                const tpl = allTemplates.find((t) => t.id === selectedTemplateId)
+                if (!tpl) return null
+                return (
+                  <div className="grid gap-2">
+                    <Label htmlFor="send-language">Language *</Label>
+                    <Select
+                      value={selectedTemplateLanguage}
+                      onValueChange={setSelectedTemplateLanguage}
+                    >
+                      <SelectTrigger id="send-language">
+                        <SelectValue placeholder="Select language..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tpl.languages.map((lang) => (
+                          <SelectItem key={lang.lang} value={lang.lang}>
+                            {lang.lang}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )
+              })()}
+
+              {/* Field placeholders */}
+              {selectedTemplateLanguage && (() => {
+                const tpl = allTemplates.find((t) => t.id === selectedTemplateId)
+                const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
+                const indexes = getTemplateFieldIndexes(lang?.body)
+                if (indexes.length === 0) return null
+                return (
+                  <>
+                    {indexes.map((index) => (
+                      <div className="grid gap-2" key={index}>
+                        <Label htmlFor={`field-${index}`}>Field {`{{${index}}}`}</Label>
+                        <Input
+                          id={`field-${index}`}
+                          placeholder={`Value for {{${index}}}`}
+                          value={templateFieldValues[index] ?? ""}
+                          onChange={(e) =>
+                            setTemplateFieldValues((prev) => ({ ...prev, [index]: e.target.value }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </>
+                )
+              })()}
+
+              {/* Template Preview */}
+              {selectedTemplateLanguage && (() => {
+                const tpl = allTemplates.find((t) => t.id === selectedTemplateId)
+                const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
+                if (!lang?.body) return null
+                return (
+                  <div className="grid gap-2">
+                    <Label>Template preview</Label>
+                    <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                      {renderTemplatePreview(lang.body, templateFieldValues) || "—"}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Phone Number */}
               <div className="grid gap-2">
                 <Label htmlFor="send-phone">Phone Number *</Label>
                 <Input
@@ -423,20 +583,12 @@ export default function WhatsAppMessagesPage() {
                   onChange={(e) => setSendPhone(e.target.value)}
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="send-message">Message *</Label>
-                <textarea
-                  id="send-message"
-                  className="min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none"
-                  placeholder="Type your message..."
-                  value={sendText}
-                  onChange={(e) => setSendText(e.target.value)}
-                />
-              </div>
+
+              {/* Device Selection */}
               <div className="grid gap-2">
                 <Label htmlFor="send-device">Device (optional)</Label>
                 <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="send-device">
                     <SelectValue placeholder="Auto-select device" />
                   </SelectTrigger>
                   <SelectContent>
@@ -456,30 +608,18 @@ export default function WhatsAppMessagesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setSendDialogOpen(false)}
-              >
+              <Button variant="outline" onClick={() => setSendDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSendMessage} disabled={sending}>
-                {sending ? "Sending..." : "Send Message"}
+              <Button
+                onClick={handleSendMessage}
+                disabled={sending || !allTemplates.some((t) => t.metaStatus === "APPROVED")}
+              >
+                {sending ? "Sending..." : "Send Template Message"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        <InteractiveComposer
-          onSend={async ({ phoneNumber, deviceId, interactive }) => {
-            const result = await whatsappClient.messages.sendInteractive({
-              phoneNumber,
-              deviceId,
-              interactive,
-            })
-            if (!result.ok) throw new Error("Failed to send")
-          }}
-          devices={devices as Array<{ id: string; phoneNumber: string; status: string }>}
-        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

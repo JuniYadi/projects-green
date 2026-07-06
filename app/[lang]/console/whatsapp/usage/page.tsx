@@ -302,7 +302,7 @@ export default function WhatsAppUsagePage() {
           <Warning className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
           <div className="text-sm text-yellow-600 dark:text-yellow-400">
             <strong>Quota Warning:</strong> One or more devices are approaching their monthly limit.
-            <a href="/console/whatsapp/usage" className="ml-1 underline">View details</a>
+            <span className="ml-1">Review the per-device breakdown below.</span>
           </div>
         </div>
       )}
@@ -396,6 +396,56 @@ export default function WhatsAppUsagePage() {
           </>
         )}
       </div>
+
+      {/* Quota & Balance Summary */}
+      {state === "loaded" && costBreakdown && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Monthly Quota Used</CardTitle>
+              <ChartLine className="size-4 text-muted-foreground" weight="fill" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0).toLocaleString()} / {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Messages used this month</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Remaining Quota</CardTitle>
+              <ChatCircle className="size-4 text-muted-foreground" weight="fill" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {(costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0) - costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0)).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Remaining this period</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Projected Cost</CardTitle>
+              <CurrencyDollar className="size-4 text-muted-foreground" weight="fill" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{costBreakdown.projectedCost.toLocaleString("id-ID", { style: "currency", currency: "IDR" }) || "—"}</div>
+              <p className="text-xs text-muted-foreground">Estimated monthly cost</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Balance</CardTitle>
+              <CurrencyDollar className="size-4 text-muted-foreground" weight="fill" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{costBreakdown.balance !== null ? `Rp${costBreakdown.balance.toLocaleString("id-ID")}` : "—"}</div>
+              <p className="text-xs text-muted-foreground">Overage balance</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Per-Device Cost Breakdown */}
       {state === "loaded" && (
