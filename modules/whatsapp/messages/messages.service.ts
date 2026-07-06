@@ -61,7 +61,10 @@ export type SendMessageOptions = {
   latitude?: number
   longitude?: number
   name?: string
+  address?: string
   deviceId?: string
+  // ponytail: used when type="interactive" — direct payload for sendMessage client
+  interactivePayload?: Record<string, unknown>
 }
 
 export type MessageService = {

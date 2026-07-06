@@ -31,7 +31,8 @@ export interface WhatsAppTemplateLanguage {
   body?: string | null
   parameters?: any
   footer?: string | null
-  buttons?: any
+  isApproved?: boolean
+  metaStatus?: string
 }
 
 export interface WhatsAppMessage {
@@ -241,6 +242,23 @@ export const whatsappClient = {
           body: JSON.stringify(input),
         }
       ),
+    sendTemplate: (input: {
+      phoneNumber: string
+      templateId: string
+      templateLanguage: string
+      fields?: string[]
+      deviceId?: string
+    }) =>
+      serverFetch<{
+        ok: boolean
+        messageId: string
+        status: string
+        jobId?: string
+        waMessageId?: string
+      }>("/api/whatsapp/messages/send-template", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
   },
 
   conversations: {
@@ -408,6 +426,18 @@ export const whatsappClient = {
         balance: number | null
         currency: string
       }>("/api/whatsapp/usage/cost-breakdown", { params }),
+  },
+
+  broadcasts: {
+    summary: async () => {
+      const payload = await serverFetch<{
+        ok: boolean
+        data?: unknown[]
+        campaigns?: unknown[]
+        meta: { total: number; page: number; limit: number; totalPages: number }
+      }>("/api/whatsapp/broadcasts", { params: { limit: 1 } })
+      return { total: payload.meta.total }
+    },
   },
 
   catalogs: {
