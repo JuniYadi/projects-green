@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Phone, PencilSimple, DotsThreeVertical } from "@phosphor-icons/react"
-import { toast } from "sonner"
+import { Phone } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -12,27 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type {
   DeviceListItem,
@@ -65,15 +49,6 @@ function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
   return <Badge variant={variant[status]}>{label[status]}</Badge>
 }
 
-// ─── Edit form state ───────────────────────────────────────────────────────
-
-type EditFormState = {
-  phoneNumber: string
-}
-
-const emptyEditFormState: EditFormState = {
-  phoneNumber: "",
-}
 
 // ─── Page component ─────────────────────────────────────────────────────────
 
@@ -84,15 +59,6 @@ export default function WhatsAppDevicesPage() {
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
-
-  // Dialog states
-  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
-  const [editingDevice, setEditingDevice] =
-    React.useState<DeviceListItem | null>(null)
-
-  // Form states
-  const [editForm, setEditForm] = React.useState(emptyEditFormState)
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
@@ -123,47 +89,6 @@ export default function WhatsAppDevicesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Mutations ─────────────────────────────────────────────────────────────
-
-  const handleEditDevice = async () => {
-    if (!editingDevice) return
-
-    if (!editForm.phoneNumber.trim()) {
-      toast.error(messages.console.whatsapp.devices.phoneNumberRequired)
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      await whatsappClient.devices.update(editingDevice.id, {
-        phoneNumber: editForm.phoneNumber,
-      })
-
-      toast.success(messages.console.whatsapp.devices.updated)
-      setEditDialogOpen(false)
-      setEditingDevice(null)
-      void loadDevices()
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : messages.console.whatsapp.devices.unableToUpdate
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  // ── Dialog open handlers ──────────────────────────────────────────────────
-
-  const openEditDialog = (device: DeviceListItem) => {
-    setEditingDevice(device)
-    setEditForm({
-      phoneNumber: device.phoneNumber,
-    })
-    setEditDialogOpen(true)
-  }
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
 
@@ -327,27 +252,16 @@ export default function WhatsAppDevicesPage() {
                       lastHeartbeatAt={device.lastHeartbeatAt}
                     />
                     {device.status === "ACTIVE" && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <span className="sr-only">
-                              {messages.console.whatsapp.devices.srOpenMenu}
-                            </span>
-                            <DotsThreeVertical
-                              weight="bold"
-                              className="size-4"
-                            />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => openEditDialog(device)}
-                          >
-                            <PencilSimple className="mr-2 size-4" />
-                            {messages.console.whatsapp.devices.editPhoneNumber}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button asChild variant="outline" size="sm">
+                        <Link
+                          href={localizePathname({
+                            pathname: "/console/whatsapp/devices/" + device.id,
+                            locale,
+                          })}
+                        >
+                          Details
+                        </Link>
+                      </Button>
                     )}
                     {device.status === "NON_ACTIVE" && (
                       <p className="text-xs text-muted-foreground">
@@ -361,107 +275,6 @@ export default function WhatsAppDevicesPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* ── Edit Device Dialog ─────────────────────────────────────────────── */}
-
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {messages.console.whatsapp.devices.editDialogTitle}
-            </DialogTitle>
-            <DialogDescription>
-              {messages.console.whatsapp.devices.editDialogDescription}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-phone">
-                {messages.console.whatsapp.devices.phoneNumber}
-              </Label>
-              <Input
-                id="edit-phone"
-                value={editForm.phoneNumber}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, phoneNumber: e.target.value })
-                }
-                placeholder="+1234567890"
-                inputMode="tel"
-                autoComplete="tel"
-                required
-                aria-required="true"
-              />
-            </div>
-            {editingDevice && (
-              <>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-balance">
-                    Balance
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      (admin-managed)
-                    </span>
-                  </Label>
-                  <Input
-                    id="edit-balance"
-                    value={new Intl.NumberFormat("id-ID", {
-                      style: "currency",
-                      currency: "IDR",
-                      minimumFractionDigits: 0,
-                    }).format(editingDevice.balance)}
-                    disabled
-                    className="bg-muted/50"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-quota">
-                    Monthly Quota
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      (admin-managed)
-                    </span>
-                  </Label>
-                  <Input
-                    id="edit-quota"
-                    value={`${editingDevice.quotaBaseOut} / ${editingDevice.quotaBase} messages remaining`}
-                    disabled
-                    className="bg-muted/50"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-daily-limit">
-                    Daily Limit
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      (admin-managed)
-                    </span>
-                  </Label>
-                  <Input
-                    id="edit-daily-limit"
-                    value={
-                      editingDevice.dailyLimitMessage > 0
-                        ? `${editingDevice.dailyLimitMessage} messages/day`
-                        : "No limit"
-                    }
-                    disabled
-                    className="bg-muted/50"
-                  />
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              {messages.console.whatsapp.devices.cancel}
-            </Button>
-            <Button
-              onClick={() => void handleEditDevice()}
-              disabled={isSubmitting}
-            >
-              {isSubmitting
-                ? messages.console.whatsapp.devices.saving
-                : messages.console.whatsapp.devices.saveChanges}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

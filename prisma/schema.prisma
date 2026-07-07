@@ -1526,6 +1526,7 @@ enum WhatsappBillingCategory {
   UTILITY
   AUTHENTICATION
   SERVICE
+  REPLY
 }
 
 enum WhatsappBillingStatus {
@@ -1557,8 +1558,7 @@ model WhatsappDevice {
   balance                   Decimal              @default(0) @db.Decimal(12, 2)
   quotaBase                 Decimal              @default(1000) @db.Decimal(12, 2)
   currentQuotaUsed          Decimal              @default(0) @db.Decimal(12, 2)
-  quotaBaseIn               Int                  @default(0)
-  quotaBaseOut              Int                  @default(0)
+  quotaBaseOut              Decimal             @default(0) @db.Decimal(12, 2)
   dailyLimitMessage         Int                  @default(0)
   rates                     String?
   status                    WhatsappDeviceStatus @default(ACTIVE)
@@ -1600,6 +1600,16 @@ model WhatsappDevice {
 
   @@index([organizationId])
   @@index([whatsappBusinessAccountId])
+}
+
+model WhatsappQuotaCreditRate {
+  category    WhatsappBillingCategory
+  country     String    @db.VarChar(2)
+  quotaCredit Decimal   @map("quota_credit") @db.Decimal(12, 2)
+  description String    @db.VarChar(255)
+
+  @@id([category, country])
+  @@map("WhatsappQuotaCreditRate")
 }
 
 model WhatsappContactGroup {

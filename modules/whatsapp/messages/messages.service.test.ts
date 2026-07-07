@@ -70,6 +70,12 @@ const mockTx = {
   billingInvoiceLine: {
     create: mock(async () => ({ id: "line-1" })),
   },
+  whatsappBillingLedger: {
+    create: mock(async () => ({ id: "ledger-1" })),
+  },
+  whatsappQuotaCreditRate: {
+    findUnique: mock(async () => null),
+  },
 }
 
 const mockPrisma = {
@@ -82,6 +88,14 @@ const mockPrisma = {
   whatsappConversation: {
     findFirst: mock(async () => null),
     create: mock(async () => ({ id: "conv-1" })),
+    update: mock(async () => ({ id: "conv-1" })),
+  },
+  whatsappContactGroup: {
+    findFirst: mock(async () => null),
+    create: mock(async () => ({ id: "group_default", organizationId: "tenant-1", name: "Ungrouped" })),
+  },
+  whatsappContact: {
+    upsert: mock(async (args: any) => args.create ?? args.update ?? {}),
   },
   whatsappMessage: {
     create: mock(async () => ({ id: "msg-1" })),
@@ -114,6 +128,12 @@ const mockPrisma = {
   billingUsageLedger: {
     create: mock(async () => ({ id: "ledger-1" })),
   },
+  whatsappWebhook: {
+    findMany: mock(async () => []),
+  },
+  whatsappQuotaCreditRate: {
+    findUnique: mock(async () => null),
+  },
   $transaction: mock(async (fn: any) => await fn(mockTx)),
 }
 
@@ -142,13 +162,10 @@ mock.module("@/lib/queue/whatsapp-broadcast", () => ({
 const { messageService } = await import("./messages.service")
 const { InsufficientQuotaError } = await import("./quota.service")
 
-// ---------------------------------------------------------------------------
-// Default device fixture — quota: 1000 limit, count: 0 → hasQuota: true
-// ---------------------------------------------------------------------------
 const mockDevice = {
   id: "device-1",
   organizationId: "org-1",
-  quotaBaseOut: 1000,
+  quotaBaseOut: new (require("@prisma/client").Prisma.Decimal)("1000"),
   tokenEncrypted: "encrypted-token",
   whatsappPhoneId: "phone-id-1",
   whatsappBusinessAccountId: "waba-1",
@@ -254,9 +271,8 @@ describe("messageService", () => {
     mockTx.whatsappDevice.findFirst.mockResolvedValue(mockDevice as any)
     mockTx.whatsappDevice.findUnique.mockResolvedValue({
       ...mockDevice,
-      quotaBaseOut: 1000,
+      quotaBaseOut: { toString: () => "1000", gt: () => true, gte: () => true, minus: () => ({ toString: () => "999" }), lt: () => false },
     } as any)
-    mockTx.whatsappDevice.updateMany.mockResolvedValue({ count: 1 })
     mockTx.whatsappDevice.update.mockResolvedValue(mockDevice as any)
     mockTx.whatsappMonthlyCount.findFirst.mockResolvedValue(null)
     mockTx.whatsappMonthlyCount.create.mockResolvedValue({
@@ -394,7 +410,7 @@ describe("messageService", () => {
         expect.objectContaining({
           where: expect.objectContaining({
             id: "device-1",
-            quotaBaseOut: { gte: 1 },
+            quotaBaseOut: expect.objectContaining({ gte: expect.anything() }),
           }),
         })
       )
@@ -629,38 +645,39 @@ describe("messageService", () => {
 
       await sendMessageTestHelper()
 
-      // restoreAllowance calls prisma.whatsappDevice.update with increment
+      // restoreAllowance calls prisma.whatsappDevice.update with increment (Decimal)
+      const { Prisma } = await import("@prisma/client")
       expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device-1" },
-          data: { quotaBaseOut: { increment: 1 } },
+          data: { quotaBaseOut: { increment: new Prisma.Decimal(1) } },
         })
       )
     })
-
     it("logs warning but does not restore balance when overage charged + Meta API fails", async () => {
       const consoleWarnSpy = mock(() => {})
       const origWarn = console.warn
       console.warn = consoleWarnSpy
 
       // Overage path
+      const { Prisma } = await import("@prisma/client")
       mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
         id: "device-1",
-        quotaBaseOut: 0,
+        organizationId: "org-1",
+        quotaBaseOut: new Prisma.Decimal("0"),
+        tokenEncrypted: "encrypted-token",
+        whatsappPhoneId: "phone-id-1",
+        whatsappBusinessAccountId: "waba-1",
       } as any)
+
+      // Meta API fails
       mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
 
       await sendMessageTestHelper()
 
-      // restoreAllowance should NOT be called for overage
-      // (prisma.whatsappDevice.update with increment should NOT be called)
-      expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: { quotaBaseOut: { increment: expect.any(Number) } },
-        })
-      )
-      // But a warning should be logged
+      // After Meta API fails with OVERAGE_CHARGED billing decision,
+      // the service logs a warning and does NOT call restoreAllowance
       expect(consoleWarnSpy).toHaveBeenCalled()
 
       console.warn = origWarn

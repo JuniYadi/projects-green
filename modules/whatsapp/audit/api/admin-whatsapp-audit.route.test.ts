@@ -14,8 +14,8 @@ const mockPrisma = {
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
-import { createWhatsappAuditRoutes } from "./whatsapp-audit.route"
-import type { AdminActorContext, AdminApiError } from "@/modules/admin/api/admin.guards"
+import { createWhatsappAuditRoutes, consoleWhatsappAuditRoutes } from "./whatsapp-audit.route"
+import { type AdminActorContext } from "@/modules/admin/api/admin.guards"
 
 const okAdmin: AdminActorContext = {
   ok: true,
@@ -26,6 +26,25 @@ const okAdmin: AdminActorContext = {
 const buildApp = (guardImpl: any = async () => okAdmin) =>
   createWhatsappAuditRoutes({ requireSuperAdmin: guardImpl })
 
+
+// ─── Console audit route helpers ─────────────────────────────────────────--
+
+mock.module("@/lib/auth/resolve-proxy-auth", () => ({
+  resolveAuthContext: async () => {
+    const ctx = mockResolveAuthContext.current
+    if (!ctx) return null
+    return ctx
+  },
+}))
+
+const mockResolveAuthContext: { current: any } = { current: null }
+
+const CONSOLE_BASE = "http://localhost/audit"
+
+const buildConsoleApp = () => {
+  const { Elysia } = require("elysia")
+  return new Elysia().use(consoleWhatsappAuditRoutes)
+}
 const BASE = "http://localhost/admin/whatsapp/audit"
 
 const sampleRows = [
@@ -111,7 +130,7 @@ describe("Admin WhatsApp Audit Routes", () => {
       expect(body.data).toHaveLength(1)
       expect(body.data[0].id).toBe("log_1")
       expect(body.data[0].action).toBe("TEMPLATE_SYNC_REQUESTED")
-      expect(body.pagination).toEqual({ page: 1, limit: 50, total: 1, totalPages: 1 })
+      expect(body.pagination).toEqual({ page: 1, limit: 20, total: 1, totalPages: 1 })
     })
 
     it("returns empty list when no entries", async () => {
@@ -217,6 +236,111 @@ describe("Admin WhatsApp Audit Routes", () => {
 
       expect(res.status).toBe(401)
       expect(body.ok).toBe(false)
+    })
+  })
+})
+describe("Console WhatsApp Audit Routes", () => {
+  beforeEach(() => {
+    mockPrisma.whatsappAuditLog.findMany.mockReset()
+    mockPrisma.whatsappAuditLog.count.mockReset()
+    mockPrisma.whatsappDevice.findUnique.mockReset()
+
+    mockResolveAuthContext.current = {
+      type: "workos",
+      userId: "user-1",
+      organizationId: "org-1",
+      orgRole: "admin",
+      platformRole: "none",
+    }
+  })
+
+  describe("GET /audit", () => {
+    it("returns 401 when not authenticated", async () => {
+      mockResolveAuthContext.current = null
+      const app = buildConsoleApp()
+      const res = await app.handle(new Request(`${CONSOLE_BASE}/`))
+      expect(res.status).toBe(401)
+      const body = await res.json()
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when no organization", async () => {
+      mockResolveAuthContext.current = {
+        type: "workos",
+        userId: "user-1",
+        organizationId: null,
+        orgRole: "admin",
+        platformRole: "none",
+      }
+      const app = buildConsoleApp()
+      const res = await app.handle(new Request(`${CONSOLE_BASE}/`))
+      expect(res.status).toBe(403)
+      const body = await res.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns org-scoped audit entries", async () => {
+      mockPrisma.whatsappAuditLog.count.mockResolvedValue(1)
+      mockPrisma.whatsappAuditLog.findMany.mockResolvedValue(sampleRows)
+
+      const app = buildConsoleApp()
+      const res = await app.handle(new Request(`${CONSOLE_BASE}/`))
+      const body = await res.json() as any
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data).toHaveLength(1)
+      expect(body.data[0].id).toBe("log_1")
+      // Verify org-scoped query
+      expect(mockPrisma.whatsappAuditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ organizationId: "org-1" }),
+        })
+      )
+    })
+  })
+
+  describe("GET /audit/devices/:deviceId", () => {
+    it("returns 404 when device not found", async () => {
+      mockPrisma.whatsappDevice.findUnique.mockResolvedValue(null)
+
+      const app = buildConsoleApp()
+      const res = await app.handle(new Request(`${CONSOLE_BASE}/devices/nonexistent`))
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("returns 403 for cross-org device", async () => {
+      mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
+        id: "dev-other",
+        organizationId: "org-other",
+      })
+
+      const app = buildConsoleApp()
+      const res = await app.handle(new Request(`${CONSOLE_BASE}/devices/dev-other`))
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns org-scoped device audit entries", async () => {
+      mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
+        id: "dev-1",
+        organizationId: "org-1",
+      })
+      mockPrisma.whatsappAuditLog.count.mockResolvedValue(1)
+      mockPrisma.whatsappAuditLog.findMany.mockResolvedValue(sampleRows)
+
+      const app = buildConsoleApp()
+      const res = await app.handle(new Request(`${CONSOLE_BASE}/devices/dev-1`))
+      const body = await res.json() as any
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data).toHaveLength(1)
     })
   })
 })

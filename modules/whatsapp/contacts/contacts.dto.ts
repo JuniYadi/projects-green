@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { Prisma, type WhatsappMessageDirection } from "@prisma/client"
 
 export type WhatsappContactDTO = Pick<
   Prisma.WhatsappContactGetPayload<Prisma.WhatsappContactDefaultArgs>,
@@ -15,10 +15,19 @@ export type WhatsappContactDTO = Pick<
   | "createdAt"
   | "updatedAt"
   | "contactGroupId"
->
+> & {
+  lastMessage: string | null
+  lastMessageAt: Date | null
+  lastMessageDirection: WhatsappMessageDirection | null
+}
 
 export function toWhatsappContactDTO(
-  contact: Prisma.WhatsappContactGetPayload<Prisma.WhatsappContactDefaultArgs>
+  contact: Prisma.WhatsappContactGetPayload<Prisma.WhatsappContactDefaultArgs>,
+  summary?: {
+    lastMessage?: string | null
+    lastMessageAt?: Date | null
+    lastMessageDirection?: WhatsappMessageDirection | null
+  } | null
 ): WhatsappContactDTO {
   return {
     id: contact.id,
@@ -34,5 +43,8 @@ export function toWhatsappContactDTO(
     createdAt: contact.createdAt,
     updatedAt: contact.updatedAt,
     contactGroupId: contact.contactGroupId,
+    lastMessage: summary?.lastMessage ?? null,
+    lastMessageAt: summary?.lastMessageAt ?? null,
+    lastMessageDirection: summary?.lastMessageDirection ?? null,
   }
 }

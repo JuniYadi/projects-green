@@ -41,7 +41,7 @@ const sendTemplateSchema = t.Object({
   templateId: t.String({ minLength: 1 }),
   templateLanguage: t.String({ minLength: 1 }),
   fields: t.Optional(t.Array(t.String())),
-  deviceId: t.Optional(t.String()),
+  deviceId: t.String({ minLength: 1 }),
 })
 
 const sendSchema = t.Object({
@@ -458,7 +458,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         templateId: string
         templateLanguage: string
         fields?: string[]
-        deviceId?: string
+        deviceId: string
       }
 
       // Load template and verify ownership
@@ -470,6 +470,16 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       if (!template) {
         set.status = 404
         return { ok: false, error: "NOT_FOUND", message: "Template not found." }
+      }
+
+      // Validate device is provided and matches template
+      if (!deviceId) {
+        set.status = 422
+        return { ok: false, error: "VALIDATION_ERROR", message: "Device is required." }
+      }
+      if (template.whatsappDeviceId !== deviceId) {
+        set.status = 422
+        return { ok: false, error: "VALIDATION_ERROR", message: "Template is not available for the selected device." }
       }
 
       // Find the requested language
@@ -515,6 +525,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           templateLanguage,
           fields,
           renderedBody,
+          billingCategory: template.category ?? undefined,
         })
 
         logWhatsappAuditEvent({

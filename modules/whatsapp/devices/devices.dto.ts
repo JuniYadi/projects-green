@@ -42,7 +42,7 @@ export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
     environment: "LIVE",
     balance: toNumber(device.balance),
     quotaBase: toNumber(device.quotaBase),
-    quotaBaseOut: device.quotaBaseOut,
+    quotaBaseOut: toNumber(device.quotaBaseOut),
     dailyLimitMessage: device.dailyLimitMessage,
     whatsappBusinessAccountId: device.whatsappBusinessAccountId,
     whatsappPhoneId: device.whatsappPhoneId,

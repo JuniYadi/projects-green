@@ -61,8 +61,7 @@ function whatsappDevice(overrides: Partial<Record<string, unknown>> = {}) {
     phoneNumber: "628123456789",
     balance: decimal("0"),
     quotaBase: decimal("1000"),
-    quotaBaseIn: 0,
-    quotaBaseOut: 1000,
+    quotaBaseOut: decimal("1000"),
     dailyLimitMessage: 0,
     rates: null,
     status: "ACTIVE",
@@ -227,33 +226,31 @@ describe("WhatsappBillingService", () => {
 
   describe("consumeAllowanceOrChargeOverage", () => {
     it("consumes allowance without debiting balance when allowance is sufficient", async () => {
-      const device = whatsappDevice({ quotaBaseOut: 100 })
+      const device = whatsappDevice({ quotaBaseOut: decimal("100") })
 
       // Atomic update succeeds (allowance >= 1)
       mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 1 })
       // Follow-up read to get remaining allowance
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
         ...device,
-        quotaBaseOut: 99,
+        quotaBaseOut: decimal("99"),
       })
 
       const result = await service.consumeAllowanceOrChargeOverage({
         organizationId: "org_1",
         deviceId: "device_1",
-        messageCount: 1,
+        quotaCredit: decimal("1"),
         unitPrice: decimal("10.00"),
         idempotencyKey: "wa-message:req_001",
       })
 
       expect(result.kind).toBe("ALLOWANCE")
-      expect(
-        (result as { remainingAllowance: number }).remainingAllowance
-      ).toBe(99)
+      expect((result as { remainingAllowance: Prisma.Decimal }).remainingAllowance.toString()).toBe("99")
 
       expect(mockPrisma.whatsappDevice.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: "device_1", quotaBaseOut: { gte: 1 } },
-          data: { quotaBaseOut: { decrement: 1 } },
+          where: { id: "device_1", quotaBaseOut: { gte: decimal("1") } },
+          data: { quotaBaseOut: { decrement: decimal("1") } },
         })
       )
       expect(
@@ -263,7 +260,7 @@ describe("WhatsappBillingService", () => {
     })
 
     it("charges overage immediately when allowance is exhausted", async () => {
-      const device = whatsappDevice({ quotaBaseOut: 0 })
+      const device = whatsappDevice({ quotaBaseOut: decimal("0") })
       const account = billingAccount({ balance: decimal("100.00") })
 
       // Atomic update fails (quotaBaseOut=0 < 1)
@@ -284,7 +281,7 @@ describe("WhatsappBillingService", () => {
       const result = await service.consumeAllowanceOrChargeOverage({
         organizationId: "org_1",
         deviceId: "device_1",
-        messageCount: 1,
+        quotaCredit: decimal("1"),
         unitPrice: decimal("10.00"),
         idempotencyKey: "wa-message:req_002",
       })
@@ -330,7 +327,7 @@ describe("WhatsappBillingService", () => {
         service.consumeAllowanceOrChargeOverage({
           organizationId: "org_1",
           deviceId: "device_1",
-          messageCount: 1,
+          quotaCredit: decimal("1"),
           unitPrice: decimal("10.00"),
           idempotencyKey: "wa-message:req_003",
         })
@@ -341,7 +338,7 @@ describe("WhatsappBillingService", () => {
     })
 
     it("charges partial allowance + overage when allowance partially covers", async () => {
-      const device = whatsappDevice({ quotaBaseOut: 3 })
+      const device = whatsappDevice({ quotaBaseOut: decimal("3") })
       const account = billingAccount({ balance: decimal("100.00") })
 
       // Atomic update fails (3 < 10)
@@ -362,7 +359,7 @@ describe("WhatsappBillingService", () => {
       const result = await service.consumeAllowanceOrChargeOverage({
         organizationId: "org_1",
         deviceId: "device_1",
-        messageCount: 10,
+        quotaCredit: decimal("10"),
         unitPrice: decimal("10.00"),
         idempotencyKey: "wa-message:req_004",
       })
@@ -376,7 +373,7 @@ describe("WhatsappBillingService", () => {
       expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device_1" },
-          data: { quotaBaseOut: 0 },
+          data: { quotaBaseOut: new Prisma.Decimal(0) },
         })
       )
     })
@@ -391,7 +388,7 @@ describe("WhatsappBillingService", () => {
         service.consumeAllowanceOrChargeOverage({
           organizationId: "org_1",
           deviceId: "device_missing",
-          messageCount: 1,
+          quotaCredit: decimal("1"),
           unitPrice: decimal("10.00"),
           idempotencyKey: "wa-message:req_005",
         })
@@ -399,7 +396,7 @@ describe("WhatsappBillingService", () => {
     })
 
     it("does not create grace state for WhatsApp (no grace period)", async () => {
-      const device = whatsappDevice({ quotaBaseOut: 0 })
+      const device = whatsappDevice({ quotaBaseOut: decimal("0") })
 
       // Atomic update fails
       mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 0 })
@@ -411,7 +408,7 @@ describe("WhatsappBillingService", () => {
         service.consumeAllowanceOrChargeOverage({
           organizationId: "org_1",
           deviceId: "device_1",
-          messageCount: 1,
+          quotaCredit: decimal("1"),
           unitPrice: decimal("10.00"),
           idempotencyKey: "wa-message:req_006",
         })
@@ -426,17 +423,31 @@ describe("WhatsappBillingService", () => {
   })
 
   describe("restoreAllowance", () => {
-    it("increments quotaBaseOut by the given amount", async () => {
+    it("increments quotaBaseOut by the given amount (number)", async () => {
       mockPrisma.whatsappDevice.update.mockResolvedValue({
         ...whatsappDevice(),
-        quotaBaseOut: 104,
+        quotaBaseOut: decimal("104"),
       })
 
       await service.restoreAllowance("device_1", 4)
 
       expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith({
         where: { id: "device_1" },
-        data: { quotaBaseOut: { increment: 4 } },
+        data: { quotaBaseOut: { increment: decimal("4") } },
+      })
+    })
+
+    it("increments quotaBaseOut by the given amount (Decimal)", async () => {
+      mockPrisma.whatsappDevice.update.mockResolvedValue({
+        ...whatsappDevice(),
+        quotaBaseOut: decimal("104"),
+      })
+
+      await service.restoreAllowance("device_1", decimal("2.5"))
+
+      expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith({
+        where: { id: "device_1" },
+        data: { quotaBaseOut: { increment: decimal("2.5") } },
       })
     })
   })

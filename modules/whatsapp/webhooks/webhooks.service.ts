@@ -4,6 +4,7 @@ import { Prisma, WhatsappMessageDeliveryStatus } from "@prisma/client"
 import { toWebhookEventDTO, type WhatsappWebhookEventDTO } from "./webhooks.dto"
 import { webhookDispatcher } from "./webhook-dispatcher.service"
 import { downloadAndSave } from "@/modules/whatsapp/media/media.service"
+import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 
 export type ParsedMessagePayload = {
   from: string
@@ -101,6 +102,17 @@ export async function processInboundMessage(
       } as Prisma.InputJsonValue,
     },
   })
+
+    // Upsert contact from this inbound message — mark isWhatsapp: true
+    await upsertWhatsappContactFromMessage({
+      organizationId,
+      phoneNumber: from,
+      whatsappDeviceId: deviceId,
+      messageAt: whatsappMessage.createdAt,
+      isWhatsapp: true,
+      waId: from,
+      markChecked: true,
+    })
 
   // Increment daily + monthly inbox counters
   const now = new Date()
@@ -350,7 +362,17 @@ export async function processDeliveryStatus(
   // Find the message by waMessageId (scoped to organization via device)
   const message = await prisma.whatsappMessage.findFirst({
     where: { waMessageId },
-    select: { id: true, conversationId: true },
+    select: {
+      id: true,
+      conversationId: true,
+      conversation: {
+        select: {
+          contactPhone: true,
+          organizationId: true,
+          whatsappDeviceId: true,
+        },
+      },
+    },
   })
 
   if (!message) {
@@ -397,7 +419,27 @@ export async function processDeliveryStatus(
       error: errorDetails,
     },
   })
-
+  // Upsert contact on successful delivery statuses (SENT, DELIVERED, READ)
+  const DELIVERY_STATUSES_FOR_UPSERT = new Set<WhatsappMessageDeliveryStatus>([
+    WhatsappMessageDeliveryStatus.SENT,
+    WhatsappMessageDeliveryStatus.DELIVERED,
+    WhatsappMessageDeliveryStatus.READ,
+  ])
+  if (
+    mappedStatus &&
+    DELIVERY_STATUSES_FOR_UPSERT.has(mappedStatus) &&
+    message.conversation
+  ) {
+    await upsertWhatsappContactFromMessage({
+      organizationId: message.conversation.organizationId,
+      phoneNumber: message.conversation.contactPhone,
+      whatsappDeviceId: message.conversation.whatsappDeviceId ?? deviceId,
+      messageAt: timestamp ?? new Date(),
+      isWhatsapp: true,
+      waId: payload.recipient_id ?? null,
+      markChecked: true,
+    })
+  }
   // Update conversation lastMessageAt
   await prisma.whatsappConversation
     .update({

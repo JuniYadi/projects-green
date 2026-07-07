@@ -1,4 +1,5 @@
 import { Prisma, WhatsappBillingCategory } from "@prisma/client"
+import Decimal = Prisma.Decimal
 import { Queue, Worker, type Job } from "bullmq"
 import { randomUUID } from "crypto"
 
@@ -10,6 +11,8 @@ import {
   type WhatsAppBroadcastJobData,
 } from "@/lib/queue/whatsapp-broadcast"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
+import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
+import { resolveWhatsappQuotaCredit } from "@/modules/whatsapp/messages/quota-credit.service"
 
 const redisConnection = getWhatsAppBroadcastRedisConnection()
 const broadcastQueue = new Queue<WhatsAppBroadcastJobData>(
@@ -255,6 +258,17 @@ async function dispatchBroadcast(
       },
     })
 
+    // Upsert contact from this broadcast send — has provider message id, mark as WhatsApp active
+    await upsertWhatsappContactFromMessage({
+      organizationId: campaign.organizationId,
+      phoneNumber: recipient.phoneNumber,
+      whatsappDeviceId: device.id,
+      messageAt: new Date(),
+      isWhatsapp: true,
+      waId: result.providerMessageId,
+      markChecked: true,
+    })
+
     // Record billing ledger + daily/monthly counters
     let templateCategory: string | null = null
     try {
@@ -279,6 +293,14 @@ async function dispatchBroadcast(
 
     const deviceIdStr =
       campaign.whatsappDeviceId ?? `org-${campaign.organizationId}`
+
+    // Resolve quota credit: use template category or default to UTILITY
+    const resolvedCategory = (templateCategory as WhatsappBillingCategory) ?? WhatsappBillingCategory.UTILITY
+    const quotaCredit = await resolveWhatsappQuotaCredit({
+      category: resolvedCategory,
+      phoneNumber: recipient.phoneNumber,
+    })
+
     await Promise.all([
       prisma.whatsappDailyCount.upsert({
         where: {
@@ -319,11 +341,9 @@ async function dispatchBroadcast(
           organizationId: campaign.organizationId,
           waMessageId: result.providerMessageId,
           phoneNumber: recipient.phoneNumber,
-          category:
-            (templateCategory as WhatsappBillingCategory) ??
-            WhatsappBillingCategory.SERVICE,
+          category: quotaCredit.category,
           quotaKey: device.id,
-          quotaValue: new Prisma.Decimal(0),
+          quotaValue: quotaCredit.quotaCredit,
           whatsappDeviceId: device.id,
         },
       }),

@@ -49,8 +49,7 @@ export const adminCreateDeviceSchema = createDeviceSchema.extend({
   expiredAt: z.string().datetime().optional(),
   features: z.record(z.string(), z.unknown()).optional(),
   quotaBase: z.number().nonnegative().optional(),
-  quotaBaseIn: z.number().int().nonnegative().optional(),
-  quotaBaseOut: z.number().int().nonnegative().optional(),
+  quotaBaseOut: z.number().nonnegative().optional(),
   rates: z.string().trim().max(200).optional(),
   s3: z.string().trim().max(500).optional(),
   whatsappVersion: z.string().trim().max(20).optional(),
@@ -81,8 +80,7 @@ export const updateDeviceSchema = z.object({
   whatsappVersion: z.string().trim().max(20).optional(),
   displayName: z.string().trim().max(120).optional(),
   quotaBase: z.number().nonnegative().optional(),
-  quotaBaseIn: z.number().int().nonnegative().optional(),
-  quotaBaseOut: z.number().int().nonnegative().optional(),
+  quotaBaseOut: z.number().nonnegative().optional(),
   dailyLimitMessage: z.number().int().nonnegative().optional(),
   balance: z.number().nonnegative().optional(),
   expiredAt: z.string().datetime().optional(),
@@ -159,7 +157,6 @@ export type DeviceCreateInput = CreateDeviceInput & {
   features?: Record<string, unknown>
   whatsappProfile?: Record<string, unknown>
   quotaBase?: number
-  quotaBaseIn?: number
   quotaBaseOut?: number
   rates?: string
   s3?: string

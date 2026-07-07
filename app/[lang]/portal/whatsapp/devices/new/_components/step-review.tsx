@@ -81,7 +81,6 @@ export function StepReview({ data, goToStep }: Props) {
 
       <ReviewSection title="Quotas & Limits" step={2} goToStep={goToStep}>
         <Field label="Quota Base" value={data.quotaBase || `${DEFAULT_QUOTA_BASE} (default)`} />
-        <Field label="Quota Base In" value={data.quotaBaseIn || "0"} />
         <Field label="Quota Base Out" value={data.quotaBaseOut || "0"} />
         <Field
           label="Daily Message Limit"

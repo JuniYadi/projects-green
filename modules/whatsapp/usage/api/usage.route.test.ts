@@ -12,6 +12,8 @@ import { workosNodeMock } from "@/test/workos-node-mock"
 
 const mockFindMany = mock(async () => [] as any)
 const mockFindManyDevices = mock(async () => [] as any)
+const mockFindManyWhatsappLedger = mock(async () => [] as any)
+const mockFindUniqueBillingAccount = mock(async () => null as any)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -26,6 +28,12 @@ mock.module("@/lib/prisma", () => ({
     },
     whatsappDevice: {
       findMany: mockFindManyDevices,
+    },
+    whatsappBillingLedger: {
+      findMany: mockFindManyWhatsappLedger,
+    },
+    billingAccount: {
+      findUnique: mockFindUniqueBillingAccount,
     },
   },
 }))
@@ -93,7 +101,30 @@ function makeLedgerRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-// ─── Tests ──────────────────────────────────────────────────────────────────────
+function makeWhatsappLedgerRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "wa-ledger-1",
+    organizationId: "org-1",
+    waMessageId: "msg-1",
+    phoneNumber: "6281234567890",
+    category: "UTILITY",
+    quotaKey: "monthly",
+    quotaValue: new Decimal(1),
+    status: "CHARGED_PENDING_VERIFY",
+    isReverted: false,
+    revertReason: null,
+    revertedAt: null,
+    lastStatus: null,
+    pricingBillable: null,
+    pricingCategory: null,
+    errorCode: null,
+    errorTitle: null,
+    createdAt: new Date("2026-06-15T10:00:00Z"),
+    updatedAt: new Date(),
+    whatsappDeviceId: "dev-1",
+    ...overrides,
+  }
+}
 
 describe("Usage Routes", () => {
   beforeEach(() => {
@@ -101,6 +132,10 @@ describe("Usage Routes", () => {
     mockFindMany.mockImplementation(async () => [])
     mockFindManyDevices.mockReset()
     mockFindManyDevices.mockImplementation(async () => [])
+    mockFindManyWhatsappLedger.mockReset()
+    mockFindManyWhatsappLedger.mockImplementation(async () => [])
+    mockFindUniqueBillingAccount.mockReset()
+    mockFindUniqueBillingAccount.mockImplementation(async () => null)
 
     setMockAuthContext({
       type: "workos",
@@ -281,6 +316,110 @@ describe("Usage Routes", () => {
       expect(body.totalAmount).toBe(0)
       expect(body.totalEntries).toBe(0)
       expect(body.byCategory).toEqual([])
+    })
+  })
+
+  // ── GET /usage/cost-breakdown ────────────────────────────────────────────
+
+  describe("GET /usage/cost-breakdown", () => {
+    it("returns 200 with empty byDevice for no records", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request("http://localhost/usage/cost-breakdown?period=2026-06")
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.byDevice).toEqual([])
+      expect(body.totalCost).toBe(0)
+      expect(body.balance).toBeNull()
+    })
+
+    it("returns cost and quota values for a device with ledger rows", async () => {
+      // Set up devices
+      mockFindManyDevices.mockImplementation(async () => [
+        { id: "dev-1", phoneNumber: "6281234567890", quotaBase: new Decimal(100) },
+      ])
+
+      // Set up usage ledger rows (cost + messageCount, keyed by metadata.deviceId)
+      mockFindMany.mockImplementation(async () => [
+        makeLedgerRow({
+          id: "ledger-1",
+          metadata: { deviceId: "dev-1" },
+          amountIdr: new Decimal(500),
+        }),
+        makeLedgerRow({
+          id: "ledger-2",
+          metadata: { deviceId: "dev-1" },
+          amountIdr: new Decimal(300),
+        }),
+      ])
+
+      // Set up WhatsApp billing ledger rows (quota credits, keyed by whatsappDeviceId)
+      mockFindManyWhatsappLedger.mockImplementation(async () => [
+        makeWhatsappLedgerRow({
+          id: "wa-1",
+          whatsappDeviceId: "dev-1",
+          quotaValue: new Decimal(2),
+          createdAt: new Date("2026-06-10T10:00:00Z"),
+        }),
+        makeWhatsappLedgerRow({
+          id: "wa-2",
+          whatsappDeviceId: "dev-1",
+          quotaValue: new Decimal(1.5),
+          createdAt: new Date("2026-06-15T10:00:00Z"),
+        }),
+      ])
+
+      // Set up billing account
+      mockFindUniqueBillingAccount.mockImplementation(async () => ({
+        balance: new Decimal(1000000),
+        currency: "IDR",
+      }))
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request("http://localhost/usage/cost-breakdown?period=2026-06")
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.totalCost).toBe(800)
+      const dev1 = body.byDevice.find((d: any) => d.deviceId === "dev-1")
+      expect(dev1).toBeDefined()
+      expect(dev1.quotaUsed).toBe(3.5)
+      expect(dev1.messageCount).toBe(2)
+      expect(dev1.totalCost).toBe(800)
+      expect(dev1.quotaBase).toBe(100)
+      expect(dev1.quotaPercent).toBeCloseTo(3.5)
+      expect(body.balance).toBe(1000000)
+    })
+
+    it("returns 422 for invalid period format", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request("http://localhost/usage/cost-breakdown?period=2026")
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toBe("period query param must use YYYY-MM.")
+    })
+
+    it("uses current period when period is omitted", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request("http://localhost/usage/cost-breakdown")
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.period).toBeDefined()
     })
   })
 })

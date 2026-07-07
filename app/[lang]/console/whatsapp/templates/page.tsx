@@ -123,6 +123,13 @@ export default function ConsoleTemplatesPage() {
       },
     },
     {
+      accessorKey: "category",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Category" />
+      ),
+      cell: ({ row }) => row.original.category ?? "—",
+    },
+    {
       accessorFn: (row) => row.languages?.map((l) => l.lang).join(", ") ?? "",
       id: "languages",
       header: ({ column }) => (
@@ -244,6 +251,7 @@ export default function ConsoleTemplatesPage() {
                 "name",
                 "syncStatus",
                 "metaStatus",
+                "category",
                 "languages",
                 "whatsappDeviceId",
               ]}
@@ -269,6 +277,15 @@ export default function ConsoleTemplatesPage() {
                     { label: "Approved", value: "APPROVED" },
                     { label: "Pending", value: "PENDING" },
                     { label: "Rejected", value: "REJECTED" },
+                  ],
+                },
+                {
+                  columnId: "category",
+                  label: "Category",
+                  options: [
+                    { label: "Marketing", value: "MARKETING" },
+                    { label: "Utility", value: "UTILITY" },
+                    { label: "Authentication", value: "AUTHENTICATION" },
                   ],
                 },
               ]}

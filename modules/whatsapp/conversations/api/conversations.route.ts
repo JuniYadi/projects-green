@@ -78,6 +78,9 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
           organizationId: whatsappAuth.organizationId!,
         },
         include: {
+          _count: {
+            select: { whatsappMessages: true },
+          },
           whatsappMessages: {
             orderBy: { createdAt: "desc" },
             take: 50,

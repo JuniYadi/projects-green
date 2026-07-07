@@ -5,7 +5,7 @@ import { BillingTransactionService } from "@/modules/billing/billing-transaction
 // ─── Types ──────────────────────────────────────────────────────────────
 
 export type WhatsappBillingDecision =
-  | { kind: "ALLOWANCE"; remainingAllowance: number }
+  | { kind: "ALLOWANCE"; remainingAllowance: Prisma.Decimal }
   | { kind: "OVERAGE_CHARGED"; charged: Prisma.Decimal; adjustmentId: string }
 
 export type MonthlyBaseInput = {
@@ -19,7 +19,7 @@ export type MonthlyBaseInput = {
 export type OverageInput = {
   organizationId: string
   deviceId: string
-  messageCount: number
+  quotaCredit: Prisma.Decimal
   unitPrice: Prisma.Decimal
   idempotencyKey: string
 }
@@ -91,8 +91,8 @@ export class WhatsappBillingService {
   ): Promise<WhatsappBillingDecision> {
     // ── Phase 1: Atomic allowance consumption ──────────────────────────
     const atomicResult = await this.prisma.whatsappDevice.updateMany({
-      where: { id: input.deviceId, quotaBaseOut: { gte: input.messageCount } },
-      data: { quotaBaseOut: { decrement: input.messageCount } },
+      where: { id: input.deviceId, quotaBaseOut: { gte: input.quotaCredit } },
+      data: { quotaBaseOut: { decrement: input.quotaCredit } },
     })
 
     if (atomicResult.count > 0) {
@@ -100,7 +100,7 @@ export class WhatsappBillingService {
         where: { id: input.deviceId },
         select: { quotaBaseOut: true },
       })
-      const remaining = updatedDevice?.quotaBaseOut ?? 0
+      const remaining = updatedDevice?.quotaBaseOut ?? new Prisma.Decimal(0)
       return {
         kind: "ALLOWANCE",
         remainingAllowance: remaining,
@@ -112,9 +112,11 @@ export class WhatsappBillingService {
       where: { id: input.deviceId },
     })
     if (!device) throw new Error("WHATSAPP_DEVICE_NOT_FOUND")
-
-    const currentAllowance = device.quotaBaseOut ?? 0
-    const overageCount = input.messageCount - Math.max(currentAllowance, 0)
+    const currentAllowanceRaw = device.quotaBaseOut ?? new Prisma.Decimal(0)
+    const currentAllowance = currentAllowanceRaw instanceof Prisma.Decimal
+      ? currentAllowanceRaw
+      : new Prisma.Decimal(Number(currentAllowanceRaw))
+    const overageCredit = input.quotaCredit.minus(Prisma.Decimal.max(currentAllowance, new Prisma.Decimal(0)))
 
     // Validate billing account BEFORE any state mutation
     const account = await this.prisma.billingAccount.findUnique({
@@ -123,7 +125,7 @@ export class WhatsappBillingService {
     if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
 
     // ── Phase 3: Charge overage FIRST, then mutate state ──────────────
-    const amount = input.unitPrice.times(overageCount)
+    const amount = input.unitPrice.times(overageCredit)
 
     // This will throw INSUFFICIENT_BALANCE if balance < amount.
     // Because we haven't mutated allowance state yet, a failed charge
@@ -137,22 +139,22 @@ export class WhatsappBillingService {
       idempotencyKey: input.idempotencyKey,
       metadata: {
         deviceId: input.deviceId,
-        messageCount: input.messageCount,
-        overageCount,
+        quotaCredit: input.quotaCredit.toString(),
+        overageCredit: overageCredit.toString(),
       },
       line: {
-        description: "WhatsApp overage messages",
-        quantity: new Prisma.Decimal(overageCount),
+        description: "WhatsApp overage quota credit",
+        quantity: overageCredit,
         unitPrice: input.unitPrice,
         lineType: "USAGE",
       },
     })
 
     // Only now (charge succeeded) zero out remaining allowance
-    if (currentAllowance > 0) {
+    if (currentAllowance.gt(new Prisma.Decimal(0))) {
       await this.prisma.whatsappDevice.update({
         where: { id: input.deviceId },
-        data: { quotaBaseOut: 0 },
+        data: { quotaBaseOut: new Prisma.Decimal(0) },
       })
     }
 
@@ -171,10 +173,11 @@ export class WhatsappBillingService {
    * 2. The monthly reset caps it anyway
    * 3. The alternative (lost allowance + failed message) is worse
    */
-  async restoreAllowance(deviceId: string, amount: number): Promise<void> {
+  async restoreAllowance(deviceId: string, amount: Prisma.Decimal | number): Promise<void> {
+    const credit = typeof amount === "number" ? new Prisma.Decimal(amount) : amount
     await this.prisma.whatsappDevice.update({
       where: { id: deviceId },
-      data: { quotaBaseOut: { increment: amount } },
+      data: { quotaBaseOut: { increment: credit } },
     })
   }
 }

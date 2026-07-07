@@ -176,8 +176,11 @@ export function TemplateDetailView({
                 label="Device ID"
                 value={template.whatsappDeviceId || "-"}
               />
+              <InfoRow
+                label="Category"
+                value={template.category ?? "Uncategorized"}
+              />
               <InfoRow label="Created" value={formatDate(template.createdAt)} />
-              <InfoRow label="Updated" value={formatDate(template.updatedAt)} />
             </dl>
           </CardContent>
         </Card>

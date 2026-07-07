@@ -42,7 +42,7 @@ type PrismaDeviceFields = {
   status: import("@prisma/client").WhatsappDeviceStatus
   balance: unknown
   quotaBase: unknown
-  quotaBaseOut: number
+  quotaBaseOut: unknown
   dailyLimitMessage: number
   whatsappBusinessAccountId: string | null
   whatsappPhoneId: string | null
@@ -63,7 +63,7 @@ const toDeviceListItem = (d: PrismaDeviceFields): DeviceListItem => ({
   environment: "LIVE",
   balance: Number(d.balance),
   quotaBase: Number(d.quotaBase),
-  quotaBaseOut: d.quotaBaseOut,
+  quotaBaseOut: Number(d.quotaBaseOut),
   dailyLimitMessage: d.dailyLimitMessage,
   whatsappBusinessAccountId: d.whatsappBusinessAccountId,
   whatsappPhoneId: d.whatsappPhoneId,
@@ -125,7 +125,6 @@ export const createDeviceService = (
           rates: input.rates ?? null,
           s3Path: input.s3 ?? null,
           quotaBase: input.quotaBase ?? DEFAULT_QUOTA_BASE,
-          quotaBaseIn: input.quotaBaseIn ?? 0,
           quotaBaseOut: input.quotaBaseOut ?? 0,
           dailyLimitMessage: input.dailyLimitMessage ?? 0,
           ...(input.balance != null ? { balance: input.balance } : {}),
@@ -179,7 +178,6 @@ export const createDeviceService = (
                 : undefined,
             whatsappVersion: input.whatsappVersion || undefined,
             quotaBase: input.quotaBase ?? undefined,
-            quotaBaseIn: input.quotaBaseIn ?? undefined,
             quotaBaseOut: input.quotaBaseOut ?? undefined,
             dailyLimitMessage: input.dailyLimitMessage ?? undefined,
             balance: input.balance ?? undefined,

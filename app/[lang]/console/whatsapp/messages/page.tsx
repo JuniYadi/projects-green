@@ -8,6 +8,7 @@ import {
   ArrowBendUpRight,
   MagnifyingGlass,
   Phone,
+  FunnelSimple,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -28,6 +29,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -220,6 +230,7 @@ export default function WhatsAppMessagesPage() {
   const [selectedTemplateId, setSelectedTemplateId] = React.useState("")
   const [selectedTemplateLanguage, setSelectedTemplateLanguage] = React.useState("")
   const [templateFieldValues, setTemplateFieldValues] = React.useState<Record<number, string>>({})
+  const [templateSearchQuery, setTemplateSearchQuery] = React.useState("")
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
@@ -234,27 +245,23 @@ export default function WhatsAppMessagesPage() {
       setConversationsError(null)
     })
 
-    const params: { contactPhone?: string; status?: string } = {}
-    if (searchQuery.trim()) params.contactPhone = searchQuery.trim()
-    if (statusFilter !== "all") params.status = statusFilter
-
     whatsappClient.conversations
-      .list(Object.keys(params).length ? params : undefined)
+      .list({ status: statusFilter !== "all" ? statusFilter : undefined })
       .then((payload) => {
         if (cancelled) return
         React.startTransition(() => {
           if (payload.ok) {
-            setConversations(payload.conversations)
+            setConversations(payload.conversations ?? [])
+          } else {
+            setConversationsError("Failed to load conversations")
           }
           setConversationsLoading(false)
         })
       })
-      .catch((err) => {
+      .catch(() => {
         if (cancelled) return
         React.startTransition(() => {
-          setConversationsError(
-            err instanceof Error ? err.message : "Failed to load conversations"
-          )
+          setConversationsError("Failed to load conversations")
           setConversationsLoading(false)
         })
       })
@@ -327,7 +334,46 @@ export default function WhatsAppMessagesPage() {
     [devices]
   )
 
-  const { templates: allTemplates } = useTemplates()
+  // ── Device-filtered templates ──────────────────────────────────────────
+
+  const { templates: deviceTemplates, loading: templatesLoading, error: templatesError, reload: reloadTemplates } = useTemplates({
+    whatsappDeviceId: sendDeviceId || undefined,
+    enabled: Boolean(sendDeviceId),
+    sort: "desc",
+  })
+
+  const activeDevices = React.useMemo(
+    () => devices.filter((d) => d.status === "ACTIVE"),
+    [devices]
+  )
+
+  const hasSingleActiveDevice = React.useMemo(
+    () => activeDevices.length === 1,
+    [activeDevices]
+  )
+
+  // Auto-select the only active device when there's exactly one
+  React.useEffect(() => {
+    if (hasSingleActiveDevice && !sendDeviceId) {
+      setSendDeviceId(activeDevices[0].id)
+    }
+  }, [activeDevices, hasSingleActiveDevice, sendDeviceId])
+
+  const approvedTemplates = React.useMemo(
+    () => deviceTemplates.filter((t) => t.metaStatus === "APPROVED"),
+    [deviceTemplates]
+  )
+
+  // Reset template selection when device changes
+  React.useEffect(() => {
+    if (sendDeviceId) {
+      // device changed — reset template state
+      setSelectedTemplateId("")
+      setSelectedTemplateLanguage("")
+      setTemplateFieldValues({})
+      setTemplateSearchQuery("")
+    }
+  }, [sendDeviceId])
 
   // ── Template helpers ─────────────────────────────────────────────────
 
@@ -374,6 +420,25 @@ export default function WhatsAppMessagesPage() {
     [activeConversation?.whatsappMessages]
   )
 
+  // Visible templates after search filter
+  const visibleTemplates = React.useMemo(() => {
+    if (!templateSearchQuery.trim()) return approvedTemplates
+    const q = templateSearchQuery.trim().toLowerCase()
+    return approvedTemplates.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.slug.toLowerCase().includes(q) ||
+        (t.description ?? "").toLowerCase().includes(q)
+    )
+  }, [approvedTemplates, templateSearchQuery])
+
+  const activeFilterCount = React.useMemo(() => {
+    let count = 0
+    if (directionFilter !== "all") count++
+    if (statusFilter !== "all") count++
+    return count
+  }, [directionFilter, statusFilter])
+
   // ── Handlers ───────────────────────────────────────────────────────────
 
   const handleSelectConversation = (id: string) => {
@@ -381,6 +446,11 @@ export default function WhatsAppMessagesPage() {
   }
 
   const handleSendMessage = async () => {
+    if (!sendDeviceId) {
+      toast.error("Please select a device")
+      return
+    }
+
     const trimmedPhone = sendPhone.trim()
     if (!trimmedPhone) {
       toast.error("Phone number is required")
@@ -397,7 +467,7 @@ export default function WhatsAppMessagesPage() {
       return
     }
 
-    const selectedTemplate = allTemplates.find((t) => t.id === selectedTemplateId)
+    const selectedTemplate = approvedTemplates.find((t) => t.id === selectedTemplateId)
     const selectedLang = selectedTemplate?.languages.find(
       (l) => l.lang === selectedTemplateLanguage
     )
@@ -417,7 +487,7 @@ export default function WhatsAppMessagesPage() {
         templateId: selectedTemplateId,
         templateLanguage: selectedTemplateLanguage,
         fields: placeholderIndexes.map((index) => templateFieldValues[index].trim()),
-        deviceId: sendDeviceId || undefined,
+        deviceId: sendDeviceId,
       })
 
       toast.success("Template message queued for delivery")
@@ -430,11 +500,11 @@ export default function WhatsAppMessagesPage() {
         .catch(() => {})
 
       setSendDialogOpen(false)
-      setSendPhone("")
-      setSendDeviceId("")
+      setSendDeviceId(hasSingleActiveDevice ? activeDevices[0]?.id ?? "" : "")
       setSelectedTemplateId("")
       setSelectedTemplateLanguage("")
       setTemplateFieldValues({})
+      setTemplateSearchQuery("")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to send message")
     } finally {
@@ -460,151 +530,238 @@ export default function WhatsAppMessagesPage() {
               New Message
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-5xl">
             <DialogHeader>
               <DialogTitle>Send Template Message</DialogTitle>
               <DialogDescription>
-                Select an approved WhatsApp template, fill required fields, then send it to a phone number.
+                Select a device, choose an approved WhatsApp template, fill required fields, then send it to a phone number.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {/* Template Selection */}
-              <div className="grid gap-2">
-                <Label htmlFor="send-template">Template *</Label>
-                <Select
-                  value={selectedTemplateId}
-                  onValueChange={(value) => {
-                    setSelectedTemplateId(value)
-                    setSelectedTemplateLanguage("")
-                    setTemplateFieldValues({})
-                    const tpl = allTemplates.find((t) => t.id === value)
-                    if (tpl) {
-                      const approvedLang = tpl.languages.find(
-                        (l) => l.isApproved || l.metaStatus === "APPROVED"
-                      )
-                      setSelectedTemplateLanguage(approvedLang?.lang ?? tpl.languages[0]?.lang ?? "")
-                    }
-                  }}
-                >
-                  <SelectTrigger id="send-template">
-                    <SelectValue placeholder="Select a template..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allTemplates.filter((t) => t.metaStatus === "APPROVED").length === 0 ? (
-                      <SelectItem value="__none" disabled>
-                        No approved templates available
-                      </SelectItem>
-                    ) : (
-                      allTemplates
-                        .filter((t) => t.metaStatus === "APPROVED")
-                        .map((tpl) => (
-                          <SelectItem key={tpl.id} value={tpl.id}>
-                            {tpl.name}
-                          </SelectItem>
-                        ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Language Selection */}
-              {selectedTemplateId && (() => {
-                const tpl = allTemplates.find((t) => t.id === selectedTemplateId)
-                if (!tpl) return null
-                return (
+            <div className="min-h-0 flex-1 overflow-y-auto px-1 py-4">
+              <div className="grid min-h-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+                {/* ── Left Column ───────────────────────────────────── */}
+                <div className="space-y-4">
+                  {/* Phone Number — top of left column */}
                   <div className="grid gap-2">
-                    <Label htmlFor="send-language">Language *</Label>
-                    <Select
-                      value={selectedTemplateLanguage}
-                      onValueChange={setSelectedTemplateLanguage}
-                    >
-                      <SelectTrigger id="send-language">
-                        <SelectValue placeholder="Select language..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tpl.languages.map((lang) => (
-                          <SelectItem key={lang.lang} value={lang.lang}>
-                            {lang.lang}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="send-phone">Phone Number *</Label>
+                    <Input
+                      id="send-phone"
+                      placeholder="+628123456789"
+                      value={sendPhone}
+                      onChange={(e) => setSendPhone(e.target.value)}
+                    />
                   </div>
-                )
-              })()}
 
-              {/* Field placeholders */}
-              {selectedTemplateLanguage && (() => {
-                const tpl = allTemplates.find((t) => t.id === selectedTemplateId)
-                const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
-                const indexes = getTemplateFieldIndexes(lang?.body)
-                if (indexes.length === 0) return null
-                return (
-                  <>
-                    {indexes.map((index) => (
-                      <div className="grid gap-2" key={index}>
-                        <Label htmlFor={`field-${index}`}>Field {`{{${index}}}`}</Label>
-                        <Input
-                          id={`field-${index}`}
-                          placeholder={`Value for {{${index}}}`}
-                          value={templateFieldValues[index] ?? ""}
-                          onChange={(e) =>
-                            setTemplateFieldValues((prev) => ({ ...prev, [index]: e.target.value }))
-                          }
-                        />
-                      </div>
-                    ))}
-                  </>
-                )
-              })()}
+                  {/* Device Selection — hidden when single active device */}
+                  {hasSingleActiveDevice && sendDeviceId ? (
+                    <div className="grid gap-1">
+                      <Label className="text-xs text-muted-foreground">Device</Label>
+                      <p className="text-sm font-medium">{activeDevices[0].phoneNumber}</p>
+                    </div>
+                  ) : activeDevices.length > 1 ? (
+                    <div className="grid gap-2 mb-4">
+                      <Label htmlFor="send-device">Device *</Label>
+                      <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
+                        <SelectTrigger id="send-device">
+                          <SelectValue placeholder="Select a device..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activeDevices.map((device) => (
+                            <SelectItem key={device.id} value={device.id}>
+                              {device.phoneNumber}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="grid gap-2 mb-4">
+                      <Label htmlFor="send-device">Device *</Label>
+                      <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
+                        <SelectTrigger id="send-device">
+                          <SelectValue placeholder="Select a device..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none" disabled>
+                            No active devices available
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
-              {/* Template Preview */}
-              {selectedTemplateLanguage && (() => {
-                const tpl = allTemplates.find((t) => t.id === selectedTemplateId)
-                const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
-                if (!lang?.body) return null
-                return (
+                  {/* Template Selection — searchable */}
                   <div className="grid gap-2">
-                    <Label>Template preview</Label>
-                    <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-                      {renderTemplatePreview(lang.body, templateFieldValues) || "—"}
+                    <Label htmlFor="send-template">Template *</Label>
+                    {!sendDeviceId ? (
+                      <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
+                        Select a device first
+                      </div>
+                    ) : templatesLoading ? (
+                      <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
+                        Loading templates...
+                      </div>
+                    ) : templatesError ? (
+                      <div className="flex flex-col gap-2 rounded-md border border-destructive/50 p-3">
+                        <span className="text-sm text-destructive">{templatesError}</span>
+                        <Button size="sm" variant="outline" onClick={reloadTemplates}>
+                          Retry
+                        </Button>
+                      </div>
+                    ) : approvedTemplates.length === 0 ? (
+                      <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
+                        No approved templates for this device
+                      </div>
+                    ) : (
+                      <>
+                        <Input
+                          id="send-template"
+                          placeholder="Type to filter templates..."
+                          value={templateSearchQuery}
+                          onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                        />
+                        <div className="max-h-64 overflow-y-auto rounded-md border">
+                          {visibleTemplates.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">
+                              No templates match your search
+                            </div>
+                          ) : (
+                            visibleTemplates.map((tpl) => (
+                              <button
+                                key={tpl.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedTemplateId(tpl.id)
+                                  setTemplateSearchQuery("")
+                                  setTemplateFieldValues({})
+                                  const approvedLang = tpl.languages.find(
+                                    (l) => l.isApproved || l.metaStatus === "APPROVED"
+                                  )
+                                  setSelectedTemplateLanguage(
+                                    approvedLang?.lang ?? tpl.languages[0]?.lang ?? ""
+                                  )
+                                }}
+                                className={`flex w-full flex-col gap-0.5 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/50 ${
+                                  selectedTemplateId === tpl.id ? "bg-muted" : ""
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium text-sm truncate">{tpl.name}</span>
+                                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                                    {tpl.languages.length} lang{tpl.languages.length !== 1 ? "s" : ""}
+                                  </Badge>
+                                </div>
+                                <span className="text-xs text-muted-foreground truncate">{tpl.slug}</span>
+                                {tpl.languages[0]?.body && (
+                                  <span className="text-xs text-muted-foreground line-clamp-2">
+                                    {tpl.languages[0].body.substring(0, 80)}
+                                    {tpl.languages[0].body.length > 80 ? "…" : ""}
+                                  </span>
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Language Selection */}
+                  {selectedTemplateId && (() => {
+                    const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
+                    if (!tpl) return null
+                    return (
+                      <div className="grid gap-2">
+                        <Label htmlFor="send-language">Language *</Label>
+                        <Select
+                          value={selectedTemplateLanguage}
+                          onValueChange={setSelectedTemplateLanguage}
+                        >
+                          <SelectTrigger id="send-language">
+                            <SelectValue placeholder="Select language..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tpl.languages.map((lang) => (
+                              <SelectItem key={lang.lang} value={lang.lang}>
+                                {lang.lang}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Field placeholders */}
+                  {selectedTemplateLanguage && (() => {
+                    const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
+                    const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
+                    const indexes = getTemplateFieldIndexes(lang?.body)
+                    if (indexes.length === 0) return null
+                    return (
+                      <>
+                        {indexes.map((index) => (
+                          <div className="grid gap-2" key={index}>
+                            <Label htmlFor={`field-${index}`}>Field {`{{${index}}}`}</Label>
+                            <Input
+                              id={`field-${index}`}
+                              placeholder={`Value for {{${index}}}`}
+                              value={templateFieldValues[index] ?? ""}
+                              onChange={(e) =>
+                                setTemplateFieldValues((prev) => ({ ...prev, [index]: e.target.value }))
+                              }
+                            />
+                          </div>
+                        ))}
+                      </>
+                    )
+                  })()}
+                </div>
+
+                {/* ── Right Column: Preview Panel ─────────────────────── */}
+                <div className="space-y-4 lg:sticky lg:top-0">
+                  <div className="rounded-lg border bg-card">
+                    <div className="border-b px-4 py-3">
+                      <h4 className="text-sm font-semibold">Message Preview</h4>
+                    </div>
+                    <div className="space-y-3 p-4">
+                      {selectedTemplateId ? (() => {
+                        const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
+                        if (!tpl) return null
+                        return (
+                          <>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Template</p>
+                              <p className="text-sm font-medium">{tpl.name}</p>
+                            </div>
+                            {selectedTemplateLanguage && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Language</p>
+                                <p className="text-sm">{selectedTemplateLanguage}</p>
+                              </div>
+                            )}
+                            {(() => {
+                              const lang = tpl.languages.find((l) => l.lang === selectedTemplateLanguage)
+                              if (!lang?.body) return null
+                              return (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Body</p>
+                                  <div className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                                    {renderTemplatePreview(lang.body, templateFieldValues) || "—"}
+                                  </div>
+                                </div>
+                              )
+                            })()}
+                          </>
+                        )
+                      })() : (
+                        <p className="text-sm text-muted-foreground">
+                          Select a template to see a preview.
+                        </p>
+                      )}
                     </div>
                   </div>
-                )
-              })()}
-
-              {/* Phone Number */}
-              <div className="grid gap-2">
-                <Label htmlFor="send-phone">Phone Number *</Label>
-                <Input
-                  id="send-phone"
-                  placeholder="+628123456789"
-                  value={sendPhone}
-                  onChange={(e) => setSendPhone(e.target.value)}
-                />
-              </div>
-
-              {/* Device Selection */}
-              <div className="grid gap-2">
-                <Label htmlFor="send-device">Device (optional)</Label>
-                <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
-                  <SelectTrigger id="send-device">
-                    <SelectValue placeholder="Auto-select device" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Auto-select device</SelectItem>
-                    {devices.map((device) => (
-                      <SelectItem
-                        key={device.id}
-                        value={device.id}
-                        disabled={device.status !== "ACTIVE"}
-                      >
-                        {device.phoneNumber}
-                        {device.status !== "ACTIVE" && " (inactive)"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -613,7 +770,13 @@ export default function WhatsAppMessagesPage() {
               </Button>
               <Button
                 onClick={handleSendMessage}
-                disabled={sending || !allTemplates.some((t) => t.metaStatus === "APPROVED")}
+                disabled={
+                  sending ||
+                  activeDevices.length === 0 ||
+                  !sendDeviceId ||
+                  templatesLoading ||
+                  !approvedTemplates.find((t) => t.id === selectedTemplateId)
+                }
               >
                 {sending ? "Sending..." : "Send Template Message"}
               </Button>
@@ -625,46 +788,48 @@ export default function WhatsAppMessagesPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* ── Left Column: Conversations List ─────────────────────────── */}
         <div className="overflow-hidden rounded-lg border bg-card lg:col-span-1">
-          <div className="border-b p-4">
-            <h3 className="font-semibold">Conversations</h3>
-            <div className="mt-3 flex flex-col gap-2">
-              <div className="relative">
-                <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          {/* Sticky compact filter header */}
+          <div className="sticky top-0 z-10 border-b bg-card/95 p-4 backdrop-blur">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold shrink-0">Conversations</h3>
+              <div className="relative min-w-0 flex-1">
+                <MagnifyingGlass className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search by phone..."
+                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="h-9 min-w-0 flex-1 pl-8 text-sm"
                 />
               </div>
-              <Select
-                value={directionFilter}
-                onValueChange={setDirectionFilter}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Direction" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Directions</SelectItem>
-                  <SelectItem value="INBOX">Inbox</SelectItem>
-                  <SelectItem value="OUTBOX">Outbox</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="SENT">Sent</SelectItem>
-                  <SelectItem value="DELIVERED">Delivered</SelectItem>
-                  <SelectItem value="READ">Read</SelectItem>
-                  <SelectItem value="FAILED">Failed</SelectItem>
-                </SelectContent>
-              </Select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="shrink-0 gap-1.5">
+                    <FunnelSimple className="size-4" />
+                    {activeFilterCount > 0 && (
+                      <Badge variant="secondary" className="ml-0.5 h-5 w-5 items-center justify-center p-0 text-[10px]">
+                        {activeFilterCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Direction</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={directionFilter} onValueChange={setDirectionFilter}>
+                    <DropdownMenuRadioItem value="all">All Directions</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="INBOX">Inbox</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="OUTBOX">Outbox</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Status</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                    <DropdownMenuRadioItem value="all">All Status</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="SENT">Sent</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="DELIVERED">Delivered</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="READ">Read</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="FAILED">Failed</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 

@@ -550,7 +550,7 @@ describe("messagesRoutes", () => {
       ],
     }
 
-    it("sends template message successfully", async () => {
+    it("sends template message successfully with deviceId", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
 
       const app = createTestApp()
@@ -562,6 +562,7 @@ describe("messagesRoutes", () => {
             templateId: "tpl-1",
             templateLanguage: "en",
             fields: ["John", "Acme Corp"],
+            deviceId: "device-1",
           }),
           headers: { "Content-Type": "application/json" },
         })
@@ -579,12 +580,58 @@ describe("messagesRoutes", () => {
         expect.objectContaining({
           organizationId: "org-1",
           phoneNumber: "+1234567890",
+          deviceId: "device-1",
           templateName: "hello_world",
           templateLanguage: "en",
           fields: ["John", "Acme Corp"],
         })
       )
     })
+
+    it("returns 422 when deviceId is missing", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-template", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            templateId: "tpl-1",
+            templateLanguage: "en",
+            fields: ["John", "Acme Corp"],
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      // Elysia schema validation rejects missing required deviceId
+      expect(res.status).toBe(422)
+    })
+
+
+    it("returns 422 when template does not match device", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-template", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            templateId: "tpl-1",
+            templateLanguage: "en",
+            fields: ["John", "Acme Corp"],
+            deviceId: "device-2",
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toBe("Template is not available for the selected device.")
+    })
+
 
     it("returns 404 for non-existent template", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(null as any)
@@ -598,6 +645,7 @@ describe("messagesRoutes", () => {
             templateId: "non-existent",
             templateLanguage: "en",
             fields: ["John"],
+            deviceId: "device-1",
           }),
           headers: { "Content-Type": "application/json" },
         })
@@ -607,6 +655,7 @@ describe("messagesRoutes", () => {
       const body = await res.json()
       expect(body.error).toBe("NOT_FOUND")
     })
+
 
     it("returns 422 for non-existent language", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
@@ -628,6 +677,7 @@ describe("messagesRoutes", () => {
             templateId: "tpl-1",
             templateLanguage: "en",
             fields: ["John"],
+            deviceId: "device-1",
           }),
           headers: { "Content-Type": "application/json" },
         })
@@ -651,6 +701,7 @@ describe("messagesRoutes", () => {
             templateId: "tpl-1",
             templateLanguage: "en",
             fields: [],
+            deviceId: "device-1",
           }),
           headers: { "Content-Type": "application/json" },
         })

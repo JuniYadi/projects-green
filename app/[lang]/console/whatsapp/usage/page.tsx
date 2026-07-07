@@ -23,6 +23,8 @@ import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import type { ChartConfig } from "@/components/ui/chart"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { QuotaProgressBar } from "@/components/whatsapp/quota-progress-bar"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 type PageState = "loading" | "error" | "loaded"
 
@@ -253,12 +255,11 @@ export default function WhatsAppUsagePage() {
     0
   )
   const totalCost = costData?.totalAmount ?? 0
-
   const hasData =
-    totalMessages > 0 || dailyCounts.length > 0 || monthlyCounts.length > 0
+    totalMessages > 0 || dailyCounts.length > 0 || monthlyCounts.length > 0 || (costBreakdown?.totalCost ?? 0) > 0
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
+    <div className="space-y-6">
       <header className="space-y-1">
         <div className="flex items-center justify-between">
           <div>
@@ -409,7 +410,7 @@ export default function WhatsAppUsagePage() {
               <div className="text-2xl font-bold">
                 {costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0).toLocaleString()} / {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">Messages used this month</p>
+              <p className="text-xs text-muted-foreground">Quota credits used this month</p>
             </CardContent>
           </Card>
           <Card>
@@ -421,7 +422,7 @@ export default function WhatsAppUsagePage() {
               <div className="text-2xl font-bold">
                 {(costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0) - costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0)).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">Remaining this period</p>
+              <p className="text-xs text-muted-foreground">Remaining credits this period</p>
             </CardContent>
           </Card>
           <Card>
@@ -469,9 +470,14 @@ export default function WhatsAppUsagePage() {
           </CardHeader>
           <CardContent>
             {!costBreakdown || costBreakdown.byDevice.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No cost data available for this period.
-              </p>
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No cost data available for this period.
+                </p>
+                <Button variant="outline" asChild className="mt-3">
+                  <Link href="?doc=1">Open documentation</Link>
+                </Button>
+              </div>
             ) : (
               <div className="space-y-4">
                 {costBreakdown.byDevice.map((dev) => (
@@ -482,7 +488,7 @@ export default function WhatsAppUsagePage() {
                           {dev.phoneNumber ?? dev.deviceId}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {dev.messageCount.toLocaleString()} messages
+                          {dev.quotaUsed.toLocaleString()} credits used · {dev.messageCount.toLocaleString()} messages
                         </p>
                       </div>
                       <div className="text-right">
@@ -620,9 +626,14 @@ export default function WhatsAppUsagePage() {
                 <Skeleton className="h-8 w-full" />
               </div>
             ) : !costData || costData.byCategory.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No cost data available for this period.
-              </p>
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No cost data available for this period.
+                </p>
+                <Button variant="outline" asChild className="mt-3">
+                  <Link href="?doc=1">Open documentation</Link>
+                </Button>
+              </div>
             ) : (
               <div className="space-y-4">
                 {costData.byCategory.map((cat) => {
@@ -735,6 +746,9 @@ export default function WhatsAppUsagePage() {
               Once your WhatsApp devices start sending and receiving messages,
               usage data will appear here with charts and cost breakdowns.
             </p>
+            <Button variant="outline" asChild className="mt-3">
+              <Link href="?doc=1">Open documentation</Link>
+            </Button>
           </CardContent>
         </Card>
       )}

@@ -31,6 +31,7 @@ export type WhatsappTemplateDTO = Pick<
   | "lastSyncedAt"
   | "createdAt"
   | "updatedAt"
+  | "category"
 > & {
   languages?: WhatsappTemplateLanguageDTO[]
 }
@@ -77,6 +78,7 @@ export function toWhatsappTemplateDTO(
     lastSyncedAt: template.lastSyncedAt,
     createdAt: template.createdAt,
     updatedAt: template.updatedAt,
+    category: template.category,
     languages:
       "languages" in template
         ? template.languages.map(toWhatsappTemplateLanguageDTO)

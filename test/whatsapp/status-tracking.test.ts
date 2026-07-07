@@ -35,6 +35,16 @@ mock.module("@/lib/prisma", () => ({
     whatsappMessage: mockMessage,
     whatsappMessageStatus: mockStatus,
     whatsappConversation: mockConversation,
+    whatsappWebhook: {
+      findMany: mock(async () => []),
+    },
+    whatsappContactGroup: {
+      findFirst: mock(async () => null),
+      create: mock(async () => ({ id: "group_default" })),
+    },
+    whatsappContact: {
+      upsert: mock(async (args: any) => args.create ?? args.update ?? {}),
+    },
   },
 }))
 

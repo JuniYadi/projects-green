@@ -14,6 +14,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Badge } from "@/components/ui/badge"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 
 type SyncStatus = "NOT_SYNCED" | "NOT_IN_META" | "SYNCING" | "SYNCED" | "FAILED"
@@ -197,6 +198,11 @@ export function TemplateList({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {template.category && (
+              <Badge variant="outline" className="text-xs">
+                {template.category}
+              </Badge>
+            )}
             <TemplateStatusBadge status={template.syncStatus ?? "NOT_SYNCED"} />
             <MetaStatusBadge status={template.metaStatus} />
           </div>

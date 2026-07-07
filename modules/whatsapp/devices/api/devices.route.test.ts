@@ -69,7 +69,6 @@ function createMockDevice(overrides: Record<string, unknown> = {}) {
     phoneNumber: "+62811111111",
     balance: 0,
     quotaBase: 1000,
-    quotaBaseIn: 0,
     quotaBaseOut: 0,
     dailyLimitMessage: 500,
     status: "ACTIVE",
@@ -246,98 +245,24 @@ describe("devices routes", () => {
     expect(payload.error).toBe("METHOD_NOT_ALLOWED")
   })
 
-  // ── Update ─────────────────────────────────────────────────────────────────
-
-  it("returns 404 when updating missing device", async () => {
-    setMockAuthContext({ platformRole: "super_admin" })
-    const app = createTestApp()
-
-    const response = await app.handle(
-      new Request("http://localhost/devices/dev_missing", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phoneNumber: "+62833333333" }),
-      })
-    )
-
-    expect(response.status).toBe(404)
-    const payload = (await response.json()) as { ok: boolean; error: string }
-    expect(payload.error).toBe("NOT_FOUND")
-  })
-
-  it("returns 403 when updating device from other org", async () => {
-    mockFindUnique.mockImplementationOnce(async () =>
-      createMockDevice({ id: "dev_other", organizationId: "org_other" })
-    )
-
-    const app = createTestApp()
-
-    const response = await app.handle(
-      new Request("http://localhost/devices/dev_other", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phoneNumber: "+62833333333" }),
-      })
-    )
-
-    expect(response.status).toBe(403)
-    const payload = (await response.json()) as { ok: boolean; error: string }
-    expect(payload.error).toBe("FORBIDDEN")
-  })
-
-  it("updates device with PATCH and ignores non-persisted fields", async () => {
-    mockFindUnique.mockImplementationOnce(async () => createMockDevice())
-    mockUpdate.mockImplementationOnce(async () =>
-      createMockDevice({
-        phoneNumber: "+62833333333",
-        quotaBase: 2000,
-        dailyLimitMessage: 750,
-      })
-    )
-
+  it("does not allow updating device fields from the console API", async () => {
     const app = createTestApp()
 
     const response = await app.handle(
       new Request("http://localhost/devices/dev_1", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: "Updated Name",
-          environment: "SANDBOX",
-          phoneNumber: "+62833333333",
-          quotaBase: 2000,
-          dailyLimitMessage: 750,
-        }),
+        body: JSON.stringify({ phoneNumber: "+62833333333" }),
       })
     )
 
-    expect(response.status).toBe(200)
-    expect(mockUpdate).toHaveBeenCalledWith({
-      where: { id: "dev_1" },
-      data: {
-        phoneNumber: "+62833333333",
-        quotaBase: 2000,
-        dailyLimitMessage: 750,
-      },
-    })
-    const payload = (await response.json()) as { ok: boolean; device?: unknown }
-    expect(payload.ok).toBe(true)
-  })
-
-  it("returns 422 for invalid PATCH body", async () => {
-    const app = createTestApp()
-
-    const response = await app.handle(
-      new Request("http://localhost/devices/dev_1", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phoneNumber: "" }),
-      })
-    )
-
-    expect(response.status).toBe(422)
-    const payload = (await response.json()) as { ok: boolean; error: string }
-    expect(payload.error).toBe("VALIDATION_ERROR")
+    expect(response.status).toBe(405)
+    const payload = (await response.json()) as { ok: boolean; error: string; message: string }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("METHOD_NOT_ALLOWED")
+    expect(payload.message).toBe("WhatsApp device system fields cannot be updated from the console API. Update the WhatsApp profile instead.")
+    // Ensure the prisma update was never called
+    expect(mockUpdate.mock.calls.length).toBe(0)
   })
 
   // ── Delete disabled ─────────────────────────────────────────────────────────

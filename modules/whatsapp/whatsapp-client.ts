@@ -19,7 +19,6 @@ export type Device = {
   phoneNumber: string
   balance: number
   quotaBase: number
-  quotaBaseIn: number
   quotaBaseOut: number
   dailyLimitMessage: number
   status: DeviceStatus
@@ -78,6 +77,7 @@ export type Template = {
   description?: string | null
   syncStatus: TemplateSyncStatus
   metaStatus?: TemplateMetaStatus | null
+  category?: "MARKETING" | "UTILITY" | "AUTHENTICATION" | null
   lastSyncedAt?: string | null
   whatsappDeviceId?: string | null
   createdAt: string
@@ -127,6 +127,9 @@ export type Contact = {
   whatsappDeviceId?: string | null
   createdAt: string
   updatedAt: string
+  lastMessage?: string | null
+  lastMessageAt?: string | null
+  lastMessageDirection?: string | null
 }
 
 export type CreateContactInput = {

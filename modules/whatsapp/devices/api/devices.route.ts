@@ -185,45 +185,12 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       "WhatsApp devices can only be created by admins from the portal."
     )
   )
-  .patch("/:id", async ({ request, params: { id }, body, set }: any) => {
-    const whatsappAuth = await resolveDeviceAuth(request)
-    if (!whatsappAuth) return toUnauthorized(set)
-
-    const parsed = updateDeviceSchema.safeParse(body)
-    if (!parsed.success) {
-      set.status = 422
-      return {
-        ok: false,
-        error: "VALIDATION_ERROR",
-        message: "Please fix the highlighted fields and try again.",
-        fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
-      }
-    }
-
-    const device = await prisma.whatsappDevice.findUnique({
-      where: { id },
-    })
-
-    if (!device) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Device not found." }
-    }
-
-    if (
-      !isSuperAdmin(whatsappAuth) &&
-      device.organizationId !== whatsappAuth.organizationId
-    ) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
-
-    const updated = await prisma.whatsappDevice.update({
-      where: { id },
-      data: await buildDeviceUpdateData(parsed.data),
-    })
-
-    return { ok: true, device: toDeviceDetail(updated) }
-  })
+  .patch("/:id", ({ params: { id }, set }: any) =>
+    toMethodNotAllowed(
+      set,
+      "WhatsApp device system fields cannot be updated from the console API. Update the WhatsApp profile instead."
+    )
+  )
   .delete("/:id", ({ set }: any) =>
     toMethodNotAllowed(
       set,
