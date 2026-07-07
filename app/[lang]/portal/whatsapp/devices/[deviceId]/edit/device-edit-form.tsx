@@ -40,7 +40,6 @@ type DeviceEditInitialData = {
   whatsappVersion: string
   callbackUrl: string
   quotaBase: string
-  quotaBaseIn: string
   quotaBaseOut: string
   dailyLimitMessage: string
   balance: string
@@ -131,7 +130,6 @@ export function DeviceEditForm({
     whatsappVersion: device.whatsappVersion,
     callbackUrl: device.callbackUrl,
     quotaBase: device.quotaBase,
-    quotaBaseIn: device.quotaBaseIn,
     quotaBaseOut: device.quotaBaseOut,
     dailyLimitMessage: device.dailyLimitMessage,
     balance: device.balance,
@@ -183,7 +181,6 @@ export function DeviceEditForm({
         whatsappVersion: form.whatsappVersion || "v24.0",
         callbackUrl: form.callbackUrl,
         quotaBase: toNumber(form.quotaBase),
-        quotaBaseIn: toNumber(form.quotaBaseIn),
         quotaBaseOut: toNumber(form.quotaBaseOut),
         dailyLimitMessage: toNumber(form.dailyLimitMessage),
         balance: toNumber(form.balance),
@@ -364,18 +361,6 @@ export function DeviceEditForm({
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="quotaBaseIn">Quota Base In</Label>
-            <Input
-              id="quotaBaseIn"
-              type="number"
-              min="0"
-              value={form.quotaBaseIn}
-              onChange={(event) =>
-                updateForm({ quotaBaseIn: event.target.value })
-              }
-            />
-          </div>
 
           <div className="grid gap-2">
             <Label htmlFor="quotaBaseOut">Quota Base Out</Label>

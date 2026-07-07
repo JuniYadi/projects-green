@@ -70,6 +70,7 @@ mock.module(
         whatsappDailyCount: { upsert: mock(async () => null) },
         whatsappMonthlyCount: { upsert: mock(async () => null) },
         whatsappBillingLedger: { create: mock(async () => null) },
+        whatsappQuotaCreditRate: { findUnique: mock(async () => null) },
         whatsappTemplate: { findFirst: mock(async () => null) },
         whatsappContactGroup: {
           findFirst: mock(async () => null),

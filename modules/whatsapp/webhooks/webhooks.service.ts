@@ -420,9 +420,14 @@ export async function processDeliveryStatus(
     },
   })
   // Upsert contact on successful delivery statuses (SENT, DELIVERED, READ)
+  const DELIVERY_STATUSES_FOR_UPSERT = new Set<WhatsappMessageDeliveryStatus>([
+    WhatsappMessageDeliveryStatus.SENT,
+    WhatsappMessageDeliveryStatus.DELIVERED,
+    WhatsappMessageDeliveryStatus.READ,
+  ])
   if (
     mappedStatus &&
-    [WhatsappMessageDeliveryStatus.SENT, WhatsappMessageDeliveryStatus.DELIVERED, WhatsappMessageDeliveryStatus.READ].includes(mappedStatus) &&
+    DELIVERY_STATUSES_FOR_UPSERT.has(mappedStatus) &&
     message.conversation
   ) {
     await upsertWhatsappContactFromMessage({

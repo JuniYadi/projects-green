@@ -84,7 +84,6 @@ function createMockDevice(overrides: Record<string, unknown> = {}) {
     phoneNumber: "+62811111111",
     balance: 0,
     quotaBase: 1000,
-    quotaBaseIn: 0,
     quotaBaseOut: 0,
     dailyLimitMessage: 500,
     status: "ACTIVE",

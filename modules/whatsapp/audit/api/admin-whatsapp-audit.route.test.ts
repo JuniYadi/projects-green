@@ -15,6 +15,7 @@ const mockPrisma = {
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 import { createWhatsappAuditRoutes, consoleWhatsappAuditRoutes } from "./whatsapp-audit.route"
+import { type AdminActorContext } from "@/modules/admin/api/admin.guards"
 
 const okAdmin: AdminActorContext = {
   ok: true,
@@ -129,7 +130,7 @@ describe("Admin WhatsApp Audit Routes", () => {
       expect(body.data).toHaveLength(1)
       expect(body.data[0].id).toBe("log_1")
       expect(body.data[0].action).toBe("TEMPLATE_SYNC_REQUESTED")
-      expect(body.pagination).toEqual({ page: 1, limit: 50, total: 1, totalPages: 1 })
+      expect(body.pagination).toEqual({ page: 1, limit: 20, total: 1, totalPages: 1 })
     })
 
     it("returns empty list when no entries", async () => {

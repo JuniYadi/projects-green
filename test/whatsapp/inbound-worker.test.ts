@@ -45,6 +45,13 @@ mock.module("@/lib/prisma", () => ({
     whatsappDevice: mockDevice,
     whatsappDailyCount: mockDailyCount,
     whatsappMonthlyCount: mockMonthlyCount,
+    whatsappContactGroup: {
+      findFirst: mock(async () => null),
+      create: mock(async () => ({ id: "group_default" })),
+    },
+    whatsappContact: {
+      upsert: mock(async () => ({})),
+    },
   },
 }))
 

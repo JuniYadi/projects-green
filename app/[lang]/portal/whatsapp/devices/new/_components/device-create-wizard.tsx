@@ -22,7 +22,6 @@ export type WizardData = {
   whatsappVersion: string
   callbackUrl: string
   quotaBase: string
-  quotaBaseIn: string
   quotaBaseOut: string
   dailyLimitMessage: string
   balance: string
@@ -51,7 +50,6 @@ const emptyData: WizardData = {
   whatsappVersion: "v24.0",
   callbackUrl: "",
   quotaBase: "",
-  quotaBaseIn: "",
   quotaBaseOut: "",
   dailyLimitMessage: "",
   balance: "",
@@ -158,7 +156,6 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
         whatsappVersion: data.whatsappVersion || "v24.0",
         callbackUrl: data.callbackUrl || undefined,
         quotaBase: data.quotaBase ? Number(data.quotaBase) : undefined,
-        quotaBaseIn: data.quotaBaseIn ? Number(data.quotaBaseIn) : undefined,
         quotaBaseOut: data.quotaBaseOut ? Number(data.quotaBaseOut) : undefined,
         dailyLimitMessage: data.dailyLimitMessage
           ? Number(data.dailyLimitMessage)
@@ -196,7 +193,6 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
             whatsappVersion: 1,
             callbackUrl: 1,
             quotaBase: 2,
-            quotaBaseIn: 2,
             quotaBaseOut: 2,
             dailyLimitMessage: 2,
             balance: 2,

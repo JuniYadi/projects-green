@@ -31,21 +31,6 @@ export function StepQuotas({ data, updateData, errors }: Props) {
           )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="quota-in">Quota Base In</Label>
-          <Input
-            id="quota-in"
-            type="number"
-            min={0}
-            value={data.quotaBaseIn}
-            onChange={(e) => updateData({ quotaBaseIn: e.target.value })}
-            placeholder="0"
-            aria-invalid={!!errors.quotaBaseIn}
-          />
-          {errors.quotaBaseIn && (
-            <p className="text-xs text-destructive">{errors.quotaBaseIn}</p>
-          )}
-        </div>
-        <div className="grid gap-2">
           <Label htmlFor="quota-out">Quota Base Out</Label>
           <Input
             id="quota-out"

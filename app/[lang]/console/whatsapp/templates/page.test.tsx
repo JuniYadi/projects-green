@@ -114,8 +114,8 @@ import WhatsAppTemplatesPage from "./page"
 
 describe("WhatsAppTemplatesPage", () => {
   beforeEach(() => {
-    mockUseTemplates.mock.clear()
-    mockUseSyncTemplate.mock.clear()
+    mockUseTemplates.mockClear()
+    mockUseSyncTemplate.mockClear()
   })
 
   describe("category column in DataTable", () => {

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { Prisma, type WhatsappBillingCategory } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 export const DEFAULT_WHATSAPP_QUOTA_CREDIT = new Prisma.Decimal(1)
@@ -23,7 +23,7 @@ export function resolveWhatsappCountry(phoneNumber: string): string {
 }
 
 export type ResolveQuotaCreditResult = {
-  category: Prisma.WhatsappBillingCategory
+  category: WhatsappBillingCategory
   country: string
   quotaCredit: Prisma.Decimal
   description: string | null
@@ -35,7 +35,7 @@ export type ResolveQuotaCreditResult = {
  * with description: null when no rate exists.
  */
 export async function resolveWhatsappQuotaCredit(input: {
-  category: Prisma.WhatsappBillingCategory
+  category: WhatsappBillingCategory
   phoneNumber: string
 }): Promise<ResolveQuotaCreditResult> {
   const country = resolveWhatsappCountry(input.phoneNumber)

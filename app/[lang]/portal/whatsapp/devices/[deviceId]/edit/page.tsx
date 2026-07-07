@@ -58,7 +58,6 @@ export default async function EditWhatsAppDevicePage({
     whatsappVersion: deviceRecord.whatsappVersion,
     callbackUrl: deviceRecord.callbackUrl ?? "",
     quotaBase: deviceRecord.quotaBase.toString(),
-    quotaBaseIn: String(deviceRecord.quotaBaseIn),
     quotaBaseOut: String(deviceRecord.quotaBaseOut),
     dailyLimitMessage: String(deviceRecord.dailyLimitMessage),
     balance: deviceRecord.balance.toString(),

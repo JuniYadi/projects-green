@@ -14,6 +14,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Badge } from "@/components/ui/badge"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 
 type SyncStatus = "NOT_SYNCED" | "NOT_IN_META" | "SYNCING" | "SYNCED" | "FAILED"

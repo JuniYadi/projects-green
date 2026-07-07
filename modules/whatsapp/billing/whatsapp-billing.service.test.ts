@@ -61,7 +61,6 @@ function whatsappDevice(overrides: Partial<Record<string, unknown>> = {}) {
     phoneNumber: "628123456789",
     balance: decimal("0"),
     quotaBase: decimal("1000"),
-    quotaBaseIn: 0,
     quotaBaseOut: decimal("1000"),
     dailyLimitMessage: 0,
     rates: null,

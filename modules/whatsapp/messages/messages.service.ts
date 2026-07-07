@@ -41,6 +41,7 @@ export type SendMessageType =
   | "document"
   | "audio"
   | "location"
+  | "interactive"
 
 export type SendTemplateMessageOptions = {
   organizationId: string

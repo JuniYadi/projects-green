@@ -1,7 +1,14 @@
 import { describe, expect, it, mock } from "bun:test"
 
-const mockFetch = mock(() =>
-  Promise.resolve({
+const mockFetch = mock((input: string | URL | Request) => {
+  const url =
+    typeof input === "string" || input instanceof URL
+      ? input.toString()
+      : input.url
+  const pathname = new URL(url, "http://localhost:3300").pathname
+  void pathname
+  return Promise.resolve({
+    ok: true,
     json: () =>
       Promise.resolve({
         ok: true,
@@ -17,8 +24,8 @@ const mockFetch = mock(() =>
         ],
         pagination: { page: 1, total: 1, totalPages: 1 },
       }),
-  })
-)
+  }) as unknown as Response
+})
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
