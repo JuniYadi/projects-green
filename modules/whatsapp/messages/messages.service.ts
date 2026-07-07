@@ -23,6 +23,7 @@ import {
   QuotaExceededError,
 } from "@/modules/billing/types"
 import { quotaAlertService } from "./quota-alert.service"
+import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 
 export type SendMessageResult = {
   jobId: string
@@ -436,6 +437,14 @@ export const messageService: MessageService = {
       },
     })
 
+    // Upsert contact from this outbound send
+    await upsertWhatsappContactFromMessage({
+      organizationId,
+      phoneNumber,
+      whatsappDeviceId: device.id,
+      messageAt: whatsappMessage.createdAt ?? new Date(),
+    })
+
     // Fire-and-forget: dispatch webhook for sent message
     if (waMessageId) {
       webhookDispatcher
@@ -610,6 +619,13 @@ export const messageService: MessageService = {
         metadata: { jobId, quotaPending, templateName, templateLanguage, fields: fields ?? [] },
       },
     })
+    // Upsert contact from this outbound template send
+    await upsertWhatsappContactFromMessage({
+      organizationId,
+      phoneNumber,
+      whatsappDeviceId: device.id,
+      messageAt: whatsappMessage.createdAt ?? new Date(),
+    })
 
     // Webhook
     if (waMessageId) {
@@ -640,6 +656,16 @@ export const messageService: MessageService = {
           lastDirection: "OUTBOX",
           lastMessageAt: new Date(),
           whatsappDeviceId: deviceId,
+        },
+      })
+    } else {
+      // Always update existing conversation with latest direction and timestamp
+      await prisma.whatsappConversation.update({
+        where: { id: conversation.id },
+        data: {
+          lastDirection: "OUTBOX",
+          lastMessageAt: new Date(),
+          ...(deviceId ? { whatsappDeviceId: deviceId } : {}),
         },
       })
     }

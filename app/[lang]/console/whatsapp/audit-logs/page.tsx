@@ -6,6 +6,13 @@ import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
   AuditLogTable,
   type AuditLogDTO,
 } from "@/modules/whatsapp/audit/ui/whatsapp-audit-table"
@@ -111,7 +118,7 @@ export default function ConsoleWhatsAppAuditLogsPage() {
   const retry = () => setPage(1)
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+    <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold">WhatsApp Audit Logs</h1>
         <p className="text-sm text-muted-foreground">
@@ -196,17 +203,27 @@ export default function ConsoleWhatsAppAuditLogsPage() {
       </div>
 
       {/* Table */}
-      <AuditLogTable
-        logs={logs}
-        isLoading={pageState === "loading"}
-        error={pageState === "error" ? errorMessage : undefined}
-        onRetry={retry}
-        pagination={
-          totalPages > 1
-            ? { page, totalPages, total, onPageChange: handlePageChange }
-            : undefined
-        }
-      />
-    </main>
+      <Card>
+        <CardHeader>
+          <CardTitle>Audit Log</CardTitle>
+          <CardDescription>
+            WhatsApp audit entries for your organization.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AuditLogTable
+            logs={logs}
+            isLoading={pageState === "loading"}
+            error={pageState === "error" ? errorMessage : undefined}
+            onRetry={retry}
+            pagination={
+              totalPages > 1
+                ? { page, totalPages, total, onPageChange: handlePageChange }
+                : undefined
+            }
+          />
+        </CardContent>
+      </Card>
+    </div>
   )
 }

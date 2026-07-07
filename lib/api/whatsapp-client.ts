@@ -57,7 +57,12 @@ export interface WhatsAppContact {
   contactGroupId: string
   status: "ACTIVE" | "INACTIVE"
   whatsappDeviceId?: string | null
-  dynamicValues?: any
+  isWhatsapp?: boolean
+  lastContactedAt?: string | null
+  lastCheckedAt?: string | null
+  lastMessage?: string | null
+  lastMessageAt?: string | null
+  lastMessageDirection?: "INBOX" | "OUTBOX" | null
   dynamicRaw?: string | null
   organizationId: string
   createdAt: string

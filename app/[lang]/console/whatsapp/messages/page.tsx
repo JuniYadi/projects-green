@@ -347,6 +347,18 @@ export default function WhatsAppMessagesPage() {
     [devices]
   )
 
+  const hasSingleActiveDevice = React.useMemo(
+    () => activeDevices.length === 1,
+    [activeDevices]
+  )
+
+  // Auto-select the only active device when there's exactly one
+  React.useEffect(() => {
+    if (hasSingleActiveDevice && !sendDeviceId) {
+      setSendDeviceId(activeDevices[0].id)
+    }
+  }, [activeDevices, hasSingleActiveDevice, sendDeviceId])
+
   const approvedTemplates = React.useMemo(
     () => deviceTemplates.filter((t) => t.metaStatus === "APPROVED"),
     [deviceTemplates]
@@ -488,8 +500,7 @@ export default function WhatsAppMessagesPage() {
         .catch(() => {})
 
       setSendDialogOpen(false)
-      setSendPhone("")
-      setSendDeviceId("")
+      setSendDeviceId(hasSingleActiveDevice ? activeDevices[0]?.id ?? "" : "")
       setSelectedTemplateId("")
       setSelectedTemplateLanguage("")
       setTemplateFieldValues({})
@@ -519,7 +530,7 @@ export default function WhatsAppMessagesPage() {
               New Message
             </Button>
           </DialogTrigger>
-          <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-2xl">
+          <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-5xl">
             <DialogHeader>
               <DialogTitle>Send Template Message</DialogTitle>
               <DialogDescription>
@@ -527,180 +538,230 @@ export default function WhatsAppMessagesPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="min-h-0 flex-1 overflow-y-auto px-1 py-4">
-              {/* Device Selection — must be first */}
-              <div className="grid gap-2 mb-4">
-                <Label htmlFor="send-device">Device *</Label>
-                <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
-                  <SelectTrigger id="send-device">
-                    <SelectValue placeholder="Select a device..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeDevices.length === 0 ? (
-                      <SelectItem value="__none" disabled>
-                        No active devices available
-                      </SelectItem>
-                    ) : (
-                      activeDevices.map((device) => (
-                        <SelectItem key={device.id} value={device.id}>
-                          {device.phoneNumber}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Template Selection — searchable */}
-              <div className="grid gap-2 mb-4">
-                <Label htmlFor="send-template">Template *</Label>
-                {!sendDeviceId ? (
-                  <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
-                    Select a device first
-                  </div>
-                ) : templatesLoading ? (
-                  <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
-                    Loading templates...
-                  </div>
-                ) : templatesError ? (
-                  <div className="flex flex-col gap-2 rounded-md border border-destructive/50 p-3">
-                    <span className="text-sm text-destructive">{templatesError}</span>
-                    <Button size="sm" variant="outline" onClick={reloadTemplates}>
-                      Retry
-                    </Button>
-                  </div>
-                ) : approvedTemplates.length === 0 ? (
-                  <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
-                    No approved templates for this device
-                  </div>
-                ) : (
-                  <>
+              <div className="grid min-h-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+                {/* ── Left Column ───────────────────────────────────── */}
+                <div className="space-y-4">
+                  {/* Phone Number — top of left column */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="send-phone">Phone Number *</Label>
                     <Input
-                      id="send-template"
-                      placeholder="Type to filter templates..."
-                      value={templateSearchQuery}
-                      onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                      id="send-phone"
+                      placeholder="+628123456789"
+                      value={sendPhone}
+                      onChange={(e) => setSendPhone(e.target.value)}
                     />
-                    <div className="max-h-64 overflow-y-auto rounded-md border">
-                      {visibleTemplates.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">
-                          No templates match your search
-                        </div>
-                      ) : (
-                        visibleTemplates.map((tpl) => (
-                          <button
-                            key={tpl.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedTemplateId(tpl.id)
-                              setTemplateSearchQuery("")
-                              setTemplateFieldValues({})
-                              const approvedLang = tpl.languages.find(
-                                (l) => l.isApproved || l.metaStatus === "APPROVED"
-                              )
-                              setSelectedTemplateLanguage(
-                                approvedLang?.lang ?? tpl.languages[0]?.lang ?? ""
-                              )
-                            }}
-                            className={`flex w-full flex-col gap-0.5 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/50 ${
-                              selectedTemplateId === tpl.id ? "bg-muted" : ""
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium text-sm truncate">{tpl.name}</span>
-                              <Badge variant="secondary" className="shrink-0 text-[10px]">
-                                {tpl.languages.length} lang{tpl.languages.length !== 1 ? "s" : ""}
-                              </Badge>
+                  </div>
+
+                  {/* Device Selection — hidden when single active device */}
+                  {hasSingleActiveDevice && sendDeviceId ? (
+                    <div className="grid gap-1">
+                      <Label className="text-xs text-muted-foreground">Device</Label>
+                      <p className="text-sm font-medium">{activeDevices[0].phoneNumber}</p>
+                    </div>
+                  ) : activeDevices.length > 1 ? (
+                    <div className="grid gap-2 mb-4">
+                      <Label htmlFor="send-device">Device *</Label>
+                      <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
+                        <SelectTrigger id="send-device">
+                          <SelectValue placeholder="Select a device..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activeDevices.map((device) => (
+                            <SelectItem key={device.id} value={device.id}>
+                              {device.phoneNumber}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="grid gap-2 mb-4">
+                      <Label htmlFor="send-device">Device *</Label>
+                      <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
+                        <SelectTrigger id="send-device">
+                          <SelectValue placeholder="Select a device..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none" disabled>
+                            No active devices available
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Template Selection — searchable */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="send-template">Template *</Label>
+                    {!sendDeviceId ? (
+                      <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
+                        Select a device first
+                      </div>
+                    ) : templatesLoading ? (
+                      <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
+                        Loading templates...
+                      </div>
+                    ) : templatesError ? (
+                      <div className="flex flex-col gap-2 rounded-md border border-destructive/50 p-3">
+                        <span className="text-sm text-destructive">{templatesError}</span>
+                        <Button size="sm" variant="outline" onClick={reloadTemplates}>
+                          Retry
+                        </Button>
+                      </div>
+                    ) : approvedTemplates.length === 0 ? (
+                      <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
+                        No approved templates for this device
+                      </div>
+                    ) : (
+                      <>
+                        <Input
+                          id="send-template"
+                          placeholder="Type to filter templates..."
+                          value={templateSearchQuery}
+                          onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                        />
+                        <div className="max-h-64 overflow-y-auto rounded-md border">
+                          {visibleTemplates.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">
+                              No templates match your search
                             </div>
-                            <span className="text-xs text-muted-foreground truncate">{tpl.slug}</span>
-                            {tpl.languages[0]?.body && (
-                              <span className="text-xs text-muted-foreground line-clamp-2">
-                                {tpl.languages[0].body.substring(0, 80)}
-                                {tpl.languages[0].body.length > 80 ? "…" : ""}
-                              </span>
+                          ) : (
+                            visibleTemplates.map((tpl) => (
+                              <button
+                                key={tpl.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedTemplateId(tpl.id)
+                                  setTemplateSearchQuery("")
+                                  setTemplateFieldValues({})
+                                  const approvedLang = tpl.languages.find(
+                                    (l) => l.isApproved || l.metaStatus === "APPROVED"
+                                  )
+                                  setSelectedTemplateLanguage(
+                                    approvedLang?.lang ?? tpl.languages[0]?.lang ?? ""
+                                  )
+                                }}
+                                className={`flex w-full flex-col gap-0.5 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/50 ${
+                                  selectedTemplateId === tpl.id ? "bg-muted" : ""
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium text-sm truncate">{tpl.name}</span>
+                                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                                    {tpl.languages.length} lang{tpl.languages.length !== 1 ? "s" : ""}
+                                  </Badge>
+                                </div>
+                                <span className="text-xs text-muted-foreground truncate">{tpl.slug}</span>
+                                {tpl.languages[0]?.body && (
+                                  <span className="text-xs text-muted-foreground line-clamp-2">
+                                    {tpl.languages[0].body.substring(0, 80)}
+                                    {tpl.languages[0].body.length > 80 ? "…" : ""}
+                                  </span>
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Language Selection */}
+                  {selectedTemplateId && (() => {
+                    const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
+                    if (!tpl) return null
+                    return (
+                      <div className="grid gap-2">
+                        <Label htmlFor="send-language">Language *</Label>
+                        <Select
+                          value={selectedTemplateLanguage}
+                          onValueChange={setSelectedTemplateLanguage}
+                        >
+                          <SelectTrigger id="send-language">
+                            <SelectValue placeholder="Select language..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tpl.languages.map((lang) => (
+                              <SelectItem key={lang.lang} value={lang.lang}>
+                                {lang.lang}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Field placeholders */}
+                  {selectedTemplateLanguage && (() => {
+                    const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
+                    const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
+                    const indexes = getTemplateFieldIndexes(lang?.body)
+                    if (indexes.length === 0) return null
+                    return (
+                      <>
+                        {indexes.map((index) => (
+                          <div className="grid gap-2" key={index}>
+                            <Label htmlFor={`field-${index}`}>Field {`{{${index}}}`}</Label>
+                            <Input
+                              id={`field-${index}`}
+                              placeholder={`Value for {{${index}}}`}
+                              value={templateFieldValues[index] ?? ""}
+                              onChange={(e) =>
+                                setTemplateFieldValues((prev) => ({ ...prev, [index]: e.target.value }))
+                              }
+                            />
+                          </div>
+                        ))}
+                      </>
+                    )
+                  })()}
+                </div>
+
+                {/* ── Right Column: Preview Panel ─────────────────────── */}
+                <div className="space-y-4 lg:sticky lg:top-0">
+                  <div className="rounded-lg border bg-card">
+                    <div className="border-b px-4 py-3">
+                      <h4 className="text-sm font-semibold">Message Preview</h4>
+                    </div>
+                    <div className="space-y-3 p-4">
+                      {selectedTemplateId ? (() => {
+                        const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
+                        if (!tpl) return null
+                        return (
+                          <>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Template</p>
+                              <p className="text-sm font-medium">{tpl.name}</p>
+                            </div>
+                            {selectedTemplateLanguage && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Language</p>
+                                <p className="text-sm">{selectedTemplateLanguage}</p>
+                              </div>
                             )}
-                          </button>
-                        ))
+                            {(() => {
+                              const lang = tpl.languages.find((l) => l.lang === selectedTemplateLanguage)
+                              if (!lang?.body) return null
+                              return (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Body</p>
+                                  <div className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                                    {renderTemplatePreview(lang.body, templateFieldValues) || "—"}
+                                  </div>
+                                </div>
+                              )
+                            })()}
+                          </>
+                        )
+                      })() : (
+                        <p className="text-sm text-muted-foreground">
+                          Select a template to see a preview.
+                        </p>
                       )}
                     </div>
-                  </>
-                )}
-              </div>
-
-              {/* Language Selection */}
-              {selectedTemplateId && (() => {
-                const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
-                if (!tpl) return null
-                return (
-                  <div className="grid gap-2 mb-4">
-                    <Label htmlFor="send-language">Language *</Label>
-                    <Select
-                      value={selectedTemplateLanguage}
-                      onValueChange={setSelectedTemplateLanguage}
-                    >
-                      <SelectTrigger id="send-language">
-                        <SelectValue placeholder="Select language..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tpl.languages.map((lang) => (
-                          <SelectItem key={lang.lang} value={lang.lang}>
-                            {lang.lang}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
-                )
-              })()}
-
-              {/* Field placeholders */}
-              {selectedTemplateLanguage && (() => {
-                const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
-                const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
-                const indexes = getTemplateFieldIndexes(lang?.body)
-                if (indexes.length === 0) return null
-                return (
-                  <>
-                    {indexes.map((index) => (
-                      <div className="grid gap-2 mb-4" key={index}>
-                        <Label htmlFor={`field-${index}`}>Field {`{{${index}}}`}</Label>
-                        <Input
-                          id={`field-${index}`}
-                          placeholder={`Value for {{${index}}}`}
-                          value={templateFieldValues[index] ?? ""}
-                          onChange={(e) =>
-                            setTemplateFieldValues((prev) => ({ ...prev, [index]: e.target.value }))
-                          }
-                        />
-                      </div>
-                    ))}
-                  </>
-                )
-              })()}
-
-              {/* Template Preview */}
-              {selectedTemplateLanguage && (() => {
-                const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
-                const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
-                if (!lang?.body) return null
-                return (
-                  <div className="grid gap-2 mb-4">
-                    <Label>Template preview</Label>
-                    <div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-                      {renderTemplatePreview(lang.body, templateFieldValues) || "—"}
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* Phone Number */}
-              <div className="grid gap-2">
-                <Label htmlFor="send-phone">Phone Number *</Label>
-                <Input
-                  id="send-phone"
-                  placeholder="+628123456789"
-                  value={sendPhone}
-                  onChange={(e) => setSendPhone(e.target.value)}
-                />
+                </div>
               </div>
             </div>
             <DialogFooter>

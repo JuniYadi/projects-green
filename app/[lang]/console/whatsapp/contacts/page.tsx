@@ -562,6 +562,16 @@ export default function WhatsAppContactsPage() {
                       <p className="text-sm text-muted-foreground">
                         {contact.phoneNumber}
                       </p>
+                      {contact.lastMessage && (
+                        <p className="max-w-64 truncate text-xs text-muted-foreground">
+                          Last: {contact.lastMessage}
+                        </p>
+                      )}
+                      {contact.lastMessageAt && (
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(contact.lastMessageAt).toLocaleString()}
+                        </p>
+                      )}
                       {contact.contactGroupId &&
                         groupMap.has(contact.contactGroupId) && (
                           <p className="text-xs text-muted-foreground">

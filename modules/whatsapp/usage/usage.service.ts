@@ -263,53 +263,37 @@ export class WhatsappUsageService {
       select: { id: true, phoneNumber: true, quotaBase: true },
     })
 
-    // ponytail: raw query keeps grouping cheap without adding DTO-shaped plumbing.
-    const periodStart = new Date(Date.UTC(year, month - 1, 1))
-    const periodEnd = new Date(Date.UTC(year, month, 1))
-    const deviceFilter = opts.deviceId
-      ? Prisma.sql`AND "whatsappDeviceId" = ${opts.deviceId}`
-      : Prisma.empty
+    // Fetch ledger rows via typed query
+    const ledgerRows = await prisma.billingUsageLedger.findMany({
+      where: {
+        organizationId,
+        period,
+        category: { in: WHATSAPP_CATEGORIES },
+      },
+    })
 
-    const ledgerRows = await prisma.$queryRaw<Array<{
-      whatsappDeviceId: string | null
-      category: string
-      totalAmount: bigint | number
-      entryCount: bigint | number
-    }>>`
-      SELECT
-        "whatsappDeviceId",
-        "category",
-        COALESCE(SUM("quotaValue"), 0) as "totalAmount",
-        COUNT(*) as "entryCount"
-      FROM "WhatsappBillingLedger"
-      WHERE "organizationId" = ${organizationId}
-        AND "category" IN ('WHATSAPP_MESSAGE_IN', 'WHATSAPP_MESSAGE_OUT')
-        AND "createdAt" >= ${periodStart}
-        AND "createdAt" < ${periodEnd}
-        ${deviceFilter}
-      GROUP BY "whatsappDeviceId", "category"
-    `
-
-    // Build device cost map
+    // Build device cost map from ledger rows
     const deviceCostMap = new Map<string, { total: number; byCat: Map<string, { count: number; total: number }>; messageCount: number }>()
     for (const row of ledgerRows) {
-      const devId = row.whatsappDeviceId ?? "unknown"
-      if (!deviceCostMap.has(devId)) {
-        deviceCostMap.set(devId, { total: 0, byCat: new Map(), messageCount: 0 })
+      const metadata = row.metadata as Record<string, unknown> | null
+      const rowDeviceId = typeof metadata?.deviceId === "string" ? metadata.deviceId : "unknown"
+      if (opts.deviceId && rowDeviceId !== opts.deviceId) continue
+      if (!deviceCostMap.has(rowDeviceId)) {
+        deviceCostMap.set(rowDeviceId, { total: 0, byCat: new Map(), messageCount: 0 })
       }
-      const entry = deviceCostMap.get(devId)!
-      const amount = Number(row.totalAmount)
-      const count = Number(row.entryCount)
+      const entry = deviceCostMap.get(rowDeviceId)!
+      const amount = toNum(row.amountIdr)
       entry.total += amount
-      entry.messageCount += count
+      entry.messageCount += 1
       const cat = row.category ?? "UNKNOWN"
       const catEntry = entry.byCat.get(cat) ?? { count: 0, total: 0 }
-      catEntry.count += count
+      catEntry.count += 1
       catEntry.total += amount
       entry.byCat.set(cat, catEntry)
     }
 
-    // Build per-device breakdown
+    // Build per-device breakdown — union of known devices and ledger device IDs
+    const deviceIdsFromLedger = Array.from(deviceCostMap.keys())
     const byDevice: DeviceCostBreakdownDTO[] = devices.map((dev) => {
       const costs = deviceCostMap.get(dev.id) ?? { total: 0, byCat: new Map(), messageCount: 0 }
       const quotaBase = toNum(dev.quotaBase)
@@ -329,6 +313,26 @@ export class WhatsappUsageService {
         quotaPercent,
       }
     })
+
+    // Add ledger-only device IDs (not in device table)
+    for (const ledgerDevId of deviceIdsFromLedger) {
+      if (devices.some((d) => d.id === ledgerDevId)) continue
+      const costs = deviceCostMap.get(ledgerDevId)!
+      byDevice.push({
+        deviceId: ledgerDevId,
+        phoneNumber: null,
+        totalCost: costs.total,
+        byCategory: Array.from(costs.byCat.entries()).map(([category, data]) => ({
+          category,
+          count: data.count,
+          totalCost: data.total,
+        })),
+        messageCount: costs.messageCount,
+        quotaBase: 0,
+        quotaUsed: costs.total,
+        quotaPercent: 0,
+      })
+    }
 
     const totalCost = byDevice.reduce((s, d) => s + d.totalCost, 0)
     const projectedCost = isCurrentPeriod && daysElapsed > 0

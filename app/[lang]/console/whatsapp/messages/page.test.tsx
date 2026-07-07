@@ -1,22 +1,5 @@
-import { describe, expect, it, mock } from "bun:test"
-import { render } from "@testing-library/react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { render, waitFor, fireEvent } from "@testing-library/react"
 import * as React from "react"
 
 // ─── Mock functions (must be declared before mock.module) ───────────────────
@@ -141,20 +124,23 @@ mock.module("@/modules/whatsapp/messages/ui/message-status-badge", () => ({
 
 import WhatsAppMessagesPage from "./page"
 
+function tick(ms = 50) {
+  const { promise, resolve } = Promise.withResolvers<void>()
+  setTimeout(resolve, ms)
+  return promise
+}
+
 describe("WhatsAppMessagesPage", () => {
+  beforeEach(() => {
+    mockSendTemplate.mockClear()
+  })
+
   it("renders the page with a New Message button", async () => {
     const view = render(<WhatsAppMessagesPage />)
 
-    // Page header renders
     expect(view.getByText("Messages")).toBeInTheDocument()
-
-    // New Message button renders
     expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
-
-    // Page does NOT render the old free-form "Message *" textarea
     expect(view.queryByText("Message *")).not.toBeInTheDocument()
-
-    // Page does NOT contain interactive composer trigger text
     expect(view.queryByText(/interactive message/i)).not.toBeInTheDocument()
     expect(view.queryByText(/reply buttons/i)).not.toBeInTheDocument()
     expect(view.queryByText(/cta url/i)).not.toBeInTheDocument()
@@ -162,105 +148,68 @@ describe("WhatsAppMessagesPage", () => {
     view.unmount()
   })
 
-  it("dialog content shows template-first send flow when rendered open", () => {
-    const mockDevices = [
-      {
-        id: "device_1",
-        phoneNumber: "+6281234567890",
-        status: "ACTIVE",
-        name: "Test Device",
-        organizationId: "org_1",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ]
+  it("opens send dialog and shows 2-column layout with single-device auto-selection", async () => {
+    const view = render(<WhatsAppMessagesPage />)
 
-    const view = render(
-      <div>
-        <div>
-          <h2>Send Template Message</h2>
-          <p>
-            Select an approved WhatsApp template, fill required fields, then
-            send it to a phone number.
-          </p>
-        </div>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="send-template">Template *</Label>
-            <Select defaultValue="tpl_1">
-              <SelectTrigger id="send-template">
-                <SelectValue placeholder="Select a template..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tpl_1">hello_world</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    // Wait for devices to load and auto-select to complete
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled()
+    })
+    await tick(50)
 
-          <div className="grid gap-2">
-            <Label htmlFor="send-language">Language *</Label>
-            <Select defaultValue="en">
-              <SelectTrigger id="send-language">
-                <SelectValue placeholder="Select language..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">en</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    // Click New Message to open dialog
+    fireEvent.click(view.getByRole("button", { name: /new message/i }))
 
-          <div className="grid gap-2">
-            <Label>Template preview</Label>
-            <div>{"Hello {{1}}, you have {{2}} messages."}</div>
-          </div>
+    // Dialog title should appear
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+    })
 
-          <div className="grid gap-2">
-            <Label htmlFor="send-phone">Phone Number *</Label>
-            <Input
-              id="send-phone"
-              placeholder="+628123456789"
-              defaultValue=""
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="send-device">Device (optional)</Label>
-            <Select defaultValue="auto">
-              <SelectTrigger id="send-device">
-                <SelectValue placeholder="Auto-select device" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">Auto-select device</SelectItem>
-                {mockDevices.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.phoneNumber}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline">Cancel</Button>
-          <Button>Send Template Message</Button>
-        </div>
-      </div>
-    )
-
-    // Dialog title
-    // Dialog title via heading
-    expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument()
-
-    // Template-first flow elements
-    expect(view.getByText("Template *")).toBeInTheDocument()
-    expect(view.getByText("Language *")).toBeInTheDocument()
-    expect(view.getByText("Template preview")).toBeInTheDocument()
+    // Phone Number field rendered at top of left column
     expect(view.getByText("Phone Number *")).toBeInTheDocument()
 
-    // No free-form message field
+    // Device * NOT rendered — single active device auto-selected
+    expect(view.queryByText("Device *")).not.toBeInTheDocument()
+    expect(view.getByText("+6281234567890")).toBeInTheDocument()
+
+    // Template * rendered after Phone Number in DOM order
+    expect(view.getByText("Template *")).toBeInTheDocument()
+    const phoneLabel = view.getByText("Phone Number *")
+    const templateLabel = view.getByText("Template *")
+    expect(phoneLabel.compareDocumentPosition(templateLabel)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
+
+    // Preview heading renders
+    expect(view.getByText("Message Preview")).toBeInTheDocument()
+
+    // Fill phone and select template
+    const phoneInput = view.getByPlaceholderText("+628123456789")
+    fireEvent.change(phoneInput, { target: { value: "+6289876543210" } })
+    const templateButtons = view.getAllByText("hello_world")
+    fireEvent.click(templateButtons[0])
+
+    // Send button is enabled
+    const sendButton = view.getByRole("button", { name: /send template message/i })
+    expect(sendButton).not.toBeDisabled()
+
+    view.unmount()
+  })
+
+  it("does not render old free-form message fields", async () => {
+    const view = render(<WhatsAppMessagesPage />)
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
+    })
+
     expect(view.queryByText("Message *")).not.toBeInTheDocument()
     expect(view.queryByText(/interactive message/i)).not.toBeInTheDocument()
     expect(view.queryByText(/reply buttons/i)).not.toBeInTheDocument()
     expect(view.queryByText(/cta url/i)).not.toBeInTheDocument()
+
+    view.unmount()
   })
 })

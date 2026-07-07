@@ -10,6 +10,7 @@ import {
   type WhatsAppBroadcastJobData,
 } from "@/lib/queue/whatsapp-broadcast"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
+import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 
 const redisConnection = getWhatsAppBroadcastRedisConnection()
 const broadcastQueue = new Queue<WhatsAppBroadcastJobData>(
@@ -253,6 +254,17 @@ async function dispatchBroadcast(
           },
         },
       },
+    })
+
+    // Upsert contact from this broadcast send — has provider message id, mark as WhatsApp active
+    await upsertWhatsappContactFromMessage({
+      organizationId: campaign.organizationId,
+      phoneNumber: recipient.phoneNumber,
+      whatsappDeviceId: device.id,
+      messageAt: new Date(),
+      isWhatsapp: true,
+      waId: result.providerMessageId,
+      markChecked: true,
     })
 
     // Record billing ledger + daily/monthly counters

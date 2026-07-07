@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { toWhatsappContactDTO } from "../contacts.dto"
+import { resolveWhatsappContactGroupId } from "../contacts.service"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
 const contactBodySchema = t.Object({
@@ -14,10 +15,9 @@ const contactBodySchema = t.Object({
   dynamicValues: t.Optional(t.Any()),
   dynamicRaw: t.Optional(t.String()),
 })
-
 const contactUpdateSchema = t.Partial(contactBodySchema)
 
-const DEFAULT_CONTACT_GROUP_NAME = "Ungrouped"
+
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
 
@@ -30,42 +30,6 @@ function getPagination(query: Record<string, unknown>) {
   return { page, limit, skip: (page - 1) * limit }
 }
 
-// Resolve a usable contact group id for an organization. When the caller does
-// not provide one, fall back to (or lazily create) a default "Ungrouped" group
-// so contacts can be added without a dedicated Groups UI (WhatsApp MVP).
-async function resolveContactGroupId(
-  organizationId: string,
-  requestedGroupId?: string
-): Promise<{ ok: true; id: string } | { ok: false; message: string }> {
-  if (requestedGroupId) {
-    const group = await prisma.whatsappContactGroup.findFirst({
-      where: { id: requestedGroupId, organizationId },
-    })
-    if (!group) {
-      return {
-        ok: false,
-        message: "Contact group not found or access denied.",
-      }
-    }
-    return { ok: true, id: group.id }
-  }
-
-  const existingDefault = await prisma.whatsappContactGroup.findFirst({
-    where: { organizationId, name: DEFAULT_CONTACT_GROUP_NAME },
-  })
-  if (existingDefault) {
-    return { ok: true, id: existingDefault.id }
-  }
-
-  const created = await prisma.whatsappContactGroup.create({
-    data: {
-      organizationId,
-      name: DEFAULT_CONTACT_GROUP_NAME,
-      description: "Default audience for ungrouped contacts.",
-    },
-  })
-  return { ok: true, id: created.id }
-}
 
 export const contactsRoutes = new Elysia({ prefix: "/contacts" })
   .get(
@@ -96,7 +60,37 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
           take: limit,
         }),
       ])
-      const data = contacts.map(toWhatsappContactDTO)
+
+      // Enrich with conversation-derived last-message data
+      const phoneNumbers = contacts.map((c) => c.phoneNumber)
+      let conversationMap = new Map<string, { lastMessage: string | null; lastMessageAt: Date | null; lastMessageDirection: Prisma.WhatsappMessageDirection | null }>()
+      if (phoneNumbers.length > 0) {
+        const conversations = await prisma.whatsappConversation.findMany({
+          where: { organizationId: whatsappAuth.organizationId!, contactPhone: { in: phoneNumbers } },
+          select: {
+            contactPhone: true,
+            lastMessageAt: true,
+            lastDirection: true,
+            whatsappMessages: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { body: true, messageType: true },
+            },
+          },
+        })
+        for (const conv of conversations) {
+          const latestMsg = conv.whatsappMessages[0]
+          conversationMap.set(conv.contactPhone, {
+            lastMessage: latestMsg?.body ?? latestMsg?.messageType ?? null,
+            lastMessageAt: conv.lastMessageAt,
+            lastMessageDirection: conv.lastDirection,
+          })
+        }
+      }
+      const data = contacts.map((c) => {
+        const summary = conversationMap.get(c.phoneNumber) ?? null
+        return toWhatsappContactDTO(c, summary)
+      })
       return {
         ok: true,
         contacts: data,
@@ -156,7 +150,7 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
       // Resolve the contact group: use the requested one, or fall back to a
       // lazily-created default "Ungrouped" group so contacts can be created
       // without requiring a Groups UI.
-      const resolvedGroup = await resolveContactGroupId(
+      const resolvedGroup = await resolveWhatsappContactGroupId(
         whatsappAuth.organizationId!,
         body.contactGroupId
       )

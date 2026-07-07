@@ -82,6 +82,14 @@ const mockPrisma = {
   whatsappConversation: {
     findFirst: mock(async () => null),
     create: mock(async () => ({ id: "conv-1" })),
+    update: mock(async () => ({ id: "conv-1" })),
+  },
+  whatsappContactGroup: {
+    findFirst: mock(async () => null),
+    create: mock(async () => ({ id: "group_default", organizationId: "tenant-1", name: "Ungrouped" })),
+  },
+  whatsappContact: {
+    upsert: mock(async (args: any) => args.create ?? args.update ?? {}),
   },
   whatsappMessage: {
     create: mock(async () => ({ id: "msg-1" })),

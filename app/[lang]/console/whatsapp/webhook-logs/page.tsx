@@ -161,7 +161,7 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+    <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">Webhook Logs</h1>
         <p className="text-muted-foreground">
@@ -225,6 +225,6 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
           )}
         </CardContent>
       </Card>
-    </main>
+    </div>
   )
 }
