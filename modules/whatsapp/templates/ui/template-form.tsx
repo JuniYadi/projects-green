@@ -38,6 +38,7 @@ type TemplateFormProps = {
     name: string
     slug: string
     description?: string | null
+    category?: string | null
     languages?: LanguageVariant[]
   }
   submitting: boolean
@@ -45,6 +46,7 @@ type TemplateFormProps = {
     name: string
     slug: string
     description?: string
+    category?: string
     languages: Omit<LanguageVariant, "id">[]
   }) => Promise<void>
 }
@@ -68,6 +70,9 @@ export function TemplateForm({
   const [slug, setSlug] = React.useState(initialData?.slug ?? "")
   const [description, setDescription] = React.useState(
     initialData?.description ?? ""
+  )
+  const [category, setCategory] = React.useState(
+    initialData?.category ?? "UTILITY"
   )
   const [variants, setVariants] = React.useState<LanguageVariant[]>(
     initialData?.languages?.length
@@ -114,6 +119,7 @@ export function TemplateForm({
       name: name.trim(),
       slug: slug.trim(),
       description: description.trim() || undefined,
+      category: category,
       languages: variants.map((v) => {
         return {
           lang: v.lang,
@@ -151,7 +157,7 @@ export function TemplateForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* ── Core fields ─────────────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="grid gap-2">
           <Label htmlFor="name">
             Name <span className="text-destructive">*</span>
@@ -179,6 +185,21 @@ export function TemplateForm({
           {errors.slug && (
             <p className="text-xs text-destructive">{errors.slug}</p>
           )}
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="category">
+            Category <span className="text-destructive">*</span>
+          </Label>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger id="category">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="MARKETING">Marketing</SelectItem>
+              <SelectItem value="UTILITY">Utility</SelectItem>
+              <SelectItem value="AUTHENTICATION">Authentication</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

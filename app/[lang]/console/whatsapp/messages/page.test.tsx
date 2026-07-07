@@ -197,6 +197,45 @@ describe("WhatsAppMessagesPage", () => {
 
     view.unmount()
   })
+  it("shows send button enabled after filling all fields", async () => {
+    const view = render(<WhatsAppMessagesPage />)
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled()
+    })
+    await tick(100)
+
+    // Open dialog
+    fireEvent.click(view.getByRole("button", { name: /new message/i }))
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+    })
+
+    // Fill phone
+    const phoneInput = view.getByPlaceholderText("+628123456789")
+    fireEvent.change(phoneInput, { target: { value: "+6289876543210" } })
+
+    // Select template (works inside dialog)
+    fireEvent.click(view.getAllByText("hello_world")[0])
+
+    // Wait for placeholder fields to appear
+    await waitFor(() => {
+      expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument()
+    })
+
+    // Fill placeholder fields
+    fireEvent.change(view.getByPlaceholderText("Value for {{1}}"), { target: { value: "John" } })
+    fireEvent.change(view.getByPlaceholderText("Value for {{2}}"), { target: { value: "Acme Corp" } })
+    await tick(100)
+
+    // Verify button state
+    const sendButton = view.getByRole("button", { name: /send template message/i })
+    expect(sendButton).not.toBeDisabled()
+
+    view.unmount()
+  })
 
   it("does not render old free-form message fields", async () => {
     const view = render(<WhatsAppMessagesPage />)

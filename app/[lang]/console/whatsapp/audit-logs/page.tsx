@@ -57,7 +57,7 @@ export default function ConsoleWhatsAppAuditLogsPage() {
   const [filterTo, setFilterTo] = React.useState(searchParams.get("to") ?? "")
 
   const buildQuery = React.useCallback(() => {
-    const q: Record<string, string> = { page: String(page), limit: "50" }
+    const q: Record<string, string> = { page: String(page), limit: "20" }
     if (filterAction) q.action = filterAction
     if (filterStatus) q.status = filterStatus
     if (filterDeviceId) q.deviceId = filterDeviceId

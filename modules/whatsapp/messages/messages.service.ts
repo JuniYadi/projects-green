@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { quotaService, InsufficientQuotaError } from "./quota.service"
 import { enqueueQuotaReconciliation } from "@/lib/queue/quota-reconciliation"
 import { randomUUID } from "crypto"
-import { Prisma } from "@prisma/client"
+import { Prisma, WhatsappBillingCategory } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
 import { webhookDispatcher } from "@/modules/whatsapp/webhooks/webhook-dispatcher.service"
@@ -24,7 +24,9 @@ import {
 } from "@/modules/billing/types"
 import { quotaAlertService } from "./quota-alert.service"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
-
+import {
+  resolveWhatsappQuotaCredit,
+} from "./quota-credit.service"
 export type SendMessageResult = {
   jobId: string
   messageId: string
@@ -38,9 +40,7 @@ export type SendMessageType =
   | "image"
   | "document"
   | "audio"
-  | "video"
   | "location"
-  | "interactive"
 
 export type SendTemplateMessageOptions = {
   organizationId: string
@@ -50,7 +50,9 @@ export type SendTemplateMessageOptions = {
   fields?: string[]
   renderedBody?: string | null
   deviceId?: string
+  billingCategory?: WhatsappBillingCategory
 }
+
 export type SendMessageOptions = {
   organizationId: string
   phoneNumber: string
@@ -127,8 +129,11 @@ export const messageService: MessageService = {
       deviceId,
     })
 
-    // Calculate message count (1 for single text messages)
-    const messageCount = 1
+    // Resolve quota credit for REPLY category (free-form messages)
+    const quotaCredit = await resolveWhatsappQuotaCredit({
+      category: WhatsappBillingCategory.REPLY,
+      phoneNumber,
+    })
 
     // idempotencyKey includes retry context so broadcast retries generate unique keys
     const idempotencyKey = `wa-message:${jobId}:attempt-0`
@@ -140,7 +145,7 @@ export const messageService: MessageService = {
       billingDecision = await whatsappBilling.consumeAllowanceOrChargeOverage({
         organizationId,
         deviceId: device.id,
-        messageCount,
+        quotaCredit: quotaCredit.quotaCredit,
         unitPrice,
         idempotencyKey,
       })
@@ -243,7 +248,7 @@ export const messageService: MessageService = {
       // Compensate: restore allowance if it was consumed
       if (billingDecision?.kind === "ALLOWANCE") {
         whatsappBilling
-          .restoreAllowance(device.id, messageCount)
+          .restoreAllowance(device.id, quotaCredit.quotaCredit)
           .catch((restoreErr) => {
             console.error(
               "[messageService] Failed to restore allowance:",
@@ -371,9 +376,9 @@ export const messageService: MessageService = {
               organizationId,
               waMessageId,
               phoneNumber,
-              category: "SERVICE",
+              category: quotaCredit.category,
               quotaKey: device.id,
-              quotaValue: messageRateIdr,
+              quotaValue: quotaCredit.quotaCredit,
               whatsappDeviceId: device.id,
             },
           }),
@@ -470,7 +475,7 @@ export const messageService: MessageService = {
     }
   },
   async sendTemplateMessage(options: SendTemplateMessageOptions) {
-    const { organizationId, phoneNumber, deviceId, templateName, templateLanguage, fields, renderedBody } = options
+    const { organizationId, phoneNumber, deviceId, templateName, templateLanguage, fields, renderedBody, billingCategory } = options
     const jobId = `wa-job-${randomUUID()}`
 
     // Get device
@@ -493,13 +498,20 @@ export const messageService: MessageService = {
       messageType: "text",
       deviceId,
     })
-    const messageCount = 1
+
+    // Resolve quota credit: use template's category or default to UTILITY
+    const resolvedCategory = billingCategory ?? WhatsappBillingCategory.UTILITY
+    const quotaCredit = await resolveWhatsappQuotaCredit({
+      category: resolvedCategory,
+      phoneNumber,
+    })
+
     const idempotencyKey = `wa-message:${jobId}:attempt-0`
     let billingDecision: import("@/modules/whatsapp/billing/whatsapp-billing.service").WhatsappBillingDecision | null = null
 
     try {
       billingDecision = await whatsappBilling.consumeAllowanceOrChargeOverage({
-        organizationId, deviceId: device.id, messageCount, unitPrice, idempotencyKey,
+        organizationId, deviceId: device.id, quotaCredit: quotaCredit.quotaCredit, unitPrice, idempotencyKey,
       })
     } catch (err) {
       if (err instanceof Error && err.message === "INSUFFICIENT_BALANCE") {
@@ -543,7 +555,7 @@ export const messageService: MessageService = {
     } catch (err) {
       console.error("[messageService] Failed to send template via Meta API:", err)
       if (billingDecision?.kind === "ALLOWANCE") {
-        whatsappBilling.restoreAllowance(device.id, messageCount).catch(() => {})
+        whatsappBilling.restoreAllowance(device.id, quotaCredit.quotaCredit).catch(() => {})
       }
     }
 
@@ -590,7 +602,7 @@ export const messageService: MessageService = {
             create: { organizationId, year, month, whatsappDeviceId: device.id, messageOutboxCount: 1 },
           }),
           prisma.whatsappBillingLedger.create({
-            data: { organizationId, waMessageId, phoneNumber, category: "SERVICE", quotaKey: device.id, quotaValue: messageRateIdr, whatsappDeviceId: device.id },
+            data: { organizationId, waMessageId, phoneNumber, category: quotaCredit.category, quotaKey: device.id, quotaValue: quotaCredit.quotaCredit, whatsappDeviceId: device.id },
           }),
           prisma.whatsappDevice.update({
             where: { id: device.id }, data: { currentQuotaUsed: { increment: messageRateIdr } }, select: { currentQuotaUsed: true },

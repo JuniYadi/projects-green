@@ -448,6 +448,9 @@ export async function syncTemplateStatus(
           syncStatus: WhatsappTemplateSyncStatus.SYNCED,
           metaStatus,
           lastSyncedAt: new Date(),
+          ...(template.category
+            ? { category: template.category as WhatsappBillingCategory }
+            : {}),
         },
       })
 

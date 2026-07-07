@@ -525,6 +525,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           templateLanguage,
           fields,
           renderedBody,
+          billingCategory: template.category ?? undefined,
         })
 
         logWhatsappAuditEvent({

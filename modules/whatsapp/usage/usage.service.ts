@@ -263,7 +263,7 @@ export class WhatsappUsageService {
       select: { id: true, phoneNumber: true, quotaBase: true },
     })
 
-    // Fetch ledger rows via typed query
+    // Fetch ledger rows (cost in IDR) via typed query
     const ledgerRows = await prisma.billingUsageLedger.findMany({
       where: {
         organizationId,
@@ -272,7 +272,19 @@ export class WhatsappUsageService {
       },
     })
 
-    // Build device cost map from ledger rows
+    // Fetch WhatsApp billing ledger rows (quota credits)
+    const whatsappLedgerRows = await prisma.whatsappBillingLedger.findMany({
+      where: {
+        organizationId,
+        isReverted: false,
+        createdAt: {
+          gte: new Date(`${period}-01`),
+          lt: new Date(`${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}-01`),
+        },
+      },
+    })
+
+    // Build device cost map from BillingUsageLedger (IDR cost + message count)
     const deviceCostMap = new Map<string, { total: number; byCat: Map<string, { count: number; total: number }>; messageCount: number }>()
     for (const row of ledgerRows) {
       const metadata = row.metadata as Record<string, unknown> | null
@@ -292,12 +304,22 @@ export class WhatsappUsageService {
       entry.byCat.set(cat, catEntry)
     }
 
+    // Build device quota map from WhatsappBillingLedger (quota credits, keyed by whatsappDeviceId)
+    const deviceQuotaMap = new Map<string, number>()
+    for (const row of whatsappLedgerRows) {
+      const rowDeviceId = row.whatsappDeviceId ?? "unknown"
+      if (opts.deviceId && rowDeviceId !== opts.deviceId) continue
+      const quotaVal = toNum(row.quotaValue)
+      deviceQuotaMap.set(rowDeviceId, (deviceQuotaMap.get(rowDeviceId) ?? 0) + quotaVal)
+    }
+
     // Build per-device breakdown — union of known devices and ledger device IDs
     const deviceIdsFromLedger = Array.from(deviceCostMap.keys())
     const byDevice: DeviceCostBreakdownDTO[] = devices.map((dev) => {
       const costs = deviceCostMap.get(dev.id) ?? { total: 0, byCat: new Map(), messageCount: 0 }
       const quotaBase = toNum(dev.quotaBase)
-      const quotaPercent = quotaBase > 0 ? Math.min(100, (costs.total / quotaBase) * 100) : 0
+      const quotaUsed = deviceQuotaMap.get(dev.id) ?? 0
+      const quotaPercent = quotaBase > 0 ? Math.min(100, (quotaUsed / quotaBase) * 100) : 0
       return {
         deviceId: dev.id,
         phoneNumber: dev.phoneNumber,
@@ -309,7 +331,7 @@ export class WhatsappUsageService {
         })),
         messageCount: costs.messageCount,
         quotaBase,
-        quotaUsed: costs.total,
+        quotaUsed,
         quotaPercent,
       }
     })
@@ -329,7 +351,7 @@ export class WhatsappUsageService {
         })),
         messageCount: costs.messageCount,
         quotaBase: 0,
-        quotaUsed: costs.total,
+        quotaUsed: deviceQuotaMap.get(ledgerDevId) ?? 0,
         quotaPercent: 0,
       })
     }

@@ -259,7 +259,7 @@ export default function WhatsAppUsagePage() {
     totalMessages > 0 || dailyCounts.length > 0 || monthlyCounts.length > 0 || (costBreakdown?.totalCost ?? 0) > 0
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
+    <div className="space-y-6">
       <header className="space-y-1">
         <div className="flex items-center justify-between">
           <div>
@@ -410,7 +410,7 @@ export default function WhatsAppUsagePage() {
               <div className="text-2xl font-bold">
                 {costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0).toLocaleString()} / {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">Messages used this month</p>
+              <p className="text-xs text-muted-foreground">Quota credits used this month</p>
             </CardContent>
           </Card>
           <Card>
@@ -422,7 +422,7 @@ export default function WhatsAppUsagePage() {
               <div className="text-2xl font-bold">
                 {(costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0) - costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0)).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">Remaining this period</p>
+              <p className="text-xs text-muted-foreground">Remaining credits this period</p>
             </CardContent>
           </Card>
           <Card>
@@ -488,7 +488,7 @@ export default function WhatsAppUsagePage() {
                           {dev.phoneNumber ?? dev.deviceId}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {dev.messageCount.toLocaleString()} messages
+                          {dev.quotaUsed.toLocaleString()} credits used · {dev.messageCount.toLocaleString()} messages
                         </p>
                       </div>
                       <div className="text-right">

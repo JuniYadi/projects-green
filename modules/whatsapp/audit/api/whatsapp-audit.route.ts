@@ -10,7 +10,7 @@ import {
 } from "@/modules/admin/api/admin.guards"
 import { toWhatsappAuditLogDTO, type WhatsappAuditLogDTO } from "./whatsapp-audit.dto"
 
-const DEFAULT_LIMIT = 50
+const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
 
 type AuditRouteSet = { status?: number | string }

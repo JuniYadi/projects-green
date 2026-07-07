@@ -64,4 +64,17 @@ describe("ConsoleWhatsAppAuditLogsPage", () => {
     expect(view.getByRole("button", { name: "Apply" })).toBeInTheDocument()
     expect(view.getByRole("button", { name: "Reset" })).toBeInTheDocument()
   })
+  it("requests page limit of 20", async () => {
+    const view = render(<ConsoleWhatsAppAuditLogsPage />)
+
+    // Wait for fetch to resolve and check URL param
+    await new Promise((r) => setTimeout(r, 100))
+    const call = mockFetch.mock.calls[0]
+    expect(call).toBeDefined()
+    const url = call?.[0] as string | undefined
+    expect(url).toBeTruthy()
+    expect(url).toContain("limit=20")
+
+    view.unmount()
+  })
 })

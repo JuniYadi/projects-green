@@ -197,6 +197,11 @@ export function TemplateList({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {template.category && (
+              <Badge variant="outline" className="text-xs">
+                {template.category}
+              </Badge>
+            )}
             <TemplateStatusBadge status={template.syncStatus ?? "NOT_SYNCED"} />
             <MetaStatusBadge status={template.metaStatus} />
           </div>

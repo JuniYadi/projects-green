@@ -23,6 +23,11 @@ const templateBodySchema = t.Object({
   name: t.String(),
   description: t.Optional(t.String()),
   whatsappDeviceId: t.Optional(t.String()),
+  category: t.Optional(t.Union([
+    t.Literal("MARKETING"),
+    t.Literal("UTILITY"),
+    t.Literal("AUTHENTICATION"),
+  ])),
   languages: t.Array(templateLanguageSchema),
 })
 

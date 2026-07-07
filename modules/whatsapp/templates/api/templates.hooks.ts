@@ -17,6 +17,7 @@ export type TemplateFormInput = {
   name: string
   description?: string
   whatsappDeviceId?: string
+  category?: string
   languages: Array<{
     lang: string
     headerType?: string

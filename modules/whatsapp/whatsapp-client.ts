@@ -78,6 +78,7 @@ export type Template = {
   description?: string | null
   syncStatus: TemplateSyncStatus
   metaStatus?: TemplateMetaStatus | null
+  category?: "MARKETING" | "UTILITY" | "AUTHENTICATION" | null
   lastSyncedAt?: string | null
   whatsappDeviceId?: string | null
   createdAt: string
