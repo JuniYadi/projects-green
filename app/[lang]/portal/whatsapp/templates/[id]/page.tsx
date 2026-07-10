@@ -37,10 +37,32 @@ export default function PortalTemplateDetailPage() {
   const [editing, setEditing] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
 
+  const approvedTemplateLocked = template?.metaStatus === "APPROVED"
+  const lockedVariantIds =
+    template?.languages
+      .filter((l) => l.isApproved || l.metaStatus === "APPROVED")
+      .map((l) => l.id) ?? []
+  const structureSource =
+    template?.languages.find(
+      (l) => l.isApproved || l.metaStatus === "APPROVED"
+    ) ?? template?.languages[0] ?? null
+  const structureTemplate = structureSource
+    ? {
+        headerType: structureSource.headerType ?? "NONE",
+        headerText: structureSource.headerText ?? "",
+        headerUrl: structureSource.headerUrl ?? "",
+        body: structureSource.body ?? "",
+        footer: structureSource.footer ?? "",
+        parameters: structureSource.parameters,
+        buttons: structureSource.buttons,
+      }
+    : null
+
   const handleUpdate = async (data: {
     name: string
     slug: string
     description?: string
+    category?: string
     languages: Array<{
       lang: string
       headerType: string
@@ -103,7 +125,9 @@ export default function PortalTemplateDetailPage() {
           <CardHeader>
             <CardTitle>Edit Template</CardTitle>
             <CardDescription>
-              Update the template details and language variants
+              {approvedTemplateLocked
+                ? "Approved templates are locked. Add a new language variant with the same content structure."
+                : "Update the template details and language variants"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -112,6 +136,7 @@ export default function PortalTemplateDetailPage() {
                 name: template.name,
                 slug: template.slug,
                 description: template.description,
+                category: template.category,
                 languages: template.languages.map((l) => ({
                   id: l.id,
                   lang: l.lang,
@@ -120,10 +145,16 @@ export default function PortalTemplateDetailPage() {
                   headerUrl: l.headerUrl ?? "",
                   body: l.body ?? "",
                   footer: l.footer ?? "",
+                  parameters: l.parameters,
+                  buttons: l.buttons,
                 })),
               }}
               submitting={updating}
               onSubmit={handleUpdate}
+              mode="edit"
+              approvedTemplateLocked={approvedTemplateLocked}
+              lockedVariantIds={lockedVariantIds}
+              structureTemplate={structureTemplate}
             />
           </CardContent>
         </Card>
