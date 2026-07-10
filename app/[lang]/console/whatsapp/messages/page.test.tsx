@@ -8,7 +8,17 @@ const mockSendTemplate = mock(() =>
   Promise.resolve({ ok: true, messageId: "msg_123", status: "queued" })
 )
 const mockConversationsList = mock(() =>
-  Promise.resolve({ ok: true, conversations: [] })
+  Promise.resolve({ ok: true, conversations: [] as Array<{
+    id: string
+    organizationId: string
+    contactPhone: string
+    lastMessageAt: string | null
+    lastDirection: string | null
+    whatsappDeviceId: string | null
+    createdAt: string
+    updatedAt: string
+    _count: { whatsappMessages: number }
+  }> })
 )
 const mockDevicesList = mock(() =>
   Promise.resolve({

@@ -255,6 +255,7 @@ export default function ConsoleTemplatesPage() {
               columns={columns}
               data={templates}
               tableId="console-whatsapp-templates"
+              searchPlaceholder="Search templates..."
               searchableColumns={[
                 "name",
                 "syncStatus",
