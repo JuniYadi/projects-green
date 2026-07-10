@@ -28,8 +28,6 @@ export function normalizeIndonesianPhoneNumber(input: string): string | null {
     candidate = "+62" + digits.slice(1)
   } else if (digits.startsWith("62")) {
     candidate = "+" + digits
-  } else if (cleaned.startsWith("+")) {
-    candidate = "+" + digits
   } else {
     candidate = "+" + digits
   }

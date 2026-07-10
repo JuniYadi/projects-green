@@ -442,29 +442,37 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
               (l) => l.isApproved || l.metaStatus === "APPROVED"
             ) ?? template.languages[0] ?? null
 
-          if (structureSource) {
-            for (const lang of languages) {
-              const mismatch =
-                (lang.headerType ?? "NONE") !==
-                  (structureSource.headerType ?? "NONE") ||
-                (lang.headerText ?? "") !==
-                  (structureSource.headerText ?? "") ||
-                (lang.headerUrl ?? "") !==
-                  (structureSource.headerUrl ?? "") ||
-                (lang.body ?? "") !== (structureSource.body ?? "") ||
-                (lang.footer ?? "") !== (structureSource.footer ?? "") ||
-                JSON.stringify(lang.parameters ?? null) !==
-                  JSON.stringify(structureSource.parameters ?? null) ||
-                JSON.stringify(lang.buttons ?? null) !==
-                  JSON.stringify(structureSource.buttons ?? null)
-              if (mismatch) {
-                set.status = 422
-                return {
-                  ok: false,
-                  error: "VALIDATION_ERROR",
-                  message:
-                    "New language variants must match the approved template structure.",
-                }
+          if (!structureSource) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "VALIDATION_ERROR",
+              message:
+                "No approved language variant found to validate structure against.",
+            }
+          }
+
+          for (const lang of languages) {
+            const mismatch =
+              (lang.headerType ?? "NONE") !==
+                (structureSource.headerType ?? "NONE") ||
+              (lang.headerText ?? "") !==
+                (structureSource.headerText ?? "") ||
+              (lang.headerUrl ?? "") !==
+                (structureSource.headerUrl ?? "") ||
+              (lang.body ?? "") !== (structureSource.body ?? "") ||
+              (lang.footer ?? "") !== (structureSource.footer ?? "") ||
+              JSON.stringify(lang.parameters ?? null) !==
+                JSON.stringify(structureSource.parameters ?? null) ||
+              JSON.stringify(lang.buttons ?? null) !==
+                JSON.stringify(structureSource.buttons ?? null)
+            if (mismatch) {
+              set.status = 422
+              return {
+                ok: false,
+                error: "VALIDATION_ERROR",
+                message:
+                  "New language variants must match the approved template structure.",
               }
             }
           }
