@@ -143,20 +143,6 @@ function getLast6Months(): { year: number; month: number }[] {
   return months
 }
 
-function StatCardSkeleton() {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="size-4 rounded" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="mb-1 h-7 w-16" />
-        <Skeleton className="h-3 w-28" />
-      </CardContent>
-    </Card>
-  )
-}
 
 export default function WhatsAppUsagePage() {
   const [state, setState] = React.useState<PageState>("loading")
@@ -308,98 +294,79 @@ export default function WhatsAppUsagePage() {
         </div>
       )}
 
-      {/* Stat Cards */}
+      {/* Stat Cards — always render card shells, skeletonize only values during loading */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {state === "loading" ? (
-          <>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-          </>
-        ) : (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Messages
-                </CardTitle>
-                <ChartLine
-                  className="size-4 text-muted-foreground"
-                  weight="fill"
-                />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {totalMessages.toLocaleString()}
-                </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Messages</CardTitle>
+            <ChartLine className="size-4 text-muted-foreground" weight="fill" />
+          </CardHeader>
+          <CardContent>
+            {state === "loading" ? (
+              <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{totalMessages.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground">This month</p>
-              </CardContent>
-            </Card>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Inbound Count
-                </CardTitle>
-                <ChatCircle
-                  className="size-4 text-muted-foreground"
-                  weight="fill"
-                />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {totalInbound.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Messages received
-                </p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Inbound Count</CardTitle>
+            <ChatCircle className="size-4 text-muted-foreground" weight="fill" />
+          </CardHeader>
+          <CardContent>
+            {state === "loading" ? (
+              <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{totalInbound.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Messages received</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Outbound Count
-                </CardTitle>
-                <PaperPlaneTilt
-                  className="size-4 text-muted-foreground"
-                  weight="fill"
-                />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {totalOutbound.toLocaleString()}
-                </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Outbound Count</CardTitle>
+            <PaperPlaneTilt className="size-4 text-muted-foreground" weight="fill" />
+          </CardHeader>
+          <CardContent>
+            {state === "loading" ? (
+              <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{totalOutbound.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground">Messages sent</p>
-              </CardContent>
-            </Card>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Cost
-                </CardTitle>
-                <CurrencyDollar
-                  className="size-4 text-muted-foreground"
-                  weight="fill"
-                />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(totalCost)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {costData?.totalEntries ?? 0} ledger entries
-                </p>
-              </CardContent>
-            </Card>
-          </>
-        )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+            <CurrencyDollar className="size-4 text-muted-foreground" weight="fill" />
+          </CardHeader>
+          <CardContent>
+            {state === "loading" ? (
+              <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{formatCurrency(totalCost)}</div>
+                <p className="text-xs text-muted-foreground">{costData?.totalEntries ?? 0} ledger entries</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quota & Balance Summary */}
-      {state === "loaded" && costBreakdown && (
+      {state !== "error" && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -407,42 +374,69 @@ export default function WhatsAppUsagePage() {
               <ChartLine className="size-4 text-muted-foreground" weight="fill" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0).toLocaleString()} / {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">Quota credits used this month</p>
+              {state === "loading" || !costBreakdown ? (
+                <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">
+                    {costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0).toLocaleString()} / {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Quota credits used this month</p>
+                </>
+              )}
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Remaining Quota</CardTitle>
               <ChatCircle className="size-4 text-muted-foreground" weight="fill" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {(costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0) - costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0)).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">Remaining credits this period</p>
+              {state === "loading" || !costBreakdown ? (
+                <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">
+                    {(costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0) - costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0)).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Remaining credits this period</p>
+                </>
+              )}
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Projected Cost</CardTitle>
               <CurrencyDollar className="size-4 text-muted-foreground" weight="fill" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{costBreakdown.projectedCost.toLocaleString("id-ID", { style: "currency", currency: "IDR" }) || "—"}</div>
-              <p className="text-xs text-muted-foreground">Estimated monthly cost</p>
+              {state === "loading" || !costBreakdown ? (
+                <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{costBreakdown.projectedCost.toLocaleString("id-ID", { style: "currency", currency: "IDR" }) || "—"}</div>
+                  <p className="text-xs text-muted-foreground">Estimated monthly cost</p>
+                </>
+              )}
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Balance</CardTitle>
               <CurrencyDollar className="size-4 text-muted-foreground" weight="fill" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{costBreakdown.balance !== null ? `Rp${costBreakdown.balance.toLocaleString("id-ID")}` : "—"}</div>
-              <p className="text-xs text-muted-foreground">Overage balance</p>
+              {state === "loading" || !costBreakdown ? (
+                <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{costBreakdown.balance !== null ? `Rp${costBreakdown.balance.toLocaleString("id-ID")}` : "—"}</div>
+                  <p className="text-xs text-muted-foreground">Overage balance</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
