@@ -181,6 +181,7 @@ export function TemplateDetailView({
                 value={template.category ?? "Uncategorized"}
               />
               <InfoRow label="Created" value={formatDate(template.createdAt)} />
+              <InfoRow label="Last Updated" value={formatDate(template.updatedAt)} />
             </dl>
           </CardContent>
         </Card>
