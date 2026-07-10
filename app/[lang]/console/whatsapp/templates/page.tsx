@@ -148,10 +148,18 @@ export default function ConsoleTemplatesPage() {
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created" />
+        <DataTableColumnHeader column={column} title="Creation Date" />
       ),
       cell: ({ row }) =>
         new Date(row.original.createdAt).toLocaleString(),
+    },
+    {
+      accessorKey: "updatedAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Last Updated Date" />
+      ),
+      cell: ({ row }) =>
+        new Date(row.original.updatedAt).toLocaleString(),
     },
     {
       id: "actions",
@@ -247,6 +255,7 @@ export default function ConsoleTemplatesPage() {
               columns={columns}
               data={templates}
               tableId="console-whatsapp-templates"
+              searchPlaceholder="Search templates..."
               searchableColumns={[
                 "name",
                 "syncStatus",
@@ -254,12 +263,12 @@ export default function ConsoleTemplatesPage() {
                 "category",
                 "languages",
                 "whatsappDeviceId",
+                "createdAt",
+                "updatedAt",
               ]}
-              searchPlaceholder="Search templates..."
               initialSorting={[{ id: "createdAt", desc: true }]}
               pageSize={10}
-              defaultColumnVisibility={{ createdAt: false, whatsappDeviceId: false }}
-              emptyMessage="No templates configured yet."
+              defaultColumnVisibility={{ whatsappDeviceId: false }}
               facetFilters={[
                 {
                   columnId: "syncStatus",

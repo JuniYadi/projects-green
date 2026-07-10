@@ -19,10 +19,11 @@ import {
   useUpdateTemplate,
   useDeleteTemplate,
   useSyncTemplate,
+  type TemplateFormInput,
 } from "@/modules/whatsapp/templates/api/templates.hooks"
-import { TemplateDetailView } from "@/modules/whatsapp/templates/ui/template-detail"
-import { TemplateForm } from "@/modules/whatsapp/templates/ui/template-form"
+import { TemplateForm, type LanguageVariant } from "@/modules/whatsapp/templates/ui/template-form"
 import { TemplateDeleteDialog } from "@/modules/whatsapp/templates/ui/template-delete-dialog"
+import { TemplateDetailView } from "@/modules/whatsapp/templates/ui/template-detail"
 
 export default function ConsoleTemplateDetailPage() {
   const params = useParams()
@@ -37,20 +38,36 @@ export default function ConsoleTemplateDetailPage() {
   const [editing, setEditing] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
 
+  const approvedTemplateLocked = template?.metaStatus === "APPROVED"
+  const lockedVariantIds =
+    template?.languages
+      .filter((l) => l.isApproved || l.metaStatus === "APPROVED")
+      .map((l) => l.id) ?? []
+  const structureSource =
+    template?.languages.find(
+      (l) => l.isApproved || l.metaStatus === "APPROVED"
+    ) ?? template?.languages[0] ?? null
+  const structureTemplate = structureSource
+    ? {
+        headerType: structureSource.headerType ?? "NONE",
+        headerText: structureSource.headerText ?? "",
+        headerUrl: structureSource.headerUrl ?? "",
+        body: structureSource.body ?? "",
+        footer: structureSource.footer ?? "",
+        parameters: structureSource.parameters,
+        buttons: structureSource.buttons,
+      }
+    : null
+
   const handleUpdate = async (data: {
     name: string
     slug: string
     description?: string
-    languages: Array<{
-      lang: string
-      headerType: string
-      headerText: string
-      body: string
-      footer: string
-    }>
+    category?: string
+    languages: Omit<LanguageVariant, "id">[]
   }) => {
     try {
-      await update(id, data)
+      await update(id, data as Partial<TemplateFormInput>)
       toast.success("Template updated successfully.")
       setEditing(false)
       void reload()
@@ -92,7 +109,9 @@ export default function ConsoleTemplateDetailPage() {
           <CardHeader>
             <CardTitle>Edit Template</CardTitle>
             <CardDescription>
-              Update the template details and language variants
+              {approvedTemplateLocked
+                ? "Approved templates are locked. Add a new language variant with the same content structure."
+                : "Update the template details and language variants"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -101,6 +120,7 @@ export default function ConsoleTemplateDetailPage() {
                 name: template.name,
                 slug: template.slug,
                 description: template.description,
+                category: template.category,
                 languages: template.languages.map((l) => ({
                   id: l.id,
                   lang: l.lang,
@@ -109,10 +129,16 @@ export default function ConsoleTemplateDetailPage() {
                   headerUrl: l.headerUrl ?? "",
                   body: l.body ?? "",
                   footer: l.footer ?? "",
+                  parameters: l.parameters,
+                  buttons: l.buttons,
                 })),
               }}
               submitting={updating}
               onSubmit={handleUpdate}
+              mode="edit"
+              approvedTemplateLocked={approvedTemplateLocked}
+              lockedVariantIds={lockedVariantIds}
+              structureTemplate={structureTemplate}
             />
           </CardContent>
         </Card>

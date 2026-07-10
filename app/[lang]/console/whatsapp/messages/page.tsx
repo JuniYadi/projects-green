@@ -45,6 +45,7 @@ import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
+import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 
 // ─── Local Types ─────────────────────────────────────────────────────────────
 
@@ -106,6 +107,17 @@ const formatTime = (iso: string | null | undefined) => {
 const formatPhone = (phone: string) => {
   if (phone.startsWith("+")) return phone
   return `+${phone}`
+}
+function isReplyWindowClosed(conversation: ConversationDetail | null): boolean {
+  if (!conversation) return false
+  const inboxMessages = conversation.whatsappMessages.filter(
+    (m) => m.direction === "INBOX"
+  )
+  if (inboxMessages.length === 0) return true
+  const newestInbox = inboxMessages.reduce((latest, m) =>
+    new Date(m.createdAt) > new Date(latest.createdAt) ? m : latest
+  )
+  return Date.now() - new Date(newestInbox.createdAt).getTime() >= 24 * 60 * 60 * 1000
 }
 
 // ─── Conversation List Item ───────────────────────────────────────────────────
@@ -231,6 +243,7 @@ export default function WhatsAppMessagesPage() {
   const [selectedTemplateLanguage, setSelectedTemplateLanguage] = React.useState("")
   const [templateFieldValues, setTemplateFieldValues] = React.useState<Record<number, string>>({})
   const [templateSearchQuery, setTemplateSearchQuery] = React.useState("")
+  const [templatePickerOpen, setTemplatePickerOpen] = React.useState(true)
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
@@ -372,6 +385,7 @@ export default function WhatsAppMessagesPage() {
       setSelectedTemplateLanguage("")
       setTemplateFieldValues({})
       setTemplateSearchQuery("")
+      setTemplatePickerOpen(true)
     }
   }, [sendDeviceId])
 
@@ -420,6 +434,11 @@ export default function WhatsAppMessagesPage() {
     [activeConversation?.whatsappMessages]
   )
 
+  const replyWindowClosed = React.useMemo(
+    () => isReplyWindowClosed(activeConversation),
+    [activeConversation]
+  )
+
   // Visible templates after search filter
   const visibleTemplates = React.useMemo(() => {
     if (!templateSearchQuery.trim()) return approvedTemplates
@@ -445,15 +464,32 @@ export default function WhatsAppMessagesPage() {
     setActiveConversationId(id)
   }
 
+  const openTemplateDialogForConversation = React.useCallback(
+    (conversation: ConversationDetail) => {
+      const phone = normalizeIndonesianPhoneNumber(conversation.contactPhone) ?? conversation.contactPhone
+      setSendPhone(phone)
+      if (activeDevices.some((d) => d.id === conversation.whatsappDeviceId)) {
+        setSendDeviceId(conversation.whatsappDeviceId!)
+      }
+      setSelectedTemplateId("")
+      setSelectedTemplateLanguage("")
+      setTemplateFieldValues({})
+      setTemplateSearchQuery("")
+      setTemplatePickerOpen(true)
+      setSendDialogOpen(true)
+    },
+    [activeDevices]
+  )
+
   const handleSendMessage = async () => {
     if (!sendDeviceId) {
       toast.error("Please select a device")
       return
     }
 
-    const trimmedPhone = sendPhone.trim()
-    if (!trimmedPhone) {
-      toast.error("Phone number is required")
+    const normalizedPhone = normalizeIndonesianPhoneNumber(sendPhone)
+    if (!normalizedPhone) {
+      toast.error("Enter a valid phone number")
       return
     }
 
@@ -483,7 +519,7 @@ export default function WhatsAppMessagesPage() {
     setSending(true)
     try {
       await whatsappClient.messages.sendTemplate({
-        phoneNumber: trimmedPhone,
+        phoneNumber: normalizedPhone,
         templateId: selectedTemplateId,
         templateLanguage: selectedTemplateLanguage,
         fields: placeholderIndexes.map((index) => templateFieldValues[index].trim()),
@@ -513,6 +549,13 @@ export default function WhatsAppMessagesPage() {
   }
 
   // ─── Render ────────────────────────────────────────────────────────────
+  const handleDialogOpenChange = (open: boolean) => {
+    setSendDialogOpen(open)
+    if (open && !selectedTemplateId) {
+      setTemplatePickerOpen(true)
+    }
+  }
+
 
   return (
     <div className="space-y-6">
@@ -523,7 +566,7 @@ export default function WhatsAppMessagesPage() {
             View and manage your WhatsApp message history.
           </p>
         </div>
-        <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+        <Dialog open={sendDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button disabled={devices.length > 0 && !hasActiveDevice}>
               <PaperPlaneTilt className="mr-2 size-4" weight="bold" />
@@ -612,6 +655,32 @@ export default function WhatsAppMessagesPage() {
                       <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
                         No approved templates for this device
                       </div>
+                    ) : selectedTemplateId && !templatePickerOpen ? (
+                      <div className="rounded-md border p-3">
+                        {(() => {
+                          const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
+                          if (!tpl) return null
+                          return (
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{tpl.name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{tpl.slug}</p>
+                                <Badge variant="secondary" className="mt-1 text-[10px]">
+                                  {tpl.languages.length} lang{tpl.languages.length !== 1 ? "s" : ""}
+                                </Badge>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setTemplatePickerOpen(true)}
+                              >
+                                Change Template
+                              </Button>
+                            </div>
+                          )
+                        })()}
+                      </div>
                     ) : (
                       <>
                         <Input
@@ -634,6 +703,7 @@ export default function WhatsAppMessagesPage() {
                                   setSelectedTemplateId(tpl.id)
                                   setTemplateSearchQuery("")
                                   setTemplateFieldValues({})
+                                  setTemplatePickerOpen(false)
                                   const approvedLang = tpl.languages.find(
                                     (l) => l.isApproved || l.metaStatus === "APPROVED"
                                   )
@@ -911,19 +981,31 @@ export default function WhatsAppMessagesPage() {
           {/* Thread Header */}
           <div className="flex items-center justify-between border-b p-4">
             {activeConversation ? (
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-full bg-primary/10">
-                  <Phone className="size-4 text-primary" weight="fill" />
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-full bg-primary/10">
+                    <Phone className="size-4 text-primary" weight="fill" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">
+                      {formatPhone(activeConversation.contactPhone)}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {activeConversation._count.whatsappMessages} messages
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold">
-                    {formatPhone(activeConversation.contactPhone)}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {activeConversation._count.whatsappMessages} messages
-                  </p>
-                </div>
-              </div>
+                {replyWindowClosed && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openTemplateDialogForConversation(activeConversation)}
+                  >
+                    <PaperPlaneTilt className="mr-1 size-4" weight="bold" />
+                    Send Template
+                  </Button>
+                )}
+              </>
             ) : (
               <h3 className="font-semibold">Select a conversation</h3>
             )}
@@ -976,6 +1058,17 @@ export default function WhatsAppMessagesPage() {
                   <p className="text-sm text-muted-foreground">
                     No messages in this conversation yet
                   </p>
+                  {replyWindowClosed && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => openTemplateDialogForConversation(activeConversation)}
+                    >
+                      <PaperPlaneTilt className="mr-1 size-4" weight="bold" />
+                      Send Template
+                    </Button>
+                  )}
                 </div>
               )}
 

@@ -30,10 +30,11 @@ export interface WhatsAppTemplateLanguage {
   headerUrl?: string | null
   headerText?: string | null
   body?: string | null
-  parameters?: any
+  parameters?: unknown
   footer?: string | null
   isApproved?: boolean
   metaStatus?: string
+  buttons?: unknown
 }
 
 export interface WhatsAppMessage {

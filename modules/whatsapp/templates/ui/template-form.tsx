@@ -31,6 +31,8 @@ export type LanguageVariant = {
   headerUrl: string
   body: string
   footer: string
+  parameters?: unknown
+  buttons?: unknown
 }
 
 type TemplateFormProps = {
@@ -39,7 +41,9 @@ type TemplateFormProps = {
     slug: string
     description?: string | null
     category?: string | null
-    languages?: LanguageVariant[]
+    languages?: Array<
+      LanguageVariant & { parameters?: unknown; buttons?: unknown }
+    >
   }
   submitting: boolean
   onSubmit: (data: {
@@ -49,6 +53,19 @@ type TemplateFormProps = {
     category?: string
     languages: Omit<LanguageVariant, "id">[]
   }) => Promise<void>
+  mode?: "create" | "edit"
+  approvedTemplateLocked?: boolean
+  lockedVariantIds?: string[]
+  structureTemplate?: Pick<
+    LanguageVariant,
+    | "headerType"
+    | "headerText"
+    | "headerUrl"
+    | "body"
+    | "footer"
+    | "parameters"
+    | "buttons"
+  > | null
 }
 
 const emptyVariant = (): LanguageVariant => ({
@@ -65,6 +82,10 @@ export function TemplateForm({
   initialData,
   submitting,
   onSubmit,
+  mode = "create",
+  approvedTemplateLocked = false,
+  lockedVariantIds = [],
+  structureTemplate = null,
 }: TemplateFormProps) {
   const [name, setName] = React.useState(initialData?.name ?? "")
   const [slug, setSlug] = React.useState(initialData?.slug ?? "")
@@ -86,6 +107,9 @@ export function TemplateForm({
   const [errors, setErrors] = React.useState<
     Record<string, string | undefined>
   >({})
+
+  const isLockedVariant = (variantId: string) =>
+    approvedTemplateLocked && lockedVariantIds.includes(variantId)
 
   const validate = (): boolean => {
     const newErrors: Record<string, string | undefined> = {}
@@ -115,6 +139,39 @@ export function TemplateForm({
       return
     }
 
+    if (approvedTemplateLocked) {
+      // Only submit new (non-locked) variants for approved locked templates
+      const newVariants = variants.filter(
+        (v) => !lockedVariantIds.includes(v.id)
+      )
+      await onSubmit({
+        name: initialData!.name,
+        slug: initialData!.slug,
+        description: initialData!.description ?? undefined,
+        category: initialData!.category ?? undefined,
+        languages: newVariants.map((v) => {
+          const base = {
+            lang: v.lang,
+            headerType: v.headerType,
+            headerText: v.headerType === "NONE" ? "" : v.headerText,
+            headerUrl: ["IMAGE", "VIDEO", "DOCUMENT"].includes(v.headerType)
+              ? v.headerUrl
+              : "",
+            body: v.body,
+            footer: v.footer,
+          }
+          if (v.parameters !== undefined) {
+            return { ...base, parameters: v.parameters }
+          }
+          if (v.buttons !== undefined) {
+            return { ...base, buttons: v.buttons }
+          }
+          return base
+        }),
+      })
+      return
+    }
+
     await onSubmit({
       name: name.trim(),
       slug: slug.trim(),
@@ -136,7 +193,24 @@ export function TemplateForm({
   }
 
   const addVariant = () => {
-    setVariants([...variants, emptyVariant()])
+    if (approvedTemplateLocked && structureTemplate) {
+      setVariants([
+        ...variants,
+        {
+          id: crypto.randomUUID(),
+          lang: "en",
+          headerType: structureTemplate.headerType ?? "NONE",
+          headerText: structureTemplate.headerText ?? "",
+          headerUrl: structureTemplate.headerUrl ?? "",
+          body: structureTemplate.body ?? "",
+          footer: structureTemplate.footer ?? "",
+          parameters: structureTemplate.parameters,
+          buttons: structureTemplate.buttons,
+        },
+      ])
+    } else {
+      setVariants([...variants, emptyVariant()])
+    }
   }
 
   const removeVariant = (id: string) => {
@@ -167,6 +241,7 @@ export function TemplateForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Welcome Message"
+            disabled={approvedTemplateLocked}
           />
           {errors.name && (
             <p className="text-xs text-destructive">{errors.name}</p>
@@ -181,6 +256,7 @@ export function TemplateForm({
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="welcome_message"
+            disabled={approvedTemplateLocked}
           />
           {errors.slug && (
             <p className="text-xs text-destructive">{errors.slug}</p>
@@ -190,7 +266,11 @@ export function TemplateForm({
           <Label htmlFor="category">
             Category <span className="text-destructive">*</span>
           </Label>
-          <Select value={category} onValueChange={setCategory}>
+          <Select
+            value={category}
+            onValueChange={setCategory}
+            disabled={approvedTemplateLocked}
+          >
             <SelectTrigger id="category">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
@@ -211,6 +291,7 @@ export function TemplateForm({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Optional description of this template"
           rows={2}
+          disabled={approvedTemplateLocked}
         />
       </div>
 
@@ -237,11 +318,12 @@ export function TemplateForm({
 
         {variants.map((variant, i) => {
           const idx = i + 1
+          const locked = isLockedVariant(variant.id)
           return (
             <div key={variant.id} className="space-y-3 rounded-lg border p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Variant {idx}</span>
-                {variants.length > 1 && (
+                {variants.length > 1 && !locked && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -260,6 +342,7 @@ export function TemplateForm({
                   <Select
                     value={variant.lang}
                     onValueChange={(v) => updateVariant(variant.id, "lang", v)}
+                    disabled={locked}
                   >
                     <SelectTrigger id={`variant-${variant.id}-lang`}>
                       <SelectValue />
@@ -292,6 +375,7 @@ export function TemplateForm({
                     onValueChange={(v) =>
                       updateVariant(variant.id, "headerType", v)
                     }
+                    disabled={locked}
                   >
                     <SelectTrigger id={`variant-${variant.id}-header`}>
                       <SelectValue />
@@ -320,6 +404,7 @@ export function TemplateForm({
                     }
                     placeholder="Header text (max 60 chars)"
                     maxLength={60}
+                    disabled={locked}
                   />
                 </div>
               )}
@@ -340,6 +425,7 @@ export function TemplateForm({
                     }
                     placeholder="https://example.com/media.jpg"
                     type="url"
+                    disabled={locked}
                   />
                 </div>
               )}
@@ -357,6 +443,7 @@ export function TemplateForm({
                   placeholder="Template body text (max 1024 chars)"
                   rows={3}
                   maxLength={1024}
+                  disabled={locked}
                 />
                 {errors[`variant_${variant.id}_body`] && (
                   <p className="text-xs text-destructive">
@@ -375,6 +462,7 @@ export function TemplateForm({
                   }
                   placeholder="Footer text (max 60 chars)"
                   maxLength={60}
+                  disabled={locked}
                 />
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { TemplateForm } from "./template-form"
@@ -166,6 +166,182 @@ describe("TemplateForm", () => {
       expect((submittedData as unknown as Record<string, unknown>).name).toBe("My Template")
       expect((submittedData as unknown as Record<string, unknown>).slug).toBe("my_template")
       expect((submittedData as unknown as Record<string, unknown>).category).toBe("AUTHENTICATION")
+    })
+  })
+
+  describe("approved template locked mode", () => {
+    const structureTemplate = {
+      headerType: "TEXT",
+      headerText: "Hello",
+      headerUrl: "",
+      body: "This is the approved body",
+      footer: "Approved footer",
+      parameters: null,
+      buttons: null,
+    }
+
+    const initialDataApproved = {
+      name: "Approved Template",
+      slug: "approved_template",
+      description: "An approved template",
+      category: "UTILITY",
+      languages: [
+        {
+          id: "variant-1",
+          lang: "en",
+          headerType: "TEXT",
+          headerText: "Hello",
+          headerUrl: "",
+          body: "This is the approved body",
+          footer: "Approved footer",
+        },
+      ],
+    }
+
+    it("disables core field inputs when locked", async () => {
+      render(
+        <TemplateForm
+          initialData={initialDataApproved}
+          submitting={false}
+          mode="edit"
+          approvedTemplateLocked={true}
+          lockedVariantIds={["variant-1"]}
+          structureTemplate={structureTemplate}
+          onSubmit={async () => {}}
+        />
+      )
+
+      const nameInput = screen.getByLabelText(/name/i) as HTMLInputElement
+      const slugInput = screen.getByLabelText(/slug/i) as HTMLInputElement
+      expect(nameInput.disabled).toBe(true)
+      expect(slugInput.disabled).toBe(true)
+    })
+
+    it("disables variant inputs for locked variant ids", async () => {
+      render(
+        <TemplateForm
+          initialData={initialDataApproved}
+          submitting={false}
+          mode="edit"
+          approvedTemplateLocked={true}
+          lockedVariantIds={["variant-1"]}
+          structureTemplate={structureTemplate}
+          onSubmit={async () => {}}
+        />
+      )
+
+      // Language select should be disabled for the locked variant
+      const langSelect = screen.getByRole("combobox", { name: /language/i })
+      expect(langSelect).toBeDisabled()
+    })
+
+    it("hides remove button for locked variants", async () => {
+      render(
+        <TemplateForm
+          initialData={initialDataApproved}
+          submitting={false}
+          mode="edit"
+          approvedTemplateLocked={true}
+          lockedVariantIds={["variant-1"]}
+          structureTemplate={structureTemplate}
+          onSubmit={async () => {}}
+        />
+      )
+
+      // With only one variant, remove button should not appear
+      // Even if there were more, the locked one should not have X
+      const removeButtons = screen.queryAllByRole("button", { name: "" })
+      const xButtons = removeButtons.filter((btn) => btn.querySelector("svg"))
+      // The locked single variant should not show an X button
+      expect(xButtons.length).toBe(0)
+    })
+
+    it("keeps Add Variant button enabled in locked mode", async () => {
+      render(
+        <TemplateForm
+          initialData={initialDataApproved}
+          submitting={false}
+          mode="edit"
+          approvedTemplateLocked={true}
+          lockedVariantIds={["variant-1"]}
+          structureTemplate={structureTemplate}
+          onSubmit={async () => {}}
+        />
+      )
+
+      const addButton = screen.getByRole("button", { name: /add variant/i })
+      expect(addButton).not.toBeDisabled()
+    })
+
+    it("adding a variant in locked mode creates a new variant with structure copied", async () => {
+      const user = userEvent.setup()
+      let submittedData: Record<string, unknown> | null = null
+
+      render(
+        <TemplateForm
+          initialData={initialDataApproved}
+          submitting={false}
+          mode="edit"
+          approvedTemplateLocked={true}
+          lockedVariantIds={["variant-1"]}
+          structureTemplate={structureTemplate}
+          onSubmit={async (data) => {
+            submittedData = data
+          }}
+        />
+      )
+
+      // Click Add Variant
+      await user.click(screen.getByRole("button", { name: /add variant/i }))
+
+      // Fill body for the new variant (only lang is editable)
+      const bodyTextarea = screen.getAllByRole("textbox").find(
+        (t) => t.id?.includes("body")
+      ) as HTMLTextAreaElement
+      expect(bodyTextarea).toBeDefined()
+
+      // Submit
+      await user.click(screen.getByRole("button", { name: /save template/i }))
+
+      expect(submittedData).not.toBeNull()
+      const submitted = submittedData as unknown as Record<string, unknown>
+      // Should only submit the new variant, not the locked one
+      expect(Array.isArray(submitted.languages)).toBe(true)
+      const langs = submitted.languages as Array<{ lang: string; body: string }>
+      expect(langs.length).toBe(1)
+      expect(langs[0].lang).toBe("en")
+      expect(langs[0].body).toBe("This is the approved body")
+    })
+
+    it("submits only new variants for locked templates", async () => {
+      const user = userEvent.setup()
+      let submittedData: Record<string, unknown> | null = null
+
+      render(
+        <TemplateForm
+          initialData={initialDataApproved}
+          submitting={false}
+          mode="edit"
+          approvedTemplateLocked={true}
+          lockedVariantIds={["variant-1"]}
+          structureTemplate={structureTemplate}
+          onSubmit={async (data) => {
+            submittedData = data
+          }}
+        />
+      )
+
+      // Add a new variant
+      await user.click(screen.getByRole("button", { name: /add variant/i }))
+
+      // Submit
+      await user.click(screen.getByRole("button", { name: /save template/i }))
+
+      expect(submittedData).not.toBeNull()
+      const submitted = submittedData as unknown as Record<string, unknown>
+      // Should use initialData values for core fields
+      expect((submitted as Record<string, unknown>).name).toBe("Approved Template")
+      expect((submitted as Record<string, unknown>).slug).toBe("approved_template")
     })
   })
 })

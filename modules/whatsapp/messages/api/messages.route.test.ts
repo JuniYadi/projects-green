@@ -346,7 +346,27 @@ describe("messagesRoutes", () => {
       expect(body.resetAt).toBeDefined()
       expect(body.resetAt).toContain("T")
     })
+
+    it("returns 422 with invalid phone number", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "abc",
+            message: "Hello",
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toBe("Phone number must be in E.164 format or Indonesian local format.")
+    })
   })
+
 
   describe("POST /messages/send-interactive", () => {
     it("returns 200 on successful button interactive send", async () => {
@@ -520,6 +540,33 @@ describe("messagesRoutes", () => {
       expect(res.status).toBe(402)
       const body = await res.json()
       expect(body.error).toBe("INSUFFICIENT_BALANCE")
+    })
+
+    it("returns 422 with invalid phone number", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-interactive", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "abc",
+            interactive: {
+              type: "button",
+              body: { text: "test" },
+              action: {
+                buttons: [
+                  { type: "reply", reply: { id: "b1", title: "OK" } },
+                ],
+              },
+            },
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toBe("Phone number must be in E.164 format or Indonesian local format.")
     })
   })
 
@@ -711,6 +758,56 @@ describe("messagesRoutes", () => {
       const body = await res.json()
       expect(body.error).toBe("VALIDATION_ERROR")
       expect(body.message).toBe("Template field {{1}} is required.")
+    })
+
+    it("normalizes Indonesian local phone number to E.164", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-template", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "085708296482",
+            templateId: "tpl-1",
+            templateLanguage: "en",
+            fields: ["John", "Acme Corp"],
+            deviceId: "device-1",
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockMessageService.sendTemplateMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phoneNumber: "+6285708296482",
+        })
+      )
+    })
+
+    it("returns 422 with invalid phone number", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-template", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "abc",
+            templateId: "tpl-1",
+            templateLanguage: "en",
+            fields: ["John", "Acme Corp"],
+            deviceId: "device-1",
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toBe("Phone number must be in E.164 format or Indonesian local format.")
     })
   })
 
