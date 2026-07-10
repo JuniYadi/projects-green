@@ -5,6 +5,7 @@ import { messageService } from "../messages.service"
 import { toWhatsappMessageDTO } from "../messages.dto"
 import { InsufficientQuotaError } from "../quota.service"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
+import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 import {
   InsufficientBalanceError,
   QuotaExceededError,
@@ -311,6 +312,12 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      const normalizedPhone = normalizeIndonesianPhoneNumber(body.phoneNumber)
+      if (!normalizedPhone) {
+        set.status = 422
+        return { ok: false, error: "VALIDATION_ERROR", message: "Phone number must be in E.164 format or Indonesian local format." }
+      }
+
       const validationError = validateSendBody(body)
       if (validationError) {
         set.status = 422
@@ -320,9 +327,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           message: validationError,
         }
       }
-
       const {
-        phoneNumber,
         type,
         message,
         mediaUrl,
@@ -338,7 +343,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       try {
         const result = await messageService.sendMessage({
           organizationId: whatsappAuth.organizationId!,
-          phoneNumber,
+          phoneNumber: normalizedPhone,
           type,
           message,
           mediaUrl,
@@ -356,9 +361,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           organizationId: whatsappAuth.organizationId!,
           deviceId: deviceId ?? null,
           adminId: (whatsappAuth as any).userId,
-          message: `Message sent to ${phoneNumber}`,
+          message: `Message sent to ${normalizedPhone}`,
           status: "OK",
-          details: { waMessageId: result.waMessageId, phoneNumber, type: type ?? "text" },
+          details: { waMessageId: result.waMessageId, phoneNumber: normalizedPhone, type: type ?? "text" },
         })
 
         return {
@@ -368,6 +373,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           waMessageId: result.waMessageId,
           status: result.status,
         }
+
       } catch (error) {
         // Handle billing-related errors with appropriate HTTP status codes
         logWhatsappAuditEvent({
@@ -452,6 +458,12 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      const normalizedPhone = normalizeIndonesianPhoneNumber(body.phoneNumber)
+      if (!normalizedPhone) {
+        set.status = 422
+        return { ok: false, error: "VALIDATION_ERROR", message: "Phone number must be in E.164 format or Indonesian local format." }
+      }
+
 
       const { phoneNumber, templateId, templateLanguage, fields, deviceId } = body as {
         phoneNumber: string
@@ -515,11 +527,10 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           renderedBody = renderedBody.replace(new RegExp(`{{\\s*${idx}\\s*}}`, "g"), val)
         }
       }
-
       try {
         const result = await messageService.sendTemplateMessage({
           organizationId: whatsappAuth.organizationId!,
-          phoneNumber,
+          phoneNumber: normalizedPhone,
           deviceId,
           templateName: template.name,
           templateLanguage,
@@ -533,9 +544,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           organizationId: whatsappAuth.organizationId!,
           deviceId: deviceId ?? null,
           adminId: (whatsappAuth as any).userId,
-          message: `Template message sent to ${phoneNumber}`,
+          message: `Template message sent to ${normalizedPhone}`,
           status: "OK",
-          details: { waMessageId: result.waMessageId, phoneNumber, templateName: template.name, templateLanguage },
+          details: { waMessageId: result.waMessageId, phoneNumber: normalizedPhone, templateName: template.name, templateLanguage },
         })
 
         return {
@@ -626,9 +637,14 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      const normalizedPhone = normalizeIndonesianPhoneNumber(body.phoneNumber)
+      if (!normalizedPhone) {
+        set.status = 422
+        return { ok: false, error: "VALIDATION_ERROR", message: "Phone number must be in E.164 format or Indonesian local format." }
+      }
 
-      const { phoneNumber, deviceId, interactive } = body as {
-        phoneNumber: string
+
+      const { deviceId, interactive } = body as {
         deviceId?: string
         interactive: { type: "button" | "list"; [key: string]: unknown }
       }
@@ -636,7 +652,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       try {
         const result = await messageService.sendMessage({
           organizationId: whatsappAuth.organizationId!,
-          phoneNumber,
+          phoneNumber: normalizedPhone,
           type: "interactive",
           interactivePayload: interactive as Record<string, unknown>,
           deviceId,
@@ -647,9 +663,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           organizationId: whatsappAuth.organizationId!,
           deviceId: deviceId ?? null,
           adminId: (whatsappAuth as any).userId,
-          message: `Interactive message sent to ${phoneNumber}`,
+          message: `Interactive message sent to ${normalizedPhone}`,
           status: "OK",
-          details: { waMessageId: result.waMessageId, phoneNumber, interactiveType: interactive.type },
+          details: { waMessageId: result.waMessageId, phoneNumber: normalizedPhone, interactiveType: interactive.type },
         })
 
         return {
