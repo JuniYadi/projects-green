@@ -19,10 +19,9 @@ export const deviceEnvironmentEnum = z.enum(["SANDBOX", "LIVE"])
 export type DeviceEnvironment = z.infer<typeof deviceEnvironmentEnum>
 
 // ─── Input schemas ────────────────────────────────────────────────────────────
+import { e164PhoneRegex } from "@/modules/whatsapp/messages/phone-number"
 
 // E.164 international phone format: +[country code][number], 1-15 digits total
-const e164PhoneRegex = /^\+[1-9]\d{1,14}$/
-
 export const createDeviceSchema = z.object({
   // NOTE: `name` is accepted by the schema for API compatibility but is NOT
   // persisted to the DB — no `name` column exists on `WhatsappDevice`.
