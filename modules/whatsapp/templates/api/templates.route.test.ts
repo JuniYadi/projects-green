@@ -6,53 +6,70 @@ import { workosNodeMock } from "@/test/workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
 
-const mockTemplateCreate = mock(async () => ({
+type MockTemplate = {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  organizationId: string
+  whatsappDeviceId: string | null
+  syncStatus: string
+  metaStatus: string | null
+  lastSyncedAt: Date | null
+  category: string | null
+  createdAt: Date
+  updatedAt: Date
+  languages: Record<string, unknown>[]
+}
+
+const mockTemplateCreate = mock(async (): Promise<MockTemplate> => ({
   id: "tpl-1",
   slug: "hello_world",
   name: "Hello World",
   description: "A greeting template",
   organizationId: "org-1",
   whatsappDeviceId: null,
-  syncStatus: "NOT_SYNCED" as const,
+  syncStatus: "NOT_SYNCED",
   metaStatus: null,
   lastSyncedAt: null,
-  category: "UTILITY" as const,
+  category: "UTILITY",
   createdAt: new Date(),
   updatedAt: new Date(),
   languages: [],
 }))
 
-const mockTemplateUpdate = mock(async () => ({
+const mockTemplateUpdate = mock(async (): Promise<MockTemplate> => ({
   id: "tpl-1",
   slug: "hello_world",
   name: "Hello World Updated",
   description: "Updated description",
   organizationId: "org-1",
   whatsappDeviceId: null,
-  syncStatus: "NOT_SYNCED" as const,
+  syncStatus: "NOT_SYNCED",
   metaStatus: null,
   lastSyncedAt: null,
-  category: "MARKETING" as const,
+  category: "MARKETING",
   createdAt: new Date(),
   updatedAt: new Date(),
   languages: [],
 }))
 
-const mockTemplateFindUnique = mock(async () => ({
+const mockTemplateFindUnique = mock(async (): Promise<MockTemplate> => ({
   id: "tpl-1",
   slug: "hello_world",
   name: "Hello World",
   description: "A greeting template",
   organizationId: "org-1",
   whatsappDeviceId: null,
-  syncStatus: "NOT_SYNCED" as const,
+  syncStatus: "NOT_SYNCED",
   metaStatus: null,
   lastSyncedAt: null,
-  category: "UTILITY" as const,
+  category: "UTILITY",
   createdAt: new Date(),
   updatedAt: new Date(),
   languages: [],
 }))
+
 
 const mockLogAudit = mock(async () => {})
 
@@ -448,6 +465,7 @@ describe("templatesRoutes", () => {
         })
         mockTemplateFindUnique.mockImplementation(async () => template)
         mockTemplateUpdate.mockImplementation(async () => ({
+          ...template,
           languages: [
             ...template.languages,
             {

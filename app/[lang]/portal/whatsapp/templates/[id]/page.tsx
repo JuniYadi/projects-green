@@ -19,10 +19,11 @@ import {
   useUpdateTemplate,
   useDeleteTemplate,
   useSyncTemplate,
+  type TemplateFormInput,
 } from "@/modules/whatsapp/templates/api/templates.hooks"
-import { TemplateDetailView } from "@/modules/whatsapp/templates/ui/template-detail"
-import { TemplateForm } from "@/modules/whatsapp/templates/ui/template-form"
+import { TemplateForm, type LanguageVariant } from "@/modules/whatsapp/templates/ui/template-form"
 import { TemplateDeleteDialog } from "@/modules/whatsapp/templates/ui/template-delete-dialog"
+import { TemplateDetailView } from "@/modules/whatsapp/templates/ui/template-detail"
 
 export default function PortalTemplateDetailPage() {
   const params = useParams()
@@ -63,16 +64,10 @@ export default function PortalTemplateDetailPage() {
     slug: string
     description?: string
     category?: string
-    languages: Array<{
-      lang: string
-      headerType: string
-      headerText: string
-      body: string
-      footer: string
-    }>
+    languages: Omit<LanguageVariant, "id">[]
   }) => {
     try {
-      await update(id, data)
+      await update(id, data as Partial<TemplateFormInput>)
       toast.success("Template updated successfully.")
       setEditing(false)
       void reload()

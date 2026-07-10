@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import type { WhatsappTemplateSyncStatus } from "@prisma/client"
+import type { Prisma, WhatsappBillingCategory, WhatsappTemplateSyncStatus } from "@prisma/client"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { requireSuperAdmin } from "@/lib/whatsapp/auth"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
@@ -102,9 +102,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       set,
       query,
     }: {
-      request: unknown
-      set: { status: number }
-      query: Record<string, unknown>
+      request: any
+      set: any
+      query: any
     }) => {
       const whatsappAuth = await resolveAuthContext(request as Request)
       if (!whatsappAuth) {
@@ -180,9 +180,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       params,
       set,
     }: {
-      request: unknown
+      request: any
       params: { id: string }
-      set: { status: number }
+      set: any
     }) => {
       const whatsappAuth = await resolveAuthContext(request as Request)
       if (!whatsappAuth) {
@@ -232,9 +232,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       body,
       set,
     }: {
-      request: unknown
-      body: unknown
-      set: { status: number }
+      request: any
+      body: any
+      set: any
     }) => {
       const whatsappAuth = await resolveAuthContext(request as Request)
       if (!whatsappAuth) {
@@ -268,18 +268,32 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           footer?: string
           buttons?: unknown
         }>
+        slug: string
+        name: string
+        description?: string
+        category?: string
+        whatsappDeviceId?: string
         organizationId?: string
       }
-      const { languages, ...templateData } = bodyObj
+      const { languages: rawLanguages, slug, name, description, category, whatsappDeviceId } = bodyObj
+      const languages = rawLanguages!.map((lang) => ({
+        ...lang,
+        parameters: lang.parameters as Prisma.InputJsonValue,
+        buttons: lang.buttons as Prisma.InputJsonValue,
+      }))
 
       try {
         const template = await prisma.whatsappTemplate.create({
           data: {
-            ...templateData,
+            slug,
+            name,
+            description,
+            category: category as WhatsappBillingCategory,
+            whatsappDeviceId,
             organizationId:
               whatsappAuth.type === "workos"
                 ? whatsappAuth.organizationId!
-                : bodyObj.organizationId,
+                : bodyObj.organizationId!,
             languages: {
               create: languages,
             },
@@ -325,10 +339,10 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       body,
       set,
     }: {
-      request: unknown
+      request: any
       params: { id: string }
-      body: unknown
-      set: { status: number }
+      body: any
+      set: any
     }) => {
       const whatsappAuth = await resolveAuthContext(request as Request)
       if (!whatsappAuth) {
@@ -461,9 +475,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             headerUrl: lang.headerUrl,
             headerText: lang.headerText,
             body: lang.body,
-            parameters: lang.parameters,
+            parameters: lang.parameters as Prisma.InputJsonValue,
             footer: lang.footer,
-            buttons: lang.buttons,
+            buttons: lang.buttons as Prisma.InputJsonValue,
           }))
 
           try {
@@ -562,9 +576,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       params,
       set,
     }: {
-      request: unknown
+      request: any
       params: { id: string }
-      set: { status: number }
+      set: any
     }) => {
       const whatsappAuth = await resolveAuthContext(request as Request)
       if (!whatsappAuth) {
@@ -623,9 +637,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       params,
       set,
     }: {
-      request: unknown
+      request: any
       params: { id: string }
-      set: { status: number }
+      set: any
     }) => {
       const whatsappAuth = await resolveAuthContext(request as Request)
       if (!whatsappAuth) {
