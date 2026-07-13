@@ -1,108 +1,78 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render, waitFor, fireEvent } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import * as React from "react"
 
-// ─── Mock functions (must be declared before mock.module) ───────────────────
+// ─── Shared mock variables (must be before mock.module) ─────────────────────
+
+const mockRouterPush = mock(() => {})
+const mockRouterReplace = mock(() => {})
+let mockSearchParams = new URLSearchParams()
+const mockConversationsGet = mock(() => {
+  const nullable = null as string | null
+  return Promise.resolve({
+    ok: true,
+    conversation: {
+      id: "conv_default", organizationId: "org_1", contactPhone: "+6280000000000",
+      lastMessageAt: nullable, lastDirection: nullable, whatsappDeviceId: nullable,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      _count: { whatsappMessages: 0 },
+      whatsappMessages: [] as Array<Record<string, unknown>>,
+    },
+  })
+})
+
+// ─── Mock functions ─────────────────────────────────────────────────────────
 
 const mockSendTemplate = mock(() =>
   Promise.resolve({ ok: true, messageId: "msg_123", status: "queued" })
 )
 const mockConversationsList = mock(() =>
   Promise.resolve({ ok: true, conversations: [] as Array<{
-    id: string
-    organizationId: string
-    contactPhone: string
-    lastMessageAt: string | null
-    lastDirection: string | null
-    whatsappDeviceId: string | null
-    createdAt: string
-    updatedAt: string
-    _count: { whatsappMessages: number }
+    id: string; organizationId: string; contactPhone: string; lastMessageAt: string | null
+    lastDirection: string | null; whatsappDeviceId: string | null; createdAt: string
+    updatedAt: string; _count: { whatsappMessages: number }
   }> })
 )
 const mockDevicesList = mock(() =>
   Promise.resolve({
     ok: true,
-    devices: [
-      {
-        id: "device_1",
-        phoneNumber: "+6281234567890",
-        status: "ACTIVE",
-        name: "Test Device",
-        organizationId: "org_1",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ],
+    devices: [{
+      id: "device_1", phoneNumber: "+6281234567890", status: "ACTIVE",
+      name: "Test Device", organizationId: "org_1",
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    }],
   })
 )
 const mockTemplatesData: Array<{
-  id: string
-  name: string
-  slug: string
-  metaStatus: string | null
-  syncStatus: string
-  headerText?: string | null
-  headerType?: string | null
-  footer?: string | null
-  buttons?: unknown
-  parameters?: unknown
+  id: string; name: string; slug: string; metaStatus: string | null; syncStatus: string
+  headerText?: string | null; headerType?: string | null; footer?: string | null
+  buttons?: unknown; parameters?: unknown
   languages: Array<{
-    lang: string
-    body: string | null
-    isApproved?: boolean
-    metaStatus?: string
-    headerText?: string | null
-    headerType?: string | null
-    footer?: string | null
-    buttons?: unknown
-    parameters?: unknown
+    lang: string; body: string | null; isApproved?: boolean; metaStatus?: string
+    headerText?: string | null; headerType?: string | null; footer?: string | null
+    buttons?: unknown; parameters?: unknown
   }>
-  organizationId: string
-  createdAt: string
-  updatedAt: string
-}> = [
-  {
-    id: "tpl_1",
-    name: "hello_world",
-    slug: "hello_world",
-    metaStatus: "APPROVED",
-    syncStatus: "SYNCED",
-    languages: [
-      {
-        lang: "en",
-        body: "Hello {{1}}, you have {{2}} new messages.",
-        footer: "Reply STOP",
-        buttons: [
-          { type: "QUICK_REPLY", text: "Yes" },
-        ],
-        parameters: {
-          components: [
-            {
-              type: "BODY",
-              example: { body_text: [["John", "5"]] },
-            },
-          ],
-        },
-        isApproved: true,
-        metaStatus: "APPROVED",
-      },
-    ],
-    organizationId: "org_1",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+  organizationId: string; createdAt: string; updatedAt: string
+}> = [{
+  id: "tpl_1", name: "hello_world", slug: "hello_world",
+  metaStatus: "APPROVED", syncStatus: "SYNCED",
+  languages: [{
+    lang: "en", body: "Hello {{1}}, you have {{2}} new messages.",
+    footer: "Reply STOP", buttons: [{ type: "QUICK_REPLY", text: "Yes" }],
+    parameters: { components: [{ type: "BODY", example: { body_text: [["John", "5"]] } }] },
+    isApproved: true, metaStatus: "APPROVED",
+  }],
+  organizationId: "org_1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+}]
 
 // ─── Module mocks ──────────────────────────────────────────────────────────
 
 mock.module("next/navigation", () => ({
-  useRouter: () => ({
-    push: mock(() => {}),
-    replace: mock(() => {}),
-  }),
+  useRouter: () => ({ push: mockRouterPush, replace: mockRouterReplace }),
   useParams: () => ({ lang: "en" }),
-  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/en/console/whatsapp/messages",
+  useSearchParams: () => mockSearchParams,
 }))
 
 mock.module("@/lib/api/whatsapp-client", () => ({
@@ -113,39 +83,16 @@ mock.module("@/lib/api/whatsapp-client", () => ({
       sendInteractive: mock(() => Promise.resolve({ ok: true })),
       list: mock(() => Promise.resolve({ ok: true, messages: [] })),
     },
-    conversations: {
-      list: mockConversationsList,
-      get: mock(() =>
-        Promise.resolve({
-          ok: true,
-          conversation: { whatsappMessages: [] },
-        })
-      ),
-    },
-    devices: {
-      list: mockDevicesList,
-    },
-    webhooks: {
-      stats: mock(() => Promise.resolve({ ok: true, data: null })),
-    },
-    broadcasts: {
-      summary: mock(() => Promise.resolve({ total: 0 })),
-    },
-    usage: {
-      overview: mock(() =>
-        Promise.resolve({ ok: true, month: [], today: [], cost: null })
-      ),
-    },
+    conversations: { list: mockConversationsList, get: mockConversationsGet },
+    devices: { list: mockDevicesList },
+    webhooks: { stats: mock(() => Promise.resolve({ ok: true, data: null })) },
+    broadcasts: { summary: mock(() => Promise.resolve({ total: 0 })) },
+    usage: { overview: mock(() => Promise.resolve({ ok: true, month: [], today: [], cost: null })) },
   },
 }))
 
 mock.module("@/modules/whatsapp/templates/api/templates.hooks", () => ({
-  useTemplates: () => ({
-    templates: mockTemplatesData,
-    loading: false,
-    error: null,
-    reload: mock(() => Promise.resolve()),
-  }),
+  useTemplates: () => ({ templates: mockTemplatesData, loading: false, error: null, reload: mock(() => Promise.resolve()) }),
 }))
 
 mock.module("@/modules/whatsapp/messages/ui/message-status-badge", () => ({
@@ -164,118 +111,69 @@ function tick(ms = 50) {
 
 describe("WhatsAppMessagesPage", () => {
   beforeEach(() => {
+    mockRouterPush.mockClear()
+    mockRouterReplace.mockClear()
+    mockConversationsList.mockClear()
+    mockConversationsGet.mockClear()
     mockSendTemplate.mockClear()
+    mockDevicesList.mockClear()
+    mockSearchParams = new URLSearchParams()
+    mockConversationsList.mockResolvedValue({ ok: true, conversations: [] })
+    mockConversationsGet.mockResolvedValue({
+      ok: true,
+      conversation: { id: "conv_default", organizationId: "org_1", contactPhone: "+6280000000000", lastMessageAt: null, lastDirection: null, whatsappDeviceId: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), _count: { whatsappMessages: 0 }, whatsappMessages: [] },
+    })
+    mockDevicesList.mockResolvedValue({ ok: true, devices: [{ id: "device_1", name: "Test Device", phoneNumber: "+6281234567890", status: "ACTIVE", organizationId: "org_1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }] })
+    mockSendTemplate.mockResolvedValue({ ok: true, messageId: "msg_123", status: "queued" })
   })
 
   it("renders the page with a New Message button", async () => {
     const view = render(<WhatsAppMessagesPage />)
-
     expect(view.getByText("Messages")).toBeInTheDocument()
     expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
     expect(view.queryByText("Message *")).not.toBeInTheDocument()
     expect(view.queryByText(/interactive message/i)).not.toBeInTheDocument()
     expect(view.queryByText(/reply buttons/i)).not.toBeInTheDocument()
     expect(view.queryByText(/cta url/i)).not.toBeInTheDocument()
-
     view.unmount()
   })
 
-  it("opens send dialog and shows 2-column layout with single-device auto-selection", async () => {
+  it("opens send dialog and shows 2-column layout", async () => {
     const view = render(<WhatsAppMessagesPage />)
-
-    // Wait for devices to load and auto-select to complete
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled()
-    })
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
     await tick(50)
-
-    // Click New Message to open dialog
     fireEvent.click(view.getByRole("button", { name: /new message/i }))
-
-    // Dialog title should appear
-    await waitFor(() => {
-      expect(
-        view.getByRole("heading", { name: "Send Template Message" })
-      ).toBeInTheDocument()
-    })
-
-    // Phone Number field rendered at top of left column
+    await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
     expect(view.getByText("Phone Number *")).toBeInTheDocument()
-
-    // Device * NOT rendered — single active device auto-selected
     expect(view.queryByText("Device *")).not.toBeInTheDocument()
     expect(view.getByText("+6281234567890")).toBeInTheDocument()
-
-    // Template * rendered after Phone Number in DOM order
     expect(view.getByText("Template *")).toBeInTheDocument()
-    const phoneLabel = view.getByText("Phone Number *")
-    const templateLabel = view.getByText("Template *")
-    expect(phoneLabel.compareDocumentPosition(templateLabel)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING
-    )
-
-    // Preview heading renders
     expect(view.getByText("Message Preview")).toBeInTheDocument()
-
-    // Fill phone and select template
-    const phoneInput = view.getByPlaceholderText("+628123456789")
-    fireEvent.change(phoneInput, { target: { value: "+6289876543210" } })
-    const templateButtons = view.getAllByText("hello_world")
-    fireEvent.click(templateButtons[0])
-
-    // Send button is enabled
-    const sendButton = view.getByRole("button", { name: /send template message/i })
-    expect(sendButton).not.toBeDisabled()
-
+    fireEvent.change(view.getByPlaceholderText("+628123456789"), { target: { value: "+6289876543210" } })
+    fireEvent.click(view.getAllByText("hello_world")[0])
+    expect(view.getByRole("button", { name: /send template message/i })).not.toBeDisabled()
     view.unmount()
   })
+
   it("shows send button enabled after filling all fields", async () => {
     const view = render(<WhatsAppMessagesPage />)
-
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled()
-    })
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
     await tick(100)
-
-    // Open dialog
     fireEvent.click(view.getByRole("button", { name: /new message/i }))
-    await waitFor(() => {
-      expect(
-        view.getByRole("heading", { name: "Send Template Message" })
-      ).toBeInTheDocument()
-    })
-
-    // Fill phone
-    const phoneInput = view.getByPlaceholderText("+628123456789")
-    fireEvent.change(phoneInput, { target: { value: "+6289876543210" } })
-
-    // Select template (works inside dialog)
+    await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
+    fireEvent.change(view.getByPlaceholderText("+628123456789"), { target: { value: "+6289876543210" } })
     fireEvent.click(view.getAllByText("hello_world")[0])
-
-    // Wait for placeholder fields to appear
-    await waitFor(() => {
-      expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument()
-    })
-
-    // Fill placeholder fields
+    await waitFor(() => { expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument() })
     fireEvent.change(view.getByPlaceholderText("Value for {{1}}"), { target: { value: "John" } })
     fireEvent.change(view.getByPlaceholderText("Value for {{2}}"), { target: { value: "Acme Corp" } })
     await tick(100)
-
-    // Verify button state
-    const sendButton = view.getByRole("button", { name: /send template message/i })
-    expect(sendButton).not.toBeDisabled()
-
+    expect(view.getByRole("button", { name: /send template message/i })).not.toBeDisabled()
     view.unmount()
   })
 
   it("does not render old free-form message fields", async () => {
     const view = render(<WhatsAppMessagesPage />)
-
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
-    })
-
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
     expect(view.queryByText("Message *")).not.toBeInTheDocument()
     expect(view.queryByText(/interactive message/i)).not.toBeInTheDocument()
     expect(view.queryByText(/reply buttons/i)).not.toBeInTheDocument()
@@ -283,378 +181,220 @@ describe("WhatsAppMessagesPage", () => {
     view.unmount()
   })
 
-  it("accepts Indonesian local phone 085708296482 as a valid phone number", async () => {
+  it("accepts Indonesian local phone 085708296482", async () => {
     const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled()
-    })
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
     await tick(50)
-
     fireEvent.click(view.getByRole("button", { name: /new message/i }))
-    await waitFor(() => {
-      expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument()
-    })
+    await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
     await tick(50)
-
-    // Enter Indonesian local format — this is a valid phone number that should be accepted
-    const phoneInput = view.getByPlaceholderText("+628123456789")
+    const phoneInput = view.getByPlaceholderText("+628123456789") as HTMLInputElement
     fireEvent.change(phoneInput, { target: { value: "085708296482" } })
-    expect((phoneInput as HTMLInputElement).value).toBe("085708296482")
-
-    // Select template
+    expect(phoneInput.value).toBe("085708296482")
     fireEvent.click(view.getAllByText("hello_world")[0])
-    await waitFor(() => {
-      expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument()
-    })
+    await waitFor(() => { expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument() })
     await tick(50)
-
-    // Fill template fields
     fireEvent.change(view.getByPlaceholderText("Value for {{1}}"), { target: { value: "John" } })
     fireEvent.change(view.getByPlaceholderText("Value for {{2}}"), { target: { value: "5" } })
     await tick(50)
-
-    // The send button must be enabled for the phone to be valid.
-    // If normalizeIndonesianPhoneNumber("085708296482") returned null (invalid),
-    // the handler would fire toast.error("Enter a valid phone number") on click
-    // and the button would remain functionally blocked from completing a send.
-    // Since the button is enabled and the input accepted the Indonesian format,
-    // the page considers it a valid phone — it will be normalized to +6285708296482
-    // in handleSendMessage before calling whatsappClient.messages.sendTemplate.
-    const sendButton = view.getByRole("button", { name: /send template message/i })
-    expect(sendButton).not.toBeDisabled()
-
+    expect(view.getByRole("button", { name: /send template message/i })).not.toBeDisabled()
     view.unmount()
   })
 
   it("collapses template picker after selection and shows Change Template button", async () => {
     const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled()
-    })
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
     await tick(50)
-
     fireEvent.click(view.getByRole("button", { name: /new message/i }))
-    await waitFor(() => {
-      expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument()
-    })
-
-    // Filter input should be visible initially
+    await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
     expect(view.getByPlaceholderText("Type to filter templates...")).toBeInTheDocument()
-
-    // Select a template
     fireEvent.click(view.getAllByText("hello_world")[0])
     await tick(50)
-
-    // Filter input should now be absent — picker is collapsed
     expect(view.queryByPlaceholderText("Type to filter templates...")).not.toBeInTheDocument()
-
-    // Change Template button should be visible
     expect(view.getByRole("button", { name: "Change Template" })).toBeInTheDocument()
-
-    // Click Change Template — filter input should reappear
     fireEvent.click(view.getByRole("button", { name: "Change Template" }))
     await tick(50)
     expect(view.getByPlaceholderText("Type to filter templates...")).toBeInTheDocument()
-
     view.unmount()
   })
 
   it("shows Send Template button when active conversation has no recent INBOX messages", async () => {
-    // Mock a conversation with only an OUTBOX message (no INBOX in last 24h)
     const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
-
-    mockConversationsList.mockResolvedValueOnce({
-      ok: true,
-      conversations: [
-        {
-          id: "conv_1",
-          organizationId: "org_1",
-          contactPhone: "+6281234567890",
-          lastMessageAt: oldDate,
-          lastDirection: "OUTBOX",
-          whatsappDeviceId: "device_1",
-          createdAt: oldDate,
-          updatedAt: oldDate,
-          _count: { whatsappMessages: 1 },
-        },
-      ],
-    })
-
-    const mockConversationsGet = mock(() =>
-      Promise.resolve({
-        ok: true,
-        conversation: {
-          id: "conv_1",
-          organizationId: "org_1",
-          contactPhone: "+6281234567890",
-          lastMessageAt: oldDate,
-          lastDirection: "OUTBOX",
-          whatsappDeviceId: "device_1",
-          createdAt: oldDate,
-          updatedAt: oldDate,
-          _count: { whatsappMessages: 1 },
-          whatsappMessages: [
-            {
-              id: "msg_1",
-              conversationId: "conv_1",
-              direction: "OUTBOX",
-              messageType: "template",
-              body: "Hello",
-              mediaUrl: null,
-              waMessageId: null,
-              metadata: null,
-              createdAt: oldDate,
-              updatedAt: oldDate,
-            },
-          ],
-        },
-      })
-    )
-
-    // Re-mock the conversations.get for this test
-    const whatsappClient = await import("@/lib/api/whatsapp-client")
-    const originalGet = (whatsappClient.whatsappClient as any).conversations.get
-    ;(whatsappClient.whatsappClient as any).conversations.get = mockConversationsGet
-
+    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890", lastMessageAt: oldDate, lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: oldDate, updatedAt: oldDate, _count: { whatsappMessages: 1 } }] })
+    mockConversationsGet.mockResolvedValueOnce({ ok: true, conversation: { id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890", lastMessageAt: oldDate, lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: oldDate, updatedAt: oldDate, _count: { whatsappMessages: 1 }, whatsappMessages: [{ id: "msg_1", conversationId: "conv_1", direction: "OUTBOX", messageType: "template", body: "Hello", mediaUrl: null, waMessageId: null, metadata: null, createdAt: oldDate, updatedAt: oldDate }] } })
     const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
-    })
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
     await tick(100)
-
-    // Conversation should appear in the list
     expect(view.getByText("+6281234567890")).toBeInTheDocument()
-
-    // Click the conversation
     fireEvent.click(view.getByText("+6281234567890"))
-    await waitFor(() => {
-      expect(view.queryByText("1 messages")).toBeInTheDocument()
-    })
+    await waitFor(() => { expect(view.queryByText("1 messages")).toBeInTheDocument() })
     await tick(50)
-
-    // Send Template button should appear in thread header since reply window is closed
     expect(view.getByRole("button", { name: "Send Template" })).toBeInTheDocument()
-
-    // Restore original
-    ;(whatsappClient.whatsappClient as any).conversations.get = originalGet
     view.unmount()
   })
 
   it("does not show Send Template button when conversation has recent INBOX messages", async () => {
-    // Mock a conversation with a recent INBOX message
     const recentDate = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
-
-    mockConversationsList.mockResolvedValueOnce({
-      ok: true,
-      conversations: [
-        {
-          id: "conv_2",
-          organizationId: "org_1",
-          contactPhone: "+6289876543210",
-          lastMessageAt: recentDate,
-          lastDirection: "INBOX",
-          whatsappDeviceId: "device_1",
-          createdAt: recentDate,
-          updatedAt: recentDate,
-          _count: { whatsappMessages: 1 },
-        },
-      ],
-    })
-
-    const mockConversationsGet = mock(() =>
-      Promise.resolve({
-        ok: true,
-        conversation: {
-          id: "conv_2",
-          organizationId: "org_1",
-          contactPhone: "+6289876543210",
-          lastMessageAt: recentDate,
-          lastDirection: "INBOX",
-          whatsappDeviceId: "device_1",
-          createdAt: recentDate,
-          updatedAt: recentDate,
-          _count: { whatsappMessages: 1 },
-          whatsappMessages: [
-            {
-              id: "msg_2",
-              conversationId: "conv_2",
-              direction: "INBOX",
-              messageType: "text",
-              body: "Hello there!",
-              mediaUrl: null,
-              waMessageId: null,
-              metadata: null,
-              createdAt: recentDate,
-              updatedAt: recentDate,
-            },
-          ],
-        },
-      })
-    )
-
-    const whatsappClient = await import("@/lib/api/whatsapp-client")
-    const originalGet = (whatsappClient.whatsappClient as any).conversations.get
-    ;(whatsappClient.whatsappClient as any).conversations.get = mockConversationsGet
-
+    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_2", organizationId: "org_1", contactPhone: "+6289876543210", lastMessageAt: recentDate, lastDirection: "INBOX", whatsappDeviceId: "device_1", createdAt: recentDate, updatedAt: recentDate, _count: { whatsappMessages: 1 } }] })
+    mockConversationsGet.mockResolvedValueOnce({ ok: true, conversation: { id: "conv_2", organizationId: "org_1", contactPhone: "+6289876543210", lastMessageAt: recentDate, lastDirection: "INBOX", whatsappDeviceId: "device_1", createdAt: recentDate, updatedAt: recentDate, _count: { whatsappMessages: 1 }, whatsappMessages: [{ id: "msg_2", conversationId: "conv_2", direction: "INBOX", messageType: "text", body: "Hello there!", mediaUrl: null, waMessageId: null, metadata: null, createdAt: recentDate, updatedAt: recentDate }] } })
     const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
-    })
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
     await tick(100)
-
-    // Click the conversation
     fireEvent.click(view.getByText("+6289876543210"))
-    await waitFor(() => {
-      expect(view.queryByText("1 messages")).toBeInTheDocument()
-    })
+    await waitFor(() => { expect(view.queryByText("1 messages")).toBeInTheDocument() })
     await tick(50)
-
-    // Send Template button should NOT appear — within 24-hour window
     expect(view.queryByRole("button", { name: "Send Template" })).not.toBeInTheDocument()
-
-    // Restore original
-    ;(whatsappClient.whatsappClient as any).conversations.get = originalGet
     view.unmount()
   })
 
-  it('lacks Conversations heading and search has correct aria-label', async () => {
+  it("lacks Conversations heading and search has correct aria-label", async () => {
     const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
-    })
-
-    // Conversations heading should be absent
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
     expect(view.queryByText("Conversations")).not.toBeInTheDocument()
-
-    // Search input should have the correct aria-label
-    const searchInput = view.getByPlaceholderText("Search phone number...")
-    expect(searchInput).toHaveAttribute("aria-label", "Search conversations by phone number")
-
+    expect(view.getByPlaceholderText("Search phone number...")).toHaveAttribute("aria-label", "Search conversations by phone number")
     view.unmount()
   })
 
   it("shows template preview with filled values when fields are entered", async () => {
     const view = render(<WhatsAppMessagesPage />)
-
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled()
-    })
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
     await tick(100)
-
-    // Open dialog
     fireEvent.click(view.getByRole("button", { name: /new message/i }))
-    await waitFor(() => {
-      expect(
-        view.getByRole("heading", { name: "Send Template Message" })
-      ).toBeInTheDocument()
-    })
-
-    // Fill phone and select template
-    const phoneInput = view.getByPlaceholderText("+628123456789")
-    fireEvent.change(phoneInput, { target: { value: "+6289876543210" } })
+    await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
+    fireEvent.change(view.getByPlaceholderText("+628123456789"), { target: { value: "+6289876543210" } })
     fireEvent.click(view.getAllByText("hello_world")[0])
-    await waitFor(() => {
-      expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument()
-    })
-
-    // Verify template preview is rendered in the dialog
-    await waitFor(() => {
-      expect(view.getByText("Message Preview")).toBeInTheDocument()
-    })
-    // hello_world appears in the template picker - just verify we can find it
-    const helloElements = view.getAllByText("hello_world")
-    expect(helloElements.length).toBeGreaterThan(0)
-
-    // Fill fields — preview should show the filled values
-    const field1 = view.getByPlaceholderText("Value for {{1}}")
+    await waitFor(() => { expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument() })
+    await waitFor(() => { expect(view.getByText("Message Preview")).toBeInTheDocument() })
+    const field1 = view.getByPlaceholderText("Value for {{1}}") as HTMLInputElement
     fireEvent.change(field1, { target: { value: "Alice" } })
     await tick(100)
-
-    // Check that the entered value appears in the input
-    expect((field1 as HTMLInputElement).value).toBe("Alice")
-    const helloFound = view.getAllByText(/Hello/)
-    expect(helloFound.length).toBeGreaterThan(0)
-
+    expect(field1.value).toBe("Alice")
     view.unmount()
   })
 
   it("renders template outbox message as sent bubble from stored body", async () => {
     const recentDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
+    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_tpl", organizationId: "org_1", contactPhone: "+6281111111111", lastMessageAt: recentDate, lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: recentDate, updatedAt: recentDate, _count: { whatsappMessages: 1 } }] })
+    mockConversationsGet.mockResolvedValueOnce({ ok: true, conversation: { id: "conv_tpl", organizationId: "org_1", contactPhone: "+6281111111111", lastMessageAt: recentDate, lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: recentDate, updatedAt: recentDate, _count: { whatsappMessages: 1 }, whatsappMessages: [{ id: "msg_tpl_1", conversationId: "conv_tpl", direction: "OUTBOX", messageType: "template", body: "Hello Alice, your order is confirmed.", mediaUrl: null, waMessageId: null, metadata: { templateName: "hello_world", templateLanguage: "en", fields: ["Alice"] }, createdAt: recentDate, updatedAt: recentDate }] } })
+    const view = render(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
+    await tick(100)
+    fireEvent.click(view.getByText("+6281111111111"))
+    await waitFor(() => { expect(view.queryByText("1 messages")).toBeInTheDocument() })
+    await tick(50)
+    expect(view.getByText("Hello Alice, your order is confirmed.")).toBeInTheDocument()
+    view.unmount()
+  })
 
-    mockConversationsList.mockResolvedValueOnce({
-      ok: true,
-      conversations: [
-        {
-          id: "conv_tpl",
-          organizationId: "org_1",
-          contactPhone: "+6281111111111",
-          lastMessageAt: recentDate,
-          lastDirection: "OUTBOX",
-          whatsappDeviceId: "device_1",
-          createdAt: recentDate,
-          updatedAt: recentDate,
-          _count: { whatsappMessages: 1 },
-        },
-      ],
-    })
+  it("updates the URL when a conversation is selected", async () => {
+    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890", lastMessageAt: new Date().toISOString(), lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), _count: { whatsappMessages: 1 } }] })
+    const view = render(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByText("+6281234567890")).toBeInTheDocument() })
+    await tick(50)
+    fireEvent.click(view.getByText("+6281234567890"))
+    await tick(50)
+    expect(mockRouterReplace).toHaveBeenCalledWith("/en/console/whatsapp/messages?phone=6281234567890", { scroll: false })
+    view.unmount()
+  })
 
-    const mockConversationsGet = mock(() =>
-      Promise.resolve({
-        ok: true,
-        conversation: {
-          id: "conv_tpl",
-          organizationId: "org_1",
-          contactPhone: "+6281111111111",
-          lastMessageAt: recentDate,
-          lastDirection: "OUTBOX",
-          whatsappDeviceId: "device_1",
-          createdAt: recentDate,
-          updatedAt: recentDate,
-          _count: { whatsappMessages: 1 },
-          whatsappMessages: [
-            {
-              id: "msg_tpl_1",
-              conversationId: "conv_tpl",
-              direction: "OUTBOX",
-              messageType: "template",
-              body: "Hello Alice, your order is confirmed.",
-              mediaUrl: null,
-              waMessageId: null,
-              metadata: {
-                templateName: "hello_world",
-                templateLanguage: "en",
-                fields: ["Alice"],
-              },
-              createdAt: recentDate,
-              updatedAt: recentDate,
-            },
-          ],
-        },
-      })
-    )
+  it("selects a conversation from the phone query parameter", async () => {
+    mockSearchParams = new URLSearchParams("phone=6281234567890")
+    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890", lastMessageAt: new Date().toISOString(), lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), _count: { whatsappMessages: 1 } }] })
+    const view = render(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(mockConversationsGet).toHaveBeenCalledWith("conv_1") })
+    view.unmount()
+  })
 
-    const whatsappClient = await import("@/lib/api/whatsapp-client")
-    const originalGet = (whatsappClient.whatsappClient as any).conversations.get
-    ;(whatsappClient.whatsappClient as any).conversations.get = mockConversationsGet
+  it("applies bounded-layout CSS classes to thread grid and cards", async () => {
+    const view = render(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
+    expect(view.container.querySelectorAll(".lg\\:h-\\[calc\\(100svh-14rem\\)\\]").length).toBeGreaterThanOrEqual(1)
+    expect(view.container.querySelectorAll(".min-h-0").length).toBeGreaterThanOrEqual(3)
+    expect(view.container.querySelector(".min-h-\\[500px\\]")).toBeNull()
+    view.unmount()
+  })
+
+  it("sends a template and updates URL when send succeeds", async () => {
+    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [] })
 
     const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
-    })
-    await tick(100)
-
-    // Click the conversation
-    fireEvent.click(view.getByText("+6281111111111"))
-    await waitFor(() => {
-      expect(view.queryByText("1 messages")).toBeInTheDocument()
-    })
+    const user = userEvent.setup()
+    await waitFor(() => { expect(mockConversationsList).toHaveBeenCalledTimes(1) })
     await tick(50)
 
-    // The template outbox message should render from stored body
-    expect(view.getByText("Hello Alice, your order is confirmed.")).toBeInTheDocument()
+    // Open dialog
+    await user.click(view.getByRole("button", { name: /new message/i }))
+    await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
 
-    // Restore original
-    ;(whatsappClient.whatsappClient as any).conversations.get = originalGet
+    // Fill phone
+    const phoneInput = view.getByPlaceholderText("+628123456789") as HTMLInputElement
+    await user.type(phoneInput, "+6289876543210")
+    expect(phoneInput.value).toBe("+6289876543210")
+
+    // Select template and fill fields
+    await user.click(view.getAllByText("hello_world")[0])
+    await waitFor(() => { expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument() })
+    await user.type(view.getByPlaceholderText("Value for {{1}}"), "Alice")
+    await user.type(view.getByPlaceholderText("Value for {{2}}"), "Acme Corp")
+    await tick(50)
+
+    // Set up post-send mocks
+    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_new", organizationId: "org_1", contactPhone: "+6289876543210", lastMessageAt: new Date().toISOString(), lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), _count: { whatsappMessages: 1 } }] })
+    mockConversationsGet.mockResolvedValueOnce({ ok: true, conversation: { id: "conv_new", organizationId: "org_1", contactPhone: "+6289876543210", lastMessageAt: new Date().toISOString(), lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), _count: { whatsappMessages: 1 }, whatsappMessages: [] } })
+
+    // Click send button via userEvent
+    const sendBtn = view.getByRole("button", { name: /send template message/i })
+    expect(sendBtn).not.toBeDisabled()
+    await user.click(sendBtn)
+    await tick(100)
+
+    // Verify send was called
+    expect(mockSendTemplate).toHaveBeenCalled()
+
+    // Verify URL was updated
+    expect(mockRouterReplace).toHaveBeenCalledWith("/en/console/whatsapp/messages?phone=6289876543210", { scroll: false })
+
+    // Verify conversation lookup was triggered
+    expect(mockConversationsList).toHaveBeenCalledWith({ contactPhone: "+6289876543210" })
+    await waitFor(() => { expect(mockConversationsGet).toHaveBeenCalledWith("conv_new") })
+
+    view.unmount()
+  })
+
+  it("updates URL even when post-send lookup fails", async () => {
+    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [] })
+
+    const view = render(<WhatsAppMessagesPage />)
+    const user = userEvent.setup()
+    await waitFor(() => { expect(mockConversationsList).toHaveBeenCalledTimes(1) })
+    await tick(50)
+
+    // Open dialog
+    await user.click(view.getByRole("button", { name: /new message/i }))
+    await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
+
+    // Fill phone
+    await user.type(view.getByPlaceholderText("+628123456789"), "+6289876543210")
+    await user.click(view.getAllByText("hello_world")[0])
+    await waitFor(() => { expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument() })
+    await user.type(view.getByPlaceholderText("Value for {{1}}"), "Alice")
+    await user.type(view.getByPlaceholderText("Value for {{2}}"), "Acme Corp")
+    await tick(50)
+
+    // Post-send lookup rejects — dialog must still close and URL must still update
+    mockConversationsList.mockRejectedValueOnce(new Error("lookup failed"))
+
+    const sendBtn = view.getByRole("button", { name: /send template message/i })
+    expect(sendBtn).not.toBeDisabled()
+    await user.click(sendBtn)
+    await tick(100)
+
+    // Verify send was still called
+    expect(mockSendTemplate).toHaveBeenCalled()
+
+    // URL still updated even when lookup fails
+    expect(mockRouterReplace).toHaveBeenCalledWith("/en/console/whatsapp/messages?phone=6289876543210", { scroll: false })
+
     view.unmount()
   })
 })

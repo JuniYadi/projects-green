@@ -1,0 +1,5 @@
+/* Console content area: reduce base font from 16px → 14px.
+   Only imported in console layout — no global effect. */
+[data-slot="sidebar-inset"] {
+  font-size: 14px;
+}

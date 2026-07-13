@@ -1,3 +1,5 @@
+import "./console.css"
+
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppBreadcrumbs } from "@/components/app-breadcrumbs"
 import { Separator } from "@/components/ui/separator"
@@ -103,6 +105,7 @@ export default async function ConsoleLayout({
         surface="console"
         user={sidebarUser}
         organization={sidebarOrganization}
+        collapsible="icon"
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2">

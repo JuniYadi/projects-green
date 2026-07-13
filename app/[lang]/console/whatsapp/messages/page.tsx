@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ChatCircle,
   PaperPlaneTilt,
@@ -56,7 +57,6 @@ import {
   getTemplatePlaceholderIndexes,
   WhatsAppTemplatePreview,
 } from "@/modules/whatsapp/templates/ui/template-preview"
-import type { TemplatePreviewValues } from "@/modules/whatsapp/templates/ui/template-preview"
 
 // ─── Local Types ─────────────────────────────────────────────────────────────
 
@@ -152,6 +152,26 @@ function isReplyWindowClosed(conversation: ConversationDetail | null): boolean {
   return Date.now() - new Date(newestInbox.createdAt).getTime() >= 24 * 60 * 60 * 1000
 }
 
+
+const PHONE_QUERY_KEY = "phone"
+
+const cleanPhoneForQuery = (phone: string) => {
+  const normalized = normalizeIndonesianPhoneNumber(phone) ?? phone
+  return normalized.replace(/\D/g, "")
+}
+
+const findConversationByPhone = (
+  conversations: ConversationListItem[],
+  phone: string
+) => {
+  const target = cleanPhoneForQuery(phone)
+  if (!target) return null
+  return (
+    conversations.find(
+      (conversation) => cleanPhoneForQuery(conversation.contactPhone) === target
+    ) ?? null
+  )
+}
 // ─── Conversation List Item ───────────────────────────────────────────────────
 
 function ConversationItem({
@@ -252,6 +272,9 @@ function MessageBubble({ message }: { message: Message }) {
 
 export default function WhatsAppMessagesPage() {
   // State - conversations
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [conversations, setConversations] = React.useState<
     ConversationListItem[]
   >([])
@@ -265,6 +288,7 @@ export default function WhatsAppMessagesPage() {
   const [activeConversationId, setActiveConversationId] = React.useState<
     string | null
   >(null)
+  const [activeRefreshKey, setActiveRefreshKey] = React.useState(0)
   const [activeConversation, setActiveConversation] =
     React.useState<ConversationDetail | null>(null)
   const [activeLoading, setActiveLoading] = React.useState(false)
@@ -360,7 +384,23 @@ export default function WhatsAppMessagesPage() {
     return () => {
       cancelled = true
     }
-  }, [activeConversationId])
+  }, [activeConversationId, activeRefreshKey])
+
+  // Select conversation from ?phone= query parameter
+  React.useEffect(() => {
+    const phoneQuery = searchParams.get(PHONE_QUERY_KEY)
+    if (!phoneQuery) return
+
+    const phoneDigits = cleanPhoneForQuery(phoneQuery)
+    if (!phoneDigits) return
+
+    React.startTransition(() => {
+      const match = findConversationByPhone(conversations, phoneDigits)
+      if (match && match.id !== activeConversationId) {
+        setActiveConversationId(match.id)
+      }
+    })
+  }, [searchParams, conversations, activeConversationId])
 
   // Scroll to bottom on new messages
   React.useEffect(() => {
@@ -406,11 +446,12 @@ export default function WhatsAppMessagesPage() {
     [activeDevices]
   )
 
-  // Auto-select the only active device when there's exactly one
   React.useEffect(() => {
-    if (hasSingleActiveDevice && !sendDeviceId) {
-      setSendDeviceId(activeDevices[0].id)
-    }
+    React.startTransition(() => {
+      if (hasSingleActiveDevice && !sendDeviceId) {
+        setSendDeviceId(activeDevices[0].id)
+      }
+    })
   }, [activeDevices, hasSingleActiveDevice, sendDeviceId])
 
   const approvedTemplates = React.useMemo(
@@ -418,15 +459,15 @@ export default function WhatsAppMessagesPage() {
     [deviceTemplates]
   )
 
-  // Reset template selection when device changes
   React.useEffect(() => {
     if (sendDeviceId) {
-      // device changed — reset template state
-      setSelectedTemplateId("")
-      setSelectedTemplateLanguage("")
-      setTemplateFieldValues({})
-      setTemplateSearchQuery("")
-      setTemplatePickerOpen(true)
+      React.startTransition(() => {
+        setSelectedTemplateId("")
+        setSelectedTemplateLanguage("")
+        setTemplateFieldValues({})
+        setTemplateSearchQuery("")
+        setTemplatePickerOpen(true)
+      })
     }
   }, [sendDeviceId])
 
@@ -481,9 +522,18 @@ export default function WhatsAppMessagesPage() {
 
   // ── Handlers ───────────────────────────────────────────────────────────
 
-  const handleSelectConversation = (id: string) => {
-    setActiveConversationId(id)
-  }
+  const handleSelectConversation = React.useCallback(
+    (conversation: ConversationListItem) => {
+      setActiveConversationId(conversation.id)
+      const next = new URLSearchParams(searchParams.toString())
+      const phone = cleanPhoneForQuery(conversation.contactPhone)
+      if (phone) next.set(PHONE_QUERY_KEY, phone)
+      else next.delete(PHONE_QUERY_KEY)
+      const qs = next.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, router, searchParams]
+  )
 
   const openTemplateDialogForConversation = React.useCallback(
     (conversation: ConversationDetail) => {
@@ -500,6 +550,27 @@ export default function WhatsAppMessagesPage() {
       setSendDialogOpen(true)
     },
     [activeDevices]
+  )
+
+  const loadConversationForPhone = React.useCallback(
+    async (phone: string) => {
+      const phoneScopedPayload = await whatsappClient.conversations.list({
+        contactPhone: phone,
+      })
+      const phoneScopedConversations = phoneScopedPayload.ok
+        ? phoneScopedPayload.conversations ?? []
+        : []
+      const phoneScopedMatch = findConversationByPhone(
+        phoneScopedConversations,
+        phone
+      )
+      if (phoneScopedMatch) return phoneScopedMatch
+
+      const allPayload = await whatsappClient.conversations.list()
+      const allConversations = allPayload.ok ? allPayload.conversations ?? [] : []
+      return findConversationByPhone(allConversations, phone)
+    },
+    []
   )
 
   const handleSendMessage = async () => {
@@ -548,13 +619,33 @@ export default function WhatsAppMessagesPage() {
       })
 
       toast.success("Template message queued for delivery")
-      // Refresh conversations list
-      whatsappClient.conversations
-        .list()
-        .then((p) => {
-          if (p.ok) setConversations(p.conversations)
-        })
-        .catch(() => {})
+
+      let sentConversation: ConversationListItem | null = null
+      try {
+        sentConversation = await loadConversationForPhone(normalizedPhone)
+      } catch (lookupError) {
+        console.warn(
+          "[WhatsAppMessagesPage] Sent template but failed to open conversation",
+          { phoneNumber: normalizedPhone, error: lookupError }
+        )
+        toast.warning("Template sent, but the chat could not be opened automatically.")
+      }
+
+      setRefreshKey((key) => key + 1)
+
+      const next = new URLSearchParams(searchParams.toString())
+      next.set(PHONE_QUERY_KEY, cleanPhoneForQuery(normalizedPhone))
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false })
+
+      if (sentConversation) {
+        setActiveConversationId(sentConversation.id)
+        setActiveRefreshKey((key) => key + 1)
+      } else {
+        console.warn(
+          "[WhatsAppMessagesPage] Sent template but conversation was not found after reload",
+          { phoneNumber: normalizedPhone }
+        )
+      }
 
       setSendDialogOpen(false)
       setSendDeviceId(hasSingleActiveDevice ? activeDevices[0]?.id ?? "" : "")
@@ -876,9 +967,9 @@ export default function WhatsAppMessagesPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid min-h-0 grid-cols-1 gap-4 lg:h-[calc(100svh-14rem)] lg:min-h-[32rem] lg:grid-cols-3">
         {/* ── Left Column: Conversations List ─────────────────────────── */}
-        <div className="overflow-hidden rounded-lg border bg-card lg:col-span-1">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card lg:col-span-1">
           {/* Sticky compact filter header */}
           <div className="sticky top-0 z-10 border-b bg-card/95 p-4 backdrop-blur">
             <div className="flex items-center gap-2">
@@ -924,7 +1015,7 @@ export default function WhatsAppMessagesPage() {
             </div>
           </div>
 
-          <div className="max-h-[600px] overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {/* Loading */}
             {conversationsLoading && (
               <div className="space-y-1 p-4">
@@ -981,9 +1072,8 @@ export default function WhatsAppMessagesPage() {
                     Start a conversation
                   </Button>
                 </div>
-              )}
+            )}
 
-            {/* List */}
             {!conversationsLoading &&
               !conversationsError &&
               filteredConversations.map((conversation) => (
@@ -991,27 +1081,27 @@ export default function WhatsAppMessagesPage() {
                   key={conversation.id}
                   conversation={conversation}
                   isActive={activeConversationId === conversation.id}
-                  onClick={() => handleSelectConversation(conversation.id)}
+                  onClick={() => handleSelectConversation(conversation)}
                 />
               ))}
           </div>
         </div>
 
         {/* ── Right Column: Message Thread ────────────────────────────── */}
-        <div className="flex flex-col overflow-hidden rounded-lg border bg-card lg:col-span-2">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card lg:col-span-2">
           {/* Thread Header */}
-          <div className="flex items-center justify-between border-b p-4">
+          <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
             {activeConversation ? (
               <>
-                <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-full bg-primary/10">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
                     <Phone className="size-4 text-primary" weight="fill" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">
+                    <h3 className="text-sm font-semibold">
                       {formatPhone(activeConversation.contactPhone)}
                     </h3>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       {activeConversation._count.whatsappMessages} messages
                     </p>
                   </div>
@@ -1033,7 +1123,7 @@ export default function WhatsAppMessagesPage() {
           </div>
 
           {/* Messages Area */}
-          <div className="flex min-h-[500px] flex-1 flex-col overflow-y-auto p-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
             {/* Loading */}
             {activeLoading && (
               <div className="flex flex-1 flex-col justify-end gap-3">
