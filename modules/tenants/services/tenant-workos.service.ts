@@ -211,7 +211,7 @@ export const listTenantMemberships = async (
 ): Promise<TenantMembershipSummary[]> => {
   const workos = getWorkOS()
 
-  const [memberships, users] = await Promise.all([
+  const [memberships, users, invitations] = await Promise.all([
     workos.userManagement
       .listOrganizationMemberships({
         organizationId,
@@ -222,6 +222,10 @@ export const listTenantMemberships = async (
       .listUsers({ organizationId })
       .then((result) => result.autoPagination())
       .catch(() => [] as WorkOSUser[]),
+    workos.userManagement
+      .listInvitations({ organizationId })
+      .then((result) => result.autoPagination())
+      .catch(() => [] as WorkOSInvitation[]),
   ])
 
   // listOrganizationMemberships only returns userId, not the hydrated user
@@ -231,14 +235,72 @@ export const listTenantMemberships = async (
     (users as WorkOSUser[]).map((user) => [user.id, user])
   )
 
+  // For pending/inactive memberships (invited users who haven't accepted yet),
+  // listUsers({ organizationId }) doesn't return them because they aren't
+  // full org members. Try fetching their user record directly.
+  const missingUserIds = [
+    ...new Set(
+      memberships
+        .filter(
+          (m) =>
+            ["pending", "inactive"].includes(m.status) &&
+            !usersById.has(m.userId) &&
+            m.userId
+        )
+        .map((m) => m.userId)
+    ),
+  ]
+
+  if (missingUserIds.length > 0) {
+    const extraUsers = await Promise.all(
+      missingUserIds.map((uid) =>
+        getWorkOS()
+          .userManagement.getUser(uid)
+          .then((u) => ({ id: uid, user: u as WorkOSUser }))
+          .catch(() => null)
+      )
+    )
+    for (const result of extraUsers) {
+      if (result) usersById.set(result.id, result.user)
+    }
+  }
+
+  // For pending memberships where role data is also missing from WorkOS,
+  // fall back to the invitation's roleSlug
+  const pendingInvitations = (invitations as WorkOSInvitation[]).filter(
+    (inv) => inv.state === "pending"
+  )
+
   return memberships.map((membership) => {
     const typedMembership = membership as WorkOSMembership
     const user = usersById.get(typedMembership.userId) ?? null
 
-    return toTenantMembershipSummary({
+    const enriched = {
       ...typedMembership,
       user: typedMembership.user ?? user,
-    })
+    }
+
+    // If membership is pending and has no role data, try invitation fallback
+    if (
+      enriched.status === "pending" &&
+      !enriched.role?.slug &&
+      pendingInvitations.length > 0
+    ) {
+      // Match by looking for an invitation for this user's email
+      const userEmail =
+        enriched.user?.email ||
+        (isLikelyEmail(enriched.userId) ? enriched.userId : null)
+      if (userEmail) {
+        const matchingInv = pendingInvitations.find(
+          (inv) => inv.email.toLowerCase() === userEmail.toLowerCase()
+        )
+        if (matchingInv?.roleSlug) {
+          enriched.role = { slug: matchingInv.roleSlug }
+        }
+      }
+    }
+
+    return toTenantMembershipSummary(enriched)
   })
 }
 

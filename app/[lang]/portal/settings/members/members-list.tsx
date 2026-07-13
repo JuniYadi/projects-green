@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { DotsThreeVerticalIcon } from "@phosphor-icons/react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DataTable } from "@/components/data-table"
@@ -125,6 +126,102 @@ export function MembersList({ organizationId }: MembersListProps) {
           </div>
         </div>
       ),
+    },
+    {
+      id: "role",
+      accessorKey: "role",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Role" />
+      ),
+      cell: ({ row }) => (
+        <span className="capitalize">{row.original.role || "Member"}</span>
+      ),
+    },
+    {
+      id: "status",
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) =>
+        row.original.status === "pending" ? (
+          <Badge variant="secondary">Pending</Badge>
+        ) : (
+          <span className="capitalize">{row.original.status}</span>
+        ),
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const member = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!!pendingActionId}
+              >
+                <DotsThreeVerticalIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {member.role === "member" &&
+                allowedActions.has("promote_member") && (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      handleAction(
+                        `promote-${member.id}`,
+                        eden.api.tenants[organizationId].members[
+                          member.id
+                        ].promote.post({ targetRole: "admin" })
+                      )
+                    }
+                  >
+                    Make Admin
+                  </DropdownMenuItem>
+                )}
+              {member.role === "admin" &&
+                allowedActions.has("demote_admin") && (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      handleAction(
+                        `demote-${member.id}`,
+                        eden.api.tenants[organizationId].members[
+                          member.id
+                        ].demote.post()
+                      )
+                    }
+                  >
+                    Demote to Member
+                  </DropdownMenuItem>
+                )}
+              {allowedActions.has("manage_tenant") && (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "Are you sure you want to remove this member?"
+                      )
+                    ) {
+                      handleAction(
+                        `remove-${member.id}`,
+                        eden.api.tenants[organizationId].members[
+                          member.id
+                        ].remove.post()
+                      )
+                    }
+                  }}
+                >
+                  Remove
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
     },
   ], [organizationId, allowedActions, pendingActionId, handleAction])
 
