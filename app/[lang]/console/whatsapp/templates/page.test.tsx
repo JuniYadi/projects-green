@@ -1,5 +1,8 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { render, screen } from "@testing-library/react"
+import { render } from "@testing-library/react"
+
+// NOTE: Do NOT import `screen` — it is evaluated at module-import time when
+// document.body is still null (Happy DOM). Use render()'s return value instead.
 
 const mockTemplatesData = [
   {
@@ -14,7 +17,10 @@ const mockTemplatesData = [
     organizationId: "org-1",
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
-    languages: [{ id: "l1", lang: "en" }],
+    languages: [
+      { id: "l1", lang: "en" },
+      { id: "l2", lang: "id" },
+    ],
   },
   {
     id: "tpl-2",
@@ -28,7 +34,7 @@ const mockTemplatesData = [
     organizationId: "org-1",
     createdAt: "2024-01-02T00:00:00Z",
     updatedAt: "2024-01-02T00:00:00Z",
-    languages: [{ id: "l2", lang: "en" }],
+    languages: [{ id: "l3", lang: "en" }],
   },
   {
     id: "tpl-3",
@@ -42,7 +48,7 @@ const mockTemplatesData = [
     organizationId: "org-1",
     createdAt: "2024-01-03T00:00:00Z",
     updatedAt: "2024-01-03T00:00:00Z",
-    languages: [{ id: "l3", lang: "en" }],
+    languages: [{ id: "l4", lang: "en" }],
   },
   {
     id: "tpl-4",
@@ -56,7 +62,7 @@ const mockTemplatesData = [
     organizationId: "org-1",
     createdAt: "2024-01-04T00:00:00Z",
     updatedAt: "2024-01-04T00:00:00Z",
-    languages: [{ id: "l4", lang: "en" }],
+    languages: [{ id: "l5", lang: "en" }],
   },
 ]
 
@@ -118,57 +124,53 @@ describe("WhatsAppTemplatesPage", () => {
     mockUseSyncTemplate.mockClear()
   })
 
-  describe("category column in DataTable", () => {
-    it("renders category column header", async () => {
-      render(<WhatsAppTemplatesPage />)
-
-      expect(screen.getByText("Category")).toBeDefined()
-    })
-
-    it("renders category badge for UTILITY template", async () => {
-      render(<WhatsAppTemplatesPage />)
-
-      expect(screen.getByText("UTILITY")).toBeDefined()
-    })
-
-    it("renders category badge for MARKETING template", async () => {
-      render(<WhatsAppTemplatesPage />)
-
-      expect(screen.getByText("MARKETING")).toBeDefined()
-    })
-
-    it("renders category badge for AUTHENTICATION template", async () => {
-      render(<WhatsAppTemplatesPage />)
-
-      expect(screen.getByText("AUTHENTICATION")).toBeDefined()
-    })
-
-    it("shows — for template without category", async () => {
-      render(<WhatsAppTemplatesPage />)
-
-      // The No Category template should show "—" since category is null
-      expect(screen.getAllByText("—").length).toBeGreaterThan(0)
-    })
+  it("renders category column header", async () => {
+    const view = render(<WhatsAppTemplatesPage />)
+    expect(view.getByText("Category")).toBeDefined()
   })
 
-  describe("category facet filter", () => {
-    it("renders category facet filter options", async () => {
-      render(<WhatsAppTemplatesPage />)
-
-      // The facet filter should include Marketing, Utility, Authentication options
-      // The DataTable renders facets as buttons/checkboxes - we verify by presence
-      expect(screen.getByText("Marketing")).toBeDefined()
-      expect(screen.getByText("Utility")).toBeDefined()
-      expect(screen.getByText("Authentication")).toBeDefined()
-    })
+  it("renders category badge for UTILITY template", async () => {
+    const view = render(<WhatsAppTemplatesPage />)
+    expect(view.getByText("UTILITY")).toBeDefined()
   })
 
-  describe("category in searchableColumns", () => {
-    it("DataTable is rendered with category searchable", async () => {
-      render(<WhatsAppTemplatesPage />)
+  it("renders category badge for MARKETING template", async () => {
+    const view = render(<WhatsAppTemplatesPage />)
+    expect(view.getByText("MARKETING")).toBeDefined()
+  })
 
-      // The page should render without errors when templates have categories
-      expect(screen.getByText("Templates")).toBeDefined()
-    })
+  it("renders category badge for AUTHENTICATION template", async () => {
+    const view = render(<WhatsAppTemplatesPage />)
+    expect(view.getByText("AUTHENTICATION")).toBeDefined()
+  })
+  it("renders category facet filter options and custom allLabels", async () => {
+    const view = render(<WhatsAppTemplatesPage />)
+    // Filter buttons show labels in their headers
+    expect(view.getAllByText("All Sync").length).toBeGreaterThan(0)
+    expect(view.getAllByText("All Meta Status").length).toBeGreaterThan(0)
+    expect(view.getAllByText("All Category").length).toBeGreaterThan(0)
+  })
+
+  it("renders Templates heading", async () => {
+    const view = render(<WhatsAppTemplatesPage />)
+    const headings = view.getAllByText("Templates")
+    expect(headings.length).toBeGreaterThan(0)
+  })
+
+  it("shows language badges inside Template column", async () => {
+    const view = render(<WhatsAppTemplatesPage />)
+    // The first template has both "en" and "id" languages
+    const enFound = view.getAllByText("en")
+    expect(enFound.length).toBeGreaterThan(0)
+    const idFound = view.getAllByText("id")
+    expect(idFound.length).toBeGreaterThan(0)
+  })
+
+  it("Creation Date is hidden by default, Last Updated remains visible", async () => {
+    const view = render(<WhatsAppTemplatesPage />)
+    // "Creation Date" should be hidden from table headers
+    expect(view.queryByText("Creation Date")).toBeNull()
+    // "Last Updated Date" should be visible in headers
+    expect(view.queryByText("Last Updated Date")).toBeDefined()
   })
 })

@@ -20,13 +20,12 @@ import {
   useSyncTemplate,
 } from "@/modules/whatsapp/templates/api/templates.hooks"
 import {
-  MetaStatusBadge,
   TemplateList,
-  TemplateStatusBadge,
 } from "@/modules/whatsapp/templates/ui/template-list"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
+import { TemplateLanguageBadge } from "@/modules/whatsapp/templates/ui/template-preview"
 
 export default function ConsoleTemplatesPage() {
   const router = useRouter()
@@ -85,6 +84,16 @@ export default function ConsoleTemplatesPage() {
     (t) => t.syncStatus === "NOT_SYNCED"
   ).length
 
+  function StatusDot({ label, className }: { label: string; className: string }) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className={`size-2 rounded-full ${className}`} />
+        <span className="sr-only">{label}</span>
+      </span>
+    )
+  }
+
+
   const columns: ColumnDef<WhatsAppTemplate>[] = [
     {
       accessorKey: "name",
@@ -99,6 +108,17 @@ export default function ConsoleTemplatesPage() {
             {row.original.name}
           </Button>
           <p className="text-xs text-muted-foreground">{row.original.slug}</p>
+          {row.original.languages?.length ? (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {row.original.languages.map((language) => (
+                <TemplateLanguageBadge
+                  key={language.id ?? language.lang}
+                  lang={language.lang}
+                  className="text-[10px]"
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       ),
     },
@@ -108,7 +128,16 @@ export default function ConsoleTemplatesPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sync" />
       ),
-      cell: ({ row }) => <TemplateStatusBadge status={row.original.syncStatus ?? "NOT_SYNCED"} />,
+      cell: ({ row }) => {
+        const status = row.original.syncStatus ?? "NOT_SYNCED"
+        const dotClass: Record<string, string> = {
+          SYNCED: "bg-emerald-500",
+          SYNCING: "bg-blue-500 animate-pulse",
+          FAILED: "bg-red-500",
+          NOT_IN_META: "bg-amber-500",
+        }
+        return <StatusDot label={status} className={dotClass[status] ?? "bg-muted-foreground"} />
+      },
     },
     {
       accessorFn: (row) => row.metaStatus ?? "UNKNOWN",
@@ -118,8 +147,13 @@ export default function ConsoleTemplatesPage() {
       ),
       cell: ({ row }) => {
         const status = row.original.metaStatus ?? "UNKNOWN"
-        if (status === "UNKNOWN") return "—"
-        return <MetaStatusBadge status={status} />
+        if (status === "UNKNOWN") return <span className="text-muted-foreground">—</span>
+        const dotClass: Record<string, string> = {
+          APPROVED: "bg-emerald-500",
+          PENDING: "bg-amber-500",
+          REJECTED: "bg-red-500",
+        }
+        return <StatusDot label={status} className={dotClass[status] ?? "bg-muted-foreground"} />
       },
     },
     {
@@ -268,10 +302,11 @@ export default function ConsoleTemplatesPage() {
               ]}
               initialSorting={[{ id: "createdAt", desc: true }]}
               pageSize={10}
-              defaultColumnVisibility={{ whatsappDeviceId: false }}
+              defaultColumnVisibility={{ whatsappDeviceId: false, createdAt: false, languages: false }}
               facetFilters={[
                 {
                   columnId: "syncStatus",
+                  allLabel: "All Sync",
                   label: "Sync",
                   options: [
                     { label: "Synced", value: "SYNCED" },
@@ -281,6 +316,7 @@ export default function ConsoleTemplatesPage() {
                 },
                 {
                   columnId: "metaStatus",
+                  allLabel: "All Meta Status",
                   label: "Meta Status",
                   options: [
                     { label: "Approved", value: "APPROVED" },
@@ -290,6 +326,7 @@ export default function ConsoleTemplatesPage() {
                 },
                 {
                   columnId: "category",
+                  allLabel: "All Category",
                   label: "Category",
                   options: [
                     { label: "Marketing", value: "MARKETING" },
