@@ -364,53 +364,6 @@ export default function WhatsAppDashboardPage() {
             )}
           </div>
 
-          {/* Quick Action Cards */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="cursor-pointer transition-colors hover:bg-muted/50">
-              <Link href="/console/whatsapp/messages" className="block">
-                <CardHeader>
-                  <PaperPlaneTilt
-                    className="mb-2 size-8 text-primary"
-                    weight="fill"
-                  />
-                  <CardTitle>Send Template Message</CardTitle>
-                  <CardDescription>
-                    Send a template message to a contact
-                  </CardDescription>
-                </CardHeader>
-              </Link>
-            </Card>
-
-            <Card className="cursor-pointer transition-colors hover:bg-muted/50">
-              <Link href="/console/whatsapp/templates" className="block">
-                <CardHeader>
-                  <ChartLine
-                    className="mb-2 size-8 text-yellow-600"
-                    weight="fill"
-                  />
-                  <CardTitle>Manage Templates</CardTitle>
-                  <CardDescription>
-                    Review and sync approved WhatsApp templates
-                  </CardDescription>
-                </CardHeader>
-              </Link>
-            </Card>
-
-            <Card className="cursor-pointer transition-colors hover:bg-muted/50">
-              <Link href="/console/whatsapp/contacts" className="block">
-                <CardHeader>
-                  <ChatCircle
-                    className="mb-2 size-8 text-blue-600"
-                    weight="fill"
-                  />
-                  <CardTitle>View Contacts</CardTitle>
-                  <CardDescription>
-                    Manage your contact list and groups
-                  </CardDescription>
-                </CardHeader>
-              </Link>
-            </Card>
-          </div>
 
           {/* Operational Health Card */}
           <Card className={webhookStats && webhookStats.failureRate > 5 ? "border-destructive" : undefined}>
