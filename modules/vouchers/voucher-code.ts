@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto"
+import { randomInt } from "crypto"
 
 import { VoucherCollisionRetryExhaustedError } from "./vouchers.errors"
 
@@ -11,10 +11,9 @@ const MAX_RETRIES = 5
  * Generate a cryptographically secure random alphanumeric string.
  */
 function randomAlphanumeric(length: number): string {
-  const bytes = randomBytes(length)
   let result = ""
   for (let i = 0; i < length; i++) {
-    result += CHARSET[bytes[i] % CHARSET.length]
+    result += CHARSET[randomInt(CHARSET.length)]
   }
   return result
 }
