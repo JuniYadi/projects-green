@@ -2,10 +2,25 @@
 
 Track every issue below, mark done if finished, and add new issue if found.
 
-## User Side at Page /console
+## Issue with Open Status
 
-| Page | Issue | Target | Status | 
+- At User Side at Page /console
+
+| Page | Issue | Target | Status |
 | --- | --- | --- | -- |
+| /console/whatsapp/templates/cmqr5s303001dkh4c9dvx270q | Template Preview not show like whatsapp message | Make the template like whatsapp message design, so user can understand how the look like, example button must be in multi line, there is example parameter that filled , also the variant langauge indicator including the flags , and not just pill button like now | Done |
+| /console/whatsapp/messages | Same like in template, outbox message not using same template preview | Make email outbox same like template. so user not confusing | Done | 
+| /console/whatsapp/messages | On the message only show date , there is no tooltip when message send | Make date can be tooltip using user local browser timezone | Done | 
+| /console/whatsapp/messages | There is big text "Converstations" and search, just delete it | Delete text so search text can be large | Done |
+| /console/whatsapp/templates | There is no indicator what filter is. the filter only show "All" what is "All" ? no mention what is that | Every filter must have indicator, Example "All" become "All Status" , etc | Done |
+| /console/whatsapp/templates | Make table more compact | like language can be in template name with pill and country icon , Sync icon like dot color, approved too , hide column creation date by default, but user can show it later on | Done | 
+| /console/whatsapp/devices | The table it's show not like other table, there is no filter here, like filter name or phone, filter status, filter if it's active. it's good for 1-2 devices, but if user has a lot devices, that will be confused | add filter based on the issue | Done |
+
+## Issue with Complete Status
+| /console/whatsapp/dashboard | There is card "Send Template Message" "Manage Templates" "View Contacts" That not needed | Remove the card "Send Template Message" "Manage Templates" "View Contacts" | Done |
+| /console/whatsapp/usage | Blank white page error from icon | Fix icon on client side rendering — removed phosphor icons from loading.tsx (Server Component), replaced with Skeleton placeholders | Done |
+| /console/whatsapp/template | Template sync only focus on body, there is other component like header, footer, button, media, etc | When sync template, it should sync all component of the template | Done |
+| /console/whatsapp/templates/cmqr5s303001dkh4c9dvx270q | Missing footer component , button component | Added headerUrl extraction in sync worker; template-detail.tsx now displays footer text and buttons | Done |
 | /console/whatsapp/messages | New message show an modal, but its too long to scroll. And if i'm only have a single device, i need select it again and again | Make new modal bigger, left is selection, right is preview message. If only have a single device, auto select it and hide the selection. Put target number at the top of field input , not below it | Done |
 | /console/whatsapp/usage | A lot static card and widget here, but no data return , API Cost Breakdown error 500 | When sending a message, this page should show the cost of sending message, and the usage of whatsapp api. If no data, show empty state with link to docs. Fix API Cost Breakdown error 500 | Done |
 | /console/whatsapp/contacts | When user send a message, the contact list not update | When user send a message, the contact list should update with new contact. If the contact already exist, update the last message and last message time. If not exist, add new contact to the list. If message sent is success from webhook, mark this contact isActiveWhatsappNumber (the idea to indicate if this contact active whatsapp, check if we have existing on table or not) | Done |
