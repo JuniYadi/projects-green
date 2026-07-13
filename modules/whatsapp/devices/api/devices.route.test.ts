@@ -160,6 +160,28 @@ describe("devices routes", () => {
     expect(payload.devices[0].id).toBe("dev_1")
   })
 
+  it("uses whatsappProfile.name as device name when present", async () => {
+    mockFindMany.mockImplementationOnce(async () => [
+      createMockDevice({
+        id: "dev_named",
+        phoneNumber: "+62811111111",
+        whatsappProfile: { name: "Support Line" },
+      }),
+    ])
+
+    const app = createTestApp()
+    const response = await app.handle(new Request("http://localhost/devices"))
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as {
+      ok: boolean
+      devices: Array<{ name: string; phoneNumber: string }>
+    }
+    expect(payload.ok).toBe(true)
+    expect(payload.devices[0].name).toBe("Support Line")
+    expect(payload.devices[0].phoneNumber).toBe("+62811111111")
+  })
+
   it("returns empty list when no devices", async () => {
     const app = createTestApp()
 

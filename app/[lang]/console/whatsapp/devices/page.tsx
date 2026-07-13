@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Phone } from "@phosphor-icons/react"
+import type { ColumnDef } from "@tanstack/react-table"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -13,6 +14,8 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { getMessages } from "@/lib/i18n/messages"
@@ -49,6 +52,24 @@ function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
   return <Badge variant={variant[status]}>{label[status]}</Badge>
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getDeviceHealthStatus(
+  device: DeviceListItem
+): "CONNECTED" | "DISCONNECTED" | "UNKNOWN" {
+  if (device.status === "DISCONNECTED") return "DISCONNECTED"
+  if (device.status === "ACTIVE" && device.lastHeartbeatAt) {
+    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000)
+    return new Date(device.lastHeartbeatAt) > fifteenMinAgo
+      ? "CONNECTED"
+      : "DISCONNECTED"
+  }
+  return "UNKNOWN"
+}
+
+function getActiveState(device: DeviceListItem): "ACTIVE" | "INACTIVE" {
+  return device.status === "ACTIVE" ? "ACTIVE" : "INACTIVE"
+}
 
 // ─── Page component ─────────────────────────────────────────────────────────
 
@@ -89,6 +110,105 @@ export default function WhatsAppDevicesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // ── Columns ───────────────────────────────────────────────────────────────
+
+  const columns: ColumnDef<DeviceListItem>[] = [
+    {
+      accessorFn: (row) => `${row.name ?? ""} ${row.phoneNumber}`,
+      id: "device",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Device" />
+      ),
+      cell: ({ row }) => {
+        const device = row.original
+        const hasName = device.name !== device.phoneNumber
+        return (
+          <div>
+            <p className="font-medium">
+              {hasName ? device.name : device.phoneNumber}
+            </p>
+            {hasName && (
+              <p className="text-xs text-muted-foreground">
+                {device.phoneNumber}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {device.quotaBaseOut} / {device.quotaBase} messages remaining
+              {device.dailyLimitMessage > 0 &&
+                ` · ${device.dailyLimitMessage} msg/day limit`}
+              {Number(device.balance) > 0 &&
+                ` · Balance: Rp${Number(device.balance).toLocaleString("id-ID")}`}
+            </p>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => (
+        <DeviceStatusBadge
+          status={row.original.status}
+          messages={messages}
+        />
+      ),
+    },
+    {
+      accessorFn: getActiveState,
+      id: "activeState",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Active" />
+      ),
+      cell: ({ row }) => (
+        <span>{row.getValue("activeState") === "ACTIVE" ? "Yes" : "No"}</span>
+      ),
+    },
+    {
+      accessorFn: getDeviceHealthStatus,
+      id: "health",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Health" />
+      ),
+      cell: ({ row }) => (
+        <DeviceHealthBadge
+          status={getDeviceHealthStatus(row.original)}
+          lastHeartbeatAt={row.original.lastHeartbeatAt}
+        />
+      ),
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      header: "Actions",
+      cell: ({ row }) => {
+        const device = row.original
+        if (device.status === "ACTIVE") {
+          return (
+            <Button asChild variant="outline" size="sm">
+              <Link
+                href={localizePathname({
+                  pathname: "/console/whatsapp/devices/" + device.id,
+                  locale,
+                })}
+              >
+                Details
+              </Link>
+            </Button>
+          )
+        }
+        if (device.status === "NON_ACTIVE") {
+          return (
+            <span className="text-xs text-muted-foreground">
+              {messages.console.whatsapp.devices.notifyAdmin}
+            </span>
+          )
+        }
+        return <span className="text-muted-foreground">—</span>
+      },
+    },
+  ]
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
 
@@ -154,21 +274,15 @@ export default function WhatsAppDevicesPage() {
 
         <Card>
           <CardHeader>
-            <div>
-              <CardTitle>
-                {messages.console.whatsapp.devices.cardTitle}
-              </CardTitle>
-              <CardDescription>
-                {messages.console.whatsapp.devices.cardDescription}
-              </CardDescription>
-            </div>
+            <CardTitle>{messages.console.whatsapp.devices.cardTitle}</CardTitle>
+            <CardDescription>
+              {messages.console.whatsapp.devices.cardDescription}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <p className="mb-2 text-sm text-destructive" role="alert">
-                {errorMessage}
-              </p>
-              <Button variant="outline" onClick={() => void loadDevices()}>
+            <div className="flex flex-col items-center justify-center py-8 text-center" role="alert">
+              <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+              <Button variant="outline" className="mt-4" onClick={() => void loadDevices()}>
                 Retry
               </Button>
             </div>
@@ -211,67 +325,37 @@ export default function WhatsAppDevicesPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {devices.map((device) => (
-                <div
-                  key={device.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
-                      <Phone className="size-5 text-primary" weight="fill" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{device.phoneNumber}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {device.quotaBaseOut} / {device.quotaBase} messages
-                        remaining
-                        {device.dailyLimitMessage > 0 &&
-                          ` · ${device.dailyLimitMessage} msg/day limit`}
-                        {Number(device.balance) > 0 &&
-                          ` · Balance: Rp${Number(device.balance).toLocaleString("id-ID")}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <DeviceStatusBadge
-                      status={device.status}
-                      messages={messages}
-                    />
-                    <DeviceHealthBadge
-                      status={
-                        device.lastHeartbeatAt
-                          ? // eslint-disable-next-line react-hooks/purity
-                            new Date(device.lastHeartbeatAt) > new Date(Date.now() - 15 * 60 * 1000)
-                            ? "CONNECTED"
-                            : "DISCONNECTED"
-                          : device.status === "DISCONNECTED"
-                            ? "DISCONNECTED"
-                            : "UNKNOWN"
-                      }
-                      lastHeartbeatAt={device.lastHeartbeatAt}
-                    />
-                    {device.status === "ACTIVE" && (
-                      <Button asChild variant="outline" size="sm">
-                        <Link
-                          href={localizePathname({
-                            pathname: "/console/whatsapp/devices/" + device.id,
-                            locale,
-                          })}
-                        >
-                          Details
-                        </Link>
-                      </Button>
-                    )}
-                    {device.status === "NON_ACTIVE" && (
-                      <p className="text-xs text-muted-foreground">
-                        {messages.console.whatsapp.devices.notifyAdmin}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <DataTable
+              columns={columns}
+              data={devices}
+              tableId="console-whatsapp-devices"
+              searchPlaceholder="Search devices by name or phone..."
+              searchableColumns={["device"]}
+              initialSorting={[{ id: "device", desc: false }]}
+              pageSize={10}
+              facetFilters={[
+                {
+                  columnId: "status",
+                  allLabel: "All Status",
+                  label: "Status",
+                  options: [
+                    { label: "Active", value: "ACTIVE" },
+                    { label: "Inactive", value: "NON_ACTIVE" },
+                    { label: "Disconnected", value: "DISCONNECTED" },
+                    { label: "Unknown", value: "UNKNOWN" },
+                  ],
+                },
+                {
+                  columnId: "activeState",
+                  allLabel: "All Active States",
+                  label: "Active",
+                  options: [
+                    { label: "Active", value: "ACTIVE" },
+                    { label: "Inactive", value: "INACTIVE" },
+                  ],
+                },
+              ]}
+            />
           )}
         </CardContent>
       </Card>
