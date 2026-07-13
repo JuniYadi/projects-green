@@ -218,6 +218,23 @@ export function TemplateDetailView({
                         {lang.body}
                       </p>
                     )}
+                    {lang.footer && (
+                      <p className="mt-1 text-xs text-muted-foreground/70 italic">
+                        Footer: {lang.footer}
+                      </p>
+                    )}
+                    {Array.isArray(lang.buttons) && lang.buttons.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {(lang.buttons as Array<{ type: string; text?: string }>).map((btn, i) => (
+                          <span
+                            key={i}
+                            className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground"
+                          >
+                            {btn.text ?? btn.type}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
