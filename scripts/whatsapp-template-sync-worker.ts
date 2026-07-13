@@ -103,6 +103,7 @@ function toLanguageData(template: MetaTemplate) {
     lang: template.language ?? "default",
     headerType: header?.format?.toLowerCase() ?? null,
     headerText: typeof header?.text === "string" ? header.text : null,
+    headerUrl: typeof header?.url === "string" ? header.url : null,
     body: typeof body?.text === "string" ? body.text : null,
     footer: typeof footer?.text === "string" ? footer.text : null,
     buttons: buttons?.buttons as Prisma.InputJsonValue | undefined,

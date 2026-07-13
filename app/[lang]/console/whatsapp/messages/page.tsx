@@ -46,6 +46,17 @@ import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  getTemplatePlaceholderIndexes,
+  WhatsAppTemplatePreview,
+} from "@/modules/whatsapp/templates/ui/template-preview"
+import type { TemplatePreviewValues } from "@/modules/whatsapp/templates/ui/template-preview"
 
 // ─── Local Types ─────────────────────────────────────────────────────────────
 
@@ -77,10 +88,16 @@ type Message = {
   body: string | null
   mediaUrl: string | null
   waMessageId: string | null
-  metadata: Record<string, unknown> | null
+  metadata: TemplateMessageMetadata | Record<string, unknown> | null
   statusHistory?: StatusHistory[]
   createdAt: string
   updatedAt: string
+}
+
+type TemplateMessageMetadata = {
+  templateName?: string
+  templateLanguage?: string
+  fields?: string[]
 }
 
 type ConversationDetail = ConversationListItem & {
@@ -107,6 +124,21 @@ const formatTime = (iso: string | null | undefined) => {
 const formatPhone = (phone: string) => {
   if (phone.startsWith("+")) return phone
   return `+${phone}`
+}
+
+function formatLocalDateTime(iso: string | null | undefined): string {
+  if (!iso) return ""
+  try {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ""
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZoneName: "short",
+    }).format(d)
+  } catch {
+    return ""
+  }
 }
 function isReplyWindowClosed(conversation: ConversationDetail | null): boolean {
   if (!conversation) return false
@@ -178,14 +210,15 @@ function MessageBubble({ message }: { message: Message }) {
   const isInbox = message.direction === "INBOX"
 
   return (
-    <div className={`flex ${isInbox ? "justify-start" : "justify-end"}`}>
-      <div
-        className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
-          isInbox
-            ? "rounded-bl-sm bg-muted text-foreground"
-            : "rounded-br-sm bg-primary text-primary-foreground"
-        }`}
-      >
+    <TooltipProvider>
+      <div className={`flex ${isInbox ? "justify-start" : "justify-end"}`}>
+        <div
+          className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
+            isInbox
+              ? "rounded-bl-sm bg-muted text-foreground"
+              : "rounded-br-sm bg-primary text-primary-foreground"
+          }`}
+        >
         <p className="break-words whitespace-pre-wrap">
           {message.body || (
             <span className="text-muted-foreground/60 italic">
@@ -196,14 +229,22 @@ function MessageBubble({ message }: { message: Message }) {
         <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
           isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
         }`}>
-          <span>{formatTime(message.createdAt)}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{formatTime(message.createdAt)}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {formatLocalDateTime(message.createdAt)}
+            </TooltipContent>
+          </Tooltip>
           <MessageStatusBadge
             statusHistory={message.statusHistory}
             direction={message.direction}
           />
         </div>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }
 
@@ -389,27 +430,7 @@ export default function WhatsAppMessagesPage() {
     }
   }, [sendDeviceId])
 
-  // ── Template helpers ─────────────────────────────────────────────────
 
-  function getTemplateFieldIndexes(body?: string | null): number[] {
-    if (!body) return []
-    const matches = body.match(/{{\s*(\d+)\s*}}/g)
-    if (!matches) return []
-    const indexes = new Set<number>()
-    for (const match of matches) {
-      const num = parseInt(match.replace(/[{}]/g, "").trim(), 10)
-      if (!isNaN(num) && num > 0) indexes.add(num)
-    }
-    return Array.from(indexes).sort((a, b) => a - b)
-  }
-
-  function renderTemplatePreview(body: string | null | undefined, values: Record<number, string>): string {
-    if (!body) return ""
-    return body.replace(/{{\s*(\d+)\s*}}/g, (_, num) => {
-      const index = parseInt(num, 10)
-      return values[index] || `{{${index}}}`
-    })
-  }
 
   // ── Derived state ──────────────────────────────────────────────────────
 
@@ -507,7 +528,7 @@ export default function WhatsAppMessagesPage() {
     const selectedLang = selectedTemplate?.languages.find(
       (l) => l.lang === selectedTemplateLanguage
     )
-    const placeholderIndexes = getTemplateFieldIndexes(selectedLang?.body)
+    const placeholderIndexes = getTemplatePlaceholderIndexes(selectedLang?.body)
 
     for (const index of placeholderIndexes) {
       if (!templateFieldValues[index]?.trim()) {
@@ -766,7 +787,7 @@ export default function WhatsAppMessagesPage() {
                   {selectedTemplateLanguage && (() => {
                     const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
                     const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
-                    const indexes = getTemplateFieldIndexes(lang?.body)
+                    const indexes = getTemplatePlaceholderIndexes(lang?.body)
                     if (indexes.length === 0) return null
                     return (
                       <>
@@ -812,12 +833,12 @@ export default function WhatsAppMessagesPage() {
                             )}
                             {(() => {
                               const lang = tpl.languages.find((l) => l.lang === selectedTemplateLanguage)
-                              if (!lang?.body) return null
+                              if (!lang) return null
                               return (
                                 <div>
                                   <p className="text-xs text-muted-foreground">Body</p>
-                                  <div className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-                                    {renderTemplatePreview(lang.body, templateFieldValues) || "—"}
+                                  <div className="mt-1">
+                                    <WhatsAppTemplatePreview language={lang} values={templateFieldValues} />
                                   </div>
                                 </div>
                               )
@@ -861,14 +882,14 @@ export default function WhatsAppMessagesPage() {
           {/* Sticky compact filter header */}
           <div className="sticky top-0 z-10 border-b bg-card/95 p-4 backdrop-blur">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold shrink-0">Conversations</h3>
-              <div className="relative min-w-0 flex-1">
+              <div className="relative w-full">
                 <MagnifyingGlass className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search..."
+                  placeholder="Search phone number..."
+                  aria-label="Search conversations by phone number"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 min-w-0 flex-1 pl-8 text-sm"
+                  className="h-9 w-full pl-8 text-sm"
                 />
               </div>
               <DropdownMenu>
@@ -947,7 +968,7 @@ export default function WhatsAppMessagesPage() {
                     weight="fill"
                   />
                   <p className="text-sm text-muted-foreground">
-                    {searchQuery || directionFilter !== "all"
+                    {searchQuery || directionFilter !== "all" || statusFilter !== "all"
                       ? "No conversations match your filters"
                       : "No conversations yet"}
                   </p>

@@ -22,6 +22,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  TemplateLanguageBadge,
+  WhatsAppTemplatePreview,
+} from "./template-preview"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 
 type TemplateDetailProps = {
@@ -203,21 +207,15 @@ export function TemplateDetailView({
               <div className="space-y-3">
                 {template.languages.map((lang) => (
                   <div key={lang.id} className="rounded-md border p-3">
-                    <div className="mb-1 flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {lang.lang}
-                      </Badge>
-                      {lang.headerType && lang.headerType !== "NONE" && (
-                        <span className="text-xs text-muted-foreground">
-                          Header: {lang.headerType}
-                        </span>
-                      )}
+                    <div className="mb-2">
+                      <TemplateLanguageBadge lang={lang.lang} />
                     </div>
-                    {lang.body && (
-                      <p className="line-clamp-2 text-sm text-muted-foreground">
-                        {lang.body}
+                    {lang.headerType && lang.headerType !== "NONE" && (
+                      <p className="mb-1.5 text-xs text-muted-foreground">
+                        Header: {lang.headerType}
                       </p>
                     )}
+                    <WhatsAppTemplatePreview language={lang} />
                   </div>
                 ))}
               </div>

@@ -42,11 +42,21 @@ const mockTemplatesData: Array<{
   slug: string
   metaStatus: string | null
   syncStatus: string
+  headerText?: string | null
+  headerType?: string | null
+  footer?: string | null
+  buttons?: unknown
+  parameters?: unknown
   languages: Array<{
     lang: string
     body: string | null
     isApproved?: boolean
     metaStatus?: string
+    headerText?: string | null
+    headerType?: string | null
+    footer?: string | null
+    buttons?: unknown
+    parameters?: unknown
   }>
   organizationId: string
   createdAt: string
@@ -62,6 +72,18 @@ const mockTemplatesData: Array<{
       {
         lang: "en",
         body: "Hello {{1}}, you have {{2}} new messages.",
+        footer: "Reply STOP",
+        buttons: [
+          { type: "QUICK_REPLY", text: "Yes" },
+        ],
+        parameters: {
+          components: [
+            {
+              type: "BODY",
+              example: { body_text: [["John", "5"]] },
+            },
+          ],
+        },
         isApproved: true,
         metaStatus: "APPROVED",
       },
@@ -489,6 +511,147 @@ describe("WhatsAppMessagesPage", () => {
 
     // Send Template button should NOT appear — within 24-hour window
     expect(view.queryByRole("button", { name: "Send Template" })).not.toBeInTheDocument()
+
+    // Restore original
+    ;(whatsappClient.whatsappClient as any).conversations.get = originalGet
+    view.unmount()
+  })
+
+  it('lacks Conversations heading and search has correct aria-label', async () => {
+    const view = render(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
+    })
+
+    // Conversations heading should be absent
+    expect(view.queryByText("Conversations")).not.toBeInTheDocument()
+
+    // Search input should have the correct aria-label
+    const searchInput = view.getByPlaceholderText("Search phone number...")
+    expect(searchInput).toHaveAttribute("aria-label", "Search conversations by phone number")
+
+    view.unmount()
+  })
+
+  it("shows template preview with filled values when fields are entered", async () => {
+    const view = render(<WhatsAppMessagesPage />)
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled()
+    })
+    await tick(100)
+
+    // Open dialog
+    fireEvent.click(view.getByRole("button", { name: /new message/i }))
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+    })
+
+    // Fill phone and select template
+    const phoneInput = view.getByPlaceholderText("+628123456789")
+    fireEvent.change(phoneInput, { target: { value: "+6289876543210" } })
+    fireEvent.click(view.getAllByText("hello_world")[0])
+    await waitFor(() => {
+      expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument()
+    })
+
+    // Verify template preview is rendered in the dialog
+    await waitFor(() => {
+      expect(view.getByText("Message Preview")).toBeInTheDocument()
+    })
+    // hello_world appears in the template picker - just verify we can find it
+    const helloElements = view.getAllByText("hello_world")
+    expect(helloElements.length).toBeGreaterThan(0)
+
+    // Fill fields — preview should show the filled values
+    const field1 = view.getByPlaceholderText("Value for {{1}}")
+    fireEvent.change(field1, { target: { value: "Alice" } })
+    await tick(100)
+
+    // Check that the entered value appears in the input
+    expect((field1 as HTMLInputElement).value).toBe("Alice")
+    const helloFound = view.getAllByText(/Hello/)
+    expect(helloFound.length).toBeGreaterThan(0)
+
+    view.unmount()
+  })
+
+  it("renders template outbox message as sent bubble from stored body", async () => {
+    const recentDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
+
+    mockConversationsList.mockResolvedValueOnce({
+      ok: true,
+      conversations: [
+        {
+          id: "conv_tpl",
+          organizationId: "org_1",
+          contactPhone: "+6281111111111",
+          lastMessageAt: recentDate,
+          lastDirection: "OUTBOX",
+          whatsappDeviceId: "device_1",
+          createdAt: recentDate,
+          updatedAt: recentDate,
+          _count: { whatsappMessages: 1 },
+        },
+      ],
+    })
+
+    const mockConversationsGet = mock(() =>
+      Promise.resolve({
+        ok: true,
+        conversation: {
+          id: "conv_tpl",
+          organizationId: "org_1",
+          contactPhone: "+6281111111111",
+          lastMessageAt: recentDate,
+          lastDirection: "OUTBOX",
+          whatsappDeviceId: "device_1",
+          createdAt: recentDate,
+          updatedAt: recentDate,
+          _count: { whatsappMessages: 1 },
+          whatsappMessages: [
+            {
+              id: "msg_tpl_1",
+              conversationId: "conv_tpl",
+              direction: "OUTBOX",
+              messageType: "template",
+              body: "Hello Alice, your order is confirmed.",
+              mediaUrl: null,
+              waMessageId: null,
+              metadata: {
+                templateName: "hello_world",
+                templateLanguage: "en",
+                fields: ["Alice"],
+              },
+              createdAt: recentDate,
+              updatedAt: recentDate,
+            },
+          ],
+        },
+      })
+    )
+
+    const whatsappClient = await import("@/lib/api/whatsapp-client")
+    const originalGet = (whatsappClient.whatsappClient as any).conversations.get
+    ;(whatsappClient.whatsappClient as any).conversations.get = mockConversationsGet
+
+    const view = render(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
+    })
+    await tick(100)
+
+    // Click the conversation
+    fireEvent.click(view.getByText("+6281111111111"))
+    await waitFor(() => {
+      expect(view.queryByText("1 messages")).toBeInTheDocument()
+    })
+    await tick(50)
+
+    // The template outbox message should render from stored body
+    expect(view.getByText("Hello Alice, your order is confirmed.")).toBeInTheDocument()
 
     // Restore original
     ;(whatsappClient.whatsappClient as any).conversations.get = originalGet

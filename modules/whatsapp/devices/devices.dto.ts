@@ -33,11 +33,19 @@ const toJsonRecord = (
 export type DeviceHealthStatus = "CONNECTED" | "DISCONNECTED" | "UNKNOWN"
 
 export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
+  const profile =
+    device.whatsappProfile && typeof device.whatsappProfile === "object" && !Array.isArray(device.whatsappProfile)
+      ? (device.whatsappProfile as Record<string, unknown>)
+      : null
+  const profileName = profile && typeof profile.name === "string" && profile.name.trim().length > 0
+    ? profile.name.trim()
+    : null
+
   return {
     id: device.id,
     organizationId: device.organizationId,
     phoneNumber: device.phoneNumber,
-    name: device.phoneNumber,
+    name: profileName ?? device.phoneNumber,
     status: device.status as DeviceStatus,
     environment: "LIVE",
     balance: toNumber(device.balance),
