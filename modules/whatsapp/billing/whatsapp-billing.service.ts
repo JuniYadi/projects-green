@@ -51,39 +51,44 @@ export class WhatsappBillingService {
    * Idempotent via BillingTransactionService's idempotency key.
    */
   async chargeMonthlyBase(input: MonthlyBaseInput) {
-    const account = await this.prisma.billingAccount.findUnique({
-      where: { organizationId: input.organizationId },
-    })
-    if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
+    return this.prisma.$transaction(async (tx) => {
+      const account = await tx.billingAccount.findUnique({
+        where: { organizationId: input.organizationId },
+      })
+      if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
 
-    const result = await this.transactions.debitServiceBalance({
-      organizationId: input.organizationId,
-      amount: input.amount,
-      currency: account.currency,
-      source: "WHATSAPP",
-      reason: "WhatsApp monthly base payment",
-      idempotencyKey: `wa-base:${input.deviceId}:${input.period}`,
-      metadata: {
-        deviceId: input.deviceId,
-        period: input.period,
-        allowance: input.allowance,
-      },
-      line: {
-        description: "WhatsApp monthly base",
-        quantity: new Prisma.Decimal(1),
-        unitPrice: input.amount,
-        lineType: "SUBSCRIPTION",
-      },
-    })
+      const result = await this.transactions.debitServiceBalance(
+        {
+          organizationId: input.organizationId,
+          amount: input.amount,
+          currency: account.currency,
+          source: "WHATSAPP",
+          reason: "WhatsApp monthly base payment",
+          idempotencyKey: `wa-base:${input.deviceId}:${input.period}`,
+          metadata: {
+            deviceId: input.deviceId,
+            period: input.period,
+            allowance: input.allowance,
+          },
+          line: {
+            description: "WhatsApp monthly base",
+            quantity: new Prisma.Decimal(1),
+            unitPrice: input.amount,
+            lineType: "SUBSCRIPTION",
+          },
+        },
+        tx
+      )
 
-    // Reset allowance — even if alreadyProcessed, ensure allowance is set
-    // (idempotent update: setting to the same value is safe)
-    await this.prisma.whatsappDevice.update({
-      where: { id: input.deviceId },
-      data: { quotaBaseOut: input.allowance },
-    })
+      // Reset allowance — even if alreadyProcessed, ensure allowance is set
+      // (idempotent update: setting to the same value is safe)
+      await tx.whatsappDevice.update({
+        where: { id: input.deviceId },
+        data: { quotaBaseOut: input.allowance },
+      })
 
-    return result
+      return result
+    })
   }
 
   async consumeAllowanceOrChargeOverage(
@@ -154,25 +159,28 @@ export class WhatsappBillingService {
       const amount = input.unitPrice.times(overageCredit)
 
       // Charge BEFORE mutating allowance — if charge fails, allowance is untouched
-      const result = await this.transactions.debitServiceBalance({
-        organizationId: input.organizationId,
-        amount,
-        currency: account.currency,
-        source: "WHATSAPP",
-        reason: "WhatsApp overage charge",
-        idempotencyKey: input.idempotencyKey,
-        metadata: {
-          deviceId: input.deviceId,
-          quotaCredit: input.quotaCredit.toString(),
-          overageCredit: overageCredit.toString(),
+      const result = await this.transactions.debitServiceBalance(
+        {
+          organizationId: input.organizationId,
+          amount,
+          currency: account.currency,
+          source: "WHATSAPP",
+          reason: "WhatsApp overage charge",
+          idempotencyKey: input.idempotencyKey,
+          metadata: {
+            deviceId: input.deviceId,
+            quotaCredit: input.quotaCredit.toString(),
+            overageCredit: overageCredit.toString(),
+          },
+          line: {
+            description: "WhatsApp overage quota credit",
+            quantity: overageCredit,
+            unitPrice: input.unitPrice,
+            lineType: "USAGE",
+          },
         },
-        line: {
-          description: "WhatsApp overage quota credit",
-          quantity: overageCredit,
-          unitPrice: input.unitPrice,
-          lineType: "USAGE",
-        },
-      })
+        tx
+      )
 
       // Zero both allowances (charge succeeded)
       await tx.whatsappDevice.update({

@@ -286,18 +286,28 @@ export const createDeviceService = (
       return newSecret
     },
 
-    async topUpAddonQuota(id, amount) {
+    async topUpAddonQuota(id, amount, opts = {}) {
       if (amount <= 0) throw new Error("AMOUNT_MUST_BE_POSITIVE")
-      const device = await db.whatsappDevice.findUnique({ where: { id } })
-      if (!device) throw new DeviceNotFoundError(id)
-      const updated = await db.whatsappDevice.update({
-        where: { id },
-        data: {
-          addonQuota: { increment: amount },
-          addonQuotaTotal: { increment: amount },
-        },
-      })
-      return _toDeviceDetail(updated as PrismaDeviceFields)
+      try {
+        const updated = await db.whatsappDevice.update({
+          where: opts?.organizationId
+            ? { id, organizationId: opts.organizationId }
+            : { id },
+          data: {
+            addonQuota: { increment: amount },
+            addonQuotaTotal: { increment: amount },
+          },
+        })
+        return _toDeviceDetail(updated as PrismaDeviceFields)
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2025"
+        ) {
+          throw new DeviceNotFoundError(id)
+        }
+        throw error
+      }
     },
   }
 }

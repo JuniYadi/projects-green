@@ -120,6 +120,8 @@ describe("WhatsappBillingService", () => {
     mockBillingTransactionService.debitServiceBalance.mockClear()
     mockBillingTransactionService.debitBalance.mockClear()
     mockBillingTransactionService.creditBalance.mockClear()
+    defaultTx.billingAccount.findUnique.mockClear()
+    defaultTx.whatsappDevice.update.mockClear()
 
     const MockTxService = mockBillingTransactionService as unknown as ConstructorParameters<typeof WhatsappBillingService>[1]
     service = new WhatsappBillingService(
@@ -133,7 +135,7 @@ describe("WhatsappBillingService", () => {
       const account = billingAccount()
       const device = whatsappDevice()
 
-      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      defaultTx.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockResolvedValue({
         billingAccountId: "ba_1",
         adjustmentId: "adj_monthly_1",
@@ -143,7 +145,7 @@ describe("WhatsappBillingService", () => {
         currency: "IDR",
         alreadyProcessed: false,
       })
-      mockPrisma.whatsappDevice.update.mockResolvedValue({
+      defaultTx.whatsappDevice.update.mockResolvedValue({
         ...device,
         quotaBaseOut: 5000,
       })
@@ -169,10 +171,11 @@ describe("WhatsappBillingService", () => {
             description: expect.stringContaining("monthly base"),
             lineType: "SUBSCRIPTION",
           }),
-        })
+        }),
+        defaultTx
       )
 
-      expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith(
+      expect(defaultTx.whatsappDevice.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device_1" },
           data: { quotaBaseOut: 5000 },
@@ -184,7 +187,7 @@ describe("WhatsappBillingService", () => {
     })
 
     it("throws BILLING_ACCOUNT_NOT_FOUND when billing account missing", async () => {
-      mockPrisma.billingAccount.findUnique.mockResolvedValue(null)
+      defaultTx.billingAccount.findUnique.mockResolvedValue(null)
 
       await expect(
         service.chargeMonthlyBase({
@@ -200,7 +203,7 @@ describe("WhatsappBillingService", () => {
     it("does not double-charge monthly base for same device and period (idempotency)", async () => {
       const account = billingAccount()
 
-      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      defaultTx.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockResolvedValue({
         billingAccountId: "ba_1",
         adjustmentId: "adj_monthly_1",
@@ -228,7 +231,7 @@ describe("WhatsappBillingService", () => {
     it("rejects monthly activation when base price cannot be covered", async () => {
       const account = billingAccount({ balance: decimal("10.00") })
 
-      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      defaultTx.billingAccount.findUnique.mockResolvedValue(account)
       mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
         new Error("INSUFFICIENT_BALANCE")
       )
@@ -358,7 +361,10 @@ describe("WhatsappBillingService", () => {
           }),
         })
       )
-      expect(mockBillingTransactionService.debitServiceBalance).toHaveBeenCalled()
+      expect(mockBillingTransactionService.debitServiceBalance).toHaveBeenCalledWith(
+        expect.objectContaining({ organizationId: "org_1" }),
+        defaultTx
+      )
     })
 
     it("charges partial overage when default + addon partially covers the credit", async () => {

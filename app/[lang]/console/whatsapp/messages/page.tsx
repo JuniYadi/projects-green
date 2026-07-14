@@ -409,12 +409,12 @@ export default function WhatsAppMessagesPage() {
     // Async fallback: conversations not yet loaded
     if (conversations.length === 0) {
       let cancelled = false
-      loadConversationForPhone(phoneDigits, conversations).then((found) => {
-        if (cancelled || !found) return
-        if (found.id !== activeConversationId) {
-          setActiveConversationId(found.id)
-        }
-      })
+      loadConversationForPhone(phoneDigits, conversations)
+        .then((found) => {
+          if (cancelled || !found) return
+          setActiveConversationId((prev) => (prev === found.id ? prev : found.id))
+        })
+        .catch(() => {})
       return () => {
         cancelled = true
       }

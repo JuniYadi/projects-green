@@ -11,9 +11,11 @@ import Decimal = Prisma.Decimal
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
+  addonQuotaTopUpSchema,
   adminCreateDeviceSchema,
   topUpInputSchema,
   updateDeviceSchema,
+  DeviceNotFoundError,
 } from "../devices.schemas"
 import { createDeviceService } from "../devices.service"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
@@ -464,9 +466,9 @@ export const createAdminDevicesRoutes = (
       const actor = await guard(set)
       if (isAdminError(actor)) return actor
 
-      const parsed = topUpInputSchema.safeParse(body)
+      const parsed = addonQuotaTopUpSchema.safeParse(body)
       if (!parsed.success) {
-        set.status = 400
+        set.status = 422
         return {
           ok: false as const,
           error: "VALIDATION_ERROR" as const,
@@ -475,19 +477,15 @@ export const createAdminDevicesRoutes = (
         }
       }
 
-      const { amount } = parsed.data
-      if (amount <= 0) {
-        set.status = 400
-        return {
-          ok: false as const,
-          error: "VALIDATION_ERROR" as const,
-          message: "Amount must be positive.",
-        }
-      }
+      const { organizationId, amount, reason } = parsed.data
 
       try {
         const service = createDeviceService()
-        const device = await service.topUpAddonQuota(id, amount)
+        const device = await service.topUpAddonQuota(
+          id,
+          amount,
+          { organizationId, reason }
+        )
         logWhatsappAuditEvent({
           action: "DEVICE_QUOTA_TOPUP",
           organizationId: device.organizationId,
@@ -495,11 +493,11 @@ export const createAdminDevicesRoutes = (
           adminId: actor.userId,
           message: `Addon quota topped up by ${amount}`,
           status: "OK",
-          details: { amount },
+          details: { amount, ...(reason ? { reason } : {}) },
         })
         return { ok: true as const, device }
       } catch (error) {
-        if (error instanceof Error && error.name === "DeviceNotFoundError") {
+        if (error instanceof DeviceNotFoundError) {
           set.status = 404
           return {
             ok: false as const,
@@ -507,7 +505,10 @@ export const createAdminDevicesRoutes = (
             message: "Device not found.",
           }
         }
-        if (error instanceof Error && error.message === "AMOUNT_MUST_BE_POSITIVE") {
+        if (
+          error instanceof Error &&
+          error.message === "AMOUNT_MUST_BE_POSITIVE"
+        ) {
           set.status = 400
           return {
             ok: false as const,
