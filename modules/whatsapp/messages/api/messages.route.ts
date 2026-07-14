@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia"
+import type { InteractivePayload } from "@/lib/whatsapp/meta-cloud/types"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { messageService } from "../messages.service"
@@ -418,8 +419,11 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           }
         }
 
-        // Handle "NO_BILLING_ACCOUNT" error - org has no billing setup
-        if (error instanceof Error && error.message === "NO_BILLING_ACCOUNT") {
+        // Handle "NO_BILLING_ACCOUNT" / "BILLING_ACCOUNT_NOT_FOUND" — org has no billing setup
+        if (
+          error instanceof Error &&
+          (error.message === "NO_BILLING_ACCOUNT" || error.message === "BILLING_ACCOUNT_NOT_FOUND")
+        ) {
           set.status = 400
           return {
             ok: false,
@@ -593,12 +597,16 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           return {
             ok: false,
             error: "DAILY_QUOTA_EXCEEDED",
-            message: `Daily limit exceeded.`,
+            message: `Daily limit exceeded. Limit: ${error.dailyLimit}, Used: ${error.dailyUsed}`,
             resetAt: getDailyResetAt(),
           }
         }
 
-        if (error instanceof Error && error.message === "NO_BILLING_ACCOUNT") {
+        // Handle "NO_BILLING_ACCOUNT" / "BILLING_ACCOUNT_NOT_FOUND" — org has no billing setup
+        if (
+          error instanceof Error &&
+          (error.message === "NO_BILLING_ACCOUNT" || error.message === "BILLING_ACCOUNT_NOT_FOUND")
+        ) {
           set.status = 400
           return {
             ok: false,
@@ -654,7 +662,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           organizationId: whatsappAuth.organizationId!,
           phoneNumber: normalizedPhone,
           type: "interactive",
-          interactivePayload: interactive as Record<string, unknown>,
+          interactivePayload: interactive as unknown as InteractivePayload,
           deviceId,
         })
 
