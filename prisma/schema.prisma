@@ -1559,6 +1559,8 @@ model WhatsappDevice {
   quotaBase                 Decimal              @default(1000) @db.Decimal(12, 2)
   currentQuotaUsed          Decimal              @default(0) @db.Decimal(12, 2)
   quotaBaseOut              Decimal             @default(0) @db.Decimal(12, 2)
+  addonQuota               Decimal              @default(0) @db.Decimal(12, 2)
+  addonQuotaTotal          Decimal              @default(0) @db.Decimal(12, 2)
   dailyLimitMessage         Int                  @default(0)
   rates                     String?
   status                    WhatsappDeviceStatus @default(ACTIVE)
