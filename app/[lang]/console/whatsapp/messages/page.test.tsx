@@ -301,6 +301,7 @@ describe("WhatsAppMessagesPage", () => {
     mockSearchParams = new URLSearchParams("phone=6281234567890")
     mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890", lastMessageAt: new Date().toISOString(), lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), _count: { whatsappMessages: 1 } }] })
     const view = render(<WhatsAppMessagesPage />)
+    await tick(50)
     await waitFor(() => { expect(mockConversationsGet).toHaveBeenCalledWith("conv_1") })
     view.unmount()
   })
@@ -308,7 +309,7 @@ describe("WhatsAppMessagesPage", () => {
   it("applies bounded-layout CSS classes to thread grid and cards", async () => {
     const view = render(<WhatsAppMessagesPage />)
     await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
-    expect(view.container.querySelectorAll(".lg\\:h-\\[calc\\(100svh-14rem\\)\\]").length).toBeGreaterThanOrEqual(1)
+    expect(view.container.querySelectorAll(".flex-1").length).toBeGreaterThanOrEqual(1)
     expect(view.container.querySelectorAll(".min-h-0").length).toBeGreaterThanOrEqual(3)
     expect(view.container.querySelector(".min-h-\\[500px\\]")).toBeNull()
     view.unmount()

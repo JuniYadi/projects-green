@@ -155,10 +155,7 @@ function isReplyWindowClosed(conversation: ConversationDetail | null): boolean {
 
 const PHONE_QUERY_KEY = "phone"
 
-const cleanPhoneForQuery = (phone: string) => {
-  const normalized = normalizeIndonesianPhoneNumber(phone) ?? phone
-  return normalized.replace(/\D/g, "")
-}
+const cleanPhoneForQuery = (phone: string) => phone.replace(/\D/g, "")
 
 const findConversationByPhone = (
   conversations: ConversationListItem[],
@@ -288,7 +285,6 @@ export default function WhatsAppMessagesPage() {
   const [activeConversationId, setActiveConversationId] = React.useState<
     string | null
   >(null)
-  const [activeRefreshKey, setActiveRefreshKey] = React.useState(0)
   const [activeConversation, setActiveConversation] =
     React.useState<ConversationDetail | null>(null)
   const [activeLoading, setActiveLoading] = React.useState(false)
@@ -384,23 +380,46 @@ export default function WhatsAppMessagesPage() {
     return () => {
       cancelled = true
     }
-  }, [activeConversationId, activeRefreshKey])
+  }, [activeConversationId, refreshKey])
 
+  const loadConversationForPhone = React.useCallback(
+    async (phone: string, conversationsCache: ConversationListItem[]) => {
+      const target = cleanPhoneForQuery(phone)
+      if (!target) return null
+      const local = findConversationByPhone(conversationsCache, phone)
+      if (local) return local
+      const payload = await whatsappClient.conversations.list({ contactPhone: phone })
+      return payload.ok ? findConversationByPhone(payload.conversations ?? [], phone) : null
+    },
+    []
+  )
+  
   // Select conversation from ?phone= query parameter
   React.useEffect(() => {
     const phoneQuery = searchParams.get(PHONE_QUERY_KEY)
     if (!phoneQuery) return
-
     const phoneDigits = cleanPhoneForQuery(phoneQuery)
     if (!phoneDigits) return
+    const match = findConversationByPhone(conversations, phoneDigits)
+    if (match && match.id !== activeConversationId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveConversationId(match.id)
+    }
 
-    React.startTransition(() => {
-      const match = findConversationByPhone(conversations, phoneDigits)
-      if (match && match.id !== activeConversationId) {
-        setActiveConversationId(match.id)
+    // Async fallback: conversations not yet loaded
+    if (conversations.length === 0) {
+      let cancelled = false
+      loadConversationForPhone(phoneDigits, conversations).then((found) => {
+        if (cancelled || !found) return
+        if (found.id !== activeConversationId) {
+          setActiveConversationId(found.id)
+        }
+      })
+      return () => {
+        cancelled = true
       }
-    })
-  }, [searchParams, conversations, activeConversationId])
+    }
+  }, [searchParams, conversations, activeConversationId, loadConversationForPhone])
 
   // Scroll to bottom on new messages
   React.useEffect(() => {
@@ -447,11 +466,10 @@ export default function WhatsAppMessagesPage() {
   )
 
   React.useEffect(() => {
-    React.startTransition(() => {
-      if (hasSingleActiveDevice && !sendDeviceId) {
-        setSendDeviceId(activeDevices[0].id)
-      }
-    })
+    if (hasSingleActiveDevice && !sendDeviceId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSendDeviceId(activeDevices[0].id)
+    }
   }, [activeDevices, hasSingleActiveDevice, sendDeviceId])
 
   const approvedTemplates = React.useMemo(
@@ -461,13 +479,12 @@ export default function WhatsAppMessagesPage() {
 
   React.useEffect(() => {
     if (sendDeviceId) {
-      React.startTransition(() => {
-        setSelectedTemplateId("")
-        setSelectedTemplateLanguage("")
-        setTemplateFieldValues({})
-        setTemplateSearchQuery("")
-        setTemplatePickerOpen(true)
-      })
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedTemplateId("")
+      setSelectedTemplateLanguage("")
+      setTemplateFieldValues({})
+      setTemplateSearchQuery("")
+      setTemplatePickerOpen(true)
     }
   }, [sendDeviceId])
 
@@ -552,26 +569,6 @@ export default function WhatsAppMessagesPage() {
     [activeDevices]
   )
 
-  const loadConversationForPhone = React.useCallback(
-    async (phone: string) => {
-      const phoneScopedPayload = await whatsappClient.conversations.list({
-        contactPhone: phone,
-      })
-      const phoneScopedConversations = phoneScopedPayload.ok
-        ? phoneScopedPayload.conversations ?? []
-        : []
-      const phoneScopedMatch = findConversationByPhone(
-        phoneScopedConversations,
-        phone
-      )
-      if (phoneScopedMatch) return phoneScopedMatch
-
-      const allPayload = await whatsappClient.conversations.list()
-      const allConversations = allPayload.ok ? allPayload.conversations ?? [] : []
-      return findConversationByPhone(allConversations, phone)
-    },
-    []
-  )
 
   const handleSendMessage = async () => {
     if (!sendDeviceId) {
@@ -622,7 +619,7 @@ export default function WhatsAppMessagesPage() {
 
       let sentConversation: ConversationListItem | null = null
       try {
-        sentConversation = await loadConversationForPhone(normalizedPhone)
+        sentConversation = await loadConversationForPhone(normalizedPhone, conversations)
       } catch (lookupError) {
         console.warn(
           "[WhatsAppMessagesPage] Sent template but failed to open conversation",
@@ -633,19 +630,18 @@ export default function WhatsAppMessagesPage() {
 
       setRefreshKey((key) => key + 1)
 
-      const next = new URLSearchParams(searchParams.toString())
-      next.set(PHONE_QUERY_KEY, cleanPhoneForQuery(normalizedPhone))
-      router.replace(`${pathname}?${next.toString()}`, { scroll: false })
-
       if (sentConversation) {
         setActiveConversationId(sentConversation.id)
-        setActiveRefreshKey((key) => key + 1)
       } else {
         console.warn(
           "[WhatsAppMessagesPage] Sent template but conversation was not found after reload",
           { phoneNumber: normalizedPhone }
         )
       }
+
+      const next = new URLSearchParams(searchParams.toString())
+      next.set(PHONE_QUERY_KEY, cleanPhoneForQuery(normalizedPhone))
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false })
 
       setSendDialogOpen(false)
       setSendDeviceId(hasSingleActiveDevice ? activeDevices[0]?.id ?? "" : "")
@@ -967,7 +963,7 @@ export default function WhatsAppMessagesPage() {
         </Dialog>
       </div>
 
-      <div className="grid min-h-0 grid-cols-1 gap-4 lg:h-[calc(100svh-14rem)] lg:min-h-[32rem] lg:grid-cols-3">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
         {/* ── Left Column: Conversations List ─────────────────────────── */}
         <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card lg:col-span-1">
           {/* Sticky compact filter header */}
