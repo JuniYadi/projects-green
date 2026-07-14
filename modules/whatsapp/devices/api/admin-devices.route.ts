@@ -460,4 +460,63 @@ export const createAdminDevicesRoutes = (
         return toServerError(set, "Unable to process top-up.")
       }
     })
+    .post("/:id/addon-quota", async ({ params: { id }, body, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
+
+      const parsed = topUpInputSchema.safeParse(body)
+      if (!parsed.success) {
+        set.status = 400
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
+          message: "Invalid input.",
+          fields: fieldErrorMapFromIssues(parsed.error.issues),
+        }
+      }
+
+      const { amount } = parsed.data
+      if (amount <= 0) {
+        set.status = 400
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
+          message: "Amount must be positive.",
+        }
+      }
+
+      try {
+        const service = createDeviceService()
+        const device = await service.topUpAddonQuota(id, amount)
+        logWhatsappAuditEvent({
+          action: "DEVICE_QUOTA_TOPUP",
+          organizationId: device.organizationId,
+          deviceId: id,
+          adminId: actor.userId,
+          message: `Addon quota topped up by ${amount}`,
+          status: "OK",
+          details: { amount },
+        })
+        return { ok: true as const, device }
+      } catch (error) {
+        if (error instanceof Error && error.name === "DeviceNotFoundError") {
+          set.status = 404
+          return {
+            ok: false as const,
+            error: "NOT_FOUND" as const,
+            message: "Device not found.",
+          }
+        }
+        if (error instanceof Error && error.message === "AMOUNT_MUST_BE_POSITIVE") {
+          set.status = 400
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: error.message,
+          }
+        }
+        console.error("[AdminDevices] Addon quota top-up error:", error)
+        return toServerError(set, "Unable to top up addon quota.")
+      }
+    })
 }

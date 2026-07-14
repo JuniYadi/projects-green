@@ -285,6 +285,20 @@ export const createDeviceService = (
       })
       return newSecret
     },
+
+    async topUpAddonQuota(id, amount) {
+      if (amount <= 0) throw new Error("AMOUNT_MUST_BE_POSITIVE")
+      const device = await db.whatsappDevice.findUnique({ where: { id } })
+      if (!device) throw new DeviceNotFoundError(id)
+      const updated = await db.whatsappDevice.update({
+        where: { id },
+        data: {
+          addonQuota: { increment: amount },
+          addonQuotaTotal: { increment: amount },
+        },
+      })
+      return _toDeviceDetail(updated as PrismaDeviceFields)
+    },
   }
 }
 

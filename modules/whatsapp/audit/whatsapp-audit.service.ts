@@ -38,7 +38,7 @@ export type WhatsappAuditAction =
   | "CATALOG_SYNCED"
   | "CATALOG_MESSAGE_SENT"
   // Admin
-  | "ADMIN_LOGIN"
+  | "DEVICE_QUOTA_TOPUP"
 
 export type WhatsappAuditEventStatus = "OK" | "FAILED" | "STARTED" | "PENDING"
 
