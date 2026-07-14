@@ -218,10 +218,12 @@ export function WhatsAppTemplatePreview({
   language,
   values,
   className,
+  mode = "full",
 }: {
   language: WhatsAppTemplateLanguage
   values?: TemplatePreviewValues
   className?: string
+  mode?: "full" | "compact"
 }) {
   const resolved = resolveTemplatePreviewValues(language, values)
   const bodyText = renderTemplateBody(language.body, resolved)
@@ -242,6 +244,19 @@ export function WhatsAppTemplatePreview({
         <p className="text-sm text-muted-foreground italic">
           No preview content
         </p>
+      </div>
+    )
+  }
+
+  // Compact mode: render only body text (matches MessageBubble)
+  if (mode === "compact") {
+    return (
+      <div className={className}>
+        <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm text-primary-foreground shadow-sm">
+          {bodyText && (
+            <div className="whitespace-pre-wrap break-words">{bodyText}</div>
+          )}
+        </div>
       </div>
     )
   }
